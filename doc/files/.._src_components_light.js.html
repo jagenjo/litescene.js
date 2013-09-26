@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>../src/components/light.js</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="shortcut icon" type="image/png" href="../assets/favicon.png">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+            
+                <h1><img src="../assets/css/logo.png" title=""></h1>
+            
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+    <h2 class="off-left">APIs</h2>
+    <div id="api-tabview" class="tabview">
+        <ul class="tabs">
+            <li><a href="#api-classes">Classes</a></li>
+            <li><a href="#api-modules">Modules</a></li>
+        </ul>
+
+        <div id="api-tabview-filter">
+            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+        </div>
+
+        <div id="api-tabview-panel">
+            <ul id="api-classes" class="apis classes">
+            
+                <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
+            
+                <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
+            
+                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
+            
+                <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+            
+                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
+            
+                <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
+            
+                <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+            
+                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+            
+                <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
+            
+                <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
+                <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
+            
+                <li><a href="../classes/LS.LS.html">LS.LS</a></li>
+            
+                <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+            
+                <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+            
+                <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+            
+                <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+            
+                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+            </ul>
+
+            <ul id="api-modules" class="apis modules">
+            
+            </ul>
+        </div>
+    </div>
+</div>
+
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+        Show:
+        <label for="api-show-inherited">
+            <input type="checkbox" id="api-show-inherited" checked>
+            Inherited
+        </label>
+
+        <label for="api-show-protected">
+            <input type="checkbox" id="api-show-protected">
+            Protected
+        </label>
+
+        <label for="api-show-private">
+            <input type="checkbox" id="api-show-private">
+            Private
+        </label>
+        <label for="api-show-deprecated">
+            <input type="checkbox" id="api-show-deprecated">
+            Deprecated
+        </label>
+
+    </div>
+
+
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+                        <h1 class="file-heading">File: ../src/components/light.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+//***** LIGHT ***************************
+
+/**
+* Light that contains the info about the camera
+* @class Light
+* @constructor
+* @param {String} object to configure from
+*/
+
+function Light(o)
+{
+	/**
+	* Position of the light
+	* @property position
+	* @type {[[x,y,z]]}
+	* @default [0,0,0]
+	*/
+	this.position = vec3.create();
+	/**
+	* Position where the light is pointing at (target)
+	* @property target
+	* @type {[[x,y,z]]}
+	* @default [0,0,1]
+	*/
+	this.target = vec3.fromValues(0,0,1);
+	/**
+	* Up vector
+	* @property up
+	* @type {[[x,y,z]]}
+	* @default [0,1,0]
+	*/
+	this.up = vec3.fromValues(0,1,0);
+
+	/**
+	* Enabled
+	* @property enabled
+	* @type {Boolean}
+	* @default true
+	*/
+	this.enabled = true;
+
+	/**
+	* Near distance
+	* @property near
+	* @type {Number}
+	* @default 1
+	*/
+	this.near = 1;
+	/**
+	* Far distance
+	* @property far
+	* @type {Number}
+	* @default 1000
+	*/
+
+	this.far = 1000;
+	/**
+	* Angle for the spot light inner apperture
+	* @property angle
+	* @type {Number}
+	* @default 45
+	*/
+	this.angle = 45; //spot cone
+	/**
+	* Angle for the spot light outer apperture
+	* @property angle_end
+	* @type {Number}
+	* @default 60
+	*/
+	this.angle_end = 60; //spot cone end
+
+	this.use_diffuse = true;
+	this.use_specular = true;
+	this.linear_attenuation = false;
+	this.range_attenuation = false;
+	this.target_in_world_coords = false;
+	this.att_start = 0;
+	this.att_end = 1000;
+	this.offset = 0;
+	this.spot_cone = true;
+
+	/**
+	* The color of the light
+	* @property color
+	* @type {[[r,g,b]]}
+	* @default [1,1,1]
+	*/
+	this.color = [1,1,1];
+	/**
+	* The intensity of the light
+	* @property intensity
+	* @type {Number}
+	* @default 1
+	*/
+	this.intensity = 1;
+
+	/**
+	* If the light cast shadows
+	* @property cast_shadows
+	* @type {Boolean}
+	* @default false
+	*/
+	this.cast_shadows = false;
+	this.shadow_bias = 0.005;
+	this.type = Light.OMNI;
+
+	this.frustrum_size = 50; //ortho
+
+	if(o) this.configure(o);
+}
+
+Light.OMNI = 1;
+Light.SPOT = 2;
+Light.DIRECTIONAL = 3;
+
+Light.DEFAULT_SHADOWMAP_RESOLUTION = 1024;
+Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
+
+Light.prototype.onAddedToNode = function(node)
+{
+	if(!node.light) node.light = this;
+
+	//this.updateNodeTransform();
+	//LEvent.bind(node, &quot;transformChanged&quot;, this.onTransformChanged, this );
+	LEvent.bind(node, &quot;beforeRender&quot;, this.onBeforeRender, this );
+}
+
+Light.prototype.onRemovedFromNode = function(node)
+{
+	if(node.light == this) delete node.light;
+}
+
+Light.prototype.onBeforeRender = function()
+{
+	//projective texture needs the light matrix to compute projection
+	if(this.projective_texture &amp;&amp; this.enabled)
+		this.computeLightMatrices();
+}
+
+Light._temp_matrix = mat4.create();
+Light._temp2_matrix = mat4.create();
+Light._temp3_matrix = mat4.create();
+Light._temp_position = vec3.create();
+Light._temp_target = vec3.create();
+Light._temp_up = vec3.create();
+Light._temp_front = vec3.create();
+
+Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, viewprojection_matrix)
+{
+	/*
+	var position = vec3.set(this.position, Light._temp_position );
+	var target = vec3.set(this.target, Light._temp_target);
+	var up = vec3.set(this.up, Light._temp_up);
+	*/
+
+	var position = this.getPosition(Light._temp_position);
+	var target = this.getTarget(Light._temp_target);
+	var up = this.getUp(Light._temp_up);
+	var front = this.getFront(Light._temp_front);
+
+	if( Math.abs( vec3.dot(front,up) ) &gt; 0.999 ) vec3.set(up,0,0,1); //avoid problems when the light comes straight from [0,1,0]
+
+	if(!projection_matrix) projection_matrix = Light._temp_matrix;
+	if(!view_matrix) view_matrix = Light._temp2_matrix;
+	if(!viewprojection_matrix) viewprojection_matrix = Light._temp3_matrix;
+
+	var frustum_size = this.frustrum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
+	if(this.type == Light.DIRECTIONAL)
+		mat4.ortho(projection_matrix, frustum_size*-0.5, frustum_size*0.5, frustum_size*-0.5, frustum_size*0.5, this.near, this.far);
+	else
+		mat4.perspective(projection_matrix, (this.angle_end || 45) * DEG2RAD, 1, this.near, this.far);
+
+	mat4.lookAt(view_matrix, position, target, up );
+
+	//adjust subpixel shadow movements to avoid flickering
+	if(this.type == Light.DIRECTIONAL &amp;&amp; this.cast_shadows &amp;&amp; this.enabled)
+	{
+		var shadowmap_resolution = this.shadowmap_resolution || Light.DEFAULT_SHADOWMAP_RESOLUTION;
+		var texelSize = frustum_size / shadowmap_resolution;
+		view_matrix[12] = Math.floor( view_matrix[12] / texelSize) * texelSize;
+		view_matrix[13] = Math.floor( view_matrix[13] / texelSize) * texelSize;
+	}
+	mat4.multiply(viewprojection_matrix, projection_matrix, view_matrix);
+
+	//save it
+	if( !this._lightMatrix ) this._lightMatrix = mat4.create();
+	mat4.copy( this._lightMatrix, viewprojection_matrix );
+}
+
+Light.prototype.serialize = function()
+{
+	this.position = vec3.toArray(this.position);
+	this.target = vec3.toArray(this.target);
+	this.color = vec3.toArray(this.color);
+	return cloneObject(this);
+}
+
+Light.prototype.configure = function(o)
+{
+	//jQuery.extend(true, this, o);
+	LS.cloneObject(o,this);
+}
+
+Light.prototype.getPosition = function(p)
+{
+	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	return vec3.clone(this.position);
+}
+
+Light.prototype.getTarget = function(p)
+{
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; !this.target_in_world_coords) 
+		return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
+	return vec3.clone(this.target);
+}
+
+Light.prototype.getUp = function(p)
+{
+	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformVector(this.up, p || vec3.create() );
+	return vec3.clone(this.up);
+}
+
+Light.prototype.getFront = function(p) {
+	var front = p || vec3.create();
+	vec3.subtract(front, this.getPosition(), this.getTarget() ); //front is reversed?
+	vec3.normalize(front, front);
+	return front;
+}
+
+Light.prototype.getResources = function (res)
+{
+	if(this.projective_texture)
+		res[ this.projective_texture ] = Texture;
+	return res;
+}
+
+LS.registerComponent(Light);
+LS.Light = Light;
+    </pre>
+</div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

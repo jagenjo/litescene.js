@@ -1,0 +1,2976 @@
+{
+    "project": {},
+    "files": {
+        "../src/components/camera.js": {
+            "name": "../src/components/camera.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.Camera": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS.Components": 1
+            }
+        },
+        "../src/components/components.js": {
+            "name": "../src/components/components.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.GeometricPrimitive": 1,
+                "LS.Components.FollowNode": 1,
+                "LS.Components.FaceTo": 1,
+                "LS.Components.RealtimeReflector": 1,
+                "LS.Components.Rotator": 1,
+                "LS.Components.KnobComponent": 1,
+                "LS.Components.FPSController": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/components/graphComponents.js": {
+            "name": "../src/components/graphComponents.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.GraphComponent": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/components/light.js": {
+            "name": "../src/components/light.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.Light": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/components/meshRenderer.js": {
+            "name": "../src/components/meshRenderer.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/components/transform.js": {
+            "name": "../src/components/transform.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.Transform": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/materials/material.js": {
+            "name": "../src/materials/material.js",
+            "modules": {},
+            "classes": {
+                "LS.Material": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1
+            }
+        },
+        "../src/render/renderer.js": {
+            "name": "../src/render/renderer.js",
+            "modules": {},
+            "classes": {
+                "LS.Renderer": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1
+            }
+        },
+        "../src/componentContainer.js": {
+            "name": "../src/componentContainer.js",
+            "modules": {},
+            "classes": {
+                "LS.ComponentContainer": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
+        "../src/context.js": {
+            "name": "../src/context.js",
+            "modules": {},
+            "classes": {
+                "LS.Context": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1
+            }
+        },
+        "../src/core.js": {
+            "name": "../src/core.js",
+            "modules": {},
+            "classes": {
+                "LS.LS": 1,
+                "LS.ResourcesManager": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1
+            }
+        },
+        "../src/scene.js": {
+            "name": "../src/scene.js",
+            "modules": {},
+            "classes": {
+                "LS.SceneTree": 1,
+                "LS.SceneNode": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        }
+    },
+    "modules": {},
+    "classes": {
+        "LS.Components.Camera": {
+            "name": "LS.Components.Camera",
+            "shortname": "LS.Components.Camera",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/camera.js",
+            "line": 3,
+            "description": "Camera that contains the info about a camera",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.GeometricPrimitive": {
+            "name": "LS.Components.GeometricPrimitive",
+            "shortname": "GeometricPrimitive",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 5,
+            "description": "GeometricPrimitive renders a primitive",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.FollowNode": {
+            "name": "LS.Components.FollowNode",
+            "shortname": "FollowNode",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 340,
+            "description": "FollowNode",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.FaceTo": {
+            "name": "LS.Components.FaceTo",
+            "shortname": "FaceTo",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 383,
+            "description": "FaceTo rotate a mesh to look at the camera or another object",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.RealtimeReflector": {
+            "name": "LS.Components.RealtimeReflector",
+            "shortname": "RealtimeReflector",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 446,
+            "description": "Realtime Reflective surface",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.Rotator": {
+            "name": "LS.Components.Rotator",
+            "shortname": "Rotator",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 553,
+            "description": "Rotator rotate a mesh over time",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.KnobComponent": {
+            "name": "LS.Components.KnobComponent",
+            "shortname": "KnobComponent",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 607,
+            "description": "KnobComponent allows to rotate a mesh like a knob",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.FPSController": {
+            "name": "LS.Components.FPSController",
+            "shortname": "FPSController",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/components.js",
+            "line": 685,
+            "description": "Camera controller",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.GraphComponent": {
+            "name": "LS.Components.GraphComponent",
+            "shortname": "GraphComponent",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/graphComponents.js",
+            "line": 5,
+            "description": "This component allow to integrate a behaviour graph on any object",
+            "params": [
+                {
+                    "name": "o",
+                    "description": "object with the serialized info",
+                    "type": "Object"
+                }
+            ]
+        },
+        "LS.Components.Light": {
+            "name": "LS.Components.Light",
+            "shortname": "Light",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/light.js",
+            "line": 3,
+            "description": "Light that contains the info about the camera",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Components.Transform": {
+            "name": "LS.Components.Transform",
+            "shortname": "Transform",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/transform.js",
+            "line": 1,
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Material": {
+            "name": "LS.Material",
+            "shortname": "LS.Material",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/materials/material.js",
+            "line": 4,
+            "description": "Material class encapsulating info about the colors and textures",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.Renderer": {
+            "name": "LS.Renderer",
+            "shortname": "LS.Renderer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/render/renderer.js",
+            "line": 1,
+            "description": "The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.",
+            "is_constructor": 1
+        },
+        "LS.ComponentContainer": {
+            "name": "LS.ComponentContainer",
+            "shortname": "ComponentContainer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/componentContainer.js",
+            "line": 20,
+            "description": "ComponentContainer class allows to add component based properties to any other class",
+            "is_constructor": 1
+        },
+        "LS.Context": {
+            "name": "LS.Context",
+            "shortname": "LS.Context",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/context.js",
+            "line": 3,
+            "description": "Context class allows to handle the app context easily without having to glue manually all events",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "options",
+                    "description": "settings for the webgl context creation",
+                    "type": "Object"
+                }
+            ]
+        },
+        "LS.LS": {
+            "name": "LS.LS",
+            "shortname": "LS",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/core.js",
+            "line": 873,
+            "description": "Samples a curve and returns the resulting value",
+            "itemtype": "method",
+            "params": [
+                {
+                    "name": "values",
+                    "description": "",
+                    "type": "Array"
+                },
+                {
+                    "name": "minx",
+                    "description": "min x value",
+                    "type": "Number"
+                },
+                {
+                    "name": "maxx",
+                    "description": "max x value",
+                    "type": "Number"
+                },
+                {
+                    "name": "defaulty",
+                    "description": "default y value",
+                    "type": "Number"
+                },
+                {
+                    "name": "x",
+                    "description": "the position in the curve to sample",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Number"
+            }
+        },
+        "LS.ResourcesManager": {
+            "name": "LS.ResourcesManager",
+            "shortname": "ResourcesManager",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/core.js",
+            "line": 214,
+            "description": "Static class that contains all the resources loaded, parsed and ready to use.\nIt also contains the parsers and methods in charge of processing them",
+            "is_constructor": 1
+        },
+        "LS.SceneTree": {
+            "name": "LS.SceneTree",
+            "shortname": "SceneTree",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/scene.js",
+            "line": 15,
+            "description": "The SceneTree contains all the info about the Scene and nodes",
+            "is_constructor": 1
+        },
+        "LS.SceneNode": {
+            "name": "LS.SceneNode",
+            "shortname": "SceneNode",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/scene.js",
+            "line": 491,
+            "description": "The SceneNode class represents and object in the scene\nIs the base class for all objects in the scene as meshes, lights, cameras, and so",
+            "params": [
+                {
+                    "name": "id",
+                    "description": "the id (otherwise a random one is computed)",
+                    "type": "String"
+                }
+            ],
+            "is_constructor": 1
+        }
+    },
+    "classitems": [
+        {
+            "file": "../src/components/camera.js",
+            "line": 35,
+            "description": "Camera type, could be Camera.PERSPECTIVE or Camera.ORTHOGRAPHIC",
+            "itemtype": "property",
+            "name": "type",
+            "type": "Vec3",
+            "default": "Camera.PERSPECTIVE;",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 51,
+            "description": "The position of the camera (in local space form the node)",
+            "itemtype": "property",
+            "name": "eye",
+            "type": "Vec3",
+            "default": "[0,100,100]",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 66,
+            "description": "The center where the camera points (in node space)",
+            "itemtype": "property",
+            "name": "center",
+            "type": "Vec3",
+            "default": "[0,0,0]",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 81,
+            "description": "The near plane",
+            "itemtype": "property",
+            "name": "near",
+            "type": "Number",
+            "default": "1",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 97,
+            "description": "The far plane",
+            "itemtype": "property",
+            "name": "far",
+            "type": "Number",
+            "default": "1000",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 113,
+            "description": "The camera aspect ratio",
+            "itemtype": "property",
+            "name": "aspect",
+            "type": "Number",
+            "default": "1",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 128,
+            "description": "The field of view in degrees",
+            "itemtype": "property",
+            "name": "fov",
+            "type": "Number",
+            "default": "45",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 144,
+            "description": "The frustrum size when working in ORTHOGRAPHIC",
+            "itemtype": "property",
+            "name": "frustrum_size",
+            "type": "Number",
+            "default": "50",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 180,
+            "itemtype": "method",
+            "name": "updateMatrices",
+            "params": [
+                {
+                    "name": "eye",
+                    "description": "",
+                    "type": "Vec3"
+                },
+                {
+                    "name": "center",
+                    "description": "",
+                    "type": "Vec3"
+                },
+                {
+                    "name": "up",
+                    "description": "",
+                    "type": "Vec3"
+                }
+            ],
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 195,
+            "description": "Update matrices according to the eye,center,up,fov,aspect,...",
+            "itemtype": "method",
+            "name": "updateMatrices",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 361,
+            "description": "Applies the camera transformation (from eye,center,up) to the node.",
+            "itemtype": "method",
+            "name": "updateNodeTransform",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 374,
+            "description": "Converts from 3D to 2D",
+            "itemtype": "method",
+            "name": "project",
+            "params": [
+                {
+                    "name": "vec",
+                    "description": "3D position we want to proyect to 2D",
+                    "type": "Vec3"
+                },
+                {
+                    "name": "viewport",
+                    "description": "viewport coordinates (if omited full viewport is used)",
+                    "type": "Array[4]"
+                },
+                {
+                    "name": "result",
+                    "description": "where to store the result, if omited it is created",
+                    "type": "Vec3"
+                }
+            ],
+            "return": {
+                "description": "the coordinates in 2D",
+                "type": "Vec3"
+            },
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 395,
+            "description": "Converts from 2D to 3D",
+            "itemtype": "method",
+            "name": "unproject",
+            "params": [
+                {
+                    "name": "vec",
+                    "description": "2D position we want to proyect to 3D",
+                    "type": "Vec3"
+                },
+                {
+                    "name": "viewport",
+                    "description": "viewport coordinates (if omited full viewport is used)",
+                    "type": "Array[4]"
+                },
+                {
+                    "name": "result",
+                    "description": "where to store the result, if omited it is created",
+                    "type": "Vec3"
+                }
+            ],
+            "return": {
+                "description": "the coordinates in 2D",
+                "type": "Vec3"
+            },
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 33,
+            "description": "Configure the component getting the info from the object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 44,
+            "description": "Serialize this component)",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialization info",
+                "type": "Object"
+            },
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 199,
+            "description": "Configure the component getting the info from the object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 210,
+            "description": "Serialize this component)",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialization info",
+                "type": "Object"
+            },
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 632,
+            "description": "Configure the component getting the info from the object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.KnobComponent",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/components.js",
+            "line": 643,
+            "description": "Serialize this component)",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialization info",
+                "type": "Object"
+            },
+            "class": "LS.Components.KnobComponent",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/graphComponents.js",
+            "line": 23,
+            "description": "Returns the first component of this container that is of the same class",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "o",
+                    "description": "object with the configuration info from a previous serialization",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.GraphComponent",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 12,
+            "description": "Position of the light",
+            "itemtype": "property",
+            "name": "position",
+            "type": "{[[x,y,z]]}",
+            "default": "[0,0,0]",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 19,
+            "description": "Position where the light is pointing at (target)",
+            "itemtype": "property",
+            "name": "target",
+            "type": "{[[x,y,z]]}",
+            "default": "[0,0,1]",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 26,
+            "description": "Up vector",
+            "itemtype": "property",
+            "name": "up",
+            "type": "{[[x,y,z]]}",
+            "default": "[0,1,0]",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 34,
+            "description": "Enabled",
+            "itemtype": "property",
+            "name": "enabled",
+            "type": "{Boolean}",
+            "default": "true",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 42,
+            "description": "Near distance",
+            "itemtype": "property",
+            "name": "near",
+            "type": "{Number}",
+            "default": "1",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 49,
+            "description": "Far distance",
+            "itemtype": "property",
+            "name": "far",
+            "type": "{Number}",
+            "default": "1000",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 57,
+            "description": "Angle for the spot light inner apperture",
+            "itemtype": "property",
+            "name": "angle",
+            "type": "{Number}",
+            "default": "45",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 64,
+            "description": "Angle for the spot light outer apperture",
+            "itemtype": "property",
+            "name": "angle_end",
+            "type": "{Number}",
+            "default": "60",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 82,
+            "description": "The color of the light",
+            "itemtype": "property",
+            "name": "color",
+            "type": "{[[r,g,b]]}",
+            "default": "[1,1,1]",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 89,
+            "description": "The intensity of the light",
+            "itemtype": "property",
+            "name": "intensity",
+            "type": "{Number}",
+            "default": "1",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 97,
+            "description": "If the light cast shadows",
+            "itemtype": "property",
+            "name": "cast_shadows",
+            "type": "{Boolean}",
+            "default": "false",
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 35,
+            "description": "Configure from a serialized object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "with the serialized info",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 51,
+            "description": "Serialize the object",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialized info",
+                "type": "Object"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 27,
+            "description": "Copy the transform from another Transform",
+            "itemtype": "method",
+            "name": "copyFrom",
+            "params": [
+                {
+                    "name": "src",
+                    "description": "",
+                    "type": "Transform"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 37,
+            "description": "Configure from a serialized object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "with the serialized info",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 64,
+            "description": "Serialize the object",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialized info",
+                "type": "Object"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 78,
+            "description": "Reset this transform",
+            "itemtype": "method",
+            "name": "identity",
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 94,
+            "description": "Returns the local position (its a copy)",
+            "itemtype": "method",
+            "name": "getPosition",
+            "return": {
+                "description": "the position",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 105,
+            "description": "Returns the global position (its a copy)",
+            "itemtype": "method",
+            "name": "getPosition",
+            "return": {
+                "description": "the position",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 121,
+            "description": "Returns the rotation in quaternion array (a copy)",
+            "itemtype": "method",
+            "name": "getRotation",
+            "return": {
+                "description": "the rotation",
+                "type": "[[x,y,z,w]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 131,
+            "description": "Returns the global rotation in quaternion array (a copy)",
+            "itemtype": "method",
+            "name": "getRotation",
+            "return": {
+                "description": "the rotation",
+                "type": "[[x,y,z,w]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 153,
+            "description": "Returns the scale (its a copy)",
+            "itemtype": "method",
+            "name": "getScale",
+            "return": {
+                "description": "the scale",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 163,
+            "description": "Returns the scale in global (its a copy)",
+            "itemtype": "method",
+            "name": "getScaleGlobal",
+            "return": {
+                "description": "the scale",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 184,
+            "description": "update the Matrix to match the position,scale and rotation",
+            "itemtype": "method",
+            "name": "updateMatrix",
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 195,
+            "description": "update the Global Matrix to match the position,scale and rotation in world space",
+            "itemtype": "method",
+            "name": "updateGlobalMatrix",
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 211,
+            "description": "Returns a copy of the local matrix of this transform (it updates the matrix automatically)",
+            "itemtype": "method",
+            "name": "getLocalMatrix",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 223,
+            "description": "Returns the original world matrix of this transform (it updates the matrix automatically)",
+            "itemtype": "method",
+            "name": "getLocalMatrixRef",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 235,
+            "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
+            "itemtype": "method",
+            "name": "getGlobalMatrix",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 249,
+            "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
+            "itemtype": "method",
+            "name": "getGlobalMatrix",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 259,
+            "description": "Returns the world matrix of this transform without the scale",
+            "itemtype": "method",
+            "name": "getMatrixWithoutScale",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 270,
+            "description": "Returns the world matrix of this transform without the scale",
+            "itemtype": "method",
+            "name": "getMatrixWithoutRotation",
+            "return": {
+                "description": "the matrix in array format",
+                "type": "Matrix"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 281,
+            "description": "Configure the transform from a local Matrix (do not tested carefully)",
+            "itemtype": "method",
+            "name": "fromMatrix",
+            "params": [
+                {
+                    "name": "src,",
+                    "description": "the matrix in array format",
+                    "type": "Matrix"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 311,
+            "description": "Configure the transform rotation from a vec3 Euler angles (heading,attitude,bank)",
+            "itemtype": "method",
+            "name": "setRotationFromEuler",
+            "params": [
+                {
+                    "name": "src,",
+                    "description": "the matrix in array format",
+                    "type": "Matrix"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 323,
+            "description": "sets the position",
+            "itemtype": "method",
+            "name": "setPosition",
+            "params": [
+                {
+                    "name": "x",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "y",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "z",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 340,
+            "description": "sets the rotation",
+            "itemtype": "method",
+            "name": "setRotation",
+            "params": [
+                {
+                    "name": "rotation",
+                    "description": "in quaterion format",
+                    "type": "Quat"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 352,
+            "description": "sets the scale",
+            "itemtype": "method",
+            "name": "setScale",
+            "params": [
+                {
+                    "name": "x",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "y",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "z",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 369,
+            "description": "translates object (addts to the position)",
+            "itemtype": "method",
+            "name": "translate",
+            "params": [
+                {
+                    "name": "x",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "y",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "z",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 386,
+            "description": "translates object in local coordinates (using the rotation and the scale)",
+            "itemtype": "method",
+            "name": "translateLocal",
+            "params": [
+                {
+                    "name": "x",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "y",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "z",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 403,
+            "description": "rotate object in world space",
+            "itemtype": "method",
+            "name": "rotate",
+            "params": [
+                {
+                    "name": "angle_in_deg",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "axis",
+                    "description": "",
+                    "type": "Vec3"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 417,
+            "description": "rotate object in object space",
+            "itemtype": "method",
+            "name": "rotateLocal",
+            "params": [
+                {
+                    "name": "angle_in_deg",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "axis",
+                    "description": "",
+                    "type": "Vec3"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 431,
+            "description": "scale the object",
+            "itemtype": "method",
+            "name": "scale",
+            "params": [
+                {
+                    "name": "x",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "y",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "z",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 448,
+            "description": "This method is static (call it from Transform.interpolate)\ninterpolate the transform between two transforms and stores the result in another Transform",
+            "itemtype": "method",
+            "name": "interpolate",
+            "params": [
+                {
+                    "name": "a",
+                    "description": "",
+                    "type": "Transform"
+                },
+                {
+                    "name": "b",
+                    "description": "",
+                    "type": "Transform"
+                },
+                {
+                    "name": "factor",
+                    "description": "from 0 to 1",
+                    "type": "Number"
+                },
+                {
+                    "name": "the",
+                    "description": "destination",
+                    "type": "Transform"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 466,
+            "description": "Orients the transform to look from one position to another (overwrites scale)",
+            "itemtype": "method",
+            "name": "lookAt",
+            "params": [
+                {
+                    "name": "position",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "target",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "up",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 498,
+            "description": "returns the [0,0,1] vector in world space",
+            "itemtype": "method",
+            "name": "getFront",
+            "return": {
+                "description": "",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 507,
+            "description": "returns the [0,1,0] vector in world space",
+            "itemtype": "method",
+            "name": "getTop",
+            "return": {
+                "description": "",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 516,
+            "description": "returns the [1,0,0] vector in world space",
+            "itemtype": "method",
+            "name": "getRight",
+            "return": {
+                "description": "",
+                "type": "[[x,y,z]]"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 526,
+            "description": "Applies the local transformation to a point (multiply it by the matrix)\nIf no destination is specified the transform is applied to vec",
+            "itemtype": "method",
+            "name": "transformPoint",
+            "params": [
+                {
+                    "name": "point",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "destination",
+                    "description": "(optional)",
+                    "type": "[[x,y,z]]"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 539,
+            "description": "Applies the global transformation to a point (multiply it by the matrix)\nIf no destination is specified the transform is applied to vec",
+            "itemtype": "method",
+            "name": "transformPointGlobal",
+            "params": [
+                {
+                    "name": "point",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "destination",
+                    "description": "(optional)",
+                    "type": "[[x,y,z]]"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 553,
+            "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
+            "itemtype": "method",
+            "name": "transformVector",
+            "params": [
+                {
+                    "name": "vector",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "destination",
+                    "description": "(optional)",
+                    "type": "[[x,y,z]]"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 564,
+            "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
+            "itemtype": "method",
+            "name": "transformVectorGlobal",
+            "params": [
+                {
+                    "name": "vector",
+                    "description": "",
+                    "type": "[[x,y,z]]"
+                },
+                {
+                    "name": "destination",
+                    "description": "(optional)",
+                    "type": "[[x,y,z]]"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 52,
+            "description": "Surface color",
+            "itemtype": "property",
+            "name": "color",
+            "type": "{vec3}",
+            "default": "[1,1,1]",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 59,
+            "description": "Alpha. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.",
+            "itemtype": "property",
+            "name": "alpha",
+            "type": "{number}",
+            "default": "1",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 67,
+            "description": "Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING",
+            "itemtype": "property",
+            "name": "blending",
+            "type": "{String}",
+            "default": "Material.NORMAL",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 75,
+            "description": "Ambient color: amount of ambient light reflected by the object",
+            "itemtype": "property",
+            "name": "ambient",
+            "type": "{vec3}",
+            "default": "[1,1,1]",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 82,
+            "description": "Diffuse color: amount of diffuse light reflected by the object",
+            "itemtype": "property",
+            "name": "diffuse",
+            "type": "{vec3}",
+            "default": "[1,1,1]",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 89,
+            "description": "Backlight factor: amount of light that can be seen through the surface.",
+            "itemtype": "property",
+            "name": "backlight_factor",
+            "type": "{number}",
+            "default": "0",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 97,
+            "description": "Emissive color: amount of emissive light emited from the surface",
+            "itemtype": "property",
+            "name": "emissive",
+            "type": "{vec3}",
+            "default": "[0,0,0]",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 104,
+            "description": "Specular factor: amount of specular light reflected",
+            "itemtype": "property",
+            "name": "specular_factor",
+            "type": "{number}",
+            "default": "0.1",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 111,
+            "description": "Specular glossiness: the glossines (exponent) of specular light",
+            "itemtype": "property",
+            "name": "specular_gloss",
+            "type": "{number}",
+            "default": "10",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 118,
+            "description": "Specular on top: if the specular spots should be on top or multiplyed by the surface color",
+            "itemtype": "property",
+            "name": "specular_ontop",
+            "type": "{boolean}",
+            "default": "false",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 125,
+            "description": "How reflectance is the surface",
+            "itemtype": "property",
+            "name": "reflection_factor",
+            "type": "{number}",
+            "default": "0",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 132,
+            "description": "Fresnel coeficient (exp) of reflectance",
+            "itemtype": "property",
+            "name": "reflection_fresnel",
+            "type": "{number}",
+            "default": "0",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 139,
+            "description": "It controls if the reflection is interpolated or blended with the surface color",
+            "itemtype": "property",
+            "name": "reflection_additive",
+            "type": "{boolean}",
+            "default": "false",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 146,
+            "description": "It controls if the reflection factor is affected by the specular factor",
+            "itemtype": "property",
+            "name": "reflection_specular",
+            "type": "{boolean}",
+            "default": "false",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 153,
+            "description": "velvet color",
+            "itemtype": "property",
+            "name": "velvet",
+            "type": "{vec3}",
+            "default": "[0,0,0]",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 202,
+            "description": "This function returns all the uniforms and the macros related to the material needed to compute the shader",
+            "itemtype": "method",
+            "name": "getMaterialShaderData",
+            "params": [
+                {
+                    "name": "instance",
+                    "description": "",
+                    "type": "Object"
+                },
+                {
+                    "name": "node",
+                    "description": "",
+                    "type": "SceneNode"
+                },
+                {
+                    "name": "scene",
+                    "description": "",
+                    "type": "SceneTree"
+                },
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Object"
+            },
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 351,
+            "description": "This function returns all the uniforms and the macros related to the light needed to compute the shader",
+            "itemtype": "method",
+            "name": "getLightShaderData",
+            "params": [
+                {
+                    "name": "light",
+                    "description": "",
+                    "type": "Light"
+                },
+                {
+                    "name": "instance",
+                    "description": "",
+                    "type": "Object"
+                },
+                {
+                    "name": "node",
+                    "description": "",
+                    "type": "SceneNode"
+                },
+                {
+                    "name": "scene",
+                    "description": "",
+                    "type": "SceneTree"
+                },
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Object"
+            },
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 434,
+            "description": "Configure the material getting the info from the object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 489,
+            "description": "Serialize this material",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "object with the serialization info",
+                "type": "Object"
+            },
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 500,
+            "description": "Loads and assigns a texture to a channel",
+            "itemtype": "method",
+            "name": "loadAndSetTexture",
+            "params": [
+                {
+                    "name": "texture_or_filename",
+                    "description": "",
+                    "type": "Texture || url"
+                },
+                {
+                    "name": "channel",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 532,
+            "description": "Assigns a texture to a channel",
+            "itemtype": "method",
+            "name": "setTexture",
+            "params": [
+                {
+                    "name": "texture",
+                    "description": "",
+                    "type": "Texture"
+                },
+                {
+                    "name": "channel",
+                    "description": "default is COLOR",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 556,
+            "description": "Returns a texture from a channel",
+            "itemtype": "method",
+            "name": "setTexture",
+            "params": [
+                {
+                    "name": "channel",
+                    "description": "default is COLOR",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Texture"
+            },
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 572,
+            "description": "Collects all the resources needed by this material (textures)",
+            "itemtype": "method",
+            "name": "getResources",
+            "params": [
+                {
+                    "name": "resources",
+                    "description": "object where all the resources are stored",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Texture"
+            },
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 586,
+            "description": "Loads all the textures inside this material, by sending the through the ResourcesManager",
+            "itemtype": "method",
+            "name": "loadTextures",
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/materials/material.js",
+            "line": 604,
+            "description": "Register this material in a materials pool to be shared with other nodes",
+            "itemtype": "method",
+            "name": "registerMaterial",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "name given to this material, it must be unique",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Material",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/render/renderer.js",
+            "line": 31,
+            "description": "Renders the current scene to the screen",
+            "itemtype": "method",
+            "name": "render",
+            "params": [
+                {
+                    "name": "scene",
+                    "description": "",
+                    "type": "SceneTree"
+                },
+                {
+                    "name": "camera",
+                    "description": "",
+                    "type": "Camera"
+                },
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Renderer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/render/renderer.js",
+            "line": 123,
+            "description": "Set camera as the main scene camera",
+            "itemtype": "method",
+            "name": "enableCamera",
+            "params": [
+                {
+                    "name": "camera",
+                    "description": "",
+                    "type": "Camera"
+                }
+            ],
+            "class": "LS.Renderer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/render/renderer.js",
+            "line": 150,
+            "description": "This function renderes all the meshes to the current rendering context (screen, Texture...)",
+            "itemtype": "method",
+            "name": "renderSceneMeshes",
+            "params": [
+                {
+                    "name": "options",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Renderer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 32,
+            "description": "Adds a component to this node.",
+            "itemtype": "method",
+            "name": "configureComponents",
+            "params": [
+                {
+                    "name": "info",
+                    "description": "object containing all the info from a previous serialization",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 61,
+            "description": "Adds a component to this node.",
+            "itemtype": "method",
+            "name": "serializeComponents",
+            "params": [
+                {
+                    "name": "o",
+                    "description": "container where the components will be stored",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 80,
+            "description": "Adds a component to this node.",
+            "itemtype": "method",
+            "name": "addComponent",
+            "params": [
+                {
+                    "name": "component",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "component added",
+                "type": "Object"
+            },
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 100,
+            "description": "Removes a component from this node.",
+            "itemtype": "method",
+            "name": "removeComponent",
+            "params": [
+                {
+                    "name": "component",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 117,
+            "description": "Removes all components from this node.",
+            "itemtype": "method",
+            "name": "removeAllComponents",
+            "params": [
+                {
+                    "name": "component",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 129,
+            "description": "Returns the first component of this container that is of the same class",
+            "itemtype": "method",
+            "name": "getComponent",
+            "params": [
+                {
+                    "name": "component_class",
+                    "description": "the class to search a component from (not the name of the class)",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/componentContainer.js",
+            "line": 143,
+            "description": "executes the method with a given name in all the components",
+            "itemtype": "method",
+            "name": "processActionInComponents",
+            "params": [
+                {
+                    "name": "action_name",
+                    "description": "the name of the function to execute in all components (in string format)",
+                    "type": "String"
+                },
+                {
+                    "name": "params",
+                    "description": "object with the params to be accessed by that function",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ComponentContainer",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 14,
+            "description": "Contains all the registered components",
+            "itemtype": "property",
+            "name": "Components",
+            "type": "{Object}",
+            "default": "{}",
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 23,
+            "description": "Register a component so it is listed when searching for new components to attach",
+            "itemtype": "method",
+            "name": "registerComponent",
+            "params": [
+                {
+                    "name": "comp",
+                    "description": "component class to register",
+                    "type": "ComponentClass"
+                }
+            ],
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 45,
+            "description": "A front-end for XMLHttpRequest so it is simpler and more cross-platform",
+            "itemtype": "method",
+            "name": "request",
+            "params": [
+                {
+                    "name": "request",
+                    "description": "object with the fields for the request: \n\t\t\tdataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "the XMLHttpRequest of the petition",
+                "type": "XMLHttpRequest"
+            },
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 124,
+            "description": "copy the properties of one class into another class",
+            "itemtype": "method",
+            "name": "extendClass",
+            "params": [
+                {
+                    "name": "origin",
+                    "description": "",
+                    "type": "Class"
+                },
+                {
+                    "name": "target",
+                    "description": "",
+                    "type": "Class"
+                }
+            ],
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 140,
+            "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
+            "itemtype": "method",
+            "name": "cloneObject",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "the object to clone",
+                    "type": "Object"
+                },
+                {
+                    "name": "target=null",
+                    "description": "optional, the destination object",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "returns the cloned object",
+                "type": "Object"
+            },
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 181,
+            "description": "Returns an object class name (uses the constructor toString)",
+            "itemtype": "method",
+            "name": "getObjectClassName",
+            "params": [
+                {
+                    "name": "the",
+                    "description": "object to see the class name",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "returns the string with the name",
+                "type": "String"
+            },
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 250,
+            "description": "Returns a string to append to any url that should use the browser cache (when updating server info)",
+            "itemtype": "method",
+            "name": "getNoCache",
+            "params": [
+                {
+                    "name": "force",
+                    "description": "force to return a nocache string ignoring the default configuration",
+                    "type": "Boolean"
+                }
+            ],
+            "return": {
+                "description": "a string to attach to a url so the file wont be cached",
+                "type": "String"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 260,
+            "description": "Resets all the resources cached, so it frees the memory",
+            "itemtype": "method",
+            "name": "reset",
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 272,
+            "description": "Returns the filename extension from an url",
+            "itemtype": "method",
+            "name": "getExtension",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "filename extension",
+                "type": "String"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 289,
+            "description": "Loads a generic resource, the type will be inferet from the extension",
+            "itemtype": "method",
+            "name": "load",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "where the resource is located (if its a relative url it depends on the path attribute)",
+                    "type": "String"
+                },
+                {
+                    "name": "options",
+                    "description": "options to apply to the loaded image",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                },
+                {
+                    "name": "on_complete",
+                    "description": "callback when the resource is loaded and cached",
+                    "type": "Function",
+                    "optional": true,
+                    "optdefault": "null"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 359,
+            "description": "Process resource (most cases to upload it to the GPU)",
+            "itemtype": "method",
+            "name": "processResource",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "where the resource is located (if its a relative url it depends on the path attribute)",
+                    "type": "String"
+                },
+                {
+                    "name": "data",
+                    "description": "the data of the resource (could be string, arraybuffer, image... )",
+                    "type": "*"
+                },
+                {
+                    "name": "options",
+                    "description": "options to apply to the loaded resource",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 391,
+            "description": "Loads a Mesh from url (in case it is already cached it skips the loading)",
+            "itemtype": "method",
+            "name": "loadMesh",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "where the mesh is located (if its a relative url it depends on the path attribute",
+                    "type": "String"
+                },
+                {
+                    "name": "options",
+                    "description": "options to apply to the loaded image",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                },
+                {
+                    "name": "on_complete",
+                    "description": "callback when the mesh is loaded and cached",
+                    "type": "Function",
+                    "optional": true,
+                    "optdefault": "null"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 476,
+            "description": "Takes mesh raw data and creates a propper Mesh instance (uploads to GPU), caches it and launch the associated events",
+            "itemtype": "method",
+            "name": "processMesh",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "the filename to process this raw data",
+                    "type": "String"
+                },
+                {
+                    "name": "data",
+                    "description": "raw data of the mesh",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "the mesh instance",
+                "type": "Object"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 522,
+            "description": "Loads an Image from the internet and calls processImage (it the image is already loaded it skips the loading)",
+            "itemtype": "method",
+            "name": "loadImage",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "where the mesh is located (if its a relative url it depends on the path attribute",
+                    "type": "String"
+                },
+                {
+                    "name": "on_complete",
+                    "description": "callback when the image is loaded, uploaded to GPU and cached",
+                    "type": "Function",
+                    "optional": true,
+                    "optdefault": "null"
+                },
+                {
+                    "name": "options",
+                    "description": "options to apply to the loaded image",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 613,
+            "description": "Takes image raw data and creates a propper Texture instance, caches it and launch the associated events",
+            "itemtype": "method",
+            "name": "processImage",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "the filename to process this raw data",
+                    "type": "String"
+                },
+                {
+                    "name": "data",
+                    "description": "raw data of the image (could be an Image tag or a Canvas tag)",
+                    "type": "Object"
+                },
+                {
+                    "name": "options",
+                    "description": "options to process the data",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                }
+            ],
+            "return": {
+                "description": "the Texture instance",
+                "type": "Object"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 690,
+            "description": "Loads all the resources in the Object (it uses an object to store not only the filename but also the type)",
+            "itemtype": "method",
+            "name": "loadResources",
+            "params": [
+                {
+                    "name": "resources",
+                    "description": "contains all the resources, associated with its type",
+                    "type": "Object"
+                },
+                {
+                    "name": "options",
+                    "description": "options to apply to the loaded resources",
+                    "type": "Object",
+                    "optional": true,
+                    "optdefault": "{}"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 720,
+            "description": "Stores the resource in the manager containers",
+            "itemtype": "method",
+            "name": "registerResource",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "resource",
+                    "description": "",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 746,
+            "description": "returns a mesh resource if it is loaded",
+            "itemtype": "method",
+            "name": "getMesh",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Mesh"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 759,
+            "description": "returns a texture resource if it is loaded",
+            "itemtype": "method",
+            "name": "getTexture",
+            "params": [
+                {
+                    "name": "filename",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Texture"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 909,
+            "description": "Resamples a full curve in values (useful to upload to GPU array)",
+            "itemtype": "method",
+            "name": "resampleCurve",
+            "params": [
+                {
+                    "name": "values",
+                    "description": "",
+                    "type": "Array"
+                },
+                {
+                    "name": "minx",
+                    "description": "min x value",
+                    "type": "Number"
+                },
+                {
+                    "name": "maxx",
+                    "description": "max x value",
+                    "type": "Number"
+                },
+                {
+                    "name": "defaulty",
+                    "description": "default y value",
+                    "type": "Number"
+                },
+                {
+                    "name": "numsamples",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Array"
+            },
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 33,
+            "description": "This initializes the content of the scene.\nCall it to clear the scene content",
+            "itemtype": "method",
+            "name": "init",
+            "return": {
+                "description": "Returns true on success",
+                "type": "Boolean"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 85,
+            "description": "Clears the scene using the init function\nand trigger a \"clear\" LEvent",
+            "itemtype": "method",
+            "name": "clear",
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 102,
+            "description": "Configure the Scene using an object (the object can be obtained from the function serialize)\nInserts the nodes, configure them, and change the parameters",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "scene_info",
+                    "description": "the object containing all the info about the nodes and config of the scene",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 187,
+            "description": "Creates and object containing all the info about the scene and nodes.\nThe oposite of configure.\nIt calls the serialize method in every node",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "return a JS Object with all the scene info",
+                "type": "Object"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 230,
+            "description": "loads a Scene from an Ajax call and pass it to the configure method.",
+            "itemtype": "method",
+            "name": "loadScene",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "where the JSON object containing the scene is stored",
+                    "type": "String"
+                },
+                {
+                    "name": "on_complete",
+                    "description": "the callback to call when the loading is complete",
+                    "type": "Function",
+                    "optional": true,
+                    "optdefault": "null"
+                },
+                {
+                    "name": "on_error",
+                    "description": "the callback to call if there is a  loading error",
+                    "type": "Function",
+                    "optional": true,
+                    "optdefault": "null"
+                }
+            ],
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 274,
+            "description": "inserts a Node in the scene",
+            "itemtype": "method",
+            "name": "addNode",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "the node object",
+                    "type": "Object"
+                },
+                {
+                    "name": "index",
+                    "description": "index to specify if you want to insert it after another node",
+                    "type": "Number",
+                    "optional": true,
+                    "optdefault": "null"
+                }
+            ],
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 309,
+            "description": "removes the node from the scene",
+            "itemtype": "method",
+            "name": "removeNode",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "the node",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "returns true if it was found and deleted",
+                "type": "Boolean"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 335,
+            "description": "retrieves a Node",
+            "itemtype": "method",
+            "name": "getNode",
+            "params": [
+                {
+                    "name": "id",
+                    "description": "node id",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "the node or null if it didnt find it",
+                "type": "Object"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 347,
+            "description": "retrieves a Node by its index",
+            "itemtype": "method",
+            "name": "getNodeByIndex",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "index",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "returns the node at the 'index' position in the nodes array",
+                "type": "Object"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 359,
+            "description": "retrieves a Node index",
+            "itemtype": "method",
+            "name": "getNodeIndex",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "",
+                    "type": "Node"
+                }
+            ],
+            "return": {
+                "description": "returns the node index in the nodes array",
+                "type": "Number"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 371,
+            "description": "retrieves a Node",
+            "itemtype": "method",
+            "name": "getNodesByClass",
+            "params": [
+                {
+                    "name": "className",
+                    "description": "class name",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "returns all the nodes that match this class name",
+                "type": "Object"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 389,
+            "description": "loads all the resources of all the nodes in this scene\nit sends a signal to every node to get all the resources info\nand load them in bulk using the ResourceManager",
+            "itemtype": "method",
+            "name": "loadResources",
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 434,
+            "description": "updates the scene and nodes",
+            "itemtype": "method",
+            "name": "update",
+            "params": [
+                {
+                    "name": "dt",
+                    "description": "delta time",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 461,
+            "description": "dispatch event to all nodes in the scene",
+            "itemtype": "method",
+            "name": "sendEventToNodes",
+            "params": [
+                {
+                    "name": "event_type",
+                    "description": "event type name",
+                    "type": "String"
+                },
+                {
+                    "name": "data",
+                    "description": "data to send associated to the event",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 537,
+            "description": "changes the node id (its better to do not change the id, it can lead to unexpected results)\nremember that two nodes can't have the same id",
+            "itemtype": "method",
+            "name": "setId",
+            "params": [
+                {
+                    "name": "new_id",
+                    "description": "the new id",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "returns true if the name changed",
+                "type": "Object"
+            },
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 687,
+            "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
+            "itemtype": "method",
+            "name": "clone",
+            "return": {
+                "description": "returns a cloned version of this node",
+                "type": "Object"
+            },
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 712,
+            "description": "Configure this node from an object containing the info",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "info",
+                    "description": "the object with all the info (comes from the serialize method)",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 765,
+            "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
+            "itemtype": "method",
+            "name": "serialize",
+            "return": {
+                "description": "returns the object with the info",
+                "type": "Object"
+            },
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 819,
+            "description": "Adds to this node a child node (use it carefully)",
+            "itemtype": "method",
+            "name": "addChild",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "the node to add as child",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 846,
+            "description": "Removes a node child from this node",
+            "itemtype": "method",
+            "name": "removeChild",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "the node to remove",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 870,
+            "description": "Removes a node child from this node",
+            "itemtype": "method",
+            "name": "removeChild",
+            "params": [
+                {
+                    "name": "node",
+                    "description": "the node to remove",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.SceneNode",
+            "namespace": "LS"
+        }
+    ],
+    "warnings": []
+}

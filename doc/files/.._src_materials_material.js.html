@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>../src/materials/material.js</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="shortcut icon" type="image/png" href="../assets/favicon.png">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+            
+                <h1><img src="../assets/css/logo.png" title=""></h1>
+            
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+    <h2 class="off-left">APIs</h2>
+    <div id="api-tabview" class="tabview">
+        <ul class="tabs">
+            <li><a href="#api-classes">Classes</a></li>
+            <li><a href="#api-modules">Modules</a></li>
+        </ul>
+
+        <div id="api-tabview-filter">
+            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+        </div>
+
+        <div id="api-tabview-panel">
+            <ul id="api-classes" class="apis classes">
+            
+                <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
+            
+                <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
+            
+                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
+            
+                <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+            
+                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
+            
+                <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
+            
+                <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+            
+                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+            
+                <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
+            
+                <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
+                <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
+            
+                <li><a href="../classes/LS.LS.html">LS.LS</a></li>
+            
+                <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+            
+                <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+            
+                <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+            
+                <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+            
+                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+            </ul>
+
+            <ul id="api-modules" class="apis modules">
+            
+            </ul>
+        </div>
+    </div>
+</div>
+
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+        Show:
+        <label for="api-show-inherited">
+            <input type="checkbox" id="api-show-inherited" checked>
+            Inherited
+        </label>
+
+        <label for="api-show-protected">
+            <input type="checkbox" id="api-show-protected">
+            Protected
+        </label>
+
+        <label for="api-show-private">
+            <input type="checkbox" id="api-show-private">
+            Private
+        </label>
+        <label for="api-show-deprecated">
+            <input type="checkbox" id="api-show-deprecated">
+            Deprecated
+        </label>
+
+    </div>
+
+
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+                        <h1 class="file-heading">File: ../src/materials/material.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+//Material class **************************
+/* Warning: a material is not a component, because it can be shared by multiple nodes */
+
+/**
+* Material class encapsulating info about the colors and textures
+* @namespace LS
+* @class Material
+* @constructor
+* @param {String} object to configure from
+*/
+
+function Material(o)
+{
+	//this.shader = null; //default shader
+	this.color = new Float32Array([1.0,1.0,1.0]);
+	this.alpha = 1.0;
+	this.ambient = new Float32Array([1.0,1.0,1.0]);
+	this.diffuse = new Float32Array([1.0,1.0,1.0]);
+	this.emissive = new Float32Array([0.0,0.0,0.0]);
+	this.backlight_factor = 0;
+	this.specular_factor = 0.1;
+	this.specular_gloss = 10.0;
+	this.specular_ontop = false;
+	this.reflection_factor = 0.0;
+	this.reflection_fresnel = 1.0;
+	this.reflection_additive = false;
+	this.reflection_specular = false;
+	this.velvet = new Float32Array([0.5,0.5,0.5]);
+	this.velvet_exp = 0.0;
+	this.velvet_additive = false;
+	this.detail = [0.0,10,10];
+	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
+	this.extra_factor = 0.0; //used for debug and dev
+	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
+	this.blending = Material.NORMAL;
+	this.normalmap_factor = 1.0;
+	this.displacementmap_factor = 0.1;
+	this.bumpmap_factor = 1.0;
+
+	this.textures = {};
+
+	if(o) 
+		this.configure(o);
+}
+
+//Material flags
+Material.NORMAL = &quot;normal&quot;;
+Material.ADDITIVE_BLENDING = &quot;additive&quot;;
+
+//material info attributes, use this to avoid errors when settings the attributes of a material
+
+/**
+* Surface color
+* @property color
+* @type {vec3}
+* @default [1,1,1]
+*/
+Material.COLOR = &quot;color&quot;;
+/**
+* Alpha. It must be &lt; 1 to enable alpha sorting. If it is &lt;= 0 wont be visible.
+* @property alpha
+* @type {number}
+* @default 1
+*/
+Material.ALPHA = &quot;alpha&quot;;
+
+/**
+* Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING
+* @property blending
+* @type {String}
+* @default Material.NORMAL
+*/
+Material.BLENDING = &quot;blending&quot;;
+
+/**
+* Ambient color: amount of ambient light reflected by the object
+* @property ambient
+* @type {vec3}
+* @default [1,1,1]
+*/
+Material.AMBIENT = &quot;ambient&quot;;
+/**
+* Diffuse color: amount of diffuse light reflected by the object
+* @property diffuse
+* @type {vec3}
+* @default [1,1,1]
+*/
+Material.DIFFUSE = &quot;diffuse&quot;;
+/**
+* Backlight factor: amount of light that can be seen through the surface.
+* @property backlight_factor
+* @type {number}
+* @default 0
+*/
+Material.BACKLIGHT_FACTOR = &quot;backlight_factor&quot;;
+
+/**
+* Emissive color: amount of emissive light emited from the surface
+* @property emissive
+* @type {vec3}
+* @default [0,0,0]
+*/
+Material.EMISSIVE = &quot;emissive&quot;;
+/**
+* Specular factor: amount of specular light reflected
+* @property specular_factor
+* @type {number}
+* @default 0.1
+*/
+Material.SPECULAR_FACTOR = &quot;specular_factor&quot;;
+/**
+* Specular glossiness: the glossines (exponent) of specular light
+* @property specular_gloss
+* @type {number}
+* @default 10
+*/
+Material.SPECULAR_GLOSS = &quot;specular_gloss&quot;;
+/**
+* Specular on top: if the specular spots should be on top or multiplyed by the surface color
+* @property specular_ontop
+* @type {boolean}
+* @default false
+*/
+Material.SPECULAR_ON_TOP = &quot;specular_ontop&quot;;
+/**
+* How reflectance is the surface 
+* @property reflection_factor
+* @type {number}
+* @default 0
+*/
+Material.REFLECTION_FACTOR = &quot;reflection_factor&quot;;
+/**
+* Fresnel coeficient (exp) of reflectance
+* @property reflection_fresnel
+* @type {number}
+* @default 0
+*/
+Material.REFLECTION_FRESNEL = &quot;reflection_fresnel&quot;;
+/**
+* It controls if the reflection is interpolated or blended with the surface color
+* @property reflection_additive
+* @type {boolean}
+* @default false
+*/
+Material.REFLECTION_ADDITIVE = &quot;reflection_additive&quot;;
+/**
+* It controls if the reflection factor is affected by the specular factor
+* @property reflection_specular
+* @type {boolean}
+* @default false
+*/
+Material.REFLECTION_SPECULAR = &quot;reflection_specular&quot;;
+/**
+* velvet color
+* @property velvet
+* @type {vec3}
+* @default [0,0,0]
+*/
+Material.VELVET = &quot;velvet&quot;;
+Material.VELVET_EXP = &quot;velvet_exp&quot;;
+Material.VELVET_ADDITIVE = &quot;velvet_additive&quot;;
+
+Material.NORMALMAP_FACTOR = &quot;normalmap_factor&quot;;
+Material.DISPLACEMENTMAP_FACTOR = &quot;displacementmap_factor&quot;;
+
+Material.OPACITY_TEXTURE = &quot;opacity&quot;;	//used for baked GI
+Material.AMBIENT_TEXTURE = &quot;ambient&quot;;	//used for baked GI
+Material.COLOR_TEXTURE = &quot;color&quot;;	//material color
+Material.SPECULAR_TEXTURE = &quot;specular&quot;; //defines specular factor and glossiness per pixel
+Material.EMISSIVE_TEXTURE = &quot;emissive&quot;; //emissive pixels
+Material.DETAIL_TEXTURE = &quot;detail&quot;;		//secondary material color with texture matrix
+Material.REFLECTIVITY_TEXTURE = &quot;reflectivity&quot;; //defines which areas are reflective
+Material.ENVIRONMENT_TEXTURE = &quot;environment&quot;; //the environtment texture (2d or cubemap)
+Material.NORMAL_TEXTURE = &quot;normal&quot;;		//the normalmap
+Material.BUMP_TEXTURE = &quot;bump&quot;;		//displacement 
+Material.DISPLACEMENT_TEXTURE = &quot;displacement&quot;;		//displacement 
+Material.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;	//the irradiance texture (2d polar or cubemap)
+Material.EXTRA_TEXTURE = &quot;extra&quot;;	//used for own shader
+//Material.TEXTURE_CHANNELS = [ &quot;color&quot;,&quot;opacity&quot;, &quot;ambient&quot;, &quot;specular&quot;, &quot;emissive&quot;, &quot;detail&quot;, &quot;normal&quot;, &quot;reflectivity&quot;,&quot;environment&quot;, &quot;irradiance&quot; ];
+Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.DETAIL_TEXTURE, Material.NORMAL_TEXTURE, Material.DISPLACEMENT_TEXTURE, Material.BUMP_TEXTURE, Material.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, Material.IRRADIANCE_TEXTURE, Material.EXTRA_TEXTURE ];
+
+Material.COORDS_UV0 = &quot;0&quot;;
+Material.COORDS_UV1 = &quot;1&quot;;
+Material.COORDS_UV_TRANSFORMED = &quot;transformed&quot;;
+Material.COORDS_SCREEN = &quot;screen&quot;;
+Material.COORDS_POLAR = &quot;polar&quot;;
+Material.COORDS_POLAR_REFLECTED = &quot;polar_reflected&quot;;
+Material.COORDS_WORLDXZ = &quot;worldxz&quot;;
+Material.COORDS_WORLDXY = &quot;worldxy&quot;;
+Material.COORDS_WORLDYZ = &quot;worldyz&quot;;
+
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
+
+
+Material.prototype.getShader = function(shader_name, macros, options)
+{
+	return Shaders.get(shader_name, macros );
+}
+
+// RENDERING METHODS
+/**
+* This function returns all the uniforms and the macros related to the material needed to compute the shader
+*
+* @method getMaterialShaderData
+* @param {Object} instance 
+* @param {SceneNode} node 
+* @param {SceneTree} scene 
+* @param {Object} options 
+* @return {Object} 
+*/
+Material.prototype.getMaterialShaderData = function(instance, node, scene, options)
+{
+	//compute the uniforms
+	var uniforms = this._uniforms || {};
+	if(!this._uniforms) this._uniforms = uniforms;
+
+	var macros = {};
+	var that = this;
+
+	//uniforms
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
+	uniforms.u_diffuse_color = this.diffuse;
+	uniforms.u_emissive_color = this.emissive || [0,0,0];
+	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
+	uniforms.u_backlight_factor = this.backlight_factor;
+	uniforms.u_normalmap_factor = this.normalmap_factor;
+	uniforms.u_displacementmap_factor = this.displacementmap_factor;
+	uniforms.u_bumpmap_factor = this.bumpmap_factor;
+	uniforms.u_velvet_info = [ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ];
+	uniforms.u_detail_info = this.detail;
+
+	uniforms.u_texture_matrix = this.uvs_matrix;
+
+	//bind textures
+	var last_slot = 0;
+
+
+	//iterate through textures in the scene (environment and irradiance)
+	for(var i in scene.textures)
+	{
+		var texture = Material.prototype.getTexture.call(scene, i); //hack
+		if(!texture) continue;
+		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
+		last_slot += 1;
+
+		if(i == &quot;environment&quot;)
+		{
+			if(this.reflection_factor &lt;= 0) continue;
+		}
+
+		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
+		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
+		{
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+		}
+		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
+	}
+
+	//iterate through textures in the material
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+
+		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
+		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
+		last_slot += 1;
+
+		//special cases
+		if(i == &quot;environment&quot;)
+		{
+			if(this.reflection_factor &lt;= 0) continue;
+		}
+		else if(i == &quot;normal&quot;)
+		{
+			if(this.normalmap_factor != 0.0 &amp;&amp; (!this.normalmap_tangent || (this.normalmap_tangent &amp;&amp; gl.derivatives_supported)) )
+			{
+				macros.USE_NORMAL_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.normalmap_factor != 0.0)
+					macros.USE_NORMALMAP_FACTOR = &quot;&quot;;
+				if(this.normalmap_tangent &amp;&amp; gl.derivatives_supported)
+					macros.USE_TANGENT_NORMALMAP = &quot;&quot;;
+			}
+			continue;
+		}
+		else if(i == &quot;displacement&quot;)
+		{
+			if(this.displacementmap_factor != 0.0 &amp;&amp; gl.derivatives_supported )
+			{
+				macros.USE_DISPLACEMENT_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.displacementmap_factor != 1.0)
+					macros.USE_DISPLACEMENTMAP_FACTOR = &quot;&quot;;
+			}
+			continue;
+		}
+		else if(i == &quot;bump&quot;)
+		{
+			if(this.bump_factor != 0.0 &amp;&amp; gl.derivatives_supported )
+			{
+				macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.bumpmap_factor != 1.0)
+					macros.USE_BUMPMAP_FACTOR = &quot;&quot;;
+			}
+			continue;
+		}
+		else if(i == &quot;irradiance&quot;)
+		{
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+			//texture.min_filter = gl.GL_LINEAR;
+		}
+
+		if(texture.texture_type == gl.TEXTURE_2D &amp;&amp; (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
+		{
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+		}
+
+		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
+	}
+
+	if(this.velvet &amp;&amp; this.velvet_exp) //first light only
+		macros.USE_VELVET = &quot;&quot;;
+	if(this.emissive_material)
+		macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
+	if(this.specular_ontop)
+		macros.USE_SPECULAR_ONTOP = &quot;&quot;;
+	if(this.specular_on_alpha)
+		macros.USE_SPECULAR_ON_ALPHA = &quot;&quot;;
+	if(this.reflection_specular)
+		macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
+	if(this.backlight_factor &gt; 0.001)
+		macros.USE_BACKLIGHT = &quot;&quot;;
+
+	//extra macros
+	if(this.extra_macros)
+		for(var im in this.extra_macros)
+			macros[im] = this.extra_macros[im];
+
+	uniforms[&quot;MACROS&quot;] = macros;
+
+	return uniforms;
+}
+
+//****************************************/
+/**
+* This function returns all the uniforms and the macros related to the light needed to compute the shader
+*
+* @method getLightShaderData
+* @param {Light} light 
+* @param {Object} instance
+* @param {SceneNode} node
+* @param {SceneTree} scene 
+* @param {Object} options 
+* @return {Object} 
+*/
+Material.prototype.getLightShaderData = function(light, instance, node, scene, options)
+{
+	var uniforms = {};
+
+	var light_projective_texture = light.projective_texture;
+	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
+		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+	if(light_projective_texture)
+		uniforms.light_texture = light_projective_texture.bind(11);
+	var use_shadows = scene.settings.enable_shadows &amp;&amp; light.cast_shadows &amp;&amp; light._shadowMap &amp;&amp; light._lightMatrix != null &amp;&amp; !options.shadows_disabled;
+	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
+	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
+		uniforms.u_light_front = light.getFront();
+	if(light.type == Light.SPOT)
+		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
+
+	uniforms.u_light_pos = light.getPosition();
+	uniforms.u_light_color = vec3.scale( vec3.create(), light.color, light.intensity );
+	uniforms.u_light_att = [light.att_start,light.att_end];
+	uniforms.u_light_offset = light.offset;
+
+	if(light._lightMatrix)
+		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
+
+	//use shadows?
+	if(use_shadows)
+	{
+		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
+		uniforms.shadowMap = light._shadowMap.bind(10);
+	}
+
+	//macros
+	var macros = {};
+
+	//light macros
+	if(light.use_diffuse &amp;&amp; !this.constant_diffuse)
+		macros.USE_DIFFUSE_LIGHT = &quot;&quot;;
+	if(light.use_specular &amp;&amp; this.specular_factor &gt; 0)
+		macros.USE_SPECULAR_LIGHT = &quot;&quot;;
+	if(light.type == Light.DIRECTIONAL)
+		macros.USE_DIRECTIONAL_LIGHT = &quot;&quot;;
+	else if(light.type == Light.SPOT)
+		macros.USE_SPOT_LIGHT = &quot;&quot;;
+	if(light.spot_cone)
+		macros.USE_SPOT_CONE = &quot;&quot;;
+	if(light.linear_attenuation)
+		macros.USE_LINEAR_ATTENUATION = &quot;&quot;;
+	if(light.range_attenuation)
+		macros.USE_RANGE_ATTENUATION = &quot;&quot;;
+	if(light_projective_texture)
+		macros.USE_PROJECTIVE_LIGHT = &quot;&quot;;
+
+	if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
+		macros.USE_AMBIENT_ONLY = &quot;&quot;;
+
+	if(light.offset &gt; 0.001)
+		macros.USE_LIGHT_OFFSET = &quot;&quot;;
+
+	if(use_shadows &amp;&amp; node.flags.receive_shadows != false)
+	{
+		macros.USE_SHADOW_MAP = &quot;&quot;;
+		if(light.hard_shadows)
+			macros.USE_HARD_SHADOWS = &quot;&quot;;
+		macros.SHADOWMAP_OFFSET = &quot;&quot;;
+	}
+
+	uniforms[&quot;MACROS&quot;] = macros;
+	return uniforms;
+}
+
+
+
+/**
+* Configure the material getting the info from the object
+* @method configure
+* @param {Object} object to configure from
+*/
+Material.prototype.configure = function(o)
+{
+	//cloneObject(o, this);
+	for(var i in o)
+	{
+		var v = o[i];
+		var r = null;
+		switch(i)
+		{
+			//numbers
+			case &quot;alpha&quot;: 
+			case &quot;backlight_factor&quot;:
+			case &quot;specular_factor&quot;:
+			case &quot;specular_gloss&quot;:
+			case &quot;reflection_factor&quot;:
+			case &quot;reflection_fresnel&quot;:
+			case &quot;velvet_exp&quot;:
+			case &quot;velvet_additive&quot;:
+			case &quot;blending&quot;:
+			case &quot;normalmap_factor&quot;:
+			case &quot;displacementmap_factor&quot;:
+			case &quot;extra_factor&quot;:
+			//bools
+			case &quot;specular_ontop&quot;:
+			case &quot;reflection_specular&quot;:
+				r = v; 
+				break;
+			//vectors
+			case &quot;color&quot;: 
+			case &quot;ambient&quot;:	
+			case &quot;diffuse&quot;: 
+			case &quot;emissive&quot;: 
+			case &quot;velvet&quot;:
+			case &quot;detail&quot;:
+			case &quot;extra_color&quot;:
+				r = new Float32Array(v); 
+				break;
+			case &quot;textures&quot;:
+				this.textures = o.textures;
+				continue;
+			default:
+				continue;
+		}
+		this[i] = r;
+	}
+
+	if(o.uvs_matrix &amp;&amp; o.uvs_matrix.length == 9)
+		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+}
+
+/**
+* Serialize this material 
+* @method serialize
+* @return {Object} object with the serialization info
+*/
+Material.prototype.serialize = function()
+{
+	 var o = cloneObject(this);
+	 return o;
+}
+
+/**
+* Loads and assigns a texture to a channel
+* @method loadAndSetTexture
+* @param {Texture || url} texture_or_filename
+* @param {String} channel
+*/
+Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, options)
+{
+	options = options || {};
+	channel = channel || Material.COLOR_TEXTURE;
+	var that = this;
+	//if(!this.material) this.material = new Material();
+
+	if( typeof(texture_or_filename) === &quot;string&quot; ) //it could be the url or the internal texture name 
+	{
+		if(texture_or_filename[0] != &quot;:&quot;)//load if it is not an internal texture
+			ResourcesManager.loadImage(texture_or_filename,options, function(texture) {
+				that.setTexture(texture, channel);
+				if(options.on_complete)
+					options.on_complete();
+			});
+		else
+			this.setTexture(texture_or_filename, channel);
+	}
+	else //otherwise just assign whatever
+	{
+		this.setTexture(texture_or_filename, channel);
+		if(options.on_complete)
+			options.on_complete();
+	}
+}
+
+/**
+* Assigns a texture to a channel
+* @method setTexture
+* @param {Texture} texture
+* @param {String} channel default is COLOR
+*/
+Material.prototype.setTexture = function(texture, channel, uvs) {
+	channel = channel || Material.COLOR_TEXTURE;
+	if(texture)
+	{
+		this.textures[channel] = texture;
+		if(uvs)	this.textures[channel + &quot;_uvs&quot;] = uvs;
+	}
+	else
+	{
+		delete this.textures[channel];
+		delete this.textures[channel + &quot;_uvs&quot;];
+	}
+
+	if(!texture) return;
+	if(texture.constructor == String)
+		ResourcesManager.loadImage(texture);
+}
+
+/**
+* Returns a texture from a channel
+* @method setTexture
+* @param {String} channel default is COLOR
+* @return {Texture}
+*/
+Material.prototype.getTexture = function(channel) {
+	var v = this.textures[channel];
+	if(!v) return null;
+	if(v.constructor == String)
+		return ResourcesManager.textures[v];
+	else if(v.constructor == Texture)
+		return v;
+	return null;
+}
+
+/**
+* Collects all the resources needed by this material (textures)
+* @method getResources
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+Material.prototype.getResources = function (res)
+{
+	for(var i in this.textures)
+		if(typeof(this.textures[i]) == &quot;string&quot; &amp;&amp; i.substr(-4) != &quot;_uvs&quot;) //ends in this string
+			res[ this.textures[i] ] = Texture;
+	return res;
+}
+
+/**
+* Loads all the textures inside this material, by sending the through the ResourcesManager
+* @method loadTextures
+*/
+
+Material.prototype.loadTextures = function ()
+{
+	var res = this.getResources({});
+	for(var i in res)
+		ResourcesManager.loadImage( res[i] );
+}
+
+//not implemented yet
+Material.prototype.getRenderer = function()
+{
+	return this.renderer || RenderPipeline._default_renderer;
+}
+
+/**
+* Register this material in a materials pool to be shared with other nodes
+* @method registerMaterial
+* @param {String} name name given to this material, it must be unique
+*/
+Material.prototype.registerMaterial = function(name)
+{
+	this.name = name;
+	Scene.materials[name] = this;
+	this.material = name;
+}
+
+    </pre>
+</div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

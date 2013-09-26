@@ -1,0 +1,183 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<!--
+<meta property="og:title" content="GameEditor" />
+<meta property="og:description" content="GameEditor for simple games" />
+<meta property="og:image" content="" />
+-->
+
+<title>litescene.js: simple example</title>
+	<link rel="stylesheet" type="text/css" href="style.css" />
+	<style type='text/css'>
+		body { background-color: #DDD;}
+		h1 { color: #777; background-color: #CCC; }
+	</style>
+
+	<script type="text/javascript" src="../../litegl/external/gl-matrix-min.js"></script>
+	<script type="text/javascript" src="../../litegl/build/litegl.js"></script>
+	<script type="text/javascript" src="../build/litescene.js"></script>
+	<script type="text/javascript">
+	
+	var APP = {
+		cam_dist: 10,
+
+		init: function()
+		{
+			try
+			{
+				gl = GL.create({alpha:false, premultipliedAlpha: false});
+				this.glcanvas = gl.canvas;
+				document.getElementById("content").appendChild(gl.canvas);
+				this.gl = gl;
+			}
+			catch (e)
+			{
+				document.getElementById("content").innerHTML = "<a href='blog'><img src='preview.png' /></a>";
+				return;
+			}
+
+			gl.canvas.width = 1000;
+			gl.canvas.height = 800;
+
+			//capture interaction events
+			gl.captureMouse();
+			gl.captureKeys(true);
+			gl.ondraw = this.ondraw;
+			gl.onupdate = this.onupdate;
+			gl.onmousedown = this.onmousedown;
+			gl.onmouseup = this.onmouseup;
+			gl.onmousemove = this.onmousemove;
+
+			//screen plane
+			this.screen_plane = new GL.Mesh.plane({ coords: true });
+
+			Shaders.init("../data/shaders.xml");
+			Scene.init();
+			Scene.ambient_color = [0.5,0.5,0.5];
+			ResourcesManager.path = "assets/";
+
+			Scene.background_color = [0.1,0.1,0.1,1];
+			Scene.ambient_color = [0.2,0.2,0.2];
+
+			//mesh
+			/*
+			var node = new SceneNode("monitor");
+			node.material = new Material({ normalmap_tangent:true, textures: { color: "monitor_textura.png", normal: "monitor_normalmap.jpg" } });
+			node.addComponent( new GeometricPrimitive({geometry: GeometricPrimitive.SPHERE }) );
+			node.transform.setScale(20);
+			Scene.addNode(node);
+			*/
+
+			
+			var node = new SceneNode("monitor");
+			node.material = new Material({ textures: { color: "monitor_textura.png", anormal: "monitor_normalmap.jpg" } });
+			node.loadAndSetMesh("monitor.obj");
+			Scene.addNode(node);
+			var root = node;
+
+			node = new SceneNode("screen");
+			node.material = new Material({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 100,
+				textures: { detail:"pattern_rgb.png", 
+							color: "empty-screen.png" }});
+			//node.material.blending = "additive";
+			node.loadAndSetMesh("screen.obj");
+			Scene.addNode(node);
+			root.addChild(node);
+			
+
+			//global camera
+			Scene.camera.center = [0,35,0];
+			Scene.camera.eye = [150,40,150];
+			Scene.camera.far = 1000;
+			Scene.camera.near = 1;
+
+			//light
+			Scene.light.color = [0.6,0.6,0.6];
+			Scene.light.position = [0,100,150];
+			Scene.light.type = Light.SPOT;
+			Scene.light.spot_cone = true;
+			Scene.light.far = 500;
+			Scene.light.near = 20;
+			Scene.light.size = 200;
+			Scene.light.resolution = 2048;
+			Scene.light.cast_shadows = false;
+			Scene.light.hard_shadows = true;
+			Scene.light.shadow_bias = 0.001;
+			//Scene.light.projective_texture = "window.png";//"stained-glass.png";
+
+			Scene.loadResources();
+		},
+
+		ondraw: function()
+		{
+			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
+			vec3.copy(Scene.camera.eye, [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)]);
+			RenderPipeline.render(Scene, Scene.current_camera,APP.render_options);
+		},
+
+		onupdate: function(dt)
+		{
+			var now = new Date().getTime();
+			Scene.update(dt);
+		},
+
+		click_time: 0,
+		clicked_node: null,
+
+		onmousedown: function(e)
+		{
+			APP.click_time = new Date().getTime();
+
+			var node = RenderPipeline.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+			if(node && node.interactive)
+			{
+				LEvent.trigger(node,"mousedown",e);
+				APP.clicked_node = node;
+			} 
+		},
+
+		onmouseup: function(e)
+		{
+			APP.click_time = 0;
+			if(APP.clicked_node)
+				LEvent.trigger(APP.clicked_node,"mouseup",e);
+			 APP.clicked_node = null;
+		},
+
+		onmousemove: function(e)
+		{
+			if(e.dragging)
+			{
+				if(APP.clicked_node)
+					LEvent.trigger(APP.clicked_node,"mousemove",e);
+				else
+				{
+					var node = Scene.getNode("monitor");
+					if(node)
+						node.transform.rotate(e.deltaX,[0,1,0]);
+					APP.cam_dist += e.deltaY * 0.01;
+					if(APP.cam_dist < 5) APP.cam_dist = 5;
+					else if(APP.cam_dist > 10) APP.cam_dist = 10;
+				}
+			}
+		}
+	}
+	
+	</script>
+</head>
+<body>
+
+<div id="wrap">
+	<div id="main">
+		<h1>Mesh DEMO</h1>
+		<div id="content"></div>
+	</div>
+</div>
+
+<script>APP.init();</script>
+</body>
+</html>
+
+
