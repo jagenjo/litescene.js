@@ -461,6 +461,7 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 					mat4.translate( this._matrix, ParticleEmissor._identity, this._root.transform._position ) : 
 					ParticleEmissor._identity),
 	RI.length = this._visible_particles * 6;
+	return RI;
 }
 
 

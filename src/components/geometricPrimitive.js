@@ -100,6 +100,7 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	RI.two_sided = this.two_sided;
 	RI.matrix.set(matrix);
 	RI.center.set(center);
+	return RI;
 }
 
 LS.registerComponent(GeometricPrimitive);
