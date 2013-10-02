@@ -1,6 +1,7 @@
 function ScriptComponent(o)
 {
-	this.code = "";
+	this.enabled = true;
+	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
 	this._component = null;
 
 	//this.component_name = "";
@@ -84,13 +85,13 @@ ScriptComponent.prototype.onStart = function()
 {
 	this.processCode();
 
-	if(this._component && this._component.start)
+	if(this.enabled && this._component && this._component.start)
 		this._component.start();
 }
 
 ScriptComponent.prototype.onUpdate = function(e,dt)
 {
-	if(this._component && this._component.update)
+	if(this.enabled && this._component && this._component.update)
 		this._component.update(dt);
 }
 

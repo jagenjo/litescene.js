@@ -98,6 +98,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var mesh = this.getMesh();
 	if(!mesh) return null;
 
+	var node = this._root;
+
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
 	if(options.step == "main" && !node.flags.seen_by_camera)
@@ -108,15 +110,15 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var matrix = this._root ? this._root.transform.getGlobalMatrix() : MeshRenderer._identity;
 	var center = mat4.multiplyVec3(vec3.create(), matrix, vec3.create());
 
-	var RI = this._render_instance || {};
+	var RI = this._render_instance || new RenderInstance();
 
 	RI.mesh = mesh;
 	RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
-	RI.material = this.material || this._root.material;
+	RI.material = this.material || this._root.getMaterial();
 	RI.two_sided = this.two_sided;
-	RI.matrix = matrix;
-	RI.center = center;
+	RI.matrix.set(matrix);
+	RI.center.set(center);
 	RI.scene = Scene;
 
 	return RI;

@@ -1687,6 +1687,8 @@ function toArray(v) { return Array.apply( [], v ); }
 */
 
 var LS = {
+	_last_uid: 0,
+	generateUId: function () { return this._last_uid++; },
 
 	/**
 	* Contains all the registered components
@@ -2187,9 +2189,11 @@ var ResourcesManager = {
 		mesh.metadata = {};
 		mesh.filename = filename;
 		mesh.generateMetadata(); //useful
+		if(!mesh.bounding)
+			mesh.computeBounding();
 
 		if(this.free_data) //free buffers to reduce memory usage
-			mesh.freeData(); 
+			mesh.freeData();
 
 		//save mesh in manager
 		this.registerResource(filename,mesh);
@@ -2620,6 +2624,8 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 
 function Material(o)
 {
+	this._uid = LS.generateUId();
+
 	//this.shader = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.alpha = 1.0;
@@ -2808,6 +2814,265 @@ Material.prototype.getShader = function(shader_name, macros, options)
 }
 
 // RENDERING METHODS
+Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
+{
+	var that = this;
+
+	//iterate through textures in the scene (environment and irradiance)
+	for(var i in scene.textures)
+	{
+		var texture = Material.prototype.getTexture.call(scene, i); //hack
+		if(!texture) continue;
+
+		if(i == "environment")
+			if(this.reflection_factor <= 0) continue;
+		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+	}
+
+	//iterate through textures in the material
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		//special cases
+		if(i == "environment")
+			if(this.reflection_factor <= 0) continue;
+		else if(i == "normal")
+		{
+			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
+			{
+				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
+				if(this.normalmap_factor != 0.0)
+					macros.USE_NORMALMAP_FACTOR = "";
+				if(this.normalmap_tangent && gl.derivatives_supported)
+					macros.USE_TANGENT_NORMALMAP = "";
+			}
+			continue;
+		}
+		else if(i == "displacement")
+		{
+			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
+			{
+				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
+				if(this.displacementmap_factor != 1.0)
+					macros.USE_DISPLACEMENTMAP_FACTOR = "";
+			}
+			continue;
+		}
+		else if(i == "bump")
+		{
+			if(this.bump_factor != 0.0 && gl.derivatives_supported )
+			{
+				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
+				if(this.bumpmap_factor != 1.0)
+					macros.USE_BUMPMAP_FACTOR = "";
+			}
+			continue;
+		}
+		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+	}
+
+	if(node.flags.alpha_test == true)
+		macros.USE_ALPHA_TEST = "0.5";
+	if(this.velvet && this.velvet_exp) //first light only
+		macros.USE_VELVET = "";
+	if(this.emissive_material)
+		macros.USE_EMISSIVE_MATERIAL = "";
+	if(this.specular_ontop)
+		macros.USE_SPECULAR_ONTOP = "";
+	if(this.specular_on_alpha)
+		macros.USE_SPECULAR_ON_ALPHA = "";
+	if(this.reflection_specular)
+		macros.USE_SPECULAR_IN_REFLECTION = "";
+	if(this.backlight_factor > 0.001)
+		macros.USE_BACKLIGHT = "";
+
+	//extra macros
+	if(this.extra_macros)
+		for(var im in this.extra_macros)
+			macros[im] = this.extra_macros[im];
+}
+
+Material.prototype.getLightShaderMacros = function(macros, step, light, instance, shader_name, node, scene, options)
+{
+	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
+
+	//light macros
+	if(light.use_diffuse && !this.constant_diffuse)
+		macros.USE_DIFFUSE_LIGHT = "";
+	if(light.use_specular && this.specular_factor > 0)
+		macros.USE_SPECULAR_LIGHT = "";
+	if(light.type == Light.DIRECTIONAL)
+		macros.USE_DIRECTIONAL_LIGHT = "";
+	else if(light.type == Light.SPOT)
+		macros.USE_SPOT_LIGHT = "";
+	if(light.spot_cone)
+		macros.USE_SPOT_CONE = "";
+	if(light.linear_attenuation)
+		macros.USE_LINEAR_ATTENUATION = "";
+	if(light.range_attenuation)
+		macros.USE_RANGE_ATTENUATION = "";
+
+	var light_projective_texture = light.projective_texture;
+	if(light_projective_texture && light_projective_texture.constructor == String)
+		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+
+	if(light_projective_texture)
+		macros.USE_PROJECTIVE_LIGHT = "";
+
+	if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
+		macros.USE_AMBIENT_ONLY = "";
+
+	if(light.offset > 0.001)
+		macros.USE_LIGHT_OFFSET = "";
+
+	if(use_shadows && node.flags.receive_shadows != false)
+	{
+		macros.USE_SHADOW_MAP = "";
+		if(light.hard_shadows)
+			macros.USE_HARD_SHADOWS = "";
+		macros.SHADOWMAP_OFFSET = "";
+	}
+}
+
+Material.prototype.getSceneShaderMacros = function(macros, step, instance, node, scene, options )
+{
+	//camera info
+	if(options.camera.type == Camera.ORTHOGRAPHIC)
+		macros.USE_ORTHOGRAPHIC_CAMERA = "";
+
+	if(options.clipping_plane)
+		macros.USE_CLIPPING_PLANE = "";
+
+	if(options.brightness_factor && options.brightness_factor != 1)
+		macros.USE_BRIGHTNESS_FACTOR = "";
+
+	if(options.colorclip_factor)
+		macros.USE_COLORCLIP_FACTOR = "";
+
+	//mesh information
+	var mesh = instance.mesh;
+	if(!("a_normal" in mesh.vertexBuffers))
+		macros.NO_NORMALS = "";
+	if(!("a_coord" in mesh.vertexBuffers))
+		macros.NO_COORDS = "";
+	if(("a_color" in mesh.vertexBuffers))
+		macros.USE_COLOR_STREAM = "";
+	if(("a_tangent" in mesh.vertexBuffers))
+		macros.USE_TANGENT_STREAM = "";
+}
+
+Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, node, scene, options )
+{
+	var shader_vars = shader.uniformLocations;
+
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
+	uniforms.u_diffuse_color = this.diffuse;
+	uniforms.u_emissive_color = this.emissive || [0,0,0];
+	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
+	uniforms.u_backlight_factor = this.backlight_factor;
+	uniforms.u_normalmap_factor = this.normalmap_factor;
+	uniforms.u_displacementmap_factor = this.displacementmap_factor;
+	uniforms.u_bumpmap_factor = this.bumpmap_factor;
+	uniforms.u_velvet_info = [ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ];
+	uniforms.u_detail_info = this.detail;
+
+	uniforms.u_texture_matrix = this.uvs_matrix;
+
+	var last_slot = 0;
+
+	//iterate through textures in the scene (environment and irradiance)
+	for(var i in scene.textures)
+	{
+		var texture = Material.prototype.getTexture.call(scene, i); //hack
+		if(!texture) continue;
+		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
+		last_slot += 1;
+
+		if(i == "environment")
+		{
+			if(this.reflection_factor <= 0) continue;
+		}
+
+		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
+		{
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+		}
+	}
+
+	//iterate through textures in the material
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+
+		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
+		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		last_slot += 1;
+
+		//special cases
+		if(i == "environment")
+			if(this.reflection_factor <= 0) continue;
+		else if(i == "normal")
+			continue;
+		else if(i == "displacement")
+			continue;
+		else if(i == "bump")
+			continue;
+		else if(i == "irradiance")
+		{
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+			//texture.min_filter = gl.GL_LINEAR;
+		}
+
+		if(texture.texture_type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
+		{
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+		}
+	}
+}
+
+Material.prototype.fillLightUniforms = function(shader, uniforms, light, instance, node, scene, options)
+{
+	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
+
+	var light_projective_texture = light.projective_texture;
+	if(light_projective_texture && light_projective_texture.constructor == String)
+		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+	if(light_projective_texture)
+		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
+	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
+	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
+		uniforms.u_light_front = light.getFront();
+	if(light.type == Light.SPOT)
+		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
+
+	uniforms.u_light_pos = light.getPosition();
+	uniforms.u_light_color = vec3.scale( vec3.create(), light.color, light.intensity );
+	uniforms.u_light_att = [light.att_start,light.att_end];
+	uniforms.u_light_offset = light.offset;
+
+	if(light._lightMatrix)
+		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
+
+	//use shadows?
+	if(use_shadows)
+	{
+		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
+		uniforms.shadowMap = light._shadowMap.bind(10);
+	}
+}
+
+
 /**
 * This function returns all the uniforms and the macros related to the material needed to compute the shader
 *
@@ -3207,7 +3472,7 @@ Material.prototype.loadTextures = function ()
 //not implemented yet
 Material.prototype.getRenderer = function()
 {
-	return this.renderer || RenderPipeline._default_renderer;
+	return this.renderer || Renderer._default_renderer;
 }
 
 /**
@@ -4402,6 +4667,7 @@ LS.Camera = Camera;
 
 function Light(o)
 {
+	this._uid = LS.generateUId();
 	/**
 	* Position of the light
 	* @property position
@@ -4729,6 +4995,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var mesh = this.getMesh();
 	if(!mesh) return null;
 
+	var node = this._root;
+
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
 	if(options.step == "main" && !node.flags.seen_by_camera)
@@ -4739,15 +5007,15 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var matrix = this._root ? this._root.transform.getGlobalMatrix() : MeshRenderer._identity;
 	var center = mat4.multiplyVec3(vec3.create(), matrix, vec3.create());
 
-	var RI = this._render_instance || {};
+	var RI = this._render_instance || new RenderInstance();
 
 	RI.mesh = mesh;
 	RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
-	RI.material = this.material || this._root.material;
+	RI.material = this.material || this._root.getMaterial();
 	RI.two_sided = this.two_sided;
-	RI.matrix = matrix;
-	RI.center = center;
+	RI.matrix.set(matrix);
+	RI.center.set(center);
 	RI.scene = Scene;
 
 	return RI;
@@ -5211,88 +5479,88 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 
 	if(this._root) this._root.mesh = mesh;
 
-	return { 
-		mesh: mesh,
-		material: this.material || this._root.material,
-		two_sided: this.two_sided,
-		matrix: matrix,
-		center: center
-	};
+
+	var RI = this._render_instance || new RenderInstance();
+
+	RI.mesh = mesh;
+	RI.material = this.material || this._root.getMaterial();
+	RI.two_sided = this.two_sided;
+	RI.matrix.set(matrix);
+	RI.center.set(center);
 }
 
 LS.registerComponent(GeometricPrimitive);
 
 /* Requires LiteGraph.js ******************************/
+
+/**
+* This component allow to integrate a behaviour graph on any object
+* @class GraphComponent
+* @param {Object} o object with the serialized info
+*/
+function GraphComponent(o)
+{
+	this._graph = new LGraph();
+	this.force_redraw = true;
+	if(o)
+		this.configure(o);
+	else //default
+	{
+		var graphnode = LiteGraph.createNode("scene/node");
+		this._graph.add(graphnode);
+	}
+}
+
+/**
+* Returns the first component of this container that is of the same class
+* @method configure
+* @param {Object} o object with the configuration info from a previous serialization
+*/
+GraphComponent.prototype.configure = function(o)
+{
+	if(o.graph_data)
+		this._graph.unserialize( o.graph_data );
+}
+
+GraphComponent.prototype.serialize = function()
+{
+	return { force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+}
+
+GraphComponent.prototype.onAddedToNode = function(node)
+{
+	this._graph._scenenode = node;
+	this._onStart_bind = this.onStart.bind(this);
+	this._onUpdate_bind = this.onUpdate.bind(this);
+	LEvent.bind(Scene,"start", this._onStart_bind );
+	LEvent.bind(Scene,"update", this._onUpdate_bind );
+}
+
+GraphComponent.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"start", this._onStart_bind );
+	LEvent.unbind(Scene,"update", this._onUpdate_bind );
+}
+
+GraphComponent.prototype.onStart = function()
+{
+}
+
+GraphComponent.prototype.onUpdate = function(e,dt)
+{
+	if(!this._root._on_scene) return;
+	if(this._graph)
+		this._graph.runStep(1);
+	if(this.force_redraw)
+		LEvent.trigger(Scene,"change");
+}
+
+
+LS.registerComponent(GraphComponent);
+window.GraphComponent = GraphComponent;
+
 if(window.LiteGraph != undefined)
 {
-
-	/**
-	* This component allow to integrate a behaviour graph on any object
-	* @class GraphComponent
-	* @param {Object} o object with the serialized info
-	*/
-	function GraphComponent(o)
-	{
-		this._graph = new LGraph();
-		this.force_redraw = true;
-		if(o)
-			this.configure(o);
-		else //default
-		{
-			var graphnode = LiteGraph.createNode("scene/node");
-			this._graph.add(graphnode);
-		}
-	}
-
-	/**
-	* Returns the first component of this container that is of the same class
-	* @method configure
-	* @param {Object} o object with the configuration info from a previous serialization
-	*/
-	GraphComponent.prototype.configure = function(o)
-	{
-		if(o.graph_data)
-			this._graph.unserialize( o.graph_data );
-	}
-
-	GraphComponent.prototype.serialize = function()
-	{
-		return { force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
-	}
-
-	GraphComponent.prototype.onAddedToNode = function(node)
-	{
-		this._graph._scenenode = node;
-		this._onStart_bind = this.onStart.bind(this);
-		this._onUpdate_bind = this.onUpdate.bind(this);
-		LEvent.bind(Scene,"start", this._onStart_bind );
-		LEvent.bind(Scene,"update", this._onUpdate_bind );
-	}
-
-	GraphComponent.prototype.onRemovedFromNode = function(node)
-	{
-		LEvent.unbind(Scene,"start", this._onStart_bind );
-		LEvent.unbind(Scene,"update", this._onUpdate_bind );
-	}
-
-	GraphComponent.prototype.onStart = function()
-	{
-	}
-
-	GraphComponent.prototype.onUpdate = function(e,dt)
-	{
-		if(!this._root._on_scene) return;
-		if(this._graph)
-			this._graph.runStep(1);
-		if(this.force_redraw)
-			LEvent.trigger(Scene,"change");
-	}
-
-
-	LS.registerComponent(GraphComponent);
-	window.GraphComponent = GraphComponent;
-
-
 	/* Scene LNodes ***********************/
 
 	/* LGraphNode representing an object in the Scene */
@@ -6426,12 +6694,15 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	if(!this._mesh)
 		return null;
 
-	return { 
-		mesh: this._mesh,
-		matrix: this.follow_emitter ? mat4.translate(mat4.create(), mat4.create(), this._root.transform._position) : ParticleEmissor._identity,
-		length: this._visible_particles * 6,
-		material: (this._root.material && this.use_node_material) ? this._root.material : this._material
-	};
+	this._matrix = this._matrix || mat4.create();
+
+	var RI = this._render_instance || new RenderInstance();
+	RI.mesh = this._mesh;
+	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
+	RI.matrix.set( this.follow_emitter ? 
+					mat4.translate( this._matrix, ParticleEmissor._identity, this._root.transform._position ) : 
+					ParticleEmissor._identity),
+	RI.length = this._visible_particles * 6;
 }
 
 
@@ -6543,7 +6814,8 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 LS.registerComponent(RealtimeReflector);
 function ScriptComponent(o)
 {
-	this.code = "";
+	this.enabled = true;
+	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
 	this._component = null;
 
 	//this.component_name = "";
@@ -6627,13 +6899,13 @@ ScriptComponent.prototype.onStart = function()
 {
 	this.processCode();
 
-	if(this._component && this._component.start)
+	if(this.enabled && this._component && this._component.start)
 		this._component.start();
 }
 
 ScriptComponent.prototype.onUpdate = function(e,dt)
 {
-	if(this._component && this._component.update)
+	if(this.enabled && this._component && this._component.update)
 		this._component.update(dt);
 }
 
@@ -6794,12 +7066,55 @@ TerrainRenderer.prototype.getRenderInstance = function()
 LS.registerComponent(TerrainRenderer);
 
 /**
+* RenderInstance contains info of one object to be rendered on the scene.
+*
+* @class RenderInstance
+* @namespace LS
+* @constructor
+*/
+
+//flags
+RenderInstance.TWO_SIDED = 1;
+
+function RenderInstance()
+{
+	this._key = "";
+	this._uid = LS.generateUId();
+	this.mesh = null;
+	this.primitive = gl.TRIANGLES;
+	this.material = null;
+	this.flags = 0;
+	this.matrix = mat4.create();
+	this.center = vec3.create();
+}
+
+RenderInstance.prototype.generateKey = function(step, options)
+{
+	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
+	return this._key;
+}
+
+	//this func is executed using the instance as SCOPE: TODO, change it
+RenderInstance.prototype.render = function(shader)
+{
+	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
+		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
+	else if(this.start || this.length)
+		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
+	else
+		shader.draw(this.mesh, this.primitive);
+}
+
+
+//************************************
+/**
 * The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.
 *
 * @class Renderer
 * @namespace LS
 * @constructor
 */
+
 var Renderer = {
 
 	apply_postfx: true,
@@ -6813,10 +7128,11 @@ var Renderer = {
 	_postfx_texture_a: null,
 	_postfx_texture_b: null,
 
+	_renderkeys: {},
+
 	//temp variables for rendering pipeline passes
 	_current_scene: null,
 	_default_material: new Material(), //used for objects without material
-	_default_renderer: null, 
 	_visible_lights: [],
 
 	_visible_meshes: [],
@@ -6932,17 +7248,6 @@ var Renderer = {
 		this.active_camera = camera;
 	},
 
-	//this func is executed using the instance as SCOPE: TODO, change it
-	renderMeshInstance: function(shader)
-	{
-		if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
-			shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-		else if(this.start || this.length)
-			shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-		else
-			shader.draw(this.mesh, this.primitive);
-	},
-
 	/**
 	* This function renderes all the meshes to the current rendering context (screen, Texture...)
 	*
@@ -6993,7 +7298,7 @@ var Renderer = {
 		var clipping_plane = options.clipping_plane;
 
 		//SORTING meshes
-		this.updateVisibleMeshes(scene,options);
+		this.updateVisibleMeshesOld(scene,options);
 
 		//Z Draw
 		options.pass = "z";
@@ -7125,7 +7430,7 @@ var Renderer = {
 						shader = Shaders.get("depth");
 						shader.uniforms({u_mvp: this._mvp_matrix});
 					}
-					instance.renderFunc(shader);
+					instance.render(shader);
 				}
 			}
 			else if(options.is_picking) //rendering to the picking buffer? need specific color per object
@@ -7139,7 +7444,7 @@ var Renderer = {
 
 				shader = Shaders.get("flat");
 				shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]) });
-				instance.renderFunc(shader);
+				instance.render(shader);
 			}
 			else //regular rendering
 			{
@@ -7267,7 +7572,7 @@ var Renderer = {
 						gl.depthFunc( gl[mat.depth_func] );
 
 					//submesh rendering
-					instance.renderFunc(shader);
+					instance.render(shader);
 
 					if(options.lights_disabled)
 						break;
@@ -7294,7 +7599,6 @@ var Renderer = {
 		//EVENT SCENE after_render
 	},
 
-	/*
 	//Work in progress: not finished
 	renderSceneMeshesNew: function(step, options)
 	{
@@ -7313,13 +7617,6 @@ var Renderer = {
 
 		var temp_vector = vec3.create();
 
-		//global uniforms
-		var uniforms = {
-			u_camera_eye: this.active_camera.eye,
-			u_camera_planes: [this.active_camera.near, this.active_camera.far],
-			u_viewprojection: this._viewprojection_matrix,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
-		};
 		//LEvent.trigger(Scene,"fillGlobalUniforms", renderpass_info );
 		//var clipping_plane = options.clipping_plane;
 
@@ -7334,9 +7631,8 @@ var Renderer = {
 			var instance = this._visible_meshes[i];
 
 			//TODO: compute lights affecting this RI
-			//Create Render Passes
-			var renderer = instance.material.getRenderer();
-			renderer.renderInstance(step, instance, lights, options );
+	
+			this.renderMultiPassInstance(step, instance, lights, options );
 
 			//LEvent.trigger(node, "afterRenderMeshes",options);
 		}
@@ -7352,7 +7648,262 @@ var Renderer = {
 
 		//EVENT SCENE after_render
 	},
-	*/
+
+	renderMultiPassInstance: function(step, instance, lights, options)
+	{
+		//for every light
+		//1. Generate the renderkey:  step|nodeuid|matuid|lightuid
+		//2. Get shader, if it doesnt exist:
+		//		a. Compute the shader
+		//		b. Store shader with renderkey
+		//3. Fill the shader with uniforms
+		//4. Render instance
+		var scene = Scene;
+		var node = instance.node;
+
+		var model = instance.matrix;
+		mat4.copy(this._object_model, model ); 
+		//mat3.fromMat4(this._normal_model, model );
+		mat4.copy(this._normal_model, model );
+		mat4.setTranslation(this._normal_model,vec3.create());
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+
+		//global uniforms
+		var uniforms = {
+			u_camera_eye: this.active_camera.eye,
+			u_camera_planes: [this.active_camera.near, this.active_camera.far],
+			u_viewprojection: this._viewprojection_matrix,
+			u_time: Scene.current_time || new Date().getTime() * 0.001
+		};
+
+		//node matrix info
+		uniforms.u_mvp = this._mvp_matrix;
+		uniforms.u_model = this._object_model;
+		uniforms.u_normal_model = this._normal_model;
+
+		for(var i = 0; i < lights.length; i++)
+		{
+			var light = lights[i];
+
+			//generate renderkey
+			var renderkey = instance.generateKey(step, options);
+
+			//compute the  shader
+			var shader = null; //this._renderkeys[renderkey];
+			if(!shader)
+			{
+				var shader_name = instance.material.shader || "globalshader";
+
+				var macros = {};
+				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
+				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
+				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
+				shader = Shaders.get(shader_name, macros);
+			}
+
+			//fill shader data
+			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
+			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
+
+			//render
+			shader.uniforms( uniforms );
+			instance.render( shader );
+
+			if(shader.global && !shader.global.multipass)
+				break; //avoid multipass in simple shaders
+		}
+	},
+
+	//Work in progress, not finished
+	updateVisibleMeshesOld: function(scene, options)
+	{
+		var nodes = scene.nodes;
+		if (options.nodes)
+			nodes = options.nodes;
+		var camera = this.active_camera;
+		var camera_eye = camera.getEye();
+
+		var opaque_meshes = [];
+		var alpha_meshes = [];
+		for(var i in nodes)
+		{
+			var node = nodes[i];
+
+			//check if the node is visible
+			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
+
+			//update matrix
+			//TODO...
+
+			//search components with rendering instances
+			if(!node._components) continue;
+			for(var j in node._components)
+			{
+				var component = node._components[j];
+				if( !component.getRenderInstance ) continue;
+				var instance = component.getRenderInstance(options, this.active_camera);
+				if(!instance) continue;
+
+				//skip hidden objects
+				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
+					continue;
+				if(node.flags.seen_by_picking == false && options.is_picking)
+					continue;
+
+				//default values when something is missing
+				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
+				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
+				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
+				instance.two_sided = instance.two_sided || node.flags.two_sided;
+				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
+				instance.material = instance.material || node.material || this._default_material; //order
+				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
+				if(!instance.material) continue;
+
+				//add extra info
+				instance.node = node;
+				instance.component = component;
+
+				//change conditionaly
+				if(options.force_wireframe) instance.primitive = gl.LINES;
+				if(instance.primitive == gl.LINES && !instance.mesh.lines)
+					instance.mesh.computeWireframe();
+
+				//and finally, the alpha thing to determine if it is visible or not
+				var mat = instance.material;
+				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+					opaque_meshes.push(instance);
+				else //if(!options.is_shadowmap)
+					alpha_meshes.push(instance);
+
+				instance._dist = vec3.dist( instance.center, camera_eye );
+			}
+		}
+
+		//sort nodes in Z
+		if(this.sort_nodes_in_z)
+		{
+			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
+			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
+			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
+		}
+
+		this._alpha_meshes = alpha_meshes;
+		this._opaque_meshes = opaque_meshes;
+		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+	},
+
+	//Generates the rendering instances that are visible
+	updateVisibleMeshesNew: function(scene, options)
+	{
+		var nodes = scene.nodes;
+		if (options.nodes)
+			nodes = options.nodes;
+		var camera = this.active_camera;
+		var camera_eye = camera.getEye();
+
+		var opaque_meshes = [];
+		var alpha_meshes = [];
+		for(var i in nodes)
+		{
+			var node = nodes[i];
+			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
+
+			//update matrix
+			//TODO...
+
+			//hidden nodes
+			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
+				continue;
+			if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
+				continue;
+			if(node.flags.seen_by_picking == false && options.is_picking)
+				continue;
+
+			//render component renderinstances
+			if(!node._components) continue;
+			for(var j in node._components)
+			{
+				//extract renderable object from this component
+				var component = node._components[j];
+				if( !component.getRenderInstance ) continue;
+				var instance = component.getRenderInstance(options, this.active_camera);
+				if(!instance || !instance.material) continue;
+
+				//default
+				if(!instance.center) mat4.multiplyVec3( instance.center, instance.matrix, vec3.create() );
+
+				//add extra info
+				instance.node = node;
+				instance.component = component;
+
+				//change conditionaly
+				if(options.force_wireframe) instance.primitive = gl.LINES;
+				if(instance.primitive == gl.LINES && !instance.mesh.lines)
+					instance.mesh.computeWireframe();
+
+				//and finally, the alpha thing to determine if it is visible or not
+				var mat = instance.material;
+				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+					opaque_meshes.push(instance);
+				else //if(!options.is_shadowmap)
+					alpha_meshes.push(instance);
+
+				instance._dist = vec3.dist( instance.center, camera_eye );
+			}
+		}
+
+		//sort nodes in Z
+		if(this.sort_nodes_in_z)
+		{
+			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
+			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
+			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
+		}
+
+		this._alpha_meshes = alpha_meshes;
+		this._opaque_meshes = opaque_meshes;
+		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+	},
+
+	null_light: null,
+	updateVisibleLights: function(scene, nodes)
+	{
+		this._visible_lights = [];
+		if(scene.light && scene.light.enabled != false)
+			this._visible_lights.push(scene.light);
+
+		nodes = nodes || scene.nodes;
+
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var node = nodes[i];
+			if(!node.flags.visible) continue;
+			for(var j in node._components)
+				if (node._components[j].constructor === Light && node._components[j].enabled)
+					this._visible_lights.push(node._components[j]);
+
+			/*
+			if(!node.light || node.light.enabled == false)
+				continue;
+			//TODO: test in frustrum
+			this._visible_lights.push(node.light);
+			*/
+		}
+
+		//if there is no lights it wont render anything, so create a dummy one
+		if(this._visible_lights.length == 0)
+		{
+			if(!this.null_light)
+			{
+				this.null_light = new Light();
+				this.null_light.color = [0,0,0];
+			}
+			this._visible_lights.push(this.null_light);
+		}
+	},
 
 	//Renders the scene to an RT
 	renderSceneMeshesToRT: function(cam,rt, options)
@@ -7492,199 +8043,6 @@ var Renderer = {
 		}
 	},
 
-	//Work in progress, not finished
-	/*
-	updateVisibleMeshesNew: function(scene, options)
-	{
-		var nodes = scene.nodes;
-		if (options.nodes)
-			nodes = options.nodes;
-		var camera = this.active_camera;
-		var camera_eye = camera.getEye();
-
-		var opaque_meshes = [];
-		var alpha_meshes = [];
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-
-			//check if the node is visible
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
-
-			//update matrix
-			//TODO...
-
-			//search components with rendering instances
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
-
-				//default
-				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
-				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
-				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
-				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
-				instance.material = instance.material || node.material || this._default_material; //order
-				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
-				if(!instance.material) continue;
-
-				//add extra info
-				instance.node = node;
-				instance.component = component;
-
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
-
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-					continue;
-				if(node.flags.seen_by_picking == false && options.is_picking)
-					continue;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
-			}
-		}
-
-		//sort nodes in Z
-		if(this.sort_nodes_in_z)
-		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
-			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
-			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
-		}
-
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
-	},
-	*/
-
-	//Generates the rendering instances that are visible
-	updateVisibleMeshes: function(scene, options)
-	{
-		var nodes = scene.nodes;
-		if (options.nodes)
-			nodes = options.nodes;
-		var camera = this.active_camera;
-		var camera_eye = camera.getEye();
-
-		var opaque_meshes = [];
-		var alpha_meshes = [];
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
-
-			//update matrix
-			//TODO...
-
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
-
-				//default
-				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
-				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
-				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
-				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
-				instance.material = instance.material || node.material || this._default_material; //order
-				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
-				if(!instance.material) continue;
-
-				//add extra info
-				instance.node = node;
-				instance.component = component;
-
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
-
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
-					continue;
-				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-					continue;
-				if(node.flags.seen_by_picking == false && options.is_picking)
-					continue;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
-			}
-		}
-
-		//sort nodes in Z
-		if(this.sort_nodes_in_z)
-		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
-			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
-			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
-		}
-
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
-	},
-
-	null_light: null,
-	updateVisibleLights: function(scene, nodes)
-	{
-		this._visible_lights = [];
-		if(scene.light && scene.light.enabled != false)
-			this._visible_lights.push(scene.light);
-
-		nodes = nodes || scene.nodes;
-
-		for(var i = 0; i < nodes.length; ++i)
-		{
-			var node = nodes[i];
-			if(!node.flags.visible) continue;
-			for(var j in node._components)
-				if (node._components[j].constructor === Light && node._components[j].enabled)
-					this._visible_lights.push(node._components[j]);
-
-			/*
-			if(!node.light || node.light.enabled == false)
-				continue;
-			//TODO: test in frustrum
-			this._visible_lights.push(node.light);
-			*/
-		}
-
-		//if there is no lights it wont render anything, so create a dummy one
-		if(this._visible_lights.length == 0)
-		{
-			if(!this.null_light)
-			{
-				this.null_light = new Light();
-				this.null_light.color = [0,0,0];
-			}
-			this._visible_lights.push(this.null_light);
-		}
-	},
 
 	//renders the current scene to a cubemap centered in the given position
 	renderCubemap: function(position, size, texture, options, near, far)
@@ -9308,6 +9666,11 @@ SceneTree.prototype.refresh = function()
 	this._must_redraw = true;
 }
 
+SceneTree.prototype.getTime = function()
+{
+	return this._global_time;
+}
+
 
 
 //****************************************************************************
@@ -9325,6 +9688,8 @@ function SceneNode(id)
 {
 	//Generic
 	this.id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+	this._uid = LS.generateUId();
+
 	//this.className = "";
 	//this.mesh = "";
 

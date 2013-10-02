@@ -1,10 +1,53 @@
 /**
+* RenderInstance contains info of one object to be rendered on the scene.
+*
+* @class RenderInstance
+* @namespace LS
+* @constructor
+*/
+
+//flags
+RenderInstance.TWO_SIDED = 1;
+
+function RenderInstance()
+{
+	this._key = "";
+	this._uid = LS.generateUId();
+	this.mesh = null;
+	this.primitive = gl.TRIANGLES;
+	this.material = null;
+	this.flags = 0;
+	this.matrix = mat4.create();
+	this.center = vec3.create();
+}
+
+RenderInstance.prototype.generateKey = function(step, options)
+{
+	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
+	return this._key;
+}
+
+	//this func is executed using the instance as SCOPE: TODO, change it
+RenderInstance.prototype.render = function(shader)
+{
+	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
+		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
+	else if(this.start || this.length)
+		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
+	else
+		shader.draw(this.mesh, this.primitive);
+}
+
+
+//************************************
+/**
 * The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.
 *
 * @class Renderer
 * @namespace LS
 * @constructor
 */
+
 var Renderer = {
 
 	apply_postfx: true,
@@ -18,10 +61,11 @@ var Renderer = {
 	_postfx_texture_a: null,
 	_postfx_texture_b: null,
 
+	_renderkeys: {},
+
 	//temp variables for rendering pipeline passes
 	_current_scene: null,
 	_default_material: new Material(), //used for objects without material
-	_default_renderer: null, 
 	_visible_lights: [],
 
 	_visible_meshes: [],
@@ -137,17 +181,6 @@ var Renderer = {
 		this.active_camera = camera;
 	},
 
-	//this func is executed using the instance as SCOPE: TODO, change it
-	renderMeshInstance: function(shader)
-	{
-		if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
-			shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-		else if(this.start || this.length)
-			shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-		else
-			shader.draw(this.mesh, this.primitive);
-	},
-
 	/**
 	* This function renderes all the meshes to the current rendering context (screen, Texture...)
 	*
@@ -198,7 +231,7 @@ var Renderer = {
 		var clipping_plane = options.clipping_plane;
 
 		//SORTING meshes
-		this.updateVisibleMeshes(scene,options);
+		this.updateVisibleMeshesOld(scene,options);
 
 		//Z Draw
 		options.pass = "z";
@@ -330,7 +363,7 @@ var Renderer = {
 						shader = Shaders.get("depth");
 						shader.uniforms({u_mvp: this._mvp_matrix});
 					}
-					instance.renderFunc(shader);
+					instance.render(shader);
 				}
 			}
 			else if(options.is_picking) //rendering to the picking buffer? need specific color per object
@@ -344,7 +377,7 @@ var Renderer = {
 
 				shader = Shaders.get("flat");
 				shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]) });
-				instance.renderFunc(shader);
+				instance.render(shader);
 			}
 			else //regular rendering
 			{
@@ -472,7 +505,7 @@ var Renderer = {
 						gl.depthFunc( gl[mat.depth_func] );
 
 					//submesh rendering
-					instance.renderFunc(shader);
+					instance.render(shader);
 
 					if(options.lights_disabled)
 						break;
@@ -499,7 +532,6 @@ var Renderer = {
 		//EVENT SCENE after_render
 	},
 
-	/*
 	//Work in progress: not finished
 	renderSceneMeshesNew: function(step, options)
 	{
@@ -518,13 +550,6 @@ var Renderer = {
 
 		var temp_vector = vec3.create();
 
-		//global uniforms
-		var uniforms = {
-			u_camera_eye: this.active_camera.eye,
-			u_camera_planes: [this.active_camera.near, this.active_camera.far],
-			u_viewprojection: this._viewprojection_matrix,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
-		};
 		//LEvent.trigger(Scene,"fillGlobalUniforms", renderpass_info );
 		//var clipping_plane = options.clipping_plane;
 
@@ -539,9 +564,8 @@ var Renderer = {
 			var instance = this._visible_meshes[i];
 
 			//TODO: compute lights affecting this RI
-			//Create Render Passes
-			var renderer = instance.material.getRenderer();
-			renderer.renderInstance(step, instance, lights, options );
+	
+			this.renderMultiPassInstance(step, instance, lights, options );
 
 			//LEvent.trigger(node, "afterRenderMeshes",options);
 		}
@@ -557,7 +581,262 @@ var Renderer = {
 
 		//EVENT SCENE after_render
 	},
-	*/
+
+	renderMultiPassInstance: function(step, instance, lights, options)
+	{
+		//for every light
+		//1. Generate the renderkey:  step|nodeuid|matuid|lightuid
+		//2. Get shader, if it doesnt exist:
+		//		a. Compute the shader
+		//		b. Store shader with renderkey
+		//3. Fill the shader with uniforms
+		//4. Render instance
+		var scene = Scene;
+		var node = instance.node;
+
+		var model = instance.matrix;
+		mat4.copy(this._object_model, model ); 
+		//mat3.fromMat4(this._normal_model, model );
+		mat4.copy(this._normal_model, model );
+		mat4.setTranslation(this._normal_model,vec3.create());
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+
+		//global uniforms
+		var uniforms = {
+			u_camera_eye: this.active_camera.eye,
+			u_camera_planes: [this.active_camera.near, this.active_camera.far],
+			u_viewprojection: this._viewprojection_matrix,
+			u_time: Scene.current_time || new Date().getTime() * 0.001
+		};
+
+		//node matrix info
+		uniforms.u_mvp = this._mvp_matrix;
+		uniforms.u_model = this._object_model;
+		uniforms.u_normal_model = this._normal_model;
+
+		for(var i = 0; i < lights.length; i++)
+		{
+			var light = lights[i];
+
+			//generate renderkey
+			var renderkey = instance.generateKey(step, options);
+
+			//compute the  shader
+			var shader = null; //this._renderkeys[renderkey];
+			if(!shader)
+			{
+				var shader_name = instance.material.shader || "globalshader";
+
+				var macros = {};
+				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
+				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
+				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
+				shader = Shaders.get(shader_name, macros);
+			}
+
+			//fill shader data
+			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
+			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
+
+			//render
+			shader.uniforms( uniforms );
+			instance.render( shader );
+
+			if(shader.global && !shader.global.multipass)
+				break; //avoid multipass in simple shaders
+		}
+	},
+
+	//Work in progress, not finished
+	updateVisibleMeshesOld: function(scene, options)
+	{
+		var nodes = scene.nodes;
+		if (options.nodes)
+			nodes = options.nodes;
+		var camera = this.active_camera;
+		var camera_eye = camera.getEye();
+
+		var opaque_meshes = [];
+		var alpha_meshes = [];
+		for(var i in nodes)
+		{
+			var node = nodes[i];
+
+			//check if the node is visible
+			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
+
+			//update matrix
+			//TODO...
+
+			//search components with rendering instances
+			if(!node._components) continue;
+			for(var j in node._components)
+			{
+				var component = node._components[j];
+				if( !component.getRenderInstance ) continue;
+				var instance = component.getRenderInstance(options, this.active_camera);
+				if(!instance) continue;
+
+				//skip hidden objects
+				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
+					continue;
+				if(node.flags.seen_by_picking == false && options.is_picking)
+					continue;
+
+				//default values when something is missing
+				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
+				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
+				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
+				instance.two_sided = instance.two_sided || node.flags.two_sided;
+				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
+				instance.material = instance.material || node.material || this._default_material; //order
+				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
+				if(!instance.material) continue;
+
+				//add extra info
+				instance.node = node;
+				instance.component = component;
+
+				//change conditionaly
+				if(options.force_wireframe) instance.primitive = gl.LINES;
+				if(instance.primitive == gl.LINES && !instance.mesh.lines)
+					instance.mesh.computeWireframe();
+
+				//and finally, the alpha thing to determine if it is visible or not
+				var mat = instance.material;
+				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+					opaque_meshes.push(instance);
+				else //if(!options.is_shadowmap)
+					alpha_meshes.push(instance);
+
+				instance._dist = vec3.dist( instance.center, camera_eye );
+			}
+		}
+
+		//sort nodes in Z
+		if(this.sort_nodes_in_z)
+		{
+			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
+			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
+			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
+		}
+
+		this._alpha_meshes = alpha_meshes;
+		this._opaque_meshes = opaque_meshes;
+		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+	},
+
+	//Generates the rendering instances that are visible
+	updateVisibleMeshesNew: function(scene, options)
+	{
+		var nodes = scene.nodes;
+		if (options.nodes)
+			nodes = options.nodes;
+		var camera = this.active_camera;
+		var camera_eye = camera.getEye();
+
+		var opaque_meshes = [];
+		var alpha_meshes = [];
+		for(var i in nodes)
+		{
+			var node = nodes[i];
+			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
+
+			//update matrix
+			//TODO...
+
+			//hidden nodes
+			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
+				continue;
+			if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
+				continue;
+			if(node.flags.seen_by_picking == false && options.is_picking)
+				continue;
+
+			//render component renderinstances
+			if(!node._components) continue;
+			for(var j in node._components)
+			{
+				//extract renderable object from this component
+				var component = node._components[j];
+				if( !component.getRenderInstance ) continue;
+				var instance = component.getRenderInstance(options, this.active_camera);
+				if(!instance || !instance.material) continue;
+
+				//default
+				if(!instance.center) mat4.multiplyVec3( instance.center, instance.matrix, vec3.create() );
+
+				//add extra info
+				instance.node = node;
+				instance.component = component;
+
+				//change conditionaly
+				if(options.force_wireframe) instance.primitive = gl.LINES;
+				if(instance.primitive == gl.LINES && !instance.mesh.lines)
+					instance.mesh.computeWireframe();
+
+				//and finally, the alpha thing to determine if it is visible or not
+				var mat = instance.material;
+				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+					opaque_meshes.push(instance);
+				else //if(!options.is_shadowmap)
+					alpha_meshes.push(instance);
+
+				instance._dist = vec3.dist( instance.center, camera_eye );
+			}
+		}
+
+		//sort nodes in Z
+		if(this.sort_nodes_in_z)
+		{
+			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
+			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
+			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
+		}
+
+		this._alpha_meshes = alpha_meshes;
+		this._opaque_meshes = opaque_meshes;
+		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+	},
+
+	null_light: null,
+	updateVisibleLights: function(scene, nodes)
+	{
+		this._visible_lights = [];
+		if(scene.light && scene.light.enabled != false)
+			this._visible_lights.push(scene.light);
+
+		nodes = nodes || scene.nodes;
+
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var node = nodes[i];
+			if(!node.flags.visible) continue;
+			for(var j in node._components)
+				if (node._components[j].constructor === Light && node._components[j].enabled)
+					this._visible_lights.push(node._components[j]);
+
+			/*
+			if(!node.light || node.light.enabled == false)
+				continue;
+			//TODO: test in frustrum
+			this._visible_lights.push(node.light);
+			*/
+		}
+
+		//if there is no lights it wont render anything, so create a dummy one
+		if(this._visible_lights.length == 0)
+		{
+			if(!this.null_light)
+			{
+				this.null_light = new Light();
+				this.null_light.color = [0,0,0];
+			}
+			this._visible_lights.push(this.null_light);
+		}
+	},
 
 	//Renders the scene to an RT
 	renderSceneMeshesToRT: function(cam,rt, options)
@@ -697,199 +976,6 @@ var Renderer = {
 		}
 	},
 
-	//Work in progress, not finished
-	/*
-	updateVisibleMeshesNew: function(scene, options)
-	{
-		var nodes = scene.nodes;
-		if (options.nodes)
-			nodes = options.nodes;
-		var camera = this.active_camera;
-		var camera_eye = camera.getEye();
-
-		var opaque_meshes = [];
-		var alpha_meshes = [];
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-
-			//check if the node is visible
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
-
-			//update matrix
-			//TODO...
-
-			//search components with rendering instances
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
-
-				//default
-				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
-				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
-				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
-				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
-				instance.material = instance.material || node.material || this._default_material; //order
-				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
-				if(!instance.material) continue;
-
-				//add extra info
-				instance.node = node;
-				instance.component = component;
-
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
-
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-					continue;
-				if(node.flags.seen_by_picking == false && options.is_picking)
-					continue;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
-			}
-		}
-
-		//sort nodes in Z
-		if(this.sort_nodes_in_z)
-		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
-			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
-			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
-		}
-
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
-	},
-	*/
-
-	//Generates the rendering instances that are visible
-	updateVisibleMeshes: function(scene, options)
-	{
-		var nodes = scene.nodes;
-		if (options.nodes)
-			nodes = options.nodes;
-		var camera = this.active_camera;
-		var camera_eye = camera.getEye();
-
-		var opaque_meshes = [];
-		var alpha_meshes = [];
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
-
-			//update matrix
-			//TODO...
-
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
-
-				//default
-				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
-				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
-				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
-				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
-				instance.material = instance.material || node.material || this._default_material; //order
-				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
-				if(!instance.material) continue;
-
-				//add extra info
-				instance.node = node;
-				instance.component = component;
-
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
-
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
-					continue;
-				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-					continue;
-				if(node.flags.seen_by_picking == false && options.is_picking)
-					continue;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
-			}
-		}
-
-		//sort nodes in Z
-		if(this.sort_nodes_in_z)
-		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
-			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
-			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
-		}
-
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
-	},
-
-	null_light: null,
-	updateVisibleLights: function(scene, nodes)
-	{
-		this._visible_lights = [];
-		if(scene.light && scene.light.enabled != false)
-			this._visible_lights.push(scene.light);
-
-		nodes = nodes || scene.nodes;
-
-		for(var i = 0; i < nodes.length; ++i)
-		{
-			var node = nodes[i];
-			if(!node.flags.visible) continue;
-			for(var j in node._components)
-				if (node._components[j].constructor === Light && node._components[j].enabled)
-					this._visible_lights.push(node._components[j]);
-
-			/*
-			if(!node.light || node.light.enabled == false)
-				continue;
-			//TODO: test in frustrum
-			this._visible_lights.push(node.light);
-			*/
-		}
-
-		//if there is no lights it wont render anything, so create a dummy one
-		if(this._visible_lights.length == 0)
-		{
-			if(!this.null_light)
-			{
-				this.null_light = new Light();
-				this.null_light.color = [0,0,0];
-			}
-			this._visible_lights.push(this.null_light);
-		}
-	},
 
 	//renders the current scene to a cubemap centered in the given position
 	renderCubemap: function(position, size, texture, options, near, far)

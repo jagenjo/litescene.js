@@ -9,6 +9,7 @@
 
 function Light(o)
 {
+	this._uid = LS.generateUId();
 	/**
 	* Position of the light
 	* @property position

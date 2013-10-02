@@ -452,12 +452,15 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	if(!this._mesh)
 		return null;
 
-	return { 
-		mesh: this._mesh,
-		matrix: this.follow_emitter ? mat4.translate(mat4.create(), mat4.create(), this._root.transform._position) : ParticleEmissor._identity,
-		length: this._visible_particles * 6,
-		material: (this._root.material && this.use_node_material) ? this._root.material : this._material
-	};
+	this._matrix = this._matrix || mat4.create();
+
+	var RI = this._render_instance || new RenderInstance();
+	RI.mesh = this._mesh;
+	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
+	RI.matrix.set( this.follow_emitter ? 
+					mat4.translate( this._matrix, ParticleEmissor._identity, this._root.transform._position ) : 
+					ParticleEmissor._identity),
+	RI.length = this._visible_particles * 6;
 }
 
 

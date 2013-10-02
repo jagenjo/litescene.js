@@ -92,13 +92,14 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 
 	if(this._root) this._root.mesh = mesh;
 
-	return { 
-		mesh: mesh,
-		material: this.material || this._root.material,
-		two_sided: this.two_sided,
-		matrix: matrix,
-		center: center
-	};
+
+	var RI = this._render_instance || new RenderInstance();
+
+	RI.mesh = mesh;
+	RI.material = this.material || this._root.getMaterial();
+	RI.two_sided = this.two_sided;
+	RI.matrix.set(matrix);
+	RI.center.set(center);
 }
 
 LS.registerComponent(GeometricPrimitive);

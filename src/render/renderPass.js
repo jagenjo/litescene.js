@@ -31,13 +31,14 @@
 
 */
 
-function Renderer()
+function RenderPass()
 {
 	this.default_shader = "globalshader";
 }
 
 /* produces render passes according to the context of the object */
-Renderer.prototype.renderInstance = function(step, instance, lights, options)
+/*
+RenderPass.prototype.renderInstance = function(step, instance, lights, options)
 {
 	if(step == "shadow")
 	{
@@ -57,7 +58,8 @@ Renderer.prototype.renderInstance = function(step, instance, lights, options)
 	}
 }
 
-Renderer.prototype.renderMain = function(step, instance, lights, options)
+
+RenderPass.prototype.renderMain = function(step, instance, lights, options)
 {
 	var uniforms = {};
 	var mesh = instance.mesh;
@@ -140,7 +142,8 @@ Renderer.prototype.renderMain = function(step, instance, lights, options)
 	}
 }
 
-Renderer.prototype.renderShadow = function(instance, options)
+
+RenderPass.prototype.renderShadow = function(instance, options)
 {
 	var node = instance.node;
 	var mat = instance.material;
@@ -367,3 +370,5 @@ Renderer.prototype.getLightShaderData = function(light, instance, scene, options
 	uniforms["MACROS"] = macros;
 	return uniforms;
 }
+
+*/

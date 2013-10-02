@@ -492,6 +492,11 @@ SceneTree.prototype.refresh = function()
 	this._must_redraw = true;
 }
 
+SceneTree.prototype.getTime = function()
+{
+	return this._global_time;
+}
+
 
 
 //****************************************************************************
@@ -509,6 +514,8 @@ function SceneNode(id)
 {
 	//Generic
 	this.id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+	this._uid = LS.generateUId();
+
 	//this.className = "";
 	//this.mesh = "";
 

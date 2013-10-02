@@ -10,6 +10,8 @@ function toArray(v) { return Array.apply( [], v ); }
 */
 
 var LS = {
+	_last_uid: 0,
+	generateUId: function () { return this._last_uid++; },
 
 	/**
 	* Contains all the registered components
@@ -510,9 +512,11 @@ var ResourcesManager = {
 		mesh.metadata = {};
 		mesh.filename = filename;
 		mesh.generateMetadata(); //useful
+		if(!mesh.bounding)
+			mesh.computeBounding();
 
 		if(this.free_data) //free buffers to reduce memory usage
-			mesh.freeData(); 
+			mesh.freeData();
 
 		//save mesh in manager
 		this.registerResource(filename,mesh);
