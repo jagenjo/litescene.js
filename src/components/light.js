@@ -108,6 +108,8 @@ function Light(o)
 	this.frustrum_size = 50; //ortho
 
 	if(o) this.configure(o);
+	
+	o.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
 }
 
 Light.OMNI = 1;

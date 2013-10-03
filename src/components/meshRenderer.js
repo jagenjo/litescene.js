@@ -102,7 +102,7 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
-	if(options.step == "main" && !node.flags.seen_by_camera)
+	if(options.step == "main" && node.flags.seen_by_camera == false)
 		return null;
 	if(options.step == "shadow" && !node.flags.cast_shadows)
 		return null;
@@ -113,13 +113,13 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var RI = this._render_instance || new RenderInstance();
 
 	RI.mesh = mesh;
-	RI.submesh_id = this.submesh_id;
+	//RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 	RI.two_sided = this.two_sided;
 	RI.matrix.set(matrix);
 	RI.center.set(center);
-	RI.scene = Scene;
+	//RI.scene = Scene;
 
 	return RI;
 }

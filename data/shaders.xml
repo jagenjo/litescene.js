@@ -38,7 +38,7 @@
 
 			uniform mat4 u_mvp;
 			uniform mat4 u_model;
-			uniform mat4 u_viewprojection;
+			//uniform mat4 u_viewprojection;
 			uniform mat4 u_normal_model;
 
 			uniform mat3 u_texture_matrix; //matrix to modify uvs

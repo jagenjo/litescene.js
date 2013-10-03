@@ -187,7 +187,7 @@ var Renderer = {
 	* @method renderSceneMeshes
 	* @param {Object} options
 	*/
-	renderSceneMeshes: function(options)
+	renderSceneMeshesOld: function(options)
 	{
 		var scene = this.current_scene || Scene;
 		options = options || {};
@@ -533,7 +533,7 @@ var Renderer = {
 	},
 
 	//Work in progress: not finished
-	renderSceneMeshesNew: function(step, options)
+	renderSceneMeshes: function(step, options)
 	{
 		var scene = this.current_scene || Scene;
 		options = options || {};
@@ -548,11 +548,6 @@ var Renderer = {
 		gl.disable( gl.BLEND );
 		gl.lineWidth(1);
 
-		var temp_vector = vec3.create();
-
-		//LEvent.trigger(Scene,"fillGlobalUniforms", renderpass_info );
-		//var clipping_plane = options.clipping_plane;
-
 		//SORTING meshes
 		this.updateVisibleMeshesNew(scene,options);
 		var lights = this._visible_lights;
@@ -562,12 +557,11 @@ var Renderer = {
 		{
 			//render instances
 			var instance = this._visible_meshes[i];
-
 			//TODO: compute lights affecting this RI
-	
-			this.renderMultiPassInstance(step, instance, lights, options );
-
-			//LEvent.trigger(node, "afterRenderMeshes",options);
+			if(options.is_shadowmap)
+				this.renderShadowPassInstance(step, instance, options );
+			else
+				this.renderMultiPassInstance(step, instance, lights, options );
 		}
 
 		LEvent.trigger(Scene, "afterRenderPass",options);
@@ -593,19 +587,20 @@ var Renderer = {
 		//4. Render instance
 		var scene = Scene;
 		var node = instance.node;
+		var mat = instance.material;
 
+		//compute matrices
 		var model = instance.matrix;
 		mat4.copy(this._object_model, model ); 
-		//mat3.fromMat4(this._normal_model, model );
-		mat4.copy(this._normal_model, model );
-		mat4.setTranslation(this._normal_model,vec3.create());
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+		mat4.copy(this._normal_model, model );
+		mat4.setTranslation(this._normal_model,vec3.create()); //remove translation from normal matrix
 
 		//global uniforms
 		var uniforms = {
 			u_camera_eye: this.active_camera.eye,
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
-			u_viewprojection: this._viewprojection_matrix,
+			//u_viewprojection: this._viewprojection_matrix,
 			u_time: Scene.current_time || new Date().getTime() * 0.001
 		};
 
@@ -614,9 +609,29 @@ var Renderer = {
 		uniforms.u_model = this._object_model;
 		uniforms.u_normal_model = this._normal_model;
 
-		for(var i = 0; i < lights.length; i++)
+		//FLAGS
+		this.enableInstanceFlags(instance, node, options);
+
+		//alpha blending flags
+		if(mat.blending == Material.ADDITIVE_BLENDING)
 		{
-			var light = lights[i];
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+		else if(mat.alpha < 0.999 )
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		}
+		else
+			gl.disable( gl.BLEND );
+
+
+		//multi pass instance rendering
+		var num_lights = lights.length;
+		for(var iLight = 0; iLight < num_lights; iLight++)
+		{
+			var light = lights[iLight];
 
 			//generate renderkey
 			var renderkey = instance.generateKey(step, options);
@@ -631,12 +646,30 @@ var Renderer = {
 				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
 				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
 				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
+				if(iLight == 0) macros.FIRST_PASS = "";
+				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
 				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
 			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
 			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
+
+			//secondary pass flags to make it additive
+			if(iLight > 0)
+			{
+				gl.enable(gl.BLEND);
+				gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+				gl.depthFunc( gl.LEQUAL );
+				//gl.depthMask(true);
+				if(node.flags.depth_test)
+					gl.enable(gl.DEPTH_TEST);
+				else
+					gl.disable( gl.DEPTH_TEST );
+			}
+
+			if(mat.depth_func)
+				gl.depthFunc( gl[mat.depth_func] );
 
 			//render
 			shader.uniforms( uniforms );
@@ -645,6 +678,84 @@ var Renderer = {
 			if(shader.global && !shader.global.multipass)
 				break; //avoid multipass in simple shaders
 		}
+	},
+
+	renderShadowPassInstance: function(step, instance, options)
+	{
+		var scene = Scene;
+		var node = instance.node;
+		var mat = instance.material;
+
+		var model = instance.matrix;
+		mat4.copy(this._object_model, model ); 
+		//mat3.fromMat4(this._normal_model, model );
+		mat4.copy(this._normal_model, model );
+		mat4.setTranslation(this._normal_model,vec3.create());
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+
+		//global uniforms
+		var uniforms = {};
+
+		//node matrix info
+		uniforms.u_mvp = this._mvp_matrix;
+		uniforms.u_model = this._object_model;
+		uniforms.u_normal_model = this._normal_model;
+
+		//FLAGS
+		this.enableInstanceFlags(instance, node, options);
+
+		if(node.flags.alpha_shadows == true && (mat.getTexture("color") || mat.getTexture("opacity")))
+		{
+			var macros = { USE_ALPHA_TEST: "0.5" };
+
+			var color = mat.getTexture("color");
+			if(color)
+			{
+				var color_uvs = mat.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
+				macros.USE_COLOR_TEXTURE = "uvs_" + color_uvs;
+				color.bind(0);
+			}
+
+			var opacity = mat.getTexture("opacity");
+			if(opacity)	{
+				var opacity_uvs = mat.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
+				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
+				opacity.bind(1);
+			}
+			shader = Shaders.get("depth",macros);
+			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.alpha], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
+		}
+		else
+		{
+			shader = Shaders.get("depth");
+			shader.uniforms({u_mvp: this._mvp_matrix});
+		}
+		instance.render(shader);
+	},
+
+	enableInstanceFlags: function(instance, node, options)
+	{
+		if(instance.two_sided)
+			gl.disable( gl.CULL_FACE );
+		else
+			gl.enable( gl.CULL_FACE );
+
+		//  depth
+		gl.depthFunc( gl.LEQUAL );
+		if(node.flags.depth_test)
+			gl.enable( gl.DEPTH_TEST );
+		else
+			gl.disable( gl.DEPTH_TEST );
+		if(node.flags.depth_write)
+			gl.depthMask(true);
+		else
+			gl.depthMask(false);
+
+		//when to reverse the normals?
+		if(node.flags.flip_normals)
+			gl.frontFace(gl.CW);
+		else
+			gl.frontFace(gl.CCW);
 	},
 
 	//Work in progress, not finished
@@ -762,7 +873,10 @@ var Renderer = {
 				var component = node._components[j];
 				if( !component.getRenderInstance ) continue;
 				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance || !instance.material) continue;
+				if(!instance) continue;
+
+				if(!instance.material)
+					instance.material = this._default_material;
 
 				//default
 				if(!instance.center) mat4.multiplyVec3( instance.center, instance.matrix, vec3.create() );
@@ -877,7 +991,7 @@ var Renderer = {
 			if(light._shadowMap == null || light._shadowMap.width != shadowmap_resolution )
 			{
 				light._shadowMap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-				ResourcesManager.textures[":shadowmap_" + i.toString() ] = light._shadowMap;
+				ResourcesManager.textures[":shadowmap_" + light._uid ] = light._shadowMap;
 			}
 
 			light.computeLightMatrices(this._view_matrix, this._projection_matrix, this._viewprojection_matrix);
@@ -895,7 +1009,7 @@ var Renderer = {
 				if( !light._lightMatrix ) light._lightMatrix = mat4.create();
 				mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
 
-				Renderer.renderSceneMeshes({pass: "shadow", is_shadowmap:true});
+				Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
 			});
 		}
 	},
@@ -921,7 +1035,7 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 				var options = {is_rt: true, clipping_plane: camera.clipping_plane};
-				Renderer.renderSceneMeshes(options);
+				Renderer.renderSceneMeshes("rts",options);
 			});
 		}
 	},
@@ -1002,7 +1116,7 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
 			Renderer.enableCamera(cam);
-			Renderer.renderSceneMeshes(options);
+			Renderer.renderSceneMeshes("main",options);
 		});
 
 		return texture;
@@ -1044,7 +1158,7 @@ var Renderer = {
 			Renderer.enableCamera(scene.current_camera);
 
 			//gl.viewport(x-20,y-20,40,40);
-			Renderer.renderSceneMeshes({is_picking:true});
+			Renderer.renderSceneMeshes("picking",{is_picking:true});
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			Renderer._picking_color = new Uint8Array(4);

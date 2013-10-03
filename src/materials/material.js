@@ -227,7 +227,10 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		//special cases
 		if(i == "environment")
-			if(this.reflection_factor <= 0) continue;
+		{
+			if(this.reflection_factor <= 0) 
+				continue;
+		}
 		else if(i == "normal")
 		{
 			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
@@ -277,6 +280,17 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		macros.USE_SPECULAR_IN_REFLECTION = "";
 	if(this.backlight_factor > 0.001)
 		macros.USE_BACKLIGHT = "";
+
+	//mesh information
+	var mesh = instance.mesh;
+	if(!("a_normal" in mesh.vertexBuffers))
+		macros.NO_NORMALS = "";
+	if(!("a_coord" in mesh.vertexBuffers))
+		macros.NO_COORDS = "";
+	if(("a_color" in mesh.vertexBuffers))
+		macros.USE_COLOR_STREAM = "";
+	if(("a_tangent" in mesh.vertexBuffers))
+		macros.USE_TANGENT_STREAM = "";
 
 	//extra macros
 	if(this.extra_macros)
@@ -340,17 +354,6 @@ Material.prototype.getSceneShaderMacros = function(macros, step, instance, node,
 
 	if(options.colorclip_factor)
 		macros.USE_COLORCLIP_FACTOR = "";
-
-	//mesh information
-	var mesh = instance.mesh;
-	if(!("a_normal" in mesh.vertexBuffers))
-		macros.NO_NORMALS = "";
-	if(!("a_coord" in mesh.vertexBuffers))
-		macros.NO_COORDS = "";
-	if(("a_color" in mesh.vertexBuffers))
-		macros.USE_COLOR_STREAM = "";
-	if(("a_tangent" in mesh.vertexBuffers))
-		macros.USE_TANGENT_STREAM = "";
 }
 
 Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, node, scene, options )
@@ -472,6 +475,7 @@ Material.prototype.fillLightUniforms = function(shader, uniforms, light, instanc
 * @param {Object} options 
 * @return {Object} 
 */
+//DEPRECATED ************** REPLACED BY getLightShaderMacros, getSurfaceShaderMacros
 Material.prototype.getMaterialShaderData = function(instance, node, scene, options)
 {
 	//compute the uniforms
