@@ -4396,10 +4396,12 @@ Camera.prototype.onRemovedFromNode = function(node)
 		delete node.camera;
 }
 
+/*
 Camera.prototype.setActive = function()
 {
 	Scene.current_camera = this;
 }
+*/
 
 /**
 * 
@@ -4483,7 +4485,7 @@ Camera.prototype.getLocalPoint = function(v, dest)
 		this.updateMatrices();
 	var temp = this._model_matrix; //mat4.create();
 	//mat4.invert( temp, this._view_matrix );
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		mat4.multiply( temp, temp, this._root.transform.getGlobalMatrixRef() );
 	return mat4.multiplyVec3(dest, temp, v );
 }
@@ -4495,7 +4497,7 @@ Camera.prototype.getLocalVector = function(v, dest)
 		this.updateMatrices();
 	var temp = this._model_matrix; //mat4.create();
 	//mat4.invert( temp, this._view_matrix );
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		mat4.multiply(temp, temp, this._root.transform.getGlobalMatrixRef() );
 	return mat4.rotateVec3(dest, temp, v );
 }
@@ -4526,7 +4528,7 @@ Camera.prototype.getGlobalFront = function(dest)
 	dest = dest || vec3.create();
 	vec3.subtract( dest, this._center, this._eye);
 	vec3.normalize(dest, dest);
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }
@@ -4540,7 +4542,7 @@ Camera.prototype.getGlobalTop = function(dest)
 	vec3.cross( dest, dest, right );
 	vec3.scale( dest, dest, -1.0 );
 
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }
@@ -4765,13 +4767,16 @@ function Light(o)
 	*/
 	this.cast_shadows = false;
 	this.shadow_bias = 0.005;
+	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
-
 	this.frustrum_size = 50; //ortho
 
-	if(o) this.configure(o);
-	
-	o.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
+	if(o) 
+	{
+		this.configure(o);
+		if(o.shadowmap_resolution)
+			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
+	}
 }
 
 Light.OMNI = 1;
@@ -6786,27 +6791,27 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	}
 
 	//camera
-	var cam = new Camera( camera.serialize() );
+	var reflected_camera = new Camera( camera.serialize() );
 	var visible = this._root.flags.visible;
 	this._root.flags.visible = false;
 
-	if( !this.use_cubemap )
+	if( !this.use_cubemap ) //planar reflection
 	{
-		cam.aspect = camera.aspect;
-		cam.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
-		cam.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
-		cam.up = geo.reflectPointInPlane( camera.up, [0,0,0], plane_normal );
+		reflected_camera.aspect = camera.aspect;
+		reflected_camera.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
+		reflected_camera.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
+		reflected_camera.up = geo.reflectPointInPlane( camera.up, [0,0,0], plane_normal );
 
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
 
-		Renderer.renderSceneMeshesToRT(cam,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
 	}
-	else
+	else //spherical reflection
 	{
-		cam.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(cam,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		reflected_camera.eye = plane_center;
+		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
 	}
 
 	this._root.flags.visible = visible;
@@ -7163,8 +7168,8 @@ var Renderer = {
 		this._current_scene = scene;
 
 		//events
-		LEvent.trigger(Scene, "beforeRender", scene.current_camera);
-		scene.sendEventToNodes("beforeRender", scene.current_camera);
+		LEvent.trigger(Scene, "beforeRender", camera);
+		scene.sendEventToNodes("beforeRender", camera);
 
 		if(scene.light && scene.light.onBeforeRender) 
 			scene.light.onBeforeRender(); //ugly hack because the scene could have a light and it is not a node
@@ -7176,15 +7181,15 @@ var Renderer = {
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
 			this.renderShadowMaps();
 
-		LEvent.trigger(Scene, "afterRenderShadows", scene.current_camera);
-		scene.sendEventToNodes("afterRenderShadows", scene.current_camera);
+		LEvent.trigger(Scene, "afterRenderShadows", camera);
+		scene.sendEventToNodes("afterRenderShadows", camera);
 
 		//generate RTs
 		if(scene.settings.enable_rts && !options.skip_rts)
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
 
-		//scene
+		//Render scene to PostFX buffer, to Color&Depth buffer or directly to screen
 		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
 		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
 
@@ -7197,13 +7202,13 @@ var Renderer = {
 		else //render directly to screen (better antialiasing)
 		{
 			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw();
+			inner_draw(); //main render
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
 
 		//events
-		LEvent.trigger(Scene, "afterRender", scene.current_camera);
-		Scene.sendEventToNodes("afterRender",scene.current_camera);
+		LEvent.trigger(Scene, "afterRender", camera);
+		Scene.sendEventToNodes("afterRender", camera);
 		if(scene.light && scene.light.onAfterRender) //fix this plz
 			scene.light.onAfterRender();
 		Scene._frame += 1;
@@ -7218,12 +7223,12 @@ var Renderer = {
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera(scene.current_camera);
+			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 			Renderer.renderSceneMeshes("main",options);
 
-			LEvent.trigger(Scene, "afterRenderScene", scene.current_camera);
+			LEvent.trigger(Scene, "afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -7248,7 +7253,7 @@ var Renderer = {
 	*/
 	enableCamera: function(camera)
 	{
-		camera.setActive();
+		//camera.setActive();
 		camera.updateMatrices();
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
@@ -8044,7 +8049,7 @@ var Renderer = {
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
-			Renderer.renderSceneMeshes(options);
+			Renderer.renderSceneMeshes("main",options);
 		}
 	},
 

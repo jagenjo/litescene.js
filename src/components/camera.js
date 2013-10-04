@@ -172,10 +172,12 @@ Camera.prototype.onRemovedFromNode = function(node)
 		delete node.camera;
 }
 
+/*
 Camera.prototype.setActive = function()
 {
 	Scene.current_camera = this;
 }
+*/
 
 /**
 * 
@@ -259,7 +261,7 @@ Camera.prototype.getLocalPoint = function(v, dest)
 		this.updateMatrices();
 	var temp = this._model_matrix; //mat4.create();
 	//mat4.invert( temp, this._view_matrix );
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		mat4.multiply( temp, temp, this._root.transform.getGlobalMatrixRef() );
 	return mat4.multiplyVec3(dest, temp, v );
 }
@@ -271,7 +273,7 @@ Camera.prototype.getLocalVector = function(v, dest)
 		this.updateMatrices();
 	var temp = this._model_matrix; //mat4.create();
 	//mat4.invert( temp, this._view_matrix );
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		mat4.multiply(temp, temp, this._root.transform.getGlobalMatrixRef() );
 	return mat4.rotateVec3(dest, temp, v );
 }
@@ -302,7 +304,7 @@ Camera.prototype.getGlobalFront = function(dest)
 	dest = dest || vec3.create();
 	vec3.subtract( dest, this._center, this._eye);
 	vec3.normalize(dest, dest);
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }
@@ -316,7 +318,7 @@ Camera.prototype.getGlobalTop = function(dest)
 	vec3.cross( dest, dest, right );
 	vec3.scale( dest, dest, -1.0 );
 
-	if(this._root.transform)
+	if(this._root && this._root.transform)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }

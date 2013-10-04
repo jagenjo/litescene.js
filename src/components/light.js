@@ -103,13 +103,16 @@ function Light(o)
 	*/
 	this.cast_shadows = false;
 	this.shadow_bias = 0.005;
+	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
-
 	this.frustrum_size = 50; //ortho
 
-	if(o) this.configure(o);
-	
-	o.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
+	if(o) 
+	{
+		this.configure(o);
+		if(o.shadowmap_resolution)
+			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
+	}
 }
 
 Light.OMNI = 1;

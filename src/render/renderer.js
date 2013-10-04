@@ -88,8 +88,8 @@ var Renderer = {
 		this._current_scene = scene;
 
 		//events
-		LEvent.trigger(Scene, "beforeRender", scene.current_camera);
-		scene.sendEventToNodes("beforeRender", scene.current_camera);
+		LEvent.trigger(Scene, "beforeRender", camera);
+		scene.sendEventToNodes("beforeRender", camera);
 
 		if(scene.light && scene.light.onBeforeRender) 
 			scene.light.onBeforeRender(); //ugly hack because the scene could have a light and it is not a node
@@ -101,15 +101,15 @@ var Renderer = {
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
 			this.renderShadowMaps();
 
-		LEvent.trigger(Scene, "afterRenderShadows", scene.current_camera);
-		scene.sendEventToNodes("afterRenderShadows", scene.current_camera);
+		LEvent.trigger(Scene, "afterRenderShadows", camera);
+		scene.sendEventToNodes("afterRenderShadows", camera);
 
 		//generate RTs
 		if(scene.settings.enable_rts && !options.skip_rts)
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
 
-		//scene
+		//Render scene to PostFX buffer, to Color&Depth buffer or directly to screen
 		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
 		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
 
@@ -122,13 +122,13 @@ var Renderer = {
 		else //render directly to screen (better antialiasing)
 		{
 			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw();
+			inner_draw(); //main render
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
 
 		//events
-		LEvent.trigger(Scene, "afterRender", scene.current_camera);
-		Scene.sendEventToNodes("afterRender",scene.current_camera);
+		LEvent.trigger(Scene, "afterRender", camera);
+		Scene.sendEventToNodes("afterRender", camera);
 		if(scene.light && scene.light.onAfterRender) //fix this plz
 			scene.light.onAfterRender();
 		Scene._frame += 1;
@@ -143,12 +143,12 @@ var Renderer = {
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera(scene.current_camera);
+			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 			Renderer.renderSceneMeshes("main",options);
 
-			LEvent.trigger(Scene, "afterRenderScene", scene.current_camera);
+			LEvent.trigger(Scene, "afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -173,7 +173,7 @@ var Renderer = {
 	*/
 	enableCamera: function(camera)
 	{
-		camera.setActive();
+		//camera.setActive();
 		camera.updateMatrices();
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
@@ -969,7 +969,7 @@ var Renderer = {
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
-			Renderer.renderSceneMeshes(options);
+			Renderer.renderSceneMeshes("main",options);
 		}
 	},
 
