@@ -6744,6 +6744,8 @@ function RealtimeReflector(o)
 		this.configure(o);
 }
 
+RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,2048] };
+
 RealtimeReflector.prototype.onAddedToNode = function(node)
 {
 	if(!this._bind_onRenderRT)
@@ -6797,6 +6799,7 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 
 	if( !this.use_cubemap ) //planar reflection
 	{
+		reflected_camera.fov = camera.fov;
 		reflected_camera.aspect = camera.aspect;
 		reflected_camera.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
 		reflected_camera.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
@@ -6811,7 +6814,7 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
 	}
 
 	this._root.flags.visible = visible;
@@ -8033,15 +8036,15 @@ var Renderer = {
 	},
 
 	//Renders the scene to an RT
-	renderSceneMeshesToRT: function(cam,rt, options)
+	renderSceneMeshesToRT: function(cam, texture, options)
 	{
-		if(rt.texture_type == gl.TEXTURE_2D)
+		if(texture.texture_type == gl.TEXTURE_2D)
 		{
 			this.enableCamera(cam);
-			rt.drawTo( inner_draw_2d );
+			texture.drawTo( inner_draw_2d );
 		}
-		else if( rt.texture_type == gl.TEXTURE_CUBE_MAP)
-			this.renderCubemap(cam.getEye(), rt.width, rt, options, cam.near, cam.far);
+		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			this.renderToCubemap(cam.getEye(), texture.width, texture, options, cam.near, cam.far);
 
 		function inner_draw_2d()
 		{
@@ -8068,29 +8071,54 @@ var Renderer = {
 			if(!shadowmap_resolution)
 				shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
 
-			if(light._shadowMap == null || light._shadowMap.width != shadowmap_resolution )
+			var tex_type = light.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
+			if(light._shadowMap == null || light._shadowMap.width != shadowmap_resolution || light._shadowMap.texture_type != tex_type)
 			{
-				light._shadowMap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+				light._shadowMap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 				ResourcesManager.textures[":shadowmap_" + light._uid ] = light._shadowMap;
 			}
 
-			light.computeLightMatrices(this._view_matrix, this._projection_matrix, this._viewprojection_matrix);
-			this.active_camera = scene.current_camera; //to avoid nulls
+			if(light.type == Light.OMNI)
+			{
+				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowMap, { is_shadowmap: true }, light.near, light.far, "shadow");
 
-			// Render the object viewed from the light using a shader that returns the
-			// fragment depth.
-			light._shadowMap.unbind(); //¿?
-			light._shadowMap.drawTo(function() {
-				gl.clearColor(0, 0, 0, 1);
-				//gl.clearColor(1, 1, 1, 1);
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+				/*
+				light._shadowMap.drawTo(function(face) {
+					gl.clearColor(0, 0, 0, 1);
+					//gl.clearColor(1, 1, 1, 1);
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+					var cams = Renderer.cubemap_camera_parameters;
+					var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
+					Renderer.enableCamera(cam);
 
-				//save the VP of the shadowmap camera
-				if( !light._lightMatrix ) light._lightMatrix = mat4.create();
-				mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
+					//save the VP of the shadowmap camera
+					if( !light._lightMatrix ) light._lightMatrix = mat4.create();
+					mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
 
-				Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
-			});
+					Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
+				});
+				*/
+			}
+			else
+			{
+				light.computeLightMatrices(this._view_matrix, this._projection_matrix, this._viewprojection_matrix);
+				this.active_camera = scene.current_camera; //to avoid nulls
+
+				// Render the object viewed from the light using a shader that returns the
+				// fragment depth.
+				light._shadowMap.unbind(); //¿?
+				light._shadowMap.drawTo(function() {
+					gl.clearColor(0, 0, 0, 1);
+					//gl.clearColor(1, 1, 1, 1);
+					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+					//save the VP of the shadowmap camera
+					if( !light._lightMatrix ) light._lightMatrix = mat4.create();
+					mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
+
+					Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
+				});
+			}
 		}
 	},
 
@@ -8170,33 +8198,37 @@ var Renderer = {
 		}
 	},
 
+	cubemap_camera_parameters: [
+		{dir: [1,0,0], up:[0,1,0]}, //positive X
+		{dir: [-1,0,0], up:[0,1,0]}, //negative X
+		{dir: [0,-1,0], up:[0,0,-1]}, //positive Y
+		{dir: [0,1,0], up:[0,0,1]}, //negative Y
+		{dir: [0,0,-1], up:[0,1,0]}, //positive Z
+		{dir: [0,0,1], up:[0,1,0]} //negative Z
+	],
 
 	//renders the current scene to a cubemap centered in the given position
-	renderCubemap: function(position, size, texture, options, near, far)
+	renderToCubemap: function(position, size, texture, options, near, far, step)
 	{
 		size = size || 256;
 		near = near || 1;
 		far = far || 1000;
-
-		var cams = [
-			{dir: [1,0,0], up:[0,1,0]}, //positive X
-			{dir: [-1,0,0], up:[0,1,0]}, //negative X
-			{dir: [0,-1,0], up:[0,0,-1]}, //positive Y
-			{dir: [0,1,0], up:[0,0,1]}, //negative Y
-			{dir: [0,0,-1], up:[0,1,0]}, //positive Z
-			{dir: [0,0,1], up:[0,1,0]} //negative Z
-		]; 
+		step = step || "main";
 
 		var eye = position;
 		if( !texture || texture.constructor != Texture) texture = null;
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		texture.drawTo(function(side) {
-			gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 1.0);
+			var cams = Renderer.cubemap_camera_parameters;
+			if(step == "shadow")
+				gl.clearColor(0,0,0,0);
+			else
+				gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 1.0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
 			Renderer.enableCamera(cam);
-			Renderer.renderSceneMeshes("main",options);
+			Renderer.renderSceneMeshes(step,options);
 		});
 
 		return texture;

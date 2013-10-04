@@ -22,6 +22,8 @@ function RealtimeReflector(o)
 		this.configure(o);
 }
 
+RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,2048] };
+
 RealtimeReflector.prototype.onAddedToNode = function(node)
 {
 	if(!this._bind_onRenderRT)
@@ -75,6 +77,7 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 
 	if( !this.use_cubemap ) //planar reflection
 	{
+		reflected_camera.fov = camera.fov;
 		reflected_camera.aspect = camera.aspect;
 		reflected_camera.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
 		reflected_camera.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
@@ -89,7 +92,7 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
 	}
 
 	this._root.flags.visible = visible;

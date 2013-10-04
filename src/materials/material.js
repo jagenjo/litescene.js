@@ -336,6 +336,9 @@ Material.prototype.getLightShaderMacros = function(macros, step, light, instance
 		macros.USE_SHADOW_MAP = "";
 		if(light.hard_shadows)
 			macros.USE_HARD_SHADOWS = "";
+		if(light._shadowMap && light._shadowMap.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_SHADOW_CUBEMAP = "";
+
 		macros.SHADOWMAP_OFFSET = "";
 	}
 }
