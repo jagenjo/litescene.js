@@ -22,6 +22,8 @@ function RealtimeReflector(o)
 		this.configure(o);
 }
 
+RealtimeReflector.icon = "mini-icon-reflector.png";
+
 RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,2048] };
 
 RealtimeReflector.prototype.onAddedToNode = function(node)

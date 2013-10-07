@@ -11,6 +11,8 @@ function FogFX(o)
 		this.configure(o);
 }
 
+FogFX.icon = "mini-icon-fog.png";
+
 FogFX.LINEAR = 1;
 FogFX.EXP = 2;
 FogFX.EXP2 = 3;

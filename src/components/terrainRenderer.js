@@ -12,6 +12,8 @@ function TerrainRenderer(o)
 		this.configure(o);
 }
 
+TerrainRenderer.icon = "mini-icon-terrain.png";
+
 /**
 * Configure the component getting the info from the object
 * @method configure

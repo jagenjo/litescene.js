@@ -14,6 +14,8 @@ function Rotator(o)
 	this.swing_amplitude = 45;
 }
 
+Rotator.icon = "mini-icon-rotator.png";
+
 Rotator.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"update",this.onUpdate,this);

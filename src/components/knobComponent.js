@@ -21,6 +21,8 @@ function KnobComponent(o)
 		this.configure(o);
 }
 
+KnobComponent.icon = "mini-icon-knob.png";
+
 /**
 * Configure the component getting the info from the object
 * @method configure

@@ -18,6 +18,8 @@ function FaceTo(o)
 	this.reverse = false;
 }
 
+FaceTo.icon = "mini-icon-billboard.png";
+
 FaceTo["@target"] = {type:'node'};
 
 FaceTo.prototype.onAddedToNode = function(node)

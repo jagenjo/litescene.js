@@ -27,7 +27,18 @@ RenderInstance.prototype.generateKey = function(step, options)
 	return this._key;
 }
 
-	//this func is executed using the instance as SCOPE: TODO, change it
+RenderInstance.prototype.enableFlag = function(flag)
+{
+	this.flags |= (1 << flag);
+}
+
+RenderInstance.prototype.isFlag = function(flag)
+{
+	return (this.flags & (1 << flag));
+}
+
+
+//this func is executed using the instance as SCOPE: TODO, change it
 RenderInstance.prototype.render = function(shader)
 {
 	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
@@ -50,16 +61,20 @@ RenderInstance.prototype.render = function(shader)
 
 var Renderer = {
 
-	apply_postfx: true,
+	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
+	depth_rendertarget: null, //depth texture to store depth
 	generate_shadowmaps: true,
 	sort_nodes_in_z: true,
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
+	/*
 	//TODO: postfx integrated in render pipeline, not in use right now
+	apply_postfx: true,
 	postfx_settings: { width: 1024, height: 512 },
 	postfx: [], //
 	_postfx_texture_a: null,
 	_postfx_texture_b: null,
+	*/
 
 	_renderkeys: {},
 
@@ -71,6 +86,12 @@ var Renderer = {
 	_visible_meshes: [],
 	_opaque_meshes: [],
 	_alpha_meshes: [],
+
+	reset: function()
+	{
+		this.color_rendertarget = null;
+		this.depth_rendertarget = null;
+	},
 
 	/**
 	* Renders the current scene to the screen
@@ -109,10 +130,23 @@ var Renderer = {
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
 
-		//Render scene to PostFX buffer, to Color&Depth buffer or directly to screen
+
+		//Render scene to screen, buffer, to Color&Depth buffer 
 		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
 		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
 
+		if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+			Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
+		else if(this.color_rendertarget) //render color to RT
+			this.color_rendertarget.drawTo(inner_draw);
+		else //Screen render
+		{
+			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
+			inner_draw(); //main render
+			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+		}
+
+		/*
 		if(this.apply_postfx && this.postfx.length) //render to RT and apply FX //NOT IN USE
 			this.renderPostFX(inner_draw);
 		else if(options.texture && options.depth_texture) //render to RT COLOR & DEPTH
@@ -125,6 +159,7 @@ var Renderer = {
 			inner_draw(); //main render
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
+		*/
 
 		//events
 		LEvent.trigger(Scene, "afterRender", camera);
@@ -146,9 +181,14 @@ var Renderer = {
 			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
+
+			LEvent.trigger(Scene, "beforeRenderScene", camera);
+			Scene.sendEventToNodes("beforeRenderScene", camera);
+
 			Renderer.renderSceneMeshes("main",options);
 
 			LEvent.trigger(Scene, "afterRenderScene", camera);
+			Scene.sendEventToNodes("afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -187,6 +227,7 @@ var Renderer = {
 	* @method renderSceneMeshes
 	* @param {Object} options
 	*/
+	/*
 	renderSceneMeshesOld: function(options)
 	{
 		var scene = this.current_scene || Scene;
@@ -246,7 +287,7 @@ var Renderer = {
 			for(var i in this._opaque_meshes)
 			{
 				var instance = this._opaque_meshes[i];
-				if(instance.two_sided)
+				if(instance.isFlag( RenderInstance.TWO_SIDED ) )
 					gl.disable( gl.CULL_FACE );
 				else
 					gl.enable( gl.CULL_FACE );
@@ -281,7 +322,7 @@ var Renderer = {
 
 			var low_quality = options.low_quality || node.flags.low_quality;
 
-			if(instance.two_sided)
+			if(instance.isFlag( RenderInstance.TWO_SIDED ) )
 				gl.disable( gl.CULL_FACE );
 			else
 				gl.enable( gl.CULL_FACE );
@@ -531,8 +572,9 @@ var Renderer = {
 
 		//EVENT SCENE after_render
 	},
+	*/
 
-	//Work in progress: not finished
+	//Work in progress
 	renderSceneMeshes: function(step, options)
 	{
 		var scene = this.current_scene || Scene;
@@ -735,7 +777,7 @@ var Renderer = {
 
 	enableInstanceFlags: function(instance, node, options)
 	{
-		if(instance.two_sided)
+		if(instance.isFlag( RenderInstance.TWO_SIDED ) || node.flags.two_sided )
 			gl.disable( gl.CULL_FACE );
 		else
 			gl.enable( gl.CULL_FACE );
@@ -798,7 +840,8 @@ var Renderer = {
 				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
 				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
 				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
+				if(node.flags.two_sided)
+					instance.enableFlag( RenderInstance.TWO_SIDED );
 				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
 				instance.material = instance.material || node.material || this._default_material; //order
 				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
@@ -1049,6 +1092,7 @@ var Renderer = {
 	},
 
 	//not in use yet
+	/*
 	renderPostFX: function(render_callback)
 	{
 		//prepare postfx
@@ -1097,6 +1141,7 @@ var Renderer = {
 			Shaders.get("screen").uniforms({color: [1,1,1,1]}).draw(Renderer.viewport3d.screen_plane);
 		}
 	},
+	*/
 
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X

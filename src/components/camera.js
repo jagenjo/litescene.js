@@ -29,6 +29,8 @@ function Camera(o)
 	//this.updateMatrices(); //done by configure
 }
 
+Camera.icon = "mini-icon-camera.png";
+
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
 

@@ -14,6 +14,8 @@ function CameraController(o)
 	this.orbit_center = null;
 }
 
+CameraController.icon = "mini-icon-cameracontroller.png";
+
 CameraController.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"mousemove",this.onMouse,this);

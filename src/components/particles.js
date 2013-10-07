@@ -68,6 +68,8 @@ function ParticleEmissor(o)
 	*/
 }
 
+ParticleEmissor.icon = "mini-icon-particles.png";
+
 ParticleEmissor.BOX_EMISSOR = 1;
 ParticleEmissor.SPHERE_EMISSOR = 2;
 ParticleEmissor.MESH_EMISSOR = 3;

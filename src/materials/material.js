@@ -47,6 +47,8 @@ function Material(o)
 		this.configure(o);
 }
 
+Material.icon = "mini-icon-material.png";
+
 //Material flags
 Material.NORMAL = "normal";
 Material.ADDITIVE_BLENDING = "additive";

@@ -11,6 +11,8 @@ function ScriptComponent(o)
 		this.processCode();
 }
 
+ScriptComponent.icon = "mini-icon-script.png";
+
 ScriptComponent["@code"] = {type:'script'};
 
 ScriptComponent.valid_callbacks = ["start","update"];

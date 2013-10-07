@@ -93,7 +93,11 @@ SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
 	while(this.nodes.length)
-		Scene.removeNode(this.nodes[0]);
+		this.removeNode(this.nodes[0]);
+
+	//remove scene components
+	this.processActionInComponents("onRemovedFromNode",this); //send to components
+	this.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	this.init();
 	LEvent.trigger(this,"clear");
@@ -325,6 +329,7 @@ SceneTree.prototype.removeNode = function(node)
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
 		node._on_scene = false;
+		node.processActionInComponents("onRemovedFromNode",this); //send to components
 		node.processActionInComponents("onRemovedFromScene",this); //send to components
 		LEvent.trigger(this,"nodeRemoved", node);
 		LEvent.trigger(this,"change");

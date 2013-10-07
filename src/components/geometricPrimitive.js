@@ -24,6 +24,8 @@ GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
 
 GeometricPrimitive.MESHES = null;
+
+GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
 
 /**
@@ -97,7 +99,8 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 
 	RI.mesh = mesh;
 	RI.material = this.material || this._root.getMaterial();
-	RI.two_sided = this.two_sided;
+	if(this.two_sided)
+		RI.enableFlag( RenderInstance.TWO_SIDED );
 	RI.matrix.set(matrix);
 	RI.center.set(center);
 	return RI;

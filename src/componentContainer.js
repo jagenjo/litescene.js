@@ -149,7 +149,7 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 ComponentContainer.prototype.processActionInComponents = function(action_name,params)
 {
 	if(!this._components) return;
-	for(var i in this._components)
-		if( this._components[i].action_name && typeof(this._components[i].action_name) == "function")
-			this._components[i].action_name(params);
+	for(var i = 0; i < this._components.length; ++i )
+		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
+			this._components[i][action_name](params);
 }

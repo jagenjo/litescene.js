@@ -15,6 +15,9 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+MeshRenderer.icon = "mini-icon-teapot.png";
+
+//vars
 MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
 MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
@@ -43,7 +46,7 @@ MeshRenderer.prototype.configure = function(o)
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided; //true or false
+	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
 }
@@ -68,7 +71,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
 	if(this.two_sided)
-		o.two_sided = this.two_sided
+		o.two_sided = this.two_sided;
 	return o;
 }
 
@@ -116,7 +119,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	//RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
-	RI.two_sided = this.two_sided;
+	if(this.two_sided)
+		RI.enableFlag( RenderInstance.TWO_SIDED );
 	RI.matrix.set(matrix);
 	RI.center.set(center);
 	//RI.scene = Scene;

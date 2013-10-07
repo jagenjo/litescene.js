@@ -2226,6 +2226,12 @@ var ResourcesManager = {
 			return;
 		}
 
+		if(url[0] == ":")
+		{
+			console.err("loadImage: cannot load filenames starting with ':'");
+			return null;
+		}
+
 		this.resources_being_loaded[url] = [{options: null, callback: on_complete}];
 		if(this.num_resources_being_loaded == 0)
 			LEvent.trigger(ResourcesManager,"start_loading_resources", url);
@@ -2658,6 +2664,8 @@ function Material(o)
 		this.configure(o);
 }
 
+Material.icon = "mini-icon-material.png";
+
 //Material flags
 Material.NORMAL = "normal";
 Material.ADDITIVE_BLENDING = "additive";
@@ -2947,6 +2955,9 @@ Material.prototype.getLightShaderMacros = function(macros, step, light, instance
 		macros.USE_SHADOW_MAP = "";
 		if(light.hard_shadows)
 			macros.USE_HARD_SHADOWS = "";
+		if(light._shadowMap && light._shadowMap.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_SHADOW_CUBEMAP = "";
+
 		macros.SHADOWMAP_OFFSET = "";
 	}
 }
@@ -3642,9 +3653,9 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 ComponentContainer.prototype.processActionInComponents = function(action_name,params)
 {
 	if(!this._components) return;
-	for(var i in this._components)
-		if( this._components[i].action_name && typeof(this._components[i].action_name) == "function")
-			this._components[i].action_name(params);
+	for(var i = 0; i < this._components.length; ++i )
+		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
+			this._components[i][action_name](params);
 }
 /** Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * @class Transform
@@ -3665,6 +3676,8 @@ function Transform(o)
 	if(o)
 		this.configure(o);
 }
+
+Transform.icon = "mini-icon-gizmo.png";
 
 Transform.prototype.onAddedToNode = function(node)
 {
@@ -4252,6 +4265,8 @@ function Camera(o)
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
 }
+
+Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
@@ -4923,6 +4938,9 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+MeshRenderer.icon = "mini-icon-teapot.png";
+
+//vars
 MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
 MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
@@ -4951,7 +4969,7 @@ MeshRenderer.prototype.configure = function(o)
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided; //true or false
+	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
 }
@@ -4976,7 +4994,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
 	if(this.two_sided)
-		o.two_sided = this.two_sided
+		o.two_sided = this.two_sided;
 	return o;
 }
 
@@ -5024,7 +5042,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	//RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
-	RI.two_sided = this.two_sided;
+	if(this.two_sided)
+		RI.enableFlag( RenderInstance.TWO_SIDED );
 	RI.matrix.set(matrix);
 	RI.center.set(center);
 	//RI.scene = Scene;
@@ -5049,6 +5068,8 @@ function Rotator(o)
 	this.swing = false;
 	this.swing_amplitude = 45;
 }
+
+Rotator.icon = "mini-icon-rotator.png";
 
 Rotator.prototype.onAddedToNode = function(node)
 {
@@ -5102,6 +5123,8 @@ function CameraController(o)
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
 }
+
+CameraController.icon = "mini-icon-cameracontroller.png";
 
 CameraController.prototype.onAddedToNode = function(node)
 {
@@ -5252,6 +5275,8 @@ function FaceTo(o)
 	this.reverse = false;
 }
 
+FaceTo.icon = "mini-icon-billboard.png";
+
 FaceTo["@target"] = {type:'node'};
 
 FaceTo.prototype.onAddedToNode = function(node)
@@ -5306,6 +5331,8 @@ function FogFX(o)
 	if(o)
 		this.configure(o);
 }
+
+FogFX.icon = "mini-icon-fog.png";
 
 FogFX.LINEAR = 1;
 FogFX.EXP = 2;
@@ -5370,6 +5397,8 @@ function FollowNode(o)
 		this.configure(o);
 }
 
+FollowNode.icon = "mini-icon-follow.png";
+
 FollowNode.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"computeVisibility",this.updatePosition,this);
@@ -5422,6 +5451,8 @@ GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
 
 GeometricPrimitive.MESHES = null;
+
+GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
 
 /**
@@ -5495,7 +5526,8 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 
 	RI.mesh = mesh;
 	RI.material = this.material || this._root.getMaterial();
-	RI.two_sided = this.two_sided;
+	if(this.two_sided)
+		RI.enableFlag( RenderInstance.TWO_SIDED );
 	RI.matrix.set(matrix);
 	RI.center.set(center);
 	return RI;
@@ -5513,6 +5545,7 @@ LS.registerComponent(GeometricPrimitive);
 function GraphComponent(o)
 {
 	this._graph = new LGraph();
+	this.enabled = true;
 	this.force_redraw = true;
 	if(o)
 		this.configure(o);
@@ -5523,6 +5556,8 @@ function GraphComponent(o)
 	}
 }
 
+GraphComponent.icon = "mini-icon-graph.png";
+
 /**
 * Returns the first component of this container that is of the same class
 * @method configure
@@ -5530,37 +5565,40 @@ function GraphComponent(o)
 */
 GraphComponent.prototype.configure = function(o)
 {
+	this.enabled = !!o.enabled;
 	if(o.graph_data)
 		this._graph.unserialize( o.graph_data );
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onStart_bind = this.onStart.bind(this);
+	//this._onStart_bind = this.onStart.bind(this);
 	this._onUpdate_bind = this.onUpdate.bind(this);
-	LEvent.bind(Scene,"start", this._onStart_bind );
+	//LEvent.bind(Scene,"start", this._onStart_bind );
 	LEvent.bind(Scene,"update", this._onUpdate_bind );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"start", this._onStart_bind );
+	//LEvent.unbind(Scene,"start", this._onStart_bind );
 	LEvent.unbind(Scene,"update", this._onUpdate_bind );
 }
 
+/*
 GraphComponent.prototype.onStart = function()
 {
 }
+*/
 
 GraphComponent.prototype.onUpdate = function(e,dt)
 {
-	if(!this._root._on_scene) return;
+	if(!this._root._on_scene || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
@@ -5571,7 +5609,116 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 LS.registerComponent(GraphComponent);
 window.GraphComponent = GraphComponent;
 
-if(window.LiteGraph != undefined)
+
+
+/**
+* This component allow to integrate a rendering post FX using a graph
+* @class FXGraphComponent
+* @param {Object} o object with the serialized info
+*/
+function FXGraphComponent(o)
+{
+	this.enabled = true;
+	this._graph = new LGraph();
+	if(o)
+	{
+		this.configure(o);
+	}
+	else //default
+	{
+		this._graph_texture = LiteGraph.createNode("texture/texture","Color Buffer");
+		this._graph_texture.ignore_remove = true;
+
+		this._graph.add( this._graph_texture );
+
+		this._graph_output = LiteGraph.createNode("texture/toviewport","Viewport");
+		this._graph_output.pos[0] = 200;
+		this._graph.add( this._graph_output );
+
+		this._graph_texture.connect(0, this._graph_output);
+	}
+}
+
+FXGraphComponent.icon = "mini-icon-graph.png";
+
+/**
+* Returns the first component of this container that is of the same class
+* @method configure
+* @param {Object} o object with the configuration info from a previous serialization
+*/
+FXGraphComponent.prototype.configure = function(o)
+{
+	if(!o.graph_data)
+		return;
+
+	this.enabled = !!o.enabled;
+	this._graph.unserialize( o.graph_data );
+	this._graph_texture = this._graph.findNodesByName("Color Buffer")[0];
+}
+
+FXGraphComponent.prototype.serialize = function()
+{
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+}
+
+FXGraphComponent.prototype.onAddedToNode = function(node)
+{
+	this._graph._scenenode = node;
+	this._onBeforeRender_bind = this.onBeforeRender.bind(this);
+	LEvent.bind(Scene,"beforeRender", this._onBeforeRender_bind );
+	this._onAfterRender_bind = this.onAfterRender.bind(this);
+	LEvent.bind(Scene,"afterRender", this._onAfterRender_bind );
+}
+
+FXGraphComponent.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"beforeRender", this._onBeforeRender_bind );
+	LEvent.unbind(Scene,"afterRender", this._onAfterRender_bind );
+	Renderer.color_rendertarget = null;
+	Renderer.depth_rendertarget = null;
+}
+
+FXGraphComponent.prototype.onBeforeRender = function(e,dt)
+{
+	if(!this._graph) return;
+
+	if(!this.color_texture)
+	{
+		this.color_texture = new GL.Texture(1024,512,{ format: gl.RGBA, filter: gl.LINEAR });
+		ResourcesManager.textures[":color_buffer"] = this.color_texture;
+		//this.depth_texture = new GL.Texture(1024,512,{ format: gl.DEPTH, filter: gl.NEAREST });
+		//ResourcesManager.textures[":depth_texture"] = this.depth_texture;
+	}
+
+	if(this.enabled)
+		Renderer.color_rendertarget = this.color_texture;
+	else
+		Renderer.color_rendertarget = null;
+	//Renderer.depth_rendertarget = this.depth_texture;
+}
+
+
+FXGraphComponent.prototype.onAfterRender = function(e,dt)
+{
+	if(!this._graph || !this.enabled) return;
+
+	if(!this._graph_texture)
+		this._graph_texture = this._graph.findNodesByName("Color Buffer")[0];
+
+	if(!this._graph_texture)
+		return;
+
+	this._graph_texture.properties.name = ":color_buffer";
+	this._graph.runStep(1);
+}
+
+
+LS.registerComponent(FXGraphComponent);
+window.FXGraphComponent = FXGraphComponent;
+
+
+
+if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
 
@@ -6000,7 +6147,7 @@ if(window.LiteGraph != undefined)
 			return;
 
 		var tex = ResourcesManager.textures[ this.properties.name ];
-		if(!tex)
+		if(!tex && this.properties.name[0] != ":")
 			ResourcesManager.loadImage( this.properties.name );
 		this.setOutputData(0, tex);
 	}
@@ -6022,11 +6169,7 @@ if(window.LiteGraph != undefined)
 		this.properties = {value:1, uvcode:"", pixelcode:"color*2.0"};
 		if(!LGraphTextureOperation._mesh) //first time
 		{
-			var vertices = new Float32Array(18);
-			var coords = [-1,-1, 1,1, -1,1,  -1,-1, 1,-1, 1,1 ];
-			LGraphTextureOperation._mesh = new GL.Mesh.load({
-				vertices: vertices,
-				coords: coords});
+			
 			Shaders.addGlobalShader( LGraphTextureOperation.vertex_shader, 
 									LGraphTextureOperation.pixel_shader,
 									"LGraphTextureOperation",{"UV_CODE":true,"PIXEL_CODE":true});
@@ -6091,7 +6234,8 @@ if(window.LiteGraph != undefined)
 				gl.disable( gl.BLEND );
 				if(tex)	tex.bind(0);
 				if(texB) texB.bind(1);
-				shader.uniforms({texture:0, textureB:1, value: value, texSize:[width,height], time: Scene._global_time - Scene._start_time}).draw( LGraphTextureOperation._mesh );
+				var mesh = Mesh.getScreenQuad();
+				shader.uniforms({texture:0, textureB:1, value: value, texSize:[width,height], time: Scene._global_time - Scene._start_time}).draw(mesh);
 			});
 
 			this.setOutputData(0, this._tex);
@@ -6134,6 +6278,7 @@ if(window.LiteGraph != undefined)
 	function LGraphTexturePreview()
 	{
 		this.addInput("Texture","Texture");
+		this.properties = { flipY: false };
 		this.size = [LGraphTexturePreview.img_size, LGraphTexturePreview.img_size];
 	}
 
@@ -6172,12 +6317,42 @@ if(window.LiteGraph != undefined)
 		temp_tex.toCanvas(tex_canvas);
 
 		//render to graph canvas
+		ctx.save();
+		if(this.properties.flipY)
+		{
+			ctx.translate(0,this.size[1]);
+			ctx.scale(1,-1);
+		}
 		ctx.drawImage(tex_canvas,0,0,this.size[0],this.size[1]);
+		ctx.restore();
 	}
 
 	LiteGraph.registerNodeType("texture/texpreview", LGraphTexturePreview );
 	window.LGraphTexturePreview = LGraphTexturePreview;
-}
+
+	// Texture to Viewport *****************************************
+	function LGraphTextureToViewport()
+	{
+		this.addInput("Texture","Texture");
+	}
+
+	LGraphTextureToViewport.title = "Tex. Viewport";
+	LGraphTextureToViewport.desc = "Texture to viewport";
+
+	LGraphTextureToViewport.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(tex)
+		{
+			gl.disable( gl.BLEND );
+			gl.disable( gl.DEPTH_TEST );
+			tex.toViewport();
+		}
+	}
+
+	LiteGraph.registerNodeType("texture/toviewport", LGraphTextureToViewport );
+	window.LGraphTextureToViewport = LGraphTextureToViewport;
+} //LiteGraph defined
 /**
 * KnobComponent allows to rotate a mesh like a knob
 * @class KnobComponent
@@ -6200,6 +6375,8 @@ function KnobComponent(o)
 	if(o)
 		this.configure(o);
 }
+
+KnobComponent.icon = "mini-icon-knob.png";
 
 /**
 * Configure the component getting the info from the object
@@ -6321,6 +6498,8 @@ function ParticleEmissor(o)
 	}
 	*/
 }
+
+ParticleEmissor.icon = "mini-icon-particles.png";
 
 ParticleEmissor.BOX_EMISSOR = 1;
 ParticleEmissor.SPHERE_EMISSOR = 2;
@@ -6744,6 +6923,8 @@ function RealtimeReflector(o)
 		this.configure(o);
 }
 
+RealtimeReflector.icon = "mini-icon-reflector.png";
+
 RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,2048] };
 
 RealtimeReflector.prototype.onAddedToNode = function(node)
@@ -6840,6 +7021,8 @@ function ScriptComponent(o)
 	if(this.code)
 		this.processCode();
 }
+
+ScriptComponent.icon = "mini-icon-script.png";
 
 ScriptComponent["@code"] = {type:'script'};
 
@@ -6940,6 +7123,8 @@ function TerrainRenderer(o)
 	if(o)
 		this.configure(o);
 }
+
+TerrainRenderer.icon = "mini-icon-terrain.png";
 
 /**
 * Configure the component getting the info from the object
@@ -7110,7 +7295,18 @@ RenderInstance.prototype.generateKey = function(step, options)
 	return this._key;
 }
 
-	//this func is executed using the instance as SCOPE: TODO, change it
+RenderInstance.prototype.enableFlag = function(flag)
+{
+	this.flags |= (1 << flag);
+}
+
+RenderInstance.prototype.isFlag = function(flag)
+{
+	return (this.flags & (1 << flag));
+}
+
+
+//this func is executed using the instance as SCOPE: TODO, change it
 RenderInstance.prototype.render = function(shader)
 {
 	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
@@ -7133,16 +7329,20 @@ RenderInstance.prototype.render = function(shader)
 
 var Renderer = {
 
-	apply_postfx: true,
+	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
+	depth_rendertarget: null, //depth texture to store depth
 	generate_shadowmaps: true,
 	sort_nodes_in_z: true,
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
+	/*
 	//TODO: postfx integrated in render pipeline, not in use right now
+	apply_postfx: true,
 	postfx_settings: { width: 1024, height: 512 },
 	postfx: [], //
 	_postfx_texture_a: null,
 	_postfx_texture_b: null,
+	*/
 
 	_renderkeys: {},
 
@@ -7154,6 +7354,12 @@ var Renderer = {
 	_visible_meshes: [],
 	_opaque_meshes: [],
 	_alpha_meshes: [],
+
+	reset: function()
+	{
+		this.color_rendertarget = null;
+		this.depth_rendertarget = null;
+	},
 
 	/**
 	* Renders the current scene to the screen
@@ -7192,10 +7398,23 @@ var Renderer = {
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
 
-		//Render scene to PostFX buffer, to Color&Depth buffer or directly to screen
+
+		//Render scene to screen, buffer, to Color&Depth buffer 
 		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
 		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
 
+		if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+			Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
+		else if(this.color_rendertarget) //render color to RT
+			this.color_rendertarget.drawTo(inner_draw);
+		else //Screen render
+		{
+			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
+			inner_draw(); //main render
+			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+		}
+
+		/*
 		if(this.apply_postfx && this.postfx.length) //render to RT and apply FX //NOT IN USE
 			this.renderPostFX(inner_draw);
 		else if(options.texture && options.depth_texture) //render to RT COLOR & DEPTH
@@ -7208,6 +7427,7 @@ var Renderer = {
 			inner_draw(); //main render
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
+		*/
 
 		//events
 		LEvent.trigger(Scene, "afterRender", camera);
@@ -7229,9 +7449,14 @@ var Renderer = {
 			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
+
+			LEvent.trigger(Scene, "beforeRenderScene", camera);
+			Scene.sendEventToNodes("beforeRenderScene", camera);
+
 			Renderer.renderSceneMeshes("main",options);
 
 			LEvent.trigger(Scene, "afterRenderScene", camera);
+			Scene.sendEventToNodes("afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -7270,6 +7495,7 @@ var Renderer = {
 	* @method renderSceneMeshes
 	* @param {Object} options
 	*/
+	/*
 	renderSceneMeshesOld: function(options)
 	{
 		var scene = this.current_scene || Scene;
@@ -7329,7 +7555,7 @@ var Renderer = {
 			for(var i in this._opaque_meshes)
 			{
 				var instance = this._opaque_meshes[i];
-				if(instance.two_sided)
+				if(instance.isFlag( RenderInstance.TWO_SIDED ) )
 					gl.disable( gl.CULL_FACE );
 				else
 					gl.enable( gl.CULL_FACE );
@@ -7364,7 +7590,7 @@ var Renderer = {
 
 			var low_quality = options.low_quality || node.flags.low_quality;
 
-			if(instance.two_sided)
+			if(instance.isFlag( RenderInstance.TWO_SIDED ) )
 				gl.disable( gl.CULL_FACE );
 			else
 				gl.enable( gl.CULL_FACE );
@@ -7614,8 +7840,9 @@ var Renderer = {
 
 		//EVENT SCENE after_render
 	},
+	*/
 
-	//Work in progress: not finished
+	//Work in progress
 	renderSceneMeshes: function(step, options)
 	{
 		var scene = this.current_scene || Scene;
@@ -7818,7 +8045,7 @@ var Renderer = {
 
 	enableInstanceFlags: function(instance, node, options)
 	{
-		if(instance.two_sided)
+		if(instance.isFlag( RenderInstance.TWO_SIDED ) || node.flags.two_sided )
 			gl.disable( gl.CULL_FACE );
 		else
 			gl.enable( gl.CULL_FACE );
@@ -7881,7 +8108,8 @@ var Renderer = {
 				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
 				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
 				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				instance.two_sided = instance.two_sided || node.flags.two_sided;
+				if(node.flags.two_sided)
+					instance.enableFlag( RenderInstance.TWO_SIDED );
 				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
 				instance.material = instance.material || node.material || this._default_material; //order
 				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
@@ -8081,23 +8309,6 @@ var Renderer = {
 			if(light.type == Light.OMNI)
 			{
 				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowMap, { is_shadowmap: true }, light.near, light.far, "shadow");
-
-				/*
-				light._shadowMap.drawTo(function(face) {
-					gl.clearColor(0, 0, 0, 1);
-					//gl.clearColor(1, 1, 1, 1);
-					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-					var cams = Renderer.cubemap_camera_parameters;
-					var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
-					Renderer.enableCamera(cam);
-
-					//save the VP of the shadowmap camera
-					if( !light._lightMatrix ) light._lightMatrix = mat4.create();
-					mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
-
-					Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
-				});
-				*/
 			}
 			else
 			{
@@ -8149,6 +8360,7 @@ var Renderer = {
 	},
 
 	//not in use yet
+	/*
 	renderPostFX: function(render_callback)
 	{
 		//prepare postfx
@@ -8197,6 +8409,7 @@ var Renderer = {
 			Shaders.get("screen").uniforms({color: [1,1,1,1]}).draw(Renderer.viewport3d.screen_plane);
 		}
 	},
+	*/
 
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
@@ -9426,7 +9639,11 @@ SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
 	while(this.nodes.length)
-		Scene.removeNode(this.nodes[0]);
+		this.removeNode(this.nodes[0]);
+
+	//remove scene components
+	this.processActionInComponents("onRemovedFromNode",this); //send to components
+	this.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	this.init();
 	LEvent.trigger(this,"clear");
@@ -9658,6 +9875,7 @@ SceneTree.prototype.removeNode = function(node)
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
 		node._on_scene = false;
+		node.processActionInComponents("onRemovedFromNode",this); //send to components
 		node.processActionInComponents("onRemovedFromScene",this); //send to components
 		LEvent.trigger(this,"nodeRemoved", node);
 		LEvent.trigger(this,"change");

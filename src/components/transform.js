@@ -18,6 +18,8 @@ function Transform(o)
 		this.configure(o);
 }
 
+Transform.icon = "mini-icon-gizmo.png";
+
 Transform.prototype.onAddedToNode = function(node)
 {
 	if(!node.transform)

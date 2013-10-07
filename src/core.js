@@ -549,6 +549,12 @@ var ResourcesManager = {
 			return;
 		}
 
+		if(url[0] == ":")
+		{
+			console.err("loadImage: cannot load filenames starting with ':'");
+			return null;
+		}
+
 		this.resources_being_loaded[url] = [{options: null, callback: on_complete}];
 		if(this.num_resources_being_loaded == 0)
 			LEvent.trigger(ResourcesManager,"start_loading_resources", url);

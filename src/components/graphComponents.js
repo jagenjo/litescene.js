@@ -8,6 +8,7 @@
 function GraphComponent(o)
 {
 	this._graph = new LGraph();
+	this.enabled = true;
 	this.force_redraw = true;
 	if(o)
 		this.configure(o);
@@ -18,6 +19,8 @@ function GraphComponent(o)
 	}
 }
 
+GraphComponent.icon = "mini-icon-graph.png";
+
 /**
 * Returns the first component of this container that is of the same class
 * @method configure
@@ -25,37 +28,40 @@ function GraphComponent(o)
 */
 GraphComponent.prototype.configure = function(o)
 {
+	this.enabled = !!o.enabled;
 	if(o.graph_data)
 		this._graph.unserialize( o.graph_data );
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onStart_bind = this.onStart.bind(this);
+	//this._onStart_bind = this.onStart.bind(this);
 	this._onUpdate_bind = this.onUpdate.bind(this);
-	LEvent.bind(Scene,"start", this._onStart_bind );
+	//LEvent.bind(Scene,"start", this._onStart_bind );
 	LEvent.bind(Scene,"update", this._onUpdate_bind );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"start", this._onStart_bind );
+	//LEvent.unbind(Scene,"start", this._onStart_bind );
 	LEvent.unbind(Scene,"update", this._onUpdate_bind );
 }
 
+/*
 GraphComponent.prototype.onStart = function()
 {
 }
+*/
 
 GraphComponent.prototype.onUpdate = function(e,dt)
 {
-	if(!this._root._on_scene) return;
+	if(!this._root._on_scene || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
@@ -66,7 +72,116 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 LS.registerComponent(GraphComponent);
 window.GraphComponent = GraphComponent;
 
-if(window.LiteGraph != undefined)
+
+
+/**
+* This component allow to integrate a rendering post FX using a graph
+* @class FXGraphComponent
+* @param {Object} o object with the serialized info
+*/
+function FXGraphComponent(o)
+{
+	this.enabled = true;
+	this._graph = new LGraph();
+	if(o)
+	{
+		this.configure(o);
+	}
+	else //default
+	{
+		this._graph_texture = LiteGraph.createNode("texture/texture","Color Buffer");
+		this._graph_texture.ignore_remove = true;
+
+		this._graph.add( this._graph_texture );
+
+		this._graph_output = LiteGraph.createNode("texture/toviewport","Viewport");
+		this._graph_output.pos[0] = 200;
+		this._graph.add( this._graph_output );
+
+		this._graph_texture.connect(0, this._graph_output);
+	}
+}
+
+FXGraphComponent.icon = "mini-icon-graph.png";
+
+/**
+* Returns the first component of this container that is of the same class
+* @method configure
+* @param {Object} o object with the configuration info from a previous serialization
+*/
+FXGraphComponent.prototype.configure = function(o)
+{
+	if(!o.graph_data)
+		return;
+
+	this.enabled = !!o.enabled;
+	this._graph.unserialize( o.graph_data );
+	this._graph_texture = this._graph.findNodesByName("Color Buffer")[0];
+}
+
+FXGraphComponent.prototype.serialize = function()
+{
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+}
+
+FXGraphComponent.prototype.onAddedToNode = function(node)
+{
+	this._graph._scenenode = node;
+	this._onBeforeRender_bind = this.onBeforeRender.bind(this);
+	LEvent.bind(Scene,"beforeRender", this._onBeforeRender_bind );
+	this._onAfterRender_bind = this.onAfterRender.bind(this);
+	LEvent.bind(Scene,"afterRender", this._onAfterRender_bind );
+}
+
+FXGraphComponent.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"beforeRender", this._onBeforeRender_bind );
+	LEvent.unbind(Scene,"afterRender", this._onAfterRender_bind );
+	Renderer.color_rendertarget = null;
+	Renderer.depth_rendertarget = null;
+}
+
+FXGraphComponent.prototype.onBeforeRender = function(e,dt)
+{
+	if(!this._graph) return;
+
+	if(!this.color_texture)
+	{
+		this.color_texture = new GL.Texture(1024,512,{ format: gl.RGBA, filter: gl.LINEAR });
+		ResourcesManager.textures[":color_buffer"] = this.color_texture;
+		//this.depth_texture = new GL.Texture(1024,512,{ format: gl.DEPTH, filter: gl.NEAREST });
+		//ResourcesManager.textures[":depth_texture"] = this.depth_texture;
+	}
+
+	if(this.enabled)
+		Renderer.color_rendertarget = this.color_texture;
+	else
+		Renderer.color_rendertarget = null;
+	//Renderer.depth_rendertarget = this.depth_texture;
+}
+
+
+FXGraphComponent.prototype.onAfterRender = function(e,dt)
+{
+	if(!this._graph || !this.enabled) return;
+
+	if(!this._graph_texture)
+		this._graph_texture = this._graph.findNodesByName("Color Buffer")[0];
+
+	if(!this._graph_texture)
+		return;
+
+	this._graph_texture.properties.name = ":color_buffer";
+	this._graph.runStep(1);
+}
+
+
+LS.registerComponent(FXGraphComponent);
+window.FXGraphComponent = FXGraphComponent;
+
+
+
+if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
 
@@ -495,7 +610,7 @@ if(window.LiteGraph != undefined)
 			return;
 
 		var tex = ResourcesManager.textures[ this.properties.name ];
-		if(!tex)
+		if(!tex && this.properties.name[0] != ":")
 			ResourcesManager.loadImage( this.properties.name );
 		this.setOutputData(0, tex);
 	}
@@ -517,11 +632,7 @@ if(window.LiteGraph != undefined)
 		this.properties = {value:1, uvcode:"", pixelcode:"color*2.0"};
 		if(!LGraphTextureOperation._mesh) //first time
 		{
-			var vertices = new Float32Array(18);
-			var coords = [-1,-1, 1,1, -1,1,  -1,-1, 1,-1, 1,1 ];
-			LGraphTextureOperation._mesh = new GL.Mesh.load({
-				vertices: vertices,
-				coords: coords});
+			
 			Shaders.addGlobalShader( LGraphTextureOperation.vertex_shader, 
 									LGraphTextureOperation.pixel_shader,
 									"LGraphTextureOperation",{"UV_CODE":true,"PIXEL_CODE":true});
@@ -586,7 +697,8 @@ if(window.LiteGraph != undefined)
 				gl.disable( gl.BLEND );
 				if(tex)	tex.bind(0);
 				if(texB) texB.bind(1);
-				shader.uniforms({texture:0, textureB:1, value: value, texSize:[width,height], time: Scene._global_time - Scene._start_time}).draw( LGraphTextureOperation._mesh );
+				var mesh = Mesh.getScreenQuad();
+				shader.uniforms({texture:0, textureB:1, value: value, texSize:[width,height], time: Scene._global_time - Scene._start_time}).draw(mesh);
 			});
 
 			this.setOutputData(0, this._tex);
@@ -629,6 +741,7 @@ if(window.LiteGraph != undefined)
 	function LGraphTexturePreview()
 	{
 		this.addInput("Texture","Texture");
+		this.properties = { flipY: false };
 		this.size = [LGraphTexturePreview.img_size, LGraphTexturePreview.img_size];
 	}
 
@@ -667,9 +780,39 @@ if(window.LiteGraph != undefined)
 		temp_tex.toCanvas(tex_canvas);
 
 		//render to graph canvas
+		ctx.save();
+		if(this.properties.flipY)
+		{
+			ctx.translate(0,this.size[1]);
+			ctx.scale(1,-1);
+		}
 		ctx.drawImage(tex_canvas,0,0,this.size[0],this.size[1]);
+		ctx.restore();
 	}
 
 	LiteGraph.registerNodeType("texture/texpreview", LGraphTexturePreview );
 	window.LGraphTexturePreview = LGraphTexturePreview;
-}
+
+	// Texture to Viewport *****************************************
+	function LGraphTextureToViewport()
+	{
+		this.addInput("Texture","Texture");
+	}
+
+	LGraphTextureToViewport.title = "Tex. Viewport";
+	LGraphTextureToViewport.desc = "Texture to viewport";
+
+	LGraphTextureToViewport.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(tex)
+		{
+			gl.disable( gl.BLEND );
+			gl.disable( gl.DEPTH_TEST );
+			tex.toViewport();
+		}
+	}
+
+	LiteGraph.registerNodeType("texture/toviewport", LGraphTextureToViewport );
+	window.LGraphTextureToViewport = LGraphTextureToViewport;
+} //LiteGraph defined
