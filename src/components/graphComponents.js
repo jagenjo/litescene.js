@@ -1288,4 +1288,82 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("texture/blur", LGraphTextureBlur );
 	window.LGraphTextureBlur = LGraphTextureBlur;
+
+	// Texture Webcam *****************************************
+	function LGraphTextureWebcam()
+	{
+		this.addOutput("Webcam","Texture");
+		this.properties = {};
+	}
+
+	LGraphTextureWebcam.title = "Webcam";
+	LGraphTextureWebcam.desc = "Webcam texture";
+
+
+	LGraphTextureWebcam.prototype.openStream = function()
+	{
+		//Vendor prefixes hell
+		navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+		window.URL = window.URL || window.webkitURL;
+
+		if (!navigator.getUserMedia) {
+		  //console.log('getUserMedia() is not supported in your browser, use chrome and enable WebRTC from about://flags');
+		  return;
+		}
+
+		this._waiting_confirmation = true;
+
+		// Not showing vendor prefixes.
+		navigator.getUserMedia({video: true}, this.streamReady.bind(this), onFailSoHard);		
+
+		var that = this;
+		function onFailSoHard(e) {
+			trace('Webcam rejected', e);
+			that.box_color = "red";
+		};
+	}
+
+	LGraphTextureWebcam.prototype.streamReady = function(localMediaStream)
+	{
+		this._webcam_stream = localMediaStream;
+		//this._waiting_confirmation = false;
+
+	    var video = this._video;
+		if(!video)
+		{
+			video = document.createElement("video");
+			video.autoplay = true;
+		    video.src = window.URL.createObjectURL(localMediaStream);
+			this._video = video;
+			//document.body.appendChild( video ); //debug
+			//when video info is loaded (size and so)
+			video.onloadedmetadata = function(e) {
+				// Ready to go. Do some stuff.
+				console.log(e);
+			};
+		}
+
+
+	},
+
+	LGraphTextureWebcam.prototype.onExecute = function()
+	{
+		if(this._webcam_stream == null && !this._waiting_confirmation)
+			this.openStream();
+
+		if(!this._video || !this._video.videoWidth) return;
+
+		var width = this._video.videoWidth;
+		var height = this._video.videoHeight;
+
+		var temp = this._temp_texture;
+		if(!temp || temp.width != width || temp.height != height )
+			this._temp_texture = new GL.Texture( width, height, { format: gl.RGB, filter: gl.LINEAR });
+
+		this._temp_texture.uploadImage( this._video );
+		this.setOutputData(0,this._temp_texture);
+	}
+
+	LiteGraph.registerNodeType("texture/webcam", LGraphTextureWebcam );
+	window.LGraphTextureWebcam = LGraphTextureWebcam;
 } //LiteGraph defined
