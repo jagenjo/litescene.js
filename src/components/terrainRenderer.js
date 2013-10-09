@@ -140,16 +140,20 @@ TerrainRenderer.prototype.getRenderInstance = function()
 			this.updateMesh();
 	}
 
+	var RI = this._render_instance || new RenderInstance();
+
 	if(!this._mesh)
 	{
 		if(!TerrainRenderer.PLANE)
 			TerrainRenderer.PLANE = GL.Mesh.plane({xz:true,normals:true,coords:true});	
-		return { mesh: TerrainRenderer.PLANE }
+		RI.mesh = TerrainRenderer.PLANE;
+		return RI;
 	};
 
-	return { 
-		mesh: this._mesh
-	};
+	RI.mesh = this._mesh;
+	this._root.transform.getGlobalMatrix( RI.matrix );
+	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+	return RI;
 }
 
 LS.registerComponent(TerrainRenderer);

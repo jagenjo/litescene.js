@@ -18,6 +18,7 @@ function Transform(o)
 		this.configure(o);
 }
 
+Transform.temp_matrix = mat4.create();
 Transform.icon = "mini-icon-gizmo.png";
 
 Transform.prototype.onAddedToNode = function(node)
@@ -239,13 +240,56 @@ Transform.prototype.getLocalMatrixRef = function ()
 * @method getGlobalMatrix
 * @return {Matrix} the matrix in array format
 */
-Transform.prototype.getGlobalMatrix = function ()
+Transform.prototype.getGlobalMatrix = function (m)
 {
 	if(this._dirty)
 		this.updateMatrix();
+	m = m || mat4.create();
 	if (this._parent)
-		return mat4.multiply( this._global_matrix, this._parent.getGlobalMatrix(), this._local_matrix );
-	return mat4.clone(this._local_matrix);
+		mat4.multiply( this._global_matrix, this._parent.getGlobalMatrix(), this._local_matrix );
+	else
+		this._global_matrix.set( this._local_matrix ); 
+	m.set(this._global_matrix);
+	return m;
+}
+
+/**
+* Returns a quaternion with all parents rotations
+* @method getGlobalRotation
+* @return {Quat} Quaternion
+*/
+Transform.prototype.getGlobalRotation = function (q)
+{
+	q = q || quat.create();
+	q.set(this._rotation);
+
+	var aux = this._parent;
+	while(aux)
+	{
+		quat.multiply(q,q,aux._rotation);
+		aux = aux._parent;
+	}
+	return q;
+}
+
+/**
+* Returns a Matrix with all parents rotations
+* @method getGlobalRotationMatrix
+* @return {Matrix} Matrix rotation
+*/
+Transform.prototype.getGlobalRotationMatrix = function (m)
+{
+	var q = quat.clone(this._rotation);
+
+	var aux = this._parent;
+	while(aux)
+	{
+		quat.multiply(q, q, aux._rotation);
+		aux = aux._parent;
+	}
+
+	m = m || mat4.create();
+	return mat4.fromQuat(m,q);
 }
 
 /**
@@ -278,6 +322,25 @@ Transform.prototype.getMatrixWithoutRotation = function ()
 {
 	var pos = this.getPositionGlobal();
 	return mat4.clone([1,0,0,0, 0,1,0,0, 0,0,1,0, pos[0], pos[1], pos[2], 1]);
+}
+
+
+/**
+* Returns the matrix for the normals in the shader
+* @method getNormalMatrix
+* @return {Matrix} the matrix in array format
+*/
+Transform.prototype.getNormalMatrix = function (m)
+{
+	if(this._dirty)
+		this.updateMatrix();
+
+	m = m || mat4.create();
+	if (this._parent)
+		mat4.multiply( this._global_matrix, this._parent.getGlobalMatrix(), this._local_matrix );
+	else
+		m.set(this._local_matrix); //return local because it has no parent
+	return mat4.transpose(m, mat4.invert(m,m));
 }
 
 /**

@@ -55,6 +55,7 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 {
 	//if(this.size == 0) return;
 	var mesh = null;
+	if(!this._root) return;
 
 	if(this.geometry == GeometricPrimitive.CUBE)
 	{
@@ -83,26 +84,24 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	else 
 		return null;
 
-	var matrix = mat4.clone( this._root.transform.getGlobalMatrix() );
+	var RI = this._render_instance || new RenderInstance();
+
+	this._root.transform.getGlobalMatrix(RI.matrix);
+
 	if(this.align_z)
 	{
-		mat4.rotateX( matrix, matrix, Math.PI * -0.5 );
+		mat4.rotateX( RI.matrix, RI.matrix, Math.PI * -0.5 );
 		//mat4.rotateZ( matrix, Math.PI );
 	}
 	//mat4.scale(matrix, [this.size,this.size,this.size]);
-	var center = mat4.multiplyVec3(vec3.create(), matrix, vec3.create());
+	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
-	if(this._root) this._root.mesh = mesh;
-
-
-	var RI = this._render_instance || new RenderInstance();
+	this._root.mesh = mesh;
 
 	RI.mesh = mesh;
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
-	RI.matrix.set(matrix);
-	RI.center.set(center);
 	return RI;
 }
 

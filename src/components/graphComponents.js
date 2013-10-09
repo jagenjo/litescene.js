@@ -82,6 +82,9 @@ window.GraphComponent = GraphComponent;
 function FXGraphComponent(o)
 {
 	this.enabled = true;
+	this.use_viewport_size = false;
+	this.use_high_precision = false;
+	this.use_antialiasing = false;
 	this._graph = new LGraph();
 	if(o)
 	{
@@ -99,12 +102,15 @@ function FXGraphComponent(o)
 		this._graph.add( this._graph_color_texture_node );
 		this._graph.add( this._graph_depth_texture_node );
 
-		this._graph_output = LiteGraph.createNode("texture/toviewport","Viewport");
-		this._graph_output.pos[0] = 200;
-		this._graph.add( this._graph_output );
+		this._graph_viewport_node = LiteGraph.createNode("texture/toviewport","Viewport");
+		this._graph_viewport_node.pos[0] = 200;
+		this._graph.add( this._graph_viewport_node );
 
-		this._graph_color_texture_node.connect(0, this._graph_output);
+		this._graph_color_texture_node.connect(0, this._graph_viewport_node );
 	}
+
+	if(FXGraphComponent.high_precision_format == null)
+		FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
 }
 
 FXGraphComponent.icon = "mini-icon-graph.png";
@@ -121,14 +127,18 @@ FXGraphComponent.prototype.configure = function(o)
 		return;
 
 	this.enabled = !!o.enabled;
+	this.use_viewport_size = !!o.use_viewport_size;
+	this.use_high_precision = !!o.use_high_precision;
+	this.use_antialiasing = !!o.use_antialiasing;
 	this._graph.unserialize( o.graph_data );
 	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
+	this._graph_viewport_node = this._graph.findNodesByName("Viewport")[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: this._graph.serialize() };
 }
 
 FXGraphComponent.prototype.onAddedToNode = function(node)
@@ -156,18 +166,28 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	if(this._graph_depth_texture_node && this._graph_depth_texture_node.isOutputConnected(0))
 		use_depth = true;
 
-	if(!this.color_texture)
+	var width = FXGraphComponent.buffer_size[0];
+	var height = FXGraphComponent.buffer_size[1];
+	if( this.use_viewport_size )
 	{
-		this.color_texture = new GL.Texture(FXGraphComponent.buffer_size[0],FXGraphComponent.buffer_size[1],{ format: gl.RGBA, filter: gl.LINEAR });
+		var v = gl.getParameter(gl.VIEWPORT);
+		width = v[2];
+		height = v[3];
+	}
+
+	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
+
+	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
+	{
+		this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
 		ResourcesManager.textures[":color_buffer"] = this.color_texture;
 	}
 
-	if(!this.depth_texture && use_depth)
+	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && use_depth)
 	{
-		this.depth_texture = new GL.Texture(FXGraphComponent.buffer_size[0],FXGraphComponent.buffer_size[1],{ filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_SHORT });
+		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_SHORT });
 		ResourcesManager.textures[":depth_buffer"] = this.depth_texture;
 	}		
-
 
 	if(this.enabled)
 	{
@@ -200,6 +220,8 @@ FXGraphComponent.prototype.onAfterRender = function(e,dt)
 	this._graph_color_texture_node.properties.name = ":color_buffer";
 	if(this._graph_depth_texture_node)
 		this._graph_depth_texture_node.properties.name = ":depth_buffer";
+	if(this._graph_viewport_node) //force antialiasing
+		this._graph_viewport_node.properties.antialiasing = this.use_antialiasing;
 
 	this._graph.runStep(1);
 }
@@ -706,19 +728,22 @@ if(typeof(LiteGraph) != "undefined")
 
 		var width = 512;
 		var height = 512;
+		var type = gl.UNSIGNED_BYTE;
 		if(tex)
 		{
 			width = tex.width;
 			height = tex.height;
+			type = tex.type;
 		}
 		else if (texB)
 		{
 			width = texB.width;
 			height = texB.height;
+			type = texB.type;
 		}
 
-		if(!this._tex || this._tex.width != width || this._tex.height != height )
-			this._tex = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
+		if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
+			this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
 
 		var uvcode = "";
 		if(this.properties.uvcode)
@@ -855,7 +880,10 @@ if(typeof(LiteGraph) != "undefined")
 	function LGraphTextureToViewport()
 	{
 		this.addInput("Texture","Texture");
-		this.properties = { additive: false };
+		this.properties = { additive: false, antialiasing: false };
+
+		if(!LGraphTextureToViewport._shader)
+			LGraphTextureToViewport._shader = new GL.Shader( LGraphTextureToViewport.vertex_shader, LGraphTextureToViewport.pixel_shader );
 	}
 
 	LGraphTextureToViewport.title = "to Viewport";
@@ -874,8 +902,83 @@ if(typeof(LiteGraph) != "undefined")
 		else
 			gl.disable( gl.BLEND );
 		gl.disable( gl.DEPTH_TEST );
-		tex.toViewport();
+		if(this.properties.antialiasing)
+		{
+			var viewport = gl.getParameter(gl.VIEWPORT);
+			if(tex)	tex.bind(0);
+			var mesh = Mesh.getScreenQuad();
+			LGraphTextureToViewport._shader.uniforms({texture:0, uViewportSize:[tex.width,tex.height], inverseVP: [1/tex.width,1/tex.height] }).draw(mesh);
+		}
+		else
+			tex.toViewport();
 	}
+
+	LGraphTextureToViewport.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			void main() {\n\
+				v_coord = a_coord; gl_Position = vec4(v_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureToViewport.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 v_coord;\n\
+			uniform sampler2D u_texture;\n\
+			uniform vec2 uViewportSize;\n\
+			uniform vec2 inverseVP;\n\
+			#define FXAA_REDUCE_MIN   (1.0/ 128.0)\n\
+			#define FXAA_REDUCE_MUL   (1.0 / 8.0)\n\
+			#define FXAA_SPAN_MAX     8.0\n\
+			\n\
+			/* from mitsuhiko/webgl-meincraft based on the code on geeks3d.com */\n\
+			vec4 applyFXAA(sampler2D tex, vec2 fragCoord)\n\
+			{\n\
+				vec4 color = vec4(0.0);\n\
+				/*vec2 inverseVP = vec2(1.0 / uViewportSize.x, 1.0 / uViewportSize.y);*/\n\
+				vec3 rgbNW = texture2D(tex, (fragCoord + vec2(-1.0, -1.0)) * inverseVP).xyz;\n\
+				vec3 rgbNE = texture2D(tex, (fragCoord + vec2(1.0, -1.0)) * inverseVP).xyz;\n\
+				vec3 rgbSW = texture2D(tex, (fragCoord + vec2(-1.0, 1.0)) * inverseVP).xyz;\n\
+				vec3 rgbSE = texture2D(tex, (fragCoord + vec2(1.0, 1.0)) * inverseVP).xyz;\n\
+				vec3 rgbM  = texture2D(tex, fragCoord  * inverseVP).xyz;\n\
+				vec3 luma = vec3(0.299, 0.587, 0.114);\n\
+				float lumaNW = dot(rgbNW, luma);\n\
+				float lumaNE = dot(rgbNE, luma);\n\
+				float lumaSW = dot(rgbSW, luma);\n\
+				float lumaSE = dot(rgbSE, luma);\n\
+				float lumaM  = dot(rgbM,  luma);\n\
+				float lumaMin = min(lumaM, min(min(lumaNW, lumaNE), min(lumaSW, lumaSE)));\n\
+				float lumaMax = max(lumaM, max(max(lumaNW, lumaNE), max(lumaSW, lumaSE)));\n\
+				\n\
+				vec2 dir;\n\
+				dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));\n\
+				dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));\n\
+				\n\
+				float dirReduce = max((lumaNW + lumaNE + lumaSW + lumaSE) * (0.25 * FXAA_REDUCE_MUL), FXAA_REDUCE_MIN);\n\
+				\n\
+				float rcpDirMin = 1.0 / (min(abs(dir.x), abs(dir.y)) + dirReduce);\n\
+				dir = min(vec2(FXAA_SPAN_MAX, FXAA_SPAN_MAX), max(vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX), dir * rcpDirMin)) * inverseVP;\n\
+				\n\
+				vec3 rgbA = 0.5 * (texture2D(tex, fragCoord * inverseVP + dir * (1.0 / 3.0 - 0.5)).xyz + \n\
+					texture2D(tex, fragCoord * inverseVP + dir * (2.0 / 3.0 - 0.5)).xyz);\n\
+				vec3 rgbB = rgbA * 0.5 + 0.25 * (texture2D(tex, fragCoord * inverseVP + dir * -0.5).xyz + \n\
+					texture2D(tex, fragCoord * inverseVP + dir * 0.5).xyz);\n\
+				\n\
+				return vec4(rgbA,1.0);\n\
+				float lumaB = dot(rgbB, luma);\n\
+				if ((lumaB < lumaMin) || (lumaB > lumaMax))\n\
+					color = vec4(rgbA, 1.0);\n\
+				else\n\
+					color = vec4(rgbB, 1.0);\n\
+				return color;\n\
+			}\n\
+			\n\
+			void main() {\n\
+			   gl_FragColor = applyFXAA( u_texture, v_coord * uViewportSize) ;\n\
+			}\n\
+			";
+
 
 	LiteGraph.registerNodeType("texture/toviewport", LGraphTextureToViewport );
 	window.LGraphTextureToViewport = LGraphTextureToViewport;
@@ -886,7 +989,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.addOutput("","Texture");
-		this.properties = { size: 0 };
+		this.properties = { size: 0, low_precision: false };
 	}
 
 	LGraphTextureCopy.title = "Copy";
@@ -906,8 +1009,10 @@ if(typeof(LiteGraph) != "undefined")
 			height = this.properties.size;
 		}
 
-		if(!this._temp_texture || this._temp_texture.width != width || this._temp_texture.height != height)
-			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
+		var temp = this._temp_texture;
+		var type = this.properties.low_precision ? gl.UNSIGNED_BYTE : tex.type;
+		if(!temp || temp.width != width || temp.height != height || temp.type != type )
+			this._temp_texture = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
 		tex.copyTo(this._temp_texture);
 
 		this.setOutputData(0,this._temp_texture);
@@ -940,8 +1045,8 @@ if(typeof(LiteGraph) != "undefined")
 		var texMix = this.getInputData(2);
 		if(!texA || !texB || !texMix) return;
 
-		if(!this._temp_texture || this._temp_texture.width != texA.width || this._temp_texture.height != texA.height)
-			this._temp_texture = new GL.Texture( texA.width, texA.height, { format: gl.RGBA, filter: gl.LINEAR });
+		if(!this._temp_texture || this._temp_texture.width != texA.width || this._temp_texture.height != texA.height || this._temp_texture.type != texA.type)
+			this._temp_texture = new GL.Texture( texA.width, texA.height, { type: texA.type, format: gl.RGBA, filter: gl.LINEAR });
 
 		gl.disable( gl.BLEND );
 		gl.disable( gl.DEPTH_TEST );
@@ -1078,8 +1183,9 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.addInput("Iterations","number");
+		this.addInput("Intensity","number");
 		this.addOutput("Blurred","Texture");
-		this.properties = { intensity: 1, iterations: 1 };
+		this.properties = { intensity: 1, iterations: 1, preserve_aspect: false };
 
 		if(!LGraphTextureBlur._shader)
 			LGraphTextureBlur._shader = new GL.Shader( LGraphTextureBlur.vertex_shader, LGraphTextureBlur.pixel_shader );
@@ -1093,11 +1199,13 @@ if(typeof(LiteGraph) != "undefined")
 		var tex = this.getInputData(0);
 		if(!tex) return;
 
-		if(!this._temp_texture || this._temp_texture.width != tex.width || this._temp_texture.height != tex.height)
+		var temp = this._temp_texture;
+
+		if(!temp || temp.width != tex.width || temp.height != tex.height || temp.type != tex.type )
 		{
 			//we need two textures to do the blurring
-			this._temp_texture = new GL.Texture( tex.width, tex.height, { format: gl.RGBA, filter: gl.LINEAR });
-			this._final_texture = new GL.Texture( tex.width, tex.height, { format: gl.RGBA, filter: gl.LINEAR });
+			this._temp_texture = new GL.Texture( tex.width, tex.height, { type: tex.type, format: gl.RGBA, filter: gl.LINEAR });
+			this._final_texture = new GL.Texture( tex.width, tex.height, { type: tex.type, format: gl.RGBA, filter: gl.LINEAR });
 		}
 
 		//iterations
@@ -1108,14 +1216,18 @@ if(typeof(LiteGraph) != "undefined")
 			this.properties.iterations = iterations;
 		}
 		iterations = Math.floor(iterations);
-
-		if(iterations == 0)
+		if(iterations == 0) //skip blurring
 		{
 			this.setOutputData(0, tex);
 			return;
 		}
 
 		var intensity = this.properties.intensity;
+		if( this.isInputConnected(2) )
+		{
+			intensity = this.getInputData(2);
+			this.properties.intensity = intensity;
+		}
 
 		gl.disable( gl.BLEND );
 		gl.disable( gl.DEPTH_TEST );
@@ -1124,11 +1236,12 @@ if(typeof(LiteGraph) != "undefined")
 
 		//iterate
 		var start_texture = tex;
+		var aspect = this.properties.preserve_aspect ? Renderer.active_camera.aspect : 1;
 		for(var i = 0; i < iterations; ++i)
 		{
 			this._temp_texture.drawTo( function() {
 				start_texture.bind(0);
-				shader.uniforms({texture:0, u_intensity: intensity, u_offset: [0, 1/start_texture.height] })
+				shader.uniforms({texture:0, u_intensity: 1, u_offset: [0, aspect/start_texture.height] })
 					.draw(mesh);
 			});
 

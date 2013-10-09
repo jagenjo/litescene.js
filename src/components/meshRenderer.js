@@ -102,6 +102,7 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	if(!mesh) return null;
 
 	var node = this._root;
+	if(!this._root) return;
 
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
@@ -110,10 +111,10 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	if(options.step == "shadow" && !node.flags.cast_shadows)
 		return null;
 
-	var matrix = this._root ? this._root.transform.getGlobalMatrix() : MeshRenderer._identity;
-	var center = mat4.multiplyVec3(vec3.create(), matrix, vec3.create());
-
 	var RI = this._render_instance || new RenderInstance();
+
+	this._root.transform.getGlobalMatrix(RI.matrix);
+	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
 	//RI.submesh_id = this.submesh_id;
@@ -121,8 +122,6 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
-	RI.matrix.set(matrix);
-	RI.center.set(center);
 	//RI.scene = Scene;
 
 	return RI;

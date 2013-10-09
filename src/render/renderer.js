@@ -18,6 +18,7 @@ function RenderInstance()
 	this.material = null;
 	this.flags = 0;
 	this.matrix = mat4.create();
+	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
 }
 
@@ -35,6 +36,11 @@ RenderInstance.prototype.enableFlag = function(flag)
 RenderInstance.prototype.isFlag = function(flag)
 {
 	return (this.flags & (1 << flag));
+}
+
+RenderInstance.prototype.computeNormalMatrix = function()
+{
+	mat4.transpose(this.normal_matrix, mat4.invert(this.normal_matrix, this.matrix));
 }
 
 
@@ -633,10 +639,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.copy(this._object_model, model ); 
+		this._object_model.set( model ); 
+		this._normal_model.set( instance.normal_matrix ); 
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
-		mat4.copy(this._normal_model, model );
-		mat4.setTranslation(this._normal_model,vec3.create()); //remove translation from normal matrix
 
 		//global uniforms
 		var uniforms = {
@@ -729,10 +734,8 @@ var Renderer = {
 		var mat = instance.material;
 
 		var model = instance.matrix;
-		mat4.copy(this._object_model, model ); 
-		//mat3.fromMat4(this._normal_model, model );
-		mat4.copy(this._normal_model, model );
-		mat4.setTranslation(this._normal_model,vec3.create());
+		this._object_model.set( model ); 
+		this._normal_model.set( instance.normal_matrix );
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
 
 		//global uniforms
@@ -921,10 +924,8 @@ var Renderer = {
 				if(!instance.material)
 					instance.material = this._default_material;
 
-				//default
-				if(!instance.center) mat4.multiplyVec3( instance.center, instance.matrix, vec3.create() );
-
 				//add extra info
+				instance.computeNormalMatrix();
 				instance.node = node;
 				instance.component = component;
 
