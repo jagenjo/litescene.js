@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
+                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+            
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
@@ -60,8 +62,6 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
-            
-                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -73,11 +73,15 @@
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
+                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/Rotator.html">Rotator</a></li>
             
             </ul>
 
@@ -134,6 +138,8 @@ function toArray(v) { return Array.apply( [], v ); }
 */
 
 var LS = {
+	_last_uid: 0,
+	generateUId: function () { return this._last_uid++; },
 
 	/**
 	* Contains all the registered components
@@ -634,9 +640,11 @@ var ResourcesManager = {
 		mesh.metadata = {};
 		mesh.filename = filename;
 		mesh.generateMetadata(); //useful
+		if(!mesh.bounding)
+			mesh.computeBounding();
 
 		if(this.free_data) //free buffers to reduce memory usage
-			mesh.freeData(); 
+			mesh.freeData();
 
 		//save mesh in manager
 		this.registerResource(filename,mesh);
@@ -667,6 +675,12 @@ var ResourcesManager = {
 		{
 			this.resources_being_loaded[url].push( {options: null, callback: on_complete} );
 			return;
+		}
+
+		if(url[0] == &quot;:&quot;)
+		{
+			console.err(&quot;loadImage: cannot load filenames starting with &#x27;:&#x27;&quot;);
+			return null;
 		}
 
 		this.resources_being_loaded[url] = [{options: null, callback: on_complete}];

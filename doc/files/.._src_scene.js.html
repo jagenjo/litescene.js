@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
+                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+            
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
@@ -60,8 +62,6 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
-            
-                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -73,11 +73,15 @@
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
+                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/Rotator.html">Rotator</a></li>
             
             </ul>
 
@@ -200,6 +204,7 @@ SceneTree.prototype.init = function()
 	this._global_time = 0; //in seconds
 	this._start_time = 0; //in seconds
 	this._last_dt = 1/60; //in seconds
+	this._must_redraw = true;
 
 	if(this.selected_node) delete this.selected_node;
 
@@ -216,7 +221,11 @@ SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
 	while(this.nodes.length)
-		Scene.removeNode(this.nodes[0]);
+		this.removeNode(this.nodes[0]);
+
+	//remove scene components
+	this.processActionInComponents(&quot;onRemovedFromNode&quot;,this); //send to components
+	this.processActionInComponents(&quot;onRemovedFromScene&quot;,this); //send to components
 
 	this.init();
 	LEvent.trigger(this,&quot;clear&quot;);
@@ -448,6 +457,7 @@ SceneTree.prototype.removeNode = function(node)
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
 		node._on_scene = false;
+		node.processActionInComponents(&quot;onRemovedFromNode&quot;,this); //send to components
 		node.processActionInComponents(&quot;onRemovedFromScene&quot;,this); //send to components
 		LEvent.trigger(this,&quot;nodeRemoved&quot;, node);
 		LEvent.trigger(this,&quot;change&quot;);
@@ -610,6 +620,18 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 }
 
 
+SceneTree.prototype.refresh = function()
+{
+	this._must_redraw = true;
+}
+
+SceneTree.prototype.getTime = function()
+{
+	return this._global_time;
+}
+
+
+
 //****************************************************************************
 
 /**
@@ -625,6 +647,8 @@ function SceneNode(id)
 {
 	//Generic
 	this.id = id || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
+	this._uid = LS.generateUId();
+
 	//this.className = &quot;&quot;;
 	//this.mesh = &quot;&quot;;
 

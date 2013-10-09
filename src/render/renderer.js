@@ -1,61 +1,3 @@
-/**
-* RenderInstance contains info of one object to be rendered on the scene.
-*
-* @class RenderInstance
-* @namespace LS
-* @constructor
-*/
-
-//flags
-RenderInstance.TWO_SIDED = 1;
-
-function RenderInstance()
-{
-	this._key = "";
-	this._uid = LS.generateUId();
-	this.mesh = null;
-	this.primitive = gl.TRIANGLES;
-	this.material = null;
-	this.flags = 0;
-	this.matrix = mat4.create();
-	this.normal_matrix = mat4.create();
-	this.center = vec3.create();
-}
-
-RenderInstance.prototype.generateKey = function(step, options)
-{
-	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
-	return this._key;
-}
-
-RenderInstance.prototype.enableFlag = function(flag)
-{
-	this.flags |= (1 << flag);
-}
-
-RenderInstance.prototype.isFlag = function(flag)
-{
-	return (this.flags & (1 << flag));
-}
-
-RenderInstance.prototype.computeNormalMatrix = function()
-{
-	mat4.transpose(this.normal_matrix, mat4.invert(this.normal_matrix, this.matrix));
-}
-
-
-//this func is executed using the instance as SCOPE: TODO, change it
-RenderInstance.prototype.render = function(shader)
-{
-	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
-		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-	else if(this.start || this.length)
-		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-	else
-		shader.draw(this.mesh, this.primitive);
-}
-
-
 //************************************
 /**
 * The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.
@@ -900,9 +842,6 @@ var Renderer = {
 			var node = nodes[i];
 			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
 
-			//update matrix
-			//TODO...
-
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
 				continue;
@@ -928,6 +867,7 @@ var Renderer = {
 				instance.computeNormalMatrix();
 				instance.node = node;
 				instance.component = component;
+				instance._dist = vec3.dist( instance.center, camera_eye );
 
 				//change conditionaly
 				if(options.force_wireframe) instance.primitive = gl.LINES;
@@ -940,8 +880,6 @@ var Renderer = {
 					opaque_meshes.push(instance);
 				else //if(!options.is_shadowmap)
 					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
 			}
 		}
 

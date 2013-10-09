@@ -517,7 +517,7 @@
 				float cam_dist = length(E);
 
 				#ifdef USE_ORTHOGRAPHIC_CAMERA
-					E = normalize(u_camera_eye);
+					E = normalize(u_camera_eye); //wrong, should be center - eye
 				#else
 					E /= cam_dist;
 				#endif

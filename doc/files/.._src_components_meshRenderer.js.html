@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
+                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+            
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
@@ -60,8 +62,6 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
-            
-                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -73,11 +73,15 @@
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
+                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/Rotator.html">Rotator</a></li>
             
             </ul>
 
@@ -139,6 +143,9 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
+
+//vars
 MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
@@ -167,7 +174,7 @@ MeshRenderer.prototype.configure = function(o)
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided; //true or false
+	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == &quot;string&quot; ? o.material : new Material(o.material);
 }
@@ -192,7 +199,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
 	if(this.two_sided)
-		o.two_sided = this.two_sided
+		o.two_sided = this.two_sided;
 	return o;
 }
 
@@ -222,26 +229,28 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var mesh = this.getMesh();
 	if(!mesh) return null;
 
+	var node = this._root;
+	if(!this._root) return;
+
 	if(options.step == &quot;reflection&quot; &amp;&amp; !node.flags.seen_by_reflections)
 		return null;
-	if(options.step == &quot;main&quot; &amp;&amp; !node.flags.seen_by_camera)
+	if(options.step == &quot;main&quot; &amp;&amp; node.flags.seen_by_camera == false)
 		return null;
 	if(options.step == &quot;shadow&quot; &amp;&amp; !node.flags.cast_shadows)
 		return null;
 
-	var matrix = this._root ? this._root.transform.getGlobalMatrix() : MeshRenderer._identity;
-	var center = mat4.multiplyVec3(vec3.create(), matrix, vec3.create());
+	var RI = this._render_instance || new RenderInstance();
 
-	var RI = this._render_instance || {};
+	this._root.transform.getGlobalMatrix(RI.matrix);
+	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
-	RI.submesh_id = this.submesh_id;
+	//RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
-	RI.material = this.material || this._root.material;
-	RI.two_sided = this.two_sided;
-	RI.matrix = matrix;
-	RI.center = center;
-	RI.scene = Scene;
+	RI.material = this.material || this._root.getMaterial();
+	if(this.two_sided)
+		RI.enableFlag( RenderInstance.TWO_SIDED );
+	//RI.scene = Scene;
 
 	return RI;
 }

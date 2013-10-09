@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
+                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+            
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
@@ -60,8 +62,6 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
-            
-                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -73,11 +73,15 @@
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
+                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/Rotator.html">Rotator</a></li>
             
             </ul>
 
@@ -122,95 +126,101 @@
 
 <div class="file">
     <pre class="code prettyprint linenums">
-(function(){
+/**
+* Context class allows to handle the app context easily without having to glue manually all events
+* @namespace LS
+* @class Context
+* @constructor
+* @param {Object} options settings for the webgl context creation
+*/
+function Context(options)
+{
+	options = options || {};
+	this.gl = GL.create(options);
+	this.canvas = this.gl.canvas;
+	this.render_options = {};
 
-	/**
-	* Context class allows to handle the app context easily without having to glue manually all events
-	* @namespace LS
-	* @class Context
-	* @constructor
-	* @param {Object} options settings for the webgl context creation
-	*/
-	function Context(options)
+	this.force_redraw = false;
+	this.interactive = true;
+
+	this.gl.ondraw = Context.prototype._ondraw.bind(this);
+	this.gl.onupdate = Context.prototype._onupdate.bind(this);
+	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
+	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
+	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
+	this.gl.onkey = Context.prototype._onkey.bind(this);
+
+	gl.captureMouse();
+	gl.captureKeys(true);
+}
+
+Context.prototype._ondraw = function()
+{
+	if(this.onPreDraw)
+		this.onPreDraw();
+
+	if(Scene._must_redraw || this.force_redraw )
 	{
-		options = options || {};
-		this.gl = GL.create(options);
-		this.canvas = this.gl.canvas;
-		this.render_options = {};
-
-		this.gl.ondraw = Context.prototype._ondraw.bind(this);
-		this.gl.onupdate = Context.prototype._onupdate.bind(this);
-		this.gl.onmousedown = Context.prototype._onmouse.bind(this);
-		this.gl.onmousemove = Context.prototype._onmouse.bind(this);
-		this.gl.onmouseup = Context.prototype._onmouse.bind(this);
-		this.gl.onkey = Context.prototype._onkey.bind(this);
-
-		gl.captureMouse();
-		gl.captureKeys(true);
-	}
-
-	Context.prototype._ondraw = function()
-	{
-		if(this.onPreDraw)
-			this.onPreDraw();
-
+		LEvent.trigger(Scene, &quot;pre_scene_render&quot;);
 		Renderer.render(Scene, Scene.current_camera, this.render_options );
-
-		if(this.onDraw)
-			this.onDraw();
+		LEvent.trigger(Scene, &quot;post_scene_render&quot;);
 	}
 
-	Context.prototype._onupdate = function(dt)
+	if(this.onDraw)
+		this.onDraw();
+}
+
+Context.prototype._onupdate = function(dt)
+{
+	if(this.onPreUpdate)
+		this.onPreUpdate(dt);
+
+	Scene.update(dt);
+
+	if(this.onUpdate)
+		this.onUpdate(dt);
+}
+
+//input
+Context.prototype._onmouse = function(e)
+{
+	if(e.type == &quot;mousedown&quot; &amp;&amp; this.interactive )
 	{
-		if(this.onPreUpdate)
-			this.onPreUpdate(dt);
-
-		Scene.update(dt);
-
-		if(this.onUpdate)
-			this.onUpdate(dt);
+		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+		this._clicked_node = node;
 	}
 
-	//input
-	Context.prototype._onmouse = function(e)
+	if(this._clicked_node &amp;&amp; this._clicked_node.interactive)
 	{
-		if(e.type == &quot;mousedown&quot;)
-		{
-			var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
-			this._clicked_node = node;
-		}
-
-		if(this._clicked_node &amp;&amp; this._clicked_node.interactive)
-		{
-			e.scene_node = this._clicked_node;
-			LEvent.trigger(Scene,e.type,e);
-			LEvent.trigger(this._clicked_node,e.type,e);
-		}
-
-		if(e.type == &quot;mouseup&quot;)
-			this._clicked_node = null;
-
-		if(this.onMouse)
-		{
-			e.scene_node = this._clicked_node;
-			var r = this.onMouse(e);
-			if(r) return;
-		}
-	}
-
-	Context.prototype._onkey = function(e)
-	{
-		if(this.onKey)
-		{
-			var r = this.onKey(e);
-			if(r) return;
-		}
-
+		e.scene_node = this._clicked_node;
 		LEvent.trigger(Scene,e.type,e);
+		LEvent.trigger(this._clicked_node,e.type,e);
 	}
 
-	LS.Context = Context;
-})();
+	if(e.type == &quot;mouseup&quot;)
+		this._clicked_node = null;
+
+	if(this.onMouse)
+	{
+		e.scene_node = this._clicked_node;
+		var r = this.onMouse(e);
+		if(r) return;
+	}
+}
+
+Context.prototype._onkey = function(e)
+{
+	if(this.onKey)
+	{
+		var r = this.onKey(e);
+		if(r) return;
+	}
+
+	LEvent.trigger(Scene,e.type,e);
+}
+
+LS.Context = Context;
+
     </pre>
 </div>
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/componentContainer.js</title>
+    <title>../src/render/renderInstance.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -122,165 +122,146 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/componentContainer.js</h1>
+                        <h1 class="file-heading">File: ../src/render/renderInstance.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/*
-*  Components are elements that attach to Nodes to add functionality
-*  Some important components are Transform,Light or Camera
-*
-*	*  ctor: must accept an optional parameter with the serialized data
-*	*  onAddedToNode: triggered when added to node
-*	*  onRemovedFromNode: triggered when removed from node
-*	*  onAddedToScene: triggered when the node is added to the scene
-*	*  onRemovedFromScene: triggered when the node is removed from the scene
-*	*  serialize: returns a serialized version packed in an object
-*	*  configure: recieves an object to unserialize and configure this instance
-*	*  getResources: adds to the object the resources to load
-*	*  _root contains the node where the component is added
-*
-*	*  use the LEvent system to hook events to the node or the scene
-*	*  never share the same component instance between two nodes
-*
-*/
-
 /**
-* ComponentContainer class allows to add component based properties to any other class
-* @class ComponentContainer
+* RenderInstance contains info of one object to be rendered on the scene.
+*
+* @class RenderInstance
+* @namespace LS
 * @constructor
 */
-function ComponentContainer()
+
+//flags
+RenderInstance.TWO_SIDED = 1;
+
+function RenderInstance()
 {
-	//this function never will be called (because only the methods are attached to other classes)
-	//unless you instantiate this class directly, something that would be weird
+	this._key = &quot;&quot;;
+	this._uid = LS.generateUId();
+	this.mesh = null;
+	this.primitive = gl.TRIANGLES;
+	this.material = null;
+	this.flags = 0;
+	this.matrix = mat4.create();
+	this.normal_matrix = mat4.create();
+	this.center = vec3.create();
+	this.oobb_center = vec3.create();
+	this.oobb_halfsize = vec3.create();
+	this.aabb_center = vec3.create();
+	this.aabb_halfsize = vec3.create();
 }
 
 
-/**
-* Adds a component to this node.
-* @method configureComponents
-* @param {Object} info object containing all the info from a previous serialization
-*/
-
-ComponentContainer.prototype.configureComponents = function(info)
+RenderInstance.prototype.generateKey = function(step, options)
 {
-	if(info.components)
-	{
-		for(var i in info.components)
-		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-			if(comp_class == &quot;Transform&quot; &amp;&amp; i == 0) //special case
-			{
-				this.transform.configure(comp_info[1]);
-				continue;
-			}
-			if(!window[comp_class]){
-				trace(&quot;Unknown component found: &quot; + comp_class);
-				continue;
-			}
-			var comp = new window[comp_class]( comp_info[1] );
-			this.addComponent(comp);
-		}
-	}
+	this._key = step + &quot;|&quot; + this.node._uid + &quot;|&quot; + this.material._uid + &quot;|&quot;;
+	return this._key;
 }
 
 /**
-* Adds a component to this node.
-* @method serializeComponents
-* @param {Object} o container where the components will be stored
+* Enable flag in the flag bit field
+*
+* @method enableFlag
+* @param {number} flag id
 */
-
-ComponentContainer.prototype.serializeComponents = function(o)
+RenderInstance.prototype.enableFlag = function(flag)
 {
-	if(!this._components) return;
-
-	o.components = [];
-	for(var i in this._components)
-	{
-		var comp = this._components[i];
-		if( !comp.serialize ) continue;
-		o.components.push([getObjectClassName(comp), comp.serialize()]);
-	}
+	this.flags |= (1 &lt;&lt; flag);
 }
 
 /**
-* Adds a component to this node.
-* @method addComponent
-* @param {Object} component
-* @return {Object} component added
+* Disable flag in the flag bit field
+*
+* @method enableFlag
+* @param {number} flag id
 */
-ComponentContainer.prototype.addComponent = function(component)
+RenderInstance.prototype.disableFlag = function(flag)
 {
-	//link component with container
-	component._root = this;
-	if(component.onAddedToNode)
-		component.onAddedToNode(this);
-
-	//link node with component
-	if(!this._components) this._components = [];
-	if(this._components.indexOf(component) != -1) throw(&quot;inserting the same component twice&quot;);
-	this._components.push(component);
-	return component;
+	this.flags &amp;= (1 &lt;&lt; flag);
 }
 
 /**
-* Removes a component from this node.
-* @method removeComponent
-* @param {Object} component
+* Tells if a flag is enabled
+*
+* @method enableFlag
+* @param {number} flag id
+* @return {boolean} flag value
 */
-ComponentContainer.prototype.removeComponent = function(component)
+RenderInstance.prototype.isFlag = function(flag)
 {
-	//unlink component with container
-	component._root = null;
-	if(component.onRemovedFromNode)
-		component.onRemovedFromNode(this);
-
-	//remove from components list
-	var pos = this._components.indexOf(component);
-	if(pos != -1) this._components.splice(pos,1);
+	return (this.flags &amp; (1 &lt;&lt; flag));
 }
 
 /**
-* Removes all components from this node.
-* @method removeAllComponents
-* @param {Object} component
+* Updates the normal matrix using the matrix
+*
+* @method computeNormalMatrix
 */
-ComponentContainer.prototype.removeAllComponents = function()
+RenderInstance.prototype.computeNormalMatrix = function()
 {
-	while(this._components.length)
-		this.removeComponent( this._components[0] );
-}
-
-
-/**
-* Returns the first component of this container that is of the same class
-* @method getComponent
-* @param {Object} component_class the class to search a component from (not the name of the class)
-*/
-ComponentContainer.prototype.getComponent = function(component_class) //class, not string with the name of the class
-{
-	if(!this._components) return;
-	for(var i in this._components)
-		if( this._components[i].constructor == component_class )
-		return this._components[i];
-	return null;
+	mat4.transpose(this.normal_matrix, mat4.invert(this.normal_matrix, this.matrix));
 }
 
 /**
-* executes the method with a given name in all the components
-* @method processActionInComponents
-* @param {String} action_name the name of the function to execute in all components (in string format)
-* @param {Object} params object with the params to be accessed by that function
+* Computes the instance bounding box
+*
+* @method computeBounding
 */
-ComponentContainer.prototype.processActionInComponents = function(action_name,params)
+RenderInstance.prototype.computeBounding = function()
 {
-	if(!this._components) return;
-	for(var i = 0; i &lt; this._components.length; ++i )
-		if( this._components[i][action_name] &amp;&amp; typeof(this._components[i][action_name] ) == &quot;function&quot;)
-			this._components[i][action_name](params);
+	if(!this.mesh ||!this.mesh.bounding) return;
+
+	var temp = vec3.create();
+	var matrix = this.matrix;
+	var bbmax = this.mesh.bounding.aabb_max;
+	var bbmin = this.mesh.bounding.aabb_min;
+
+	var center = this.oobb_center;
+	var halfsize = this.oobb_halfsize;
+
+	var aabbmax = vec3.create();
+	var aabbmin = vec3.create();
+
+	mat4.multiplyVec3( aabbmax, matrix, bbmax );
+	aabbmin.set(aabbmax);
+	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmax[1],bbmin[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmax[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmin[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmax[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmin[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmax[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmin[2]] );
+	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
+
+	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
+	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
 }
+
+/**
+* Calls render taking into account primitive and submesh id
+*
+* @method render
+* @param {Shader} shader
+*/
+RenderInstance.prototype.render = function(shader)
+{
+	if(this.submesh_id != null &amp;&amp; this.submesh_id != -1 &amp;&amp; this.mesh.info.groups &amp;&amp; this.mesh.info.groups.length &gt; this.submesh_id)
+		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
+	else if(this.start || this.length)
+		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
+	else
+		shader.draw(this.mesh, this.primitive);
+}
+
     </pre>
 </div>
 

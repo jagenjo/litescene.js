@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/componentContainer.js</title>
+    <title>../src/components/terrainRenderer.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -122,165 +122,170 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/componentContainer.js</h1>
+                        <h1 class="file-heading">File: ../src/components/terrainRenderer.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/*
-*  Components are elements that attach to Nodes to add functionality
-*  Some important components are Transform,Light or Camera
-*
-*	*  ctor: must accept an optional parameter with the serialized data
-*	*  onAddedToNode: triggered when added to node
-*	*  onRemovedFromNode: triggered when removed from node
-*	*  onAddedToScene: triggered when the node is added to the scene
-*	*  onRemovedFromScene: triggered when the node is removed from the scene
-*	*  serialize: returns a serialized version packed in an object
-*	*  configure: recieves an object to unserialize and configure this instance
-*	*  getResources: adds to the object the resources to load
-*	*  _root contains the node where the component is added
-*
-*	*  use the LEvent system to hook events to the node or the scene
-*	*  never share the same component instance between two nodes
-*
-*/
-
-/**
-* ComponentContainer class allows to add component based properties to any other class
-* @class ComponentContainer
-* @constructor
-*/
-function ComponentContainer()
+function TerrainRenderer(o)
 {
-	//this function never will be called (because only the methods are attached to other classes)
-	//unless you instantiate this class directly, something that would be weird
+	this.height = 2;
+	this.size = 10;
+
+	this.subdivisions = 10;
+	this.heightmap = null;
+	this.auto_update = true;
+	this._mesh = null;
+	this.action = &quot;Update&quot;; //button
+	if(o)
+		this.configure(o);
 }
 
+TerrainRenderer.icon = &quot;mini-icon-terrain.png&quot;;
 
 /**
-* Adds a component to this node.
-* @method configureComponents
-* @param {Object} info object containing all the info from a previous serialization
+* Configure the component getting the info from the object
+* @method configure
+* @param {Object} object to configure from
 */
 
-ComponentContainer.prototype.configureComponents = function(info)
+TerrainRenderer.prototype.configure = function(o)
 {
-	if(info.components)
+	cloneObject(o, this);
+}
+
+/**
+* Serialize this component)
+* @method serialize
+* @return {Object} object with the serialization info
+*/
+
+TerrainRenderer.prototype.serialize = function()
+{
+	 var o = cloneObject(this);
+	 return o;
+}
+
+TerrainRenderer.prototype.getResources = function(res)
+{
+	if(this.heightmap)
+		res[ this.heightmap ] = Texture;
+}
+
+TerrainRenderer[&quot;@subdivisions&quot;] = { widget: &quot;number&quot;, min:1,max:255,step:1 };
+TerrainRenderer[&quot;@heightmap&quot;] = { widget: &quot;texture&quot; };
+TerrainRenderer[&quot;@action&quot;] = { widget: &quot;button&quot;, callback: function() { this.options.component.updateMesh(); }};
+
+TerrainRenderer.prototype.updateMesh = function()
+{
+	trace(&quot;updating terrain mesh...&quot;);
+	//check that we have all the data
+	if(!this.heightmap) return;
+	var heightmap = typeof(this.heightmap) == &quot;string&quot; ? ResourcesManager.textures[this.heightmap] : this.heightmap;
+	if(!heightmap) return;
+	var img = heightmap.img;
+	if(!img) return;
+
+	if(this.subdivisions &gt; img.width)
+		this.subdivisions = img.width;
+	if(this.subdivisions &gt; img.height)
+		this.subdivisions = img.height;
+
+	if(this.subdivisions &gt; 255)	this.subdivisions = 255; //MAX because of indexed nature
+
+	//optimize it
+	var size = this.size;
+	var subdivisions = (this.subdivisions)&lt;&lt;0;
+	var height = this.height;
+
+	//get the pixels
+	var canvas = createCanvas(subdivisions,subdivisions);
+	var ctx = canvas.getContext(&quot;2d&quot;);
+	ctx.drawImage(img,0,0,img.width,img.height,0,0,canvas.width, canvas.height);
+	//$(&quot;body&quot;).append(canvas);
+
+	var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+	var data = pixels.data;
+
+	//create the mesh
+	var triangles = [];
+	var vertices = [];
+	var normals = [];
+	var coords = [];
+
+	var detailY = detailX = subdivisions-1;
+	var h,lh,th,rh,bh = 0;
+
+	var yScale = height;
+	var xzScale = size / (subdivisions-1);
+
+	for (var y = 0; y &lt;= detailY; y++) 
 	{
-		for(var i in info.components)
+		var t = y / detailY;
+		for (var x = 0; x &lt;= detailX; x++) 
 		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-			if(comp_class == &quot;Transform&quot; &amp;&amp; i == 0) //special case
+			var s = x / detailX;
+
+			h = data[y * subdivisions * 4 + x * 4] / 255; //red channel
+			vertices.push(size*(2 * s - 1), h * height, size*(2 * t - 1));
+			coords.push(s,1-t);
+
+			if(x == 0 || y == 0 || x == detailX-1 || y == detailY-1)
+				normals.push(0, 1, 0);
+			else
 			{
-				this.transform.configure(comp_info[1]);
-				continue;
+				var sX = (data[y * subdivisions * 4 + (x+1) * 4] / 255) - (data[y * subdivisions * 4 + (x-1) * 4] / 255);
+				var sY = (data[(y+1) * subdivisions * 4 + x * 4] / 255) - (data[(y-1) * subdivisions * 4 + x * 4] / 255);
+				var N = [-sX*yScale,2*xzScale,-sY*yScale];
+				vec3.normalize(N,N);
+				normals.push(N[0],N[1],N[2]);
 			}
-			if(!window[comp_class]){
-				trace(&quot;Unknown component found: &quot; + comp_class);
-				continue;
+
+			//add triangle
+			if (x &lt; detailX &amp;&amp; y &lt; detailY)
+			{
+				var i = x + y * (detailX + 1);
+				triangles.push(i+1, i, i + detailX + 1);
+				triangles.push(i + 1, i + detailX + 1, i + detailX + 2);
 			}
-			var comp = new window[comp_class]( comp_info[1] );
-			this.addComponent(comp);
 		}
 	}
+
+	var mesh = Mesh.load({triangles:triangles,vertices:vertices,normals:normals,coords:coords});
+	this._mesh = mesh;
+	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
 }
 
-/**
-* Adds a component to this node.
-* @method serializeComponents
-* @param {Object} o container where the components will be stored
-*/
+TerrainRenderer.PLANE = null;
 
-ComponentContainer.prototype.serializeComponents = function(o)
+TerrainRenderer.prototype.getRenderInstance = function()
 {
-	if(!this._components) return;
+	if(!this._mesh &amp;&amp; this.heightmap)
+		this.updateMesh();
 
-	o.components = [];
-	for(var i in this._components)
+	if(this.auto_update &amp;&amp; this._info)
 	{
-		var comp = this._components[i];
-		if( !comp.serialize ) continue;
-		o.components.push([getObjectClassName(comp), comp.serialize()]);
+		if( this._info[0] != this.heightmap || this._info[1] != this.size || this._info[2] != this.height || this._info[3] != this.subdivisions || this._info[4] != this.smooth )
+			this.updateMesh();
 	}
+
+	var RI = this._render_instance || new RenderInstance();
+
+	if(!this._mesh)
+	{
+		if(!TerrainRenderer.PLANE)
+			TerrainRenderer.PLANE = GL.Mesh.plane({xz:true,normals:true,coords:true});	
+		RI.mesh = TerrainRenderer.PLANE;
+		return RI;
+	};
+
+	RI.mesh = this._mesh;
+	this._root.transform.getGlobalMatrix( RI.matrix );
+	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+	return RI;
 }
 
-/**
-* Adds a component to this node.
-* @method addComponent
-* @param {Object} component
-* @return {Object} component added
-*/
-ComponentContainer.prototype.addComponent = function(component)
-{
-	//link component with container
-	component._root = this;
-	if(component.onAddedToNode)
-		component.onAddedToNode(this);
+LS.registerComponent(TerrainRenderer);
 
-	//link node with component
-	if(!this._components) this._components = [];
-	if(this._components.indexOf(component) != -1) throw(&quot;inserting the same component twice&quot;);
-	this._components.push(component);
-	return component;
-}
-
-/**
-* Removes a component from this node.
-* @method removeComponent
-* @param {Object} component
-*/
-ComponentContainer.prototype.removeComponent = function(component)
-{
-	//unlink component with container
-	component._root = null;
-	if(component.onRemovedFromNode)
-		component.onRemovedFromNode(this);
-
-	//remove from components list
-	var pos = this._components.indexOf(component);
-	if(pos != -1) this._components.splice(pos,1);
-}
-
-/**
-* Removes all components from this node.
-* @method removeAllComponents
-* @param {Object} component
-*/
-ComponentContainer.prototype.removeAllComponents = function()
-{
-	while(this._components.length)
-		this.removeComponent( this._components[0] );
-}
-
-
-/**
-* Returns the first component of this container that is of the same class
-* @method getComponent
-* @param {Object} component_class the class to search a component from (not the name of the class)
-*/
-ComponentContainer.prototype.getComponent = function(component_class) //class, not string with the name of the class
-{
-	if(!this._components) return;
-	for(var i in this._components)
-		if( this._components[i].constructor == component_class )
-		return this._components[i];
-	return null;
-}
-
-/**
-* executes the method with a given name in all the components
-* @method processActionInComponents
-* @param {String} action_name the name of the function to execute in all components (in string format)
-* @param {Object} params object with the params to be accessed by that function
-*/
-ComponentContainer.prototype.processActionInComponents = function(action_name,params)
-{
-	if(!this._components) return;
-	for(var i = 0; i &lt; this._components.length; ++i )
-		if( this._components[i][action_name] &amp;&amp; typeof(this._components[i][action_name] ) == &quot;function&quot;)
-			this._components[i][action_name](params);
-}
     </pre>
 </div>
 

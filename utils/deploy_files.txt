@@ -26,8 +26,8 @@
 ../src/components/scriptComponent.js
 ../src/components/terrainRenderer.js
 
+../src/render/renderInstance.js
 ../src/render/renderer.js
-#../src/render/renderPass.js
 
 ../src/parsers/parser.js
 ../src/parsers/parserASE.js

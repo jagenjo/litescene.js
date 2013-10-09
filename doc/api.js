@@ -4,6 +4,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ComponentContainer",
         "LS.Components.Camera",
         "LS.Components.FPSController",
+        "LS.Components.FXGraphComponent",
         "LS.Components.FaceTo",
         "LS.Components.FollowNode",
         "LS.Components.GeometricPrimitive",
@@ -11,15 +12,16 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.KnobComponent",
         "LS.Components.Light",
         "LS.Components.RealtimeReflector",
-        "LS.Components.Rotator",
         "LS.Components.Transform",
         "LS.Context",
         "LS.LS",
         "LS.Material",
+        "LS.RenderInstance",
         "LS.Renderer",
         "LS.ResourcesManager",
         "LS.SceneNode",
-        "LS.SceneTree"
+        "LS.SceneTree",
+        "Rotator"
     ],
     "modules": [],
     "allModules": []
