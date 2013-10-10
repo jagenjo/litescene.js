@@ -114,7 +114,7 @@
 		{
 			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
 			vec3.copy(Scene.camera.eye, [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)]);
-			RenderPipeline.render(Scene, Scene.current_camera,APP.render_options);
+			Scene.render(Scene.current_camera,APP.render_options);
 		},
 
 		onupdate: function(dt)
@@ -130,7 +130,7 @@
 		{
 			APP.click_time = new Date().getTime();
 
-			var node = RenderPipeline.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+			var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
 			if(node && node.interactive)
 			{
 				LEvent.trigger(node,"mousedown",e);

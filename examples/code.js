@@ -22,6 +22,7 @@ var APP = {
 		Shaders.init("../data/shaders.xml");
 		Scene.init();
 
+		context.force_redraw = true;
 		context.onMouse = APP.onMouse.bind(this);
 		context.onUpdate = APP.onUpdate.bind(this);
 
