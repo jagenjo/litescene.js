@@ -32,11 +32,7 @@ Context.prototype._ondraw = function()
 		this.onPreDraw();
 
 	if(Scene._must_redraw || this.force_redraw )
-	{
-		LEvent.trigger(Scene, "pre_scene_render");
-		Renderer.render(Scene, Scene.current_camera, this.render_options );
-		LEvent.trigger(Scene, "post_scene_render");
-	}
+		Scene.render( Scene.current_camera, this.render_options );
 
 	if(this.onDraw)
 		this.onDraw();

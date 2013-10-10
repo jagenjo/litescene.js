@@ -1319,6 +1319,7 @@ if(typeof(LiteGraph) != "undefined")
 		var that = this;
 		function onFailSoHard(e) {
 			trace('Webcam rejected', e);
+			that._webcam_stream = false;
 			that.box_color = "red";
 		};
 	}

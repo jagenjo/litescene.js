@@ -1,7 +1,10 @@
-/* **************************************************************
-  Octree generator for fast ray triangle collision with meshes
-  Dependencies: glmatrix.js (for vector and matrix operations)
-****************************************************************/
+/**
+*   Octree generator for fast ray triangle collision with meshes
+*	Dependencies: glmatrix.js (for vector and matrix operations)
+* @class Octree
+* @constructor
+* @param {Mesh} mesh object containing vertices buffer (indices buffer optional)
+*/
 
 function HitTest(t, hit, normal) {
   this.t = arguments.length ? t : Number.MAX_VALUE;
@@ -244,6 +247,17 @@ Octree.prototype = {
 
 	tested_boxes: 0,
 	tested_triangles: 0,
+
+
+	/**
+	* Uploads a set of uniforms to the Shader
+	* @method testRay
+	* @param {vec3} start ray start position
+	* @param {vec3} direction ray direction position
+	* @param {number} dist_min
+	* @param {number} dist_max
+	* @return {HitTest} object containing pos and normal
+	*/
 	testRay: function(start, direction, dist_min, dist_max)
 	{
 		start = vec3.clone(start);
@@ -270,7 +284,8 @@ Octree.prototype = {
 		{
 			var pos = vec3.scale( vec3.create(), direction, test.t );
 			vec3.add( pos, pos, start );
-			return pos;
+			test.pos = pos;
+			return test;
 		}
 
 		delete window["hitTestBox"];

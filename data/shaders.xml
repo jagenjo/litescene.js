@@ -1604,6 +1604,7 @@
 	</shader>
 	-->
 
+	<!--
 	<shader id="paint3D" tags="" macros="USE_PAINT_LINE">
 		<code type="vertex_shader">
 		<![CDATA[
@@ -1663,7 +1664,7 @@
 		]]>
 		</code>
 	</shader>
-
+	-->
 
 	<shader id="screen" tags="">
 		<code type="vertex_shader">

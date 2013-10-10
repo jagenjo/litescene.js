@@ -81,6 +81,8 @@ SceneTree.prototype.init = function()
 	if(this.selected_node) delete this.selected_node;
 
 	this.extra = {};
+
+	this._renderer = LS.Renderer;
 }
 
 /**
@@ -447,6 +449,16 @@ SceneTree.prototype.start = function(dt)
 {
 	LEvent.trigger(this,"start",this);
 	this.sendEventToNodes("start");
+}
+
+/**
+* renders the scene using the assigned renderer
+*
+* @method render
+*/
+SceneTree.prototype.render = function(camera, options)
+{
+	this._renderer.render(this, camera, options);
 }
 
 
