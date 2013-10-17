@@ -30,6 +30,7 @@ FaceTo.prototype.onAddedToNode = function(node)
 FaceTo.prototype.updateOrientation = function(e,info)
 {
 	if(!this._root) return;
+	var scene = this._root._on_scene;
 
 	/*
 	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
@@ -41,7 +42,7 @@ FaceTo.prototype.updateOrientation = function(e,info)
 	
 	if(this.target)
 	{
-		var node = Scene.getNode( this.target );
+		var node = scene.getNode( this.target );
 		if(!node)
 			return;
 		eye = node.transform.getPosition();

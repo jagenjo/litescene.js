@@ -416,7 +416,8 @@ var Renderer = {
 	//Generates the rendering instances that are visible
 	updateVisibleMeshes: function(scene, options)
 	{
-		var nodes = scene.nodes;
+		//var nodes = scene.nodes;
+		var nodes = scene.getNodes();
 		if (options.nodes)
 			nodes = options.nodes;
 		var camera = this.active_camera;
@@ -491,7 +492,7 @@ var Renderer = {
 		if(scene.light && scene.light.enabled != false)
 			this._visible_lights.push(scene.light);
 
-		nodes = nodes || scene.nodes;
+		nodes = nodes || scene.getNodes();
 
 		for(var i = 0; i < nodes.length; ++i)
 		{
@@ -668,7 +669,7 @@ var Renderer = {
 		//trace("Starting Picking at : (" + x + "," + y + ")  T:" + new Date().getTime() );
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
-			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, magFilter: gl.NEAREST });
+			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
 			ResourcesManager.textures[":picking"] = this._pickingMap;
 		}
 

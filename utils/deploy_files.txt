@@ -1,12 +1,15 @@
 ../src/utils/binaryPacker.js
+../src/utils/wbin.js
 ../src/utils/draw.js
 ../src/utils/octree.js
 ../src/utils/shaders.js
 
 ../src/core.js
+../src/resourcesManager.js
 ../src/materials/material.js
 
 ../src/componentContainer.js
+../src/compositePattern.js
 
 ../src/components/transform.js
 ../src/components/camera.js
@@ -25,6 +28,9 @@
 ../src/components/realtimeReflector.js
 ../src/components/scriptComponent.js
 ../src/components/terrainRenderer.js
+
+../src/graph/scene.js
+../src/graph/texture.js
 
 ../src/render/renderInstance.js
 ../src/render/renderer.js

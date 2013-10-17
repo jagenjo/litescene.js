@@ -853,7 +853,7 @@
 				#ifdef FIRST_PASS
 				vec3 light = u_ambient_color;
 				#else
-				vec3 light;
+				vec3 light = vec3(0.0);
 				#endif
 
 				#ifndef USE_AMBIENT_ONLY
@@ -925,6 +925,7 @@
 			uniform vec4 u_material_color;
 			uniform vec2 u_camera_planes; //far near
 
+			//for soft particles...
 			float LinearDepth(float z)
 			{
 				float n = u_camera_planes.x;

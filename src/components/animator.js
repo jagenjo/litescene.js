@@ -30,6 +30,7 @@ Rotator.prototype.onRemoveFromNode = function(node)
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
+	var scene = this._root._on_scene;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();
@@ -49,7 +50,9 @@ Rotator.prototype.onUpdate = function(e,dt)
 		else
 			this._root.transform.rotate(this.speed * dt,this.axis);
 	}
-	LEvent.trigger(Scene,"change");
+
+	if(scene)
+		LEvent.trigger(scene,"change");
 }
 
 LS.registerComponent(Rotator);

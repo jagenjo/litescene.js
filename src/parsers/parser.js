@@ -6,10 +6,12 @@ var Parser = {
 
 	flipAxis: 0,
 	merge_smoothgroups: false,
+	safe_parsing: false,
 
 	image_extensions: ["png","jpg"], //for images
 	nonative_image_extensions: ["tga","dds"], //for images that need parsing
-	mesh_extensions: ["obj", "bin","dae","ase","gr2","json","jsmesh"], //for meshes
+	mesh_extensions: ["obj", "bin","ase","gr2","json","jsmesh"], //for meshes
+	scene_extensions: ["dae"], //for scenes
 	generic_extensions: ["xml","js","json"], //unknown data container
 	xml_extensions: ["xml","dae"], //for sure is XML
 	json_extensions: ["js","json"], //for sure is JSON
@@ -35,16 +37,20 @@ var Parser = {
 		}
 
 		var result = null;
-		try
-		{
+		if(!this.safe_parsing)
 			result = parser.parse(data,options);
-		}
-		catch (err)
-		{
-			trace("Error parsing content: " + err );
-			return null;
-		}
-		result.name = filename;
+		else
+			try
+			{
+				result = parser.parse(data,options);
+			}
+			catch (err)
+			{
+				trace("Error parsing content", err );
+				return null;
+			}
+		if(result)
+			result.name = filename;
 		return result;
 	},
 
@@ -146,6 +152,7 @@ var Parser = {
 	BINARY_FORMAT: "binary",
 	TEXT_FORMAT: "text",
 	MESH_DATA: "MESH",
+	SCENE_DATA: "SCENE",
 	IMAGE_DATA: "IMAGE",
 	NONATIVE_IMAGE_DATA: "NONATIVE_IMAGE",
 	GENERIC_DATA: "GENERIC",
@@ -173,6 +180,8 @@ var Parser = {
 			r.type = Parser.IMAGE_DATA;
 		else if (this.mesh_extensions.indexOf(extension) != -1)
 			r.type = Parser.MESH_DATA;
+		else if  (this.scene_extensions.indexOf(extension) != -1)
+			r.type = Parser.SCENE_DATA; 
 		else if  (this.nonative_image_extensions.indexOf(extension) != -1)
 			r.type = Parser.NONATIVE_IMAGE_DATA; 
 		else if  (this.generic_extensions.indexOf(extension) != -1)

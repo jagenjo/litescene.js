@@ -174,13 +174,6 @@ Camera.prototype.onRemovedFromNode = function(node)
 		delete node.camera;
 }
 
-/*
-Camera.prototype.setActive = function()
-{
-	Scene.current_camera = this;
-}
-*/
-
 /**
 * 
 * @method updateMatrices
