@@ -134,8 +134,19 @@ function extendClass( origin, target ) {
 	for(var i in origin) //copy class properties
 		target[i] = origin[i];
 	if(origin.prototype) //copy prototype properties
-		for(var i in origin.prototype)
-			target.prototype[i] = origin.prototype[i];
+		for(var i in origin.prototype) //only enumerables
+		{
+			if(!origin.prototype.hasOwnProperty(i))
+				continue;
+
+			if(origin.prototype.__lookupGetter__(i))
+				target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
+			else 
+				target.prototype[i] = origin.prototype[i];
+
+			if(origin.prototype.__lookupSetter__(i))
+				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+		}
 }
 LS.extendClass = extendClass;
 

@@ -24,8 +24,6 @@ var parserDAE = {
 			var xmlnode = xmlnodes[i];
 			var node_id = xmlnode.getAttribute("id");
 			var node_type = xmlnode.getAttribute("type");
-			if( node_type == "JOINT" )
-				continue;
 
 			var node = { id: node_id, children:[] };
 			xmlnode.treenode = node;
@@ -43,6 +41,8 @@ var parserDAE = {
 			//get transform
 			node.model = this.readTransform(xmlnode);
 
+			//if( node_type == "JOINT" ) continue;
+
 			//get geometry
 			var xmlgeometry = xmlnode.querySelector("instance_geometry");
 			if(xmlgeometry)
@@ -59,7 +59,6 @@ var parserDAE = {
 
 				node.mesh = url;
 			}
-
 
 		}//i:xmlnodes
 		console.log(scene);
@@ -97,17 +96,25 @@ var parserDAE = {
 		}
 
 		//rotate
-		var xmlrotate = xmlnode.querySelector("rotate");
-		if(xmlrotate)
+		var xmlrotates = xmlnode.querySelectorAll("rotate");
+		var tmpmatrix = mat4.create();
+		if(xmlrotates.length)
 		{
-			var values = this.readContentAsFloats(xmlrotate);
-			if(values.length == 4)
+			var rotation = quat.create();
+			var q = quat.create();
+			for(var i = 0; i < xmlrotates.length; ++i)
 			{
-				var q = new Float32Array(values);
-				quat.scale(q,q,DEG2RAD);
-				var R = mat4.fromQuat( mat4.create(), q );
-				mat4.multiply( matrix, matrix, R );
+				var xmlrotate = xmlrotates[i];
+				var values = this.readContentAsFloats(xmlrotate);
+				if(values.length == 4)
+				{
+					var r = new Float32Array(values);
+					quat.setAxisAngle(q, r.subarray(0,3), r[3] * DEG2RAD);
+					quat.multiply(rotation,rotation,q);
+				}
 			}
+			var R = mat4.fromQuat( tmpmatrix , rotation );
+			mat4.multiply( matrix, R, tmpmatrix );
 		}
 
 		//scale

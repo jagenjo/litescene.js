@@ -499,6 +499,10 @@ var ResourcesManager = {
 
 		var scene = new LS.SceneTree();
 		scene.configure(scene_data);
+
+		//load resources
+		scene.loadResources();
+
 		return scene;
 	},
 

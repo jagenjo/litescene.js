@@ -27,6 +27,13 @@ Transform.prototype.onAddedToNode = function(node)
 		node.transform = this;
 }
 
+Transform.prototype.onRemovedFromNode = function(node)
+{
+	if(node.transform == this)
+		delete node["transform"];
+}
+
+
 /**
 * Copy the transform from another Transform
 * @method copyFrom

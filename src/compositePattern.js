@@ -61,16 +61,6 @@ CompositePattern.prototype.removeChild = function(node, options)
 	this._on_tree = null;
 }
 
-CompositePattern.prototype.childNodes = function()
-{
-	return this._children || [];
-}
-
-CompositePattern.prototype.getParent = function()
-{
-	return this._parentNode;
-}
-
 CompositePattern.prototype.serializeChildren = function()
 {
 	var r = [];
@@ -86,15 +76,42 @@ CompositePattern.prototype.configureChildren = function(o)
 
 	for(var i in o.children)
 	{
-		var node = new this.constructor();
+		//create instance
+		var node = new this.constructor(o.id); //id is hardcoded...
 		this.addChild(node);
 		node.configure(o.children[i]);
 	}
 }
 
+CompositePattern.prototype.getParent = function()
+{
+	return this._parentNode;
+}
+
+CompositePattern.prototype.getChildren = function()
+{
+	return this._children || [];
+}
+
 Object.defineProperty( CompositePattern.prototype, "parentNode", {
+	enumerable: true,
 	get: function() {
 		return this._parentNode;
+	},
+	set: function(v) {
+		//TODO
+	}
+});
+
+CompositePattern.prototype.childNodes = function()
+{
+	return this._children || [];
+}
+
+Object.defineProperty( CompositePattern.prototype, "childNodes", {
+	enumerable: true,
+	get: function() {
+		return this._children || [];
 	},
 	set: function(v) {
 		//TODO

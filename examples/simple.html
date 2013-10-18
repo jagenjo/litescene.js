@@ -61,30 +61,19 @@
 			Scene.background_color = [0.1,0.1,0.1,1];
 			Scene.ambient_color = [0.2,0.2,0.2];
 
-			//mesh
-			/*
-			var node = new SceneNode("monitor");
-			node.material = new Material({ normalmap_tangent:true, textures: { color: "monitor_textura.png", normal: "monitor_normalmap.jpg" } });
-			node.addComponent( new GeometricPrimitive({geometry: GeometricPrimitive.SPHERE }) );
-			node.transform.setScale(20);
-			Scene.addNode(node);
-			*/
-
-			
-			var node = new SceneNode("monitor");
+			var node = new LS.SceneNode("monitor");
 			node.material = new Material({ textures: { color: "monitor_textura.png", anormal: "monitor_normalmap.jpg" } });
 			node.loadAndSetMesh("monitor.obj");
-			Scene.addNode(node);
-			var root = node;
+			Scene.root.addChild(node);
+			var main = node;
 
-			node = new SceneNode("screen");
-			node.material = new Material({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 100,
+			node = new LS.SceneNode("screen");
+			node.material = new Material({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
 				textures: { detail:"pattern_rgb.png", 
 							color: "empty-screen.png" }});
 			//node.material.blending = "additive";
 			node.loadAndSetMesh("screen.obj");
-			Scene.addNode(node);
-			root.addChild(node);
+			main.addChild(node);
 			
 
 			//global camera

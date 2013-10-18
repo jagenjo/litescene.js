@@ -737,6 +737,7 @@ Material.prototype.registerMaterial = function(name)
 	this.material = name;
 }
 
+LS.Material = Material;
 
 
 /*

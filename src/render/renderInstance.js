@@ -74,7 +74,9 @@ RenderInstance.prototype.isFlag = function(flag)
 */
 RenderInstance.prototype.computeNormalMatrix = function()
 {
-	mat4.transpose(this.normal_matrix, mat4.invert(this.normal_matrix, this.matrix));
+	var m = mat4.invert(this.normal_matrix, this.matrix);
+	if(m)
+		mat4.transpose(this.normal_matrix, m);
 }
 
 /**

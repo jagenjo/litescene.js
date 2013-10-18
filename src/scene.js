@@ -24,13 +24,13 @@ function SceneTree()
 	this._on_scene = this; //a scene belongs to itself
 	this._uid = LS.generateUId();
 
-	this.root = new LS.SceneNode("root");
-	this.root._is_root  = true;
-	this.root._on_tree = this;
+	this._root = new LS.SceneNode("root");
+	this._root.removeAllComponents();
+	this._root._is_root  = true;
+	this._root._on_tree = this;
 
 	LEvent.bind(this,"nodeAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"nodeRemoved", this.onNodeRemoved.bind(this));
-	//this.addNode( this.root );
 
 	this.init();
 }
@@ -40,6 +40,16 @@ SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
 LS.extendClass(ComponentContainer, SceneTree); //container methods
+
+Object.defineProperty( SceneTree.prototype, "root", {
+	enumerable: true,
+	get: function() {
+		return this._root;
+	},
+	set: function(v) {
+		throw("Root node cannot be replaced");
+	}
+});
 
 //methods
 
@@ -62,21 +72,16 @@ SceneTree.prototype.init = function()
 
 	this._components = []; //remove all components
 
-	//this.camera = new Camera();
 	if(this.camera) this.camera = null;
 	this.addComponent( new Camera() );
 	this.current_camera = this.camera;
 
-	//this.light = new Light({ position: [100,100,100], target:[0,0,0]});
 	if(this.light) this.light = null;
 	this.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
 	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
 	this.textures = {};
-
-	this.active_viewport = null;
-	this.viewport = null;
 
 	this.settings = {
 		//auto_picking: true,	
@@ -269,35 +274,25 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 	}
 }
 
-/*
 SceneTree.prototype.appendScene = function(scene)
 {
-
 	//clone: because addNode removes it from scene.nodes array
-	var nodes = scene.nodes.slice(0)
+	var nodes = scene.root.childNodes;
+
+	//bring materials
+	for(var i in scene.materials)
+		this.materials[i] = scene.materials[i];
 	
 	//add every node one by one
 	for(var i in nodes)
 	{
 		var node = nodes[i];
-		//in case is not a built node
-		if( node.constructor != LS.SceneNode )
-		{
-			var new_node = new LS.SceneNode( node.id );
-			new_node.configure(node);
-			node = new_node;
-		}
-		else
-		{
-			if(node.parentNode)
-			{
-				node.parentNode.removeChild(node);
-			}
-		}
-		this.addNode( node );
+		var new_node = new LS.SceneNode( node.id );
+		this.root.addChild( new_node );
+		new_node.configure( node.constructor == LS.SceneNode ? node.serialize() : node  );
 	}
 }
-*/
+
 
 /*
 SceneTree.prototype.addNode = function(node, index)
@@ -445,7 +440,11 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 SceneTree.prototype.getNodes = function()
 {
 	return this._nodes;
-	/*
+}
+
+/*
+SceneTree.prototype.getNodes = function()
+{
 	var r = [];
 	getnodes(this.root, r);
 
@@ -459,10 +458,10 @@ SceneTree.prototype.getNodes = function()
 				getnodes(n,result);
 		}
 	}
-	*/
 
 	return r;
 }
+*/
 
 /**
 * retrieves a Node
@@ -740,6 +739,8 @@ LS.extendClass(CompositePattern, SceneNode); //container methods
 
 SceneNode.prototype.setId = function(new_id)
 {
+	if(this.id == new_id) return true; //no changes
+
 	var scene = this._on_scene;
 	if(!scene)
 	{
@@ -752,8 +753,6 @@ SceneNode.prototype.setId = function(new_id)
 		trace("ID already in use");
 		return false;
 	}
-
-	if(this.id == new_id) return;
 
 	if(this.id)
 		delete scene._nodes_by_id[this.id];
@@ -921,7 +920,7 @@ SceneNode.prototype.clone = function()
 */
 SceneNode.prototype.configure = function(info)
 {
-	//if (info.id) this.id = info.id;	//id ignored, already set on constructor and avoid for cloning
+	if (info.id) this.setId(info.id);
 	if (info.className)	this.className = info.className;
 
 	//legacy
@@ -931,8 +930,6 @@ SceneNode.prototype.configure = function(info)
 	//first the no components
 	if(info.material)
 		this.material = typeof(info.material) == "string" ? info.material : new Material(info.material);
-	//if(info.mesh) this.loadAndSetMesh(info.mesh);
-	//if(info.submesh_id != null) this.submesh_id = info.submesh_id; //0 is valid
 
 	if(info.flags) //merge
 		for(var i in info.flags)
@@ -945,10 +942,6 @@ SceneNode.prototype.configure = function(info)
 
 	//DEPRECATED: model in matrix format
 	if(info.model) this.transform.fromMatrix( info.model ); 
-
-	//DEPRECATED: ierarchy
-	//if(info.children)
-	//	this.children = info.children;
 
 	//extra user info
 	if(info.extra)
@@ -1041,20 +1034,24 @@ SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 		node.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
 	}
 	//link transform
-	node.transform._parent = this.transform;
+	if(this.transform)
+		node.transform._parent = this.transform;
 }
 
 SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 {
-	//unlink transform
-	if(recompute_transform)
+	if(this.transform)
 	{
-		var m = node.transform.getGlobalMatrix();
-		node.transform._parent = null;
-		node.transform.fromMatrix(m);
+		//unlink transform
+		if(recompute_transform)
+		{
+			var m = node.transform.getGlobalMatrix();
+			node.transform._parent = null;
+			node.transform.fromMatrix(m);
+		}
+		else
+			node.transform._parent = null;
 	}
-	else
-		node.transform._parent = null;
 }
 
 /**
