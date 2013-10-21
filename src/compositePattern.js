@@ -77,7 +77,7 @@ CompositePattern.prototype.configureChildren = function(o)
 	for(var i in o.children)
 	{
 		//create instance
-		var node = new this.constructor(o.id); //id is hardcoded...
+		var node = new this.constructor(o.children[i].id); //id is hardcoded...
 		this.addChild(node);
 		node.configure(o.children[i]);
 	}

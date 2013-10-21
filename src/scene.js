@@ -185,7 +185,15 @@ SceneTree.prototype.configure = function(scene_info)
 		else
 			this.addComponent( new Light(scene_info.light) );
 	}
-
+	else if(scene_info.hasOwnProperty("light")) //light is null
+	{
+		//skip default light
+		if(this.light)
+		{
+			this.scene.removeComponent( this.light );
+			this.light = null;
+		}
+	}
 
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");

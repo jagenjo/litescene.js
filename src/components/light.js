@@ -229,6 +229,7 @@ Light.prototype.getUp = function(p)
 Light.prototype.getFront = function(p) {
 	var front = p || vec3.create();
 	vec3.subtract(front, this.getPosition(), this.getTarget() ); //front is reversed?
+	//vec3.subtract(front, this.getTarget(), this.getPosition() ); //front is reversed?
 	vec3.normalize(front, front);
 	return front;
 }

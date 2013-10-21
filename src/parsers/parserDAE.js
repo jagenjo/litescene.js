@@ -10,126 +10,251 @@ var parserDAE = {
 		options = options || {};
 
 		trace("Parsing collada");
+		var flip = true;
 
 		var xmlparser = new DOMParser();
 		var root = xmlparser.parseFromString(data,"text/xml");
 		this._xmlroot = root;
-		var xmlnodes = root.querySelectorAll("library_visual_scenes visual_scene node");
+		var xmlnodes = root.querySelector("visual_scene");
+		xmlnodes = xmlnodes.childNodes;
 
 		var meshes = {};
-		var scene = { object_type:"SceneTree", meshes: meshes, root:{ children:[] } };
+		var scene = { 
+			object_type:"SceneTree", 
+			light: null,
+			meshes: meshes, 
+			root:{ children:[] }
+		};
 
 		for(var i = 0; i < xmlnodes.length; i++)
 		{
-			var xmlnode = xmlnodes[i];
-			var node_id = xmlnode.getAttribute("id");
-			var node_type = xmlnode.getAttribute("type");
+			if(xmlnodes[i].localName != "node")
+				continue;
 
-			var node = { id: node_id, children:[] };
-			xmlnode.treenode = node;
+			var node = this.readNode( xmlnodes[i], meshes, 0, flip );
+			scene.root.children.push(node);
+		}
 
-			//parent
-			var xmlparent = xmlnode.parentNode;
-			if( xmlparent.localName == "node" )
+		console.log(scene);
+		return scene;
+	},
+
+	readNode: function(xmlnode, meshes, level, flip)
+	{
+		var node_id = xmlnode.getAttribute("id");
+		var node_type = xmlnode.getAttribute("type");
+		var node = { id: node_id, children:[] };
+
+		for( var i = 0; i < xmlnode.childNodes.length; i++ )
+		{
+			var xmlchild = xmlnode.childNodes[i];
+
+			//children
+			if(xmlchild.localName == "node")
 			{
-				//node.parent = xmlparent.getAttribute("id");
-				xmlparent.treenode.children.push( node );
+				node.children.push( this.readNode(xmlchild, meshes, level+1, flip) );
+				continue;
 			}
-			else
-				scene.root.children.push( node );
 
-			//get transform
-			node.model = this.readTransform(xmlnode);
+			//transform
+			node.model = this.readTransform(xmlnode, level, flip );
 
-			//if( node_type == "JOINT" ) continue;
-
-			//get geometry
-			var xmlgeometry = xmlnode.querySelector("instance_geometry");
-			if(xmlgeometry)
+			//geometry
+			if(xmlchild.localName == "instance_geometry")
 			{
-				var url = xmlgeometry.getAttribute("url");
+				var url = xmlchild.getAttribute("url");
 				if(!meshes[ url ])
 				{
-					var mesh_data = this.readGeometry(url);
+					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
 						meshes[url] = mesh_data;
-					//var mesh = GL.Mesh.load(mesh_data);
-					//ResourcesManager.registerResource(filename,mesh);
 				}
 
 				node.mesh = url;
 			}
 
-		}//i:xmlnodes
-		console.log(scene);
-		return scene;
+			//light
+			if(xmlchild.localName == "instance_light")
+			{
+				var url = xmlchild.getAttribute("url");
+				this.readLight(node, url, flip);
+			}
+
+			//other possible tags?
+		}
+
+		return node;
 	},
 
-	readTransform: function(xmlnode)
+	readLight: function(node, url)
 	{
-		//search for the matrix
-		var xmlmatrix = xmlnode.querySelector("matrix");
-		if(xmlmatrix)
+		var light = {};
+
+		var xmlnode = this._xmlroot.querySelector("library_lights " + url);
+		if(!xmlnode) return null;
+
+		//pack
+		var children = [];
+		var xml = xmlnode.querySelector("technique_common");
+		if(xml)
+			for(var i in xml.childNodes )
+				if( xml.childNodes[i].nodeType == 1 ) //tag
+					children.push( xml.childNodes[i] );
+
+		var xmls = xmlnode.querySelectorAll("technique");
+		for(var i = 0; i < xmls.length; i++)
 		{
-			var matrix = this.readContentAsFloats(xmlmatrix);
-			//3ds max coords conversion
-			mat4.transpose(matrix,matrix);
-			var temp = new Float32Array(matrix.subarray(4,8));
-			matrix.set( matrix.subarray(8,12), 4 );
-			matrix.set( temp, 8 );
-			matrix[10] *= -1;
-			matrix[14] *= -1;
-			return matrix;
+			for(var j in xmls[i].childNodes )
+				if( xmls[i].childNodes[j].nodeType == 1 ) //tag
+					children.push( xmls[i].childNodes[j] );
 		}
 
-		//identity
-		var matrix = mat4.create(); 
-
-		//translate
-		var xmltranslate = xmlnode.querySelector("translate");
-		if(xmltranslate)
+		//get
+		for(var i in children)
 		{
-			var values = this.readContentAsFloats(xmltranslate);
-			//var tmp = values[1];values[1] = -values[2];values[2] = tmp; //swap coords
-			if(values.length == 3)
-				mat4.translate(matrix, matrix, values);
-		}
-
-		//rotate
-		var xmlrotates = xmlnode.querySelectorAll("rotate");
-		var tmpmatrix = mat4.create();
-		if(xmlrotates.length)
-		{
-			var rotation = quat.create();
-			var q = quat.create();
-			for(var i = 0; i < xmlrotates.length; ++i)
+			var xml = children[i];
+			switch( xml.localName )
 			{
-				var xmlrotate = xmlrotates[i];
-				var values = this.readContentAsFloats(xmlrotate);
-				if(values.length == 4)
+				case "point": 
+					light.type = LS.Light.OMNI; 
+					parse_params(light, xml);
+					break;
+				case "spot": 
+					light.type = LS.Light.SPOT; 
+					parse_params(light, xml);
+					break;
+				case "intensity": light.intensity = this.readContentAsFloats( xml )[0]; break;
+			}
+		}
+
+		function parse_params(light, xml)
+		{
+			for(var i in xml.childNodes)
+			{
+				var child = xml.childNodes[i];
+				if( !child || child.nodeType != 1 ) //tag
+					continue;
+
+				switch( child.localName )
 				{
-					var r = new Float32Array(values);
-					quat.setAxisAngle(q, r.subarray(0,3), r[3] * DEG2RAD);
-					quat.multiply(rotation,rotation,q);
+					case "color": light.color = parserDAE.readContentAsFloats( child ); break;
+					case "falloff_angle": 
+						light.angle_end = parserDAE.readContentAsFloats( child )[0]; 
+						light.angle = light.angle_end - 10; 
+					break;
 				}
 			}
-			var R = mat4.fromQuat( tmpmatrix , rotation );
-			mat4.multiply( matrix, R, tmpmatrix );
 		}
 
-		//scale
-		var xmlscale = xmlnode.querySelector("scale");
-		if(xmlscale)
+		/*
+		if(node.model)
 		{
-			var values = this.readContentAsFloats(xmlscale);
-			var tmp = values[1]; values[1] = values[2]; values[2] = tmp; //swap coords
-			if(values.length == 3) mat4.scale( matrix, matrix, values );
+			var M = mat4.create();
+			var R = mat4.rotate(M,M, Math.PI * 0.5, [1,0,0]);
+			//mat4.multiply( node.model, node.model, R );
 		}
+		*/
+		light.position = [0,0,0];
+		light.target = [0,-1,0];
+
+		node.light = light;
+	},
+
+	readTransform: function(xmlnode, level, flip)
+	{
+		//identity
+		var matrix = mat4.create(); 
+		var rotation = quat.create();
+		var tmpmatrix = mat4.create();
+		var tmpq = quat.create();
+		var translate = vec3.create();
+		var scale = vec3.fromValues(1,1,1);
+		
+		var flip_fix = false;
+
+		//search for the matrix
+		for(var i = 0; i < xmlnode.childNodes.length; i++)
+		{
+			var xml = xmlnode.childNodes[i];
+
+			if(xml.localName == "matrix")
+			{
+				var matrix = this.readContentAsFloats(xml);
+				//3ds max coords conversion
+				mat4.transpose(matrix,matrix);
+				var temp = new Float32Array(matrix.subarray(4,8));
+				matrix.set( matrix.subarray(8,12), 4 );
+				matrix.set( temp, 8 );
+				matrix[10] *= -1;
+				matrix[14] *= -1;
+				return matrix;
+			}
+
+			if(xml.localName == "translate")
+			{
+				var values = this.readContentAsFloats(xml);
+				translate.set(values);
+				continue;
+			}
+
+			//rotate
+			if(xml.localName == "rotate")
+			{
+				var values = this.readContentAsFloats(xml);
+				if(values.length == 4) //x,y,z, angle
+				{
+					var id = xml.getAttribute("sid");
+					if(id == "jointOrientX")
+					{
+						values[3] += 90;
+						flip_fix = true;
+					}
+
+					if(flip)
+					{
+						var tmp = values[1];
+						values[1] = values[2];
+						values[2] = -tmp; //swap coords
+					}
+
+					quat.setAxisAngle(tmpq, values.subarray(0,3), values[3] * DEG2RAD);
+					quat.multiply(rotation,rotation,tmpq);
+				}
+				continue;
+			}
+
+			//scale
+			if(xml.localName == "scale")
+			{
+				var values = this.readContentAsFloats(xml);
+				if(flip)
+				{
+					var tmp = values[1];
+					values[1] = values[2];
+					values[2] = -tmp; //swap coords
+				}
+				scale.set(values);
+			}
+		}
+
+		if(flip && level > 0)
+		{
+			var tmp = translate[1];
+			translate[1] = translate[2];
+			translate[2] = -tmp; //swap coords
+		}
+		mat4.translate(matrix, matrix, translate);
+
+		mat4.fromQuat( tmpmatrix , rotation );
+		//mat4.rotateX(tmpmatrix, tmpmatrix, Math.PI * 0.5);
+		mat4.multiply( matrix, matrix, tmpmatrix );
+		mat4.scale( matrix, matrix, scale );
+
 
 		return matrix;
 	},
 
-	readGeometry: function(id)
+	readGeometry: function(id, flip)
 	{
 		var xmlgeometry = this._xmlroot.querySelector("geometry" + id);
 		if(!xmlgeometry) return null;
@@ -154,18 +279,6 @@ var parserDAE = {
 		var xmlvertices = xmlmesh.querySelector("vertices input");
 		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
-
-		//swap coords
-		if(1)
-		{
-			var tmp = 0;
-			for(var i = 0, l = vertices_source.length; i < l; i += 3)
-			{
-				tmp = vertices_source[i+1]; 
-				vertices_source[i+1] = vertices_source[i+2];
-				vertices_source[i+2] = -tmp; 
-			}
-		}
 
 		var xmlpolygons = xmlmesh.querySelector("polygons");
 		var xmlinputs = xmlpolygons.querySelectorAll("input");
@@ -301,6 +414,27 @@ var parserDAE = {
 			mesh.coords = new Float32Array(coordsArray);
 		if(indicesArray.length)
 			mesh.triangles = new Uint16Array(indicesArray);
+
+		//swap coords
+		if(flip)
+		{
+			var tmp = 0;
+			var array = mesh.vertices;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+
+			array = mesh.normals;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+		}
 
 		//extra info
 		var bounding = Parser.computeMeshBounding(mesh.vertices);
