@@ -18,11 +18,11 @@ var parserDAE = {
 		var xmlnodes = root.querySelector("visual_scene");
 		xmlnodes = xmlnodes.childNodes;
 
-		var meshes = {};
 		var scene = { 
 			object_type:"SceneTree", 
 			light: null,
-			meshes: meshes, 
+			meshes: {},
+			materials: {},
 			root:{ children:[] }
 		};
 
@@ -31,7 +31,7 @@ var parserDAE = {
 			if(xmlnodes[i].localName != "node")
 				continue;
 
-			var node = this.readNode( xmlnodes[i], meshes, 0, flip );
+			var node = this.readNode( xmlnodes[i], scene, 0, flip );
 			scene.root.children.push(node);
 		}
 
@@ -39,7 +39,7 @@ var parserDAE = {
 		return scene;
 	},
 
-	readNode: function(xmlnode, meshes, level, flip)
+	readNode: function(xmlnode, scene, level, flip)
 	{
 		var node_id = xmlnode.getAttribute("id");
 		var node_type = xmlnode.getAttribute("type");
@@ -52,7 +52,7 @@ var parserDAE = {
 			//children
 			if(xmlchild.localName == "node")
 			{
-				node.children.push( this.readNode(xmlchild, meshes, level+1, flip) );
+				node.children.push( this.readNode(xmlchild, scene, level+1, flip) );
 				continue;
 			}
 
@@ -63,14 +63,33 @@ var parserDAE = {
 			if(xmlchild.localName == "instance_geometry")
 			{
 				var url = xmlchild.getAttribute("url");
-				if(!meshes[ url ])
+				if(!scene.meshes[ url ])
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
-						meshes[url] = mesh_data;
+						scene.meshes[url] = mesh_data;
 				}
 
 				node.mesh = url;
+
+				//binded material
+				var xmlmaterial = xmlchild.querySelector("instance_material");
+				if(xmlmaterial)
+				{
+					var matname = xmlmaterial.getAttribute("symbol");
+					if(scene.materials[matname])
+						node.material = matname;
+					else
+					{
+						var material = this.readMaterial(matname);
+						if(material)
+						{
+							material.id = matname;
+							scene.materials[matname] = material;
+						}
+						node.material = matname;
+					}
+				}
 			}
 
 			//light
@@ -84,6 +103,68 @@ var parserDAE = {
 		}
 
 		return node;
+	},
+
+	translate_table: {
+		transparency: "opacity",
+		reflectivity: "reflection_factor",
+		specular: "specular_factor",
+		shininess: "specular_gloss",
+		emission: "emissive",
+		diffuse: "color"
+	},
+
+	readMaterial: function(url)
+	{
+		var xmlmaterial = this._xmlroot.querySelector("library_materials material#" + url);
+		if(!xmlmaterial) return null;
+
+		//get effect name
+		var xmleffect = xmlmaterial.querySelector("instance_effect");
+		if(!xmleffect) return null;
+
+		var effect_url = xmleffect.getAttribute("url");
+
+		//get effect
+		var xmleffects = this._xmlroot.querySelector("library_effects effect" + effect_url);
+		if(!xmleffects) return null;
+
+		//get common
+		var xmltechnique = xmleffects.querySelector("technique");
+		if(!xmltechnique) return null;
+
+		var material = {};
+
+		var xmlphong = xmltechnique.querySelector("phong");
+		if(!xmlphong) return null;
+
+		//colors
+		var xmlcolors = xmlphong.querySelectorAll("color");
+		for(var i = 0; i < xmlcolors.length; ++i)
+		{
+			var xmlcolor = xmlcolors[i];
+			var param = xmlcolor.getAttribute("sid");
+			if(this.translate_table[param])
+				param = this.translate_table[param];
+			material[param] = this.readContentAsFloats( xmlcolor ).subarray(0,3);
+			if(param == "specular_factor")
+				material[param] = (material[param][0] + material[param][1] + material[param][2]) / 3; //specular factor
+		}
+
+		//factors
+		var xmlfloats = xmlphong.querySelectorAll("float");
+		for(var i = 0; i < xmlfloats.length; ++i)
+		{
+			var xmlfloat = xmlfloats[i];
+			var param = xmlfloat.getAttribute("sid");
+			if(this.translate_table[param])
+				param = this.translate_table[param];
+			material[param] = this.readContentAsFloats( xmlfloat )[0];
+			if(param == "opacity")
+				material[param] = 1 - material[param]; //reverse 
+		}
+
+		return material;
 	},
 
 	readLight: function(node, url)
@@ -464,6 +545,7 @@ var parserDAE = {
 		if(!xmlnode) return null;
 		var text = xmlnode.textContent;
 		text = text.replace(/\n/gi, " "); //remove line breaks
+		text = text.replace(/\s\s/gi, " ");
 		text = text.trim(); //remove empty spaces
 		var numbers = text.split(" "); //create array
 		var length = xmlnode.getAttribute("count") || numbers.length;

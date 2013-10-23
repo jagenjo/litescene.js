@@ -17,7 +17,7 @@ function Material(o)
 
 	//this.shader = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.alpha = 1.0;
+	this.opacity = 1.0;
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
 	this.diffuse = new Float32Array([1.0,1.0,1.0]);
 	this.emissive = new Float32Array([0.0,0.0,0.0]);
@@ -63,12 +63,12 @@ Material.ADDITIVE_BLENDING = "additive";
 */
 Material.COLOR = "color";
 /**
-* Alpha. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.
-* @property alpha
+* Opacity. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.
+* @property opacity
 * @type {number}
 * @default 1
 */
-Material.ALPHA = "alpha";
+Material.OPACITY = "opacity";
 
 /**
 * Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING
@@ -448,7 +448,7 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 {
 	var shader_vars = shader.uniformLocations;
 
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || [0,0,0];
@@ -570,7 +570,7 @@ Material.prototype.configure = function(o)
 		switch(i)
 		{
 			//numbers
-			case "alpha": 
+			case "opacity": 
 			case "backlight_factor":
 			case "specular_factor":
 			case "specular_gloss":
@@ -600,6 +600,8 @@ Material.prototype.configure = function(o)
 			case "textures":
 				this.textures = o.textures;
 				continue;
+			case "transparency": //special cases
+				this.opacity = 1 - v;
 			default:
 				continue;
 		}
@@ -762,7 +764,7 @@ Material.prototype.getMaterialShaderData = function(instance, node, scene, optio
 	var that = this;
 
 	//uniforms
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || [0,0,0];

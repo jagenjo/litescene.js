@@ -2918,7 +2918,7 @@ function Material(o)
 
 	//this.shader = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.alpha = 1.0;
+	this.opacity = 1.0;
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
 	this.diffuse = new Float32Array([1.0,1.0,1.0]);
 	this.emissive = new Float32Array([0.0,0.0,0.0]);
@@ -2964,12 +2964,12 @@ Material.ADDITIVE_BLENDING = "additive";
 */
 Material.COLOR = "color";
 /**
-* Alpha. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.
-* @property alpha
+* Opacity. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.
+* @property opacity
 * @type {number}
 * @default 1
 */
-Material.ALPHA = "alpha";
+Material.OPACITY = "opacity";
 
 /**
 * Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING
@@ -3349,7 +3349,7 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 {
 	var shader_vars = shader.uniformLocations;
 
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || [0,0,0];
@@ -3471,7 +3471,7 @@ Material.prototype.configure = function(o)
 		switch(i)
 		{
 			//numbers
-			case "alpha": 
+			case "opacity": 
 			case "backlight_factor":
 			case "specular_factor":
 			case "specular_gloss":
@@ -3501,6 +3501,8 @@ Material.prototype.configure = function(o)
 			case "textures":
 				this.textures = o.textures;
 				continue;
+			case "transparency": //special cases
+				this.opacity = 1 - v;
 			default:
 				continue;
 		}
@@ -3663,7 +3665,7 @@ Material.prototype.getMaterialShaderData = function(instance, node, scene, optio
 	var that = this;
 
 	//uniforms
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.alpha]);
+	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || [0,0,0];
@@ -5509,12 +5511,14 @@ MeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
 		node.meshrenderer = this;
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 MeshRenderer.prototype.onRemovedFromNode = function(node)
 {
 	if(node.meshrenderer)
 		delete node["meshrenderer"];
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 /**
@@ -5578,7 +5582,8 @@ MeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
-MeshRenderer.prototype.getRenderInstance = function(options)
+//MeshRenderer.prototype.getRenderInstance = function(options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -5586,14 +5591,16 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var node = this._root;
 	if(!this._root) return;
 
+	/*
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
 	if(options.step == "main" && node.flags.seen_by_camera == false)
 		return null;
 	if(options.step == "shadow" && !node.flags.cast_shadows)
 		return null;
+	*/
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
@@ -5606,7 +5613,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
 	//RI.scene = Scene;
 
-	return RI;
+	instances.push(RI);
+	//return RI;
 }
 
 LS.registerComponent(MeshRenderer);
@@ -6017,6 +6025,16 @@ GeometricPrimitive.MESHES = null;
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
 
+GeometricPrimitive.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+GeometricPrimitive.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
 /**
 * Configure the component getting the info from the object
 * @method configure
@@ -6040,7 +6058,8 @@ GeometricPrimitive.prototype.serialize = function()
 	 return o;
 }
 
-GeometricPrimitive.prototype.getRenderInstance = function()
+//GeometricPrimitive.prototype.getRenderInstance = function()
+GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 {
 	//if(this.size == 0) return;
 	var mesh = null;
@@ -6073,7 +6092,7 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	else 
 		return null;
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 
@@ -6091,7 +6110,9 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
-	return RI;
+
+	instances.push(RI);
+	//return RI;
 }
 
 LS.registerComponent(GeometricPrimitive);
@@ -6443,7 +6464,7 @@ function ParticleEmissor(o)
 	this.particle_start_color = [1,1,1];
 	this.particle_end_color = [1,1,1];
 
-	this.particle_alpha_curve = [[0.5,1]];
+	this.particle_opacity_curve = [[0.5,1]];
 
 	this.texture_grid_size = 1;
 
@@ -6452,7 +6473,7 @@ function ParticleEmissor(o)
 	this.physics_friction = 0;
 
 	//material
-	this.alpha = 1;
+	this.opacity = 1;
 	this.additive_blending = false;
 	this.texture = null;
 	this.animation_fps = 1;
@@ -6505,12 +6526,14 @@ ParticleEmissor.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"update",this.onUpdate,this);
 	LEvent.bind(node,"start",this.onStart,this);
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 ParticleEmissor.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind(node,"update",this.onUpdate,this);
 	LEvent.unbind(node,"start",this.onStart,this);
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 ParticleEmissor.prototype.getResources = function(res)
@@ -6743,13 +6766,13 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 	//used for precompute curves to speed up (sampled at 60 frames per second)
 	var recompute_colors = true;
-	var alpha_curve = new Float32Array((this.particle_life * 60)<<0);
+	var opacity_curve = new Float32Array((this.particle_life * 60)<<0);
 	var size_curve = new Float32Array((this.particle_life * 60)<<0);
 
 	var dI = 1 / (this.particle_life * 60);
-	for(var i = 0; i < alpha_curve.length; i += 1)
+	for(var i = 0; i < opacity_curve.length; i += 1)
 	{
-		alpha_curve[i] = LS.getCurveValueAt(this.particle_alpha_curve,0,1,0, i * dI );
+		opacity_curve[i] = LS.getCurveValueAt(this.particle_opacity_curve,0,1,0, i * dI );
 		size_curve[i] = LS.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
 	}
 
@@ -6766,9 +6789,9 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 		f = 1.0 - p.life / this.particle_life;
 
-		if(recompute_colors) //compute color and alpha
+		if(recompute_colors) //compute color and opacity
 		{
-			var a = alpha_curve[(f*alpha_curve.length)<<0]; //getCurveValueAt(this.particle_alpha_curve,0,1,0,f);
+			var a = opacity_curve[(f*opacity_curve.length)<<0]; //getCurveValueAt(this.particle_opacity_curve,0,1,0,f);
 
 			if(this.independent_color && p.c)
 				vec3.clone(color,p.c);
@@ -6864,7 +6887,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 ParticleEmissor._identity = mat4.create();
 
-ParticleEmissor.prototype.getRenderInstance = function(options,camera)
+//ParticleEmissor.prototype.getRenderInstance = function(options,camera)
+ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, camera)
 {
 	if(!this._root) return;
 
@@ -6872,9 +6896,9 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 		this.updateMesh(camera);
 
 	if(!this._material)
-		this._material = new Material({ alpha: this.alpha - 0.01, shader:"lowglobalshader" });
+		this._material = new Material({ opacity: this.opacity - 0.01, shader:"lowglobalshader" });
 
-	this._material.alpha = this.alpha - 0.01; //try to keep it under 1
+	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture(this.texture);
 	this._material.blending = this.additive_blending ? Material.ADDITIVE_BLENDING : Material.NORMAL;
 	this._material.soft_particles = this.soft_particles;
@@ -6883,7 +6907,7 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	if(!this._mesh)
 		return null;
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -6894,7 +6918,9 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-	return RI;
+
+	instances.push(RI);
+	//return RI;
 }
 
 
@@ -7270,6 +7296,123 @@ TerrainRenderer.prototype.getRenderInstance = function()
 
 LS.registerComponent(TerrainRenderer);
 
+
+function Cloner(o)
+{
+	this.count = [10,1,1];
+	this.size = [100,100,100];
+	this.mesh = null;
+	this.lod_mesh = null;
+	this.material = null;
+	this.mode = Cloner.GRID_MODE;
+
+	if(o)
+		this.configure(o);
+
+	if(!Cloner._identity) //used to avoir garbage
+		Cloner._identity = mat4.create();
+}
+
+Cloner.GRID_MODE = 1;
+Cloner.RADIAL_MODE = 2;
+
+Cloner.icon = "mini-icon-teapot.png";
+
+//vars
+Cloner["@mesh"] = { widget: "mesh" };
+Cloner["@lod_mesh"] = { widget: "mesh" };
+Cloner["@mode"] = {widget:"combo", values: {"Grid":1, "Radial": 2}};
+Cloner["@count"] = {widget:"vector3", min:1, step:1 };
+
+Cloner.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+Cloner.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+Cloner.prototype.getMesh = function() {
+	if(typeof(this.mesh) === "string")
+		return ResourcesManager.meshes[this.mesh];
+	return this.mesh;
+}
+
+Cloner.prototype.getLODMesh = function() {
+	if(typeof(this.lod_mesh) === "string")
+		return ResourcesManager.meshes[this.lod_mesh];
+	return this.low_mesh;
+}
+
+Cloner.prototype.getResources = function(res)
+{
+	if(typeof(this.mesh) == "string")
+		res[this.mesh] = Mesh;
+	if(typeof(this.lod_mesh) == "string")
+		res[this.lod_mesh] = Mesh;
+	return res;
+}
+
+Cloner.prototype.onCollectInstances = function(e, instances)
+{
+	var mesh = this.getMesh();
+	if(!mesh) return null;
+
+	var node = this._root;
+	if(!this._root) return;
+
+	var total = this.count[0] * this.count[1] * this.count[2];
+
+	if(!this._RIs || this._RIs.length != total)
+	{
+		//create RIs
+		if(!this._RIs)
+			this._RIs = new Array(total);
+		else
+			this._RIs.length;
+
+		for(var i = 0; i < total; ++i)
+			if(!this._RIs[i])
+				this._RIs[i] = new RenderInstance(this._root, this);
+	}
+
+	var RIs = this._RIs;
+	var global = this._root.transform.getGlobalMatrix(mat4.create());
+	var material = this.material || this._root.getMaterial();
+
+	var hsize = vec3.scale( vec3.create(), this.size, 0.5 );
+	var offset = [0,0,0];
+	if(this.count[0] > 1) offset[0] = this.size[0] / (this.count[0]-1);
+	else hsize[0] = 0;
+	if(this.count[1] > 1) offset[1] = this.size[1] / (this.count[1]-1);
+	else hsize[1] = 0;
+	if(this.count[2] > 1) offset[2] = this.size[2] / (this.count[2]-1);
+	else hsize[2] = 0;
+
+
+	var i = 0;
+	var tmp = vec3.create(), zero = vec3.create();
+	for(var x = 0; x < this.count[0]; ++x)
+	for(var y = 0; y < this.count[1]; ++y)
+	for(var z = 0; z < this.count[2]; ++z)
+	{
+		var RI = RIs[i];
+		RI.mesh = mesh;
+		RI.material = material;
+		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
+		mat4.translate( RI.matrix, global, tmp );
+		mat4.multiplyVec3( RI.center, RI.matrix, zero );
+		++i;
+		instances.push(RI);
+	}
+
+	//return RI;
+}
+
+LS.registerComponent(Cloner);
+LS.Cloner = Cloner;
 if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
@@ -8523,11 +8666,13 @@ if(typeof(LiteGraph) != "undefined")
 //flags
 RenderInstance.TWO_SIDED = 1;
 
-function RenderInstance()
+function RenderInstance(node, component)
 {
 	this._key = "";
 	this._uid = LS.generateUId();
 	this.mesh = null;
+	this.node = node;
+	this.component = component;
 	this.primitive = gl.TRIANGLES;
 	this.material = null;
 	this.flags = 0;
@@ -8908,7 +9053,7 @@ var Renderer = {
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
 		}
-		else if(mat.alpha < 0.999 )
+		else if(mat.opacity < 0.999 )
 		{
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
@@ -9011,7 +9156,7 @@ var Renderer = {
 				opacity.bind(1);
 			}
 			shader = Shaders.get("depth",macros);
-			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.alpha], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
+			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.opacity], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
 		}
 		else
 		{
@@ -9073,10 +9218,14 @@ var Renderer = {
 		if (options.nodes)
 			nodes = options.nodes;
 		var camera = this.active_camera;
+		options.current_camera = camera;
 		var camera_eye = camera.getEye();
 
 		var opaque_meshes = [];
 		var alpha_meshes = [];
+
+		//collect render instances
+		var instances = [];
 		for(var i in nodes)
 		{
 			var node = nodes[i];
@@ -9090,37 +9239,42 @@ var Renderer = {
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
 
-			//render component renderinstances
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				//extract renderable object from this component
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
+			LEvent.trigger(node,"collectRenderInstances", instances, options );
+		}
 
-				if(!instance.material)
-					instance.material = this._default_material;
+		/*
+		for(var j in node._components)
+		{
+			//extract renderable object from this component
+			var component = node._components[j];
+			if( !component.getRenderInstance ) continue;
+			var instance = component.getRenderInstance(options, this.active_camera);
+		*/
 
-				//add extra info
-				instance.computeNormalMatrix();
-				instance.node = node;
-				instance.component = component;
-				instance._dist = vec3.dist( instance.center, camera_eye );
+		//complete render instances
+		for(var i in instances)
+		{
+			var instance = instances[i];
+			if(!instance) continue;
 
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
+			if(!instance.material)
+				instance.material = this._default_material;
 
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-			}
+			//add extra info
+			instance.computeNormalMatrix();
+			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//change conditionaly
+			if(options.force_wireframe) instance.primitive = gl.LINES;
+			if(instance.primitive == gl.LINES && !instance.mesh.lines)
+				instance.mesh.computeWireframe();
+
+			//and finally, the alpha thing to determine if it is visible or not
+			var mat = instance.material;
+			if(mat.opacity >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+				opaque_meshes.push(instance);
+			else //if(!options.is_shadowmap)
+				alpha_meshes.push(instance);
 		}
 
 		//sort nodes in Z
@@ -10322,11 +10476,11 @@ var parserDAE = {
 		var xmlnodes = root.querySelector("visual_scene");
 		xmlnodes = xmlnodes.childNodes;
 
-		var meshes = {};
 		var scene = { 
 			object_type:"SceneTree", 
 			light: null,
-			meshes: meshes, 
+			meshes: {},
+			materials: {},
 			root:{ children:[] }
 		};
 
@@ -10335,7 +10489,7 @@ var parserDAE = {
 			if(xmlnodes[i].localName != "node")
 				continue;
 
-			var node = this.readNode( xmlnodes[i], meshes, 0, flip );
+			var node = this.readNode( xmlnodes[i], scene, 0, flip );
 			scene.root.children.push(node);
 		}
 
@@ -10343,7 +10497,7 @@ var parserDAE = {
 		return scene;
 	},
 
-	readNode: function(xmlnode, meshes, level, flip)
+	readNode: function(xmlnode, scene, level, flip)
 	{
 		var node_id = xmlnode.getAttribute("id");
 		var node_type = xmlnode.getAttribute("type");
@@ -10356,7 +10510,7 @@ var parserDAE = {
 			//children
 			if(xmlchild.localName == "node")
 			{
-				node.children.push( this.readNode(xmlchild, meshes, level+1, flip) );
+				node.children.push( this.readNode(xmlchild, scene, level+1, flip) );
 				continue;
 			}
 
@@ -10367,14 +10521,33 @@ var parserDAE = {
 			if(xmlchild.localName == "instance_geometry")
 			{
 				var url = xmlchild.getAttribute("url");
-				if(!meshes[ url ])
+				if(!scene.meshes[ url ])
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
-						meshes[url] = mesh_data;
+						scene.meshes[url] = mesh_data;
 				}
 
 				node.mesh = url;
+
+				//binded material
+				var xmlmaterial = xmlchild.querySelector("instance_material");
+				if(xmlmaterial)
+				{
+					var matname = xmlmaterial.getAttribute("symbol");
+					if(scene.materials[matname])
+						node.material = matname;
+					else
+					{
+						var material = this.readMaterial(matname);
+						if(material)
+						{
+							material.id = matname;
+							scene.materials[matname] = material;
+						}
+						node.material = matname;
+					}
+				}
 			}
 
 			//light
@@ -10388,6 +10561,68 @@ var parserDAE = {
 		}
 
 		return node;
+	},
+
+	translate_table: {
+		transparency: "opacity",
+		reflectivity: "reflection_factor",
+		specular: "specular_factor",
+		shininess: "specular_gloss",
+		emission: "emissive",
+		diffuse: "color"
+	},
+
+	readMaterial: function(url)
+	{
+		var xmlmaterial = this._xmlroot.querySelector("library_materials material#" + url);
+		if(!xmlmaterial) return null;
+
+		//get effect name
+		var xmleffect = xmlmaterial.querySelector("instance_effect");
+		if(!xmleffect) return null;
+
+		var effect_url = xmleffect.getAttribute("url");
+
+		//get effect
+		var xmleffects = this._xmlroot.querySelector("library_effects effect" + effect_url);
+		if(!xmleffects) return null;
+
+		//get common
+		var xmltechnique = xmleffects.querySelector("technique");
+		if(!xmltechnique) return null;
+
+		var material = {};
+
+		var xmlphong = xmltechnique.querySelector("phong");
+		if(!xmlphong) return null;
+
+		//colors
+		var xmlcolors = xmlphong.querySelectorAll("color");
+		for(var i = 0; i < xmlcolors.length; ++i)
+		{
+			var xmlcolor = xmlcolors[i];
+			var param = xmlcolor.getAttribute("sid");
+			if(this.translate_table[param])
+				param = this.translate_table[param];
+			material[param] = this.readContentAsFloats( xmlcolor ).subarray(0,3);
+			if(param == "specular_factor")
+				material[param] = (material[param][0] + material[param][1] + material[param][2]) / 3; //specular factor
+		}
+
+		//factors
+		var xmlfloats = xmlphong.querySelectorAll("float");
+		for(var i = 0; i < xmlfloats.length; ++i)
+		{
+			var xmlfloat = xmlfloats[i];
+			var param = xmlfloat.getAttribute("sid");
+			if(this.translate_table[param])
+				param = this.translate_table[param];
+			material[param] = this.readContentAsFloats( xmlfloat )[0];
+			if(param == "opacity")
+				material[param] = 1 - material[param]; //reverse 
+		}
+
+		return material;
 	},
 
 	readLight: function(node, url)
@@ -10768,6 +11003,7 @@ var parserDAE = {
 		if(!xmlnode) return null;
 		var text = xmlnode.textContent;
 		text = text.replace(/\n/gi, " "); //remove line breaks
+		text = text.replace(/\s\s/gi, " ");
 		text = text.trim(); //remove empty spaces
 		var numbers = text.split(" "); //create array
 		var length = xmlnode.getAttribute("count") || numbers.length;
@@ -11382,7 +11618,6 @@ Parser.registerParser( parserTGA );
 
 function SceneTree()
 {
-	this._on_scene = this; //a scene belongs to itself
 	this._uid = LS.generateUId();
 
 	this._root = new LS.SceneNode("root");
@@ -11667,8 +11902,8 @@ SceneTree.prototype.appendScene = function(scene)
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_scene && node._on_scene != this)
-		node._on_scene.removeNode(node);
+	if(node._on_tree && node._on_tree != this)
+		node._on_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -11684,7 +11919,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_scene = this;
+	node._on_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -11707,8 +11942,8 @@ SceneTree.prototype.addNode = function(node, index)
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_scene && node._on_scene != this)
-		node._on_scene.removeNode(node);
+	if(node._on_tree && node._on_tree != this)
+		node._on_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -11724,7 +11959,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_scene = this;
+	node._on_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -11755,7 +11990,7 @@ SceneTree.prototype.removeNode = function(node)
 		this.nodes.splice(pos,1);
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
-		node._on_scene = null;
+		node._on_tree = null;
 		node.processActionInComponents("onRemovedFromNode",this); //send to components
 		node.processActionInComponents("onRemovedFromScene",this); //send to components
 		LEvent.trigger(this,"nodeRemoved", node);
@@ -12110,7 +12345,7 @@ SceneNode.prototype.setId = function(new_id)
 {
 	if(this.id == new_id) return true; //no changes
 
-	var scene = this._on_scene;
+	var scene = this._on_tree;
 	if(!scene)
 	{
 		this.id = new_id;
@@ -12142,7 +12377,11 @@ SceneNode.prototype.getResources = function(res)
 			this._components[i].getResources( res );
 	//res in material
 	if(this.material)
-		this.getMaterial().getResources( res );
+	{
+		var mat = this.getMaterial();
+		if(mat)
+			mat.getResources( res );
+	}
 	return res;
 }
 
@@ -12234,7 +12473,7 @@ SceneNode.prototype.getMaterial = function()
 {
 	if (!this.material) return null;
 	if(this.material.constructor === String)
-		return this._on_scene ? this._on_scene.materials[this.material] : null;
+		return this._on_tree ? this._on_tree.materials[this.material] : null;
 	return this.material;
 }
 
@@ -12264,7 +12503,7 @@ SceneNode.prototype.getTexture = function(channel) {
 
 SceneNode.prototype.clone = function()
 {
-	var scene = this._on_scene;
+	var scene = this._on_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
 	var newnode = new SceneNode( new_child_name );
@@ -12329,9 +12568,9 @@ SceneNode.prototype.configure = function(info)
 	/*
 	if(info.parent_id) //name of the parent
 	{
-		if(this._on_scene)
+		if(this._on_tree)
 		{
-			var parent = this._on_scene.getNode( info.parent_id );
+			var parent = this._on_tree.getNode( info.parent_id );
 			if(parent) 
 				parent.addChild( this );
 		}
@@ -12445,11 +12684,11 @@ SceneNode.prototype.addChild = function(node, recompute_transform )
 	if(node.parentNode && node.parentNode.constructor == SceneNode)
 	{
 		node.parentNode.removeChild(this);
-		if(node._on_scene != this._on_scene)
+		if(node._on_tree != this._on_tree)
 		{
-			if(node._on_scene)
-				node._on_scene.removeNode(node);
-			this._on_scene.addNode(node);
+			if(node._on_tree)
+				node._on_tree.removeNode(node);
+			this._on_tree.addNode(node);
 		}
 	}
 

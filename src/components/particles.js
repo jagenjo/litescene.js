@@ -16,7 +16,7 @@ function ParticleEmissor(o)
 	this.particle_start_color = [1,1,1];
 	this.particle_end_color = [1,1,1];
 
-	this.particle_alpha_curve = [[0.5,1]];
+	this.particle_opacity_curve = [[0.5,1]];
 
 	this.texture_grid_size = 1;
 
@@ -25,7 +25,7 @@ function ParticleEmissor(o)
 	this.physics_friction = 0;
 
 	//material
-	this.alpha = 1;
+	this.opacity = 1;
 	this.additive_blending = false;
 	this.texture = null;
 	this.animation_fps = 1;
@@ -78,12 +78,14 @@ ParticleEmissor.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"update",this.onUpdate,this);
 	LEvent.bind(node,"start",this.onStart,this);
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 ParticleEmissor.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind(node,"update",this.onUpdate,this);
 	LEvent.unbind(node,"start",this.onStart,this);
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 ParticleEmissor.prototype.getResources = function(res)
@@ -316,13 +318,13 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 	//used for precompute curves to speed up (sampled at 60 frames per second)
 	var recompute_colors = true;
-	var alpha_curve = new Float32Array((this.particle_life * 60)<<0);
+	var opacity_curve = new Float32Array((this.particle_life * 60)<<0);
 	var size_curve = new Float32Array((this.particle_life * 60)<<0);
 
 	var dI = 1 / (this.particle_life * 60);
-	for(var i = 0; i < alpha_curve.length; i += 1)
+	for(var i = 0; i < opacity_curve.length; i += 1)
 	{
-		alpha_curve[i] = LS.getCurveValueAt(this.particle_alpha_curve,0,1,0, i * dI );
+		opacity_curve[i] = LS.getCurveValueAt(this.particle_opacity_curve,0,1,0, i * dI );
 		size_curve[i] = LS.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
 	}
 
@@ -339,9 +341,9 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 		f = 1.0 - p.life / this.particle_life;
 
-		if(recompute_colors) //compute color and alpha
+		if(recompute_colors) //compute color and opacity
 		{
-			var a = alpha_curve[(f*alpha_curve.length)<<0]; //getCurveValueAt(this.particle_alpha_curve,0,1,0,f);
+			var a = opacity_curve[(f*opacity_curve.length)<<0]; //getCurveValueAt(this.particle_opacity_curve,0,1,0,f);
 
 			if(this.independent_color && p.c)
 				vec3.clone(color,p.c);
@@ -437,7 +439,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 ParticleEmissor._identity = mat4.create();
 
-ParticleEmissor.prototype.getRenderInstance = function(options,camera)
+//ParticleEmissor.prototype.getRenderInstance = function(options,camera)
+ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, camera)
 {
 	if(!this._root) return;
 
@@ -445,9 +448,9 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 		this.updateMesh(camera);
 
 	if(!this._material)
-		this._material = new Material({ alpha: this.alpha - 0.01, shader:"lowglobalshader" });
+		this._material = new Material({ opacity: this.opacity - 0.01, shader:"lowglobalshader" });
 
-	this._material.alpha = this.alpha - 0.01; //try to keep it under 1
+	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture(this.texture);
 	this._material.blending = this.additive_blending ? Material.ADDITIVE_BLENDING : Material.NORMAL;
 	this._material.soft_particles = this.soft_particles;
@@ -456,7 +459,7 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	if(!this._mesh)
 		return null;
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -467,7 +470,9 @@ ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-	return RI;
+
+	instances.push(RI);
+	//return RI;
 }
 
 

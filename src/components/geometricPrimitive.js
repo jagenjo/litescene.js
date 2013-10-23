@@ -28,6 +28,16 @@ GeometricPrimitive.MESHES = null;
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
 
+GeometricPrimitive.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+GeometricPrimitive.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
 /**
 * Configure the component getting the info from the object
 * @method configure
@@ -51,7 +61,8 @@ GeometricPrimitive.prototype.serialize = function()
 	 return o;
 }
 
-GeometricPrimitive.prototype.getRenderInstance = function()
+//GeometricPrimitive.prototype.getRenderInstance = function()
+GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 {
 	//if(this.size == 0) return;
 	var mesh = null;
@@ -84,7 +95,7 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	else 
 		return null;
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 
@@ -102,7 +113,9 @@ GeometricPrimitive.prototype.getRenderInstance = function()
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
-	return RI;
+
+	instances.push(RI);
+	//return RI;
 }
 
 LS.registerComponent(GeometricPrimitive);

@@ -27,12 +27,14 @@ MeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
 		node.meshrenderer = this;
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 MeshRenderer.prototype.onRemovedFromNode = function(node)
 {
 	if(node.meshrenderer)
 		delete node["meshrenderer"];
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 /**
@@ -96,7 +98,8 @@ MeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
-MeshRenderer.prototype.getRenderInstance = function(options)
+//MeshRenderer.prototype.getRenderInstance = function(options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -104,14 +107,16 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var node = this._root;
 	if(!this._root) return;
 
+	/*
 	if(options.step == "reflection" && !node.flags.seen_by_reflections)
 		return null;
 	if(options.step == "main" && node.flags.seen_by_camera == false)
 		return null;
 	if(options.step == "shadow" && !node.flags.cast_shadows)
 		return null;
+	*/
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
@@ -124,7 +129,8 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
 	//RI.scene = Scene;
 
-	return RI;
+	instances.push(RI);
+	//return RI;
 }
 
 LS.registerComponent(MeshRenderer);

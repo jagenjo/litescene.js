@@ -256,7 +256,7 @@ var Renderer = {
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
 		}
-		else if(mat.alpha < 0.999 )
+		else if(mat.opacity < 0.999 )
 		{
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
@@ -359,7 +359,7 @@ var Renderer = {
 				opacity.bind(1);
 			}
 			shader = Shaders.get("depth",macros);
-			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.alpha], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
+			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.opacity], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
 		}
 		else
 		{
@@ -421,10 +421,14 @@ var Renderer = {
 		if (options.nodes)
 			nodes = options.nodes;
 		var camera = this.active_camera;
+		options.current_camera = camera;
 		var camera_eye = camera.getEye();
 
 		var opaque_meshes = [];
 		var alpha_meshes = [];
+
+		//collect render instances
+		var instances = [];
 		for(var i in nodes)
 		{
 			var node = nodes[i];
@@ -438,37 +442,42 @@ var Renderer = {
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
 
-			//render component renderinstances
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				//extract renderable object from this component
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
+			LEvent.trigger(node,"collectRenderInstances", instances, options );
+		}
 
-				if(!instance.material)
-					instance.material = this._default_material;
+		/*
+		for(var j in node._components)
+		{
+			//extract renderable object from this component
+			var component = node._components[j];
+			if( !component.getRenderInstance ) continue;
+			var instance = component.getRenderInstance(options, this.active_camera);
+		*/
 
-				//add extra info
-				instance.computeNormalMatrix();
-				instance.node = node;
-				instance.component = component;
-				instance._dist = vec3.dist( instance.center, camera_eye );
+		//complete render instances
+		for(var i in instances)
+		{
+			var instance = instances[i];
+			if(!instance) continue;
 
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
+			if(!instance.material)
+				instance.material = this._default_material;
 
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-			}
+			//add extra info
+			instance.computeNormalMatrix();
+			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//change conditionaly
+			if(options.force_wireframe) instance.primitive = gl.LINES;
+			if(instance.primitive == gl.LINES && !instance.mesh.lines)
+				instance.mesh.computeWireframe();
+
+			//and finally, the alpha thing to determine if it is visible or not
+			var mat = instance.material;
+			if(mat.opacity >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
+				opaque_meshes.push(instance);
+			else //if(!options.is_shadowmap)
+				alpha_meshes.push(instance);
 		}
 
 		//sort nodes in Z

@@ -9,11 +9,13 @@
 //flags
 RenderInstance.TWO_SIDED = 1;
 
-function RenderInstance()
+function RenderInstance(node, component)
 {
 	this._key = "";
 	this._uid = LS.generateUId();
 	this.mesh = null;
+	this.node = node;
+	this.component = component;
 	this.primitive = gl.TRIANGLES;
 	this.material = null;
 	this.flags = 0;
