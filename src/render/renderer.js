@@ -215,6 +215,7 @@ var Renderer = {
 		//EVENT SCENE after_render
 	},
 
+	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderMultiPassInstance: function(step, instance, lights, options)
 	{
 		//for every light
@@ -432,8 +433,14 @@ var Renderer = {
 		for(var i in nodes)
 		{
 			var node = nodes[i];
+
+			//trigger event
 			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
 
+			//compute global matrix
+			//TODO
+			
+			//*
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
 				continue;
@@ -441,18 +448,11 @@ var Renderer = {
 				continue;
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
+			//*/
 
-			LEvent.trigger(node,"collectRenderInstances", instances, options );
+			//get render instances
+			LEvent.trigger(node,"collectRenderInstances", instances );
 		}
-
-		/*
-		for(var j in node._components)
-		{
-			//extract renderable object from this component
-			var component = node._components[j];
-			if( !component.getRenderInstance ) continue;
-			var instance = component.getRenderInstance(options, this.active_camera);
-		*/
 
 		//complete render instances
 		for(var i in instances)
@@ -491,7 +491,10 @@ var Renderer = {
 
 		this._alpha_meshes = alpha_meshes;
 		this._opaque_meshes = opaque_meshes;
+		//merge
 		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+
+		//compute boundings
 	},
 
 	null_light: null,

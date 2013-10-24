@@ -39,26 +39,77 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
-	LEvent.trigger(this,"nodeAdded", node);
+	LEvent.trigger(this,"childAdded", node);
 	if(this._on_tree)
-		LEvent.trigger(this._on_tree, "nodeAdded", node);
+	{
+		LEvent.trigger(this._on_tree, "treeItemAdded", node);
+		inner_recursive(node);
+	}
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(!child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, "treeItemAdded", child );
+				child._on_tree = item._on_tree;
+			}
+			inner_recursive( child );
+		}
+	}
 }
 
+/**
+* Removes the node from its parent (and from the scene tree)
+*
+* @method removeChild
+* @param {Node} node this child to remove
+* @param {Object} options 
+* @return {Boolean} returns true if it was found and removed
+*/
 CompositePattern.prototype.removeChild = function(node, options)
 {
-	if(!this._children || node._parentNode != this) return;
-	if( node._parentNode != this) return; //not his son
+	if(!this._children || node._parentNode != this) return false;
+	if( node._parentNode != this) return false; //not his son
 	var pos = this._children.indexOf(node);
-	if(pos == -1) return; //not his son ¿?
+	if(pos == -1) return false; //not his son ¿?
 	this._children.splice(pos,1);
 
 	if(this._onChildRemoved)
 		this._onChildRemoved(node, options);
 
-	LEvent.trigger(this,"nodeRemoved", node);
+	LEvent.trigger(this,"childRemoved", node);
+
 	if(this._on_tree)
-		LEvent.trigger(this._on_tree, "nodeRemoved", node);
+	{
+		LEvent.trigger(this._on_tree, "treeItemRemoved", node);
+
+		//propagate to childs
+		inner_recursive(node);
+	}
 	this._on_tree = null;
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, "treeItemRemoved", child );
+				child._on_tree = null;
+			}
+			inner_recursive( child );
+		}
+	}
+
+	return true;
 }
 
 CompositePattern.prototype.serializeChildren = function()

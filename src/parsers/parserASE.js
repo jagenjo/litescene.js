@@ -131,7 +131,7 @@ var parserASE = {
 			groups.push(group);
 		}
 
-		var mesh = {};
+		var mesh = { info: {} };
 
 		mesh.vertices = new Float32Array(positionsArray);
 		if (normalsArray.length > 0)
@@ -140,11 +140,9 @@ var parserASE = {
 			mesh.coords = new Float32Array(texcoordsArray);
 
 		//extra info
-		var bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
 		if(groups.length > 1)
-			info.groups = groups;
-		mesh.info = info;
-
+			mesh.info.groups = groups;
 		return mesh;
 	}
 };

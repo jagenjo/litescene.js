@@ -21,7 +21,18 @@ MeshRenderer.icon = "mini-icon-teapot.png";
 MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
 MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
+	var component = this.component;
+	var mesh = component.getMesh();
+	if(!mesh) return null;
+	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)
+		return null;
 
+	var t = {"all":null};
+	for(var i = 0; i < mesh.info.groups.length; ++i)
+		t[mesh.info.groups[i].name] = i;
+	return t;
+}};
 
 MeshRenderer.prototype.onAddedToNode = function(node)
 {
@@ -122,7 +133,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
-	//RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 && this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)

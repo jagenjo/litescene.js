@@ -96,21 +96,21 @@ var Shaders = {
 		{
 			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
 			shader.name = name;
-			trace("Shader compiled: " + name);
+			console.log("Shader compiled: " + name);
 		}
 		catch (err)
 		{
-			trace("Error compiling shader: " + name);
-			trace(err);
-			trace("VS CODE\n************");
+			console.log("Error compiling shader: " + name);
+			console.log(err);
+			console.log("VS CODE\n************");
 			var lines = (this.global_extra_code + vs_code).split("\n");
 			for(var i in lines)
-				trace(i + ": " + lines[i]);
+				console.log(i + ": " + lines[i]);
 
-			trace("PS CODE\n************");
+			console.log("PS CODE\n************");
 			lines = (this.global_extra_code + ps_code).split("\n");
 			for(var i in lines)
-				trace(i + ": " + lines[i]);
+				console.log(i + ": " + lines[i]);
 
 			return null;
 		}
@@ -139,7 +139,7 @@ var Shaders = {
 		  url: url + nocache,
 		  dataType: 'xml',
 		  success: function(response){
-				trace("Shaders XML loaded");
+				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
 					Shaders.globals = {};
@@ -150,7 +150,7 @@ var Shaders = {
 					on_complete();
 		  },
 		  error: function(err){
-			  trace("Error parsing Shaders XML: " + err);
+			  console.log("Error parsing Shaders XML: " + err);
 			  throw("Error parsing Shaders XML: " + err);
 		  }
 		});	
@@ -184,7 +184,7 @@ var Shaders = {
 
 			if(!vs_code || !ps_code)
 			{
-				trace("no code in shader: " + id);
+				console.log("no code in shader: " + id);
 				continue;
 			}
 
@@ -208,14 +208,14 @@ var Shaders = {
 		//TODO: missing #ifndef and #define
 		//regexMap( /USE_\w+/g, vs_code + ps_code, function(v) {
 		regexMap( /#ifdef\s\w+/g, vs_code + ps_code, function(v) {
-			//trace(v);
+			//console.log(v);
 			macros_found[v[0].split(' ')[1]] = true;
 		});
 		*/
 		/*
 		var m = /USE_\w+/g.exec(vs_code + ps_code);
 		if(m)
-			trace(m);
+			console.log(m);
 		*/
 
 		var num_macros = 0;

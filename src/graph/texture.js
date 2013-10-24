@@ -481,6 +481,91 @@ if(typeof(LiteGraph) != "undefined")
 	window.LGraphTextureCopy = LGraphTextureCopy;
 
 	// Texture Mix *****************************************
+	function LGraphTextureChannels()
+	{
+		this.addInput("Texture","Texture");
+
+		this.addOutput("R","Texture");
+		this.addOutput("G","Texture");
+		this.addOutput("B","Texture");
+		this.addOutput("A","Texture");
+
+		this.properties = {};
+		if(!LGraphTextureChannels._shader)
+			LGraphTextureChannels._shader = new GL.Shader( LGraphTextureChannels.vertex_shader, LGraphTextureChannels.pixel_shader );
+	}
+
+	LGraphTextureChannels.title = "Channels";
+	LGraphTextureChannels.desc = "Split texture channels";
+
+	LGraphTextureChannels.prototype.onExecute = function()
+	{
+		var texA = this.getInputData(0);
+		if(!texA) return;
+
+		if(!this._channels)
+			this._channels = Array(4);
+
+		var connections = 0;
+		for(var i = 0; i < 4; i++)
+		{
+			if(this.isOutputConnected(i))
+			{
+				if(!this._channels[i] || this._channels[i].width != texA.width || this._channels[i].height != texA.height || this._channels[i].type != texA.type)
+					this._channels[i] = new GL.Texture( texA.width, texA.height, { type: texA.type, format: gl.RGBA, filter: gl.LINEAR });
+				connections++;
+			}
+			else
+				this._channels[i] = null;
+		}
+
+		if(!connections)
+			return;
+
+		gl.disable( gl.BLEND );
+		gl.disable( gl.DEPTH_TEST );
+
+		var mesh = Mesh.getScreenQuad();
+		var shader = LGraphTextureChannels._shader;
+		var masks = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+
+		for(var i = 0; i < 4; i++)
+		{
+			if(!this._channels[i])
+				continue;
+
+			this._channels[i].drawTo( function() {
+				texA.bind(0);
+				shader.uniforms({u_texture:0, u_mask: masks[i]}).draw(mesh);
+			});
+			this.setOutputData(i, this._channels[i]);
+		}
+	}
+
+	LGraphTextureChannels.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			void main() {\n\
+				v_coord = a_coord; gl_Position = vec4(v_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureChannels.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 v_coord;\n\
+			uniform sampler2D u_texture;\n\
+			uniform vec4 u_mask;\n\
+			\n\
+			void main() {\n\
+			   gl_FragColor = vec4( vec3( length( texture2D(u_texture, v_coord) * u_mask )), 1.0 );\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/channels", LGraphTextureChannels );
+	window.LGraphTextureChannels = LGraphTextureChannels;
+
+	// Texture Mix *****************************************
 	function LGraphTextureMix()
 	{
 		this.addInput("A","Texture");

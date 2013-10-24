@@ -73,7 +73,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		if(!this._RIs)
 			this._RIs = new Array(total);
 		else
-			this._RIs.length;
+			this._RIs.length = total;
 
 		for(var i = 0; i < total; ++i)
 			if(!this._RIs[i])

@@ -1674,21 +1674,21 @@ var Shaders = {
 		{
 			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
 			shader.name = name;
-			trace("Shader compiled: " + name);
+			console.log("Shader compiled: " + name);
 		}
 		catch (err)
 		{
-			trace("Error compiling shader: " + name);
-			trace(err);
-			trace("VS CODE\n************");
+			console.log("Error compiling shader: " + name);
+			console.log(err);
+			console.log("VS CODE\n************");
 			var lines = (this.global_extra_code + vs_code).split("\n");
 			for(var i in lines)
-				trace(i + ": " + lines[i]);
+				console.log(i + ": " + lines[i]);
 
-			trace("PS CODE\n************");
+			console.log("PS CODE\n************");
 			lines = (this.global_extra_code + ps_code).split("\n");
 			for(var i in lines)
-				trace(i + ": " + lines[i]);
+				console.log(i + ": " + lines[i]);
 
 			return null;
 		}
@@ -1717,7 +1717,7 @@ var Shaders = {
 		  url: url + nocache,
 		  dataType: 'xml',
 		  success: function(response){
-				trace("Shaders XML loaded");
+				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
 					Shaders.globals = {};
@@ -1728,7 +1728,7 @@ var Shaders = {
 					on_complete();
 		  },
 		  error: function(err){
-			  trace("Error parsing Shaders XML: " + err);
+			  console.log("Error parsing Shaders XML: " + err);
 			  throw("Error parsing Shaders XML: " + err);
 		  }
 		});	
@@ -1762,7 +1762,7 @@ var Shaders = {
 
 			if(!vs_code || !ps_code)
 			{
-				trace("no code in shader: " + id);
+				console.log("no code in shader: " + id);
 				continue;
 			}
 
@@ -1786,14 +1786,14 @@ var Shaders = {
 		//TODO: missing #ifndef and #define
 		//regexMap( /USE_\w+/g, vs_code + ps_code, function(v) {
 		regexMap( /#ifdef\s\w+/g, vs_code + ps_code, function(v) {
-			//trace(v);
+			//console.log(v);
 			macros_found[v[0].split(' ')[1]] = true;
 		});
 		*/
 		/*
 		var m = /USE_\w+/g.exec(vs_code + ps_code);
 		if(m)
-			trace(m);
+			console.log(m);
 		*/
 
 		var num_macros = 0;
@@ -2408,7 +2408,7 @@ var ResourcesManager = {
 			return resource;
 		}
 
-		trace("Unknown resource loaded");
+		console.log("Unknown resource loaded");
 	},
 	
 	/**
@@ -2483,14 +2483,6 @@ var ResourcesManager = {
 			settings.dataType = 'xml';
 		else if(res_info.format == Parser.BINARY_FORMAT)
 			settings.dataType = 'binary';
-		/*
-		else if(res_info.format == Parser.BINARY_FORMAT) //force binary type
-		{
-			settings.dataType = null;
-			//settings.mimeType = "text/plain; charset=x-user-defined";
-			settings.mimeType = "application/octet-stream";
-		}
-		*/
 
 		LS.request(settings);
 		return false;
@@ -2595,7 +2587,7 @@ var ResourcesManager = {
 
 		var nocache = this.getNoCache();
 
-		trace("Processing image: " + url);
+		//console.log("Processing image: " + url);
 		var res_info = Parser.getResourceInfo(url);
 		if(res_info.type == Parser.IMAGE_DATA)
 		{
@@ -2610,7 +2602,7 @@ var ResourcesManager = {
 				ResourcesManager._resource_loaded_success(url,texture);
 			}
 
-			//img.onprogress = function(e) { trace("Image: " + url + "    " + e); }
+			//img.onprogress = function(e) { console.log("Image: " + url + "    " + e); }
 			img.onerror = function(err) { ResourcesManager._resource_loaded_error(url,err); }
 
 			img.src = full_url + nocache;
@@ -2658,7 +2650,7 @@ var ResourcesManager = {
 
 		if (img.width > this.MAX_TEXTURE_SIZE)
 		{
-			trace("too big, max is " + this.MAX_TEXTURE_SIZE);
+			console.log("too big, max is " + this.MAX_TEXTURE_SIZE);
 			return null;
 		}
 		/*
@@ -2666,13 +2658,13 @@ var ResourcesManager = {
 		{
 			if(img.width != (img.height / 6) && (img.height % 6) != 0)
 			{
-				trace("Warning: Image must be square (same width and height)");
+				console.log("Warning: Image must be square (same width and height)");
 				//return null;
 			}
 		}
 		else if ( ((Math.log(img.width) / Math.log(2)) % 1) != 0 || ((Math.log(img.height) / Math.log(2)) % 1) != 0)
 		{
-			trace("Image dimensions must be power of two (64,128,256,512)");
+			console.log("Image dimensions must be power of two (64,128,256,512)");
 			return null;
 		}
 		*/
@@ -2682,7 +2674,7 @@ var ResourcesManager = {
 			var texture = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
-			trace("DDS created");
+			console.log("DDS created");
 		}
 		else if(img.width == (img.height / 6)) //cubemap
 		{
@@ -2690,7 +2682,7 @@ var ResourcesManager = {
 			texture.img = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
-			trace("Cubemap created");
+			console.log("Cubemap created");
 		}
 		else //regular texture
 		{
@@ -2750,7 +2742,7 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resources
 	*/
 
-	loadResources: function(res, options)
+	loadResources: function(res, options )
 	{
 		for(var i in res)
 		{
@@ -2792,7 +2784,7 @@ var ResourcesManager = {
 		else if(type == "Material")
 			Scene.materials[filename] = res;
 		else
-			trace("Unknown res type: " + type);
+			console.log("Unknown res type: " + type);
 
 		this.resources[filename] = res;
 		LEvent.trigger(this,"resource_loaded", res);
@@ -2826,9 +2818,11 @@ var ResourcesManager = {
 
 	//*************************************
 
+	//Called after a resource has been loaded successfully and processed
 	_resource_loaded_success: function(url,res)
 	{
-		//trace("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
+		if( LS.ResourcesManager.debug )
+			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
 		for(var i in ResourcesManager.resources_being_loaded[url])
 		{
 			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
@@ -2839,13 +2833,15 @@ var ResourcesManager = {
 			delete ResourcesManager.resources_being_loaded[url];
 			ResourcesManager.num_resources_being_loaded--;
 			if( ResourcesManager.num_resources_being_loaded == 0)
+			{
 				LEvent.trigger( ResourcesManager, "end_loading_resources");
+			}
 		}
 	},
 
 	_resource_loaded_error: function(url, error)
 	{
-		trace("Error loading " + url);
+		console.log("Error loading " + url);
 		delete ResourcesManager.resources_being_loaded[url];
 		LEvent.trigger( ResourcesManager, "resource_not_found", url);
 		ResourcesManager.num_resources_being_loaded--;
@@ -4073,26 +4069,77 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
-	LEvent.trigger(this,"nodeAdded", node);
+	LEvent.trigger(this,"childAdded", node);
 	if(this._on_tree)
-		LEvent.trigger(this._on_tree, "nodeAdded", node);
+	{
+		LEvent.trigger(this._on_tree, "treeItemAdded", node);
+		inner_recursive(node);
+	}
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(!child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, "treeItemAdded", child );
+				child._on_tree = item._on_tree;
+			}
+			inner_recursive( child );
+		}
+	}
 }
 
+/**
+* Removes the node from its parent (and from the scene tree)
+*
+* @method removeChild
+* @param {Node} node this child to remove
+* @param {Object} options 
+* @return {Boolean} returns true if it was found and removed
+*/
 CompositePattern.prototype.removeChild = function(node, options)
 {
-	if(!this._children || node._parentNode != this) return;
-	if( node._parentNode != this) return; //not his son
+	if(!this._children || node._parentNode != this) return false;
+	if( node._parentNode != this) return false; //not his son
 	var pos = this._children.indexOf(node);
-	if(pos == -1) return; //not his son ¿?
+	if(pos == -1) return false; //not his son ¿?
 	this._children.splice(pos,1);
 
 	if(this._onChildRemoved)
 		this._onChildRemoved(node, options);
 
-	LEvent.trigger(this,"nodeRemoved", node);
+	LEvent.trigger(this,"childRemoved", node);
+
 	if(this._on_tree)
-		LEvent.trigger(this._on_tree, "nodeRemoved", node);
+	{
+		LEvent.trigger(this._on_tree, "treeItemRemoved", node);
+
+		//propagate to childs
+		inner_recursive(node);
+	}
 	this._on_tree = null;
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, "treeItemRemoved", child );
+				child._on_tree = null;
+			}
+			inner_recursive( child );
+		}
+	}
+
+	return true;
 }
 
 CompositePattern.prototype.serializeChildren = function()
@@ -5505,7 +5552,18 @@ MeshRenderer.icon = "mini-icon-teapot.png";
 MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
 MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
+	var component = this.component;
+	var mesh = component.getMesh();
+	if(!mesh) return null;
+	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)
+		return null;
 
+	var t = {"all":null};
+	for(var i = 0; i < mesh.info.groups.length; ++i)
+		t[mesh.info.groups[i].name] = i;
+	return t;
+}};
 
 MeshRenderer.prototype.onAddedToNode = function(node)
 {
@@ -5606,7 +5664,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
-	//RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 && this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
@@ -6126,10 +6185,12 @@ LS.registerComponent(GeometricPrimitive);
 */
 function GraphComponent(o)
 {
-	this._graph = new LGraph();
 	this.enabled = true;
 	this.force_redraw = true;
-	//this.on_event = "update";
+
+	this.on_event = "update";
+	this._graph = new LGraph();
+
 	if(o)
 		this.configure(o);
 	else //default
@@ -6138,6 +6199,8 @@ function GraphComponent(o)
 		this._graph.add(graphnode);
 	}
 }
+
+GraphComponent["@on_event"] = { type:"enum", values: ["start","update"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -6161,31 +6224,40 @@ GraphComponent.prototype.serialize = function()
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	//this._onStart_bind = this.onStart.bind(this);
+	this._onStart_bind = this.onStart.bind(this);
 	this._onUpdate_bind = this.onUpdate.bind(this);
-	//LEvent.bind(Scene,"start", this._onStart_bind );
-	LEvent.bind(Scene,"update", this._onUpdate_bind );
+
+	LEvent.bind(node,"start", this._onStart_bind );
+	LEvent.bind(node,"update", this._onUpdate_bind );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	//LEvent.unbind(Scene,"start", this._onStart_bind );
-	LEvent.unbind(Scene,"update", this._onUpdate_bind );
+	LEvent.unbind(node,"start", this._onStart_bind );
+	LEvent.unbind(node,"update", this._onUpdate_bind );
 }
 
-/*
-GraphComponent.prototype.onStart = function()
+
+GraphComponent.prototype.onStart = function(e)
 {
+	if(this.on_event == "start")
+		this.runGraph();
 }
-*/
+
 
 GraphComponent.prototype.onUpdate = function(e,dt)
 {
-	if(!this._root._on_scene || !this.enabled) return;
+	if(this.on_event == "update")
+		this.runGraph();
+}
+
+GraphComponent.prototype.runGraph = function()
+{
+	if(!this._root._on_tree || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(Scene,"change");
+		LEvent.trigger(this._root._on_tree, "change");
 }
 
 
@@ -7371,7 +7443,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		if(!this._RIs)
 			this._RIs = new Array(total);
 		else
-			this._RIs.length;
+			this._RIs.length = total;
 
 		for(var i = 0; i < total; ++i)
 			if(!this._RIs[i])
@@ -8309,6 +8381,91 @@ if(typeof(LiteGraph) != "undefined")
 	window.LGraphTextureCopy = LGraphTextureCopy;
 
 	// Texture Mix *****************************************
+	function LGraphTextureChannels()
+	{
+		this.addInput("Texture","Texture");
+
+		this.addOutput("R","Texture");
+		this.addOutput("G","Texture");
+		this.addOutput("B","Texture");
+		this.addOutput("A","Texture");
+
+		this.properties = {};
+		if(!LGraphTextureChannels._shader)
+			LGraphTextureChannels._shader = new GL.Shader( LGraphTextureChannels.vertex_shader, LGraphTextureChannels.pixel_shader );
+	}
+
+	LGraphTextureChannels.title = "Channels";
+	LGraphTextureChannels.desc = "Split texture channels";
+
+	LGraphTextureChannels.prototype.onExecute = function()
+	{
+		var texA = this.getInputData(0);
+		if(!texA) return;
+
+		if(!this._channels)
+			this._channels = Array(4);
+
+		var connections = 0;
+		for(var i = 0; i < 4; i++)
+		{
+			if(this.isOutputConnected(i))
+			{
+				if(!this._channels[i] || this._channels[i].width != texA.width || this._channels[i].height != texA.height || this._channels[i].type != texA.type)
+					this._channels[i] = new GL.Texture( texA.width, texA.height, { type: texA.type, format: gl.RGBA, filter: gl.LINEAR });
+				connections++;
+			}
+			else
+				this._channels[i] = null;
+		}
+
+		if(!connections)
+			return;
+
+		gl.disable( gl.BLEND );
+		gl.disable( gl.DEPTH_TEST );
+
+		var mesh = Mesh.getScreenQuad();
+		var shader = LGraphTextureChannels._shader;
+		var masks = [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];
+
+		for(var i = 0; i < 4; i++)
+		{
+			if(!this._channels[i])
+				continue;
+
+			this._channels[i].drawTo( function() {
+				texA.bind(0);
+				shader.uniforms({u_texture:0, u_mask: masks[i]}).draw(mesh);
+			});
+			this.setOutputData(i, this._channels[i]);
+		}
+	}
+
+	LGraphTextureChannels.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			void main() {\n\
+				v_coord = a_coord; gl_Position = vec4(v_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureChannels.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 v_coord;\n\
+			uniform sampler2D u_texture;\n\
+			uniform vec4 u_mask;\n\
+			\n\
+			void main() {\n\
+			   gl_FragColor = vec4( vec3( length( texture2D(u_texture, v_coord) * u_mask )), 1.0 );\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/channels", LGraphTextureChannels );
+	window.LGraphTextureChannels = LGraphTextureChannels;
+
+	// Texture Mix *****************************************
 	function LGraphTextureMix()
 	{
 		this.addInput("A","Texture");
@@ -9012,6 +9169,7 @@ var Renderer = {
 		//EVENT SCENE after_render
 	},
 
+	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderMultiPassInstance: function(step, instance, lights, options)
 	{
 		//for every light
@@ -9229,8 +9387,14 @@ var Renderer = {
 		for(var i in nodes)
 		{
 			var node = nodes[i];
+
+			//trigger event
 			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
 
+			//compute global matrix
+			//TODO
+			
+			//*
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
 				continue;
@@ -9238,18 +9402,11 @@ var Renderer = {
 				continue;
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
+			//*/
 
-			LEvent.trigger(node,"collectRenderInstances", instances, options );
+			//get render instances
+			LEvent.trigger(node,"collectRenderInstances", instances );
 		}
-
-		/*
-		for(var j in node._components)
-		{
-			//extract renderable object from this component
-			var component = node._components[j];
-			if( !component.getRenderInstance ) continue;
-			var instance = component.getRenderInstance(options, this.active_camera);
-		*/
 
 		//complete render instances
 		for(var i in instances)
@@ -9288,7 +9445,10 @@ var Renderer = {
 
 		this._alpha_meshes = alpha_meshes;
 		this._opaque_meshes = opaque_meshes;
+		//merge
 		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+
+		//compute boundings
 	},
 
 	null_light: null,
@@ -10412,7 +10572,7 @@ var parserASE = {
 			groups.push(group);
 		}
 
-		var mesh = {};
+		var mesh = { info: {} };
 
 		mesh.vertices = new Float32Array(positionsArray);
 		if (normalsArray.length > 0)
@@ -10421,11 +10581,9 @@ var parserASE = {
 			mesh.coords = new Float32Array(texcoordsArray);
 
 		//extra info
-		var bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
 		if(groups.length > 1)
-			info.groups = groups;
-		mesh.info = info;
-
+			mesh.info.groups = groups;
 		return mesh;
 	}
 };
@@ -11625,8 +11783,8 @@ function SceneTree()
 	this._root._is_root  = true;
 	this._root._on_tree = this;
 
-	LEvent.bind(this,"nodeAdded", this.onNodeAdded.bind(this));
-	LEvent.bind(this,"nodeRemoved", this.onNodeRemoved.bind(this));
+	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
+	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
 
 	this.init();
 }
@@ -11865,7 +12023,11 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 	function inner_success(response)
 	{
 		that.configure(response);
-		that.loadResources();
+		that.loadResources(inner_all_loaded);
+	}
+
+	function inner_all_loaded()
+	{
 		if(on_complete)
 			on_complete();
 	}
@@ -12020,24 +12182,25 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
-	//LEvent.trigger(this,"nodeAdded", node);
+	LEvent.trigger(this,"nodeAdded", node);
 	LEvent.trigger(this,"change");
 }
 
 SceneTree.prototype.onNodeRemoved = function(e,node)
 {
 	var pos = this._nodes.indexOf(node);
-	if(pos != -1)
-	{
-		this._nodes.splice(pos,1);
-		if(node.id)
-			delete this._nodes_by_id[ node.id ];
-		node.processActionInComponents("onRemovedFromNode",this); //send to components
-		node.processActionInComponents("onRemovedFromScene",this); //send to components
-		//LEvent.trigger(this,"nodeRemoved", node);
-		LEvent.trigger(this,"change");
-		return true;
-	}
+	if(pos == -1) return;
+
+	this._nodes.splice(pos,1);
+	if(node.id)
+		delete this._nodes_by_id[ node.id ];
+
+	node.processActionInComponents("onRemovedFromNode",this); //send to components
+	node.processActionInComponents("onRemovedFromScene",this); //send to components
+
+	LEvent.trigger(this,"nodeRemoved", node);
+	LEvent.trigger(this,"change");
+	return true;
 }
 
 
@@ -12169,7 +12332,7 @@ SceneTree.prototype.getNodesByClass = function(classname)
 * @method loadResources
 */
 
-SceneTree.prototype.loadResources = function()
+SceneTree.prototype.loadResources = function(on_complete)
 {
 	var res = {};
 
@@ -12189,34 +12352,57 @@ SceneTree.prototype.loadResources = function()
 	if(this.local_repository)
 		options.local_repository = this.local_repository;
 
-	ResourcesManager.loadResources(res);
-	/* moved to Core
+	//count resources
+	var num_resources = 0;
 	for(var i in res)
+		++num_resources;
+
+	//load them
+	if(num_resources == 0)
 	{
-		if( typeof(i) != "string" || i[0] == ":" )
-			continue;
-	
-		if(res[i] == Mesh)
-			ResourcesManager.loadMesh( i, options );
-		else if(res[i] == Texture)
-			ResourcesManager.loadImage( i, options );
-		else
-			trace("Unknown resource type");
+		if(on_complete)
+			on_complete();
+		return;
 	}
-	*/
+
+	LEvent.bind( LS.ResourcesManager, "end_loading_resources", on_loaded );
+	LS.ResourcesManager.loadResources(res);
+
+	function on_loaded()
+	{
+		LEvent.unbind( LS.ResourcesManager, "end_loading_resources", on_loaded );
+		if(on_complete)
+			on_complete();
+	}
 }
 
 /**
-* updates the scene and nodes
+* start the scene (triggers and start event)
 *
-* @method update
+* @method start
 * @param {Number} dt delta time
 */
-SceneTree.prototype.start = function(dt)
+SceneTree.prototype.start = function()
 {
+	this._state = "running";
+	this._start_time = new Date().getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.sendEventToNodes("start");
 }
+
+/**
+* stop the scene (triggers and start event)
+*
+* @method stop
+* @param {Number} dt delta time
+*/
+SceneTree.prototype.stop = function()
+{
+	this._state = "stopped";
+	LEvent.trigger(this,"stop",this);
+	this.sendEventToNodes("stop");
+}
+
 
 /**
 * renders the scene using the assigned renderer
@@ -12815,6 +13001,23 @@ LS.newCameraNode = function(id)
 
 /**
 * Context class allows to handle the app context easily without having to glue manually all events
+	There is a list of options
+	==========================
+	- canvas: the canvas where the scene should be rendered, if not specified one will be created
+	- container_id: string with container id where to create the canvas, width and height will be those from the container
+	- width: the width for the canvas in case it is created without a container_id
+	- height: the height for the canvas in case it is created without a container_id
+	- resources: string with the path to the resources folder
+	- shaders: string with the url to the shaders.xml file
+	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
+	Optional callbacks to attach
+	============================
+	- onPreDraw: executed before drawing a frame
+	- onDraw: executed after drawing a frame
+	- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
+	- onUpdate(dt): executed after updating the scene (delta_time as parameter)
+	- onMouse(e): when a mouse event is triggered
+	- onKey(e): when a key event is triggered
 * @namespace LS
 * @class Context
 * @constructor
@@ -12823,11 +13026,30 @@ LS.newCameraNode = function(id)
 function Context(options)
 {
 	options = options || {};
+
+	if(options.container_id)
+	{
+		var container = document.getElementById(options.container_id);
+		if(container)
+		{
+			var canvas = document.createElement("canvas");
+			canvas.width = container.offsetWidth;
+			canvas.height = container.offsetHeight;
+			container.appendChild(canvas);
+			options.canvas = canvas;
+		}
+	}
+
 	this.gl = GL.create(options);
 	this.canvas = this.gl.canvas;
 	this.render_options = {};
 
-	this.force_redraw = false;
+	if(options.resources)
+		LS.ResourcesManager.path = options.resources;
+	if(options.shaders)
+		Shaders.init(options.shaders);
+
+	this.force_redraw = options.redraw || false;
 	this.interactive = true;
 
 	this.gl.ondraw = Context.prototype._ondraw.bind(this);
@@ -12835,10 +13057,29 @@ function Context(options)
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
 	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
 	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
-	this.gl.onkey = Context.prototype._onkey.bind(this);
+	this.gl.onkeydown = Context.prototype._onkey.bind(this);
+	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
 	gl.captureMouse();
 	gl.captureKeys(true);
+}
+
+/**
+* Loads an scene and triggers start
+* @method loadScene
+* @param {String} url url to the JSON file containing all the scene info
+* @param {Function} on_complete callback trigged when the scene and the resources are loaded
+*/
+Context.prototype.loadScene = function(url, on_complete)
+{
+	Scene.loadScene(url, inner_start);
+
+	function inner_start()
+	{
+		Scene.start();
+		if(on_complete)
+			on_complete();
+	}
 }
 
 Context.prototype._ondraw = function()

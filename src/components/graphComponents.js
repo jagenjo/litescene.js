@@ -7,10 +7,12 @@
 */
 function GraphComponent(o)
 {
-	this._graph = new LGraph();
 	this.enabled = true;
 	this.force_redraw = true;
-	//this.on_event = "update";
+
+	this.on_event = "update";
+	this._graph = new LGraph();
+
 	if(o)
 		this.configure(o);
 	else //default
@@ -19,6 +21,8 @@ function GraphComponent(o)
 		this._graph.add(graphnode);
 	}
 }
+
+GraphComponent["@on_event"] = { type:"enum", values: ["start","update"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -42,31 +46,40 @@ GraphComponent.prototype.serialize = function()
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	//this._onStart_bind = this.onStart.bind(this);
+	this._onStart_bind = this.onStart.bind(this);
 	this._onUpdate_bind = this.onUpdate.bind(this);
-	//LEvent.bind(Scene,"start", this._onStart_bind );
-	LEvent.bind(Scene,"update", this._onUpdate_bind );
+
+	LEvent.bind(node,"start", this._onStart_bind );
+	LEvent.bind(node,"update", this._onUpdate_bind );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	//LEvent.unbind(Scene,"start", this._onStart_bind );
-	LEvent.unbind(Scene,"update", this._onUpdate_bind );
+	LEvent.unbind(node,"start", this._onStart_bind );
+	LEvent.unbind(node,"update", this._onUpdate_bind );
 }
 
-/*
-GraphComponent.prototype.onStart = function()
+
+GraphComponent.prototype.onStart = function(e)
 {
+	if(this.on_event == "start")
+		this.runGraph();
 }
-*/
+
 
 GraphComponent.prototype.onUpdate = function(e,dt)
 {
-	if(!this._root._on_scene || !this.enabled) return;
+	if(this.on_event == "update")
+		this.runGraph();
+}
+
+GraphComponent.prototype.runGraph = function()
+{
+	if(!this._root._on_tree || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(Scene,"change");
+		LEvent.trigger(this._root._on_tree, "change");
 }
 
 

@@ -28,8 +28,8 @@ function SceneTree()
 	this._root._is_root  = true;
 	this._root._on_tree = this;
 
-	LEvent.bind(this,"nodeAdded", this.onNodeAdded.bind(this));
-	LEvent.bind(this,"nodeRemoved", this.onNodeRemoved.bind(this));
+	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
+	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
 
 	this.init();
 }
@@ -268,7 +268,11 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 	function inner_success(response)
 	{
 		that.configure(response);
-		that.loadResources();
+		that.loadResources(inner_all_loaded);
+	}
+
+	function inner_all_loaded()
+	{
 		if(on_complete)
 			on_complete();
 	}
@@ -423,24 +427,25 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
-	//LEvent.trigger(this,"nodeAdded", node);
+	LEvent.trigger(this,"nodeAdded", node);
 	LEvent.trigger(this,"change");
 }
 
 SceneTree.prototype.onNodeRemoved = function(e,node)
 {
 	var pos = this._nodes.indexOf(node);
-	if(pos != -1)
-	{
-		this._nodes.splice(pos,1);
-		if(node.id)
-			delete this._nodes_by_id[ node.id ];
-		node.processActionInComponents("onRemovedFromNode",this); //send to components
-		node.processActionInComponents("onRemovedFromScene",this); //send to components
-		//LEvent.trigger(this,"nodeRemoved", node);
-		LEvent.trigger(this,"change");
-		return true;
-	}
+	if(pos == -1) return;
+
+	this._nodes.splice(pos,1);
+	if(node.id)
+		delete this._nodes_by_id[ node.id ];
+
+	node.processActionInComponents("onRemovedFromNode",this); //send to components
+	node.processActionInComponents("onRemovedFromScene",this); //send to components
+
+	LEvent.trigger(this,"nodeRemoved", node);
+	LEvent.trigger(this,"change");
+	return true;
 }
 
 
@@ -572,7 +577,7 @@ SceneTree.prototype.getNodesByClass = function(classname)
 * @method loadResources
 */
 
-SceneTree.prototype.loadResources = function()
+SceneTree.prototype.loadResources = function(on_complete)
 {
 	var res = {};
 
@@ -592,34 +597,57 @@ SceneTree.prototype.loadResources = function()
 	if(this.local_repository)
 		options.local_repository = this.local_repository;
 
-	ResourcesManager.loadResources(res);
-	/* moved to Core
+	//count resources
+	var num_resources = 0;
 	for(var i in res)
+		++num_resources;
+
+	//load them
+	if(num_resources == 0)
 	{
-		if( typeof(i) != "string" || i[0] == ":" )
-			continue;
-	
-		if(res[i] == Mesh)
-			ResourcesManager.loadMesh( i, options );
-		else if(res[i] == Texture)
-			ResourcesManager.loadImage( i, options );
-		else
-			trace("Unknown resource type");
+		if(on_complete)
+			on_complete();
+		return;
 	}
-	*/
+
+	LEvent.bind( LS.ResourcesManager, "end_loading_resources", on_loaded );
+	LS.ResourcesManager.loadResources(res);
+
+	function on_loaded()
+	{
+		LEvent.unbind( LS.ResourcesManager, "end_loading_resources", on_loaded );
+		if(on_complete)
+			on_complete();
+	}
 }
 
 /**
-* updates the scene and nodes
+* start the scene (triggers and start event)
 *
-* @method update
+* @method start
 * @param {Number} dt delta time
 */
-SceneTree.prototype.start = function(dt)
+SceneTree.prototype.start = function()
 {
+	this._state = "running";
+	this._start_time = new Date().getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.sendEventToNodes("start");
 }
+
+/**
+* stop the scene (triggers and start event)
+*
+* @method stop
+* @param {Number} dt delta time
+*/
+SceneTree.prototype.stop = function()
+{
+	this._state = "stopped";
+	LEvent.trigger(this,"stop",this);
+	this.sendEventToNodes("stop");
+}
+
 
 /**
 * renders the scene using the assigned renderer

@@ -172,7 +172,7 @@ var ResourcesManager = {
 			return resource;
 		}
 
-		trace("Unknown resource loaded");
+		console.log("Unknown resource loaded");
 	},
 	
 	/**
@@ -247,14 +247,6 @@ var ResourcesManager = {
 			settings.dataType = 'xml';
 		else if(res_info.format == Parser.BINARY_FORMAT)
 			settings.dataType = 'binary';
-		/*
-		else if(res_info.format == Parser.BINARY_FORMAT) //force binary type
-		{
-			settings.dataType = null;
-			//settings.mimeType = "text/plain; charset=x-user-defined";
-			settings.mimeType = "application/octet-stream";
-		}
-		*/
 
 		LS.request(settings);
 		return false;
@@ -359,7 +351,7 @@ var ResourcesManager = {
 
 		var nocache = this.getNoCache();
 
-		trace("Processing image: " + url);
+		//console.log("Processing image: " + url);
 		var res_info = Parser.getResourceInfo(url);
 		if(res_info.type == Parser.IMAGE_DATA)
 		{
@@ -374,7 +366,7 @@ var ResourcesManager = {
 				ResourcesManager._resource_loaded_success(url,texture);
 			}
 
-			//img.onprogress = function(e) { trace("Image: " + url + "    " + e); }
+			//img.onprogress = function(e) { console.log("Image: " + url + "    " + e); }
 			img.onerror = function(err) { ResourcesManager._resource_loaded_error(url,err); }
 
 			img.src = full_url + nocache;
@@ -422,7 +414,7 @@ var ResourcesManager = {
 
 		if (img.width > this.MAX_TEXTURE_SIZE)
 		{
-			trace("too big, max is " + this.MAX_TEXTURE_SIZE);
+			console.log("too big, max is " + this.MAX_TEXTURE_SIZE);
 			return null;
 		}
 		/*
@@ -430,13 +422,13 @@ var ResourcesManager = {
 		{
 			if(img.width != (img.height / 6) && (img.height % 6) != 0)
 			{
-				trace("Warning: Image must be square (same width and height)");
+				console.log("Warning: Image must be square (same width and height)");
 				//return null;
 			}
 		}
 		else if ( ((Math.log(img.width) / Math.log(2)) % 1) != 0 || ((Math.log(img.height) / Math.log(2)) % 1) != 0)
 		{
-			trace("Image dimensions must be power of two (64,128,256,512)");
+			console.log("Image dimensions must be power of two (64,128,256,512)");
 			return null;
 		}
 		*/
@@ -446,7 +438,7 @@ var ResourcesManager = {
 			var texture = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
-			trace("DDS created");
+			console.log("DDS created");
 		}
 		else if(img.width == (img.height / 6)) //cubemap
 		{
@@ -454,7 +446,7 @@ var ResourcesManager = {
 			texture.img = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
-			trace("Cubemap created");
+			console.log("Cubemap created");
 		}
 		else //regular texture
 		{
@@ -514,7 +506,7 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resources
 	*/
 
-	loadResources: function(res, options)
+	loadResources: function(res, options )
 	{
 		for(var i in res)
 		{
@@ -556,7 +548,7 @@ var ResourcesManager = {
 		else if(type == "Material")
 			Scene.materials[filename] = res;
 		else
-			trace("Unknown res type: " + type);
+			console.log("Unknown res type: " + type);
 
 		this.resources[filename] = res;
 		LEvent.trigger(this,"resource_loaded", res);
@@ -590,9 +582,11 @@ var ResourcesManager = {
 
 	//*************************************
 
+	//Called after a resource has been loaded successfully and processed
 	_resource_loaded_success: function(url,res)
 	{
-		//trace("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
+		if( LS.ResourcesManager.debug )
+			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
 		for(var i in ResourcesManager.resources_being_loaded[url])
 		{
 			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
@@ -603,13 +597,15 @@ var ResourcesManager = {
 			delete ResourcesManager.resources_being_loaded[url];
 			ResourcesManager.num_resources_being_loaded--;
 			if( ResourcesManager.num_resources_being_loaded == 0)
+			{
 				LEvent.trigger( ResourcesManager, "end_loading_resources");
+			}
 		}
 	},
 
 	_resource_loaded_error: function(url, error)
 	{
-		trace("Error loading " + url);
+		console.log("Error loading " + url);
 		delete ResourcesManager.resources_being_loaded[url];
 		LEvent.trigger( ResourcesManager, "resource_not_found", url);
 		ResourcesManager.num_resources_being_loaded--;
