@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.RenderInstance</title>
+    <title>LS.Octree</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -124,7 +124,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.RenderInstance Class</h1>
+                        <h1>LS.Octree Class</h1>
 <div class="box meta">
     
 
@@ -132,7 +132,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_render_renderInstance.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:1</code></a>
+            Defined in: <a href="../files/.._src_utils_octree.js.html#l1"><code>..&#x2F;src&#x2F;utils&#x2F;octree.js:1</code></a>
         </div>
     
 
@@ -144,18 +144,29 @@
 
 
 <div class="box intro">
-    <p>RenderInstance contains info of one object to be rendered on the scene.</p>
+    <p>Octree generator for fast ray triangle collision with meshes
+    Dependencies: glmatrix.js (for vector and matrix operations)</p>
 
 </div>
 
 
     <div class="constructor">
         <h2>Constructor</h2>
-        <div id="method_LS.RenderInstance" class="method item">
-    <h3 class="name"><code>LS.RenderInstance</code></h3>
+        <div id="method_LS.Octree" class="method item">
+    <h3 class="name"><code>LS.Octree</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>mesh</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -183,7 +194,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:1</code></a>
+        <a href="../files/.._src_utils_octree.js.html#l1"><code>..&#x2F;src&#x2F;utils&#x2F;octree.js:1</code></a>
         
         </p>
 
@@ -197,6 +208,30 @@
         
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">mesh</code>
+                        <span class="type">Mesh</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>object containing vertices buffer (indices buffer optional)</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -230,42 +265,7 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_computeBounding">computeBounding</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_computeNormalMatrix">computeNormalMatrix</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_render">render</a>
+                                <a href="#method_testRay">testRay</a>
 
                                 
                                 
@@ -287,118 +287,8 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_computeBounding" class="method item">
-    <h3 class="name"><code>computeBounding</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l84"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:84</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Computes the instance bounding box</p>
-
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_computeNormalMatrix" class="method item">
-    <h3 class="name"><code>computeNormalMatrix</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l72"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:72</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Updates the normal matrix using the matrix</p>
-
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
+                    <div id="method_testRay" class="method item">
+    <h3 class="name"><code>testRay</code></h3>
 
     
         <div class="args">
@@ -406,185 +296,25 @@
             
                 <li class="arg">
                     
-                        <code>flag</code>
+                        <code>start</code>
                     
                 </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l38"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:38</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Enable flag in the flag bit field</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>id</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
             
                 <li class="arg">
                     
-                        <code>flag</code>
+                        <code>direction</code>
                     
                 </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l49"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:49</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Disable flag in the flag bit field</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>id</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
             
                 <li class="arg">
                     
-                        <code>flag</code>
+                        <code>dist_min</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>dist_max</code>
                     
                 </li>
             
@@ -594,7 +324,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">Boolean</span>
+            <span class="type">HitTest</span>
         </span>
     
 
@@ -621,7 +351,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l60"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:60</code></a>
+        <a href="../files/.._src_utils_octree.js.html#l252"><code>..&#x2F;src&#x2F;utils&#x2F;octree.js:252</code></a>
         
         </p>
 
@@ -632,7 +362,7 @@
     </div>
 
     <div class="description">
-        <p>Tells if a flag is enabled</p>
+        <p>Uploads a set of uniforms to the Shader</p>
 
     </div>
 
@@ -644,15 +374,61 @@
             
                 <li class="param">
                     
-                        <code class="param-name">flag</code>
+                        <code class="param-name">start</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>ray start position</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">direction</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>ray direction position</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">dist_min</code>
                         <span class="type">Number</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>id</p>
+                         
+                    </div>
 
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">dist_max</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
                     </div>
 
                     
@@ -669,101 +445,13 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">Boolean</span>:
+                        <span class="type">HitTest</span>:
                     
-                    <p>flag value</p>
+                    <p>object containing pos and normal</p>
 
                 
             </div>
         </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_render" class="method item">
-    <h3 class="name"><code>render</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>shader</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l125"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:125</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Calls render taking into account primitive and submesh id</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">shader</code>
-                        <span class="type">Shader</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
     
 
     

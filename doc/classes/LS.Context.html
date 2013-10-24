@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -143,6 +145,23 @@
 
 <div class="box intro">
     <p>Context class allows to handle the app context easily without having to glue manually all events</p>
+<pre class="code prettyprint"><code>There is a list of options
+==========================
+- canvas: the canvas where the scene should be rendered, if not specified one will be created
+- container_id: string with container id where to create the canvas, width and height will be those from the container
+- width: the width for the canvas in case it is created without a container_id
+- height: the height for the canvas in case it is created without a container_id
+- resources: string with the path to the resources folder
+- shaders: string with the url to the shaders.xml file
+- redraw: boolean to force to render the scene constantly (useful for animated scenes)
+Optional callbacks to attach
+============================
+- onPreDraw: executed before drawing a frame
+- onDraw: executed after drawing a frame
+- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
+- onUpdate(dt): executed after updating the scene (delta_time as parameter)
+- onMouse(e): when a mouse event is triggered
+- onKey(e): when a key event is triggered</code></pre>
 
 </div>
 
@@ -244,6 +263,8 @@
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
         
+            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
+        
         
         
         
@@ -254,6 +275,28 @@
             <h2 class="off-left">Item Index</h2>
 
             
+                <div class="index-section methods">
+                    <h3>Methods</h3>
+
+                    <ul class="index-list methods">
+                        
+                            <li class="index-item method">
+                                <a href="#method_loadScene">loadScene</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_removeChild">removeChild</a>
+
+                                
+                                
+                            </li>
+                        
+                    </ul>
+                </div>
+            
 
             
 
@@ -262,6 +305,251 @@
             
         </div>
 
+        
+            <div id="methods" class="api-class-tabpanel">
+                <h2 class="off-left">Methods</h2>
+
+                
+                    <div id="method_loadScene" class="method item">
+    <h3 class="name"><code>loadScene</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>on_complete</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_context.js.html#l66"><code>..&#x2F;src&#x2F;context.js:66</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Loads an scene and triggers start</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>url to the JSON file containing all the scene info</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">on_complete</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>callback trigged when the scene and the resources are loaded</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_removeChild" class="method item">
+    <h3 class="name"><code>removeChild</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>node</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>options</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_compositePattern.js.html#l66"><code>..&#x2F;src&#x2F;compositePattern.js:66</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Removes the node from its parent (and from the scene tree)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">node</code>
+                        <span class="type">Node</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>this child to remove</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">options</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Boolean</span>:
+                    
+                    <p>returns true if it was found and removed</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+            </div>
         
 
         

@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -128,6 +130,23 @@
     <pre class="code prettyprint linenums">
 /**
 * Context class allows to handle the app context easily without having to glue manually all events
+	There is a list of options
+	==========================
+	- canvas: the canvas where the scene should be rendered, if not specified one will be created
+	- container_id: string with container id where to create the canvas, width and height will be those from the container
+	- width: the width for the canvas in case it is created without a container_id
+	- height: the height for the canvas in case it is created without a container_id
+	- resources: string with the path to the resources folder
+	- shaders: string with the url to the shaders.xml file
+	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
+	Optional callbacks to attach
+	============================
+	- onPreDraw: executed before drawing a frame
+	- onDraw: executed after drawing a frame
+	- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
+	- onUpdate(dt): executed after updating the scene (delta_time as parameter)
+	- onMouse(e): when a mouse event is triggered
+	- onKey(e): when a key event is triggered
 * @namespace LS
 * @class Context
 * @constructor
@@ -136,11 +155,30 @@
 function Context(options)
 {
 	options = options || {};
+
+	if(options.container_id)
+	{
+		var container = document.getElementById(options.container_id);
+		if(container)
+		{
+			var canvas = document.createElement(&quot;canvas&quot;);
+			canvas.width = container.offsetWidth;
+			canvas.height = container.offsetHeight;
+			container.appendChild(canvas);
+			options.canvas = canvas;
+		}
+	}
+
 	this.gl = GL.create(options);
 	this.canvas = this.gl.canvas;
 	this.render_options = {};
 
-	this.force_redraw = false;
+	if(options.resources)
+		LS.ResourcesManager.path = options.resources;
+	if(options.shaders)
+		Shaders.init(options.shaders);
+
+	this.force_redraw = options.redraw || false;
 	this.interactive = true;
 
 	this.gl.ondraw = Context.prototype._ondraw.bind(this);
@@ -148,10 +186,29 @@ function Context(options)
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
 	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
 	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
-	this.gl.onkey = Context.prototype._onkey.bind(this);
+	this.gl.onkeydown = Context.prototype._onkey.bind(this);
+	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
 	gl.captureMouse();
 	gl.captureKeys(true);
+}
+
+/**
+* Loads an scene and triggers start
+* @method loadScene
+* @param {String} url url to the JSON file containing all the scene info
+* @param {Function} on_complete callback trigged when the scene and the resources are loaded
+*/
+Context.prototype.loadScene = function(url, on_complete)
+{
+	Scene.loadScene(url, inner_start);
+
+	function inner_start()
+	{
+		Scene.start();
+		if(on_complete)
+			on_complete();
+	}
 }
 
 Context.prototype._ondraw = function()
@@ -160,11 +217,7 @@ Context.prototype._ondraw = function()
 		this.onPreDraw();
 
 	if(Scene._must_redraw || this.force_redraw )
-	{
-		LEvent.trigger(Scene, &quot;pre_scene_render&quot;);
-		Renderer.render(Scene, Scene.current_camera, this.render_options );
-		LEvent.trigger(Scene, &quot;post_scene_render&quot;);
-	}
+		Scene.render( Scene.current_camera, this.render_options );
 
 	if(this.onDraw)
 		this.onDraw();

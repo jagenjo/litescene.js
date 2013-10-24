@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -149,18 +151,31 @@ MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
 MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
+MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
+	var component = this.component;
+	var mesh = component.getMesh();
+	if(!mesh) return null;
+	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length &lt; 2)
+		return null;
 
+	var t = {&quot;all&quot;:null};
+	for(var i = 0; i &lt; mesh.info.groups.length; ++i)
+		t[mesh.info.groups[i].name] = i;
+	return t;
+}};
 
 MeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
 		node.meshrenderer = this;
+	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
 }
 
 MeshRenderer.prototype.onRemovedFromNode = function(node)
 {
 	if(node.meshrenderer)
 		delete node[&quot;meshrenderer&quot;];
+	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
 }
 
 /**
@@ -224,7 +239,8 @@ MeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
-MeshRenderer.prototype.getRenderInstance = function(options)
+//MeshRenderer.prototype.getRenderInstance = function(options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -232,27 +248,31 @@ MeshRenderer.prototype.getRenderInstance = function(options)
 	var node = this._root;
 	if(!this._root) return;
 
+	/*
 	if(options.step == &quot;reflection&quot; &amp;&amp; !node.flags.seen_by_reflections)
 		return null;
 	if(options.step == &quot;main&quot; &amp;&amp; node.flags.seen_by_camera == false)
 		return null;
 	if(options.step == &quot;shadow&quot; &amp;&amp; !node.flags.cast_shadows)
 		return null;
+	*/
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance || new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
-	//RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 	if(this.two_sided)
 		RI.enableFlag( RenderInstance.TWO_SIDED );
 	//RI.scene = Scene;
 
-	return RI;
+	instances.push(RI);
+	//return RI;
 }
 
 LS.registerComponent(MeshRenderer);

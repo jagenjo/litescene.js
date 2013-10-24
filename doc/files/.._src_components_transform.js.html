@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -154,6 +156,13 @@ Transform.prototype.onAddedToNode = function(node)
 	if(!node.transform)
 		node.transform = this;
 }
+
+Transform.prototype.onRemovedFromNode = function(node)
+{
+	if(node.transform == this)
+		delete node[&quot;transform&quot;];
+}
+
 
 /**
 * Copy the transform from another Transform

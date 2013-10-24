@@ -16,6 +16,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Context",
         "LS.LS",
         "LS.Material",
+        "LS.Octree",
         "LS.RenderInstance",
         "LS.Renderer",
         "LS.ResourcesManager",

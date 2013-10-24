@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Rotator</title>
+    <title>../src/compositePattern.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -124,154 +124,184 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>Rotator Class</h1>
-<div class="box meta">
-    
+                        <h1 class="file-heading">File: ../src/compositePattern.js</h1>
 
-    
+<div class="file">
+    <pre class="code prettyprint linenums">
+//TODO: a class to remove the tree methods from SceneTree and SceneNode
 
-    
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_animator.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;animator.js:1</code></a>
-        </div>
-    
+function CompositePattern()
+{
+	//WARNING! do not add anything here, it will never be called
+}
 
-    
+CompositePattern.prototype.compositeCtor = function()
+{
+}
 
-    
-</div>
+CompositePattern.prototype.addChild = function(node, index, options)
+{
+	//be careful with weird recursions...
+	var aux = this;
+	while( aux._parentNode )
+	{
+		if(aux == node)
+			throw(&quot;addChild: Cannot insert a node as his own child&quot;);
+		aux = aux._parentNode;
+	}
+
+	//has a parent
+	if(node._parentNode)
+		node._parentNode.removeChild(node);
+
+	//attach to this
+	node._parentNode = this;
+	if( !this._children )
+		this._children = [node];
+	else if(index == undefined)
+		this._children.push(node);
+	else
+		this._children.splice(index,0,node);
+
+	//Same tree
+	node._on_tree = this._on_tree;
+
+	if(this._onChildAdded)
+		this._onChildAdded(node, options);
+
+	LEvent.trigger(this,&quot;childAdded&quot;, node);
+	if(this._on_tree)
+	{
+		LEvent.trigger(this._on_tree, &quot;treeItemAdded&quot;, node);
+		inner_recursive(node);
+	}
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(!child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, &quot;treeItemAdded&quot;, child );
+				child._on_tree = item._on_tree;
+			}
+			inner_recursive( child );
+		}
+	}
+}
+
+/**
+* Removes the node from its parent (and from the scene tree)
+*
+* @method removeChild
+* @param {Node} node this child to remove
+* @param {Object} options 
+* @return {Boolean} returns true if it was found and removed
+*/
+CompositePattern.prototype.removeChild = function(node, options)
+{
+	if(!this._children || node._parentNode != this) return false;
+	if( node._parentNode != this) return false; //not his son
+	var pos = this._children.indexOf(node);
+	if(pos == -1) return false; //not his son �?
+	this._children.splice(pos,1);
+
+	if(this._onChildRemoved)
+		this._onChildRemoved(node, options);
+
+	LEvent.trigger(this,&quot;childRemoved&quot;, node);
+
+	if(this._on_tree)
+	{
+		LEvent.trigger(this._on_tree, &quot;treeItemRemoved&quot;, node);
+
+		//propagate to childs
+		inner_recursive(node);
+	}
+	this._on_tree = null;
+
+	//recursive action
+	function inner_recursive(item)
+	{
+		if(!item._children) return;
+		for(var i in item._children)
+		{
+			var child = item._children[i];
+			if(child._on_tree)
+			{
+				LEvent.trigger( child._on_tree, &quot;treeItemRemoved&quot;, child );
+				child._on_tree = null;
+			}
+			inner_recursive( child );
+		}
+	}
+
+	return true;
+}
+
+CompositePattern.prototype.serializeChildren = function()
+{
+	var r = [];
+	if(this._children)
+		for(var i in this._children)
+			r.push( this._children[i].serialize() );
+	return r;
+}
+
+CompositePattern.prototype.configureChildren = function(o)
+{
+	if(!o.children) return;
+
+	for(var i in o.children)
+	{
+		//create instance
+		var node = new this.constructor(o.children[i].id); //id is hardcoded...
+		this.addChild(node);
+		node.configure(o.children[i]);
+	}
+}
+
+CompositePattern.prototype.getParent = function()
+{
+	return this._parentNode;
+}
+
+CompositePattern.prototype.getChildren = function()
+{
+	return this._children || [];
+}
+
+Object.defineProperty( CompositePattern.prototype, &quot;parentNode&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._parentNode;
+	},
+	set: function(v) {
+		//TODO
+	}
+});
+
+CompositePattern.prototype.childNodes = function()
+{
+	return this._children || [];
+}
+
+Object.defineProperty( CompositePattern.prototype, &quot;childNodes&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._children || [];
+	},
+	set: function(v) {
+		//TODO
+	}
+});
 
 
 
-<div class="box intro">
-    <p>Rotator rotate a mesh over time</p>
-
-</div>
-
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-        <div id="method_Rotator" class="method item">
-    <h3 class="name"><code>Rotator</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>object</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_animator.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;animator.js:1</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">object</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-    </div>
-
-
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-        
-        
-        
-        
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-            
-
-            
-
-            
-
-            
-        </div>
-
-        
-
-        
-
-        
-
-        
-    </div>
+    </pre>
 </div>
 
                     </div>

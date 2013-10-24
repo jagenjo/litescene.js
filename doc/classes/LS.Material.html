@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -273,20 +275,6 @@ Materials could be shared among different objects.</p>
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getLightShaderData">getLightShaderData</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_getMaterialShaderData">getMaterialShaderData</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_getResources">getResources</a>
 
                                 
@@ -346,13 +334,6 @@ Materials could be shared among different objects.</p>
                     <ul class="index-list properties">
                         
                             <li class="index-item property">
-                                <a href="#property_alpha">alpha</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item property">
                                 <a href="#property_ambient">ambient</a>
 
                                 
@@ -389,6 +370,13 @@ Materials could be shared among different objects.</p>
                         
                             <li class="index-item property">
                                 <a href="#property_emissive">emissive</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item property">
+                                <a href="#property_opacity">opacity</a>
 
                                 
                                 
@@ -506,7 +494,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l706"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:706</code></a>
+        <a href="../files/.._src_materials_material.js.html#l558"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:558</code></a>
         
         </p>
 
@@ -547,361 +535,6 @@ Materials could be shared among different objects.</p>
         </div>
     
 
-    
-
-    
-</div>
-
-                
-                    <div id="method_getLightShaderData" class="method item">
-    <h3 class="name"><code>getLightShaderData</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>light</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>instance</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>scene</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>options</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_material.js.html#l623"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:623</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>This function returns all the uniforms and the macros related to the light needed to compute the shader</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">light</code>
-                        <span class="type">Light</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">instance</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">SceneNode</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">options</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getMaterialShaderData" class="method item">
-    <h3 class="name"><code>getMaterialShaderData</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>instance</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>scene</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>options</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_material.js.html#l473"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:473</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>This function returns all the uniforms and the macros related to the material needed to compute the shader</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">instance</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">SceneNode</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">options</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                
-            </div>
-        </div>
     
 
     
@@ -954,7 +587,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l844"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:844</code></a>
+        <a href="../files/.._src_materials_material.js.html#l698"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:698</code></a>
         
         </p>
 
@@ -1061,7 +694,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l772"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:772</code></a>
+        <a href="../files/.._src_materials_material.js.html#l626"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:626</code></a>
         
         </p>
 
@@ -1154,7 +787,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l858"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:858</code></a>
+        <a href="../files/.._src_materials_material.js.html#l712"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:712</code></a>
         
         </p>
 
@@ -1219,7 +852,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l876"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:876</code></a>
+        <a href="../files/.._src_materials_material.js.html#l730"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:730</code></a>
         
         </p>
 
@@ -1302,7 +935,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l761"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:761</code></a>
+        <a href="../files/.._src_materials_material.js.html#l615"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:615</code></a>
         
         </p>
 
@@ -1387,7 +1020,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l804"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:804</code></a>
+        <a href="../files/.._src_materials_material.js.html#l658"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:658</code></a>
         
         </p>
 
@@ -1495,7 +1128,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l828"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:828</code></a>
+        <a href="../files/.._src_materials_material.js.html#l682"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:682</code></a>
         
         </p>
 
@@ -1560,53 +1193,6 @@ Materials could be shared among different objects.</p>
         
             <div id="properties" class="api-class-tabpanel">
                 <h2 class="off-left">Properties</h2>
-
-                
-                    <div id="property_alpha" class="property item">
-    <h3 class="name"><code>alpha</code></h3>
-    <span class="type">Number</span>
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_material.js.html#l65"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:65</code></a>
-        
-        </p>
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Alpha. It must be &lt; 1 to enable alpha sorting. If it is &lt;= 0 wont be visible.</p>
-
-    </div>
-
-    
-        <p><strong>Default:</strong> 1</p>
-    
-
-    
-
-    
-</div>
 
                 
                     <div id="property_ambient" class="property item">
@@ -1883,6 +1469,53 @@ Materials could be shared among different objects.</p>
 
     
         <p><strong>Default:</strong> [0,0,0]</p>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="property_opacity" class="property item">
+    <h3 class="name"><code>opacity</code></h3>
+    <span class="type">Number</span>
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_material.js.html#l65"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:65</code></a>
+        
+        </p>
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Opacity. It must be &lt; 1 to enable alpha sorting. If it is &lt;= 0 wont be visible.</p>
+
+    </div>
+
+    
+        <p><strong>Default:</strong> 1</p>
     
 
     

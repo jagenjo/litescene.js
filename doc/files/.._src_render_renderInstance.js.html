@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
+                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -137,11 +139,13 @@
 //flags
 RenderInstance.TWO_SIDED = 1;
 
-function RenderInstance()
+function RenderInstance(node, component)
 {
 	this._key = &quot;&quot;;
 	this._uid = LS.generateUId();
 	this.mesh = null;
+	this.node = node;
+	this.component = component;
 	this.primitive = gl.TRIANGLES;
 	this.material = null;
 	this.flags = 0;
@@ -202,7 +206,9 @@ RenderInstance.prototype.isFlag = function(flag)
 */
 RenderInstance.prototype.computeNormalMatrix = function()
 {
-	mat4.transpose(this.normal_matrix, mat4.invert(this.normal_matrix, this.matrix));
+	var m = mat4.invert(this.normal_matrix, this.matrix);
+	if(m)
+		mat4.transpose(this.normal_matrix, m);
 }
 
 /**
