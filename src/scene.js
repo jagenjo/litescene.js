@@ -1,17 +1,3 @@
-/* Dependencies
-	+ Shaders.js: shaders compilation
-	+ glMatrix: for maths
-	+ litegl.js: for meshes and textures
-	+ core.js: for main core functionality
-	+ jQuery: for AJAX calls
-
-*/
-
-
-
-
-//To store all the registered components, useful for editors
-
 /**
 * The SceneTree contains all the info about the Scene and nodes
 *
@@ -27,9 +13,11 @@ function SceneTree()
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
 	this._root._on_tree = this;
+	this._nodes = [ this._root ];
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
+
 
 	this.init();
 }
@@ -38,7 +26,7 @@ function SceneTree()
 SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
-LS.extendClass(ComponentContainer, SceneTree); //container methods
+//LS.extendClass(ComponentContainer, SceneTree); //container methods
 
 Object.defineProperty( SceneTree.prototype, "root", {
 	enumerable: true,
@@ -65,18 +53,17 @@ SceneTree.prototype.init = function()
 	this.materials = {}; //material cache
 	this.local_repository = null;
 
-	this._nodes = [];
+	this._root.removeAllComponents();
+	this._nodes = [ this._root ];
 	this._nodes_by_id = {};
 	this.rt_cameras = [];
 
-	this._components = []; //remove all components
+	//this._components = []; //remove all components
 
-	if(this.camera) this.camera = null;
-	this.addComponent( new Camera() );
-	this.current_camera = this.camera;
+	this._root.addComponent( new Camera() );
+	this.current_camera = this._root.camera;
 
-	if(this.light) this.light = null;
-	this.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
+	this._root.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
 	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
@@ -111,12 +98,12 @@ SceneTree.prototype.init = function()
 SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
-	while(this.root.children && this.root.children.length)
-		this.root.removeChild(this.root.children[0]);
+	while(this._root.children && this._root.children.length)
+		this._root.removeChild(this._root.children[0]);
 
 	//remove scene components
-	this.processActionInComponents("onRemovedFromNode",this); //send to components
-	this.processActionInComponents("onRemovedFromScene",this); //send to components
+	this._root.processActionInComponents("onRemovedFromNode",this); //send to components
+	this._root.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	this.init();
 	LEvent.trigger(this,"clear");
@@ -132,8 +119,10 @@ SceneTree.prototype.clear = function()
 */
 SceneTree.prototype.configure = function(scene_info)
 {
-	this._components = [];
-	this.camera = this.light = null; //legacy
+	this._root.removeAllComponents(); //remove light and camera
+
+	//this._components = [];
+	//this.camera = this.light = null; //legacy
 
 	if(scene_info.object_type != "SceneTree")
 		trace("Warning: object set to scene doesnt look like a propper one.");
@@ -165,39 +154,40 @@ SceneTree.prototype.configure = function(scene_info)
 		for(var i in scene_info.materials)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
 
+	//legacy
 	if(scene_info.components)
-		this.configureComponents(scene_info);
+		this._root.configureComponents(scene_info);
 
 	// LEGACY...
 	if(scene_info.camera)
 	{
-		if(this.camera)
-			this.camera.configure( scene_info.camera );
+		if(this._root.camera)
+			this._root.camera.configure( scene_info.camera );
 		else
-			this.addComponent( new Camera( scene_info.camera ) );
+			this._root.addComponent( new Camera( scene_info.camera ) );
 	}
 
 	if(scene_info.light)
 	{
-		if(this.light)
-			this.light.configure( scene_info.light );
+		if(this._root.light)
+			this._root.light.configure( scene_info.light );
 		else
-			this.addComponent( new Light(scene_info.light) );
+			this._root.addComponent( new Light(scene_info.light) );
 	}
 	else if(scene_info.hasOwnProperty("light")) //light is null
 	{
 		//skip default light
-		if(this.light)
+		if(this._root.light)
 		{
-			this.scene.removeComponent( this.light );
-			this.light = null;
+			this._root.removeComponent( this._root.light );
+			this._root.light = null;
 		}
 	}
 
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
 
-	this.current_camera = this.camera;
+	this.current_camera = this._root.camera;
 }
 
 /**
@@ -238,7 +228,7 @@ SceneTree.prototype.serialize = function()
 	}
 
 	//serialize scene components
-	this.serializeComponents(o);
+	//this.serializeComponents(o);
 
 	LEvent.trigger(this,"serializing",o);
 
@@ -267,6 +257,7 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 
 	function inner_success(response)
 	{
+		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
 	}
@@ -302,6 +293,11 @@ SceneTree.prototype.appendScene = function(scene)
 		this.root.addChild( new_node );
 		new_node.configure( node.constructor == LS.SceneNode ? node.serialize() : node  );
 	}
+}
+
+SceneTree.prototype.getCamera = function()
+{
+	return this._root.camera;
 }
 
 
@@ -1065,7 +1061,7 @@ SceneNode.prototype.serialize = function()
 
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 {
-	if(recompute_transform)
+	if(recompute_transform && this.transform)
 	{
 		var M = node.transform.getGlobalMatrix(); //get son transform
 		var M_parent = this.transform.getGlobalMatrix(); //parent transform
@@ -1075,6 +1071,20 @@ SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 	//link transform
 	if(this.transform)
 		node.transform._parent = this.transform;
+}
+
+SceneNode.prototype._onChangeParent = function(future_parent, recompute_transform)
+{
+	if(recompute_transform && future_parent.transform)
+	{
+		var M = this.transform.getGlobalMatrix(); //get son transform
+		var M_parent = future_parent.transform.getGlobalMatrix(); //parent transform
+		mat4.invert(M_parent,M_parent);
+		this.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
+	}
+	//link transform
+	if(future_parent.transform)
+		this.transform._parent = future_parent.transform;
 }
 
 SceneNode.prototype._onChildRemoved = function(node, recompute_transform)

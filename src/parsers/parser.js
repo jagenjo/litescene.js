@@ -1,6 +1,3 @@
-/* Basic formats parser 
-	Dependencies: jQuery (for xml parsing)
-*/
 
 var Parser = {
 

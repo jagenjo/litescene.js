@@ -22,7 +22,20 @@ CompositePattern.prototype.addChild = function(node, index, options)
 
 	//has a parent
 	if(node._parentNode)
-		node._parentNode.removeChild(node);
+		node._parentNode.removeChild(node, options);
+
+	/*
+	var moved = false;
+	if(node._parentNode)
+	{
+		moved = true;
+		node._onChangeParent(this, options);
+		//remove from parent children
+		var pos = node._parentNode._children.indexOf(node);
+		if(pos != -1)
+			node._parentNode._children.splice(pos,1);
+	}
+	*/
 
 	//attach to this
 	node._parentNode = this;
@@ -84,14 +97,14 @@ CompositePattern.prototype.removeChild = function(node, options)
 
 	LEvent.trigger(this,"childRemoved", node);
 
-	if(this._on_tree)
+	if(node._on_tree)
 	{
-		LEvent.trigger(this._on_tree, "treeItemRemoved", node);
+		LEvent.trigger(node._on_tree, "treeItemRemoved", node);
 
 		//propagate to childs
 		inner_recursive(node);
 	}
-	this._on_tree = null;
+	node._on_tree = null;
 
 	//recursive action
 	function inner_recursive(item)

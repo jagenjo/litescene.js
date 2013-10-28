@@ -203,7 +203,6 @@ Light.prototype.serialize = function()
 
 Light.prototype.configure = function(o)
 {
-	//jQuery.extend(true, this, o);
 	LS.cloneObject(o,this);
 }
 

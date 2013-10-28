@@ -1,6 +1,6 @@
 /**
 * Camera controller
-* @class FPSController
+* @class CameraController
 * @constructor
 * @param {String} object to configure from
 */
@@ -9,9 +9,13 @@ function CameraController(o)
 {
 	this.speed = 10;
 	this.rot_speed = 1;
+	this.wheel_speed = 1;
+	this.smooth = false;
 	this.cam_type = "orbit"; //"fps"
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
+
+	this.configure(o);
 }
 
 CameraController.icon = "mini-icon-cameracontroller.png";
@@ -19,6 +23,7 @@ CameraController.icon = "mini-icon-cameracontroller.png";
 CameraController.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"mousemove",this.onMouse,this);
+	LEvent.bind(node,"mousewheel",this.onMouse,this);
 	LEvent.bind(node,"keydown",this.onKey,this);
 	LEvent.bind(node,"keyup",this.onKey,this);
 	LEvent.bind(node,"update",this.onUpdate,this);
@@ -36,6 +41,7 @@ CameraController.prototype.onUpdate = function(e)
 		var cam = this._root.camera;
 		if(this.cam_type == "fps")
 		{
+			//move using the delta vector
 			if(this._moving[0] != 0 || this._moving[1] != 0 || this._moving[2] != 0)
 			{
 				var delta = cam.getLocalVector( this._moving );
@@ -45,94 +51,108 @@ CameraController.prototype.onUpdate = function(e)
 			}
 		}
 	}
+
+	if(this.smooth)
+	{
+		Scene.refresh();
+	}
 }
 
-CameraController.prototype.onMouse = function(e)
+CameraController.prototype.onMouse = function(e, mouse_event)
 {
 	if(!this._root) return;
 	
-	if(e.dragging)
+	var cam = this._root.camera;
+	if(!cam) return;
+
+	if(mouse_event.eventType == "mousewheel")
 	{
-		if(this._root.transform)
+		cam.orbitDistanceFactor(1 + mouse_event.wheel * -0.001 * this.wheel_speed, this.orbit_center);
+		cam.updateMatrices();
+		return;
+	}
+
+	//regular mouse dragging
+	if(!mouse_event.dragging)
+		return;
+
+	if(this._root.transform)
+	{
+	}
+	else 
+	{
+		if(this.cam_type == "fps")
 		{
+			cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
+			cam.updateMatrices();
+			var right = cam.getLocalVector([1,0,0]);
+			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
+			cam.updateMatrices();
 		}
-		else if(this._root.camera)
+		else if(this.cam_type == "orbit")
 		{
-			if(this.cam_type == "fps")
+			if(mouse_event.ctrlKey) //pan
 			{
-				var cam = this._root.camera;
-				cam.rotate(-e.deltaX * this.rot_speed,[0,1,0]);
-				cam.updateMatrices();
-				var right = cam.getLocalVector([1,0,0]);
-				cam.rotate(-e.deltaY * this.rot_speed,right);
+				var delta = cam.getLocalVector( [ this.speed * -mouse_event.deltax * 0.1, this.speed * mouse_event.deltay * 0.1, 0]);
+				cam.move(delta);
 				cam.updateMatrices();
 			}
-			else if(this.cam_type == "orbit")
+			else
 			{
-				var cam = this._root.camera;
-
-				if(e.ctrlKey)
-				{
-					var delta = cam.getLocalVector( [ this.speed * -e.deltaX * 0.1, this.speed * e.deltaY * 0.1, 0]);
-					cam.move(delta);
+				cam.orbit(-mouse_event.deltax * this.rot_speed,[0,1,0], this.orbit_center);
+				//if(e.shiftKey)
+				//{
 					cam.updateMatrices();
+					var right = cam.getLocalVector([1,0,0]);
+					cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
+				/*
 				}
 				else
 				{
-					cam.orbit(-e.deltaX * this.rot_speed,[0,1,0], this.orbit_center);
-					if(e.shiftKey)
-					{
-						cam.updateMatrices();
-						var right = cam.getLocalVector([1,0,0]);
-						cam.orbit(-e.deltaY,right, this.orbit_center);
-					}
-					else
-					{
-						cam.orbitDistanceFactor(1 + e.deltaY * 0.01, this.orbit_center);
-						cam.updateMatrices();
-					}
+					cam.orbitDistanceFactor(1 + mouse_event.deltay * 0.01, this.orbit_center);
+					cam.updateMatrices();
 				}
+				*/
 			}
 		}
 	}
-	//LEvent.trigger(Scene,"change");
 }
 
-CameraController.prototype.onKey = function(e)
+CameraController.prototype.onKey = function(e, key_event)
 {
 	if(!this._root) return;
-	//trace(e);
-	if(e.keyCode == 87)
+	//trace(key_event);
+	if(key_event.keyCode == 87)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[2] = -1;
 		else
 			this._moving[2] = 0;
 	}
-	else if(e.keyCode == 83)
+	else if(key_event.keyCode == 83)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[2] = 1;
 		else
 			this._moving[2] = 0;
 	}
-	else if(e.keyCode == 65)
+	else if(key_event.keyCode == 65)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[0] = -1;
 		else
 			this._moving[0] = 0;
 	}
-	else if(e.keyCode == 68)
+	else if(key_event.keyCode == 68)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[0] = 1;
 		else
 			this._moving[0] = 0;
 	}
-	else if(e.keyCode == 16) //shift in windows chrome
+	else if(key_event.keyCode == 16) //shift in windows chrome
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._move_fast = true;
 		else
 			this._move_fast = false;

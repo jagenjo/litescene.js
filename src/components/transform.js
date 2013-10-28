@@ -206,12 +206,12 @@ Transform.prototype.updateMatrix = function()
 * update the Global Matrix to match the position,scale and rotation in world space
 * @method updateGlobalMatrix
 */
-Transform.prototype.updateGlobalMatrix = function()
+Transform.prototype.updateGlobalMatrix = function(fast)
 {
 	if(this._dirty)
 		this.updateMatrix();
 	if (this._parent)
-		mat4.multiply(this._global_matrix, this._parent.updateGlobalMatrix(), this._local_matrix );
+		mat4.multiply(this._global_matrix, this._parent.updateGlobalMatrix(fast), this._local_matrix );
 	else
 		mat4.copy( this._local_matrix , this._global_matrix);
 	return this._global_matrix;
@@ -375,7 +375,8 @@ Transform.prototype.fromMatrix = function(m)
 	quat.fromMat3(this._rotation, M3);
 	quat.normalize(this._rotation, this._rotation);
 
-	mat4.copy(this._local_matrix, m);
+	if(m != this._local_matrix)
+		mat4.copy(this._local_matrix, m);
 	this._dirty = false;
 	this._on_change();
 }
@@ -643,6 +644,27 @@ Transform.prototype.transformVector = function(vec, dest) {
 Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getRotationGlobal() );
 }
+
+//not finished
+Transform.prototype.applyMatrixTransform = function(t, global) {
+	if(!global || !this._parent)
+	{
+		mat4.multiply(this._local_matrix, this._local_matrix, t);
+		this.fromMatrix(this._local_matrix);
+		return;
+	}
+
+	var pg = this._parent.getGlobalMatrix();
+
+//TODO
+
+	var f = mat4.multiply( mat4.create(), t, g );
+	mat4.invert(g,g);
+	mat4.multiply( f, g, f );
+	mat4.multiply( this._local_matrix, this._local_matrix, f );
+	this.fromMatrix(this._local_matrix);
+}
+
 
 LS.registerComponent(Transform);
 LS.Transform = Transform;

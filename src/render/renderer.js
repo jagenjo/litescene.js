@@ -122,6 +122,8 @@ var Renderer = {
 		{
 			//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 			//gl.enable(gl.SCISSOR_TEST);
+
+			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -130,13 +132,13 @@ var Renderer = {
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 
-			LEvent.trigger(Scene, "beforeRenderScene", camera);
-			Scene.sendEventToNodes("beforeRenderScene", camera);
+			LEvent.trigger(scene, "beforeRenderScene", camera);
+			scene.sendEventToNodes("beforeRenderScene", camera);
 
 			Renderer.renderSceneMeshes("main",options);
 
-			LEvent.trigger(Scene, "afterRenderScene", camera);
-			Scene.sendEventToNodes("afterRenderScene", camera);
+			LEvent.trigger(scene, "afterRenderScene", camera);
+			scene.sendEventToNodes("afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -177,8 +179,23 @@ var Renderer = {
 		options.camera = this.active_camera;
 		options.step = step;
 
-		LEvent.trigger(Scene, "beforeRenderPass", options);
-		Scene.sendEventToNodes("beforeRenderPass", options);
+		LEvent.trigger(scene, "beforeRenderPass", options);
+		scene.sendEventToNodes("beforeRenderPass", options);
+
+		//background
+		if(scene.textures["background"])
+		{
+			var texture = null;
+			if(typeof(scene.textures["background"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["background"] ];
+			if(texture)
+			{
+				gl.disable( gl.BLEND );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
+
 
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LESS );
@@ -203,8 +220,23 @@ var Renderer = {
 				this.renderMultiPassInstance(step, instance, lights, options );
 		}
 
-		LEvent.trigger(Scene, "afterRenderPass",options);
-		Scene.sendEventToNodes("afterRenderPass",options);
+		LEvent.trigger(scene, "afterRenderPass",options);
+		scene.sendEventToNodes("afterRenderPass",options);
+
+		//foreground
+		if(scene.textures["foreground"])
+		{
+			var texture = null;
+			if(typeof(scene.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(texture)
+			{
+				gl.enable( gl.BLEND );
+				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
 
 		//restore state
 		gl.depthFunc(gl.LEQUAL);
@@ -225,7 +257,7 @@ var Renderer = {
 		//		b. Store shader with renderkey
 		//3. Fill the shader with uniforms
 		//4. Render instance
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -240,7 +272,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.eye,
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
+			u_time: scene.current_time || new Date().getTime() * 0.001
 		};
 
 		//node matrix info
@@ -321,7 +353,7 @@ var Renderer = {
 
 	renderShadowPassInstance: function(step, instance, options)
 	{
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -501,8 +533,10 @@ var Renderer = {
 	updateVisibleLights: function(scene, nodes)
 	{
 		this._visible_lights = [];
+		/*
 		if(scene.light && scene.light.enabled != false)
 			this._visible_lights.push(scene.light);
+		*/
 
 		nodes = nodes || scene.getNodes();
 

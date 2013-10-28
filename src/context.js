@@ -56,10 +56,11 @@ function Context(options)
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
 	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
 	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
+	this.gl.onmousewheel = Context.prototype._onmouse.bind(this);
 	this.gl.onkeydown = Context.prototype._onkey.bind(this);
 	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
-	gl.captureMouse();
+	gl.captureMouse(true);
 	gl.captureKeys(true);
 }
 
@@ -107,20 +108,29 @@ Context.prototype._onupdate = function(dt)
 //input
 Context.prototype._onmouse = function(e)
 {
-	if(e.type == "mousedown" && this.interactive )
+	//trace(e);
+
+	//check which node was clicked
+	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
 		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 
+	var levent = null; //levent dispatched
+
+	//send event to clicked node
 	if(this._clicked_node && this._clicked_node.interactive)
 	{
 		e.scene_node = this._clicked_node;
-		LEvent.trigger(Scene,e.type,e);
-		LEvent.trigger(this._clicked_node,e.type,e);
+		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
 	}
 
-	if(e.type == "mouseup")
+	//send event to root
+	if(!levent || !levent.stop)
+		LEvent.trigger(Scene.root,e.eventType,e);
+
+	if(e.eventType == "mouseup")
 		this._clicked_node = null;
 
 	if(this.onMouse)
@@ -139,7 +149,7 @@ Context.prototype._onkey = function(e)
 		if(r) return;
 	}
 
-	LEvent.trigger(Scene,e.type,e);
+	LEvent.trigger(Scene,e.eventType,e);
 }
 
 LS.Context = Context;

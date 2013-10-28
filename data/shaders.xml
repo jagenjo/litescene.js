@@ -677,7 +677,7 @@
 								temp_v2 *= u_normalmap_factor;
 							#endif
 						#endif
-						reflection_color = texture2D(environment_texture, vec2(1.0) - (USE_ENVIRONMENT_TEXTURE + temp_v2)).xyz;
+						reflection_color = texture2D(environment_texture, (USE_ENVIRONMENT_TEXTURE + temp_v2)).xyz;
 					#endif
 
 					if( u_reflection_info.x > 0.0 )

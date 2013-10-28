@@ -729,7 +729,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addInput("Iterations","number");
 		this.addInput("Intensity","number");
 		this.addOutput("Blurred","Texture");
-		this.properties = { intensity: 1, iterations: 1, preserve_aspect: false };
+		this.properties = { intensity: 1, iterations: 1, preserve_aspect: false, scale:[1,1] };
 
 		if(!LGraphTextureBlur._shader)
 			LGraphTextureBlur._shader = new GL.Shader( LGraphTextureBlur.vertex_shader, LGraphTextureBlur.pixel_shader );
@@ -777,6 +777,7 @@ if(typeof(LiteGraph) != "undefined")
 		gl.disable( gl.DEPTH_TEST );
 		var mesh = Mesh.getScreenQuad();
 		var shader = LGraphTextureBlur._shader;
+		var scale = this.properties.scale || [1,1];
 
 		//iterate
 		var start_texture = tex;
@@ -785,13 +786,13 @@ if(typeof(LiteGraph) != "undefined")
 		{
 			this._temp_texture.drawTo( function() {
 				start_texture.bind(0);
-				shader.uniforms({texture:0, u_intensity: 1, u_offset: [0, aspect/start_texture.height] })
+				shader.uniforms({texture:0, u_intensity: 1, u_offset: [0, aspect/start_texture.height * scale[1] ] })
 					.draw(mesh);
 			});
 
 			this._temp_texture.bind(0);
 			this._final_texture.drawTo( function() {
-				shader.uniforms({texture:0, u_intensity: intensity, u_offset: [1/start_texture.width, 0] })
+				shader.uniforms({texture:0, u_intensity: intensity, u_offset: [1/start_texture.width * scale[0], 0] })
 					.draw(mesh);
 			});
 			start_texture = this._final_texture;

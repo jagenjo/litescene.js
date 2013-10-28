@@ -61,7 +61,7 @@ KnobComponent.prototype.updateKnob = function() {
 }
 
 KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
-	this.value -= mouse_event.deltaY * this.delta;
+	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value > this.max_value) this.value = this.max_value;
 	else if(this.value < this.min_value) this.value = this.min_value;
@@ -71,6 +71,8 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	LEvent.trigger( this, "change", this.value);
 	if(this._root)
 		LEvent.trigger( this._root, "knobChange", this.value);
+
+	e.stopPropagation();
 };
 
 LS.registerComponent(KnobComponent);

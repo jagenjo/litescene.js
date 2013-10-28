@@ -373,10 +373,10 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		if(p.angle != 0)
 		{
 			quat.setAxisAngle( rot , front, p.angle * DEG2RAD);
-			vec3.transformQuat(s_bottomleft, rot, s_bottomleft);
-			quat.multiplyVec3(s_topright, rot, s_topright);
-			quat.multiplyVec3(s_topleft, rot, s_topleft);
-			quat.multiplyVec3(s_bottomright, rot, s_bottomright);
+			vec3.transformQuat(s_bottomleft, s_bottomleft, rot);
+			vec3.transformQuat(s_topright, s_topright, rot);
+			vec3.transformQuat(s_topleft, s_topleft, rot);
+			vec3.transformQuat(s_bottomright, s_bottomright, rot);
 		}
 
 		vec3.add(temp, p.pos, s_topright);

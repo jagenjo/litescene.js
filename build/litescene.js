@@ -3984,6 +3984,9 @@ ComponentContainer.prototype.removeComponent = function(component)
 	if(component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
+	//remove all events
+	LEvent.unbindAll(this,component);
+
 	//remove from components list
 	var pos = this._components.indexOf(component);
 	if(pos != -1) this._components.splice(pos,1);
@@ -4052,7 +4055,20 @@ CompositePattern.prototype.addChild = function(node, index, options)
 
 	//has a parent
 	if(node._parentNode)
-		node._parentNode.removeChild(node);
+		node._parentNode.removeChild(node, options);
+
+	/*
+	var moved = false;
+	if(node._parentNode)
+	{
+		moved = true;
+		node._onChangeParent(this, options);
+		//remove from parent children
+		var pos = node._parentNode._children.indexOf(node);
+		if(pos != -1)
+			node._parentNode._children.splice(pos,1);
+	}
+	*/
 
 	//attach to this
 	node._parentNode = this;
@@ -4114,14 +4130,14 @@ CompositePattern.prototype.removeChild = function(node, options)
 
 	LEvent.trigger(this,"childRemoved", node);
 
-	if(this._on_tree)
+	if(node._on_tree)
 	{
-		LEvent.trigger(this._on_tree, "treeItemRemoved", node);
+		LEvent.trigger(node._on_tree, "treeItemRemoved", node);
 
 		//propagate to childs
 		inner_recursive(node);
 	}
-	this._on_tree = null;
+	node._on_tree = null;
 
 	//recursive action
 	function inner_recursive(item)
@@ -4578,7 +4594,8 @@ Transform.prototype.fromMatrix = function(m)
 	quat.fromMat3(this._rotation, M3);
 	quat.normalize(this._rotation, this._rotation);
 
-	mat4.copy(this._local_matrix, m);
+	if(m != this._local_matrix)
+		mat4.copy(this._local_matrix, m);
 	this._dirty = false;
 	this._on_change();
 }
@@ -4846,6 +4863,24 @@ Transform.prototype.transformVector = function(vec, dest) {
 Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getRotationGlobal() );
 }
+
+//not finished
+Transform.prototype.applyMatrixTransform = function(t, global) {
+	if(!global || !this._parent)
+	{
+		mat4.multiply(this._local_matrix, this._local_matrix, t);
+		this.fromMatrix(this._local_matrix);
+		return;
+	}
+
+	var g = this.getGlobalMatrix();
+	var f = mat4.multiply( mat4.create(), t, g);
+	mat4.invert(g,g);
+	mat4.multiply( f, g, f );
+	mat4.multiply( this._local_matrix, this._local_matrix, f );
+	this.fromMatrix(this._local_matrix);
+}
+
 
 LS.registerComponent(Transform);
 LS.Transform = Transform;
@@ -5271,7 +5306,6 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
-	//jQuery.extend(true, this, o);
 	LS.cloneObject(o,this);
 	this.updateMatrices();
 }
@@ -5489,7 +5523,6 @@ Light.prototype.serialize = function()
 
 Light.prototype.configure = function(o)
 {
-	//jQuery.extend(true, this, o);
 	LS.cloneObject(o,this);
 }
 
@@ -5738,7 +5771,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 LS.registerComponent(Rotator);
 /**
 * Camera controller
-* @class FPSController
+* @class CameraController
 * @constructor
 * @param {String} object to configure from
 */
@@ -5747,9 +5780,13 @@ function CameraController(o)
 {
 	this.speed = 10;
 	this.rot_speed = 1;
+	this.wheel_speed = 1;
+	this.smooth = false;
 	this.cam_type = "orbit"; //"fps"
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
+
+	this.configure(o);
 }
 
 CameraController.icon = "mini-icon-cameracontroller.png";
@@ -5757,6 +5794,7 @@ CameraController.icon = "mini-icon-cameracontroller.png";
 CameraController.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node,"mousemove",this.onMouse,this);
+	LEvent.bind(node,"mousewheel",this.onMouse,this);
 	LEvent.bind(node,"keydown",this.onKey,this);
 	LEvent.bind(node,"keyup",this.onKey,this);
 	LEvent.bind(node,"update",this.onUpdate,this);
@@ -5774,6 +5812,7 @@ CameraController.prototype.onUpdate = function(e)
 		var cam = this._root.camera;
 		if(this.cam_type == "fps")
 		{
+			//move using the delta vector
 			if(this._moving[0] != 0 || this._moving[1] != 0 || this._moving[2] != 0)
 			{
 				var delta = cam.getLocalVector( this._moving );
@@ -5783,94 +5822,108 @@ CameraController.prototype.onUpdate = function(e)
 			}
 		}
 	}
+
+	if(this.smooth)
+	{
+		Scene.refresh();
+	}
 }
 
-CameraController.prototype.onMouse = function(e)
+CameraController.prototype.onMouse = function(e, mouse_event)
 {
 	if(!this._root) return;
 	
-	if(e.dragging)
+	var cam = this._root.camera;
+	if(!cam) return;
+
+	if(mouse_event.eventType == "mousewheel")
 	{
-		if(this._root.transform)
+		cam.orbitDistanceFactor(1 + mouse_event.wheel * -0.001 * this.wheel_speed, this.orbit_center);
+		cam.updateMatrices();
+		return;
+	}
+
+	//regular mouse dragging
+	if(!mouse_event.dragging)
+		return;
+
+	if(this._root.transform)
+	{
+	}
+	else 
+	{
+		if(this.cam_type == "fps")
 		{
+			cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
+			cam.updateMatrices();
+			var right = cam.getLocalVector([1,0,0]);
+			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
+			cam.updateMatrices();
 		}
-		else if(this._root.camera)
+		else if(this.cam_type == "orbit")
 		{
-			if(this.cam_type == "fps")
+			if(mouse_event.ctrlKey) //pan
 			{
-				var cam = this._root.camera;
-				cam.rotate(-e.deltaX * this.rot_speed,[0,1,0]);
-				cam.updateMatrices();
-				var right = cam.getLocalVector([1,0,0]);
-				cam.rotate(-e.deltaY * this.rot_speed,right);
+				var delta = cam.getLocalVector( [ this.speed * -mouse_event.deltax * 0.1, this.speed * mouse_event.deltay * 0.1, 0]);
+				cam.move(delta);
 				cam.updateMatrices();
 			}
-			else if(this.cam_type == "orbit")
+			else
 			{
-				var cam = this._root.camera;
-
-				if(e.ctrlKey)
-				{
-					var delta = cam.getLocalVector( [ this.speed * -e.deltaX * 0.1, this.speed * e.deltaY * 0.1, 0]);
-					cam.move(delta);
+				cam.orbit(-mouse_event.deltax * this.rot_speed,[0,1,0], this.orbit_center);
+				//if(e.shiftKey)
+				//{
 					cam.updateMatrices();
+					var right = cam.getLocalVector([1,0,0]);
+					cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
+				/*
 				}
 				else
 				{
-					cam.orbit(-e.deltaX * this.rot_speed,[0,1,0], this.orbit_center);
-					if(e.shiftKey)
-					{
-						cam.updateMatrices();
-						var right = cam.getLocalVector([1,0,0]);
-						cam.orbit(-e.deltaY,right, this.orbit_center);
-					}
-					else
-					{
-						cam.orbitDistanceFactor(1 + e.deltaY * 0.01, this.orbit_center);
-						cam.updateMatrices();
-					}
+					cam.orbitDistanceFactor(1 + mouse_event.deltay * 0.01, this.orbit_center);
+					cam.updateMatrices();
 				}
+				*/
 			}
 		}
 	}
-	//LEvent.trigger(Scene,"change");
 }
 
-CameraController.prototype.onKey = function(e)
+CameraController.prototype.onKey = function(e, key_event)
 {
 	if(!this._root) return;
-	//trace(e);
-	if(e.keyCode == 87)
+	//trace(key_event);
+	if(key_event.keyCode == 87)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[2] = -1;
 		else
 			this._moving[2] = 0;
 	}
-	else if(e.keyCode == 83)
+	else if(key_event.keyCode == 83)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[2] = 1;
 		else
 			this._moving[2] = 0;
 	}
-	else if(e.keyCode == 65)
+	else if(key_event.keyCode == 65)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[0] = -1;
 		else
 			this._moving[0] = 0;
 	}
-	else if(e.keyCode == 68)
+	else if(key_event.keyCode == 68)
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._moving[0] = 1;
 		else
 			this._moving[0] = 0;
 	}
-	else if(e.keyCode == 16) //shift in windows chrome
+	else if(key_event.keyCode == 16) //shift in windows chrome
 	{
-		if(e.type == "keydown")
+		if(key_event.type == "keydown")
 			this._move_fast = true;
 		else
 			this._move_fast = false;
@@ -5883,6 +5936,55 @@ CameraController.prototype.onKey = function(e)
 }
 
 LS.registerComponent(CameraController);
+/**
+* Node manipulator, allows to rotate it
+* @class NodeManipulator
+* @constructor
+* @param {String} object to configure from
+*/
+
+function NodeManipulator(o)
+{
+	this.rot_speed = [1,1]; //degrees
+	this.smooth = false;
+	this.configure(o);
+}
+
+NodeManipulator.icon = "mini-icon-rotator.png";
+
+NodeManipulator.prototype.onAddedToNode = function(node)
+{
+	node.interactive = true;
+	LEvent.bind(node,"mousemove",this.onMouse,this);
+	LEvent.bind(node,"update",this.onUpdate,this);
+}
+
+NodeManipulator.prototype.onUpdate = function(e)
+{
+	if(!this._root) return;
+
+	if(!this._root.transform)
+		return;
+
+	if(this.smooth)
+	{
+		Scene.refresh();
+	}
+}
+
+NodeManipulator.prototype.onMouse = function(e, mouse_event)
+{
+	if(!this._root || !this._root.transform) return;
+	
+	//regular mouse dragging
+	if(!mouse_event.dragging)
+		return;
+
+	this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
+	this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
+}
+
+LS.registerComponent(NodeManipulator);
 /**
 * FaceTo rotate a mesh to look at the camera or another object
 * @class FaceTo
@@ -6213,12 +6315,22 @@ GraphComponent.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
 	if(o.graph_data)
-		this._graph.unserialize( o.graph_data );
+	{
+		try
+		{
+			var obj = JSON.parse(o.graph_data);
+			this._graph.configure( obj );
+		}
+		catch (err)
+		{
+			console.err("Error parsing Graph data");
+		}
+	}
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)
@@ -6322,7 +6434,7 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
-	this._graph.unserialize( o.graph_data );
+	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
 	this._graph_viewport_node = this._graph.findNodesByName("Viewport")[0];
@@ -6330,7 +6442,7 @@ FXGraphComponent.prototype.configure = function(o)
 
 FXGraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 FXGraphComponent.prototype.getResources = function(res)
@@ -6338,8 +6450,8 @@ FXGraphComponent.prototype.getResources = function(res)
 	var nodes = this._graph.findNodesByType("texture/texture");
 	for(var i in nodes)
 	{
-		if(node[i].properties.name)
-			res[node[i].properties.name] = Texture;
+		if(nodes[i].properties.name)
+			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
 }
@@ -6505,7 +6617,7 @@ KnobComponent.prototype.updateKnob = function() {
 }
 
 KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
-	this.value -= mouse_event.deltaY * this.delta;
+	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value > this.max_value) this.value = this.max_value;
 	else if(this.value < this.min_value) this.value = this.min_value;
@@ -6515,6 +6627,8 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	LEvent.trigger( this, "change", this.value);
 	if(this._root)
 		LEvent.trigger( this._root, "knobChange", this.value);
+
+	e.stopPropagation();
 };
 
 LS.registerComponent(KnobComponent);
@@ -6893,10 +7007,10 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		if(p.angle != 0)
 		{
 			quat.setAxisAngle( rot , front, p.angle * DEG2RAD);
-			vec3.transformQuat(s_bottomleft, rot, s_bottomleft);
-			quat.multiplyVec3(s_topright, rot, s_topright);
-			quat.multiplyVec3(s_topleft, rot, s_topleft);
-			quat.multiplyVec3(s_bottomright, rot, s_bottomright);
+			vec3.transformQuat(s_bottomleft, s_bottomleft, rot);
+			vec3.transformQuat(s_topright, s_topright, rot);
+			vec3.transformQuat(s_topleft, s_topleft, rot);
+			vec3.transformQuat(s_bottomright, s_bottomright, rot);
 		}
 
 		vec3.add(temp, p.pos, s_topright);
@@ -8629,7 +8743,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addInput("Iterations","number");
 		this.addInput("Intensity","number");
 		this.addOutput("Blurred","Texture");
-		this.properties = { intensity: 1, iterations: 1, preserve_aspect: false };
+		this.properties = { intensity: 1, iterations: 1, preserve_aspect: false, scale:[1,1] };
 
 		if(!LGraphTextureBlur._shader)
 			LGraphTextureBlur._shader = new GL.Shader( LGraphTextureBlur.vertex_shader, LGraphTextureBlur.pixel_shader );
@@ -8677,6 +8791,7 @@ if(typeof(LiteGraph) != "undefined")
 		gl.disable( gl.DEPTH_TEST );
 		var mesh = Mesh.getScreenQuad();
 		var shader = LGraphTextureBlur._shader;
+		var scale = this.properties.scale || [1,1];
 
 		//iterate
 		var start_texture = tex;
@@ -8685,13 +8800,13 @@ if(typeof(LiteGraph) != "undefined")
 		{
 			this._temp_texture.drawTo( function() {
 				start_texture.bind(0);
-				shader.uniforms({texture:0, u_intensity: 1, u_offset: [0, aspect/start_texture.height] })
+				shader.uniforms({texture:0, u_intensity: 1, u_offset: [0, aspect/start_texture.height * scale[1] ] })
 					.draw(mesh);
 			});
 
 			this._temp_texture.bind(0);
 			this._final_texture.drawTo( function() {
-				shader.uniforms({texture:0, u_intensity: intensity, u_offset: [1/start_texture.width, 0] })
+				shader.uniforms({texture:0, u_intensity: intensity, u_offset: [1/start_texture.width * scale[0], 0] })
 					.draw(mesh);
 			});
 			start_texture = this._final_texture;
@@ -9076,6 +9191,8 @@ var Renderer = {
 		{
 			//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 			//gl.enable(gl.SCISSOR_TEST);
+
+			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -9084,13 +9201,13 @@ var Renderer = {
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 
-			LEvent.trigger(Scene, "beforeRenderScene", camera);
-			Scene.sendEventToNodes("beforeRenderScene", camera);
+			LEvent.trigger(scene, "beforeRenderScene", camera);
+			scene.sendEventToNodes("beforeRenderScene", camera);
 
 			Renderer.renderSceneMeshes("main",options);
 
-			LEvent.trigger(Scene, "afterRenderScene", camera);
-			Scene.sendEventToNodes("afterRenderScene", camera);
+			LEvent.trigger(scene, "afterRenderScene", camera);
+			scene.sendEventToNodes("afterRenderScene", camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -9131,8 +9248,23 @@ var Renderer = {
 		options.camera = this.active_camera;
 		options.step = step;
 
-		LEvent.trigger(Scene, "beforeRenderPass", options);
-		Scene.sendEventToNodes("beforeRenderPass", options);
+		LEvent.trigger(scene, "beforeRenderPass", options);
+		scene.sendEventToNodes("beforeRenderPass", options);
+
+		//background
+		if(scene.textures["background"])
+		{
+			var texture = null;
+			if(typeof(scene.textures["background"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["background"] ];
+			if(texture)
+			{
+				gl.disable( gl.BLEND );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
+
 
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LESS );
@@ -9157,8 +9289,23 @@ var Renderer = {
 				this.renderMultiPassInstance(step, instance, lights, options );
 		}
 
-		LEvent.trigger(Scene, "afterRenderPass",options);
-		Scene.sendEventToNodes("afterRenderPass",options);
+		LEvent.trigger(scene, "afterRenderPass",options);
+		scene.sendEventToNodes("afterRenderPass",options);
+
+		//foreground
+		if(scene.textures["foreground"])
+		{
+			var texture = null;
+			if(typeof(scene.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(texture)
+			{
+				gl.enable( gl.BLEND );
+				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
 
 		//restore state
 		gl.depthFunc(gl.LEQUAL);
@@ -9179,7 +9326,7 @@ var Renderer = {
 		//		b. Store shader with renderkey
 		//3. Fill the shader with uniforms
 		//4. Render instance
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -9194,7 +9341,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.eye,
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
+			u_time: scene.current_time || new Date().getTime() * 0.001
 		};
 
 		//node matrix info
@@ -9275,7 +9422,7 @@ var Renderer = {
 
 	renderShadowPassInstance: function(step, instance, options)
 	{
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -9455,8 +9602,10 @@ var Renderer = {
 	updateVisibleLights: function(scene, nodes)
 	{
 		this._visible_lights = [];
+		/*
 		if(scene.light && scene.light.enabled != false)
 			this._visible_lights.push(scene.light);
+		*/
 
 		nodes = nodes || scene.getNodes();
 
@@ -10185,9 +10334,6 @@ LS.Renderer = Renderer;
 		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
 	},
 	*/
-/* Basic formats parser 
-	Dependencies: jQuery (for xml parsing)
-*/
 
 var Parser = {
 
@@ -11753,20 +11899,6 @@ var parserTGA = {
 	}
 };
 Parser.registerParser( parserTGA );
-/* Dependencies
-	+ Shaders.js: shaders compilation
-	+ glMatrix: for maths
-	+ litegl.js: for meshes and textures
-	+ core.js: for main core functionality
-	+ jQuery: for AJAX calls
-
-*/
-
-
-
-
-//To store all the registered components, useful for editors
-
 /**
 * The SceneTree contains all the info about the Scene and nodes
 *
@@ -11782,9 +11914,11 @@ function SceneTree()
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
 	this._root._on_tree = this;
+	this._nodes = [ this._root ];
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
+
 
 	this.init();
 }
@@ -11793,7 +11927,7 @@ function SceneTree()
 SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
-LS.extendClass(ComponentContainer, SceneTree); //container methods
+//LS.extendClass(ComponentContainer, SceneTree); //container methods
 
 Object.defineProperty( SceneTree.prototype, "root", {
 	enumerable: true,
@@ -11820,18 +11954,17 @@ SceneTree.prototype.init = function()
 	this.materials = {}; //material cache
 	this.local_repository = null;
 
-	this._nodes = [];
+	this._root.removeAllComponents();
+	this._nodes = [ this._root ];
 	this._nodes_by_id = {};
 	this.rt_cameras = [];
 
-	this._components = []; //remove all components
+	//this._components = []; //remove all components
 
-	if(this.camera) this.camera = null;
-	this.addComponent( new Camera() );
-	this.current_camera = this.camera;
+	this._root.addComponent( new Camera() );
+	this.current_camera = this._root.camera;
 
-	if(this.light) this.light = null;
-	this.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
+	this._root.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
 	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
@@ -11866,12 +11999,12 @@ SceneTree.prototype.init = function()
 SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
-	while(this.root.children && this.root.children.length)
-		this.root.removeChild(this.root.children[0]);
+	while(this._root.children && this._root.children.length)
+		this._root.removeChild(this._root.children[0]);
 
 	//remove scene components
-	this.processActionInComponents("onRemovedFromNode",this); //send to components
-	this.processActionInComponents("onRemovedFromScene",this); //send to components
+	this._root.processActionInComponents("onRemovedFromNode",this); //send to components
+	this._root.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	this.init();
 	LEvent.trigger(this,"clear");
@@ -11887,8 +12020,10 @@ SceneTree.prototype.clear = function()
 */
 SceneTree.prototype.configure = function(scene_info)
 {
-	this._components = [];
-	this.camera = this.light = null; //legacy
+	this._root.removeAllComponents(); //remove light and camera
+
+	//this._components = [];
+	//this.camera = this.light = null; //legacy
 
 	if(scene_info.object_type != "SceneTree")
 		trace("Warning: object set to scene doesnt look like a propper one.");
@@ -11920,39 +12055,40 @@ SceneTree.prototype.configure = function(scene_info)
 		for(var i in scene_info.materials)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
 
+	//legacy
 	if(scene_info.components)
-		this.configureComponents(scene_info);
+		this._root.configureComponents(scene_info);
 
 	// LEGACY...
 	if(scene_info.camera)
 	{
-		if(this.camera)
-			this.camera.configure( scene_info.camera );
+		if(this._root.camera)
+			this._root.camera.configure( scene_info.camera );
 		else
-			this.addComponent( new Camera( scene_info.camera ) );
+			this._root.addComponent( new Camera( scene_info.camera ) );
 	}
 
 	if(scene_info.light)
 	{
-		if(this.light)
-			this.light.configure( scene_info.light );
+		if(this._root.light)
+			this._root.light.configure( scene_info.light );
 		else
-			this.addComponent( new Light(scene_info.light) );
+			this._root.addComponent( new Light(scene_info.light) );
 	}
 	else if(scene_info.hasOwnProperty("light")) //light is null
 	{
 		//skip default light
-		if(this.light)
+		if(this._root.light)
 		{
-			this.scene.removeComponent( this.light );
-			this.light = null;
+			this._root.removeComponent( this._root.light );
+			this._root.light = null;
 		}
 	}
 
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
 
-	this.current_camera = this.camera;
+	this.current_camera = this._root.camera;
 }
 
 /**
@@ -11993,7 +12129,7 @@ SceneTree.prototype.serialize = function()
 	}
 
 	//serialize scene components
-	this.serializeComponents(o);
+	//this.serializeComponents(o);
 
 	LEvent.trigger(this,"serializing",o);
 
@@ -12022,6 +12158,7 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 
 	function inner_success(response)
 	{
+		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
 	}
@@ -12057,6 +12194,11 @@ SceneTree.prototype.appendScene = function(scene)
 		this.root.addChild( new_node );
 		new_node.configure( node.constructor == LS.SceneNode ? node.serialize() : node  );
 	}
+}
+
+SceneTree.prototype.getCamera = function()
+{
+	return this._root.camera;
 }
 
 
@@ -12820,7 +12962,7 @@ SceneNode.prototype.serialize = function()
 
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 {
-	if(recompute_transform)
+	if(recompute_transform && this.transform)
 	{
 		var M = node.transform.getGlobalMatrix(); //get son transform
 		var M_parent = this.transform.getGlobalMatrix(); //parent transform
@@ -12830,6 +12972,20 @@ SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 	//link transform
 	if(this.transform)
 		node.transform._parent = this.transform;
+}
+
+SceneNode.prototype._onChangeParent = function(future_parent, recompute_transform)
+{
+	if(recompute_transform && future_parent.transform)
+	{
+		var M = this.transform.getGlobalMatrix(); //get son transform
+		var M_parent = future_parent.transform.getGlobalMatrix(); //parent transform
+		mat4.invert(M_parent,M_parent);
+		this.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
+	}
+	//link transform
+	if(future_parent.transform)
+		this.transform._parent = future_parent.transform;
 }
 
 SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
@@ -13057,10 +13213,11 @@ function Context(options)
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
 	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
 	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
+	this.gl.onmousewheel = Context.prototype._onmouse.bind(this);
 	this.gl.onkeydown = Context.prototype._onkey.bind(this);
 	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
-	gl.captureMouse();
+	gl.captureMouse(true);
 	gl.captureKeys(true);
 }
 
@@ -13108,20 +13265,29 @@ Context.prototype._onupdate = function(dt)
 //input
 Context.prototype._onmouse = function(e)
 {
-	if(e.type == "mousedown" && this.interactive )
+	//trace(e);
+
+	//check which node was clicked
+	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
 		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 
+	var levent = null; //levent dispatched
+
+	//send event to clicked node
 	if(this._clicked_node && this._clicked_node.interactive)
 	{
 		e.scene_node = this._clicked_node;
-		LEvent.trigger(Scene,e.type,e);
-		LEvent.trigger(this._clicked_node,e.type,e);
+		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
 	}
 
-	if(e.type == "mouseup")
+	//send event to root
+	if(!levent || !levent.stop)
+		LEvent.trigger(Scene.root,e.eventType,e);
+
+	if(e.eventType == "mouseup")
 		this._clicked_node = null;
 
 	if(this.onMouse)
@@ -13140,7 +13306,7 @@ Context.prototype._onkey = function(e)
 		if(r) return;
 	}
 
-	LEvent.trigger(Scene,e.type,e);
+	LEvent.trigger(Scene,e.eventType,e);
 }
 
 LS.Context = Context;

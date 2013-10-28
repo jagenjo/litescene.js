@@ -23,7 +23,7 @@ var APP = {
 		Scene.init();
 
 		context.force_redraw = true;
-		context.onMouse = APP.onMouse.bind(this);
+		//context.onMouse = APP.onMouse.bind(this);
 		context.onUpdate = APP.onUpdate.bind(this);
 
 		this.setupScene();
@@ -42,6 +42,7 @@ var APP = {
 		var main = node;
 
 		node = new LS.SceneNode("screen");
+		node.flags.seen_by_picking = false;
 		node.material = new LS.Material({ color: [0.5,0.5,0.5], emissive: [0.0,0.0,0.0], 
 			detail:[-0.5,256,256], 
 			specular_factor: 2, specular_gloss: 100, specular_ontop: true,
@@ -109,25 +110,31 @@ var APP = {
 
 		APP.rotateScene(250);
 
+		//some useful controllers
+		Scene.root.addComponent( new CameraController({rot_speed:0}) );
+		main.addComponent( new NodeManipulator({rot_speed:[1,0]}) );
+
 		//global camera
-		Scene.camera.center = [0,35,0];
-		Scene.camera.eye = [150,40,100];
-		Scene.camera.far = 1000;
-		Scene.camera.near = 1;
+		var global_camera = Scene.getCamera();
+		global_camera.center = [0,35,0];
+		global_camera.eye = [150,40,100];
+		global_camera.far = 1000;
+		global_camera.near = 1;
 
 		//light
-		Scene.light.color = [0.6,0.6,0.6];
-		Scene.light.position = [0,100,150];
-		Scene.light.type = Light.SPOT;
-		Scene.light.spot_cone = true;
-		Scene.light.far = 500;
-		Scene.light.near = 1;
-		Scene.light.size = 200;
-		Scene.light.resolution = 2048;
-		Scene.light.cast_shadows = true;
-		Scene.light.hard_shadows = false;
-		Scene.light.shadow_bias = 0.001;
-		Scene.light.projective_texture = "window.png";//"stained-glass.png";
+		var global_light = Scene.root.light;
+		global_light.color = [0.6,0.6,0.6];
+		global_light.position = [0,100,150];
+		global_light.type = Light.SPOT;
+		global_light.spot_cone = true;
+		global_light.far = 500;
+		global_light.near = 1;
+		global_light.size = 200;
+		global_light.resolution = 2048;
+		global_light.cast_shadows = true;
+		global_light.hard_shadows = false;
+		global_light.shadow_bias = 0.001;
+		global_light.projective_texture = "window.png";//"stained-glass.png";
 
 		Scene.loadResources();
 
@@ -151,7 +158,7 @@ var APP = {
 	{
 		var now = new Date().getTime();
 		var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
-		Scene.camera.eye = [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)];
+		//Scene.getCamera().eye = [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)];
 
 		//Monitor screen effects
 		var mat = Scene.getNode("screen").getMaterial();
@@ -172,6 +179,8 @@ var APP = {
 
 	onMouse: function(e)
 	{
+		LEvent.trigger(Scene , e.type, e);
+		/*
 		if(e.dragging && e.type == "mousemove")
 		{
 			if(e.scene_node && e.scene_node.interactive)
@@ -184,5 +193,6 @@ var APP = {
 				else if(APP.cam_dist > 10) APP.cam_dist = 10;
 			}
 		}
+		*/
 	}
 };

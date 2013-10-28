@@ -109,6 +109,9 @@ ComponentContainer.prototype.removeComponent = function(component)
 	if(component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
+	//remove all events
+	LEvent.unbindAll(this,component);
+
 	//remove from components list
 	var pos = this._components.indexOf(component);
 	if(pos != -1) this._components.splice(pos,1);

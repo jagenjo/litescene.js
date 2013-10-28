@@ -35,12 +35,22 @@ GraphComponent.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
 	if(o.graph_data)
-		this._graph.unserialize( o.graph_data );
+	{
+		try
+		{
+			var obj = JSON.parse(o.graph_data);
+			this._graph.configure( obj );
+		}
+		catch (err)
+		{
+			console.err("Error parsing Graph data");
+		}
+	}
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)
@@ -144,7 +154,7 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
-	this._graph.unserialize( o.graph_data );
+	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
 	this._graph_viewport_node = this._graph.findNodesByName("Viewport")[0];
@@ -152,7 +162,7 @@ FXGraphComponent.prototype.configure = function(o)
 
 FXGraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 FXGraphComponent.prototype.getResources = function(res)
@@ -160,8 +170,8 @@ FXGraphComponent.prototype.getResources = function(res)
 	var nodes = this._graph.findNodesByType("texture/texture");
 	for(var i in nodes)
 	{
-		if(node[i].properties.name)
-			res[node[i].properties.name] = Texture;
+		if(nodes[i].properties.name)
+			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
 }

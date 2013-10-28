@@ -18,6 +18,7 @@
 
 ../src/components/animator.js
 ../src/components/cameraController.js
+../src/components/nodeManipulator.js
 ../src/components/faceTo.js
 ../src/components/fogFX.js
 ../src/components/followNode.js

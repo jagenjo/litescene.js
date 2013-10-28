@@ -420,7 +420,6 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
-	//jQuery.extend(true, this, o);
 	LS.cloneObject(o,this);
 	this.updateMatrices();
 }
