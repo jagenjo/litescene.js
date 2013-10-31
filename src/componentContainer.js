@@ -94,6 +94,8 @@ ComponentContainer.prototype.addComponent = function(component)
 	if(!this._components) this._components = [];
 	if(this._components.indexOf(component) != -1) throw("inserting the same component twice");
 	this._components.push(component);
+	if(!component._uid)
+			component._uid = LS.generateUId();
 	return component;
 }
 

@@ -9,7 +9,6 @@
 
 function Light(o)
 {
-	this._uid = LS.generateUId();
 	/**
 	* Position of the light
 	* @property position
@@ -106,6 +105,10 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
+
+	//for caching purposes
+	this._macros = {};
+	this._uniforms = {};
 
 	if(o) 
 	{

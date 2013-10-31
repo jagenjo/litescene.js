@@ -58,8 +58,11 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type )
 		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type });
 
-	var plane_center = this._root.transform.getPositionGlobal();
+	var plane_center = this._root.transform.getGlobalPosition();
 	var plane_normal = this._root.transform.getTop();
+	var cam_eye = camera.getEye();
+	var cam_center = camera.getCenter();
+	var cam_up = camera._up;
 
 	//use the first vertex and normal from a mesh
 	if(this.use_mesh_info)
@@ -81,9 +84,9 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	{
 		reflected_camera.fov = camera.fov;
 		reflected_camera.aspect = camera.aspect;
-		reflected_camera.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
-		reflected_camera.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
-		reflected_camera.up = geo.reflectPointInPlane( camera.up, [0,0,0], plane_normal );
+		reflected_camera.eye = geo.reflectPointInPlane( cam_eye, plane_center, plane_normal );
+		reflected_camera.center = geo.reflectPointInPlane( cam_center, plane_center, plane_normal );
+		reflected_camera.up = geo.reflectPointInPlane( cam_up, [0,0,0], plane_normal );
 
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));

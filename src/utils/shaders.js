@@ -69,6 +69,9 @@ var Shaders = {
 			}
 		}
 
+		//hash key
+		key = key.hashCode();
+
 		//already compiled
 		if (this.shaders[key] != null)
 			return this.shaders[key];
@@ -96,7 +99,7 @@ var Shaders = {
 		{
 			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
 			shader.name = name;
-			console.log("Shader compiled: " + name);
+			//console.log("Shader compiled: " + name);
 		}
 		catch (err)
 		{
@@ -343,3 +346,14 @@ var Shaders = {
 	}
 };
 
+//used for hashing keys
+String.prototype.hashCode = function(){
+    var hash = 0, i, char;
+    if (this.length == 0) return hash;
+    for (i = 0, l = this.length; i < l; i++) {
+        char  = this.charCodeAt(i);
+        hash  = ((hash<<5)-hash)+char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};

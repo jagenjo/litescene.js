@@ -30,6 +30,7 @@
 ../src/components/scriptComponent.js
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
+../src/components/spherize.js
 
 ../src/graph/scene.js
 ../src/graph/texture.js

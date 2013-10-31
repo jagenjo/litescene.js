@@ -14,6 +14,7 @@
 function Material(o)
 {
 	this._uid = LS.generateUId();
+	this._dirty = true;
 
 	//this.shader = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
@@ -42,6 +43,11 @@ function Material(o)
 	this.bumpmap_factor = 1.0;
 
 	this.textures = {};
+
+	//to optimize, cache
+	this._macros = {};
+	this._uniforms = {};
+	this._bind_textures = [];
 
 	if(o) 
 		this.configure(o);
@@ -204,10 +210,26 @@ Material.prototype.getShader = function(shader_name, macros, options)
 	return Shaders.get(shader_name, macros );
 }
 
+Material.prototype.setDirty = function()
+{
+	this._dirty_macros = this._dirty_uniforms = true;
+}
+
 // RENDERING METHODS
 Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
 {
 	var that = this;
+
+	/* TODO
+	//reuse cached macros
+	var macros = this._macros;
+	if(!this._dirty_macros)
+	{
+		for(var k in macros) 
+			macros_container[k] = macros[k];
+		return;
+	}
+	*/
 
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
@@ -218,7 +240,7 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		if(i == "environment")
 			if(this.reflection_factor <= 0) continue;
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+		local_macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
 	//iterate through textures in the material
@@ -298,10 +320,29 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
 			macros[im] = this.extra_macros[im];
+
+	/*
+	//copy from cached macros
+	for(var k in macros) 
+		macros_container[k] = macros[k];
+	this._dirty_macros = false;
+	*/
 }
 
+//Fill with info about the light
 Material.prototype.getLightShaderMacros = function(macros, step, light, instance, shader_name, node, scene, options)
 {
+	/*
+	//cached macros
+	var macros = light._macros;
+	if(!this.light._dirty_macros)
+	{
+		for(var k in macros) 
+			macros_container[k] = macros[k];
+		return;
+	}
+	*/
+
 	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
 
 	//light macros
@@ -343,6 +384,13 @@ Material.prototype.getLightShaderMacros = function(macros, step, light, instance
 
 		macros.SHADOWMAP_OFFSET = "";
 	}
+
+	/*
+	//copy macros
+	for(var k in macros) 
+		macros_container[k] = macros[k];
+	this.light._dirty_macros = false;
+	*/
 }
 
 Material.prototype.getFlatShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
@@ -446,7 +494,16 @@ Material.prototype.getSceneShaderMacros = function(macros, step, instance, node,
 
 Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, node, scene, options )
 {
-	var shader_vars = shader.uniformLocations;
+	/* CACHE TODO
+	//reuse cached uniforms
+	var uniforms = this._uniforms;
+	if(!this._dirty_uniforms)
+	{
+		for(var k in uniforms) 
+			uniforms_container[k] = uniforms[k];
+		return;
+	}
+	*/
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
@@ -519,6 +576,12 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
+
+	/*
+	for(var k in uniforms) 
+		uniforms_container[k] = uniforms[k];
+	this._dirty_uniforms = false;
+	*/
 }
 
 Material.prototype.fillLightUniforms = function(shader, uniforms, light, instance, node, scene, options)

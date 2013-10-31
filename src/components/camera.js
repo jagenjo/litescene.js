@@ -275,11 +275,23 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
 	return vec3.clone( this._eye );
+}
+
+
+Camera.prototype.getUp = function()
+{
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
+	return vec3.clone( this._up );
 }
 
 Camera.prototype.getCenter = function()
 {
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
 	return vec3.clone( this._center );
 }
 
@@ -420,14 +432,37 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
-	LS.cloneObject(o,this);
+	if(o.type != null) this._type = o.type;
+
+	if(o.eye != null) this._eye.set(o.eye);
+	if(o.center != null) this._center.set(o.center);
+	if(o.up != null) this._up.set(o.up);
+
+	if(o.near != null) this._near = o.near;
+	if(o.far != null) this._far = o.far;
+	if(o.fov != null) this._fov = o.fov;
+	if(o.aspect != null) this._aspect = o.aspect;
+	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+
 	this.updateMatrices();
 }
 
 Camera.prototype.serialize = function()
 {
+	var o = {
+		type: this._type,
+		eye: vec3.toArray(this._eye),
+		center: vec3.toArray(this._center),
+		up: vec3.toArray(this._up),
+		near: this._near,
+		far: this._far,
+		fov: this._fov,
+		aspect: this._aspect,
+		frustrum_size: this._frustrum_size
+	};
+
 	//clone
-	return cloneObject(this);
+	return o;
 }
 
 LS.registerComponent(Camera);

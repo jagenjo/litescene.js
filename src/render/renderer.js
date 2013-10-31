@@ -297,6 +297,16 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
+		//global macros
+		var generic_macros = {};
+		instance.material.getSurfaceShaderMacros(generic_macros, step, shader_name, instance, node, scene, options);
+		instance.material.getSceneShaderMacros(generic_macros, step, instance, node, scene, options);
+		LEvent.trigger(node, "computingShaderMacros", generic_macros);
+
+		//global uniforms
+		var generic_uniforms = {};
+		instance.material.fillSurfaceUniforms(shader, generic_uniforms, instance, node, scene, options );
+		LEvent.trigger(node, "computingShaderUniforms", generic_uniforms );
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -314,16 +324,18 @@ var Renderer = {
 				var shader_name = instance.material.shader || "globalshader";
 
 				var macros = {};
-				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
 				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
-				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
 				if(iLight == 0) macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
+
+				//copy generic
+				for(var i in generic_macros)
+					macros[i] = generic_macros[i];
+
 				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
-			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
 			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
 
 			//secondary pass flags to make it additive
@@ -343,6 +355,7 @@ var Renderer = {
 				gl.depthFunc( gl[mat.depth_func] );
 
 			//render
+			shader.uniforms( generic_uniforms );
 			shader.uniforms( uniforms );
 			instance.render( shader );
 
@@ -470,9 +483,9 @@ var Renderer = {
 			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
 
 			//compute global matrix
-			//TODO
+			if(node.transform)
+				node.transform.updateGlobalMatrix();
 			
-			//*
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
 				continue;
@@ -480,7 +493,6 @@ var Renderer = {
 				continue;
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
-			//*/
 
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
@@ -498,6 +510,9 @@ var Renderer = {
 			//add extra info
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//add bounding
+			//TODO
 
 			//change conditionaly
 			if(options.force_wireframe) instance.primitive = gl.LINES;

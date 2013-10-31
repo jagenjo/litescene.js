@@ -1647,6 +1647,9 @@ var Shaders = {
 			}
 		}
 
+		//hash key
+		key = key.hashCode();
+
 		//already compiled
 		if (this.shaders[key] != null)
 			return this.shaders[key];
@@ -1674,7 +1677,7 @@ var Shaders = {
 		{
 			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
 			shader.name = name;
-			console.log("Shader compiled: " + name);
+			//console.log("Shader compiled: " + name);
 		}
 		catch (err)
 		{
@@ -1921,7 +1924,17 @@ var Shaders = {
 	}
 };
 
-
+//used for hashing keys
+String.prototype.hashCode = function(){
+    var hash = 0, i, char;
+    if (this.length == 0) return hash;
+    for (i = 0, l = this.length; i < l; i++) {
+        char  = this.charCodeAt(i);
+        hash  = ((hash<<5)-hash)+char;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 function toArray(v) { return Array.apply( [], v ); }
@@ -2911,6 +2924,7 @@ LS.RM = ResourcesManager;
 function Material(o)
 {
 	this._uid = LS.generateUId();
+	this._dirty = true;
 
 	//this.shader = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
@@ -2939,6 +2953,11 @@ function Material(o)
 	this.bumpmap_factor = 1.0;
 
 	this.textures = {};
+
+	//to optimize, cache
+	this._macros = {};
+	this._uniforms = {};
+	this._bind_textures = [];
 
 	if(o) 
 		this.configure(o);
@@ -3101,10 +3120,26 @@ Material.prototype.getShader = function(shader_name, macros, options)
 	return Shaders.get(shader_name, macros );
 }
 
+Material.prototype.setDirty = function()
+{
+	this._dirty_macros = this._dirty_uniforms = true;
+}
+
 // RENDERING METHODS
 Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
 {
 	var that = this;
+
+	/* TODO
+	//reuse cached macros
+	var macros = this._macros;
+	if(!this._dirty_macros)
+	{
+		for(var k in macros) 
+			macros_container[k] = macros[k];
+		return;
+	}
+	*/
 
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
@@ -3115,7 +3150,7 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		if(i == "environment")
 			if(this.reflection_factor <= 0) continue;
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+		local_macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
 	//iterate through textures in the material
@@ -3195,10 +3230,29 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
 			macros[im] = this.extra_macros[im];
+
+	/*
+	//copy from cached macros
+	for(var k in macros) 
+		macros_container[k] = macros[k];
+	this._dirty_macros = false;
+	*/
 }
 
+//Fill with info about the light
 Material.prototype.getLightShaderMacros = function(macros, step, light, instance, shader_name, node, scene, options)
 {
+	/*
+	//cached macros
+	var macros = light._macros;
+	if(!this.light._dirty_macros)
+	{
+		for(var k in macros) 
+			macros_container[k] = macros[k];
+		return;
+	}
+	*/
+
 	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
 
 	//light macros
@@ -3240,6 +3294,13 @@ Material.prototype.getLightShaderMacros = function(macros, step, light, instance
 
 		macros.SHADOWMAP_OFFSET = "";
 	}
+
+	/*
+	//copy macros
+	for(var k in macros) 
+		macros_container[k] = macros[k];
+	this.light._dirty_macros = false;
+	*/
 }
 
 Material.prototype.getFlatShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
@@ -3343,7 +3404,16 @@ Material.prototype.getSceneShaderMacros = function(macros, step, instance, node,
 
 Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, node, scene, options )
 {
-	var shader_vars = shader.uniformLocations;
+	/* CACHE TODO
+	//reuse cached uniforms
+	var uniforms = this._uniforms;
+	if(!this._dirty_uniforms)
+	{
+		for(var k in uniforms) 
+			uniforms_container[k] = uniforms[k];
+		return;
+	}
+	*/
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
@@ -3416,6 +3486,12 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
+
+	/*
+	for(var k in uniforms) 
+		uniforms_container[k] = uniforms[k];
+	this._dirty_uniforms = false;
+	*/
 }
 
 Material.prototype.fillLightUniforms = function(shader, uniforms, light, instance, node, scene, options)
@@ -3969,6 +4045,8 @@ ComponentContainer.prototype.addComponent = function(component)
 	if(!this._components) this._components = [];
 	if(this._components.indexOf(component) != -1) throw("inserting the same component twice");
 	this._components.push(component);
+	if(!component._uid)
+			component._uid = LS.generateUId();
 	return component;
 }
 
@@ -4333,10 +4411,10 @@ Transform.prototype.getPosition = function(p)
 
 /**
 * Returns the global position (its a copy)
-* @method getPosition
+* @method getGlobalPosition
 * @return {[[x,y,z]]} the position
 */
-Transform.prototype.getPositionGlobal = function(p)
+Transform.prototype.getGlobalPosition = function(p)
 {
 	if(this._parent)
 	{
@@ -4362,7 +4440,7 @@ Transform.prototype.getRotation = function()
 * @method getRotation
 * @return {[[x,y,z,w]]} the rotation
 */
-Transform.prototype.getRotationGlobal = function()
+Transform.prototype.getGlobalRotation = function()
 {
 	if( this._parent )
 	{
@@ -4391,10 +4469,10 @@ Transform.prototype.getScale = function()
 
 /**
 * Returns the scale in global (its a copy)
-* @method getScaleGlobal
+* @method getGlobalScale
 * @return {[[x,y,z]]} the scale
 */
-Transform.prototype.getScaleGlobal = function()
+Transform.prototype.getGlobalScale = function()
 {
 	if( this._parent )
 	{
@@ -4422,25 +4500,24 @@ Transform.prototype.updateMatrix = function()
 }
 
 /**
-* update the Global Matrix to match the position,scale and rotation in world space
+* updates the global matrix using the parents transformation
 * @method updateGlobalMatrix
+* @param {bool} fast it doesnt recompute parent matrices, just uses the stored one, is faster but could create errors if the parent doesnt have its global matrix update
 */
-Transform.prototype.updateGlobalMatrix = function()
+Transform.prototype.updateGlobalMatrix = function (fast)
 {
 	if(this._dirty)
 		this.updateMatrix();
 	if (this._parent)
-		mat4.multiply(this._global_matrix, this._parent.updateGlobalMatrix(), this._local_matrix );
+		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
 	else
-		mat4.copy( this._local_matrix , this._global_matrix);
-	return this._global_matrix;
+		this._global_matrix.set( this._local_matrix ); 
 }
-
 
 /**
 * Returns a copy of the local matrix of this transform (it updates the matrix automatically)
 * @method getLocalMatrix
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getLocalMatrix = function ()
 {
@@ -4452,7 +4529,7 @@ Transform.prototype.getLocalMatrix = function ()
 /**
 * Returns the original world matrix of this transform (it updates the matrix automatically)
 * @method getLocalMatrixRef
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getLocalMatrixRef = function ()
 {
@@ -4461,18 +4538,20 @@ Transform.prototype.getLocalMatrixRef = function ()
 	return this._local_matrix;
 }
 
+
+
 /**
 * Returns a copy of the global matrix of this transform (it updates the matrix automatically)
 * @method getGlobalMatrix
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
-Transform.prototype.getGlobalMatrix = function (m)
+Transform.prototype.getGlobalMatrix = function (m, fast)
 {
 	if(this._dirty)
 		this.updateMatrix();
 	m = m || mat4.create();
 	if (this._parent)
-		mat4.multiply( this._global_matrix, this._parent.getGlobalMatrix(), this._local_matrix );
+		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
 	else
 		this._global_matrix.set( this._local_matrix ); 
 	m.set(this._global_matrix);
@@ -4482,13 +4561,14 @@ Transform.prototype.getGlobalMatrix = function (m)
 /**
 * Returns a quaternion with all parents rotations
 * @method getGlobalRotation
-* @return {Quat} Quaternion
+* @return {quat} Quaternion
 */
 Transform.prototype.getGlobalRotation = function (q)
 {
 	q = q || quat.create();
 	q.set(this._rotation);
 
+	//concatenate all parents rotations
 	var aux = this._parent;
 	while(aux)
 	{
@@ -4501,7 +4581,7 @@ Transform.prototype.getGlobalRotation = function (q)
 /**
 * Returns a Matrix with all parents rotations
 * @method getGlobalRotationMatrix
-* @return {Matrix} Matrix rotation
+* @return {mat4} Matrix rotation
 */
 Transform.prototype.getGlobalRotationMatrix = function (m)
 {
@@ -4521,7 +4601,7 @@ Transform.prototype.getGlobalRotationMatrix = function (m)
 /**
 * Returns a copy of the global matrix of this transform (it updates the matrix automatically)
 * @method getGlobalMatrix
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getGlobalMatrixRef = function ()
 {
@@ -4531,22 +4611,22 @@ Transform.prototype.getGlobalMatrixRef = function ()
 /**
 * Returns the world matrix of this transform without the scale
 * @method getMatrixWithoutScale
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getMatrixWithoutScale = function ()
 {
-	var pos = this.getPositionGlobal();
-	return mat4.fromRotationTranslation(mat4.create(), this.getRotationGlobal(), pos) 
+	var pos = this.getGlobalPosition();
+	return mat4.fromRotationTranslation(mat4.create(), this.getGlobalRotation(), pos) 
 }
 
 /**
 * Returns the world matrix of this transform without the scale
 * @method getMatrixWithoutRotation
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getMatrixWithoutRotation = function ()
 {
-	var pos = this.getPositionGlobal();
+	var pos = this.getGlobalPosition();
 	return mat4.clone([1,0,0,0, 0,1,0,0, 0,0,1,0, pos[0], pos[1], pos[2], 1]);
 }
 
@@ -4554,7 +4634,7 @@ Transform.prototype.getMatrixWithoutRotation = function ()
 /**
 * Returns the matrix for the normals in the shader
 * @method getNormalMatrix
-* @return {Matrix} the matrix in array format
+* @return {mat4} the matrix in array format
 */
 Transform.prototype.getNormalMatrix = function (m)
 {
@@ -4572,7 +4652,7 @@ Transform.prototype.getNormalMatrix = function (m)
 /**
 * Configure the transform from a local Matrix (do not tested carefully)
 * @method fromMatrix
-* @param {Matrix} src, the matrix in array format
+* @param {mat4} src, the matrix in array format
 */
 Transform.prototype.fromMatrix = function(m)
 {
@@ -4589,10 +4669,16 @@ Transform.prototype.fromMatrix = function(m)
 	mat4.scale( mat4.create(), M, [1/this._scale[0],1/this._scale[1],1/this._scale[2]] );
 
 	//rot
+	//quat.fromMat4(this._rotation, M);
+	//*
+	vec3.normalize( M.subarray(0,3), M.subarray(0,3) );
+	vec3.normalize( M.subarray(4,7), M.subarray(4,7) );
+	vec3.normalize( M.subarray(8,11), M.subarray(8,11) );
 	var M3 = mat3.fromMat4( mat3.create(), M);
 	mat3.transpose(M3, M3);
 	quat.fromMat3(this._rotation, M3);
 	quat.normalize(this._rotation, this._rotation);
+	//*/
 
 	if(m != this._local_matrix)
 		mat4.copy(this._local_matrix, m);
@@ -4603,7 +4689,7 @@ Transform.prototype.fromMatrix = function(m)
 /**
 * Configure the transform rotation from a vec3 Euler angles (heading,attitude,bank)
 * @method setRotationFromEuler
-* @param {Matrix} src, the matrix in array format
+* @param {mat4} src, the matrix in array format
 */
 Transform.prototype.setRotationFromEuler = function(v)
 {
@@ -4615,9 +4701,9 @@ Transform.prototype.setRotationFromEuler = function(v)
 /**
 * sets the position
 * @method setPosition
-* @param {Number} x 
-* @param {Number} y
-* @param {Number} z 
+* @param {number} x 
+* @param {number} y
+* @param {number} z 
 */
 Transform.prototype.setPosition = function(x,y,z)
 {
@@ -4644,9 +4730,9 @@ Transform.prototype.setRotation = function(q)
 /**
 * sets the scale
 * @method setScale
-* @param {Number} x 
-* @param {Number} y
-* @param {Number} z 
+* @param {number} x 
+* @param {number} y
+* @param {number} z 
 */
 Transform.prototype.setScale = function(x,y,z)
 {
@@ -4661,9 +4747,9 @@ Transform.prototype.setScale = function(x,y,z)
 /**
 * translates object (addts to the position)
 * @method translate
-* @param {Number} x 
-* @param {Number} y
-* @param {Number} z 
+* @param {number} x 
+* @param {number} y
+* @param {number} z 
 */
 Transform.prototype.translate = function(x,y,z)
 {
@@ -4678,9 +4764,9 @@ Transform.prototype.translate = function(x,y,z)
 /**
 * translates object in local coordinates (using the rotation and the scale)
 * @method translateLocal
-* @param {Number} x 
-* @param {Number} y
-* @param {Number} z 
+* @param {number} x 
+* @param {number} y
+* @param {number} z 
 */
 Transform.prototype.translateLocal = function(x,y,z)
 {
@@ -4695,7 +4781,7 @@ Transform.prototype.translateLocal = function(x,y,z)
 /**
 * rotate object in world space
 * @method rotate
-* @param {Number} angle_in_deg 
+* @param {number} angle_in_deg 
 * @param {vec3} axis
 */
 Transform.prototype.rotate = function(angle_in_deg, axis)
@@ -4709,7 +4795,7 @@ Transform.prototype.rotate = function(angle_in_deg, axis)
 /**
 * rotate object in object space
 * @method rotateLocal
-* @param {Number} angle_in_deg 
+* @param {number} angle_in_deg 
 * @param {vec3} axis
 */
 Transform.prototype.rotateLocal = function(angle_in_deg, axis)
@@ -4723,9 +4809,9 @@ Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 /**
 * scale the object
 * @method scale
-* @param {Number} x 
-* @param {Number} y
-* @param {Number} z 
+* @param {number} x 
+* @param {number} y
+* @param {number} z 
 */
 Transform.prototype.scale = function(x,y,z)
 {
@@ -4743,7 +4829,7 @@ Transform.prototype.scale = function(x,y,z)
 * @method interpolate
 * @param {Transform} a 
 * @param {Transform} b
-* @param {Number} factor from 0 to 1 
+* @param {number} factor from 0 to 1 
 * @param {Transform} the destination
 */
 Transform.interpolate = function(a,b,factor, result)
@@ -4758,9 +4844,9 @@ Transform.interpolate = function(a,b,factor, result)
 /**
 * Orients the transform to look from one position to another (overwrites scale)
 * @method lookAt
-* @param {[[x,y,z]]} position
-* @param {[[x,y,z]]} target
-* @param {[[x,y,z]]} up
+* @param {vec3} position
+* @param {vec3} target
+* @param {vec3} up
 */
 Transform.prototype.lookAt = function(pos,target,up)
 {
@@ -4790,37 +4876,37 @@ Transform.prototype._on_change = function()
 /**
 * returns the [0,0,1] vector in world space
 * @method getFront
-* @return {[[x,y,z]]}
+* @return {vec3}
 */
 Transform.prototype.getFront = function(dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,0,1), this.getRotationGlobal() );
+	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,0,1), this.getGlobalRotation() );
 }
 
 /**
 * returns the [0,1,0] vector in world space
 * @method getTop
-* @return {[[x,y,z]]}
+* @return {vec3}
 */
 Transform.prototype.getTop = function(dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,1,0), this.getRotationGlobal() );
+	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,1,0), this.getGlobalRotation() );
 }
 
 /**
 * returns the [1,0,0] vector in world space
 * @method getRight
-* @return {[[x,y,z]]}
+* @return {vec3}
 */
 Transform.prototype.getRight = function(dest) {
 	//return mat4.rotateVec3( this._matrix, vec3.create([1,0,0]) );
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(1,0,0), this.getRotationGlobal() );
+	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(1,0,0), this.getGlobalRotation() );
 }
 
 /**
 * Applies the local transformation to a point (multiply it by the matrix)
 * If no destination is specified the transform is applied to vec
 * @method transformPoint
-* @param {[[x,y,z]]} point
-* @param {[[x,y,z]]} destination (optional)
+* @param {vec3} point
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformPoint = function(vec, dest) {
 	dest = dest || vec3.create();
@@ -4832,8 +4918,8 @@ Transform.prototype.transformPoint = function(vec, dest) {
 * Applies the global transformation to a point (multiply it by the matrix)
 * If no destination is specified the transform is applied to vec
 * @method transformPointGlobal
-* @param {[[x,y,z]]} point
-* @param {[[x,y,z]]} destination (optional)
+* @param {vec3} point
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
@@ -4846,8 +4932,8 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVector
-* @param {[[x,y,z]]} vector
-* @param {[[x,y,z]]} destination (optional)
+* @param {[x,y,z]} vector
+* @param {[x,y,z]} destination (optional)
 */
 Transform.prototype.transformVector = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this._rotation );
@@ -4857,27 +4943,39 @@ Transform.prototype.transformVector = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVectorGlobal
+* @param {[x,y,z]} vector
+* @param {[x,y,z]} destination (optional)
+*/
+Transform.prototype.transformVectorGlobal = function(vec, dest) {
+	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
+}
+
+/**
+* Applies the transformation to a vector (rotate but not translate)
+* If no destination is specified the transform is applied to vec
+* @method applyTransformMatrix
 * @param {[[x,y,z]]} vector
 * @param {[[x,y,z]]} destination (optional)
 */
-Transform.prototype.transformVectorGlobal = function(vec, dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec, this.getRotationGlobal() );
-}
-
-//not finished
-Transform.prototype.applyMatrixTransform = function(t, global) {
-	if(!global || !this._parent)
+Transform.prototype.applyTransformMatrix = function(t, is_global) {
+	if(!is_global || !this._parent)
 	{
-		mat4.multiply(this._local_matrix, this._local_matrix, t);
+		if(is_global)
+			mat4.multiply(this._local_matrix, t, this._local_matrix);
+		else
+			mat4.multiply(this._local_matrix, this._local_matrix, t);
 		this.fromMatrix(this._local_matrix);
+		mat4.copy(this._global_matrix, this._local_matrix); //no parent? then is the global too
 		return;
 	}
 
 	var g = this.getGlobalMatrix();
-	var f = mat4.multiply( mat4.create(), t, g);
-	mat4.invert(g,g);
-	mat4.multiply( f, g, f );
-	mat4.multiply( this._local_matrix, this._local_matrix, f );
+	var pg = this._parent._global_matrix;
+	var temp = mat4.create();
+	mat4.multiply( this._global_matrix, t, g );
+
+	mat4.invert(temp,pg);
+	mat4.multiply(this._local_matrix, temp, this._global_matrix );
 	this.fromMatrix(this._local_matrix);
 }
 
@@ -5161,11 +5259,23 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
 	return vec3.clone( this._eye );
+}
+
+
+Camera.prototype.getUp = function()
+{
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
+	return vec3.clone( this._up );
 }
 
 Camera.prototype.getCenter = function()
 {
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
 	return vec3.clone( this._center );
 }
 
@@ -5306,14 +5416,37 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
-	LS.cloneObject(o,this);
+	if(o.type != null) this._type = o.type;
+
+	if(o.eye != null) this._eye.set(o.eye);
+	if(o.center != null) this._center.set(o.center);
+	if(o.up != null) this._up.set(o.up);
+
+	if(o.near != null) this._near = o.near;
+	if(o.far != null) this._far = o.far;
+	if(o.fov != null) this._fov = o.fov;
+	if(o.aspect != null) this._aspect = o.aspect;
+	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+
 	this.updateMatrices();
 }
 
 Camera.prototype.serialize = function()
 {
+	var o = {
+		type: this._type,
+		eye: vec3.toArray(this._eye),
+		center: vec3.toArray(this._center),
+		up: vec3.toArray(this._up),
+		near: this._near,
+		far: this._far,
+		fov: this._fov,
+		aspect: this._aspect,
+		frustrum_size: this._frustrum_size
+	};
+
 	//clone
-	return cloneObject(this);
+	return o;
 }
 
 LS.registerComponent(Camera);
@@ -5329,7 +5462,6 @@ LS.Camera = Camera;
 
 function Light(o)
 {
-	this._uid = LS.generateUId();
 	/**
 	* Position of the light
 	* @property position
@@ -5426,6 +5558,10 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
+
+	//for caching purposes
+	this._macros = {};
+	this._uniforms = {};
 
 	if(o) 
 	{
@@ -5693,7 +5829,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 
 	var RI = this._render_instance || new RenderInstance(this._root, this);
 
-	this._root.transform.getGlobalMatrix(RI.matrix);
+	//do not need to update
+	RI.matrix.set( this._root.transform._global_matrix );
+	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.mesh = mesh;
@@ -5836,6 +5974,8 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	var cam = this._root.camera;
 	if(!cam) return;
 
+	if(!mouse_event) mouse_event = e;
+
 	if(mouse_event.eventType == "mousewheel")
 	{
 		cam.orbitDistanceFactor(1 + mouse_event.wheel * -0.001 * this.wheel_speed, this.orbit_center);
@@ -5849,6 +5989,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(this._root.transform)
 	{
+		//TODO
 	}
 	else 
 	{
@@ -7171,8 +7312,11 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type )
 		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type });
 
-	var plane_center = this._root.transform.getPositionGlobal();
+	var plane_center = this._root.transform.getGlobalPosition();
 	var plane_normal = this._root.transform.getTop();
+	var cam_eye = camera.getEye();
+	var cam_center = camera.getCenter();
+	var cam_up = camera._up;
 
 	//use the first vertex and normal from a mesh
 	if(this.use_mesh_info)
@@ -7194,9 +7338,9 @@ RealtimeReflector.prototype.onRenderRT = function(e,camera)
 	{
 		reflected_camera.fov = camera.fov;
 		reflected_camera.aspect = camera.aspect;
-		reflected_camera.eye = geo.reflectPointInPlane( camera.eye, plane_center, plane_normal );
-		reflected_camera.center = geo.reflectPointInPlane( camera.center, plane_center, plane_normal );
-		reflected_camera.up = geo.reflectPointInPlane( camera.up, [0,0,0], plane_normal );
+		reflected_camera.eye = geo.reflectPointInPlane( cam_eye, plane_center, plane_normal );
+		reflected_camera.center = geo.reflectPointInPlane( cam_center, plane_center, plane_normal );
+		reflected_camera.up = geo.reflectPointInPlane( cam_up, [0,0,0], plane_normal );
 
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
@@ -7599,6 +7743,74 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 
 LS.registerComponent(Cloner);
 LS.Cloner = Cloner;
+/**
+* Spherize deforms a mesh, it is an example of a component that modifies the meshes being rendered
+* @class Spherize
+* @constructor
+* @param {String} object to configure from
+*/
+
+function Spherize(o)
+{
+	if(!this._uid)
+		this._uid = LS.generateUId();
+
+	this.radius = 10;
+	this.center = vec3.create();
+	this.factor = 0.5;
+
+	var replaces = {
+		u_spherize_center: "u_spherize_center_" + this._uid,
+		u_spherize_radius: "u_spherize_radius_" + this._uid,
+		u_spherize_factor: "u_spherize_factor_" + this._uid
+	};
+		
+
+	this._uniforms_code = Spherize._uniforms_code.replaceAll(replaces);
+	this._code = Spherize._code.replaceAll(replaces);
+}
+
+Spherize["@factor"] = { type: "number", step: 0.001 };
+
+Spherize.icon = "mini-icon-rotator.png";
+
+Spherize.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node,"computingShaderMacros",this.onMacros,this);
+	LEvent.bind(node,"computingShaderUniforms",this.onUniforms,this);
+}
+
+
+Spherize.prototype.onRemoveFromNode = function(node)
+{
+	LEvent.unbindAll(node,this);
+}
+
+Spherize._uniforms_code = "uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;";
+Spherize._code = "vertex = mix(vertex, normalize(vertex-u_spherize_center) * u_spherize_radius, u_spherize_factor);";
+
+Spherize.prototype.onMacros = function(e, macros)
+{
+	if(macros.USE_VERTEX_SHADER_UNIFORMS)
+		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
+	else
+		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
+
+	if(macros.USE_VERTEX_SHADER_CODE)
+		macros.USE_VERTEX_SHADER_CODE += this._code;
+	else
+		macros.USE_VERTEX_SHADER_CODE = this._code;
+}
+
+Spherize.prototype.onUniforms = function(e, uniforms)
+{
+	uniforms["u_spherize_center_" + this._uid ] = this.center;
+	uniforms["u_spherize_radius_" + this._uid ] = this.radius;
+	uniforms["u_spherize_factor_" + this._uid ] = this.factor;
+}
+
+
+LS.registerComponent(Spherize);
 if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
@@ -9366,6 +9578,16 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
+		//global macros
+		var generic_macros = {};
+		instance.material.getSurfaceShaderMacros(generic_macros, step, shader_name, instance, node, scene, options);
+		instance.material.getSceneShaderMacros(generic_macros, step, instance, node, scene, options);
+		LEvent.trigger(node, "computingShaderMacros", generic_macros);
+
+		//global uniforms
+		var generic_uniforms = {};
+		instance.material.fillSurfaceUniforms(shader, generic_uniforms, instance, node, scene, options );
+		LEvent.trigger(node, "computingShaderUniforms", generic_uniforms );
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -9383,16 +9605,18 @@ var Renderer = {
 				var shader_name = instance.material.shader || "globalshader";
 
 				var macros = {};
-				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
 				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
-				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
 				if(iLight == 0) macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
+
+				//copy generic
+				for(var i in generic_macros)
+					macros[i] = generic_macros[i];
+
 				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
-			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
 			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
 
 			//secondary pass flags to make it additive
@@ -9412,6 +9636,7 @@ var Renderer = {
 				gl.depthFunc( gl[mat.depth_func] );
 
 			//render
+			shader.uniforms( generic_uniforms );
 			shader.uniforms( uniforms );
 			instance.render( shader );
 
@@ -9539,9 +9764,9 @@ var Renderer = {
 			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
 
 			//compute global matrix
-			//TODO
+			if(node.transform)
+				node.transform.updateGlobalMatrix();
 			
-			//*
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
 				continue;
@@ -9549,7 +9774,6 @@ var Renderer = {
 				continue;
 			if(node.flags.seen_by_picking == false && options.is_picking)
 				continue;
-			//*/
 
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
@@ -9567,6 +9791,9 @@ var Renderer = {
 			//add extra info
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//add bounding
+			//TODO
 
 			//change conditionaly
 			if(options.force_wireframe) instance.primitive = gl.LINES;
@@ -12959,6 +13186,13 @@ SceneNode.prototype.serialize = function()
 }
 
 //scene graph tree ************************
+
+SceneTree.prototype.removeNode = function(node)
+{
+	if(!node._in_tree || node._in_tree != this)
+		return;
+	node.parentNode.removeChild(node);
+}
 
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 {

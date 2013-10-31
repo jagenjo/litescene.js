@@ -65,6 +65,8 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	var cam = this._root.camera;
 	if(!cam) return;
 
+	if(!mouse_event) mouse_event = e;
+
 	if(mouse_event.eventType == "mousewheel")
 	{
 		cam.orbitDistanceFactor(1 + mouse_event.wheel * -0.001 * this.wheel_speed, this.orbit_center);
@@ -78,6 +80,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(this._root.transform)
 	{
+		//TODO
 	}
 	else 
 	{

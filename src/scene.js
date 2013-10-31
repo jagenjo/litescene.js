@@ -1059,6 +1059,13 @@ SceneNode.prototype.serialize = function()
 
 //scene graph tree ************************
 
+SceneTree.prototype.removeNode = function(node)
+{
+	if(!node._in_tree || node._in_tree != this)
+		return;
+	node.parentNode.removeChild(node);
+}
+
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)
 {
 	if(recompute_transform && this.transform)
