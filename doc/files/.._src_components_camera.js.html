@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -405,11 +409,23 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
 	return vec3.clone( this._eye );
+}
+
+
+Camera.prototype.getUp = function()
+{
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
+	return vec3.clone( this._up );
 }
 
 Camera.prototype.getCenter = function()
 {
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
+		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
 	return vec3.clone( this._center );
 }
 
@@ -550,15 +566,37 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
-	//jQuery.extend(true, this, o);
-	LS.cloneObject(o,this);
+	if(o.type != null) this._type = o.type;
+
+	if(o.eye != null) this._eye.set(o.eye);
+	if(o.center != null) this._center.set(o.center);
+	if(o.up != null) this._up.set(o.up);
+
+	if(o.near != null) this._near = o.near;
+	if(o.far != null) this._far = o.far;
+	if(o.fov != null) this._fov = o.fov;
+	if(o.aspect != null) this._aspect = o.aspect;
+	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+
 	this.updateMatrices();
 }
 
 Camera.prototype.serialize = function()
 {
+	var o = {
+		type: this._type,
+		eye: vec3.toArray(this._eye),
+		center: vec3.toArray(this._center),
+		up: vec3.toArray(this._up),
+		near: this._near,
+		far: this._far,
+		fov: this._fov,
+		aspect: this._aspect,
+		frustrum_size: this._frustrum_size
+	};
+
 	//clone
-	return cloneObject(this);
+	return o;
 }
 
 LS.registerComponent(Camera);

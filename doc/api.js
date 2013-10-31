@@ -3,7 +3,7 @@ YUI.add("yuidoc-meta", function(Y) {
     "classes": [
         "LS.ComponentContainer",
         "LS.Components.Camera",
-        "LS.Components.FPSController",
+        "LS.Components.CameraController",
         "LS.Components.FXGraphComponent",
         "LS.Components.FaceTo",
         "LS.Components.FollowNode",
@@ -11,7 +11,9 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.GraphComponent",
         "LS.Components.KnobComponent",
         "LS.Components.Light",
+        "LS.Components.NodeManipulator",
         "LS.Components.RealtimeReflector",
+        "LS.Components.Spherize",
         "LS.Components.Transform",
         "LS.Context",
         "LS.LS",

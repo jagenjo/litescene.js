@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -191,7 +195,7 @@ KnobComponent.prototype.updateKnob = function() {
 }
 
 KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
-	this.value -= mouse_event.deltaY * this.delta;
+	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value &gt; this.max_value) this.value = this.max_value;
 	else if(this.value &lt; this.min_value) this.value = this.min_value;
@@ -201,6 +205,8 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	LEvent.trigger( this, &quot;change&quot;, this.value);
 	if(this._root)
 		LEvent.trigger( this._root, &quot;knobChange&quot;, this.value);
+
+	e.stopPropagation();
 };
 
 LS.registerComponent(KnobComponent);

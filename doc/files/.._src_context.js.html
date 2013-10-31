@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -186,10 +190,11 @@ function Context(options)
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
 	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
 	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
+	this.gl.onmousewheel = Context.prototype._onmouse.bind(this);
 	this.gl.onkeydown = Context.prototype._onkey.bind(this);
 	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
-	gl.captureMouse();
+	gl.captureMouse(true);
 	gl.captureKeys(true);
 }
 
@@ -237,20 +242,29 @@ Context.prototype._onupdate = function(dt)
 //input
 Context.prototype._onmouse = function(e)
 {
-	if(e.type == &quot;mousedown&quot; &amp;&amp; this.interactive )
+	//trace(e);
+
+	//check which node was clicked
+	if(this.interactive &amp;&amp; (e.eventType == &quot;mousedown&quot; || e.eventType == &quot;mousewheel&quot; ))
 	{
 		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 
+	var levent = null; //levent dispatched
+
+	//send event to clicked node
 	if(this._clicked_node &amp;&amp; this._clicked_node.interactive)
 	{
 		e.scene_node = this._clicked_node;
-		LEvent.trigger(Scene,e.type,e);
-		LEvent.trigger(this._clicked_node,e.type,e);
+		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
 	}
 
-	if(e.type == &quot;mouseup&quot;)
+	//send event to root
+	if(!levent || !levent.stop)
+		LEvent.trigger(Scene.root,e.eventType,e);
+
+	if(e.eventType == &quot;mouseup&quot;)
 		this._clicked_node = null;
 
 	if(this.onMouse)
@@ -269,7 +283,7 @@ Context.prototype._onkey = function(e)
 		if(r) return;
 	}
 
-	LEvent.trigger(Scene,e.type,e);
+	LEvent.trigger(Scene,e.eventType,e);
 }
 
 LS.Context = Context;

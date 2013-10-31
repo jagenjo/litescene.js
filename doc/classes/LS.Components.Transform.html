@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -263,6 +267,13 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
+                                <a href="#method_applyTransformMatrix">applyTransformMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_configure">configure</a>
 
                                 
@@ -312,6 +323,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getGlobalPosition">getGlobalPosition</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getGlobalRotation">getGlobalRotation</a>
 
                                 
@@ -320,6 +338,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_getGlobalRotationMatrix">getGlobalRotationMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getGlobalScale">getGlobalScale</a>
 
                                 
                                 
@@ -368,13 +393,6 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getPosition">getPosition</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_getRight">getRight</a>
 
                                 
@@ -397,13 +415,6 @@
                         
                             <li class="index-item method">
                                 <a href="#method_getScale">getScale</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_getScaleGlobal">getScaleGlobal</a>
 
                                 
                                 
@@ -570,6 +581,117 @@
         
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
+
+                
+                    <div id="method_applyTransformMatrix" class="method item">
+    <h3 class="name"><code>applyTransformMatrix</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>vector</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>destination</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l656"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:656</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Applies the transformation to a vector (rotate but not translate)
+If no destination is specified the transform is applied to vec</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">vector</code>
+                        <span class="type">[x,y,z]</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">destination</code>
+                        <span class="type">[x,y,z]</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>(optional)</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
 
                 
                     <div id="method_configure" class="method item">
@@ -880,7 +1002,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l353"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:353</code></a>
+        <a href="../files/.._src_components_transform.js.html#l355"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:355</code></a>
         
         </p>
 
@@ -904,7 +1026,7 @@
                 <li class="param">
                     
                         <code class="param-name">src,</code>
-                        <span class="type">Matrix</span>
+                        <span class="type">Mat4</span>
                     
 
                     
@@ -936,7 +1058,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
+            <span class="type">Vec3</span>
         </span>
     
 
@@ -963,7 +1085,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l570"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:570</code></a>
+        <a href="../files/.._src_components_transform.js.html#l579"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:579</code></a>
         
         </p>
 
@@ -987,7 +1109,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">[x,y,z]</span>:
+                        <span class="type">Vec3</span>:
                     
                 
             </div>
@@ -1007,7 +1129,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">Matrix</span>
+            <span class="type">Mat4</span>
         </span>
     
 
@@ -1034,7 +1156,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l302"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:302</code></a>
+        <a href="../files/.._src_components_transform.js.html#l304"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:304</code></a>
         
         </p>
 
@@ -1058,7 +1180,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">Matrix</span>:
+                        <span class="type">Mat4</span>:
                     
                     <p>the matrix in array format</p>
 
@@ -1080,7 +1202,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">Matrix</span>
+            <span class="type">Mat4</span>
         </span>
     
 
@@ -1107,7 +1229,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l245"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:245</code></a>
+        <a href="../files/.._src_components_transform.js.html#l246"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:246</code></a>
         
         </p>
 
@@ -1131,7 +1253,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">Matrix</span>:
+                        <span class="type">Mat4</span>:
                     
                     <p>the matrix in array format</p>
 
@@ -1144,519 +1266,8 @@
 </div>
 
                 
-                    <div id="method_getGlobalRotation" class="method item">
-    <h3 class="name"><code>getGlobalRotation</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Quat</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l263"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:263</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns a quaternion with all parents rotations</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Quat</span>:
-                    
-                    <p>Quaternion</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getGlobalRotationMatrix" class="method item">
-    <h3 class="name"><code>getGlobalRotationMatrix</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l282"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:282</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns a Matrix with all parents rotations</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>Matrix rotation</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getLocalMatrix" class="method item">
-    <h3 class="name"><code>getLocalMatrix</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l221"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:221</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns a copy of the local matrix of this transform (it updates the matrix automatically)</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>the matrix in array format</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getLocalMatrixRef" class="method item">
-    <h3 class="name"><code>getLocalMatrixRef</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l233"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:233</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns the original world matrix of this transform (it updates the matrix automatically)</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>the matrix in array format</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getMatrixWithoutRotation" class="method item">
-    <h3 class="name"><code>getMatrixWithoutRotation</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l323"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:323</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns the world matrix of this transform without the scale</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>the matrix in array format</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getMatrixWithoutScale" class="method item">
-    <h3 class="name"><code>getMatrixWithoutScale</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l312"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:312</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns the world matrix of this transform without the scale</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>the matrix in array format</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getNormalMatrix" class="method item">
-    <h3 class="name"><code>getNormalMatrix</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Matrix</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l335"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:335</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns the matrix for the normals in the shader</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Matrix</span>:
-                    
-                    <p>the matrix in array format</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getPosition" class="method item">
-    <h3 class="name"><code>getPosition</code></h3>
+                    <div id="method_getGlobalPosition" class="method item">
+    <h3 class="name"><code>getGlobalPosition</code></h3>
 
     
         <span class="paren">()</span>
@@ -1718,6 +1329,590 @@
                         <span class="type">[x,y,z]</span>:
                     
                     <p>the position</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getGlobalRotation" class="method item">
+    <h3 class="name"><code>getGlobalRotation</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Quat</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l264"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:264</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns a quaternion with all parents rotations</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Quat</span>:
+                    
+                    <p>Quaternion</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getGlobalRotationMatrix" class="method item">
+    <h3 class="name"><code>getGlobalRotationMatrix</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l284"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:284</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns a Matrix with all parents rotations</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>Matrix rotation</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getGlobalScale" class="method item">
+    <h3 class="name"><code>getGlobalScale</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">[x,y,z]</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l173"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:173</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the scale in global (its a copy)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">[x,y,z]</span>:
+                    
+                    <p>the scale</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getLocalMatrix" class="method item">
+    <h3 class="name"><code>getLocalMatrix</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l220"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:220</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns a copy of the local matrix of this transform (it updates the matrix automatically)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the matrix in array format</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getLocalMatrixRef" class="method item">
+    <h3 class="name"><code>getLocalMatrixRef</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l232"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:232</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the original world matrix of this transform (it updates the matrix automatically)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the matrix in array format</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getMatrixWithoutRotation" class="method item">
+    <h3 class="name"><code>getMatrixWithoutRotation</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l325"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:325</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the world matrix of this transform without the scale</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the matrix in array format</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getMatrixWithoutScale" class="method item">
+    <h3 class="name"><code>getMatrixWithoutScale</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l314"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:314</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the world matrix of this transform without the scale</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the matrix in array format</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getNormalMatrix" class="method item">
+    <h3 class="name"><code>getNormalMatrix</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l337"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:337</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the matrix for the normals in the shader</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the matrix in array format</p>
 
                 
             </div>
@@ -1810,7 +2005,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
+            <span class="type">Vec3</span>
         </span>
     
 
@@ -1837,7 +2032,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l588"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:588</code></a>
+        <a href="../files/.._src_components_transform.js.html#l597"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:597</code></a>
         
         </p>
 
@@ -1861,7 +2056,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">[x,y,z]</span>:
+                        <span class="type">Vec3</span>:
                     
                 
             </div>
@@ -2091,79 +2286,6 @@
 </div>
 
                 
-                    <div id="method_getScaleGlobal" class="method item">
-    <h3 class="name"><code>getScaleGlobal</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l173"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:173</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns the scale in global (its a copy)</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">[x,y,z]</span>:
-                    
-                    <p>the scale</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
                     <div id="method_getTop" class="method item">
     <h3 class="name"><code>getTop</code></h3>
 
@@ -2173,7 +2295,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
+            <span class="type">Vec3</span>
         </span>
     
 
@@ -2200,7 +2322,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l579"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:579</code></a>
+        <a href="../files/.._src_components_transform.js.html#l588"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:588</code></a>
         
         </p>
 
@@ -2224,7 +2346,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">[x,y,z]</span>:
+                        <span class="type">Vec3</span>:
                     
                 
             </div>
@@ -2350,7 +2472,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l520"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:520</code></a>
+        <a href="../files/.._src_components_transform.js.html#l529"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:529</code></a>
         
         </p>
 
@@ -2498,7 +2620,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l538"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:538</code></a>
+        <a href="../files/.._src_components_transform.js.html#l547"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:547</code></a>
         
         </p>
 
@@ -2522,7 +2644,7 @@ interpolate the transform between two transforms and stores the result in anothe
                 <li class="param">
                     
                         <code class="param-name">position</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -2537,7 +2659,7 @@ interpolate the transform between two transforms and stores the result in anothe
                 <li class="param">
                     
                         <code class="param-name">target</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -2552,7 +2674,7 @@ interpolate the transform between two transforms and stores the result in anothe
                 <li class="param">
                     
                         <code class="param-name">up</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -2622,7 +2744,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l475"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:475</code></a>
+        <a href="../files/.._src_components_transform.js.html#l484"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:484</code></a>
         
         </p>
 
@@ -2731,7 +2853,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l489"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:489</code></a>
+        <a href="../files/.._src_components_transform.js.html#l498"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:498</code></a>
         
         </p>
 
@@ -2846,7 +2968,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l503"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:503</code></a>
+        <a href="../files/.._src_components_transform.js.html#l512"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:512</code></a>
         
         </p>
 
@@ -2958,7 +3080,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_terrainRenderer.js.html#l28"><code>..&#x2F;src&#x2F;components&#x2F;terrainRenderer.js:28</code></a>
+        <a href="../files/.._src_components_transform.js.html#l74"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:74</code></a>
         
         </p>
 
@@ -2969,7 +3091,7 @@ interpolate the transform between two transforms and stores the result in anothe
     </div>
 
     <div class="description">
-        <p>Serialize this component)</p>
+        <p>Serialize the object</p>
 
     </div>
 
@@ -2984,7 +3106,7 @@ interpolate the transform between two transforms and stores the result in anothe
                     
                         <span class="type">Object</span>:
                     
-                    <p>object with the serialization info</p>
+                    <p>object with the serialized info</p>
 
                 
             </div>
@@ -3031,7 +3153,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l74"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:74</code></a>
+        <a href="../files/.._src_components_terrainRenderer.js.html#l28"><code>..&#x2F;src&#x2F;components&#x2F;terrainRenderer.js:28</code></a>
         
         </p>
 
@@ -3042,7 +3164,7 @@ interpolate the transform between two transforms and stores the result in anothe
     </div>
 
     <div class="description">
-        <p>Serialize the object</p>
+        <p>Serialize this component)</p>
 
     </div>
 
@@ -3057,7 +3179,7 @@ interpolate the transform between two transforms and stores the result in anothe
                     
                         <span class="type">Object</span>:
                     
-                    <p>object with the serialized info</p>
+                    <p>object with the serialization info</p>
 
                 
             </div>
@@ -3122,7 +3244,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l395"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:395</code></a>
+        <a href="../files/.._src_components_transform.js.html#l404"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:404</code></a>
         
         </p>
 
@@ -3240,7 +3362,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l412"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:412</code></a>
+        <a href="../files/.._src_components_transform.js.html#l421"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:421</code></a>
         
         </p>
 
@@ -3329,7 +3451,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l383"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:383</code></a>
+        <a href="../files/.._src_components_transform.js.html#l392"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:392</code></a>
         
         </p>
 
@@ -3353,7 +3475,7 @@ interpolate the transform between two transforms and stores the result in anothe
                 <li class="param">
                     
                         <code class="param-name">src,</code>
-                        <span class="type">Matrix</span>
+                        <span class="type">Mat4</span>
                     
 
                     
@@ -3430,7 +3552,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l424"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:424</code></a>
+        <a href="../files/.._src_components_transform.js.html#l433"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:433</code></a>
         
         </p>
 
@@ -3554,7 +3676,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l598"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:598</code></a>
+        <a href="../files/.._src_components_transform.js.html#l607"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:607</code></a>
         
         </p>
 
@@ -3579,7 +3701,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">point</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -3594,7 +3716,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -3665,7 +3787,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l611"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:611</code></a>
+        <a href="../files/.._src_components_transform.js.html#l620"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:620</code></a>
         
         </p>
 
@@ -3690,7 +3812,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">point</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -3705,7 +3827,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -3776,7 +3898,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l625"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:625</code></a>
+        <a href="../files/.._src_components_transform.js.html#l634"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:634</code></a>
         
         </p>
 
@@ -3801,7 +3923,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">vector</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">x,y,z</span>
                     
 
                     
@@ -3816,7 +3938,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">x,y,z</span>
                     
 
                     
@@ -3887,7 +4009,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l636"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:636</code></a>
+        <a href="../files/.._src_components_transform.js.html#l645"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:645</code></a>
         
         </p>
 
@@ -3912,7 +4034,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">vector</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">x,y,z</span>
                     
 
                     
@@ -3927,7 +4049,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">[x,y,z]</span>
+                        <span class="type">x,y,z</span>
                     
 
                     
@@ -4004,7 +4126,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l441"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:441</code></a>
+        <a href="../files/.._src_components_transform.js.html#l450"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:450</code></a>
         
         </p>
 
@@ -4134,7 +4256,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l458"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:458</code></a>
+        <a href="../files/.._src_components_transform.js.html#l467"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:467</code></a>
         
         </p>
 
@@ -4214,7 +4336,17 @@ If no destination is specified the transform is applied to vec</p>
     <h3 class="name"><code>updateGlobalMatrix</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>fast</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -4253,10 +4385,34 @@ If no destination is specified the transform is applied to vec</p>
     </div>
 
     <div class="description">
-        <p>update the Global Matrix to match the position,scale and rotation in world space</p>
+        <p>updates the global matrix using the parents transformation</p>
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">fast</code>
+                        <span class="type">Bool</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>it doesnt recompute parent matrices, just uses the stored one, is faster but could create errors if the parent doesnt have its global matrix update</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     

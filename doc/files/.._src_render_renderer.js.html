@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -252,6 +256,8 @@ var Renderer = {
 		{
 			//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 			//gl.enable(gl.SCISSOR_TEST);
+
+			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length &gt; 3 ? scene.background_color[3] : 1.0);
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -260,13 +266,13 @@ var Renderer = {
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 
-			LEvent.trigger(Scene, &quot;beforeRenderScene&quot;, camera);
-			Scene.sendEventToNodes(&quot;beforeRenderScene&quot;, camera);
+			LEvent.trigger(scene, &quot;beforeRenderScene&quot;, camera);
+			scene.sendEventToNodes(&quot;beforeRenderScene&quot;, camera);
 
 			Renderer.renderSceneMeshes(&quot;main&quot;,options);
 
-			LEvent.trigger(Scene, &quot;afterRenderScene&quot;, camera);
-			Scene.sendEventToNodes(&quot;afterRenderScene&quot;, camera);
+			LEvent.trigger(scene, &quot;afterRenderScene&quot;, camera);
+			scene.sendEventToNodes(&quot;afterRenderScene&quot;, camera);
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -307,8 +313,23 @@ var Renderer = {
 		options.camera = this.active_camera;
 		options.step = step;
 
-		LEvent.trigger(Scene, &quot;beforeRenderPass&quot;, options);
-		Scene.sendEventToNodes(&quot;beforeRenderPass&quot;, options);
+		LEvent.trigger(scene, &quot;beforeRenderPass&quot;, options);
+		scene.sendEventToNodes(&quot;beforeRenderPass&quot;, options);
+
+		//background
+		if(scene.textures[&quot;background&quot;])
+		{
+			var texture = null;
+			if(typeof(scene.textures[&quot;background&quot;]) == &quot;string&quot;)
+				texture = LS.ResourcesManager.textures[ scene.textures[&quot;background&quot;] ];
+			if(texture)
+			{
+				gl.disable( gl.BLEND );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
+
 
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LESS );
@@ -333,8 +354,23 @@ var Renderer = {
 				this.renderMultiPassInstance(step, instance, lights, options );
 		}
 
-		LEvent.trigger(Scene, &quot;afterRenderPass&quot;,options);
-		Scene.sendEventToNodes(&quot;afterRenderPass&quot;,options);
+		LEvent.trigger(scene, &quot;afterRenderPass&quot;,options);
+		scene.sendEventToNodes(&quot;afterRenderPass&quot;,options);
+
+		//foreground
+		if(scene.textures[&quot;foreground&quot;])
+		{
+			var texture = null;
+			if(typeof(scene.textures[&quot;foreground&quot;]) == &quot;string&quot;)
+				texture = LS.ResourcesManager.textures[ scene.textures[&quot;foreground&quot;] ];
+			if(texture)
+			{
+				gl.enable( gl.BLEND );
+				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+			}
+		}
 
 		//restore state
 		gl.depthFunc(gl.LEQUAL);
@@ -355,7 +391,7 @@ var Renderer = {
 		//		b. Store shader with renderkey
 		//3. Fill the shader with uniforms
 		//4. Render instance
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -370,7 +406,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.eye,
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
+			u_time: scene.current_time || new Date().getTime() * 0.001
 		};
 
 		//node matrix info
@@ -395,6 +431,16 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
+		//global macros
+		var generic_macros = {};
+		instance.material.getSurfaceShaderMacros(generic_macros, step, shader_name, instance, node, scene, options);
+		instance.material.getSceneShaderMacros(generic_macros, step, instance, node, scene, options);
+		LEvent.trigger(node, &quot;computingShaderMacros&quot;, generic_macros);
+
+		//global uniforms
+		var generic_uniforms = {};
+		instance.material.fillSurfaceUniforms(shader, generic_uniforms, instance, node, scene, options );
+		LEvent.trigger(node, &quot;computingShaderUniforms&quot;, generic_uniforms );
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -412,16 +458,18 @@ var Renderer = {
 				var shader_name = instance.material.shader || &quot;globalshader&quot;;
 
 				var macros = {};
-				instance.material.getSurfaceShaderMacros(macros, step, shader_name, instance, node, scene, options);
 				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
-				instance.material.getSceneShaderMacros(macros, step, instance, node, scene, options);
 				if(iLight == 0) macros.FIRST_PASS = &quot;&quot;;
 				if(iLight == (num_lights-1)) macros.LAST_PASS = &quot;&quot;;
+
+				//copy generic
+				for(var i in generic_macros)
+					macros[i] = generic_macros[i];
+
 				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
-			instance.material.fillSurfaceUniforms(shader, uniforms, instance, node, scene, options );
 			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
 
 			//secondary pass flags to make it additive
@@ -441,6 +489,7 @@ var Renderer = {
 				gl.depthFunc( gl[mat.depth_func] );
 
 			//render
+			shader.uniforms( generic_uniforms );
 			shader.uniforms( uniforms );
 			instance.render( shader );
 
@@ -451,7 +500,7 @@ var Renderer = {
 
 	renderShadowPassInstance: function(step, instance, options)
 	{
-		var scene = Scene;
+		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -568,9 +617,9 @@ var Renderer = {
 			LEvent.trigger(node, &quot;computeVisibility&quot;, {camera: this.active_camera, options: options});
 
 			//compute global matrix
-			//TODO
+			if(node.transform)
+				node.transform.updateGlobalMatrix();
 			
-			//*
 			//hidden nodes
 			if(!node.flags.visible || (options.is_rt &amp;&amp; node.flags.seen_by_reflections == false)) //mat.alpha &lt;= 0.0
 				continue;
@@ -578,7 +627,6 @@ var Renderer = {
 				continue;
 			if(node.flags.seen_by_picking == false &amp;&amp; options.is_picking)
 				continue;
-			//*/
 
 			//get render instances
 			LEvent.trigger(node,&quot;collectRenderInstances&quot;, instances );
@@ -596,6 +644,9 @@ var Renderer = {
 			//add extra info
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
+
+			//add bounding
+			//TODO
 
 			//change conditionaly
 			if(options.force_wireframe) instance.primitive = gl.LINES;
@@ -631,8 +682,10 @@ var Renderer = {
 	updateVisibleLights: function(scene, nodes)
 	{
 		this._visible_lights = [];
+		/*
 		if(scene.light &amp;&amp; scene.light.enabled != false)
 			this._visible_lights.push(scene.light);
+		*/
 
 		nodes = nodes || scene.getNodes();
 

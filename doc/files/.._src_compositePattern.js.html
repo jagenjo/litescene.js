@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -152,7 +156,20 @@ CompositePattern.prototype.addChild = function(node, index, options)
 
 	//has a parent
 	if(node._parentNode)
-		node._parentNode.removeChild(node);
+		node._parentNode.removeChild(node, options);
+
+	/*
+	var moved = false;
+	if(node._parentNode)
+	{
+		moved = true;
+		node._onChangeParent(this, options);
+		//remove from parent children
+		var pos = node._parentNode._children.indexOf(node);
+		if(pos != -1)
+			node._parentNode._children.splice(pos,1);
+	}
+	*/
 
 	//attach to this
 	node._parentNode = this;
@@ -214,14 +231,14 @@ CompositePattern.prototype.removeChild = function(node, options)
 
 	LEvent.trigger(this,&quot;childRemoved&quot;, node);
 
-	if(this._on_tree)
+	if(node._on_tree)
 	{
-		LEvent.trigger(this._on_tree, &quot;treeItemRemoved&quot;, node);
+		LEvent.trigger(node._on_tree, &quot;treeItemRemoved&quot;, node);
 
 		//propagate to childs
 		inner_recursive(node);
 	}
-	this._on_tree = null;
+	node._on_tree = null;
 
 	//recursive action
 	function inner_recursive(item)

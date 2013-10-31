@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>Rotator</title>
+    <title>../src/components/spherize.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -128,154 +128,79 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>Rotator Class</h1>
-<div class="box meta">
-    
+                        <h1 class="file-heading">File: ../src/components/spherize.js</h1>
 
-    
+<div class="file">
+    <pre class="code prettyprint linenums">
+/**
+* Spherize deforms a mesh, it is an example of a component that modifies the meshes being rendered
+* @class Spherize
+* @constructor
+* @param {String} object to configure from
+*/
 
-    
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_animator.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;animator.js:1</code></a>
-        </div>
-    
+function Spherize(o)
+{
+	if(!this._uid)
+		this._uid = LS.generateUId();
 
-    
+	this.radius = 10;
+	this.center = vec3.create();
+	this.factor = 0.5;
 
-    
-</div>
+	var replaces = {
+		u_spherize_center: &quot;u_spherize_center_&quot; + this._uid,
+		u_spherize_radius: &quot;u_spherize_radius_&quot; + this._uid,
+		u_spherize_factor: &quot;u_spherize_factor_&quot; + this._uid
+	};
+		
 
+	this._uniforms_code = Spherize._uniforms_code.replaceAll(replaces);
+	this._code = Spherize._code.replaceAll(replaces);
+}
 
+Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
 
-<div class="box intro">
-    <p>Rotator rotate a mesh over time</p>
+Spherize.icon = &quot;mini-icon-rotator.png&quot;;
 
-</div>
-
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-        <div id="method_Rotator" class="method item">
-    <h3 class="name"><code>Rotator</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>object</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_animator.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;animator.js:1</code></a>
-        
-        </p>
+Spherize.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node,&quot;computingShaderMacros&quot;,this.onMacros,this);
+	LEvent.bind(node,&quot;computingShaderUniforms&quot;,this.onUniforms,this);
+}
 
 
-        
+Spherize.prototype.onRemoveFromNode = function(node)
+{
+	LEvent.unbindAll(node,this);
+}
 
-        
-    </div>
+Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;&quot;;
+Spherize._code = &quot;vertex = mix(vertex, normalize(vertex-u_spherize_center) * u_spherize_radius, u_spherize_factor);&quot;;
 
-    <div class="description">
-        
-    </div>
+Spherize.prototype.onMacros = function(e, macros)
+{
+	if(macros.USE_VERTEX_SHADER_UNIFORMS)
+		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
+	else
+		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
 
-    
-        <div class="params">
-            <h4>Parameters:</h4>
+	if(macros.USE_VERTEX_SHADER_CODE)
+		macros.USE_VERTEX_SHADER_CODE += this._code;
+	else
+		macros.USE_VERTEX_SHADER_CODE = this._code;
+}
 
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">object</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-    </div>
+Spherize.prototype.onUniforms = function(e, uniforms)
+{
+	uniforms[&quot;u_spherize_center_&quot; + this._uid ] = this.center;
+	uniforms[&quot;u_spherize_radius_&quot; + this._uid ] = this.radius;
+	uniforms[&quot;u_spherize_factor_&quot; + this._uid ] = this.factor;
+}
 
 
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-        
-        
-        
-        
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-            
-
-            
-
-            
-
-            
-        </div>
-
-        
-
-        
-
-        
-
-        
-    </div>
+LS.registerComponent(Spherize);
+    </pre>
 </div>
 
                     </div>

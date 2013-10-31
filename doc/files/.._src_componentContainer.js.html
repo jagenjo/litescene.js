@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -224,6 +228,8 @@ ComponentContainer.prototype.addComponent = function(component)
 	if(!this._components) this._components = [];
 	if(this._components.indexOf(component) != -1) throw(&quot;inserting the same component twice&quot;);
 	this._components.push(component);
+	if(!component._uid)
+			component._uid = LS.generateUId();
 	return component;
 }
 
@@ -238,6 +244,9 @@ ComponentContainer.prototype.removeComponent = function(component)
 	component._root = null;
 	if(component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
+
+	//remove all events
+	LEvent.unbindAll(this,component);
 
 	//remove from components list
 	var pos = this._components.indexOf(component);

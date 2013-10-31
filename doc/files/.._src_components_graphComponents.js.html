@@ -45,11 +45,11 @@
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
             
+                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-            
-                <li><a href="../classes/LS.Components.FPSController.html">LS.Components.FPSController</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
             
@@ -61,7 +61,11 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+            
+                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -165,12 +169,22 @@ GraphComponent.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
 	if(o.graph_data)
-		this._graph.unserialize( o.graph_data );
+	{
+		try
+		{
+			var obj = JSON.parse(o.graph_data);
+			this._graph.configure( obj );
+		}
+		catch (err)
+		{
+			console.err(&quot;Error parsing Graph data&quot;);
+		}
+	}
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)
@@ -274,7 +288,7 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
-	this._graph.unserialize( o.graph_data );
+	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName(&quot;Depth Buffer&quot;)[0];
 	this._graph_viewport_node = this._graph.findNodesByName(&quot;Viewport&quot;)[0];
@@ -282,7 +296,7 @@ FXGraphComponent.prototype.configure = function(o)
 
 FXGraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: this._graph.serialize() };
+	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: JSON.stringify( this._graph.serialize() ) };
 }
 
 FXGraphComponent.prototype.getResources = function(res)
@@ -290,8 +304,8 @@ FXGraphComponent.prototype.getResources = function(res)
 	var nodes = this._graph.findNodesByType(&quot;texture/texture&quot;);
 	for(var i in nodes)
 	{
-		if(node[i].properties.name)
-			res[node[i].properties.name] = Texture;
+		if(nodes[i].properties.name)
+			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
 }
