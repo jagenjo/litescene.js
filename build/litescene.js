@@ -1926,11 +1926,11 @@ var Shaders = {
 
 //used for hashing keys
 String.prototype.hashCode = function(){
-    var hash = 0, i, char;
+    var hash = 0, i, c;
     if (this.length == 0) return hash;
     for (i = 0, l = this.length; i < l; i++) {
-        char  = this.charCodeAt(i);
-        hash  = ((hash<<5)-hash)+char;
+        c  = this.charCodeAt(i);
+        hash  = ((hash<<5)-hash)+c;
         hash |= 0; // Convert to 32bit integer
     }
     return hash;
@@ -6927,7 +6927,8 @@ ParticleEmissor.prototype.onStart = function(e)
 
 ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 {
-	this._root.transform.getPositionGlobal(this._emissor_pos);
+	if(this._root.transform)
+		this._root.transform.getGlobalPosition(this._emissor_pos);
 
 	if(this.emissor_rate < 0) this.emissor_rate = 0;
 

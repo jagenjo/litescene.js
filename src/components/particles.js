@@ -152,7 +152,8 @@ ParticleEmissor.prototype.onStart = function(e)
 
 ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 {
-	this._root.transform.getPositionGlobal(this._emissor_pos);
+	if(this._root.transform)
+		this._root.transform.getGlobalPosition(this._emissor_pos);
 
 	if(this.emissor_rate < 0) this.emissor_rate = 0;
 
