@@ -7748,7 +7748,7 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = "uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;";
-Spherize._code = "vec3 vn = normalize(vertex-u_spherize_center); vertex = mix(vertex, vn * u_spherize_radius, u_spherize_factor); v_normal = normalize(mix(v_normal, vn, clamp(0.0,1.0,u_spherize_factor)));";
+Spherize._code = "vec3 vn = normalize(vertex-u_spherize_center); vertex = mix(vertex, vn * u_spherize_radius, u_spherize_factor); v_normal = (mix(v_normal, vn, clamp(0.0,1.0,u_spherize_factor)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -9258,6 +9258,7 @@ var Renderer = {
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
 	generate_shadowmaps: true,
+	update_materials: true,
 	sort_nodes_in_z: true,
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
@@ -9839,7 +9840,7 @@ var Renderer = {
 
 			//node & mesh constant information
 			var macros = instance.macros;
-			if(node.flags.alpha_test == true)
+			if(instance.node.flags.alpha_test == true)
 				macros.USE_ALPHA_TEST = "0.5";
 			var mesh = instance.mesh;
 			if(!("a_normal" in mesh.vertexBuffers))
@@ -9909,6 +9910,9 @@ var Renderer = {
 
 	updateVisibleMaterials: function(scene, options)
 	{
+		if(!this.update_materials)
+			return;
+
 		var materials = this._visible_materials;
 
 		for(var i in materials)

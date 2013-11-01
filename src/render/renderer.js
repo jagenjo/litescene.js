@@ -12,6 +12,7 @@ var Renderer = {
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
 	generate_shadowmaps: true,
+	update_materials: true,
 	sort_nodes_in_z: true,
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
@@ -593,7 +594,7 @@ var Renderer = {
 
 			//node & mesh constant information
 			var macros = instance.macros;
-			if(node.flags.alpha_test == true)
+			if(instance.node.flags.alpha_test == true)
 				macros.USE_ALPHA_TEST = "0.5";
 			var mesh = instance.mesh;
 			if(!("a_normal" in mesh.vertexBuffers))
@@ -663,6 +664,9 @@ var Renderer = {
 
 	updateVisibleMaterials: function(scene, options)
 	{
+		if(!this.update_materials)
+			return;
+
 		var materials = this._visible_materials;
 
 		for(var i in materials)
