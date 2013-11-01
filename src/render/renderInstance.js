@@ -26,6 +26,10 @@ function RenderInstance(node, component)
 	this.oobb_halfsize = vec3.create();
 	this.aabb_center = vec3.create();
 	this.aabb_halfsize = vec3.create();
+
+	//globals
+	this.macros = {};
+	this.uniforms = {};
 }
 
 

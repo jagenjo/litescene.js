@@ -1610,7 +1610,7 @@ var Shaders = {
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
-	get: function(id, macros)
+	get: function(id, macros /*, ... */ )
 	{
 		if(!id) return null;
 
@@ -1633,17 +1633,21 @@ var Shaders = {
 		if(global.num_macros != 0)
 		{
 			//generate unique key
-			if(macros)
+			if(arguments.length > 1)
 			{
 				key += ":";
-				for (var macro in macros)
+				for(var i = 1; i < arguments.length; i++)
 				{
-					if (global.macros[ macro ])
+					var macros = arguments[i];
+					for (var macro in macros)
 					{
-						key += macro + "=" + macros[macro] + ":";
-						extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10);
-					}
-				}
+						if (global.macros[ macro ])
+						{
+							key += macro + "=" + macros[macro] + ":";
+							extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
+						}
+					}//for macros
+				}//for arguments
 			}
 		}
 
@@ -2954,11 +2958,6 @@ function Material(o)
 
 	this.textures = {};
 
-	//to optimize, cache
-	this._macros = {};
-	this._uniforms = {};
-	this._bind_textures = [];
-
 	if(o) 
 		this.configure(o);
 }
@@ -3126,20 +3125,9 @@ Material.prototype.setDirty = function()
 }
 
 // RENDERING METHODS
-Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
+Material.prototype.fillSurfaceShaderMacros = function(scene)
 {
-	var that = this;
-
-	/* TODO
-	//reuse cached macros
-	var macros = this._macros;
-	if(!this._dirty_macros)
-	{
-		for(var k in macros) 
-			macros_container[k] = macros[k];
-		return;
-	}
-	*/
+	var macros = {};
 
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
@@ -3150,7 +3138,7 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		if(i == "environment")
 			if(this.reflection_factor <= 0) continue;
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		local_macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
 	//iterate through textures in the material
@@ -3200,8 +3188,6 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
-	if(node.flags.alpha_test == true)
-		macros.USE_ALPHA_TEST = "0.5";
 	if(this.velvet && this.velvet_exp) //first light only
 		macros.USE_VELVET = "";
 	if(this.emissive_material)
@@ -3215,43 +3201,20 @@ Material.prototype.getSurfaceShaderMacros = function(macros, step, shader_name, 
 	if(this.backlight_factor > 0.001)
 		macros.USE_BACKLIGHT = "";
 
-	//mesh information
-	var mesh = instance.mesh;
-	if(!("a_normal" in mesh.vertexBuffers))
-		macros.NO_NORMALS = "";
-	if(!("a_coord" in mesh.vertexBuffers))
-		macros.NO_COORDS = "";
-	if(("a_color" in mesh.vertexBuffers))
-		macros.USE_COLOR_STREAM = "";
-	if(("a_tangent" in mesh.vertexBuffers))
-		macros.USE_TANGENT_STREAM = "";
-
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
 			macros[im] = this.extra_macros[im];
 
-	/*
-	//copy from cached macros
-	for(var k in macros) 
-		macros_container[k] = macros[k];
-	this._dirty_macros = false;
-	*/
+	this._macros = macros;
 }
 
 //Fill with info about the light
-Material.prototype.getLightShaderMacros = function(macros, step, light, instance, shader_name, node, scene, options)
+// This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
+// and on the light itself
+Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 {
-	/*
-	//cached macros
-	var macros = light._macros;
-	if(!this.light._dirty_macros)
-	{
-		for(var k in macros) 
-			macros_container[k] = macros[k];
-		return;
-	}
-	*/
+	var macros = {};
 
 	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
 
@@ -3295,99 +3258,13 @@ Material.prototype.getLightShaderMacros = function(macros, step, light, instance
 		macros.SHADOWMAP_OFFSET = "";
 	}
 
-	/*
-	//copy macros
-	for(var k in macros) 
-		macros_container[k] = macros[k];
-	this.light._dirty_macros = false;
-	*/
+	return macros;
 }
 
-Material.prototype.getFlatShaderMacros = function(macros, step, shader_name, instance, node, scene, options)
+/*
+Material.prototype.getSceneShaderMacros = function( scene, options )
 {
-	var that = this;
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
-	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//special cases
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) 
-				continue;
-		}
-		else if(i == "normal")
-		{
-			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
-			{
-				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = "";
-				if(this.normalmap_tangent && gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = "";
-			}
-			continue;
-		}
-		else if(i == "displacement")
-		{
-			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "bump")
-		{
-			if(this.bump_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = "";
-			}
-			continue;
-		}
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
-	}
-
-	if(node.flags.alpha_test == true)
-		macros.USE_ALPHA_TEST = "0.5";
-	if(this.velvet && this.velvet_exp) //first light only
-		macros.USE_VELVET = "";
-	if(this.emissive_material)
-		macros.USE_EMISSIVE_MATERIAL = "";
-	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = "";
-	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = "";
-	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = "";
-	if(this.backlight_factor > 0.001)
-		macros.USE_BACKLIGHT = "";
-
-	//mesh information
-	var mesh = instance.mesh;
-	if(!("a_normal" in mesh.vertexBuffers))
-		macros.NO_NORMALS = "";
-	if(!("a_coord" in mesh.vertexBuffers))
-		macros.NO_COORDS = "";
-	if(("a_color" in mesh.vertexBuffers))
-		macros.USE_COLOR_STREAM = "";
-	if(("a_tangent" in mesh.vertexBuffers))
-		macros.USE_TANGENT_STREAM = "";
-
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-}
-
-Material.prototype.getSceneShaderMacros = function(macros, step, instance, node, scene, options )
-{
+	var macros = scene._macros;
 	//camera info
 	if(options.camera.type == Camera.ORTHOGRAPHIC)
 		macros.USE_ORTHOGRAPHIC_CAMERA = "";
@@ -3401,44 +3278,39 @@ Material.prototype.getSceneShaderMacros = function(macros, step, instance, node,
 	if(options.colorclip_factor)
 		macros.USE_COLORCLIP_FACTOR = "";
 }
+*/
 
-Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, node, scene, options )
+Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
-	/* CACHE TODO
-	//reuse cached uniforms
-	var uniforms = this._uniforms;
-	if(!this._dirty_uniforms)
-	{
-		for(var k in uniforms) 
-			uniforms_container[k] = uniforms[k];
-		return;
-	}
-	*/
+	var uniforms = {};
+	var samplers = [];
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
-	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
+	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
+	uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
 	uniforms.u_diffuse_color = this.diffuse;
-	uniforms.u_emissive_color = this.emissive || [0,0,0];
+	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
 	uniforms.u_backlight_factor = this.backlight_factor;
 	uniforms.u_normalmap_factor = this.normalmap_factor;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
 	uniforms.u_bumpmap_factor = this.bumpmap_factor;
-	uniforms.u_velvet_info = [ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ];
+	uniforms.u_velvet_info = new Float32Array([ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ]);
 	uniforms.u_detail_info = this.detail;
 
 	uniforms.u_texture_matrix = this.uvs_matrix;
-
-	var last_slot = 0;
 
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
 		if(!texture) continue;
-		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		last_slot += 1;
+
+		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = this._bind_textures.length - 1;//texture.bind( last_slot );
+		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
+		//last_slot += 1;
 
 		if(i == "environment")
 		{
@@ -3448,6 +3320,7 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
 		{
+			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
@@ -3459,9 +3332,11 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
+		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
+		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		last_slot += 1;
+		//last_slot += 1;
 
 		//special cases
 		if(i == "environment")
@@ -3474,6 +3349,7 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 			continue;
 		else if(i == "irradiance")
 		{
+			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
 			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
@@ -3482,27 +3358,27 @@ Material.prototype.fillSurfaceUniforms = function(shader, uniforms, instance, no
 
 		if(texture.texture_type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
 		{
+			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
 
-	/*
-	for(var k in uniforms) 
-		uniforms_container[k] = uniforms[k];
-	this._dirty_uniforms = false;
-	*/
+	this._uniforms = uniforms;
+	this._samplers = samplers;
 }
 
-Material.prototype.fillLightUniforms = function(shader, uniforms, light, instance, node, scene, options)
+//hard to precompute, it uses the model matrix for the lightMatrix and the scene for the enable_shadows
+Material.prototype.fillLightUniforms = function( light, instance, node, scene, options)
 {
+	var uniforms = {};
+//	var samplers = [];
+
 	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
 
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture && light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-	if(light_projective_texture)
-		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
 	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
 	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
 		uniforms.u_light_front = light.getFront();
@@ -3517,12 +3393,21 @@ Material.prototype.fillLightUniforms = function(shader, uniforms, light, instanc
 	if(light._lightMatrix)
 		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
 
+	//texture
+	if(light_projective_texture)
+//		samplers.push(["light_texture", light_projective_texture]); //fixed slot
+		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
+
 	//use shadows?
 	if(use_shadows)
 	{
 		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
-		uniforms.shadowMap = light._shadowMap.bind(10);
+		uniforms.shadowMap = light._shadowMap.bind(10); //fixed slot
+		//samplers(["shadowMap", light._shadowMap]);
 	}
+
+	//return [uniforms, samplers];
+	return uniforms;
 }
 
 
@@ -3948,6 +3833,81 @@ Material.prototype.getLightShaderData = function(light, instance, node, scene, o
 	return uniforms;
 }
 
+Material.prototype.getFlatShaderMacros = function(scene, options)
+{
+	var macros = this._flat_macros;
+
+	//iterate through textures in the material
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		//special cases
+		if(i == "environment")
+		{
+			if(this.reflection_factor <= 0) 
+				continue;
+		}
+		else if(i == "normal")
+		{
+			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
+			{
+				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
+				if(this.normalmap_factor != 0.0)
+					macros.USE_NORMALMAP_FACTOR = "";
+				if(this.normalmap_tangent && gl.derivatives_supported)
+					macros.USE_TANGENT_NORMALMAP = "";
+			}
+			continue;
+		}
+		else if(i == "displacement")
+		{
+			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
+			{
+				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
+				if(this.displacementmap_factor != 1.0)
+					macros.USE_DISPLACEMENTMAP_FACTOR = "";
+			}
+			continue;
+		}
+		else if(i == "bump")
+		{
+			if(this.bump_factor != 0.0 && gl.derivatives_supported )
+			{
+				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
+				if(this.bumpmap_factor != 1.0)
+					macros.USE_BUMPMAP_FACTOR = "";
+			}
+			continue;
+		}
+		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+	}
+
+	if(node.flags.alpha_test == true)
+		macros.USE_ALPHA_TEST = "0.5";
+	if(this.velvet && this.velvet_exp) //first light only
+		macros.USE_VELVET = "";
+	if(this.emissive_material)
+		macros.USE_EMISSIVE_MATERIAL = "";
+	if(this.specular_ontop)
+		macros.USE_SPECULAR_ONTOP = "";
+	if(this.specular_on_alpha)
+		macros.USE_SPECULAR_ON_ALPHA = "";
+	if(this.reflection_specular)
+		macros.USE_SPECULAR_IN_REFLECTION = "";
+	if(this.backlight_factor > 0.001)
+		macros.USE_BACKLIGHT = "";
+
+	//extra macros
+	if(this.extra_macros)
+		for(var im in this.extra_macros)
+			macros[im] = this.extra_macros[im];
+
+	return macros;
+}
+
+
 */
 /*
 *  Components are elements that attach to Nodes to add functionality
@@ -4158,15 +4118,15 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		this._children.splice(index,0,node);
 
 	//Same tree
-	node._on_tree = this._on_tree;
+	node._in_tree = this._in_tree;
 
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
 	LEvent.trigger(this,"childAdded", node);
-	if(this._on_tree)
+	if(this._in_tree)
 	{
-		LEvent.trigger(this._on_tree, "treeItemAdded", node);
+		LEvent.trigger(this._in_tree, "treeItemAdded", node);
 		inner_recursive(node);
 	}
 
@@ -4177,10 +4137,10 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._on_tree)
+			if(!child._in_tree)
 			{
-				LEvent.trigger( child._on_tree, "treeItemAdded", child );
-				child._on_tree = item._on_tree;
+				LEvent.trigger( child._in_tree, "treeItemAdded", child );
+				child._in_tree = item._in_tree;
 			}
 			inner_recursive( child );
 		}
@@ -4208,14 +4168,14 @@ CompositePattern.prototype.removeChild = function(node, options)
 
 	LEvent.trigger(this,"childRemoved", node);
 
-	if(node._on_tree)
+	if(node._in_tree)
 	{
-		LEvent.trigger(node._on_tree, "treeItemRemoved", node);
+		LEvent.trigger(node._in_tree, "treeItemRemoved", node);
 
 		//propagate to childs
 		inner_recursive(node);
 	}
-	node._on_tree = null;
+	node._in_tree = null;
 
 	//recursive action
 	function inner_recursive(item)
@@ -4224,10 +4184,10 @@ CompositePattern.prototype.removeChild = function(node, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(child._on_tree)
+			if(child._in_tree)
 			{
-				LEvent.trigger( child._on_tree, "treeItemRemoved", child );
-				child._on_tree = null;
+				LEvent.trigger( child._in_tree, "treeItemRemoved", child );
+				child._in_tree = null;
 			}
 			inner_recursive( child );
 		}
@@ -6506,11 +6466,11 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 
 GraphComponent.prototype.runGraph = function()
 {
-	if(!this._root._on_tree || !this.enabled) return;
+	if(!this._root._in_tree || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(this._root._on_tree, "change");
+		LEvent.trigger(this._root._in_tree, "change");
 }
 
 
@@ -7788,7 +7748,7 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = "uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;";
-Spherize._code = "vertex = mix(vertex, normalize(vertex-u_spherize_center) * u_spherize_radius, u_spherize_factor);";
+Spherize._code = "vec3 vn = normalize(vertex-u_spherize_center); vertex = mix(vertex, vn * u_spherize_radius, u_spherize_factor); v_normal = normalize(mix(v_normal, vn, clamp(0.0,1.0,u_spherize_factor)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -9168,6 +9128,10 @@ function RenderInstance(node, component)
 	this.oobb_halfsize = vec3.create();
 	this.aabb_center = vec3.create();
 	this.aabb_halfsize = vec3.create();
+
+	//globals
+	this.macros = {};
+	this.uniforms = {};
 }
 
 
@@ -9337,16 +9301,24 @@ var Renderer = {
 
 		scene = scene || Scene;
 		this._current_scene = scene;
+		options.main_camera = camera;
 
 		//events
 		LEvent.trigger(Scene, "beforeRender", camera);
 		scene.sendEventToNodes("beforeRender", camera);
 
+
 		if(scene.light && scene.light.onBeforeRender) 
 			scene.light.onBeforeRender(); //ugly hack because the scene could have a light and it is not a node
 
+		//get render instances
+		this.updateVisibleInstances(scene, options);
+
 		//get lights
-		this.updateVisibleLights(scene, options.nodes);
+		this.updateVisibleLights(scene, options.nodes );
+
+		//prepare materials (gather macros, uniforms and textures)
+		this.updateVisibleMaterials(scene, options );
 
 		//generate shadowmap
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
@@ -9464,7 +9436,11 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRenderPass", options);
 		scene.sendEventToNodes("beforeRenderPass", options);
 
-		//background
+		//compute global scene info
+		this.fillSceneShaderMacros( scene, options );
+		this.fillSceneShaderUniforms( scene, options );
+
+		//render background
 		if(scene.textures["background"])
 		{
 			var texture = null;
@@ -9484,22 +9460,36 @@ var Renderer = {
 		gl.disable( gl.BLEND );
 		gl.lineWidth(1);
 
-		//SORTING meshes
-		this.updateVisibleMeshes(scene,options);
+		//this.updateVisibleInstances(scene,options);
 		var lights = this._visible_lights;
+		var render_instances = this._visible_meshes;
 
-		//for each node
-		for(var i in this._visible_meshes)
+		//for each render instance
+		for(var i in render_instances)
 		{
-			//render instances
-			var instance = this._visible_meshes[i];
-			//TODO: compute lights affecting this RI
+			//render instance
+			var instance = render_instances[i];
+
+			var flags = instance.node.flags;
+
+			//hidden nodes
+			if(options.is_rt && flags.seen_by_reflections == false) //mat.alpha <= 0.0
+				continue;
+			if(flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
+				continue;
+			if(flags.seen_by_picking == false && options.is_picking)
+				continue;
+
+			//Compute lights affecting this RI
+			//TODO
+
+			//choose the appropiate render pass
 			if(options.is_shadowmap)
 				this.renderShadowPassInstance(step, instance, options );
 			else if(options.is_picking)
 				this.renderPickingInstance(step, instance, options );
 			else
-				this.renderMultiPassInstance(step, instance, lights, options );
+				this.renderMultiPassInstance(step, instance, lights, scene, options );
 		}
 
 		LEvent.trigger(scene, "afterRenderPass",options);
@@ -9530,7 +9520,7 @@ var Renderer = {
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
-	renderMultiPassInstance: function(step, instance, lights, options)
+	renderMultiPassInstance: function(step, instance, lights, scene, options)
 	{
 		//for every light
 		//1. Generate the renderkey:  step|nodeuid|matuid|lightuid
@@ -9539,7 +9529,6 @@ var Renderer = {
 		//		b. Store shader with renderkey
 		//3. Fill the shader with uniforms
 		//4. Render instance
-		var scene = options.scene || Scene;
 		var node = instance.node;
 		var mat = instance.material;
 
@@ -9549,18 +9538,12 @@ var Renderer = {
 		this._normal_model.set( instance.normal_matrix ); 
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
 
-		//global uniforms
-		var uniforms = {
-			u_camera_eye: this.active_camera.eye,
-			u_camera_planes: [this.active_camera.near, this.active_camera.far],
-			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene.current_time || new Date().getTime() * 0.001
-		};
-
 		//node matrix info
-		uniforms.u_mvp = this._mvp_matrix;
-		uniforms.u_model = this._object_model;
-		uniforms.u_normal_model = this._normal_model;
+		var node_macros = node._macros;
+		var node_uniforms = node._uniforms;
+		node_uniforms.u_mvp = this._mvp_matrix;
+		node_uniforms.u_model = this._object_model;
+		node_uniforms.u_normal_model = this._normal_model;
 
 		//FLAGS
 		this.enableInstanceFlags(instance, node, options);
@@ -9579,16 +9562,13 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
-		//global macros
-		var generic_macros = {};
-		instance.material.getSurfaceShaderMacros(generic_macros, step, shader_name, instance, node, scene, options);
-		instance.material.getSceneShaderMacros(generic_macros, step, instance, node, scene, options);
-		LEvent.trigger(node, "computingShaderMacros", generic_macros);
-
-		//global uniforms
-		var generic_uniforms = {};
-		instance.material.fillSurfaceUniforms(shader, generic_uniforms, instance, node, scene, options );
-		LEvent.trigger(node, "computingShaderUniforms", generic_uniforms );
+		//assign material samplers
+		for(var i = 0; i < mat._samplers.length; i++)
+		{
+			var s = mat._samplers[i];
+			mat._uniforms[ s[0] ] = i;
+			s[1].bind(i);
+		}
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -9605,20 +9585,16 @@ var Renderer = {
 			{
 				var shader_name = instance.material.shader || "globalshader";
 
-				var macros = {};
-				instance.material.getLightShaderMacros(macros, step, light, instance, shader_name, node, scene, options);
-				if(iLight == 0) macros.FIRST_PASS = "";
-				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
+				var light_macros = instance.material.getLightShaderMacros(light, node, scene, options);
 
-				//copy generic
-				for(var i in generic_macros)
-					macros[i] = generic_macros[i];
+				if(iLight == 0) light_macros.FIRST_PASS = "";
+				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
 
-				shader = Shaders.get(shader_name, macros);
+				shader = Shaders.get(shader_name, scene._macros, node_macros, instance.macros, mat._macros, light_macros );
 			}
 
 			//fill shader data
-			instance.material.fillLightUniforms(shader, uniforms, light, instance, node, scene, options );
+			var light_uniforms = instance.material.fillLightUniforms( light, instance, node, scene, options );
 
 			//secondary pass flags to make it additive
 			if(iLight > 0)
@@ -9636,9 +9612,14 @@ var Renderer = {
 			if(mat.depth_func)
 				gl.depthFunc( gl[mat.depth_func] );
 
+
+			//assign uniforms
+			shader.uniforms( scene._uniforms );
+			shader.uniforms( node_uniforms );
+			shader.uniforms( mat._uniforms );
+			shader.uniforms( light_uniforms );
+
 			//render
-			shader.uniforms( generic_uniforms );
-			shader.uniforms( uniforms );
 			instance.render( shader );
 
 			if(shader.global && !shader.global.multipass)
@@ -9686,15 +9667,52 @@ var Renderer = {
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
-			shader = Shaders.get("depth",macros);
+			shader = Shaders.get("depth", node._macros, macros);
 			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.opacity], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
+			shader.uniforms( node._uniforms );
 		}
 		else
 		{
-			shader = Shaders.get("depth");
+			shader = Shaders.get("depth", node._macros );
 			shader.uniforms({u_mvp: this._mvp_matrix});
+			shader.uniforms( node._uniforms );
 		}
 		instance.render(shader);
+	},
+
+	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
+	fillSceneShaderMacros: function( scene, options )
+	{
+		var macros = {};
+
+		//camera info
+		if(options.camera.type == Camera.ORTHOGRAPHIC)
+			macros.USE_ORTHOGRAPHIC_CAMERA = "";
+
+		if(options.clipping_plane)
+			macros.USE_CLIPPING_PLANE = "";
+
+		if(options.brightness_factor && options.brightness_factor != 1)
+			macros.USE_BRIGHTNESS_FACTOR = "";
+
+		if(options.colorclip_factor)
+			macros.USE_COLORCLIP_FACTOR = "";
+
+		scene._macros = macros;
+	},
+
+	//do not reuse uniforms
+	fillSceneShaderUniforms: function( scene, options)
+	{
+		//global uniforms
+		var uniforms = {
+			u_camera_eye: this.active_camera.getEye(),
+			u_camera_planes: [this.active_camera.near, this.active_camera.far],
+			//u_viewprojection: this._viewprojection_matrix,
+			u_time: scene.current_time || new Date().getTime() * 0.001
+		};
+
+		scene._uniforms = uniforms;
 	},
 
 	renderPickingInstance: function(step, instance, options)
@@ -9741,19 +9759,23 @@ var Renderer = {
 			gl.frontFace(gl.CCW);
 	},
 
-	//Generates the rendering instances that are visible
-	updateVisibleMeshes: function(scene, options)
+	//collects the rendering instances that are visible
+	updateVisibleInstances: function(scene, options)
 	{
+		options = options || {};
+
 		//var nodes = scene.nodes;
 		var nodes = scene.getNodes();
 		if (options.nodes)
 			nodes = options.nodes;
-		var camera = this.active_camera;
+
+		var camera = options.main_camera;
 		options.current_camera = camera;
 		var camera_eye = camera.getEye();
 
 		var opaque_meshes = [];
 		var alpha_meshes = [];
+		var materials = {}; //I dont want repeated materials here
 
 		//collect render instances
 		var instances = [];
@@ -9761,20 +9783,25 @@ var Renderer = {
 		{
 			var node = nodes[i];
 
+			if(!node.flags.visible) //skip invisibles
+				continue;
+
 			//trigger event
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
+			LEvent.trigger(node, "computeVisibility", {camera: camera, options: options});
 
 			//compute global matrix
 			if(node.transform)
 				node.transform.updateGlobalMatrix();
-			
-			//hidden nodes
-			if(!node.flags.visible || (options.is_rt && node.flags.seen_by_reflections == false)) //mat.alpha <= 0.0
-				continue;
-			if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-				continue;
-			if(node.flags.seen_by_picking == false && options.is_picking)
-				continue;
+
+			//special node deformers
+			var node_macros = {};
+			LEvent.trigger(node, "computingShaderMacros", node_macros );
+
+			var node_uniforms = {};
+			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
+
+			node._macros = node_macros;
+			node._uniforms = node_uniforms;
 
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
@@ -9786,14 +9813,16 @@ var Renderer = {
 			var instance = instances[i];
 			if(!instance) continue;
 
+			//materials
 			if(!instance.material)
 				instance.material = this._default_material;
+			materials[instance.material._uid] = instance.material;
 
 			//add extra info
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
 
-			//add bounding
+			//add AABBs
 			//TODO
 
 			//change conditionaly
@@ -9807,6 +9836,20 @@ var Renderer = {
 				opaque_meshes.push(instance);
 			else //if(!options.is_shadowmap)
 				alpha_meshes.push(instance);
+
+			//node & mesh constant information
+			var macros = instance.macros;
+			if(node.flags.alpha_test == true)
+				macros.USE_ALPHA_TEST = "0.5";
+			var mesh = instance.mesh;
+			if(!("a_normal" in mesh.vertexBuffers))
+				macros.NO_NORMALS = "";
+			if(!("a_coord" in mesh.vertexBuffers))
+				macros.NO_COORDS = "";
+			if(("a_color" in mesh.vertexBuffers))
+				macros.USE_COLOR_STREAM = "";
+			if(("a_tangent" in mesh.vertexBuffers))
+				macros.USE_TANGENT_STREAM = "";
 		}
 
 		//sort nodes in Z
@@ -9820,10 +9863,9 @@ var Renderer = {
 
 		this._alpha_meshes = alpha_meshes;
 		this._opaque_meshes = opaque_meshes;
-		//merge
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
+		this._visible_meshes = opaque_meshes.concat(alpha_meshes); //merge
 
-		//compute boundings
+		this._visible_materials = materials;
 	},
 
 	null_light: null,
@@ -9862,6 +9904,24 @@ var Renderer = {
 				this.null_light.color = [0,0,0];
 			}
 			this._visible_lights.push(this.null_light);
+		}
+	},
+
+	updateVisibleMaterials: function(scene, options)
+	{
+		var materials = this._visible_materials;
+
+		for(var i in materials)
+		{
+			var material = materials[i];
+			if(!material._macros)
+			{
+				material._macros = {};
+				material._uniforms = {};
+				material._samplers = [];
+			}
+			material.fillSurfaceShaderMacros(scene); //update shader macros on this material
+			material.fillSurfaceUniforms(scene); //update uniforms
 		}
 	},
 
@@ -9929,7 +9989,7 @@ var Renderer = {
 					if( !light._lightMatrix ) light._lightMatrix = mat4.create();
 					mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
 
-					Renderer.renderSceneMeshes("shadow", { is_shadowmap:true });
+					Renderer.renderSceneMeshes("shadow", { is_shadowmap: true });
 				});
 			}
 		}
@@ -12141,7 +12201,7 @@ function SceneTree()
 	this._root = new LS.SceneNode("root");
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
-	this._root._on_tree = this;
+	this._root._in_tree = this;
 	this._nodes = [ this._root ];
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
@@ -12434,8 +12494,8 @@ SceneTree.prototype.getCamera = function()
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
-		node._on_tree.removeNode(node);
+	if(node._in_tree && node._in_tree != this)
+		node._in_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -12451,7 +12511,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_tree = this;
+	node._in_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -12474,8 +12534,8 @@ SceneTree.prototype.addNode = function(node, index)
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
-		node._on_tree.removeNode(node);
+	if(node._in_tree && node._in_tree != this)
+		node._in_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -12491,7 +12551,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_tree = this;
+	node._in_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -12522,7 +12582,7 @@ SceneTree.prototype.removeNode = function(node)
 		this.nodes.splice(pos,1);
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
-		node._on_tree = null;
+		node._in_tree = null;
 		node.processActionInComponents("onRemovedFromNode",this); //send to components
 		node.processActionInComponents("onRemovedFromScene",this); //send to components
 		LEvent.trigger(this,"nodeRemoved", node);
@@ -12536,7 +12596,7 @@ SceneTree.prototype.removeNode = function(node)
 SceneTree.prototype.onNodeAdded = function(e,node)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
+	if(node._in_tree && node._in_tree != this)
 		throw("Cannot add a node from other scene, clone it");
 
 	//generate unique id
@@ -12901,7 +12961,7 @@ SceneNode.prototype.setId = function(new_id)
 {
 	if(this.id == new_id) return true; //no changes
 
-	var scene = this._on_tree;
+	var scene = this._in_tree;
 	if(!scene)
 	{
 		this.id = new_id;
@@ -13029,7 +13089,7 @@ SceneNode.prototype.getMaterial = function()
 {
 	if (!this.material) return null;
 	if(this.material.constructor === String)
-		return this._on_tree ? this._on_tree.materials[this.material] : null;
+		return this._in_tree ? this._in_tree.materials[this.material] : null;
 	return this.material;
 }
 
@@ -13059,7 +13119,7 @@ SceneNode.prototype.getTexture = function(channel) {
 
 SceneNode.prototype.clone = function()
 {
-	var scene = this._on_tree;
+	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
 	var newnode = new SceneNode( new_child_name );
@@ -13124,9 +13184,9 @@ SceneNode.prototype.configure = function(info)
 	/*
 	if(info.parent_id) //name of the parent
 	{
-		if(this._on_tree)
+		if(this._in_tree)
 		{
-			var parent = this._on_tree.getNode( info.parent_id );
+			var parent = this._in_tree.getNode( info.parent_id );
 			if(parent) 
 				parent.addChild( this );
 		}
@@ -13261,11 +13321,11 @@ SceneNode.prototype.addChild = function(node, recompute_transform )
 	if(node.parentNode && node.parentNode.constructor == SceneNode)
 	{
 		node.parentNode.removeChild(this);
-		if(node._on_tree != this._on_tree)
+		if(node._in_tree != this._in_tree)
 		{
-			if(node._on_tree)
-				node._on_tree.removeNode(node);
-			this._on_tree.addNode(node);
+			if(node._in_tree)
+				node._in_tree.removeNode(node);
+			this._in_tree.addNode(node);
 		}
 	}
 

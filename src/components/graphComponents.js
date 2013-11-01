@@ -85,11 +85,11 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 
 GraphComponent.prototype.runGraph = function()
 {
-	if(!this._root._on_tree || !this.enabled) return;
+	if(!this._root._in_tree || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(this._root._on_tree, "change");
+		LEvent.trigger(this._root._in_tree, "change");
 }
 
 

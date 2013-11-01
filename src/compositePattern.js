@@ -47,15 +47,15 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		this._children.splice(index,0,node);
 
 	//Same tree
-	node._on_tree = this._on_tree;
+	node._in_tree = this._in_tree;
 
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
 	LEvent.trigger(this,"childAdded", node);
-	if(this._on_tree)
+	if(this._in_tree)
 	{
-		LEvent.trigger(this._on_tree, "treeItemAdded", node);
+		LEvent.trigger(this._in_tree, "treeItemAdded", node);
 		inner_recursive(node);
 	}
 
@@ -66,10 +66,10 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._on_tree)
+			if(!child._in_tree)
 			{
-				LEvent.trigger( child._on_tree, "treeItemAdded", child );
-				child._on_tree = item._on_tree;
+				LEvent.trigger( child._in_tree, "treeItemAdded", child );
+				child._in_tree = item._in_tree;
 			}
 			inner_recursive( child );
 		}
@@ -97,14 +97,14 @@ CompositePattern.prototype.removeChild = function(node, options)
 
 	LEvent.trigger(this,"childRemoved", node);
 
-	if(node._on_tree)
+	if(node._in_tree)
 	{
-		LEvent.trigger(node._on_tree, "treeItemRemoved", node);
+		LEvent.trigger(node._in_tree, "treeItemRemoved", node);
 
 		//propagate to childs
 		inner_recursive(node);
 	}
-	node._on_tree = null;
+	node._in_tree = null;
 
 	//recursive action
 	function inner_recursive(item)
@@ -113,10 +113,10 @@ CompositePattern.prototype.removeChild = function(node, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(child._on_tree)
+			if(child._in_tree)
 			{
-				LEvent.trigger( child._on_tree, "treeItemRemoved", child );
-				child._on_tree = null;
+				LEvent.trigger( child._in_tree, "treeItemRemoved", child );
+				child._in_tree = null;
 			}
 			inner_recursive( child );
 		}

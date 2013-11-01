@@ -32,7 +32,7 @@ var Shaders = {
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
-	get: function(id, macros)
+	get: function(id, macros /*, ... */ )
 	{
 		if(!id) return null;
 
@@ -55,17 +55,21 @@ var Shaders = {
 		if(global.num_macros != 0)
 		{
 			//generate unique key
-			if(macros)
+			if(arguments.length > 1)
 			{
 				key += ":";
-				for (var macro in macros)
+				for(var i = 1; i < arguments.length; i++)
 				{
-					if (global.macros[ macro ])
+					var macros = arguments[i];
+					for (var macro in macros)
 					{
-						key += macro + "=" + macros[macro] + ":";
-						extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10);
-					}
-				}
+						if (global.macros[ macro ])
+						{
+							key += macro + "=" + macros[macro] + ":";
+							extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
+						}
+					}//for macros
+				}//for arguments
 			}
 		}
 

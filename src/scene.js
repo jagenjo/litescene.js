@@ -12,7 +12,7 @@ function SceneTree()
 	this._root = new LS.SceneNode("root");
 	this._root.removeAllComponents();
 	this._root._is_root  = true;
-	this._root._on_tree = this;
+	this._root._in_tree = this;
 	this._nodes = [ this._root ];
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
@@ -305,8 +305,8 @@ SceneTree.prototype.getCamera = function()
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
-		node._on_tree.removeNode(node);
+	if(node._in_tree && node._in_tree != this)
+		node._in_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -322,7 +322,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_tree = this;
+	node._in_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -345,8 +345,8 @@ SceneTree.prototype.addNode = function(node, index)
 SceneTree.prototype.addNode = function(node, index)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
-		node._on_tree.removeNode(node);
+	if(node._in_tree && node._in_tree != this)
+		node._in_tree.removeNode(node);
 
 	if(index == undefined)
 		this.nodes.push(node);
@@ -362,7 +362,7 @@ SceneTree.prototype.addNode = function(node, index)
 	}
 
 	//add to new
-	node._on_tree = this;
+	node._in_tree = this;
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
@@ -393,7 +393,7 @@ SceneTree.prototype.removeNode = function(node)
 		this.nodes.splice(pos,1);
 		if(node.id)
 			delete this.nodes_by_id[ node.id ];
-		node._on_tree = null;
+		node._in_tree = null;
 		node.processActionInComponents("onRemovedFromNode",this); //send to components
 		node.processActionInComponents("onRemovedFromScene",this); //send to components
 		LEvent.trigger(this,"nodeRemoved", node);
@@ -407,7 +407,7 @@ SceneTree.prototype.removeNode = function(node)
 SceneTree.prototype.onNodeAdded = function(e,node)
 {
 	//remove from old scene
-	if(node._on_tree && node._on_tree != this)
+	if(node._in_tree && node._in_tree != this)
 		throw("Cannot add a node from other scene, clone it");
 
 	//generate unique id
@@ -772,7 +772,7 @@ SceneNode.prototype.setId = function(new_id)
 {
 	if(this.id == new_id) return true; //no changes
 
-	var scene = this._on_tree;
+	var scene = this._in_tree;
 	if(!scene)
 	{
 		this.id = new_id;
@@ -900,7 +900,7 @@ SceneNode.prototype.getMaterial = function()
 {
 	if (!this.material) return null;
 	if(this.material.constructor === String)
-		return this._on_tree ? this._on_tree.materials[this.material] : null;
+		return this._in_tree ? this._in_tree.materials[this.material] : null;
 	return this.material;
 }
 
@@ -930,7 +930,7 @@ SceneNode.prototype.getTexture = function(channel) {
 
 SceneNode.prototype.clone = function()
 {
-	var scene = this._on_tree;
+	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
 	var newnode = new SceneNode( new_child_name );
@@ -995,9 +995,9 @@ SceneNode.prototype.configure = function(info)
 	/*
 	if(info.parent_id) //name of the parent
 	{
-		if(this._on_tree)
+		if(this._in_tree)
 		{
-			var parent = this._on_tree.getNode( info.parent_id );
+			var parent = this._in_tree.getNode( info.parent_id );
 			if(parent) 
 				parent.addChild( this );
 		}
@@ -1132,11 +1132,11 @@ SceneNode.prototype.addChild = function(node, recompute_transform )
 	if(node.parentNode && node.parentNode.constructor == SceneNode)
 	{
 		node.parentNode.removeChild(this);
-		if(node._on_tree != this._on_tree)
+		if(node._in_tree != this._in_tree)
 		{
-			if(node._on_tree)
-				node._on_tree.removeNode(node);
-			this._on_tree.addNode(node);
+			if(node._in_tree)
+				node._in_tree.removeNode(node);
+			this._in_tree.addNode(node);
 		}
 	}
 

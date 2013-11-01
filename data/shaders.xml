@@ -66,10 +66,13 @@
 			#endif
 
 			void main() {
+
+				vec3 vertex = a_vertex;
+
 				#ifdef NO_NORMALS
 					v_normal = vec3(0.,1.,0.);
 				#else
-					v_normal = (u_normal_model * vec4(a_normal,1.0)).xyz;
+					v_normal = a_normal;
 				#endif
 
 				/*
@@ -84,8 +87,6 @@
 					v_color = a_color;
 				#endif
 
-				vec3 vertex = a_vertex;
-
 				#ifdef NO_COORDS
 					v_uvs = vec2(0.5);
 				#else
@@ -93,6 +94,11 @@
 				#endif
 
 				v_uvs_transformed = (u_texture_matrix * vec3(v_uvs,1.0)).xy;
+
+				#ifdef USE_VERTEX_SHADER_CODE
+					USE_VERTEX_SHADER_CODE
+				#endif
+
 
 				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
 					v_light_coord = (u_lightMatrix) * vec4(vertex,1.0);
@@ -110,14 +116,14 @@
 					vertex += v_normal * height;
 				#endif
 
-				#ifdef USE_VERTEX_SHADER_CODE
-					USE_VERTEX_SHADER_CODE
-				#endif
 
 				//position
 				gl_Position =  u_mvp * vec4(vertex,1.0);
-				v_screenpos = gl_Position;
 				v_pos = (u_model * vec4(vertex,1.0)).xyz;
+				v_screenpos = gl_Position;
+
+				//normal
+				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
 
 				gl_PointSize = 1000.0 / length(u_camera_eye - v_pos); 
 			}
@@ -1003,7 +1009,7 @@
 		</code>
 	</shader>
 
-	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST">
+	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1020,8 +1026,16 @@
 			#endif
 
 			uniform mat4 u_mvp;
-
 			varying vec4 pos;
+
+			#ifdef USE_VERTEX_SHADER_UNIFORMS
+				USE_VERTEX_SHADER_UNIFORMS
+			#endif
+
+			#ifdef USE_VERTEX_SHADER_FUNCTIONS
+				USE_VERTEX_SHADER_FUNCTIONS
+			#endif
+
 			void main()
 			{
 				#ifdef USE_ALPHA_TEST
@@ -1036,7 +1050,14 @@
 					v_uvs_transformed = (u_texture_matrix * vec3(v_uvs,1.0)).xy;
 				#endif
 
-				gl_Position = pos = u_mvp * vec4(a_vertex,1.0);
+				vec3 vertex = a_vertex;
+				vec3 v_normal; //not used but needed in case the deformer affects it
+
+				#ifdef USE_VERTEX_SHADER_CODE
+					USE_VERTEX_SHADER_CODE
+				#endif
+
+				gl_Position = pos = u_mvp * vec4(vertex,1.0);
 			}
 		]]>
 		</code>
