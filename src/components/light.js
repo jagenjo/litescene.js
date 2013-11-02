@@ -85,7 +85,7 @@ function Light(o)
 	* @type {[[r,g,b]]}
 	* @default [1,1,1]
 	*/
-	this.color = [1,1,1];
+	this.color = vec3.fromValues(1,1,1);
 	/**
 	* The intensity of the light
 	* @property intensity
@@ -105,6 +105,10 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
+
+	this.volume_visibility = 0;
+	this.volume_radius = 1;
+	this.volume_density = 1;
 
 	//for caching purposes
 	this._macros = {};
@@ -129,22 +133,90 @@ Light.prototype.onAddedToNode = function(node)
 {
 	if(!node.light) node.light = this;
 
-	//this.updateNodeTransform();
-	//LEvent.bind(node, "transformChanged", this.onTransformChanged, this );
-	LEvent.bind(node, "beforeRender", this.onBeforeRender, this );
+	LEvent.bind(node, "collectLights", this.onCollectLights, this );
+
+	if(this.volume_visibility)
+	{
+		LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = true;
+	}
 }
 
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
+	this._volume_event = false;
 }
 
-Light.prototype.onBeforeRender = function()
+Light.prototype.onCollectLights = function(e, lights)
 {
+	if(!this.enabled)
+		return;
+
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture && this.enabled)
+	if(this.projective_texture)
 		this.computeLightMatrices();
+
+	//add to lights vector
+	lights.push(this);
+
+	if(this.volume_visibility && !this._volume_event)
+	{
+		LEvent.bind(this._root, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = true;
+	}
+
 }
+
+Light.prototype.onCollectInstances = function(e,instances)
+{
+	if(!this.enabled) return;
+
+	if(!this.volume_visibility) 
+	{
+		LEvent.unbind(this._root, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = false;
+		return;
+	}
+
+	//sphere
+	if(!this._mesh)
+	{
+		this._mesh = GL.Mesh.cube();
+	}
+
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
+
+	RI.flags = RenderInstance.ALPHA; //reset and set
+	
+	//material
+	var mat = this._material;
+	if(!mat)
+		mat = this._material = new Material({shader:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
+	vec3.copy( mat.color, this.color );
+	mat.opacity = this.volume_visibility;
+	RI.material = mat;
+
+	//do not need to update
+	RI.matrix.set( this._root.transform._global_matrix );
+	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
+	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
+
+	var volume_info = vec4.create();
+	volume_info.set(RI.center);
+	volume_info[3] = this.volume_radius * 0.5;
+	RI.uniforms["u_volume_info"] = volume_info;
+	RI.uniforms["u_volume_density"] = this.volume_density;
+	
+	RI.mesh = this._mesh;
+	RI.primitive = gl.TRIANGLES;
+	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
+
+	instances.push(RI);
+}
+
 
 Light._temp_matrix = mat4.create();
 Light._temp2_matrix = mat4.create();
@@ -154,6 +226,7 @@ Light._temp_target = vec3.create();
 Light._temp_up = vec3.create();
 Light._temp_front = vec3.create();
 
+//parameters are if you want to store the result in different matrices
 Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, viewprojection_matrix)
 {
 	/*

@@ -93,6 +93,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	if(this.count[2] > 1) offset[2] = this.size[2] / (this.count[2]-1);
 	else hsize[2] = 0;
 
+	var flags = 0;
 
 	var i = 0;
 	var tmp = vec3.create(), zero = vec3.create();
@@ -101,13 +102,25 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	for(var z = 0; z < this.count[2]; ++z)
 	{
 		var RI = RIs[i];
+
+		//genereate flags for the first instance
+		if(i == 0)
+		{
+			RI.flags = RI_DEFAULT_FLAGS;
+			RI.applyNodeFlags();
+			flags = RI.flags;
+		}
+		else //for the rest just reuse the same as the first one
+			RI.flags = flags;
+
 		RI.mesh = mesh;
 		RI.material = material;
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
 		mat4.translate( RI.matrix, global, tmp );
 		mat4.multiplyVec3( RI.center, RI.matrix, zero );
-		++i;
 		instances.push(RI);
+
+		++i;
 	}
 
 	//return RI;

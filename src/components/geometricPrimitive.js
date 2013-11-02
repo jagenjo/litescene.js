@@ -95,7 +95,9 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	else 
 		return null;
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 
@@ -111,8 +113,11 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	RI.mesh = mesh;
 	RI.material = this.material || this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	if(this.two_sided)
-		RI.enableFlag( RenderInstance.TWO_SIDED );
+		RI.flags ^= RI_CULL_FACE;
 
 	instances.push(RI);
 	//return RI;

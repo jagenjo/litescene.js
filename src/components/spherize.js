@@ -14,15 +14,8 @@ function Spherize(o)
 	this.center = vec3.create();
 	this.factor = 0.5;
 
-	var replaces = {
-		u_spherize_center: "u_spherize_center_" + this._uid,
-		u_spherize_radius: "u_spherize_radius_" + this._uid,
-		u_spherize_factor: "u_spherize_factor_" + this._uid
-	};
-		
-
-	this._uniforms_code = Spherize._uniforms_code.replaceAll(replaces);
-	this._code = Spherize._code.replaceAll(replaces);
+	this._uniforms_code = Spherize._uniforms_code.replaceAll({"@": this._uid});
+	this._code = Spherize._code.replaceAll({"@": this._uid});
 }
 
 Spherize["@factor"] = { type: "number", step: 0.001 };
@@ -41,8 +34,8 @@ Spherize.prototype.onRemoveFromNode = function(node)
 	LEvent.unbindAll(node,this);
 }
 
-Spherize._uniforms_code = "uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;";
-Spherize._code = "vec3 vn = normalize(vertex-u_spherize_center); vertex = mix(vertex, vn * u_spherize_radius, u_spherize_factor); v_normal = (mix(v_normal, vn, clamp(0.0,1.0,u_spherize_factor)));";
+Spherize._uniforms_code = "uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;";
+Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex = mix(vertex, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -59,9 +52,9 @@ Spherize.prototype.onMacros = function(e, macros)
 
 Spherize.prototype.onUniforms = function(e, uniforms)
 {
-	uniforms["u_spherize_center_" + this._uid ] = this.center;
-	uniforms["u_spherize_radius_" + this._uid ] = this.radius;
-	uniforms["u_spherize_factor_" + this._uid ] = this.factor;
+	uniforms["u_spherize_center" + this._uid ] = this.center;
+	uniforms["u_spherize_radius" + this._uid ] = this.radius;
+	uniforms["u_spherize_factor" + this._uid ] = this.factor;
 }
 
 

@@ -43,6 +43,7 @@ function Material(o)
 	this.bumpmap_factor = 1.0;
 
 	this.textures = {};
+	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
@@ -450,6 +451,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		}
 	}
 
+	//add extra uniforms
+	for(var i in this.extra_uniforms)
+		uniforms[i] = this.extra_uniforms[i];
+
 	this._uniforms = uniforms;
 	this._samplers = samplers;
 }
@@ -472,12 +477,12 @@ Material.prototype.fillLightUniforms = function( light, instance, node, scene, o
 		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
 
 	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( vec3.create(), light.color, light.intensity );
+	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), light.color, light.intensity );
 	uniforms.u_light_att = [light.att_start,light.att_end];
 	uniforms.u_light_offset = light.offset;
 
 	if(light._lightMatrix)
-		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
+		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._lightMatrix, instance.matrix );
 
 	//texture
 	if(light_projective_texture)
@@ -526,8 +531,11 @@ Material.prototype.configure = function(o)
 			case "normalmap_factor":
 			case "displacementmap_factor":
 			case "extra_factor":
+			//strings
+			case "shader":
 			//bools
 			case "specular_ontop":
+			case "normalmap_tangent":
 			case "reflection_specular":
 				r = v; 
 				break;
@@ -546,6 +554,8 @@ Material.prototype.configure = function(o)
 				continue;
 			case "transparency": //special cases
 				this.opacity = 1 - v;
+			case "extra_uniforms":
+				this.extra_uniforms = LS.cloneObject(v);
 			default:
 				continue;
 		}
@@ -619,7 +629,7 @@ Material.prototype.setTexture = function(texture, channel, uvs) {
 	}
 
 	if(!texture) return;
-	if(texture.constructor == String)
+	if(texture.constructor == String && texture[0] != ":")
 		ResourcesManager.loadImage(texture);
 }
 

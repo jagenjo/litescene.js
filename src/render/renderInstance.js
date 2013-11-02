@@ -6,8 +6,18 @@
 * @constructor
 */
 
-//flags
-RenderInstance.TWO_SIDED = 1;
+//flags enums
+var RI_CULL_FACE =	1;		//two sided
+var RI_CW =		1 << 2; //reverse normals
+var RI_DEPTH_TEST =	1 << 3; 
+var RI_DEPTH_WRITE = 1 << 4; 
+var RI_ALPHA_TEST =	1 << 5; 
+var RI_BLEND = 1 << 6; 
+
+var RI_CAST_SHADOWS = 1 << 8;
+
+//default flags for any instance
+var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
 
 function RenderInstance(node, component)
 {
@@ -17,8 +27,9 @@ function RenderInstance(node, component)
 	this.node = node;
 	this.component = component;
 	this.primitive = gl.TRIANGLES;
-	this.material = null;
-	this.flags = 0;
+
+	this.flags = RI_DEFAULT_FLAGS;
+
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
@@ -27,7 +38,9 @@ function RenderInstance(node, component)
 	this.aabb_center = vec3.create();
 	this.aabb_halfsize = vec3.create();
 
-	//globals
+	this.material = null;
+
+	//globals, never reseted
 	this.macros = {};
 	this.uniforms = {};
 }
@@ -40,6 +53,23 @@ RenderInstance.prototype.generateKey = function(step, options)
 }
 
 /**
+* takes the flags on the node and update the render instance flags
+*
+* @method applyNodeFlags
+*/
+RenderInstance.prototype.applyNodeFlags = function()
+{
+	var node_flags = this.node.flags;
+
+	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
+	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
+	if(node_flags.flip_normals == true) this.flags |= RI_CW;
+	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
+	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
+	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+}
+
+/**
 * Enable flag in the flag bit field
 *
 * @method enableFlag
@@ -47,7 +77,7 @@ RenderInstance.prototype.generateKey = function(step, options)
 */
 RenderInstance.prototype.enableFlag = function(flag)
 {
-	this.flags |= (1 << flag);
+	this.flags |= flag;
 }
 
 /**
@@ -58,7 +88,7 @@ RenderInstance.prototype.enableFlag = function(flag)
 */
 RenderInstance.prototype.disableFlag = function(flag)
 {
-	this.flags &= (1 << flag);
+	this.flags &= ~flag;
 }
 
 /**
@@ -70,7 +100,7 @@ RenderInstance.prototype.disableFlag = function(flag)
 */
 RenderInstance.prototype.isFlag = function(flag)
 {
-	return (this.flags & (1 << flag));
+	return (this.flags & flag);
 }
 
 /**

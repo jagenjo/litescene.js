@@ -2581,7 +2581,7 @@ var ResourcesManager = {
 
 		if(url[0] == ":")
 		{
-			console.err("loadImage: cannot load filenames starting with ':'");
+			console.error("loadImage: cannot load filenames starting with ':'");
 			return null;
 		}
 
@@ -2957,6 +2957,7 @@ function Material(o)
 	this.bumpmap_factor = 1.0;
 
 	this.textures = {};
+	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
@@ -3364,6 +3365,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		}
 	}
 
+	//add extra uniforms
+	for(var i in this.extra_uniforms)
+		uniforms[i] = this.extra_uniforms[i];
+
 	this._uniforms = uniforms;
 	this._samplers = samplers;
 }
@@ -3386,12 +3391,12 @@ Material.prototype.fillLightUniforms = function( light, instance, node, scene, o
 		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
 
 	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( vec3.create(), light.color, light.intensity );
+	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), light.color, light.intensity );
 	uniforms.u_light_att = [light.att_start,light.att_end];
 	uniforms.u_light_offset = light.offset;
 
 	if(light._lightMatrix)
-		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
+		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._lightMatrix, instance.matrix );
 
 	//texture
 	if(light_projective_texture)
@@ -3440,8 +3445,11 @@ Material.prototype.configure = function(o)
 			case "normalmap_factor":
 			case "displacementmap_factor":
 			case "extra_factor":
+			//strings
+			case "shader":
 			//bools
 			case "specular_ontop":
+			case "normalmap_tangent":
 			case "reflection_specular":
 				r = v; 
 				break;
@@ -3460,6 +3468,8 @@ Material.prototype.configure = function(o)
 				continue;
 			case "transparency": //special cases
 				this.opacity = 1 - v;
+			case "extra_uniforms":
+				this.extra_uniforms = LS.cloneObject(v);
 			default:
 				continue;
 		}
@@ -3533,7 +3543,7 @@ Material.prototype.setTexture = function(texture, channel, uvs) {
 	}
 
 	if(!texture) return;
-	if(texture.constructor == String)
+	if(texture.constructor == String && texture[0] != ":")
 		ResourcesManager.loadImage(texture);
 }
 
@@ -5498,7 +5508,7 @@ function Light(o)
 	* @type {[[r,g,b]]}
 	* @default [1,1,1]
 	*/
-	this.color = [1,1,1];
+	this.color = vec3.fromValues(1,1,1);
 	/**
 	* The intensity of the light
 	* @property intensity
@@ -5518,6 +5528,10 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
+
+	this.volume_visibility = 0;
+	this.volume_radius = 1;
+	this.volume_density = 1;
 
 	//for caching purposes
 	this._macros = {};
@@ -5542,22 +5556,90 @@ Light.prototype.onAddedToNode = function(node)
 {
 	if(!node.light) node.light = this;
 
-	//this.updateNodeTransform();
-	//LEvent.bind(node, "transformChanged", this.onTransformChanged, this );
-	LEvent.bind(node, "beforeRender", this.onBeforeRender, this );
+	LEvent.bind(node, "collectLights", this.onCollectLights, this );
+
+	if(this.volume_visibility)
+	{
+		LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = true;
+	}
 }
 
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
+	this._volume_event = false;
 }
 
-Light.prototype.onBeforeRender = function()
+Light.prototype.onCollectLights = function(e, lights)
 {
+	if(!this.enabled)
+		return;
+
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture && this.enabled)
+	if(this.projective_texture)
 		this.computeLightMatrices();
+
+	//add to lights vector
+	lights.push(this);
+
+	if(this.volume_visibility && !this._volume_event)
+	{
+		LEvent.bind(this._root, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = true;
+	}
+
 }
+
+Light.prototype.onCollectInstances = function(e,instances)
+{
+	if(!this.enabled) return;
+
+	if(!this.volume_visibility) 
+	{
+		LEvent.unbind(this._root, "collectRenderInstances", this.onCollectInstances, this);
+		this._volume_event = false;
+		return;
+	}
+
+	//sphere
+	if(!this._mesh)
+	{
+		this._mesh = GL.Mesh.cube();
+	}
+
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
+
+	RI.flags = RenderInstance.ALPHA; //reset and set
+	
+	//material
+	var mat = this._material;
+	if(!mat)
+		mat = this._material = new Material({shader:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
+	vec3.copy( mat.color, this.color );
+	mat.opacity = this.volume_visibility;
+	RI.material = mat;
+
+	//do not need to update
+	RI.matrix.set( this._root.transform._global_matrix );
+	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
+	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
+
+	var volume_info = vec4.create();
+	volume_info.set(RI.center);
+	volume_info[3] = this.volume_radius * 0.5;
+	RI.uniforms["u_volume_info"] = volume_info;
+	RI.uniforms["u_volume_density"] = this.volume_density;
+	
+	RI.mesh = this._mesh;
+	RI.primitive = gl.TRIANGLES;
+	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
+
+	instances.push(RI);
+}
+
 
 Light._temp_matrix = mat4.create();
 Light._temp2_matrix = mat4.create();
@@ -5567,6 +5649,7 @@ Light._temp_target = vec3.create();
 Light._temp_up = vec3.create();
 Light._temp_front = vec3.create();
 
+//parameters are if you want to store the result in different matrices
 Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, viewprojection_matrix)
 {
 	/*
@@ -5787,7 +5870,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 		return null;
 	*/
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -5799,9 +5884,11 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	if(this.two_sided)
-		RI.enableFlag( RenderInstance.TWO_SIDED );
-	//RI.scene = Scene;
+		RI.flags &= ~RI_CULL_FACE;
 
 	instances.push(RI);
 	//return RI;
@@ -6354,7 +6441,9 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	else 
 		return null;
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 
@@ -6370,8 +6459,11 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	RI.mesh = mesh;
 	RI.material = this.material || this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	if(this.two_sided)
-		RI.enableFlag( RenderInstance.TWO_SIDED );
+		RI.flags ^= RI_CULL_FACE;
 
 	instances.push(RI);
 	//return RI;
@@ -7195,7 +7287,9 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, c
 	if(!this._mesh)
 		return null;
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -7206,6 +7300,9 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, c
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 
 	instances.push(RI);
 	//return RI;
@@ -7569,7 +7666,9 @@ TerrainRenderer.prototype.getRenderInstance = function()
 			this.updateMesh();
 	}
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	if(!this._mesh)
 	{
@@ -7582,6 +7681,9 @@ TerrainRenderer.prototype.getRenderInstance = function()
 	RI.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	return RI;
 }
 
@@ -7682,6 +7784,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	if(this.count[2] > 1) offset[2] = this.size[2] / (this.count[2]-1);
 	else hsize[2] = 0;
 
+	var flags = 0;
 
 	var i = 0;
 	var tmp = vec3.create(), zero = vec3.create();
@@ -7690,13 +7793,25 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	for(var z = 0; z < this.count[2]; ++z)
 	{
 		var RI = RIs[i];
+
+		//genereate flags for the first instance
+		if(i == 0)
+		{
+			RI.flags = RI_DEFAULT_FLAGS;
+			RI.applyNodeFlags();
+			flags = RI.flags;
+		}
+		else //for the rest just reuse the same as the first one
+			RI.flags = flags;
+
 		RI.mesh = mesh;
 		RI.material = material;
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
 		mat4.translate( RI.matrix, global, tmp );
 		mat4.multiplyVec3( RI.center, RI.matrix, zero );
-		++i;
 		instances.push(RI);
+
+		++i;
 	}
 
 	//return RI;
@@ -7720,15 +7835,8 @@ function Spherize(o)
 	this.center = vec3.create();
 	this.factor = 0.5;
 
-	var replaces = {
-		u_spherize_center: "u_spherize_center_" + this._uid,
-		u_spherize_radius: "u_spherize_radius_" + this._uid,
-		u_spherize_factor: "u_spherize_factor_" + this._uid
-	};
-		
-
-	this._uniforms_code = Spherize._uniforms_code.replaceAll(replaces);
-	this._code = Spherize._code.replaceAll(replaces);
+	this._uniforms_code = Spherize._uniforms_code.replaceAll({"@": this._uid});
+	this._code = Spherize._code.replaceAll({"@": this._uid});
 }
 
 Spherize["@factor"] = { type: "number", step: 0.001 };
@@ -7747,8 +7855,8 @@ Spherize.prototype.onRemoveFromNode = function(node)
 	LEvent.unbindAll(node,this);
 }
 
-Spherize._uniforms_code = "uniform vec3 u_spherize_center; uniform float u_spherize_radius; uniform float u_spherize_factor;";
-Spherize._code = "vec3 vn = normalize(vertex-u_spherize_center); vertex = mix(vertex, vn * u_spherize_radius, u_spherize_factor); v_normal = (mix(v_normal, vn, clamp(0.0,1.0,u_spherize_factor)));";
+Spherize._uniforms_code = "uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;";
+Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex = mix(vertex, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -7765,9 +7873,9 @@ Spherize.prototype.onMacros = function(e, macros)
 
 Spherize.prototype.onUniforms = function(e, uniforms)
 {
-	uniforms["u_spherize_center_" + this._uid ] = this.center;
-	uniforms["u_spherize_radius_" + this._uid ] = this.radius;
-	uniforms["u_spherize_factor_" + this._uid ] = this.factor;
+	uniforms["u_spherize_center" + this._uid ] = this.center;
+	uniforms["u_spherize_radius" + this._uid ] = this.radius;
+	uniforms["u_spherize_factor" + this._uid ] = this.factor;
 }
 
 
@@ -9108,8 +9216,18 @@ if(typeof(LiteGraph) != "undefined")
 * @constructor
 */
 
-//flags
-RenderInstance.TWO_SIDED = 1;
+//flags enums
+var RI_CULL_FACE =	1;		//two sided
+var RI_CW =		1 << 2; //reverse normals
+var RI_DEPTH_TEST =	1 << 3; 
+var RI_DEPTH_WRITE = 1 << 4; 
+var RI_ALPHA_TEST =	1 << 5; 
+var RI_BLEND = 1 << 6; 
+
+var RI_CAST_SHADOWS = 1 << 8;
+
+//default flags for any instance
+var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
 
 function RenderInstance(node, component)
 {
@@ -9119,8 +9237,9 @@ function RenderInstance(node, component)
 	this.node = node;
 	this.component = component;
 	this.primitive = gl.TRIANGLES;
-	this.material = null;
-	this.flags = 0;
+
+	this.flags = RI_DEFAULT_FLAGS;
+
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
@@ -9129,7 +9248,9 @@ function RenderInstance(node, component)
 	this.aabb_center = vec3.create();
 	this.aabb_halfsize = vec3.create();
 
-	//globals
+	this.material = null;
+
+	//globals, never reseted
 	this.macros = {};
 	this.uniforms = {};
 }
@@ -9142,6 +9263,23 @@ RenderInstance.prototype.generateKey = function(step, options)
 }
 
 /**
+* takes the flags on the node and update the render instance flags
+*
+* @method applyNodeFlags
+*/
+RenderInstance.prototype.applyNodeFlags = function()
+{
+	var node_flags = this.node.flags;
+
+	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
+	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
+	if(node_flags.flip_normals == true) this.flags |= RI_CW;
+	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
+	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
+	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+}
+
+/**
 * Enable flag in the flag bit field
 *
 * @method enableFlag
@@ -9149,7 +9287,7 @@ RenderInstance.prototype.generateKey = function(step, options)
 */
 RenderInstance.prototype.enableFlag = function(flag)
 {
-	this.flags |= (1 << flag);
+	this.flags |= flag;
 }
 
 /**
@@ -9160,7 +9298,7 @@ RenderInstance.prototype.enableFlag = function(flag)
 */
 RenderInstance.prototype.disableFlag = function(flag)
 {
-	this.flags &= (1 << flag);
+	this.flags &= ~flag;
 }
 
 /**
@@ -9172,7 +9310,7 @@ RenderInstance.prototype.disableFlag = function(flag)
 */
 RenderInstance.prototype.isFlag = function(flag)
 {
-	return (this.flags & (1 << flag));
+	return (this.flags & flag);
 }
 
 /**
@@ -9276,11 +9414,9 @@ var Renderer = {
 	//temp variables for rendering pipeline passes
 	_current_scene: null,
 	_default_material: new Material(), //used for objects without material
-	_visible_lights: [],
 
-	_visible_meshes: [],
-	_opaque_meshes: [],
-	_alpha_meshes: [],
+	//stats
+	_rendercalls: 0,
 
 	reset: function()
 	{
@@ -9303,23 +9439,14 @@ var Renderer = {
 		scene = scene || Scene;
 		this._current_scene = scene;
 		options.main_camera = camera;
+		this._rendercalls = 0;
 
 		//events
 		LEvent.trigger(Scene, "beforeRender", camera);
 		scene.sendEventToNodes("beforeRender", camera);
 
-
-		if(scene.light && scene.light.onBeforeRender) 
-			scene.light.onBeforeRender(); //ugly hack because the scene could have a light and it is not a node
-
-		//get render instances
-		this.updateVisibleInstances(scene, options);
-
-		//get lights
-		this.updateVisibleLights(scene, options.nodes );
-
-		//prepare materials (gather macros, uniforms and textures)
-		this.updateVisibleMaterials(scene, options );
+		//get render instances, lights, materials and all rendering info ready
+		this.updateVisibleData(scene, options);
 
 		//generate shadowmap
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
@@ -9379,7 +9506,7 @@ var Renderer = {
 			//gl.enable(gl.SCISSOR_TEST);
 
 			//clear
-			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
+			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -9404,11 +9531,7 @@ var Renderer = {
 	_projection_matrix: mat4.create(),
 	_viewprojection_matrix: mat4.create(),
 	_mvp_matrix: mat4.create(),
-
 	_temp_matrix: mat4.create(),
-	_world_model: mat4.create(),
-	_object_model: mat4.create(),
-	_normal_model: mat4.create(),
 
 	/**
 	* Set camera as the main scene camera
@@ -9463,7 +9586,7 @@ var Renderer = {
 
 		//this.updateVisibleInstances(scene,options);
 		var lights = this._visible_lights;
-		var render_instances = this._visible_meshes;
+		var render_instances = this._visible_instances;
 
 		//for each render instance
 		for(var i in render_instances)
@@ -9474,11 +9597,15 @@ var Renderer = {
 			var flags = instance.node.flags;
 
 			//hidden nodes
-			if(options.is_rt && flags.seen_by_reflections == false) //mat.alpha <= 0.0
+			if(options.is_rt && flags.seen_by_reflections == false)
+				continue;
+			if(options.is_shadowmap && !(instance.flags & RI_CAST_SHADOWS))
 				continue;
 			if(flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
 				continue;
 			if(flags.seen_by_picking == false && options.is_picking)
+				continue;
+			if(instance.material.opacity <= 0)
 				continue;
 
 			//Compute lights affecting this RI
@@ -9492,6 +9619,13 @@ var Renderer = {
 			else
 				this.renderMultiPassInstance(step, instance, lights, scene, options );
 		}
+
+		//restore state
+		gl.enable(gl.DEPTH_TEST);
+		gl.depthFunc(gl.LESS);
+		gl.depthMask(true);
+		gl.disable(gl.BLEND);
+		gl.frontFace(gl.CCW);
 
 		LEvent.trigger(scene, "afterRenderPass",options);
 		scene.sendEventToNodes("afterRenderPass",options);
@@ -9508,16 +9642,19 @@ var Renderer = {
 				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
 				gl.disable( gl.DEPTH_TEST );
 				texture.toViewport();
+				gl.disable( gl.BLEND );
+				gl.enable( gl.DEPTH_TEST );
 			}
 		}
 
+
+		//EVENT SCENE after_render
 		//restore state
-		gl.depthFunc(gl.LEQUAL);
+		gl.enable(gl.DEPTH_TEST);
+		gl.depthFunc(gl.LESS);
 		gl.depthMask(true);
 		gl.disable(gl.BLEND);
 		gl.frontFace(gl.CCW);
-
-		//EVENT SCENE after_render
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
@@ -9535,16 +9672,15 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		this._object_model.set( model ); 
-		this._normal_model.set( instance.normal_matrix ); 
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
 		var node_macros = node._macros;
 		var node_uniforms = node._uniforms;
+
 		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = this._object_model;
-		node_uniforms.u_normal_model = this._normal_model;
+		node_uniforms.u_model = model;
+		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
 		this.enableInstanceFlags(instance, node, options);
@@ -9555,7 +9691,7 @@ var Renderer = {
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
 		}
-		else if(mat.opacity < 0.999 )
+		else if(mat.opacity < 0.999 || (instance.flags & RI_BLEND) )
 		{
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
@@ -9563,7 +9699,7 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
-		//assign material samplers
+		//assign material samplers (maybe they are not used...)
 		for(var i = 0; i < mat._samplers.length; i++)
 		{
 			var s = mat._samplers[i];
@@ -9619,9 +9755,11 @@ var Renderer = {
 			shader.uniforms( node_uniforms );
 			shader.uniforms( mat._uniforms );
 			shader.uniforms( light_uniforms );
+			shader.uniforms( instance.uniforms );
 
 			//render
 			instance.render( shader );
+			this._rendercalls += 1;
 
 			if(shader.global && !shader.global.multipass)
 				break; //avoid multipass in simple shaders
@@ -9634,18 +9772,17 @@ var Renderer = {
 		var node = instance.node;
 		var mat = instance.material;
 
+		//compute matrices
 		var model = instance.matrix;
-		this._object_model.set( model ); 
-		this._normal_model.set( instance.normal_matrix );
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
-
-		//global uniforms
-		var uniforms = {};
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		uniforms.u_mvp = this._mvp_matrix;
-		uniforms.u_model = this._object_model;
-		uniforms.u_normal_model = this._normal_model;
+		var node_macros = node._macros;
+		var node_uniforms = node._uniforms;
+
+		node_uniforms.u_mvp = this._mvp_matrix;
+		node_uniforms.u_model = model;
+		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
 		this.enableInstanceFlags(instance, node, options);
@@ -9669,16 +9806,18 @@ var Renderer = {
 				opacity.bind(1);
 			}
 			shader = Shaders.get("depth", node._macros, macros);
-			shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.opacity], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
-			shader.uniforms( node._uniforms );
+			shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
 		else
 		{
-			shader = Shaders.get("depth", node._macros );
-			shader.uniforms({u_mvp: this._mvp_matrix});
-			shader.uniforms( node._uniforms );
+			//shader = Shaders.get("depth", node._macros );
+			shader = Shaders.get("depth", node_macros, instance.macros, mat._macros );
 		}
+
+		shader.uniforms( mat._uniforms );
+		shader.uniforms(node_uniforms);
 		instance.render(shader);
+		this._rendercalls += 1;
 	},
 
 	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
@@ -9702,7 +9841,7 @@ var Renderer = {
 		scene._macros = macros;
 	},
 
-	//do not reuse uniforms
+	//DO NOT CACHE, parameter can change between render passes
 	fillSceneShaderUniforms: function( scene, options)
 	{
 		//global uniforms
@@ -9710,8 +9849,13 @@ var Renderer = {
 			u_camera_eye: this.active_camera.getEye(),
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene.current_time || new Date().getTime() * 0.001
+			u_time: scene.current_time || new Date().getTime() * 0.001,
+			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
+			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0
 		};
+
+		if(options.clipping_plane)
+			uniforms.u_clipping_plane = options.clipping_plane;
 
 		scene._uniforms = uniforms;
 	},
@@ -9735,33 +9879,37 @@ var Renderer = {
 		instance.render(shader);
 	},
 
-	enableInstanceFlags: function(instance, node, options)
+	enableInstanceFlags: function(instance)
 	{
-		if(instance.isFlag( RenderInstance.TWO_SIDED ) || node.flags.two_sided )
-			gl.disable( gl.CULL_FACE );
-		else
+		var flags = instance.flags;
+
+		//backface culling
+		if( flags & RI_CULL_FACE )
 			gl.enable( gl.CULL_FACE );
+		else
+			gl.disable( gl.CULL_FACE );
 
 		//  depth
 		gl.depthFunc( gl.LEQUAL );
-		if(node.flags.depth_test)
+		if(flags & RI_DEPTH_TEST)
 			gl.enable( gl.DEPTH_TEST );
 		else
 			gl.disable( gl.DEPTH_TEST );
-		if(node.flags.depth_write)
+
+		if(flags & RI_DEPTH_WRITE)
 			gl.depthMask(true);
 		else
 			gl.depthMask(false);
 
 		//when to reverse the normals?
-		if(node.flags.flip_normals)
+		if(flags & RI_CW)
 			gl.frontFace(gl.CW);
 		else
 			gl.frontFace(gl.CCW);
 	},
 
-	//collects the rendering instances that are visible
-	updateVisibleInstances: function(scene, options)
+	//collects the rendering instances and lights that are visible
+	updateVisibleData: function(scene, options)
 	{
 		options = options || {};
 
@@ -9774,17 +9922,18 @@ var Renderer = {
 		options.current_camera = camera;
 		var camera_eye = camera.getEye();
 
-		var opaque_meshes = [];
-		var alpha_meshes = [];
+		var instances = [];
+		var opaque_instances = [];
+		var alpha_instances = [];
+		var lights = [];
 		var materials = {}; //I dont want repeated materials here
 
-		//collect render instances
-		var instances = [];
+		//collect render instances and lights
 		for(var i in nodes)
 		{
 			var node = nodes[i];
 
-			if(!node.flags.visible) //skip invisibles
+			if(node.flags.visible == false) //skip invisibles
 				continue;
 
 			//trigger event
@@ -9806,6 +9955,7 @@ var Renderer = {
 
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
+			LEvent.trigger(node,"collectLights", lights );
 		}
 
 		//complete render instances
@@ -9813,6 +9963,7 @@ var Renderer = {
 		{
 			var instance = instances[i];
 			if(!instance) continue;
+			var node_flags = instance.node.flags;
 
 			//materials
 			if(!instance.material)
@@ -9833,15 +9984,18 @@ var Renderer = {
 
 			//and finally, the alpha thing to determine if it is visible or not
 			var mat = instance.material;
-			if(mat.opacity >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-				opaque_meshes.push(instance);
-			else //if(!options.is_shadowmap)
-				alpha_meshes.push(instance);
+			if(mat.opacity < 1.0 || mat.blending == Material.ADDITIVE_BLENDING || (instance.flags & RI_BLEND) )
+				alpha_instances.push(instance);
+			else
+				opaque_instances.push(instance);
 
 			//node & mesh constant information
 			var macros = instance.macros;
-			if(instance.node.flags.alpha_test == true)
+			if(instance.flags & RI_ALPHA_TEST)
 				macros.USE_ALPHA_TEST = "0.5";
+			else if(macros["USE_ALPHA_TEST"])
+				delete macros["USE_ALPHA_TEST"];
+
 			var mesh = instance.mesh;
 			if(!("a_normal" in mesh.vertexBuffers))
 				macros.NO_NORMALS = "";
@@ -9853,80 +10007,37 @@ var Renderer = {
 				macros.USE_TANGENT_STREAM = "";
 		}
 
-		//sort nodes in Z
+		//sort RIs in Z for alpha sorting
 		if(this.sort_nodes_in_z)
 		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			opaque_instances.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
+			alpha_instances.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
 			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
 			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
 		}
 
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes); //merge
+		//update materials info only if they are in use
+		if(this.update_materials)
+		{
+			for(var i in materials)
+			{
+				var material = materials[i];
+				if(!material._macros)
+				{
+					material._macros = {};
+					material._uniforms = {};
+					material._samplers = [];
+				}
+				material.fillSurfaceShaderMacros(scene); //update shader macros on this material
+				material.fillSurfaceUniforms(scene); //update uniforms
+			}
+		}
 
+		this._alpha_instances = alpha_instances;
+		this._opaque_instances = opaque_instances;
+		this._visible_instances = opaque_instances.concat(alpha_instances); //merge
+		this._visible_lights = lights;
 		this._visible_materials = materials;
-	},
-
-	null_light: null,
-	updateVisibleLights: function(scene, nodes)
-	{
-		this._visible_lights = [];
-		/*
-		if(scene.light && scene.light.enabled != false)
-			this._visible_lights.push(scene.light);
-		*/
-
-		nodes = nodes || scene.getNodes();
-
-		for(var i = 0; i < nodes.length; ++i)
-		{
-			var node = nodes[i];
-			if(!node.flags.visible) continue;
-			for(var j in node._components)
-				if (node._components[j].constructor === Light && node._components[j].enabled)
-					this._visible_lights.push(node._components[j]);
-
-			/*
-			if(!node.light || node.light.enabled == false)
-				continue;
-			//TODO: test in frustrum
-			this._visible_lights.push(node.light);
-			*/
-		}
-
-		//if there is no lights it wont render anything, so create a dummy one
-		if(this._visible_lights.length == 0)
-		{
-			if(!this.null_light)
-			{
-				this.null_light = new Light();
-				this.null_light.color = [0,0,0];
-			}
-			this._visible_lights.push(this.null_light);
-		}
-	},
-
-	updateVisibleMaterials: function(scene, options)
-	{
-		if(!this.update_materials)
-			return;
-
-		var materials = this._visible_materials;
-
-		for(var i in materials)
-		{
-			var material = materials[i];
-			if(!material._macros)
-			{
-				material._macros = {};
-				material._uniforms = {};
-				material._samplers = [];
-			}
-			material.fillSurfaceShaderMacros(scene); //update shader macros on this material
-			material.fillSurfaceUniforms(scene); //update uniforms
-		}
 	},
 
 	//Renders the scene to an RT, not in use anymore
@@ -9942,7 +10053,7 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
-			gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 1.0);
+			gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 0.0);
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
@@ -10141,491 +10252,6 @@ var Renderer = {
 
 //Add to global Scope
 LS.Renderer = Renderer;
-
-
-
-	/*
-	* This function renderes all the meshes to the current rendering context (screen, Texture...)
-	*
-	* @method renderSceneMeshes
-	* @param {Object} options
-	renderSceneMeshesOld: function(options)
-	{
-		var scene = this.current_scene || Scene;
-		options = options || {};
-
-		var picking_next_color_id = 0;
-		var brightness_factor = options.brightness_factor != null ? options.brightness_factor : 1;
-		var colorclip_factor = options.colorclip_factor != null ? options.colorclip_factor : 0;
-
-		options.camera = this.active_camera;
-
-		LEvent.trigger(Scene, "beforeRenderPass", options);
-		Scene.sendEventToNodes("beforeRenderPass", options);
-
-		gl.enable( gl.DEPTH_TEST );
-		gl.depthFunc( gl.LESS );
-		gl.disable( gl.BLEND );
-		gl.lineWidth(1);
-
-		//EVENT SCENE before_render
-
-		var overwrite_shader = null;
-		if(options.force_shader)
-			overwrite_shader = Shaders.get(options.force_shader);
-
-		var temp_vector = vec3.create();
-
-		//generic uniforms
-		var uniforms = {
-			u_camera_eye: this.active_camera.eye,
-			u_camera_planes: [this.active_camera.near, this.active_camera.far],
-			u_viewprojection: this._viewprojection_matrix,
-			u_brightness_factor: brightness_factor,
-			u_colorclip_factor: colorclip_factor,
-			u_time: Scene.current_time || new Date().getTime() * 0.001
-		};
-
-		var renderpass_info = { camera: this.active_camera, instance: null, node:null, uniforms: uniforms, macros:null, light: null, lights: this._visible_lights };
-
-		LEvent.trigger(Scene,"fillGlobalUniforms", renderpass_info );
-
-		var clipping_plane = options.clipping_plane;
-
-		//SORTING meshes
-		this.updateVisibleMeshesOld(scene,options);
-
-		//Z Draw
-		options.pass = "z";
-		if(this.z_pass)
-		{
-			gl.enable( gl.DEPTH_TEST );
-			gl.depthFunc( gl.LESS );
-			gl.disable( gl.BLEND );
-
-			var shader = Shaders.get("flat");
-			gl.colorMask(false,false,false,false);
-			for(var i in this._opaque_meshes)
-			{
-				var instance = this._opaque_meshes[i];
-				if(instance.isFlag( RenderInstance.TWO_SIDED ) )
-					gl.disable( gl.CULL_FACE );
-				else
-					gl.enable( gl.CULL_FACE );
-
-				mat4.multiply( this._mvp_matrix, this._viewprojection_matrix, instance.matrix );
-				shader.uniforms({u_material_color:[1,0,0,1],u_mvp: this._mvp_matrix});
-				instance.renderFunc(shader);
-			}
-			gl.colorMask(true,true,true,true);
-		}
-
-		//global textures
-		var depth_texture = ResourcesManager.textures[":scene_depth"];
-
-		//for each node
-		options.pass = "main";
-		for(var i in this._visible_meshes)
-		{
-			var instance = this._visible_meshes[i];
-			var node = instance.node;
-			var mesh = instance.mesh;
-
-			renderpass_info.instance = instance;
-			renderpass_info.node = node;
-
-			LEvent.trigger(node, "beforeRenderMeshes",options);
-
-			var mat = instance.material;
-			if(typeof(mat) === "string")
-				mat = scene.materials[mat];
-			if(!mat) mat = this._default_material;
-
-			var low_quality = options.low_quality || node.flags.low_quality;
-
-			if(instance.isFlag( RenderInstance.TWO_SIDED ) )
-				gl.disable( gl.CULL_FACE );
-			else
-				gl.enable( gl.CULL_FACE );
-
-			//depth
-			gl.depthFunc( gl.LEQUAL );
-			if(node.flags.depth_test)
-				gl.enable( gl.DEPTH_TEST );
-			else
-				gl.disable( gl.DEPTH_TEST );
-
-			if(node.flags.depth_write)
-				gl.depthMask(true);
-			else
-				gl.depthMask(false);
-
-			//main rendering (no picking or shadowmap)
-			if(!options.is_shadowmap && !options.is_picking)
-			{
-				if(mat.blending == Material.ADDITIVE_BLENDING)
-				{
-					gl.enable( gl.BLEND );
-					gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-				}
-				else if(mat.alpha < 0.999 )
-				{
-					gl.enable( gl.BLEND );
-					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-				}
-				else
-					gl.disable( gl.BLEND );
-			} //shadowmaps or picking buffer
-			else
-				gl.disable( gl.BLEND );
-
-			//when to reverse the normals?
-			if(node.flags.flip_normals)
-				gl.frontFace(gl.CW);
-			else
-				gl.frontFace(gl.CCW);
-
-			//compute world matrix
-			var model = instance.matrix;
-			mat4.copy(this._object_model, model ); 
-			//mat3.fromMat4(this._normal_model, model );
-			mat4.copy(this._normal_model, model );
-			mat4.setTranslation(this._normal_model,vec3.create());
-			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
-
-			var shader = null;
-		
-			if(options.is_shadowmap) //rendering to the shadowmap, just need the Z
-			{
-				if(node.flags.cast_shadows != false)
-				{
-					if(node.flags.alpha_shadows == true && (mat.getTexture("color") || mat.getTexture("opacity")))
-					{
-						var macros = { USE_ALPHA_TEST: "0.5" };
-
-						var color = mat.getTexture("color");
-						if(color)
-						{
-							var color_uvs = mat.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
-							macros.USE_COLOR_TEXTURE = "uvs_" + color_uvs;
-							color.bind(0);
-						}
-
-						var opacity = mat.getTexture("opacity");
-						if(opacity)	{
-							var opacity_uvs = mat.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
-							macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
-							opacity.bind(1);
-						}
-						shader = Shaders.get("depth",macros);
-						shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: [0,0,0, mat.alpha], texture: 0, opacity_texture: 1, u_texture_matrix: [mat.uvs_matrix[0],0,mat.uvs_matrix[2], 0,mat.uvs_matrix[1],mat.uvs_matrix[3], 0,0,1] });
-					}
-					else
-					{
-						shader = Shaders.get("depth");
-						shader.uniforms({u_mvp: this._mvp_matrix});
-					}
-					instance.render(shader);
-				}
-			}
-			else if(options.is_picking) //rendering to the picking buffer? need specific color per object
-			{
-				picking_next_color_id += 10;
-				var pick_color = new Uint32Array(1); //store four bytes number
-				pick_color[0] = picking_next_color_id; //with the picking color for this object
-				var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
-				//byte_pick_color[3] = 255; //Set the alpha to 1
-				node._picking_color = picking_next_color_id;
-
-				shader = Shaders.get("flat");
-				shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]) });
-				instance.render(shader);
-			}
-			else //regular rendering
-			{
-				//generic uniforms
-				uniforms.u_mvp = this._mvp_matrix;
-				uniforms.u_model = this._object_model;
-				uniforms.u_normal_model = this._normal_model;
-
-				var material_uniforms = mat.getMaterialShaderData(instance, node, scene, options);
-				for(var im in material_uniforms)
-					uniforms[im] = material_uniforms[im];
-
-				if(clipping_plane)
-					uniforms.u_clipping_plane = clipping_plane;
-
-
-				LEvent.trigger(Scene,"fillMeshUniforms", renderpass_info );
-
-				//if the shader is hardcoded
-				var render_shader = null;
-				if(overwrite_shader) render_shader = overwrite_shader;
-				else if(node.shader) render_shader = node.shader; //node shader has priority over mat shader
-				else if(mat.shader) render_shader = mat.shader;
-				else render_shader = "globalshader";
-
-				//multipass lighting
-				var texture = null;
-				var first_light = true;
-				var num_lights = this._visible_lights.length;
-				for(var light_iterator = 0; light_iterator < num_lights; ++light_iterator)
-				{
-					var light = this._visible_lights[light_iterator];
-					renderpass_info.light = light;
-
-					if(light_iterator > 0)
-					{
-						gl.enable(gl.BLEND);
-						gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
-						///uniforms.u_ambient_color = [0,0,0];
-						///uniforms.u_emissive_color = [0,0,0];
-
-						gl.depthFunc( gl.LEQUAL );
-						//gl.depthMask(true);
-						if(node.flags.depth_test)
-							gl.enable(gl.DEPTH_TEST);
-						else
-							gl.disable( gl.DEPTH_TEST );
-					}
-
-					LEvent.trigger(Scene,"fillLightUniforms", renderpass_info );
-
-					//ADD MACROS info			
-					for(var im in material_uniforms)
-						uniforms[im] = material_uniforms[im];
-					var light_uniforms = mat.getLightShaderData(light, instance, node, scene, options);
-					for(var im in light_uniforms)
-						uniforms[im] = light_uniforms[im];
-
-					//shader is an string: COMPILE
-					if(render_shader.constructor == String) 
-					{
-						var macros = {};
-						renderpass_info.macros = macros;
-
-						//material & light macros
-						if(material_uniforms.MACROS)
-							for(var im in material_uniforms.MACROS)
-								macros[im] = material_uniforms.MACROS[im];
-						if(light_uniforms.MACROS)
-							for(var im in light_uniforms.MACROS)
-								macros[im] = light_uniforms.MACROS[im];
-
-						//camera info
-						if(this.active_camera.type == Camera.ORTHOGRAPHIC)
-							macros.USE_ORTHOGRAPHIC_CAMERA = "";
-
-						if(light_iterator == 0) macros.FIRST_PASS = "";
-						if(light_iterator == (num_lights-1)) macros.LAST_PASS = "";
-
-						if(node.flags.alpha_test == true)
-							macros.USE_ALPHA_TEST = "0.5";
-
-						if(clipping_plane)
-							macros.USE_CLIPPING_PLANE = "";
-
-						if(brightness_factor != 1)
-							macros.USE_BRIGHTNESS_FACTOR = "";
-
-						if(colorclip_factor > 0.0)
-							macros.USE_COLORCLIP_FACTOR = "";
-
-						//mesh information
-						if(!("a_normal" in mesh.vertexBuffers))
-							macros.NO_NORMALS = "";
-						if(!("a_coord" in mesh.vertexBuffers))
-							macros.NO_COORDS = "";
-						if(("a_color" in mesh.vertexBuffers))
-							macros.USE_COLOR_STREAM = "";
-						if(("a_tangent" in mesh.vertexBuffers))
-							macros.USE_TANGENT_STREAM = "";
-
-
-						//if(mat.soft_particles && depth_texture) macros.USE_SOFT_PARTICLES = "";
-
-						//macros.USE_POINTS = "";
-
-						LEvent.trigger(Scene,"fillMacros", renderpass_info );
-
-						shader = mat.getShader(render_shader, macros );
-						//shader = Shaders.get(render_shader, macros );
-					}
-					else //const shader
-					{
-						shader = render_shader;
-						renderpass_info.macros = null;
-					}
-
-					//render
-					shader.uniforms(uniforms);
-
-					if(mat.uniforms) //extra uniforms
-						shader.uniforms(mat.uniforms);
-
-					if(mat.depth_func)
-						gl.depthFunc( gl[mat.depth_func] );
-
-					//submesh rendering
-					instance.render(shader);
-
-					if(options.lights_disabled)
-						break;
-
-					if(shader.global && !shader.global.multipass)
-						break; //avoid multipass in simple shaders
-				}//multipass render
-
-			} //global render
-
-
-			LEvent.trigger(node, "afterRenderMeshes",options);
-		}
-
-		LEvent.trigger(Scene, "afterRenderPass",options);
-		Scene.sendEventToNodes("afterRenderPass",options);
-
-		//restore state
-		gl.depthFunc(gl.LEQUAL);
-		gl.depthMask(true);
-		gl.disable(gl.BLEND);
-		gl.frontFace(gl.CCW);
-
-		//EVENT SCENE after_render
-	},
-
-
-	//not in use yet
-	renderPostFX: function(render_callback)
-	{
-		//prepare postfx
-		if(!this._postfx_texture_a || this._postfx_texture_a.width != this.postfx_settings.width || this._postfx_texture_a.height != this.postfx_settings.height)
-		{
-			this._postfx_texture_a = new GL.Texture(postfx_settings.width,postfx_settings.height, {magFilter: gl.LINEAR, minFilter: gl.NEAREST});
-			this._postfx_texture_b = new GL.Texture(postfx_settings.width,postfx_settings.height, {magFilter: gl.LINEAR, minFilter: gl.NEAREST});
-		}
-
-		//store the scene in texture A
-		this._postfx_texture_a.drawTo(render_callback);
-		for(var i in this.postfx)
-		{
-			var fx = this.postfx[i];
-			var shader = null;
-			if(typeof(fx) == "string")
-			{
-				shader = Shaders.get(fx);
-				//apply FX to tex A and store the result in tex B
-				this._postfx_texture_b.drawTo(function() {
-					Renderer._postfx_texture_a.bind();
-					shader.uniforms({color: [1,1,1,1], texSize:[Renderer._postfx_texture_a.width,Renderer._postfx_texture_a.height], time: new Date().getTime() * 0.001 }).draw(Renderer.viewport3d.screen_plane);
-				});
-			}
-			else if(fx && fx.callback)
-			{
-				fx.callback(this._postfx_texture_a,this._postfx_texture_b);
-			}
-			//swap
-			var tmp = this._postfx_texture_b;
-			this._postfx_texture_b = this._postfx_texture_a;
-			this._postfx_texture_a = tmp;
-		}
-
-		if(options.texture)
-		{
-			options.texture.drawTo(function() {
-				Renderer._postfx_texture_a.bind();
-				Shaders.get("screen").uniforms({color: [1,1,1,1]}).draw(Renderer.viewport3d.screen_plane);
-			});
-		}
-		else
-		{
-			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			Renderer._postfx_texture_a.bind();
-			Shaders.get("screen").uniforms({color: [1,1,1,1]}).draw(Renderer.viewport3d.screen_plane);
-		}
-	},
-
-	//Work in progress, not finished
-	updateVisibleMeshesOld: function(scene, options)
-	{
-		var nodes = scene.nodes;
-		if (options.nodes)
-			nodes = options.nodes;
-		var camera = this.active_camera;
-		var camera_eye = camera.getEye();
-
-		var opaque_meshes = [];
-		var alpha_meshes = [];
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-
-			//check if the node is visible
-			LEvent.trigger(node, "computeVisibility", {camera: this.active_camera, options: options});
-
-			//update matrix
-			//TODO...
-
-			//search components with rendering instances
-			if(!node._components) continue;
-			for(var j in node._components)
-			{
-				var component = node._components[j];
-				if( !component.getRenderInstance ) continue;
-				var instance = component.getRenderInstance(options, this.active_camera);
-				if(!instance) continue;
-
-				//skip hidden objects
-				if(node.flags.seen_by_camera == false && !options.is_shadowmap && !options.is_picking && !options.is_reflection)
-					continue;
-				if(node.flags.seen_by_picking == false && options.is_picking)
-					continue;
-
-				//default values when something is missing
-				if(!instance.matrix) instance.matrix = node.transform.getGlobalMatrix();
-				if(!instance.center) instance.center = mat4.multiplyVec3(vec3.create(), instance.matrix, vec3.create());
-				if(instance.primitive == null) instance.primitive = gl.TRIANGLES;
-				if(node.flags.two_sided)
-					instance.enableFlag( RenderInstance.TWO_SIDED );
-				if(!instance.renderFunc) instance.renderFunc = Renderer.renderMeshInstance;
-				instance.material = instance.material || node.material || this._default_material; //order
-				if( instance.material.constructor === String) instance.material = scene.materials[instance.material];
-				if(!instance.material) continue;
-
-				//add extra info
-				instance.node = node;
-				instance.component = component;
-
-				//change conditionaly
-				if(options.force_wireframe) instance.primitive = gl.LINES;
-				if(instance.primitive == gl.LINES && !instance.mesh.lines)
-					instance.mesh.computeWireframe();
-
-				//and finally, the alpha thing to determine if it is visible or not
-				var mat = instance.material;
-				if(mat.alpha >= 1.0 && mat.blending != Material.ADDITIVE_BLENDING)
-					opaque_meshes.push(instance);
-				else //if(!options.is_shadowmap)
-					alpha_meshes.push(instance);
-
-				instance._dist = vec3.dist( instance.center, camera_eye );
-			}
-		}
-
-		//sort nodes in Z
-		if(this.sort_nodes_in_z)
-		{
-			opaque_meshes.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_meshes.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
-			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
-			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
-		}
-
-		this._alpha_meshes = alpha_meshes;
-		this._opaque_meshes = opaque_meshes;
-		this._visible_meshes = opaque_meshes.concat(alpha_meshes);
-	},
-	*/
 
 var Parser = {
 

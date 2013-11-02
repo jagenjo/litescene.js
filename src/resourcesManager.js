@@ -328,7 +328,7 @@ var ResourcesManager = {
 
 		if(url[0] == ":")
 		{
-			console.err("loadImage: cannot load filenames starting with ':'");
+			console.error("loadImage: cannot load filenames starting with ':'");
 			return null;
 		}
 

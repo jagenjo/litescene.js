@@ -140,7 +140,9 @@ TerrainRenderer.prototype.getRenderInstance = function()
 			this.updateMesh();
 	}
 
-	var RI = this._render_instance || new RenderInstance();
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	if(!this._mesh)
 	{
@@ -153,6 +155,9 @@ TerrainRenderer.prototype.getRenderInstance = function()
 	RI.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	return RI;
 }
 

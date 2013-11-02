@@ -460,7 +460,9 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, c
 	if(!this._mesh)
 		return null;
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -471,6 +473,9 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, c
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 
 	instances.push(RI);
 	//return RI;

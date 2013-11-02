@@ -127,7 +127,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 		return null;
 	*/
 
-	var RI = this._render_instance || new RenderInstance(this._root, this);
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -139,9 +141,11 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
 	if(this.two_sided)
-		RI.enableFlag( RenderInstance.TWO_SIDED );
-	//RI.scene = Scene;
+		RI.flags &= ~RI_CULL_FACE;
 
 	instances.push(RI);
 	//return RI;

@@ -1613,6 +1613,67 @@
 		</code>
 	</shader>
 
+	<shader id="volumetric_light" tags="">
+		<code type="vertex_shader">
+		<![CDATA[
+			precision highp float;
+
+			attribute vec3 a_vertex;
+			varying vec3 v_pos;
+
+			uniform mat4 u_model;
+			uniform mat4 u_mvp;
+
+			void main() {
+				gl_Position = u_mvp * vec4(a_vertex,1.0);
+				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;
+			}
+		]]>
+		</code>
+		<code type="pixel_shader">
+		<![CDATA[
+			precision highp float;
+			varying vec3 v_pos;
+
+			uniform vec4 u_material_color;
+			uniform vec3 u_camera_eye;
+			uniform vec4 u_volume_info;
+			uniform float u_volume_density;
+
+			bool intSphere( in vec4 sp, in vec3 ro, in vec3 rd, in float tm, out float t, out float tw, out float dist_to_center )
+			{
+				bool  r = false;
+				vec3  d = ro - sp.xyz;
+				float b = dot(rd,d);
+				float c = dot(d,d) - sp.w*sp.w;
+				t = b*b-c;
+				if( t > 0.0 )
+				{
+					t = -b-sqrt(t);
+					tw = abs((-b+sqrt(t)) - t);
+					r = (t > 0.0) && (t < tm);
+				}
+				dist_to_center = b;
+
+				return r;
+			}
+
+			void main() {
+				vec3 rd = normalize( v_pos - u_camera_eye );
+				float t = 0.0;
+				float tw = 0.0;
+				float dist = 0.0;
+				if( !intSphere( u_volume_info, u_camera_eye, rd, 10000.0, t, tw, dist) )
+					discard;
+				float falloff = pow(tw * 0.01 * u_volume_density,2.0);
+				//falloff *= 1.0 - dist / u_volume_info.w;
+				gl_FragColor = vec4( u_material_color.xyz * falloff, u_material_color.a * falloff);
+			}
+		]]>
+		</code>
+	</shader>
+
+
 	<!--
 	<shader id="texture_flat" tags="texture">
 		<code type="vertex_shader">
