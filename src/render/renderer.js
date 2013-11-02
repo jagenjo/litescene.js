@@ -480,8 +480,7 @@ var Renderer = {
 	{
 		var node = instance.node;
 		var model = instance.matrix;
-		this._object_model.set( model ); 
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, this._object_model );
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
