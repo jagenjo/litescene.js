@@ -323,21 +323,39 @@ var Renderer = {
 			s[1].bind(i);
 		}
 
+		var shader_name = instance.material.shader_name || "globalshader";
+
 		//multi pass instance rendering
 		var num_lights = lights.length;
+
+		//no lights
+		if(!num_lights)
+		{
+			var shader = Shaders.get(shader_name, scene._macros, node_macros, instance.macros, mat._macros, { FIRST_PASS:"", USE_AMBIENT_ONLY:"" });
+			//assign uniforms
+			shader.uniforms( scene._uniforms );
+			shader.uniforms( node_uniforms );
+			shader.uniforms( mat._uniforms );
+			shader.uniforms( instance.uniforms );
+
+			//render
+			instance.render( shader );
+			this._rendercalls += 1;
+			return;
+		}
+
+
 		for(var iLight = 0; iLight < num_lights; iLight++)
 		{
 			var light = lights[iLight];
 
 			//generate renderkey
-			var renderkey = instance.generateKey(step, options);
+			//var renderkey = instance.generateKey(step, options);
 
 			//compute the  shader
 			var shader = null; //this._renderkeys[renderkey];
 			if(!shader)
 			{
-				var shader_name = instance.material.shader || "globalshader";
-
 				var light_macros = instance.material.getLightShaderMacros(light, node, scene, options);
 
 				if(iLight == 0) light_macros.FIRST_PASS = "";
@@ -347,7 +365,7 @@ var Renderer = {
 			}
 
 			//fill shader data
-			var light_uniforms = instance.material.fillLightUniforms( light, instance, node, scene, options );
+			var light_uniforms = instance.material.fillLightUniforms( iLight, light, instance, options );
 
 			//secondary pass flags to make it additive
 			if(iLight > 0)
@@ -364,7 +382,6 @@ var Renderer = {
 
 			if(mat.depth_func)
 				gl.depthFunc( gl[mat.depth_func] );
-
 
 			//assign uniforms
 			shader.uniforms( scene._uniforms );
@@ -467,7 +484,8 @@ var Renderer = {
 			//u_viewprojection: this._viewprojection_matrix,
 			u_time: scene.current_time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
-			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0
+			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
+			u_ambient_color: scene.ambient_color
 		};
 
 		if(options.clipping_plane)

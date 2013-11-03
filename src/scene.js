@@ -98,8 +98,8 @@ SceneTree.prototype.init = function()
 SceneTree.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
-	while(this._root.children && this._root.children.length)
-		this._root.removeChild(this._root.children[0]);
+	while(this._root._children && this._root._children.length)
+		this._root.removeChild(this._root._children[0]);
 
 	//remove scene components
 	this._root.processActionInComponents("onRemovedFromNode",this); //send to components

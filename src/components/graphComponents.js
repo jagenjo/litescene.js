@@ -56,17 +56,15 @@ GraphComponent.prototype.serialize = function()
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onStart_bind = this.onStart.bind(this);
-	this._onUpdate_bind = this.onUpdate.bind(this);
 
-	LEvent.bind(node,"start", this._onStart_bind );
-	LEvent.bind(node,"update", this._onUpdate_bind );
+	LEvent.bind(node,"start", this.onStart, this );
+	LEvent.bind(node,"update", this.onUpdate, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,"start", this._onStart_bind );
-	LEvent.unbind(node,"update", this._onUpdate_bind );
+	LEvent.unbind(node,"start", this.onStart, this );
+	LEvent.unbind(node,"update", this.onUpdate, this );
 }
 
 
@@ -154,6 +152,7 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
+
 	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
@@ -179,16 +178,14 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onBeforeRender_bind = this.onBeforeRender.bind(this);
-	LEvent.bind(Scene,"beforeRender", this._onBeforeRender_bind );
-	this._onAfterRender_bind = this.onAfterRender.bind(this);
-	LEvent.bind(Scene,"afterRender", this._onAfterRender_bind );
+	LEvent.bind(Scene,"beforeRender", this.onBeforeRender, this );
+	LEvent.bind(Scene,"afterRender", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRender", this._onBeforeRender_bind );
-	LEvent.unbind(Scene,"afterRender", this._onAfterRender_bind );
+	LEvent.unbind(Scene,"beforeRender", this.onBeforeRender, this );
+	LEvent.unbind(Scene,"afterRender", this.onAfterRender, this );
 	Renderer.color_rendertarget = null;
 	Renderer.depth_rendertarget = null;
 }

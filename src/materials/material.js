@@ -16,7 +16,7 @@ function Material(o)
 	this._uid = LS.generateUId();
 	this._dirty = true;
 
-	//this.shader = null; //default shader
+	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.opacity = 1.0;
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
@@ -200,12 +200,9 @@ Material.COORDS_WORLDYZ = "worldyz";
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
+Material.available_shaders = ["default","lowglobalshader","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
-Material.prototype.getShader = function(shader_name, macros, options)
-{
-	return Shaders.get(shader_name, macros );
-}
-
+//not used yet
 Material.prototype.setDirty = function()
 {
 	this._dirty_macros = this._dirty_uniforms = true;
@@ -459,17 +456,18 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	this._samplers = samplers;
 }
 
-//hard to precompute, it uses the model matrix for the lightMatrix and the scene for the enable_shadows
-Material.prototype.fillLightUniforms = function( light, instance, node, scene, options)
+//hard to precompute, it uses the instance.matrix to compute lightMatrix, it also binds the textures
+Material.prototype.fillLightUniforms = function( iLight, light, instance, options)
 {
 	var uniforms = {};
-//	var samplers = [];
+	//var samplers = [];
 
-	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
+	var use_shadows = light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
 
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture && light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+
 	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
 	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
 		uniforms.u_light_front = light.getFront();
@@ -486,7 +484,7 @@ Material.prototype.fillLightUniforms = function( light, instance, node, scene, o
 
 	//texture
 	if(light_projective_texture)
-//		samplers.push(["light_texture", light_projective_texture]); //fixed slot
+		//samplers.push(["light_texture", light_projective_texture]); //fixed slot
 		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
 
 	//use shadows?
@@ -494,7 +492,7 @@ Material.prototype.fillLightUniforms = function( light, instance, node, scene, o
 	{
 		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
 		uniforms.shadowMap = light._shadowMap.bind(10); //fixed slot
-		//samplers(["shadowMap", light._shadowMap]);
+		//samplers.push(["shadowMap", light._shadowMap]);
 	}
 
 	//return [uniforms, samplers];
@@ -532,7 +530,7 @@ Material.prototype.configure = function(o)
 			case "displacementmap_factor":
 			case "extra_factor":
 			//strings
-			case "shader":
+			case "shader_name":
 			//bools
 			case "specular_ontop":
 			case "normalmap_tangent":
@@ -694,314 +692,3 @@ Material.prototype.registerMaterial = function(name)
 }
 
 LS.Material = Material;
-
-
-/*
-
-* This function returns all the uniforms and the macros related to the material needed to compute the shader
-*
-* @method getMaterialShaderData
-* @param {Object} instance 
-* @param {SceneNode} node 
-* @param {SceneTree} scene 
-* @param {Object} options 
-* @return {Object} 
-
-//DEPRECATED ************** REPLACED BY getLightShaderMacros, getSurfaceShaderMacros
-Material.prototype.getMaterialShaderData = function(instance, node, scene, options)
-{
-	//compute the uniforms
-	var uniforms = this._uniforms || {};
-	if(!this._uniforms) this._uniforms = uniforms;
-
-	var macros = {};
-	var that = this;
-
-	//uniforms
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
-	uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	uniforms.u_diffuse_color = this.diffuse;
-	uniforms.u_emissive_color = this.emissive || [0,0,0];
-	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
-	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
-	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normalmap_factor = this.normalmap_factor;
-	uniforms.u_displacementmap_factor = this.displacementmap_factor;
-	uniforms.u_bumpmap_factor = this.bumpmap_factor;
-	uniforms.u_velvet_info = [ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ];
-	uniforms.u_detail_info = this.detail;
-
-	uniforms.u_texture_matrix = this.uvs_matrix;
-
-	//bind textures
-	var last_slot = 0;
-
-
-	//iterate through textures in the scene (environment and irradiance)
-	for(var i in scene.textures)
-	{
-		var texture = Material.prototype.getTexture.call(scene, i); //hack
-		if(!texture) continue;
-		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		last_slot += 1;
-
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) continue;
-		}
-
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
-		{
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
-		}
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
-	}
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
-	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-
-		uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		last_slot += 1;
-
-		//special cases
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) continue;
-		}
-		else if(i == "normal")
-		{
-			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
-			{
-				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = "";
-				if(this.normalmap_tangent && gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = "";
-			}
-			continue;
-		}
-		else if(i == "displacement")
-		{
-			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "bump")
-		{
-			if(this.bump_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "irradiance")
-		{
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
-			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
-			//texture.min_filter = gl.GL_LINEAR;
-		}
-
-		if(texture.texture_type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
-		{
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
-		}
-
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
-	}
-
-	if(this.velvet && this.velvet_exp) //first light only
-		macros.USE_VELVET = "";
-	if(this.emissive_material)
-		macros.USE_EMISSIVE_MATERIAL = "";
-	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = "";
-	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = "";
-	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = "";
-	if(this.backlight_factor > 0.001)
-		macros.USE_BACKLIGHT = "";
-
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	uniforms["MACROS"] = macros;
-
-	return uniforms;
-}
-
-
-
-
-* This function returns all the uniforms and the macros related to the light needed to compute the shader
-*
-* @method getLightShaderData
-* @param {Light} light 
-* @param {Object} instance
-* @param {SceneNode} node
-* @param {SceneTree} scene 
-* @param {Object} options 
-* @return {Object} 
-
-Material.prototype.getLightShaderData = function(light, instance, node, scene, options)
-{
-	var uniforms = {};
-
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture && light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-	if(light_projective_texture)
-		uniforms.light_texture = light_projective_texture.bind(11);
-	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
-	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
-	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
-		uniforms.u_light_front = light.getFront();
-	if(light.type == Light.SPOT)
-		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
-
-	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( vec3.create(), light.color, light.intensity );
-	uniforms.u_light_att = [light.att_start,light.att_end];
-	uniforms.u_light_offset = light.offset;
-
-	if(light._lightMatrix)
-		uniforms.u_lightMatrix = mat4.multiply( mat4.create(), light._lightMatrix, instance.matrix );
-
-	//use shadows?
-	if(use_shadows)
-	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
-		uniforms.shadowMap = light._shadowMap.bind(10);
-	}
-
-	//macros
-	var macros = {};
-
-	//light macros
-	if(light.use_diffuse && !this.constant_diffuse)
-		macros.USE_DIFFUSE_LIGHT = "";
-	if(light.use_specular && this.specular_factor > 0)
-		macros.USE_SPECULAR_LIGHT = "";
-	if(light.type == Light.DIRECTIONAL)
-		macros.USE_DIRECTIONAL_LIGHT = "";
-	else if(light.type == Light.SPOT)
-		macros.USE_SPOT_LIGHT = "";
-	if(light.spot_cone)
-		macros.USE_SPOT_CONE = "";
-	if(light.linear_attenuation)
-		macros.USE_LINEAR_ATTENUATION = "";
-	if(light.range_attenuation)
-		macros.USE_RANGE_ATTENUATION = "";
-	if(light_projective_texture)
-		macros.USE_PROJECTIVE_LIGHT = "";
-
-	if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-		macros.USE_AMBIENT_ONLY = "";
-
-	if(light.offset > 0.001)
-		macros.USE_LIGHT_OFFSET = "";
-
-	if(use_shadows && node.flags.receive_shadows != false)
-	{
-		macros.USE_SHADOW_MAP = "";
-		if(light.hard_shadows)
-			macros.USE_HARD_SHADOWS = "";
-		macros.SHADOWMAP_OFFSET = "";
-	}
-
-	uniforms["MACROS"] = macros;
-	return uniforms;
-}
-
-Material.prototype.getFlatShaderMacros = function(scene, options)
-{
-	var macros = this._flat_macros;
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
-	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//special cases
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) 
-				continue;
-		}
-		else if(i == "normal")
-		{
-			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
-			{
-				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = "";
-				if(this.normalmap_tangent && gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = "";
-			}
-			continue;
-		}
-		else if(i == "displacement")
-		{
-			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "bump")
-		{
-			if(this.bump_factor != 0.0 && gl.derivatives_supported )
-			{
-				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = "";
-			}
-			continue;
-		}
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
-	}
-
-	if(node.flags.alpha_test == true)
-		macros.USE_ALPHA_TEST = "0.5";
-	if(this.velvet && this.velvet_exp) //first light only
-		macros.USE_VELVET = "";
-	if(this.emissive_material)
-		macros.USE_EMISSIVE_MATERIAL = "";
-	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = "";
-	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = "";
-	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = "";
-	if(this.backlight_factor > 0.001)
-		macros.USE_BACKLIGHT = "";
-
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	return macros;
-}
-
-
-*/

@@ -57,6 +57,24 @@ Cloner.prototype.getResources = function(res)
 	return res;
 }
 
+Cloner.generateTransformKey = function(count, hsize, offset)
+{
+	var key = new Float32Array(9);
+	key.set(count);
+	key.set(hsize,3);
+	key.set(offset,6);
+	return key;
+}
+
+Cloner.compareKeys = function(a,b)
+{
+	for(var i = 0; i < a.length; ++i)
+		if(a[i] != b[i])
+			return false;
+	return true;
+}
+
+
 Cloner.prototype.onCollectInstances = function(e, instances)
 {
 	var mesh = this.getMesh();
@@ -66,6 +84,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	if(!this._root) return;
 
 	var total = this.count[0] * this.count[1] * this.count[2];
+	if(!total) return;
 
 	if(!this._RIs || this._RIs.length != total)
 	{
@@ -95,6 +114,17 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 
 	var flags = 0;
 
+	/*
+	var update_transform = true;
+	var current_key = Cloner.generateTransformKey(this.count,hsize,offset);
+	if( this._genereate_key && Cloner.compareKeys(current_key, this._genereate_key))
+		update_transform = false;
+	this._genereate_key = current_key;
+	*/
+
+	var start_array_pos = instances.length;
+	instances.length = start_array_pos + total;
+
 	var i = 0;
 	var tmp = vec3.create(), zero = vec3.create();
 	for(var x = 0; x < this.count[0]; ++x)
@@ -115,13 +145,15 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 
 		RI.mesh = mesh;
 		RI.material = material;
+
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
 		mat4.translate( RI.matrix, global, tmp );
 		mat4.multiplyVec3( RI.center, RI.matrix, zero );
-		instances.push(RI);
 
+		instances[start_array_pos + i] = RI;
 		++i;
 	}
+
 
 	//return RI;
 }
