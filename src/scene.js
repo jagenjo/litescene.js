@@ -958,9 +958,20 @@ SceneNode.prototype.configure = function(info)
 	if (info.id) this.setId(info.id);
 	if (info.className)	this.className = info.className;
 
-	//legacy
+	//useful parsing
 	if(info.mesh)
-		this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+	{
+		var mesh = info.mesh;
+		if(typeof(mesh) == "string")
+			mesh = ResourcesManager.meshes[mesh];
+		if(mesh)
+		{
+			if(mesh.bones)
+				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+			else
+				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+		}
+	}
 
 	//first the no components
 	if(info.material)

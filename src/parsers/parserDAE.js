@@ -45,6 +45,7 @@ var parserDAE = {
 		var node_type = xmlnode.getAttribute("type");
 		var node = { id: node_id, children:[] };
 
+		//node elements
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
 		{
 			var xmlchild = xmlnode.childNodes[i];
@@ -90,6 +91,15 @@ var parserDAE = {
 						node.material = matname;
 					}
 				}
+			}
+
+			//skinned
+			if(xmlchild.localName == "instance_controller")
+			{
+				var url = xmlchild.getAttribute("url");
+				var mesh_data = this.readController(url, flip);
+				node.mesh = url;
+				scene.meshes[url] = mesh_data;
 			}
 
 			//light
@@ -241,6 +251,19 @@ var parserDAE = {
 		node.light = light;
 	},
 
+	transformMatrix: function(matrix)
+	{
+		//3ds max coords conversion
+		mat4.transpose(matrix,matrix);
+
+		//flip
+		var temp = new Float32Array(matrix.subarray(4,8));
+		matrix.set( matrix.subarray(8,12), 4 );
+		matrix.set( temp, 8 );
+		matrix[10] *= -1;
+		matrix[14] *= -1;
+	},
+
 	readTransform: function(xmlnode, level, flip)
 	{
 		//identity
@@ -261,13 +284,7 @@ var parserDAE = {
 			if(xml.localName == "matrix")
 			{
 				var matrix = this.readContentAsFloats(xml);
-				//3ds max coords conversion
-				mat4.transpose(matrix,matrix);
-				var temp = new Float32Array(matrix.subarray(4,8));
-				matrix.set( matrix.subarray(8,12), 4 );
-				matrix.set( temp, 8 );
-				matrix[10] *= -1;
-				matrix[14] *= -1;
+				this.transformMatrix(matrix);
 				return matrix;
 			}
 
@@ -362,6 +379,12 @@ var parserDAE = {
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+			xmlpolygons = xmlmesh.querySelector("triangles");
+		if(!xmlpolygons)
+			throw("no polygons or triangles in mesh");
+
+
 		var xmlinputs = xmlpolygons.querySelectorAll("input");
 		var vertex_offset = -1;
 		var normal_offset = -1;
@@ -404,6 +427,7 @@ var parserDAE = {
 		var facemap = {};
 
 		var xmlps = xmlpolygons.querySelectorAll("p");
+		var vertex_remap = [];
 
 		//for every polygon
 		for(var i = 0; i < xmlps.length; i++)
@@ -426,18 +450,22 @@ var parserDAE = {
 					trace("Too many vertices for indexing");
 					break;
 				}
-				
+
 				//if (!use_indices && k >= 9) break; //only first triangle when not indexing
 
 				var ids = data[k + vertex_offset] + "/"; //indices of vertex, normal and uvs
 				if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
 				if(uv_offset != -1)	ids += data[k + uv_offset]; 
 
-				if(!use_indices && k > 6) //put the vertices again
+				if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
 				{
+					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
+
 					verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
 					normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
 					coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
+
+					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
 					
 					verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
 					normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
@@ -447,9 +475,12 @@ var parserDAE = {
 				}
 
 				prev_index = current_index;
-				if(!use_indices || !facemap.hasOwnProperty(ids))
+				if(!use_indices || !facemap.hasOwnProperty(ids)) //reuse indexed
 				{
-					var index = parseInt(data[k + vertex_offset]) * 3;
+					var index = parseInt(data[k + vertex_offset]);
+					vertex_remap[ verticesArray.length / 3 ] = index;
+					index *= 3;
+
 					verticesArray.push( vertices[index], vertices[index+1], vertices[index+2] );
 					if(normal_offset != -1)
 					{
@@ -486,7 +517,8 @@ var parserDAE = {
 		}//per polygon
 
 		var mesh = {
-			vertices: new Float32Array(verticesArray)
+			vertices: new Float32Array(verticesArray),
+			_remap: new Uint16Array(vertex_remap)
 		};
 		
 		if (normalsArray.length)
@@ -497,7 +529,7 @@ var parserDAE = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//swap coords
-		if(flip)
+		if(flip && 0)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -522,6 +554,151 @@ var parserDAE = {
 		mesh.bounding = bounding;
 		if( isNaN(bounding.radius) )
 			return null;
+
+		return mesh;
+	},
+
+	//used for skinning and morphing
+	readController: function(id, flip)
+	{
+		//get root
+		var xmlcontroller = this._xmlroot.querySelector("controller" + id);
+		if(!xmlcontroller) return null;
+
+		var use_indices = false;
+		var xmlskin = xmlcontroller.querySelector("skin");
+		if(!xmlskin) return null;
+
+		//base geometry
+		var id_geometry = xmlskin.getAttribute("source");
+		var mesh = this.readGeometry( id_geometry, flip );
+		if(!mesh)
+			return null;
+
+		//for data sources
+		var sources = [];
+		var xmlsources = xmlskin.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+			var float_array = xmlsource.querySelector("float_array");
+			if(float_array)
+			{
+				var floats = this.readContentAsFloats( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = floats;
+				continue;
+			}
+			var name_array = xmlsource.querySelector("Name_array");
+			if(name_array)
+			{
+				var names = this.readContentAsStringsArray( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = names;
+				continue;
+			}
+		}
+
+		//matrix
+		var bind_matrix = null;
+		var xmlbindmatrix = xmlskin.querySelector("bind_shape_matrix");
+		if(xmlbindmatrix)
+			bind_matrix = this.readContentAsFloats( xmlbindmatrix );
+		else
+			bind_matrix = mat4.create(); //identity
+
+		//joints
+		var joints = [];
+		var xmljoints = xmlskin.querySelector("joints");
+		if(xmljoints)
+		{
+			var joints_source = null; //which bones
+			var inv_bind_source = null; //bind matrices
+			var xmlinputs = xmljoints.querySelectorAll("input");
+			for(var i = 0; i < xmlinputs.length; i++)
+			{
+				var xmlinput = xmlinputs[i];
+				var sem = xmlinput.getAttribute("semantic").toUpperCase();
+				var src = xmlinput.getAttribute("source");
+				var source = sources[ src.substr(1) ];
+				if(sem == "JOINT")
+					joints_source = source;
+				else if(sem == "INV_BIND_MATRIX")
+					inv_bind_source = source;
+			}
+
+			//save bone names and inv matrix
+			if(!inv_bind_source || !joints_source)
+				throw("no joints or inv_bind sources found");
+
+			for(var i in joints_source)
+			{
+				var mat = inv_bind_source.subarray(i*16,i*16+16);
+				vec3.scale( mat.subarray(4,8), mat.subarray(4,8), -1 );
+				var temp = mat4.create();
+				mat4.swapRows(temp, mat, 0, 1 );
+				mat4.transpose(temp, temp);
+				joints.push([joints_source[i], temp]);
+			}
+		}
+
+		//weights
+		var xmlvertexweights = xmlskin.querySelector("vertex_weights");
+		if(xmlvertexweights)
+		{
+			//here we see the order 
+			var weights_indexed_array = null;
+			var xmlinputs = xmlvertexweights.querySelectorAll("input");
+			for(var i = 0; i < xmlinputs.length; i++)
+			{
+				if( xmlinputs[i].getAttribute("semantic").toUpperCase() == "WEIGHT" )
+					weights_indexed_array = sources[ xmlinputs[i].getAttribute("source").substr(1) ];
+			}
+
+			if(!weights_indexed_array)
+				throw("no weights found");
+
+			var xmlvcount = xmlvertexweights.querySelector("vcount");
+			var vcount = this.readContentAsUInt32( xmlvcount );
+
+			var xmlv = xmlvertexweights.querySelector("v");
+			var v = this.readContentAsUInt32( xmlv );
+
+			var num_vertices = mesh.vertices.length / 3; //3 components per vertex
+			var weights_array = new Float32Array(4 * num_vertices); //4 bones per vertex
+			var bone_index_array = new Uint8Array(4 * num_vertices); //4 bones per vertex
+
+			var pos = 0;
+			var remap = mesh._remap;
+
+			for(var i = 0; i < vcount.length; ++i)
+			{
+				var num_bones = vcount[i];
+				//sort by weight (to be sure we dont throw the highest one)
+				//TODO
+				if(num_bones > 4) num_bones = 4;
+
+				for(var j = 0; j < num_bones; ++j)
+				{
+					bone_index_array[i * 4 + j] = v[pos];
+					weights_array[i * 4 + j] = weights_indexed_array[ v[pos+1] ];
+					pos += 2;
+				}
+			}
+
+			//remap
+			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
+			var final_bone_indices = new Uint8Array(4 * num_vertices); //4 bones per vertex
+			for(var i = 0; i < num_vertices; ++i)
+			{
+				var p = remap[ i ] * 4;
+				final_weights.set( weights_array.subarray(p,p+4), i*4);
+				final_bone_indices.set( bone_index_array.subarray(p,p+4), i*4);
+			}
+
+			mesh.weights = final_weights;
+			mesh.bone_indices = final_bone_indices;
+			mesh.bones = joints;
+		}
 
 		return mesh;
 	},
@@ -555,6 +732,20 @@ var parserDAE = {
 		return floats;
 	},
 	
+	readContentAsStringsArray: function(xmlnode)
+	{
+		if(!xmlnode) return null;
+		var text = xmlnode.textContent;
+		text = text.replace(/\n/gi, " "); //remove line breaks
+		text = text.replace(/\s\s/gi, " ");
+		text = text.trim(); //remove empty spaces
+		var words = text.split(" "); //create array
+		for(var k = 0; k < words.length; k++)
+			words[k] = words[k].trim();
+		return words;
+	},
+	
+	/*
 	parse2: function(data, options)
 	{
 		options = options || {};
@@ -754,5 +945,6 @@ var parserDAE = {
 			return mesh;
 		}
 	}
+	*/
 };
 Parser.registerParser(parserDAE);

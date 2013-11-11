@@ -1,6 +1,15 @@
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 function toArray(v) { return Array.apply( [], v ); }
+Object.defineProperty(Object.prototype, "merge", { 
+    value: function(v) {
+        for(var i in v)
+			this[i] = v[i];
+    },
+    configurable: true,
+    writable: false,
+	enumerable: false  // uncomment to be explicit, though not necessary
+});
 
 /**
 * LS is the global scope for the global functions and containers of LiteScene

@@ -182,7 +182,7 @@ Light.prototype.onCollectInstances = function(e,instances)
 	//sphere
 	if(!this._mesh)
 	{
-		this._mesh = GL.Mesh.cube();
+		this._mesh = GL.Mesh.sphere();
 	}
 
 	var RI = this._render_instance;
@@ -194,13 +194,16 @@ Light.prototype.onCollectInstances = function(e,instances)
 	//material
 	var mat = this._material;
 	if(!mat)
-		mat = this._material = new Material({shader:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
+		mat = this._material = new Material({shader_name:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
 	vec3.copy( mat.color, this.color );
 	mat.opacity = this.volume_visibility;
 	RI.material = mat;
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
+	//mat4.identity( RI.matrix );
+	//mat4.setTranslation( RI.matrix, this.getPosition() ); 
+
 	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
 	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
 

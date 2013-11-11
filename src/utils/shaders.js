@@ -32,7 +32,7 @@ var Shaders = {
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
-	get: function(id, macros /*, ... */ )
+	get: function(id, macros )
 	{
 		if(!id) return null;
 
@@ -55,30 +55,22 @@ var Shaders = {
 		if(global.num_macros != 0)
 		{
 			//generate unique key
-			if(arguments.length > 1)
+			for (var macro in macros)
 			{
-				key += ":";
-				for(var i = 1; i < arguments.length; i++)
+				if (global.macros[ macro ])
 				{
-					var macros = arguments[i];
-					for (var macro in macros)
-					{
-						if (global.macros[ macro ])
-						{
-							key += macro + "=" + macros[macro] + ":";
-							extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
-						}
-					}//for macros
-				}//for arguments
-			}
+					key += macro + "=" + macros[macro] + ":";
+					extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
+				}
+			}//for macros
 		}
 
 		//hash key
-		key = key.hashCode();
+		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.shaders[key] != null)
-			return this.shaders[key];
+		if (this.shaders[hashkey] != null)
+			return this.shaders[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -87,7 +79,7 @@ var Shaders = {
 		var shader = this.compileShader(vs_code, ps_code, key);
 		if(shader)
 			shader.global = global;
-		return this.registerShader(shader, key, id);
+		return this.registerShader(shader, hashkey, id);
 	},
 
 	getGlobalShaderInfo: function(id)

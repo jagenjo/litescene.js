@@ -1610,7 +1610,7 @@ var Shaders = {
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
-	get: function(id, macros /*, ... */ )
+	get: function(id, macros )
 	{
 		if(!id) return null;
 
@@ -1633,30 +1633,22 @@ var Shaders = {
 		if(global.num_macros != 0)
 		{
 			//generate unique key
-			if(arguments.length > 1)
+			for (var macro in macros)
 			{
-				key += ":";
-				for(var i = 1; i < arguments.length; i++)
+				if (global.macros[ macro ])
 				{
-					var macros = arguments[i];
-					for (var macro in macros)
-					{
-						if (global.macros[ macro ])
-						{
-							key += macro + "=" + macros[macro] + ":";
-							extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
-						}
-					}//for macros
-				}//for arguments
-			}
+					key += macro + "=" + macros[macro] + ":";
+					extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
+				}
+			}//for macros
 		}
 
 		//hash key
-		key = key.hashCode();
+		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.shaders[key] != null)
-			return this.shaders[key];
+		if (this.shaders[hashkey] != null)
+			return this.shaders[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -1665,7 +1657,7 @@ var Shaders = {
 		var shader = this.compileShader(vs_code, ps_code, key);
 		if(shader)
 			shader.global = global;
-		return this.registerShader(shader, key, id);
+		return this.registerShader(shader, hashkey, id);
 	},
 
 	getGlobalShaderInfo: function(id)
@@ -1942,6 +1934,15 @@ String.prototype.hashCode = function(){
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 function toArray(v) { return Array.apply( [], v ); }
+Object.defineProperty(Object.prototype, "merge", { 
+    value: function(v) {
+        for(var i in v)
+			this[i] = v[i];
+    },
+    configurable: true,
+    writable: false,
+	enumerable: false  // uncomment to be explicit, though not necessary
+});
 
 /**
 * LS is the global scope for the global functions and containers of LiteScene
@@ -4035,7 +4036,8 @@ Transform.prototype.serialize = function()
 	return {
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],
-		scale: [ this._scale[0],this._scale[1],this._scale[2] ]
+		scale: [ this._scale[0],this._scale[1],this._scale[2] ],
+		matrix: toArray( this._local_matrix ) //could be useful
 	};
 }
 
@@ -5292,7 +5294,7 @@ Light.prototype.onCollectInstances = function(e,instances)
 	//sphere
 	if(!this._mesh)
 	{
-		this._mesh = GL.Mesh.cube();
+		this._mesh = GL.Mesh.sphere();
 	}
 
 	var RI = this._render_instance;
@@ -5304,13 +5306,16 @@ Light.prototype.onCollectInstances = function(e,instances)
 	//material
 	var mat = this._material;
 	if(!mat)
-		mat = this._material = new Material({shader:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
+		mat = this._material = new Material({shader_name:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
 	vec3.copy( mat.color, this.color );
 	mat.opacity = this.volume_visibility;
 	RI.material = mat;
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
+	//mat4.identity( RI.matrix );
+	//mat4.setTranslation( RI.matrix, this.getPosition() ); 
+
 	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
 	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
 
@@ -5583,6 +5588,232 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 
 LS.registerComponent(MeshRenderer);
 LS.MeshRenderer = MeshRenderer;
+
+function SkinnedMeshRenderer(o)
+{
+	this.cpu_skinning = true;
+	this.mesh = null;
+	this.lod_mesh = null;
+	this.submesh_id = -1;
+	this.material = null;
+	this.primitive = null;
+	this.two_sided = false;
+
+	if(o)
+		this.configure(o);
+
+	if(!MeshRenderer._identity) //used to avoir garbage
+		MeshRenderer._identity = mat4.create();
+}
+
+SkinnedMeshRenderer.icon = "mini-icon-teapot.png";
+
+//vars
+SkinnedMeshRenderer["@mesh"] = { widget: "mesh" };
+SkinnedMeshRenderer["@lod_mesh"] = { widget: "mesh" };
+SkinnedMeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+SkinnedMeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
+	var component = this.component;
+	var mesh = component.getMesh();
+	if(!mesh) return null;
+	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)
+		return null;
+
+	var t = {"all":null};
+	for(var i = 0; i < mesh.info.groups.length; ++i)
+		t[mesh.info.groups[i].name] = i;
+	return t;
+}};
+
+SkinnedMeshRenderer.prototype.onAddedToNode = function(node)
+{
+	if(!node.meshrenderer)
+		node.meshrenderer = this;
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
+{
+	if(node.meshrenderer)
+		delete node["meshrenderer"];
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+/**
+* Configure from a serialized object
+* @method configure
+* @param {Object} object with the serialized info
+*/
+SkinnedMeshRenderer.prototype.configure = function(o)
+{
+	this.mesh = o.mesh;
+	this.lod_mesh = o.lod_mesh;
+	this.submesh_id = o.submesh_id;
+	this.primitive = o.primitive; //gl.TRIANGLES
+	this.two_sided = !!o.two_sided;
+	if(o.material)
+		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
+}
+
+/**
+* Serialize the object 
+* @method serialize
+* @return {Object} object with the serialized info
+*/
+SkinnedMeshRenderer.prototype.serialize = function()
+{
+	var o = { 
+		mesh: this.mesh,
+		lod_mesh: this.lod_mesh
+	};
+
+	if(this.material)
+		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+
+	if(this.primitive != null)
+		o.primitive = this.primitive;
+	if(this.submesh_id)
+		o.submesh_id = this.submesh_id;
+	if(this.two_sided)
+		o.two_sided = this.two_sided;
+	return o;
+}
+
+SkinnedMeshRenderer.prototype.getMesh = function() {
+	if(typeof(this.mesh) === "string")
+		return ResourcesManager.meshes[this.mesh];
+	return this.mesh;
+}
+
+SkinnedMeshRenderer.prototype.getLODMesh = function() {
+	if(typeof(this.lod_mesh) === "string")
+		return ResourcesManager.meshes[this.lod_mesh];
+	return this.low_mesh;
+}
+
+SkinnedMeshRenderer.prototype.getResources = function(res)
+{
+	if(typeof(this.mesh) == "string")
+		res[this.mesh] = Mesh;
+	if(typeof(this.lod_mesh) == "string")
+		res[this.lod_mesh] = Mesh;
+	return res;
+}
+
+SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
+{
+	var node = Scene.getNode(name);
+	return node.transform.getGlobalMatrix();
+}
+
+SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
+{
+	var original_vertices = ref_mesh.vertexBuffers["a_vertex"].data;
+	var weights = ref_mesh.vertexBuffers["a_weights"].data;
+	var bone_indices = ref_mesh.vertexBuffers["a_bone_indices"].data;
+
+	var vertices_buffer = skin_mesh.vertexBuffers["a_vertex"];
+	var vertices = vertices_buffer.data;
+
+	//bone matrices
+	var bones = [];
+	for(var i in ref_mesh.bones)
+	{
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] );
+		bones.push( mat4.multiply( mat4.create(), ref_mesh.bones[i][1], mat ) );
+	}
+
+	//vertices
+	var temp = vec3.create();
+	for(var i = 0, l = vertices.length / 3; i < l; ++i)
+	{
+		var ov = original_vertices.subarray(i*3, i*3+3);
+		var b = bone_indices.subarray(i*4, i*4+4);
+		var w = weights.subarray(i*4, i*4+4);
+
+		var v = vertices.subarray(i*3, i*3+3);
+
+		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
+
+		mat4.multiplyVec3(v, bmat[0] ,ov);
+		vec3.scale(v,v,w[0]);
+		for(var j = 1; j < 4; ++j)
+			if(w[j] > 0.0)
+			{
+				mat4.multiplyVec3(temp, bmat[j] ,ov);
+				vec3.scale(temp,temp,w[j]);
+				vec3.add(v,v,temp);
+			}
+	}
+
+	//upload
+	vertices_buffer.compile();
+}
+
+
+//MeshRenderer.prototype.getRenderInstance = function(options)
+SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
+{
+	var mesh = this.getMesh();
+	if(!mesh) return null;
+
+	var node = this._root;
+	if(!this._root) return;
+
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
+
+	//this mesh doesnt have skinning info
+	if(!mesh.weights || !mesh.bone_indices)
+		return;
+
+	if(this.cpu_skinning)
+	{
+		if(!this._skinned_mesh || this._skinned_mesh._reference != mesh)
+		{
+			this._skinned_mesh = new GL.Mesh();
+			this._skinned_mesh._reference = mesh;
+
+			//clone 
+			for (var i in mesh.vertexBuffers)
+				this._skinned_mesh.vertexBuffers[i] = mesh.vertexBuffers[i];
+			for (var i in mesh.indexBuffers)
+				this._skinned_mesh.indexBuffers[i] = mesh.indexBuffers[i];
+
+			//new ones clonning old ones
+			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( mesh.vertices ), gl.STREAM_DRAW );
+		}
+
+
+		//apply cpu skinning
+		this.applySkin(mesh, this._skinned_mesh);
+		RI.mesh = this._skinned_mesh;
+	}
+	else
+		RI.mesh = mesh;
+
+	//do not need to update
+	RI.matrix.set( this._root.transform._global_matrix );
+	//this._root.transform.getGlobalMatrix(RI.matrix);
+	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
+
+	if(this.submesh_id != -1 && this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
+	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
+	RI.material = this.material || this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
+	if(this.two_sided)
+		RI.flags &= ~RI_CULL_FACE;
+
+	instances.push(RI);
+	//return RI;
+}
+
+LS.registerComponent(SkinnedMeshRenderer);
+LS.SkinnedMeshRenderer = SkinnedMeshRenderer;
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
@@ -9192,20 +9423,22 @@ var Renderer = {
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
 
-		/*
-		if(this.apply_postfx && this.postfx.length) //render to RT and apply FX //NOT IN USE
-			this.renderPostFX(inner_draw);
-		else if(options.texture && options.depth_texture) //render to RT COLOR & DEPTH
-			Texture.drawToColorAndDepth(options.texture, options.depth_texture, inner_draw);
-		else if(options.texture) //render to RT
-			options.texture.drawTo(inner_draw)
-		else //render directly to screen (better antialiasing)
+		//foreground
+		if(scene.textures["foreground"])
 		{
-			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw(); //main render
-			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			var texture = null;
+			if(typeof(scene.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(texture)
+			{
+				gl.enable( gl.BLEND );
+				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+				gl.disable( gl.BLEND );
+				gl.enable( gl.DEPTH_TEST );
+			}
 		}
-		*/
 
 		//events
 		LEvent.trigger(Scene, "afterRender", camera);
@@ -9346,24 +9579,6 @@ var Renderer = {
 		LEvent.trigger(scene, "afterRenderPass",options);
 		scene.sendEventToNodes("afterRenderPass",options);
 
-		//foreground
-		if(scene.textures["foreground"])
-		{
-			var texture = null;
-			if(typeof(scene.textures["foreground"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
-			if(texture)
-			{
-				gl.enable( gl.BLEND );
-				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
-				gl.disable( gl.BLEND );
-				gl.enable( gl.DEPTH_TEST );
-			}
-		}
-
-
 		//EVENT SCENE after_render
 		//restore state
 		gl.enable(gl.DEPTH_TEST);
@@ -9461,7 +9676,14 @@ var Renderer = {
 				if(iLight == 0) light_macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
 
-				shader = Shaders.get(shader_name, scene._macros, node_macros, instance.macros, mat._macros, light_macros );
+				var macros = {};
+				macros.merge(scene._macros);
+				macros.merge(node_macros);
+				macros.merge(mat._macros);
+				macros.merge(instance.macros);
+				macros.merge(light_macros);
+ 
+				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
@@ -9538,13 +9760,18 @@ var Renderer = {
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
-			shader = Shaders.get("depth", node._macros, macros);
+			macros.merge(node_macros);
+			shader = Shaders.get("depth", macros);
 			shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
 		else
 		{
 			//shader = Shaders.get("depth", node._macros );
-			shader = Shaders.get("depth", node_macros, instance.macros, mat._macros );
+			var macros = {};
+			macros.merge(node_macros);
+			macros.merge(mat._macros);
+			macros.merge(instance.macros);
+			shader = Shaders.get("depth", macros );
 		}
 
 		shader.uniforms( mat._uniforms );
@@ -10458,6 +10685,7 @@ var parserDAE = {
 		var node_type = xmlnode.getAttribute("type");
 		var node = { id: node_id, children:[] };
 
+		//node elements
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
 		{
 			var xmlchild = xmlnode.childNodes[i];
@@ -10503,6 +10731,15 @@ var parserDAE = {
 						node.material = matname;
 					}
 				}
+			}
+
+			//skinned
+			if(xmlchild.localName == "instance_controller")
+			{
+				var url = xmlchild.getAttribute("url");
+				var mesh_data = this.readController(url, flip);
+				node.mesh = url;
+				scene.meshes[url] = mesh_data;
 			}
 
 			//light
@@ -10654,6 +10891,19 @@ var parserDAE = {
 		node.light = light;
 	},
 
+	transformMatrix: function(matrix)
+	{
+		//3ds max coords conversion
+		mat4.transpose(matrix,matrix);
+
+		//flip
+		var temp = new Float32Array(matrix.subarray(4,8));
+		matrix.set( matrix.subarray(8,12), 4 );
+		matrix.set( temp, 8 );
+		matrix[10] *= -1;
+		matrix[14] *= -1;
+	},
+
 	readTransform: function(xmlnode, level, flip)
 	{
 		//identity
@@ -10674,13 +10924,7 @@ var parserDAE = {
 			if(xml.localName == "matrix")
 			{
 				var matrix = this.readContentAsFloats(xml);
-				//3ds max coords conversion
-				mat4.transpose(matrix,matrix);
-				var temp = new Float32Array(matrix.subarray(4,8));
-				matrix.set( matrix.subarray(8,12), 4 );
-				matrix.set( temp, 8 );
-				matrix[10] *= -1;
-				matrix[14] *= -1;
+				this.transformMatrix(matrix);
 				return matrix;
 			}
 
@@ -10775,6 +11019,12 @@ var parserDAE = {
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+			xmlpolygons = xmlmesh.querySelector("triangles");
+		if(!xmlpolygons)
+			throw("no polygons or triangles in mesh");
+
+
 		var xmlinputs = xmlpolygons.querySelectorAll("input");
 		var vertex_offset = -1;
 		var normal_offset = -1;
@@ -10817,6 +11067,7 @@ var parserDAE = {
 		var facemap = {};
 
 		var xmlps = xmlpolygons.querySelectorAll("p");
+		var vertex_remap = [];
 
 		//for every polygon
 		for(var i = 0; i < xmlps.length; i++)
@@ -10839,18 +11090,22 @@ var parserDAE = {
 					trace("Too many vertices for indexing");
 					break;
 				}
-				
+
 				//if (!use_indices && k >= 9) break; //only first triangle when not indexing
 
 				var ids = data[k + vertex_offset] + "/"; //indices of vertex, normal and uvs
 				if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
 				if(uv_offset != -1)	ids += data[k + uv_offset]; 
 
-				if(!use_indices && k > 6) //put the vertices again
+				if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
 				{
+					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
+
 					verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
 					normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
 					coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
+
+					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
 					
 					verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
 					normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
@@ -10860,9 +11115,12 @@ var parserDAE = {
 				}
 
 				prev_index = current_index;
-				if(!use_indices || !facemap.hasOwnProperty(ids))
+				if(!use_indices || !facemap.hasOwnProperty(ids)) //reuse indexed
 				{
-					var index = parseInt(data[k + vertex_offset]) * 3;
+					var index = parseInt(data[k + vertex_offset]);
+					vertex_remap[ verticesArray.length / 3 ] = index;
+					index *= 3;
+
 					verticesArray.push( vertices[index], vertices[index+1], vertices[index+2] );
 					if(normal_offset != -1)
 					{
@@ -10899,7 +11157,8 @@ var parserDAE = {
 		}//per polygon
 
 		var mesh = {
-			vertices: new Float32Array(verticesArray)
+			vertices: new Float32Array(verticesArray),
+			_remap: new Uint16Array(vertex_remap)
 		};
 		
 		if (normalsArray.length)
@@ -10910,7 +11169,7 @@ var parserDAE = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//swap coords
-		if(flip)
+		if(flip && 0)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -10935,6 +11194,151 @@ var parserDAE = {
 		mesh.bounding = bounding;
 		if( isNaN(bounding.radius) )
 			return null;
+
+		return mesh;
+	},
+
+	//used for skinning and morphing
+	readController: function(id, flip)
+	{
+		//get root
+		var xmlcontroller = this._xmlroot.querySelector("controller" + id);
+		if(!xmlcontroller) return null;
+
+		var use_indices = false;
+		var xmlskin = xmlcontroller.querySelector("skin");
+		if(!xmlskin) return null;
+
+		//base geometry
+		var id_geometry = xmlskin.getAttribute("source");
+		var mesh = this.readGeometry( id_geometry, flip );
+		if(!mesh)
+			return null;
+
+		//for data sources
+		var sources = [];
+		var xmlsources = xmlskin.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+			var float_array = xmlsource.querySelector("float_array");
+			if(float_array)
+			{
+				var floats = this.readContentAsFloats( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = floats;
+				continue;
+			}
+			var name_array = xmlsource.querySelector("Name_array");
+			if(name_array)
+			{
+				var names = this.readContentAsStringsArray( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = names;
+				continue;
+			}
+		}
+
+		//matrix
+		var bind_matrix = null;
+		var xmlbindmatrix = xmlskin.querySelector("bind_shape_matrix");
+		if(xmlbindmatrix)
+			bind_matrix = this.readContentAsFloats( xmlbindmatrix );
+		else
+			bind_matrix = mat4.create(); //identity
+
+		//joints
+		var joints = [];
+		var xmljoints = xmlskin.querySelector("joints");
+		if(xmljoints)
+		{
+			var joints_source = null; //which bones
+			var inv_bind_source = null; //bind matrices
+			var xmlinputs = xmljoints.querySelectorAll("input");
+			for(var i = 0; i < xmlinputs.length; i++)
+			{
+				var xmlinput = xmlinputs[i];
+				var sem = xmlinput.getAttribute("semantic").toUpperCase();
+				var src = xmlinput.getAttribute("source");
+				var source = sources[ src.substr(1) ];
+				if(sem == "JOINT")
+					joints_source = source;
+				else if(sem == "INV_BIND_MATRIX")
+					inv_bind_source = source;
+			}
+
+			//save bone names and inv matrix
+			if(!inv_bind_source || !joints_source)
+				throw("no joints or inv_bind sources found");
+
+			for(var i in joints_source)
+			{
+				var mat = inv_bind_source.subarray(i*16,i*16+16);
+				vec3.scale( mat.subarray(4,8), mat.subarray(4,8), -1 );
+				var temp = mat4.create();
+				mat4.swapRows(temp, mat, 0, 1 );
+				mat4.transpose(temp, temp);
+				joints.push([joints_source[i], temp]);
+			}
+		}
+
+		//weights
+		var xmlvertexweights = xmlskin.querySelector("vertex_weights");
+		if(xmlvertexweights)
+		{
+			//here we see the order 
+			var weights_indexed_array = null;
+			var xmlinputs = xmlvertexweights.querySelectorAll("input");
+			for(var i = 0; i < xmlinputs.length; i++)
+			{
+				if( xmlinputs[i].getAttribute("semantic").toUpperCase() == "WEIGHT" )
+					weights_indexed_array = sources[ xmlinputs[i].getAttribute("source").substr(1) ];
+			}
+
+			if(!weights_indexed_array)
+				throw("no weights found");
+
+			var xmlvcount = xmlvertexweights.querySelector("vcount");
+			var vcount = this.readContentAsUInt32( xmlvcount );
+
+			var xmlv = xmlvertexweights.querySelector("v");
+			var v = this.readContentAsUInt32( xmlv );
+
+			var num_vertices = mesh.vertices.length / 3; //3 components per vertex
+			var weights_array = new Float32Array(4 * num_vertices); //4 bones per vertex
+			var bone_index_array = new Uint8Array(4 * num_vertices); //4 bones per vertex
+
+			var pos = 0;
+			var remap = mesh._remap;
+
+			for(var i = 0; i < vcount.length; ++i)
+			{
+				var num_bones = vcount[i];
+				//sort by weight (to be sure we dont throw the highest one)
+				//TODO
+				if(num_bones > 4) num_bones = 4;
+
+				for(var j = 0; j < num_bones; ++j)
+				{
+					bone_index_array[i * 4 + j] = v[pos];
+					weights_array[i * 4 + j] = weights_indexed_array[ v[pos+1] ];
+					pos += 2;
+				}
+			}
+
+			//remap
+			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
+			var final_bone_indices = new Uint8Array(4 * num_vertices); //4 bones per vertex
+			for(var i = 0; i < num_vertices; ++i)
+			{
+				var p = remap[ i ] * 4;
+				final_weights.set( weights_array.subarray(p,p+4), i*4);
+				final_bone_indices.set( bone_index_array.subarray(p,p+4), i*4);
+			}
+
+			mesh.weights = final_weights;
+			mesh.bone_indices = final_bone_indices;
+			mesh.bones = joints;
+		}
 
 		return mesh;
 	},
@@ -10968,6 +11372,20 @@ var parserDAE = {
 		return floats;
 	},
 	
+	readContentAsStringsArray: function(xmlnode)
+	{
+		if(!xmlnode) return null;
+		var text = xmlnode.textContent;
+		text = text.replace(/\n/gi, " "); //remove line breaks
+		text = text.replace(/\s\s/gi, " ");
+		text = text.trim(); //remove empty spaces
+		var words = text.split(" "); //create array
+		for(var k = 0; k < words.length; k++)
+			words[k] = words[k].trim();
+		return words;
+	},
+	
+	/*
 	parse2: function(data, options)
 	{
 		options = options || {};
@@ -11167,6 +11585,7 @@ var parserDAE = {
 			return mesh;
 		}
 	}
+	*/
 };
 Parser.registerParser(parserDAE);
 
@@ -12510,9 +12929,20 @@ SceneNode.prototype.configure = function(info)
 	if (info.id) this.setId(info.id);
 	if (info.className)	this.className = info.className;
 
-	//legacy
+	//useful parsing
 	if(info.mesh)
-		this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+	{
+		var mesh = info.mesh;
+		if(typeof(mesh) == "string")
+			mesh = ResourcesManager.meshes[mesh];
+		if(mesh)
+		{
+			if(mesh.bones)
+				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+			else
+				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+		}
+	}
 
 	//first the no components
 	if(info.material)

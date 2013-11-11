@@ -15,6 +15,7 @@
 ../src/components/camera.js
 ../src/components/light.js
 ../src/components/meshRenderer.js
+../src/components/skinnedMeshRenderer.js
 
 ../src/components/animator.js
 ../src/components/cameraController.js

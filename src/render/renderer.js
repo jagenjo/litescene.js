@@ -92,20 +92,22 @@ var Renderer = {
 			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 		}
 
-		/*
-		if(this.apply_postfx && this.postfx.length) //render to RT and apply FX //NOT IN USE
-			this.renderPostFX(inner_draw);
-		else if(options.texture && options.depth_texture) //render to RT COLOR & DEPTH
-			Texture.drawToColorAndDepth(options.texture, options.depth_texture, inner_draw);
-		else if(options.texture) //render to RT
-			options.texture.drawTo(inner_draw)
-		else //render directly to screen (better antialiasing)
+		//foreground
+		if(scene.textures["foreground"])
 		{
-			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw(); //main render
-			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			var texture = null;
+			if(typeof(scene.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(texture)
+			{
+				gl.enable( gl.BLEND );
+				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+				gl.disable( gl.DEPTH_TEST );
+				texture.toViewport();
+				gl.disable( gl.BLEND );
+				gl.enable( gl.DEPTH_TEST );
+			}
 		}
-		*/
 
 		//events
 		LEvent.trigger(Scene, "afterRender", camera);
@@ -246,24 +248,6 @@ var Renderer = {
 		LEvent.trigger(scene, "afterRenderPass",options);
 		scene.sendEventToNodes("afterRenderPass",options);
 
-		//foreground
-		if(scene.textures["foreground"])
-		{
-			var texture = null;
-			if(typeof(scene.textures["foreground"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
-			if(texture)
-			{
-				gl.enable( gl.BLEND );
-				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
-				gl.disable( gl.BLEND );
-				gl.enable( gl.DEPTH_TEST );
-			}
-		}
-
-
 		//EVENT SCENE after_render
 		//restore state
 		gl.enable(gl.DEPTH_TEST);
@@ -361,7 +345,14 @@ var Renderer = {
 				if(iLight == 0) light_macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
 
-				shader = Shaders.get(shader_name, scene._macros, node_macros, instance.macros, mat._macros, light_macros );
+				var macros = {};
+				macros.merge(scene._macros);
+				macros.merge(node_macros);
+				macros.merge(mat._macros);
+				macros.merge(instance.macros);
+				macros.merge(light_macros);
+ 
+				shader = Shaders.get(shader_name, macros);
 			}
 
 			//fill shader data
@@ -438,13 +429,18 @@ var Renderer = {
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
-			shader = Shaders.get("depth", node._macros, macros);
+			macros.merge(node_macros);
+			shader = Shaders.get("depth", macros);
 			shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
 		else
 		{
 			//shader = Shaders.get("depth", node._macros );
-			shader = Shaders.get("depth", node_macros, instance.macros, mat._macros );
+			var macros = {};
+			macros.merge(node_macros);
+			macros.merge(mat._macros);
+			macros.merge(instance.macros);
+			shader = Shaders.get("depth", macros );
 		}
 
 		shader.uniforms( mat._uniforms );
