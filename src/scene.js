@@ -186,8 +186,6 @@ SceneTree.prototype.configure = function(scene_info)
 
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
-
-	this.current_camera = this._root.camera;
 }
 
 /**
@@ -691,6 +689,18 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 {
 	prefix = prefix || "node";
 	var i = 1;
+
+	var pos = prefix.lastIndexOf("_");
+	if(pos)
+	{
+		var n = prefix.substr(pos+1);
+		if( parseInt(n) )
+		{
+			i = parseInt(n);
+			prefix = prefix.substr(0,pos);
+		}
+	}
+
 	var node_name = prefix + "_" + i;
 	while( this.getNode(node_name) != null )
 		node_name = prefix + "_" + (i++);
@@ -933,15 +943,19 @@ SceneNode.prototype.clone = function()
 	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
-	var newnode = new SceneNode( new_child_name );
-	newnode.configure( this.serialize() );
+	var newnode = new SceneNode( new_name );
+	var info = this.serialize();
+	info.id = null;
+	newnode.configure( info );
 
 	//clone children (none of them is added to the SceneTree)
 	for(var i in this._children)
 	{
 		var new_child_name = scene ? scene.generateUniqueNodeName( this._children[i].id ) : this._children[i].id;
 		var childnode = new SceneNode( new_child_name );
-		childnode.configure( this._children[i].serialize() );
+		var info = this._children[i].serialize();
+		info.id = null;
+		childnode.configure( info );
 		newnode.addChild(childnode);
 	}
 

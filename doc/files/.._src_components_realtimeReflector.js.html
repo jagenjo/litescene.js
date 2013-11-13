@@ -63,6 +63,8 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
+                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -175,9 +177,11 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 }
 
 
-RealtimeReflector.prototype.onRenderRT = function(e,camera)
+RealtimeReflector.prototype.onRenderRT = function(e)
 {
 	if(!this._root) return;
+
+	var camera = Renderer.main_camera;
 
 	this.refresh_rate = this.refresh_rate &lt;&lt; 0;
 

@@ -666,6 +666,7 @@ WBin.readUint32 = function(buffer, pos)
 
 //this module is in charge of rendering basic objects like lines, points, and primitives
 //it works over litegl (no need of scene)
+//carefull, it is very slow
 
 var Draw = {
 	ready: false,
@@ -1029,9 +1030,9 @@ var Draw = {
 
 	renderText: function(text)
 	{
-		if(!Draw.text_atlas)
-			this.createTextAtlas();
-		var atlas = this.text_atlas;
+		if(!Draw.font_atlas)
+			this.createFontAtlas();
+		var atlas = this.font_atlas;
 		var l = text.length;
 		var char_size = atlas.atlas.char_size;
 		var i_char_size = 1 / atlas.atlas.char_size;
@@ -1085,7 +1086,7 @@ var Draw = {
 	},
 
 
-	createTextAtlas: function()
+	createFontAtlas: function()
 	{
 		var canvas = createCanvas(512,512);
 		var fontsize = (canvas.width * 0.09)|0;
@@ -1115,8 +1116,8 @@ var Draw = {
 			}
 		}
 
-		this.text_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.NEAREST, minFilter: gl.LINEAR} );
-		this.text_atlas.atlas = atlas;
+		this.font_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.NEAREST, minFilter: gl.LINEAR} );
+		this.font_atlas.atlas = atlas;
 	},
 
 	linearize: function(array)
@@ -4653,6 +4654,8 @@ LS.Transform = Transform;
 
 function Camera(o)
 {
+	this.enabled = true;
+
 	this._type = Camera.PERSPECTIVE;
 	this._eye = vec3.fromValues(0,100, 100); //change to position
 	this._center = vec3.fromValues(0,0,0);	//change to target
@@ -4662,11 +4665,15 @@ function Camera(o)
 	this._aspect = 1.0;
 	this._fov = 45; //persp
 	this._frustrum_size = 50; //ortho
+	this._viewport = new Float32Array([0,0,1,1]);
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
 	this._model_matrix = mat4.create(); //inverse of viewmatrix (used for local vectors)
+
+	this._to_texture = ""; //name
+	this._texture_size = 512;
 
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
@@ -4719,6 +4726,21 @@ Object.defineProperty( Camera.prototype, "center", {
 	},
 	set: function(v) {
 		this._center.set(v);
+		this._dirty_matrices = true;
+	}
+});
+
+/**
+* The up vector of the camera (in node space)
+* @property up {vec3}
+* @default [0,1,0]
+*/
+Object.defineProperty( Camera.prototype, "up", {
+	get: function() {
+		return this._up;
+	},
+	set: function(v) {
+		this._up.set(v);
 		this._dirty_matrices = true;
 	}
 });
@@ -4808,13 +4830,21 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
-	//this.updateNodeTransform();
+	LEvent.bind(node, "collectCameras", this.onCollectCameras, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
 {
 	if(node.camera == this)
 		delete node.camera;
+
+}
+
+Camera.prototype.onCollectCameras = function(e, cameras)
+{
+	if(!this.enabled)
+		return;
+	cameras.push(this);
 }
 
 /**
@@ -4981,10 +5011,14 @@ Camera.prototype.move = function(v)
 }
 
 
-Camera.prototype.rotate = function(angle_in_deg, axis)
+Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
 {
+	if(in_local_space)
+		this.getLocalVector(axis, axis);
+
 	var R = quat.setAxisAngle( quat.create(), axis, angle_in_deg * 0.0174532925 );
 	var front = vec3.subtract( vec3.create(), this._center, this._eye );
+
 	vec3.transformQuat(front, front, R );
 	vec3.add(this._center, this._eye, front);
 	this._dirty_matrices = true;
@@ -5006,6 +5040,56 @@ Camera.prototype.orbitDistanceFactor = function(f, center)
 	var front = vec3.subtract( vec3.create(), this._eye, center );
 	vec3.scale(front, front, f);
 	vec3.add(this._eye, center, front);
+	this._dirty_matrices = true;
+}
+
+Camera.prototype.setOrientation = function(q, use_oculus)
+{
+	var center = this.getCenter();
+	var eye = this.getEye();
+	var up = [0,1,0];
+
+	var to_target = vec3.sub( vec3.create(), center, eye );
+	var dist = vec3.length( to_target );
+
+	var front = null;
+	front = vec3.fromValues(0,0,-dist);
+
+	if(use_oculus)
+	{
+		vec3.rotateY( front, front, Math.PI * -0.5 );
+		vec3.rotateY( up, up, Math.PI * -0.5 );
+	}
+
+	vec3.transformQuat(front, front, q);
+	vec3.transformQuat(up, up, q);
+
+	if(use_oculus)
+	{
+		vec3.rotateY( front, front, Math.PI * 0.5 );
+		vec3.rotateY( up, up, Math.PI * 0.5 );
+	}
+
+	this.center = vec3.add( vec3.create(), eye, front );
+	this.up = up;
+
+	this._dirty_matrices = true;
+}
+
+Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
+{
+	var q = quat.create();
+	quat.fromEuler(q, [yaw, pitch, roll] );
+	this.setOrientation(q);
+}
+
+
+Camera.prototype.fromViewmatrix = function(mat)
+{
+	var M = mat4.invert( mat4.create(), mat );
+	this.eye = vec3.transformMat4(vec3.create(),vec3.create(),M);
+	this.center = vec3.transformMat4(vec3.create(),[0,0,-1],M);
+	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
 	this._dirty_matrices = true;
 }
 
@@ -5075,6 +5159,7 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
+	if(o.enabled != null) this.enabled = o.enabled;
 	if(o.type != null) this._type = o.type;
 
 	if(o.eye != null) this._eye.set(o.eye);
@@ -5086,6 +5171,7 @@ Camera.prototype.configure = function(o)
 	if(o.fov != null) this._fov = o.fov;
 	if(o.aspect != null) this._aspect = o.aspect;
 	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+	if(o.viewport != null) this._viewport.set( o.viewport );
 
 	this.updateMatrices();
 }
@@ -5093,6 +5179,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
 		center: vec3.toArray(this._center),
@@ -5101,7 +5188,10 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
-		frustrum_size: this._frustrum_size
+		frustrum_size: this._frustrum_size,
+		viewport: toArray( this._viewport ),
+		to_texture: this._to_texture,
+		texture_size: this._texture_size
 	};
 
 	//clone
@@ -5703,7 +5793,10 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 {
 	var node = Scene.getNode(name);
-	return node.transform.getGlobalMatrix();
+	if(node)
+		return node.transform.getGlobalMatrix();
+	console.log("bone not found :" + name);
+	return mat4.create();
 }
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
@@ -6956,7 +7049,7 @@ ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
-		this.updateMesh(Scene.current_camera);
+		this.updateMesh(Renderer.main_camera);
 
 	LEvent.trigger(Scene,"change");
 }
@@ -7183,9 +7276,11 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 ParticleEmissor._identity = mat4.create();
 
 //ParticleEmissor.prototype.getRenderInstance = function(options,camera)
-ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, camera)
+ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this._root) return;
+
+	var camera = Renderer.main_camera;
 
 	if(this.align_always)
 		this.updateMesh(camera);
@@ -7268,9 +7363,11 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 }
 
 
-RealtimeReflector.prototype.onRenderRT = function(e,camera)
+RealtimeReflector.prototype.onRenderRT = function(e)
 {
 	if(!this._root) return;
+
+	var camera = Renderer.main_camera;
 
 	this.refresh_rate = this.refresh_rate << 0;
 
@@ -7455,6 +7552,19 @@ function TerrainRenderer(o)
 
 TerrainRenderer.icon = "mini-icon-terrain.png";
 
+TerrainRenderer.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+TerrainRenderer.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+	if(this._root.mesh == this._mesh)
+		delete this._root["mesh"];
+}
+
+
 /**
 * Configure the component getting the info from the object
 * @method configure
@@ -7506,7 +7616,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	if(this.subdivisions > 255)	this.subdivisions = 255; //MAX because of indexed nature
 
 	//optimize it
-	var size = this.size;
+	var hsize = this.size * 0.5;
 	var subdivisions = (this.subdivisions)<<0;
 	var height = this.height;
 
@@ -7529,7 +7639,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	var h,lh,th,rh,bh = 0;
 
 	var yScale = height;
-	var xzScale = size / (subdivisions-1);
+	var xzScale = hsize / (subdivisions-1);
 
 	for (var y = 0; y <= detailY; y++) 
 	{
@@ -7539,7 +7649,7 @@ TerrainRenderer.prototype.updateMesh = function()
 			var s = x / detailX;
 
 			h = data[y * subdivisions * 4 + x * 4] / 255; //red channel
-			vertices.push(size*(2 * s - 1), h * height, size*(2 * t - 1));
+			vertices.push(hsize*(2 * s - 1), h * height, hsize*(2 * t - 1));
 			coords.push(s,1-t);
 
 			if(x == 0 || y == 0 || x == detailX-1 || y == detailY-1)
@@ -7563,14 +7673,15 @@ TerrainRenderer.prototype.updateMesh = function()
 		}
 	}
 
-	var mesh = Mesh.load({triangles:triangles,vertices:vertices,normals:normals,coords:coords});
+	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles});
+	mesh.setBounding( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
 	this._mesh = mesh;
 	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
 }
 
 TerrainRenderer.PLANE = null;
 
-TerrainRenderer.prototype.getRenderInstance = function()
+TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	if(!this._mesh && this.heightmap)
 		this.updateMesh();
@@ -7593,13 +7704,16 @@ TerrainRenderer.prototype.getRenderInstance = function()
 		return RI;
 	};
 
+	RI.material = this._root.getMaterial();
 	RI.mesh = this._mesh;
+	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
-	return RI;
+	
+	instances.push(RI);
 }
 
 LS.registerComponent(TerrainRenderer);
@@ -7827,6 +7941,158 @@ Spherize.prototype.onUniforms = function(e, uniforms)
 
 
 LS.registerComponent(Spherize);
+/**
+* This component allow to integrate with Oculus Rift renderer
+* @class OculusController
+* @param {Object} o object with the serialized info
+*/
+function OculusController(o)
+{
+	this.enabled = true;
+	this.eye_distance = 1;
+	if(o)
+		this.configure(o);
+}
+
+OculusController.rift_server_url = "http://tamats.com/uploads/RiftServer_0_3.zip";
+OculusController.icon = "mini-icon-graph.png";
+
+OculusController.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(Scene,"start", this.onStart, this );
+	LEvent.bind(Scene,"stop", this.onStop, this );
+	LEvent.bind(Scene,"beforeRender", this.onBeforeRender, this );
+	LEvent.bind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.bind(node, "collectCameras", this.onCollectCameras, this );
+}
+
+OculusController.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"start", this.onStart, this );
+	LEvent.unbind(Scene,"stoo", this.onStop, this );
+	LEvent.unbind(Scene,"beforeRender", this.onBeforeRender, this );
+	LEvent.unbind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.unbind(node, "collectCameras", this.onCollectCameras, this );
+	Renderer.color_rendertarget = null;
+}
+
+OculusController.prototype.onCollectCameras = function(e, cameras)
+{
+	var main_camera = Renderer.main_camera;
+
+	if(this._orientation)
+		main_camera.setOrientation(this._orientation, true);
+
+	var right_vector = main_camera.getLocalVector([ this.eye_distance * 0.5, 0, 0]);
+	var left_vector = vec3.scale( vec3.create(), right_vector, -1);
+
+	if(!this._left_camera)
+	{
+		this._left_camera = new LS.Camera();
+		this._right_camera = new LS.Camera();
+	}
+
+	var main_info = main_camera.serialize();
+
+	this._left_camera.configure(main_info);
+	this._right_camera.configure(main_info);
+
+	this._left_camera.eye = vec3.add(vec3.create(), main_camera.eye, left_vector);
+	this._right_camera.eye = vec3.add(vec3.create(), main_camera.eye, right_vector);
+
+	this._left_camera._viewport.set([0,0,0.5,1]);
+	this._right_camera._viewport.set([0.5,0,0.5,1]);
+	this._right_camera._ignore_clear = true;
+
+	cameras.push( this._left_camera, this._right_camera );
+}
+
+OculusController.prototype.onStart = function(e)
+{
+	var ws = new WebSocket("ws://localhost:1981");
+	ws.onopen = function()
+	{
+		console.log("OVR connection stablished");
+	}
+
+	ws.onmessage = this.onMessage.bind(this);
+
+	ws.onclose = function()
+	{
+		console.log("OVR connection lost");
+	}
+
+	ws.onerror = function()
+	{
+		console.error("Oculus Server not found in your machine. To run an app using Oculus Rift you need to use a client side app, you can download it from: " + OculusController.rift_server_url );
+	}
+
+	this._ws = ws;
+}
+
+OculusController.prototype.onMessage = function(e)
+{
+	var data = e.data;
+	data = JSON.parse("[" + data + "]");
+
+	var q = quat.create();
+	q.set( data );
+	var q2 = quat.fromValues(-1,0,0,0);	quat.multiply(q,q2,q);
+	this._orientation = q;
+
+	Scene.refresh();
+}
+
+OculusController.prototype.onStop = function(e)
+{
+	if(this._ws)
+	{
+		this._ws.close();
+		this._ws = null;
+	}
+}
+
+OculusController.prototype.onBeforeRender = function(e,dt)
+{
+	var width = 1024;
+	var height = 512;
+	var v = gl.getParameter(gl.VIEWPORT);
+	width = v[2];
+	height = v[3];
+
+	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height)
+	{
+		this._color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR });
+		ResourcesManager.textures[":ovr_color_buffer"] = this._color_texture;
+	}
+
+	if(this.enabled)
+	{
+		Renderer.color_rendertarget = this._color_texture;
+	}
+	else
+	{
+		Renderer.color_rendertarget = null;
+	}
+
+	//Renderer.disable_main_render
+}
+
+
+OculusController.prototype.onAfterRender = function(e,dt)
+{
+	if(this._color_texture)
+		this._color_texture.toViewport();
+}
+
+
+LS.registerComponent(OculusController);
+window.OculusController = OculusController;
+
+
+
+
+
 if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
@@ -9356,7 +9622,8 @@ var Renderer = {
 	_postfx_texture_b: null,
 	*/
 
-	_renderkeys: {},
+	_renderkeys: {}, //not used
+	_full_viewport: vec4.create(), //contains info about the full viewport available to render (depends if using FBOs)
 
 	//temp variables for rendering pipeline passes
 	_current_scene: null,
@@ -9389,38 +9656,54 @@ var Renderer = {
 		this._rendercalls = 0;
 
 		//events
-		LEvent.trigger(Scene, "beforeRender", camera);
-		scene.sendEventToNodes("beforeRender", camera);
+		LEvent.trigger(Scene, "beforeRender" );
+		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
 		this.updateVisibleData(scene, options);
+
+		//settings for cameras
+		var cameras = this._visible_cameras;
+		if(camera && !options.render_all_cameras )
+			cameras = [ camera ];
+		Renderer.main_camera = cameras[0];
 
 		//generate shadowmap
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
 			this.renderShadowMaps();
 
-		LEvent.trigger(Scene, "afterRenderShadows", camera);
-		scene.sendEventToNodes("afterRenderShadows", camera);
+		LEvent.trigger(Scene, "afterRenderShadows" );
+		scene.sendEventToNodes("afterRenderShadows" );
 
+		/*
 		//generate RTs
 		if(scene.settings.enable_rts && !options.skip_rts)
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
+		*/
 
+		//render one camera or all the cameras
+		var current_camera = null;
 
-		//Render scene to screen, buffer, to Color&Depth buffer 
-		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
-		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
-
-		if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-			Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
-		else if(this.color_rendertarget) //render color to RT
-			this.color_rendertarget.drawTo(inner_draw);
-		else //Screen render
+		for(var i in cameras)
 		{
-			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw(); //main render
-			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			current_camera = cameras[i];
+			LEvent.trigger(current_camera, "beforeRender" );
+
+			//Render scene to screen, buffer, to Color&Depth buffer 
+			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
+
+			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
+			else if(this.color_rendertarget) //render color to RT
+				this.color_rendertarget.drawTo(inner_draw);
+			else //Screen render
+			{
+				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+				inner_draw(); //main render
+				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			}
+			LEvent.trigger(current_camera, "afterRender" );
 		}
 
 		//foreground
@@ -9441,25 +9724,28 @@ var Renderer = {
 		}
 
 		//events
-		LEvent.trigger(Scene, "afterRender", camera);
-		Scene.sendEventToNodes("afterRender", camera);
-		if(scene.light && scene.light.onAfterRender) //fix this plz
-			scene.light.onAfterRender();
+		LEvent.trigger(Scene, "afterRender" );
+		Scene.sendEventToNodes("afterRender" );
+
 		Scene._frame += 1;
 		Scene._must_redraw = false;
 
 		//render scene (callback format for render targets)
-		function inner_draw()
+		function inner_draw(tex)
 		{
+			var camera = current_camera;
 			//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 			//gl.enable(gl.SCISSOR_TEST);
+			if(tex)
+				Renderer._full_viewport.set([0,0,tex.width, tex.height]);
+
+			Renderer.enableCamera( camera, options ); //set as active camera and set viewport
 
 			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
-			if(options.ignore_clear != true)
+			if(options.ignore_clear != true && !camera._ignore_clear)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 
@@ -9470,6 +9756,7 @@ var Renderer = {
 
 			LEvent.trigger(scene, "afterRenderScene", camera);
 			scene.sendEventToNodes("afterRenderScene", camera);
+
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -9488,9 +9775,25 @@ var Renderer = {
 	* @method enableCamera
 	* @param {Camera} camera
 	*/
-	enableCamera: function(camera)
+	enableCamera: function(camera, options)
 	{
 		//camera.setActive();
+		var width = Renderer._full_viewport[2];
+		var height = Renderer._full_viewport[3];
+		var final_width = width * camera._viewport[2];
+		var final_height = height * camera._viewport[3];
+
+		if(options && options.ignore_viewports)
+		{
+			camera._aspect = width / height;
+			gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
+		}
+		else
+		{
+			camera._aspect = final_width / final_height;
+			gl.viewport( camera._viewport[0] * width, camera._viewport[1] * height, camera._viewport[2] * width, camera._viewport[3] * height );
+		}
+
 		camera.updateMatrices();
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
@@ -9886,6 +10189,7 @@ var Renderer = {
 		var opaque_instances = [];
 		var alpha_instances = [];
 		var lights = [];
+		var cameras = [];
 		var materials = {}; //I dont want repeated materials here
 
 		//collect render instances and lights
@@ -9916,6 +10220,7 @@ var Renderer = {
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
 			LEvent.trigger(node,"collectLights", lights );
+			LEvent.trigger(node,"collectCameras", cameras );
 		}
 
 		//complete render instances
@@ -9997,6 +10302,7 @@ var Renderer = {
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = opaque_instances.concat(alpha_instances); //merge
 		this._visible_lights = lights;
+		this._visible_cameras = cameras;
 		this._visible_materials = materials;
 	},
 
@@ -10070,6 +10376,7 @@ var Renderer = {
 		}
 	},
 
+	/*
 	//Render Cameras that need to store the result in RTs
 	renderRTCameras: function()
 	{
@@ -10095,6 +10402,7 @@ var Renderer = {
 			});
 		}
 	},
+	*/
 
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
@@ -10117,7 +10425,7 @@ var Renderer = {
 		if( !texture || texture.constructor != Texture) texture = null;
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
-		texture.drawTo(function(side) {
+		texture.drawTo(function(texture, side) {
 			var cams = Renderer.cubemap_camera_parameters;
 			if(step == "shadow")
 				gl.clearColor(0,0,0,0);
@@ -10140,7 +10448,7 @@ var Renderer = {
 	_picking_next_color_id: 0,
 	_picking_nodes: {},
 
-	renderPickingBuffer: function(x,y)
+	renderPickingBuffer: function(camera, x,y)
 	{
 		var scene = this.current_scene || Scene;
 
@@ -10160,7 +10468,7 @@ var Renderer = {
 			//trace(" START Rendering ");
 
 			var viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
-			scene.current_camera.aspect = viewport[2] / viewport[3];
+			camera.aspect = viewport[2] / viewport[3];
 			gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
 
 			if(small_area)
@@ -10172,7 +10480,7 @@ var Renderer = {
 			gl.clearColor(0,0,0,0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera(scene.current_camera);
+			Renderer.enableCamera(camera);
 
 			//gl.viewport(x-20,y-20,40,40);
 			Renderer.renderSceneMeshes("picking",{is_picking:true});
@@ -10189,12 +10497,13 @@ var Renderer = {
 		return this._picking_color;
 	},
 
-	getNodeAtCanvasPosition: function(scene, x,y)
+	getNodeAtCanvasPosition: function(scene, camera, x,y)
 	{
 		scene = scene || Scene;
+		camera = camera || Scene.getCamera();
 
 		this._picking_nodes = {};
-		this.renderPickingBuffer(x,y);
+		this.renderPickingBuffer(camera, x,y);
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
@@ -10708,7 +11017,10 @@ var parserDAE = {
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
+					{
+						mesh_data.name = url;
 						scene.meshes[url] = mesh_data;
+					}
 				}
 
 				node.mesh = url;
@@ -10738,8 +11050,12 @@ var parserDAE = {
 			{
 				var url = xmlchild.getAttribute("url");
 				var mesh_data = this.readController(url, flip);
-				node.mesh = url;
-				scene.meshes[url] = mesh_data;
+				if(mesh_data)
+				{
+					mesh_data.name = url;
+					node.mesh = url;
+					scene.meshes[url] = mesh_data;
+				}
 			}
 
 			//light
@@ -11018,9 +11334,13 @@ var parserDAE = {
 		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
+		var triangles = false;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
 		if(!xmlpolygons)
+		{
 			xmlpolygons = xmlmesh.querySelector("triangles");
+			triangles = true;
+		}
 		if(!xmlpolygons)
 			throw("no polygons or triangles in mesh");
 
@@ -11074,7 +11394,7 @@ var parserDAE = {
 		{
 			var xmlp = xmlps[i];
 			if(!xmlp || !xmlp.textContent) break;
-			var data = xmlp.textContent.split(" ");
+			var data = xmlp.textContent.trim().split(" ");
 			var first_index = -1;
 			var current_index = -1;
 			var prev_index = -1;
@@ -11082,7 +11402,7 @@ var parserDAE = {
 			if(use_indices && last_index >= 256*256)
 				break;
 
-			//for every triplet of indices in the polygon
+			//for every triplet of indices in the polygon (vertex, normal, uv, ... )
 			for(var k = 0; k < data.length; k += 3)
 			{
 				if(use_indices && last_index >= 256*256)
@@ -11097,21 +11417,24 @@ var parserDAE = {
 				if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
 				if(uv_offset != -1)	ids += data[k + uv_offset]; 
 
-				if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
+				if(!triangles) //polygon triangulation
 				{
-					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
+					if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
+					{
+						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
 
-					verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
-					normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
-					coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
+						verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
+						normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
+						coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
 
-					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
-					
-					verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
-					normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
-					coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
-					last_index += 2;
-					current_index = last_index-1;
+						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
+						
+						verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
+						normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
+						coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
+						last_index += 2;
+						current_index = last_index-1;
+					}
 				}
 
 				prev_index = current_index;
@@ -11232,7 +11555,9 @@ var parserDAE = {
 			var name_array = xmlsource.querySelector("Name_array");
 			if(name_array)
 			{
-				var names = this.readContentAsStringsArray( xmlsource );
+				var names = this.readContentAsStringsArray( name_array );
+				if(!names)
+					return null;
 				sources[ xmlsource.getAttribute("id") ] = names;
 				continue;
 			}
@@ -11382,8 +11707,13 @@ var parserDAE = {
 		var words = text.split(" "); //create array
 		for(var k = 0; k < words.length; k++)
 			words[k] = words[k].trim();
+		if(xmlnode.getAttribute("count") && parseInt(xmlnode.getAttribute("count")) != words.length)
+		{
+			console.error("Error: bone names with spaces not supported by DAE");
+			return null;
+		}
 		return words;
-	},
+	}
 	
 	/*
 	parse2: function(data, options)
@@ -12157,8 +12487,6 @@ SceneTree.prototype.configure = function(scene_info)
 
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
-
-	this.current_camera = this._root.camera;
 }
 
 /**
@@ -12662,6 +12990,18 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 {
 	prefix = prefix || "node";
 	var i = 1;
+
+	var pos = prefix.lastIndexOf("_");
+	if(pos)
+	{
+		var n = prefix.substr(pos+1);
+		if( parseInt(n) )
+		{
+			i = parseInt(n);
+			prefix = prefix.substr(0,pos);
+		}
+	}
+
 	var node_name = prefix + "_" + i;
 	while( this.getNode(node_name) != null )
 		node_name = prefix + "_" + (i++);
@@ -12904,15 +13244,19 @@ SceneNode.prototype.clone = function()
 	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
-	var newnode = new SceneNode( new_child_name );
-	newnode.configure( this.serialize() );
+	var newnode = new SceneNode( new_name );
+	var info = this.serialize();
+	info.id = null;
+	newnode.configure( info );
 
 	//clone children (none of them is added to the SceneTree)
 	for(var i in this._children)
 	{
 		var new_child_name = scene ? scene.generateUniqueNodeName( this._children[i].id ) : this._children[i].id;
 		var childnode = new SceneNode( new_child_name );
-		childnode.configure( this._children[i].serialize() );
+		var info = this._children[i].serialize();
+		info.id = null;
+		childnode.configure( info );
 		newnode.addChild(childnode);
 	}
 

@@ -214,7 +214,7 @@ ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
-		this.updateMesh(Scene.current_camera);
+		this.updateMesh(Renderer.main_camera);
 
 	LEvent.trigger(Scene,"change");
 }
@@ -441,9 +441,11 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 ParticleEmissor._identity = mat4.create();
 
 //ParticleEmissor.prototype.getRenderInstance = function(options,camera)
-ParticleEmissor.prototype.onCollectInstances = function(e, instances, options, camera)
+ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this._root) return;
+
+	var camera = Renderer.main_camera;
 
 	if(this.align_always)
 		this.updateMesh(camera);

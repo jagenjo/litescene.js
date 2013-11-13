@@ -25,7 +25,8 @@ var Renderer = {
 	_postfx_texture_b: null,
 	*/
 
-	_renderkeys: {},
+	_renderkeys: {}, //not used
+	_full_viewport: vec4.create(), //contains info about the full viewport available to render (depends if using FBOs)
 
 	//temp variables for rendering pipeline passes
 	_current_scene: null,
@@ -58,38 +59,54 @@ var Renderer = {
 		this._rendercalls = 0;
 
 		//events
-		LEvent.trigger(Scene, "beforeRender", camera);
-		scene.sendEventToNodes("beforeRender", camera);
+		LEvent.trigger(Scene, "beforeRender" );
+		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
 		this.updateVisibleData(scene, options);
+
+		//settings for cameras
+		var cameras = this._visible_cameras;
+		if(camera && !options.render_all_cameras )
+			cameras = [ camera ];
+		Renderer.main_camera = cameras[0];
 
 		//generate shadowmap
 		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
 			this.renderShadowMaps();
 
-		LEvent.trigger(Scene, "afterRenderShadows", camera);
-		scene.sendEventToNodes("afterRenderShadows", camera);
+		LEvent.trigger(Scene, "afterRenderShadows" );
+		scene.sendEventToNodes("afterRenderShadows" );
 
+		/*
 		//generate RTs
 		if(scene.settings.enable_rts && !options.skip_rts)
 			if(scene.rt_cameras.length > 0)
 				this.renderRTCameras();
+		*/
 
+		//render one camera or all the cameras
+		var current_camera = null;
 
-		//Render scene to screen, buffer, to Color&Depth buffer 
-		scene.active_viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
-		scene.current_camera.aspect = scene.active_viewport[2]/scene.active_viewport[3];
-
-		if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-			Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
-		else if(this.color_rendertarget) //render color to RT
-			this.color_rendertarget.drawTo(inner_draw);
-		else //Screen render
+		for(var i in cameras)
 		{
-			gl.viewport( scene.active_viewport[0], scene.active_viewport[1], scene.active_viewport[2], scene.active_viewport[3] );
-			inner_draw(); //main render
-			gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			current_camera = cameras[i];
+			LEvent.trigger(current_camera, "beforeRender" );
+
+			//Render scene to screen, buffer, to Color&Depth buffer 
+			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
+
+			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
+			else if(this.color_rendertarget) //render color to RT
+				this.color_rendertarget.drawTo(inner_draw);
+			else //Screen render
+			{
+				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+				inner_draw(); //main render
+				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
+			}
+			LEvent.trigger(current_camera, "afterRender" );
 		}
 
 		//foreground
@@ -110,25 +127,28 @@ var Renderer = {
 		}
 
 		//events
-		LEvent.trigger(Scene, "afterRender", camera);
-		Scene.sendEventToNodes("afterRender", camera);
-		if(scene.light && scene.light.onAfterRender) //fix this plz
-			scene.light.onAfterRender();
+		LEvent.trigger(Scene, "afterRender" );
+		Scene.sendEventToNodes("afterRender" );
+
 		Scene._frame += 1;
 		Scene._must_redraw = false;
 
 		//render scene (callback format for render targets)
-		function inner_draw()
+		function inner_draw(tex)
 		{
+			var camera = current_camera;
 			//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 			//gl.enable(gl.SCISSOR_TEST);
+			if(tex)
+				Renderer._full_viewport.set([0,0,tex.width, tex.height]);
+
+			Renderer.enableCamera( camera, options ); //set as active camera and set viewport
 
 			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
-			if(options.ignore_clear != true)
+			if(options.ignore_clear != true && !camera._ignore_clear)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera( camera ); //set as active camera
 			//render scene
 			//RenderPipeline.renderSceneMeshes(options);
 
@@ -139,6 +159,7 @@ var Renderer = {
 
 			LEvent.trigger(scene, "afterRenderScene", camera);
 			scene.sendEventToNodes("afterRenderScene", camera);
+
 			//gl.disable(gl.SCISSOR_TEST);
 		}
 
@@ -157,9 +178,25 @@ var Renderer = {
 	* @method enableCamera
 	* @param {Camera} camera
 	*/
-	enableCamera: function(camera)
+	enableCamera: function(camera, options)
 	{
 		//camera.setActive();
+		var width = Renderer._full_viewport[2];
+		var height = Renderer._full_viewport[3];
+		var final_width = width * camera._viewport[2];
+		var final_height = height * camera._viewport[3];
+
+		if(options && options.ignore_viewports)
+		{
+			camera._aspect = width / height;
+			gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
+		}
+		else
+		{
+			camera._aspect = final_width / final_height;
+			gl.viewport( camera._viewport[0] * width, camera._viewport[1] * height, camera._viewport[2] * width, camera._viewport[3] * height );
+		}
+
 		camera.updateMatrices();
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
@@ -555,6 +592,7 @@ var Renderer = {
 		var opaque_instances = [];
 		var alpha_instances = [];
 		var lights = [];
+		var cameras = [];
 		var materials = {}; //I dont want repeated materials here
 
 		//collect render instances and lights
@@ -585,6 +623,7 @@ var Renderer = {
 			//get render instances
 			LEvent.trigger(node,"collectRenderInstances", instances );
 			LEvent.trigger(node,"collectLights", lights );
+			LEvent.trigger(node,"collectCameras", cameras );
 		}
 
 		//complete render instances
@@ -666,6 +705,7 @@ var Renderer = {
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = opaque_instances.concat(alpha_instances); //merge
 		this._visible_lights = lights;
+		this._visible_cameras = cameras;
 		this._visible_materials = materials;
 	},
 
@@ -739,6 +779,7 @@ var Renderer = {
 		}
 	},
 
+	/*
 	//Render Cameras that need to store the result in RTs
 	renderRTCameras: function()
 	{
@@ -764,6 +805,7 @@ var Renderer = {
 			});
 		}
 	},
+	*/
 
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
@@ -786,7 +828,7 @@ var Renderer = {
 		if( !texture || texture.constructor != Texture) texture = null;
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
-		texture.drawTo(function(side) {
+		texture.drawTo(function(texture, side) {
 			var cams = Renderer.cubemap_camera_parameters;
 			if(step == "shadow")
 				gl.clearColor(0,0,0,0);
@@ -809,7 +851,7 @@ var Renderer = {
 	_picking_next_color_id: 0,
 	_picking_nodes: {},
 
-	renderPickingBuffer: function(x,y)
+	renderPickingBuffer: function(camera, x,y)
 	{
 		var scene = this.current_scene || Scene;
 
@@ -829,7 +871,7 @@ var Renderer = {
 			//trace(" START Rendering ");
 
 			var viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
-			scene.current_camera.aspect = viewport[2] / viewport[3];
+			camera.aspect = viewport[2] / viewport[3];
 			gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
 
 			if(small_area)
@@ -841,7 +883,7 @@ var Renderer = {
 			gl.clearColor(0,0,0,0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			Renderer.enableCamera(scene.current_camera);
+			Renderer.enableCamera(camera);
 
 			//gl.viewport(x-20,y-20,40,40);
 			Renderer.renderSceneMeshes("picking",{is_picking:true});
@@ -858,12 +900,13 @@ var Renderer = {
 		return this._picking_color;
 	},
 
-	getNodeAtCanvasPosition: function(scene, x,y)
+	getNodeAtCanvasPosition: function(scene, camera, x,y)
 	{
 		scene = scene || Scene;
+		camera = camera || Scene.getCamera();
 
 		this._picking_nodes = {};
-		this.renderPickingBuffer(x,y);
+		this.renderPickingBuffer(camera, x,y);
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 

@@ -68,7 +68,10 @@ var parserDAE = {
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
+					{
+						mesh_data.name = url;
 						scene.meshes[url] = mesh_data;
+					}
 				}
 
 				node.mesh = url;
@@ -98,8 +101,12 @@ var parserDAE = {
 			{
 				var url = xmlchild.getAttribute("url");
 				var mesh_data = this.readController(url, flip);
-				node.mesh = url;
-				scene.meshes[url] = mesh_data;
+				if(mesh_data)
+				{
+					mesh_data.name = url;
+					node.mesh = url;
+					scene.meshes[url] = mesh_data;
+				}
 			}
 
 			//light
@@ -378,9 +385,13 @@ var parserDAE = {
 		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
+		var triangles = false;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
 		if(!xmlpolygons)
+		{
 			xmlpolygons = xmlmesh.querySelector("triangles");
+			triangles = true;
+		}
 		if(!xmlpolygons)
 			throw("no polygons or triangles in mesh");
 
@@ -434,7 +445,7 @@ var parserDAE = {
 		{
 			var xmlp = xmlps[i];
 			if(!xmlp || !xmlp.textContent) break;
-			var data = xmlp.textContent.split(" ");
+			var data = xmlp.textContent.trim().split(" ");
 			var first_index = -1;
 			var current_index = -1;
 			var prev_index = -1;
@@ -442,7 +453,7 @@ var parserDAE = {
 			if(use_indices && last_index >= 256*256)
 				break;
 
-			//for every triplet of indices in the polygon
+			//for every triplet of indices in the polygon (vertex, normal, uv, ... )
 			for(var k = 0; k < data.length; k += 3)
 			{
 				if(use_indices && last_index >= 256*256)
@@ -457,21 +468,24 @@ var parserDAE = {
 				if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
 				if(uv_offset != -1)	ids += data[k + uv_offset]; 
 
-				if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
+				if(!triangles) //polygon triangulation
 				{
-					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
+					if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
+					{
+						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
 
-					verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
-					normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
-					coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
+						verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
+						normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
+						coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
 
-					vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
-					
-					verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
-					normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
-					coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
-					last_index += 2;
-					current_index = last_index-1;
+						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
+						
+						verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
+						normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
+						coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
+						last_index += 2;
+						current_index = last_index-1;
+					}
 				}
 
 				prev_index = current_index;
@@ -592,7 +606,9 @@ var parserDAE = {
 			var name_array = xmlsource.querySelector("Name_array");
 			if(name_array)
 			{
-				var names = this.readContentAsStringsArray( xmlsource );
+				var names = this.readContentAsStringsArray( name_array );
+				if(!names)
+					return null;
 				sources[ xmlsource.getAttribute("id") ] = names;
 				continue;
 			}
@@ -742,8 +758,13 @@ var parserDAE = {
 		var words = text.split(" "); //create array
 		for(var k = 0; k < words.length; k++)
 			words[k] = words[k].trim();
+		if(xmlnode.getAttribute("count") && parseInt(xmlnode.getAttribute("count")) != words.length)
+		{
+			console.error("Error: bone names with spaces not supported by DAE");
+			return null;
+		}
 		return words;
-	},
+	}
 	
 	/*
 	parse2: function(data, options)

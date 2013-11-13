@@ -1,5 +1,6 @@
 //this module is in charge of rendering basic objects like lines, points, and primitives
 //it works over litegl (no need of scene)
+//carefull, it is very slow
 
 var Draw = {
 	ready: false,
@@ -363,9 +364,9 @@ var Draw = {
 
 	renderText: function(text)
 	{
-		if(!Draw.text_atlas)
-			this.createTextAtlas();
-		var atlas = this.text_atlas;
+		if(!Draw.font_atlas)
+			this.createFontAtlas();
+		var atlas = this.font_atlas;
 		var l = text.length;
 		var char_size = atlas.atlas.char_size;
 		var i_char_size = 1 / atlas.atlas.char_size;
@@ -419,7 +420,7 @@ var Draw = {
 	},
 
 
-	createTextAtlas: function()
+	createFontAtlas: function()
 	{
 		var canvas = createCanvas(512,512);
 		var fontsize = (canvas.width * 0.09)|0;
@@ -449,8 +450,8 @@ var Draw = {
 			}
 		}
 
-		this.text_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.NEAREST, minFilter: gl.LINEAR} );
-		this.text_atlas.atlas = atlas;
+		this.font_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.NEAREST, minFilter: gl.LINEAR} );
+		this.font_atlas.atlas = atlas;
 	},
 
 	linearize: function(array)

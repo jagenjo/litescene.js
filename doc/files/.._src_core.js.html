@@ -63,6 +63,8 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
+                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -135,6 +137,15 @@
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 function toArray(v) { return Array.apply( [], v ); }
+Object.defineProperty(Object.prototype, &quot;merge&quot;, { 
+    value: function(v) {
+        for(var i in v)
+			this[i] = v[i];
+    },
+    configurable: true,
+    writable: false,
+	enumerable: false  // uncomment to be explicit, though not necessary
+});
 
 /**
 * LS is the global scope for the global functions and containers of LiteScene

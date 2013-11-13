@@ -63,6 +63,8 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
+                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -190,17 +192,15 @@ GraphComponent.prototype.serialize = function()
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onStart_bind = this.onStart.bind(this);
-	this._onUpdate_bind = this.onUpdate.bind(this);
 
-	LEvent.bind(node,&quot;start&quot;, this._onStart_bind );
-	LEvent.bind(node,&quot;update&quot;, this._onUpdate_bind );
+	LEvent.bind(node,&quot;start&quot;, this.onStart, this );
+	LEvent.bind(node,&quot;update&quot;, this.onUpdate, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,&quot;start&quot;, this._onStart_bind );
-	LEvent.unbind(node,&quot;update&quot;, this._onUpdate_bind );
+	LEvent.unbind(node,&quot;start&quot;, this.onStart, this );
+	LEvent.unbind(node,&quot;update&quot;, this.onUpdate, this );
 }
 
 
@@ -219,11 +219,11 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 
 GraphComponent.prototype.runGraph = function()
 {
-	if(!this._root._on_tree || !this.enabled) return;
+	if(!this._root._in_tree || !this.enabled) return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(this._root._on_tree, &quot;change&quot;);
+		LEvent.trigger(this._root._in_tree, &quot;change&quot;);
 }
 
 
@@ -288,6 +288,7 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
+
 	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];
 	this._graph_depth_texture_node = this._graph.findNodesByName(&quot;Depth Buffer&quot;)[0];
@@ -313,16 +314,14 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	this._onBeforeRender_bind = this.onBeforeRender.bind(this);
-	LEvent.bind(Scene,&quot;beforeRender&quot;, this._onBeforeRender_bind );
-	this._onAfterRender_bind = this.onAfterRender.bind(this);
-	LEvent.bind(Scene,&quot;afterRender&quot;, this._onAfterRender_bind );
+	LEvent.bind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.bind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,&quot;beforeRender&quot;, this._onBeforeRender_bind );
-	LEvent.unbind(Scene,&quot;afterRender&quot;, this._onAfterRender_bind );
+	LEvent.unbind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.unbind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
 	Renderer.color_rendertarget = null;
 	Renderer.depth_rendertarget = null;
 }

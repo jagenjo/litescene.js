@@ -41,9 +41,11 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 }
 
 
-RealtimeReflector.prototype.onRenderRT = function(e,camera)
+RealtimeReflector.prototype.onRenderRT = function(e)
 {
 	if(!this._root) return;
+
+	var camera = Renderer.main_camera;
 
 	this.refresh_rate = this.refresh_rate << 0;
 

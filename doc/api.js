@@ -12,6 +12,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.KnobComponent",
         "LS.Components.Light",
         "LS.Components.NodeManipulator",
+        "LS.Components.OculusController",
         "LS.Components.RealtimeReflector",
         "LS.Components.Spherize",
         "LS.Components.Transform",

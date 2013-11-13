@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/meshRenderer.js</title>
+    <title>../src/components/skinnedMeshRenderer.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -130,13 +130,14 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/meshRenderer.js</h1>
+                        <h1 class="file-heading">File: ../src/components/skinnedMeshRenderer.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
 
-function MeshRenderer(o)
+function SkinnedMeshRenderer(o)
 {
+	this.cpu_skinning = true;
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.submesh_id = -1;
@@ -151,13 +152,13 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
-MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
+SkinnedMeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
 
 //vars
-MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
-MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
+SkinnedMeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
+SkinnedMeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
+SkinnedMeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
+SkinnedMeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
 	var component = this.component;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
@@ -170,14 +171,14 @@ MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: funct
 	return t;
 }};
 
-MeshRenderer.prototype.onAddedToNode = function(node)
+SkinnedMeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
 		node.meshrenderer = this;
 	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
 }
 
-MeshRenderer.prototype.onRemovedFromNode = function(node)
+SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
 {
 	if(node.meshrenderer)
 		delete node[&quot;meshrenderer&quot;];
@@ -189,7 +190,7 @@ MeshRenderer.prototype.onRemovedFromNode = function(node)
 * @method configure
 * @param {Object} object with the serialized info
 */
-MeshRenderer.prototype.configure = function(o)
+SkinnedMeshRenderer.prototype.configure = function(o)
 {
 	this.mesh = o.mesh;
 	this.lod_mesh = o.lod_mesh;
@@ -205,7 +206,7 @@ MeshRenderer.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialized info
 */
-MeshRenderer.prototype.serialize = function()
+SkinnedMeshRenderer.prototype.serialize = function()
 {
 	var o = { 
 		mesh: this.mesh,
@@ -224,19 +225,19 @@ MeshRenderer.prototype.serialize = function()
 	return o;
 }
 
-MeshRenderer.prototype.getMesh = function() {
+SkinnedMeshRenderer.prototype.getMesh = function() {
 	if(typeof(this.mesh) === &quot;string&quot;)
 		return ResourcesManager.meshes[this.mesh];
 	return this.mesh;
 }
 
-MeshRenderer.prototype.getLODMesh = function() {
+SkinnedMeshRenderer.prototype.getLODMesh = function() {
 	if(typeof(this.lod_mesh) === &quot;string&quot;)
 		return ResourcesManager.meshes[this.lod_mesh];
 	return this.low_mesh;
 }
 
-MeshRenderer.prototype.getResources = function(res)
+SkinnedMeshRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.mesh) == &quot;string&quot;)
 		res[this.mesh] = Mesh;
@@ -245,8 +246,62 @@ MeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
+{
+	var node = Scene.getNode(name);
+	if(node)
+		return node.transform.getGlobalMatrix();
+	console.log(&quot;bone not found :&quot; + name);
+	return mat4.create();
+}
+
+SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
+{
+	var original_vertices = ref_mesh.vertexBuffers[&quot;a_vertex&quot;].data;
+	var weights = ref_mesh.vertexBuffers[&quot;a_weights&quot;].data;
+	var bone_indices = ref_mesh.vertexBuffers[&quot;a_bone_indices&quot;].data;
+
+	var vertices_buffer = skin_mesh.vertexBuffers[&quot;a_vertex&quot;];
+	var vertices = vertices_buffer.data;
+
+	//bone matrices
+	var bones = [];
+	for(var i in ref_mesh.bones)
+	{
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] );
+		bones.push( mat4.multiply( mat4.create(), ref_mesh.bones[i][1], mat ) );
+	}
+
+	//vertices
+	var temp = vec3.create();
+	for(var i = 0, l = vertices.length / 3; i &lt; l; ++i)
+	{
+		var ov = original_vertices.subarray(i*3, i*3+3);
+		var b = bone_indices.subarray(i*4, i*4+4);
+		var w = weights.subarray(i*4, i*4+4);
+
+		var v = vertices.subarray(i*3, i*3+3);
+
+		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
+
+		mat4.multiplyVec3(v, bmat[0] ,ov);
+		vec3.scale(v,v,w[0]);
+		for(var j = 1; j &lt; 4; ++j)
+			if(w[j] &gt; 0.0)
+			{
+				mat4.multiplyVec3(temp, bmat[j] ,ov);
+				vec3.scale(temp,temp,w[j]);
+				vec3.add(v,v,temp);
+			}
+	}
+
+	//upload
+	vertices_buffer.compile();
+}
+
+
 //MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
+SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -254,25 +309,44 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	var node = this._root;
 	if(!this._root) return;
 
-	/*
-	if(options.step == &quot;reflection&quot; &amp;&amp; !node.flags.seen_by_reflections)
-		return null;
-	if(options.step == &quot;main&quot; &amp;&amp; node.flags.seen_by_camera == false)
-		return null;
-	if(options.step == &quot;shadow&quot; &amp;&amp; !node.flags.cast_shadows)
-		return null;
-	*/
-
 	var RI = this._render_instance;
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
+
+	//this mesh doesnt have skinning info
+	if(!mesh.weights || !mesh.bone_indices)
+		return;
+
+	if(this.cpu_skinning)
+	{
+		if(!this._skinned_mesh || this._skinned_mesh._reference != mesh)
+		{
+			this._skinned_mesh = new GL.Mesh();
+			this._skinned_mesh._reference = mesh;
+
+			//clone 
+			for (var i in mesh.vertexBuffers)
+				this._skinned_mesh.vertexBuffers[i] = mesh.vertexBuffers[i];
+			for (var i in mesh.indexBuffers)
+				this._skinned_mesh.indexBuffers[i] = mesh.indexBuffers[i];
+
+			//new ones clonning old ones
+			this._skinned_mesh.addVertexBuffer(&quot;vertices&quot;,&quot;a_vertex&quot;, 3, new Float32Array( mesh.vertices ), gl.STREAM_DRAW );
+		}
+
+
+		//apply cpu skinning
+		this.applySkin(mesh, this._skinned_mesh);
+		RI.mesh = this._skinned_mesh;
+	}
+	else
+		RI.mesh = mesh;
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
 	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
@@ -287,8 +361,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	//return RI;
 }
 
-LS.registerComponent(MeshRenderer);
-LS.MeshRenderer = MeshRenderer;
+LS.registerComponent(SkinnedMeshRenderer);
+LS.SkinnedMeshRenderer = SkinnedMeshRenderer;
     </pre>
 </div>
 

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/followNode.js</title>
+    <title>../src/components/oculusController.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -130,54 +130,162 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/followNode.js</h1>
+                        <h1 class="file-heading">File: ../src/components/oculusController.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
 /**
-* FollowNode 
-* @class FollowNode
-* @constructor
-* @param {String} object to configure from
+* This component allow to integrate with Oculus Rift renderer
+* @class OculusController
+* @param {Object} o object with the serialized info
 */
-
-function FollowNode(o)
+function OculusController(o)
 {
-	this.node_name = &quot;&quot;;
-	this.fixed_y = false;
-	this.follow_camera = false;
+	this.enabled = true;
+	this.eye_distance = 1;
 	if(o)
 		this.configure(o);
 }
 
-FollowNode.icon = &quot;mini-icon-follow.png&quot;;
+OculusController.rift_server_url = &quot;http://tamats.com/uploads/RiftServer_0_3.zip&quot;;
+OculusController.icon = &quot;mini-icon-graph.png&quot;;
 
-FollowNode.prototype.onAddedToNode = function(node)
+OculusController.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,&quot;computeVisibility&quot;,this.updatePosition,this);
+	LEvent.bind(Scene,&quot;start&quot;, this.onStart, this );
+	LEvent.bind(Scene,&quot;stop&quot;, this.onStop, this );
+	LEvent.bind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.bind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.bind(node, &quot;collectCameras&quot;, this.onCollectCameras, this );
 }
 
-FollowNode.prototype.updatePosition = function(e,info)
+OculusController.prototype.onRemovedFromNode = function(node)
 {
-	if(!this._root) return;
+	LEvent.unbind(Scene,&quot;start&quot;, this.onStart, this );
+	LEvent.unbind(Scene,&quot;stoo&quot;, this.onStop, this );
+	LEvent.unbind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.unbind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.unbind(node, &quot;collectCameras&quot;, this.onCollectCameras, this );
+	Renderer.color_rendertarget = null;
+}
 
-	var pos = null;
+OculusController.prototype.onCollectCameras = function(e, cameras)
+{
+	var main_camera = Renderer.main_camera;
 
-	if(this.follow_camera)
-		pos =  info.camera.getEye();
-	else
+	if(this._orientation)
+		main_camera.setOrientation(this._orientation, true);
+
+	var right_vector = main_camera.getLocalVector([ this.eye_distance * 0.5, 0, 0]);
+	var left_vector = vec3.scale( vec3.create(), right_vector, -1);
+
+	if(!this._left_camera)
 	{
-		var target_node = Scene.getNode( this.node_name );
-		if(!target_node) return;
-		pos = target_node.transform.getPosition();
+		this._left_camera = new LS.Camera();
+		this._right_camera = new LS.Camera();
 	}
 
-	if(this.fixed_y)
-		pos[1] = this._root.transform._position[1];
-	this._root.transform.setPosition( pos );
+	var main_info = main_camera.serialize();
+
+	this._left_camera.configure(main_info);
+	this._right_camera.configure(main_info);
+
+	this._left_camera.eye = vec3.add(vec3.create(), main_camera.eye, left_vector);
+	this._right_camera.eye = vec3.add(vec3.create(), main_camera.eye, right_vector);
+
+	this._left_camera._viewport.set([0,0,0.5,1]);
+	this._right_camera._viewport.set([0.5,0,0.5,1]);
+	this._right_camera._ignore_clear = true;
+
+	cameras.push( this._left_camera, this._right_camera );
 }
 
-LS.registerComponent(FollowNode);
+OculusController.prototype.onStart = function(e)
+{
+	var ws = new WebSocket(&quot;ws://localhost:1981&quot;);
+	ws.onopen = function()
+	{
+		console.log(&quot;OVR connection stablished&quot;);
+	}
+
+	ws.onmessage = this.onMessage.bind(this);
+
+	ws.onclose = function()
+	{
+		console.log(&quot;OVR connection lost&quot;);
+	}
+
+	ws.onerror = function()
+	{
+		console.error(&quot;Oculus Server not found in your machine. To run an app using Oculus Rift you need to use a client side app, you can download it from: &quot; + OculusController.rift_server_url );
+	}
+
+	this._ws = ws;
+}
+
+OculusController.prototype.onMessage = function(e)
+{
+	var data = e.data;
+	data = JSON.parse(&quot;[&quot; + data + &quot;]&quot;);
+
+	var q = quat.create();
+	q.set( data );
+	var q2 = quat.fromValues(-1,0,0,0);	quat.multiply(q,q2,q);
+	this._orientation = q;
+
+	Scene.refresh();
+}
+
+OculusController.prototype.onStop = function(e)
+{
+	if(this._ws)
+	{
+		this._ws.close();
+		this._ws = null;
+	}
+}
+
+OculusController.prototype.onBeforeRender = function(e,dt)
+{
+	var width = 1024;
+	var height = 512;
+	var v = gl.getParameter(gl.VIEWPORT);
+	width = v[2];
+	height = v[3];
+
+	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height)
+	{
+		this._color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR });
+		ResourcesManager.textures[&quot;:ovr_color_buffer&quot;] = this._color_texture;
+	}
+
+	if(this.enabled)
+	{
+		Renderer.color_rendertarget = this._color_texture;
+	}
+	else
+	{
+		Renderer.color_rendertarget = null;
+	}
+
+	//Renderer.disable_main_render
+}
+
+
+OculusController.prototype.onAfterRender = function(e,dt)
+{
+	if(this._color_texture)
+		this._color_texture.toViewport();
+}
+
+
+LS.registerComponent(OculusController);
+window.OculusController = OculusController;
+
+
+
+
+
     </pre>
 </div>
 

@@ -10,6 +10,8 @@
 
 function Camera(o)
 {
+	this.enabled = true;
+
 	this._type = Camera.PERSPECTIVE;
 	this._eye = vec3.fromValues(0,100, 100); //change to position
 	this._center = vec3.fromValues(0,0,0);	//change to target
@@ -19,11 +21,15 @@ function Camera(o)
 	this._aspect = 1.0;
 	this._fov = 45; //persp
 	this._frustrum_size = 50; //ortho
+	this._viewport = new Float32Array([0,0,1,1]);
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
 	this._model_matrix = mat4.create(); //inverse of viewmatrix (used for local vectors)
+
+	this._to_texture = ""; //name
+	this._texture_size = 512;
 
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
@@ -76,6 +82,21 @@ Object.defineProperty( Camera.prototype, "center", {
 	},
 	set: function(v) {
 		this._center.set(v);
+		this._dirty_matrices = true;
+	}
+});
+
+/**
+* The up vector of the camera (in node space)
+* @property up {vec3}
+* @default [0,1,0]
+*/
+Object.defineProperty( Camera.prototype, "up", {
+	get: function() {
+		return this._up;
+	},
+	set: function(v) {
+		this._up.set(v);
 		this._dirty_matrices = true;
 	}
 });
@@ -165,13 +186,21 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
-	//this.updateNodeTransform();
+	LEvent.bind(node, "collectCameras", this.onCollectCameras, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
 {
 	if(node.camera == this)
 		delete node.camera;
+
+}
+
+Camera.prototype.onCollectCameras = function(e, cameras)
+{
+	if(!this.enabled)
+		return;
+	cameras.push(this);
 }
 
 /**
@@ -338,10 +367,14 @@ Camera.prototype.move = function(v)
 }
 
 
-Camera.prototype.rotate = function(angle_in_deg, axis)
+Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
 {
+	if(in_local_space)
+		this.getLocalVector(axis, axis);
+
 	var R = quat.setAxisAngle( quat.create(), axis, angle_in_deg * 0.0174532925 );
 	var front = vec3.subtract( vec3.create(), this._center, this._eye );
+
 	vec3.transformQuat(front, front, R );
 	vec3.add(this._center, this._eye, front);
 	this._dirty_matrices = true;
@@ -363,6 +396,56 @@ Camera.prototype.orbitDistanceFactor = function(f, center)
 	var front = vec3.subtract( vec3.create(), this._eye, center );
 	vec3.scale(front, front, f);
 	vec3.add(this._eye, center, front);
+	this._dirty_matrices = true;
+}
+
+Camera.prototype.setOrientation = function(q, use_oculus)
+{
+	var center = this.getCenter();
+	var eye = this.getEye();
+	var up = [0,1,0];
+
+	var to_target = vec3.sub( vec3.create(), center, eye );
+	var dist = vec3.length( to_target );
+
+	var front = null;
+	front = vec3.fromValues(0,0,-dist);
+
+	if(use_oculus)
+	{
+		vec3.rotateY( front, front, Math.PI * -0.5 );
+		vec3.rotateY( up, up, Math.PI * -0.5 );
+	}
+
+	vec3.transformQuat(front, front, q);
+	vec3.transformQuat(up, up, q);
+
+	if(use_oculus)
+	{
+		vec3.rotateY( front, front, Math.PI * 0.5 );
+		vec3.rotateY( up, up, Math.PI * 0.5 );
+	}
+
+	this.center = vec3.add( vec3.create(), eye, front );
+	this.up = up;
+
+	this._dirty_matrices = true;
+}
+
+Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
+{
+	var q = quat.create();
+	quat.fromEuler(q, [yaw, pitch, roll] );
+	this.setOrientation(q);
+}
+
+
+Camera.prototype.fromViewmatrix = function(mat)
+{
+	var M = mat4.invert( mat4.create(), mat );
+	this.eye = vec3.transformMat4(vec3.create(),vec3.create(),M);
+	this.center = vec3.transformMat4(vec3.create(),[0,0,-1],M);
+	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
 	this._dirty_matrices = true;
 }
 
@@ -432,6 +515,7 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 
 Camera.prototype.configure = function(o)
 {
+	if(o.enabled != null) this.enabled = o.enabled;
 	if(o.type != null) this._type = o.type;
 
 	if(o.eye != null) this._eye.set(o.eye);
@@ -443,6 +527,7 @@ Camera.prototype.configure = function(o)
 	if(o.fov != null) this._fov = o.fov;
 	if(o.aspect != null) this._aspect = o.aspect;
 	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+	if(o.viewport != null) this._viewport.set( o.viewport );
 
 	this.updateMatrices();
 }
@@ -450,6 +535,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
 		center: vec3.toArray(this._center),
@@ -458,7 +544,10 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
-		frustrum_size: this._frustrum_size
+		frustrum_size: this._frustrum_size,
+		viewport: toArray( this._viewport ),
+		to_texture: this._to_texture,
+		texture_size: this._texture_size
 	};
 
 	//clone

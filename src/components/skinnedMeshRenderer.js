@@ -113,7 +113,10 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 {
 	var node = Scene.getNode(name);
-	return node.transform.getGlobalMatrix();
+	if(node)
+		return node.transform.getGlobalMatrix();
+	console.log("bone not found :" + name);
+	return mat4.create();
 }
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)

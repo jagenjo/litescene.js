@@ -14,6 +14,19 @@ function TerrainRenderer(o)
 
 TerrainRenderer.icon = "mini-icon-terrain.png";
 
+TerrainRenderer.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+TerrainRenderer.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+	if(this._root.mesh == this._mesh)
+		delete this._root["mesh"];
+}
+
+
 /**
 * Configure the component getting the info from the object
 * @method configure
@@ -65,7 +78,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	if(this.subdivisions > 255)	this.subdivisions = 255; //MAX because of indexed nature
 
 	//optimize it
-	var size = this.size;
+	var hsize = this.size * 0.5;
 	var subdivisions = (this.subdivisions)<<0;
 	var height = this.height;
 
@@ -88,7 +101,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	var h,lh,th,rh,bh = 0;
 
 	var yScale = height;
-	var xzScale = size / (subdivisions-1);
+	var xzScale = hsize / (subdivisions-1);
 
 	for (var y = 0; y <= detailY; y++) 
 	{
@@ -98,7 +111,7 @@ TerrainRenderer.prototype.updateMesh = function()
 			var s = x / detailX;
 
 			h = data[y * subdivisions * 4 + x * 4] / 255; //red channel
-			vertices.push(size*(2 * s - 1), h * height, size*(2 * t - 1));
+			vertices.push(hsize*(2 * s - 1), h * height, hsize*(2 * t - 1));
 			coords.push(s,1-t);
 
 			if(x == 0 || y == 0 || x == detailX-1 || y == detailY-1)
@@ -122,14 +135,15 @@ TerrainRenderer.prototype.updateMesh = function()
 		}
 	}
 
-	var mesh = Mesh.load({triangles:triangles,vertices:vertices,normals:normals,coords:coords});
+	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles});
+	mesh.setBounding( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
 	this._mesh = mesh;
 	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
 }
 
 TerrainRenderer.PLANE = null;
 
-TerrainRenderer.prototype.getRenderInstance = function()
+TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	if(!this._mesh && this.heightmap)
 		this.updateMesh();
@@ -152,13 +166,16 @@ TerrainRenderer.prototype.getRenderInstance = function()
 		return RI;
 	};
 
+	RI.material = this._root.getMaterial();
 	RI.mesh = this._mesh;
+	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
-	return RI;
+	
+	instances.push(RI);
 }
 
 LS.registerComponent(TerrainRenderer);
