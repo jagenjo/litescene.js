@@ -1932,6 +1932,103 @@ String.prototype.hashCode = function(){
     }
     return hash;
 };
+// ******* LScript  **************************
+
+/**
+* LScript allows to compile code during execution time having a clean context
+* @class LScript
+* @constructor
+*/
+
+function LScript()
+{
+	this.code = "function update(dt) {\n\n}";
+	this.valid_callbacks = ["start","update"];
+	this.catch_exceptions = true;
+}
+
+LScript.prototype.compile = function( arg_vars )
+{
+	var argv_names = [];
+	var argv_values = [];
+	if(arg_vars)
+	{
+		for(var i in arg_vars)
+		{
+			argv_names.push(i);
+			argv_values.push( arg_vars[i]);
+		}
+	}
+	argv_names = argv_names.join(",");
+
+	var code = this.code;
+	var classname = "_LScript"
+	var argv = "component, node";
+	code = "var _myclass = function "+classname+"("+argv_names+") {\n" + code + "\n";
+
+	var extra_code = "";
+	for(var i in this.valid_callbacks)
+		extra_code += "	if(typeof("+this.valid_callbacks[i]+") != 'undefined') this."+ this.valid_callbacks[i] + " = "+this.valid_callbacks[i]+";\n";
+
+	extra_code += "\n}\n; _myclass;";
+
+	code += extra_code;
+	this._last_executed_code = code;
+
+	try
+	{
+		this._class = eval(code);
+		this._context = LScript.applyToConstructor( this._class, argv_values );
+	}
+	catch (err)
+	{
+		this._class = null;
+		this._context = null;
+		console.error("Error in script\n" + err);
+		console.error(this._last_executed_code );
+		if(this.onerror)
+			this.onerror(err);
+		return false;
+	}
+	return true;
+}
+
+LScript.prototype.hasMethod = function(name)
+{
+	if(!this._context || !this._context[name] || typeof(this._context[name]) != "function") 
+		return false;
+	return true;
+}
+
+
+LScript.prototype.callMethod = function(name, argv)
+{
+	if(!this._context || !this._context[name]) return;
+
+	if(!this.catch_exceptions)
+			return this._context[name].apply(this._context, argv);
+
+	try
+	{
+		return this._context[name].apply(this._context, argv);
+	}
+	catch(err)
+	{
+		console.error("Error in function\n" + err);
+		if(this.onerror)
+			this.onerror(err);
+	}
+}
+
+//from kybernetikos in stackoverflow
+LScript.applyToConstructor = function(constructor, argArray) {
+    var args = [null].concat(argArray);
+    var factoryFunction = constructor.bind.apply(constructor, args);
+    return new factoryFunction();
+}
+
+
+
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 function toArray(v) { return Array.apply( [], v ); }
@@ -5152,6 +5249,10 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 		this.updateMatrices();
 	var eye = this.getEye();
 	var pos = vec3.unproject(vec3.create(), [x,y,1], this._view_matrix, this._projection_matrix, viewport );
+
+	if(this.type == Camera.ORTHOGRAPHIC)
+		eye = vec3.unproject(vec3.create(), [x,y,0], this._view_matrix, this._projection_matrix, viewport );
+
 	var dir = vec3.subtract( vec3.create(), pos, eye );
 	vec3.normalize(dir, dir);
 	return { start: eye, direction: dir };
@@ -5643,15 +5744,6 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	var node = this._root;
 	if(!this._root) return;
 
-	/*
-	if(options.step == "reflection" && !node.flags.seen_by_reflections)
-		return null;
-	if(options.step == "main" && node.flags.seen_by_camera == false)
-		return null;
-	if(options.step == "shadow" && !node.flags.cast_shadows)
-		return null;
-	*/
-
 	var RI = this._render_instance;
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
@@ -5907,6 +5999,57 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 LS.registerComponent(SkinnedMeshRenderer);
 LS.SkinnedMeshRenderer = SkinnedMeshRenderer;
+
+function SpriteRenderer(o)
+{
+	if(o)
+		this.configure(o);
+}
+
+SpriteRenderer.icon = "mini-icon-teapot.png";
+
+SpriteRenderer.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+SpriteRenderer.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+
+//MeshRenderer.prototype.getRenderInstance = function(options)
+SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
+{
+	var node = this._root;
+	if(!this._root) return;
+
+	var mesh = this._mesh;
+	if(!this._mesh)
+	{
+		this._mesh = GL.Mesh.plane();
+		mesh = this._mesh;
+	}
+
+	var RI = this._render_instance;
+	if(!RI)
+		this._render_instance = RI = new RenderInstance(this._root, this);
+
+	//do not need to update
+	RI.matrix.set( this._root.transform._global_matrix );
+	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
+
+	RI.mesh = mesh;
+	RI.material = this._root.getMaterial();
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
+
+	instances.push(RI);
+}
+
+LS.registerComponent(SpriteRenderer);
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
@@ -7441,8 +7584,9 @@ function ScriptComponent(o)
 	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
 	this._component = null;
 
-	//this.component_name = "";
-	//this.register_component = false;
+	this._script = new LScript();
+	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+
 	this.configure(o);
 	if(this.code)
 		this.processCode();
@@ -7454,8 +7598,19 @@ ScriptComponent["@code"] = {type:'script'};
 
 ScriptComponent.valid_callbacks = ["start","update"];
 
+ScriptComponent.prototype.getContext = function()
+{
+	if(this._script)
+			return this._script._context;
+	return null;
+}
+
 ScriptComponent.prototype.processCode = function()
 {
+	this._script.code = this.code;
+	this._script.compile({component:this, node: this._root});
+
+	/*
 	var name = this.component_name || "__last_component";
 	var code = this.code;
 	code = "function "+name+"(component, node) {\n" + code + "\n";
@@ -7468,22 +7623,6 @@ ScriptComponent.prototype.processCode = function()
 
 	//disabled feature
 	var register = false && this.component_name && this.register_component;
-
-	/* this creates a new component on the fly but seems dangerous
-	if(register)
-	{
-		extra_code += name + ".prototype.onStart = function() { if(this.start) this.start(); }\n";
-		extra_code += name + ".prototype.onUpdate = function(e,dt) { if(this.update) this.update(dt); }\n";
-		extra_code += name + ".prototype.onAddedToNode = function(node) { \
-			LEvent.bind(Scene,'start', this.onStart.bind(this) );\n\
-			LEvent.bind(Scene,'update', this.onUpdate.bind(this) );\n\
-		};\n";
-		extra_code += name + ".prototype.onRemovedFromNode = function(node) { \
-			LEvent.unbind(Scene,'start', (function() { if(this.start) this.start(); }).bind(this) );\n\
-			LEvent.unbind(Scene,'update', (function(e,dt) { if(this.update) this.update(dt); }).bind(this) );\n\
-		};\n";
-	}
-	*/
 
 	code += extra_code;
 
@@ -7503,6 +7642,7 @@ ScriptComponent.prototype.processCode = function()
 		trace("Error in script\n" + err);
 		trace(this._last_executed_code );
 	}
+	*/
 }
 
 
@@ -7524,14 +7664,18 @@ ScriptComponent.prototype.onStart = function()
 {
 	this.processCode();
 
-	if(this.enabled && this._component && this._component.start)
-		this._component.start();
+	this._script.callMethod("start");
+
+	//if(this.enabled && this._component && this._component.start)
+	//	this._component.start();
 }
 
 ScriptComponent.prototype.onUpdate = function(e,dt)
 {
-	if(this.enabled && this._component && this._component.update)
-		this._component.update(dt);
+	this._script.callMethod("update",[dt]);
+
+	//if(this.enabled && this._component && this._component.update)
+	//	this._component.update(dt);
 }
 
 

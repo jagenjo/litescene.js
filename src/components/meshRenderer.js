@@ -118,15 +118,6 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	var node = this._root;
 	if(!this._root) return;
 
-	/*
-	if(options.step == "reflection" && !node.flags.seen_by_reflections)
-		return null;
-	if(options.step == "main" && node.flags.seen_by_camera == false)
-		return null;
-	if(options.step == "shadow" && !node.flags.cast_shadows)
-		return null;
-	*/
-
 	var RI = this._render_instance;
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);

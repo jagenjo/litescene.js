@@ -4,8 +4,9 @@ function ScriptComponent(o)
 	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
 	this._component = null;
 
-	//this.component_name = "";
-	//this.register_component = false;
+	this._script = new LScript();
+	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+
 	this.configure(o);
 	if(this.code)
 		this.processCode();
@@ -17,8 +18,19 @@ ScriptComponent["@code"] = {type:'script'};
 
 ScriptComponent.valid_callbacks = ["start","update"];
 
+ScriptComponent.prototype.getContext = function()
+{
+	if(this._script)
+			return this._script._context;
+	return null;
+}
+
 ScriptComponent.prototype.processCode = function()
 {
+	this._script.code = this.code;
+	this._script.compile({component:this, node: this._root});
+
+	/*
 	var name = this.component_name || "__last_component";
 	var code = this.code;
 	code = "function "+name+"(component, node) {\n" + code + "\n";
@@ -31,22 +43,6 @@ ScriptComponent.prototype.processCode = function()
 
 	//disabled feature
 	var register = false && this.component_name && this.register_component;
-
-	/* this creates a new component on the fly but seems dangerous
-	if(register)
-	{
-		extra_code += name + ".prototype.onStart = function() { if(this.start) this.start(); }\n";
-		extra_code += name + ".prototype.onUpdate = function(e,dt) { if(this.update) this.update(dt); }\n";
-		extra_code += name + ".prototype.onAddedToNode = function(node) { \
-			LEvent.bind(Scene,'start', this.onStart.bind(this) );\n\
-			LEvent.bind(Scene,'update', this.onUpdate.bind(this) );\n\
-		};\n";
-		extra_code += name + ".prototype.onRemovedFromNode = function(node) { \
-			LEvent.unbind(Scene,'start', (function() { if(this.start) this.start(); }).bind(this) );\n\
-			LEvent.unbind(Scene,'update', (function(e,dt) { if(this.update) this.update(dt); }).bind(this) );\n\
-		};\n";
-	}
-	*/
 
 	code += extra_code;
 
@@ -66,6 +62,7 @@ ScriptComponent.prototype.processCode = function()
 		trace("Error in script\n" + err);
 		trace(this._last_executed_code );
 	}
+	*/
 }
 
 
@@ -87,14 +84,18 @@ ScriptComponent.prototype.onStart = function()
 {
 	this.processCode();
 
-	if(this.enabled && this._component && this._component.start)
-		this._component.start();
+	this._script.callMethod("start");
+
+	//if(this.enabled && this._component && this._component.start)
+	//	this._component.start();
 }
 
 ScriptComponent.prototype.onUpdate = function(e,dt)
 {
-	if(this.enabled && this._component && this._component.update)
-		this._component.update(dt);
+	this._script.callMethod("update",[dt]);
+
+	//if(this.enabled && this._component && this._component.update)
+	//	this._component.update(dt);
 }
 
 

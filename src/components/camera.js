@@ -508,6 +508,10 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 		this.updateMatrices();
 	var eye = this.getEye();
 	var pos = vec3.unproject(vec3.create(), [x,y,1], this._view_matrix, this._projection_matrix, viewport );
+
+	if(this.type == Camera.ORTHOGRAPHIC)
+		eye = vec3.unproject(vec3.create(), [x,y,0], this._view_matrix, this._projection_matrix, viewport );
+
 	var dir = vec3.subtract( vec3.create(), pos, eye );
 	vec3.normalize(dir, dir);
 	return { start: eye, direction: dir };
