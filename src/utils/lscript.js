@@ -10,6 +10,7 @@ function LScript()
 {
 	this.code = "function update(dt) {\n\n}";
 	this.valid_callbacks = ["start","update"];
+	this.extracode = "";
 	this.catch_exceptions = true;
 }
 
@@ -28,9 +29,10 @@ LScript.prototype.compile = function( arg_vars )
 	argv_names = argv_names.join(",");
 
 	var code = this.code;
+
 	var classname = "_LScript"
 	var argv = "component, node";
-	code = "var _myclass = function "+classname+"("+argv_names+") {\n" + code + "\n";
+	code = "var _myclass = function "+classname+"("+argv_names+") {\n" + this.extracode + "\n" + code + "\n";
 
 	var extra_code = "";
 	for(var i in this.valid_callbacks)

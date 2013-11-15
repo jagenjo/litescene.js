@@ -178,7 +178,7 @@ var Renderer = {
 	* @method enableCamera
 	* @param {Camera} camera
 	*/
-	enableCamera: function(camera, options)
+	enableCamera: function(camera, options, skip_viewport)
 	{
 		//camera.setActive();
 		var width = Renderer._full_viewport[2];
@@ -186,15 +186,18 @@ var Renderer = {
 		var final_width = width * camera._viewport[2];
 		var final_height = height * camera._viewport[3];
 
-		if(options && options.ignore_viewports)
+		if(!skip_viewport)
 		{
-			camera._aspect = width / height;
-			gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
-		}
-		else
-		{
-			camera._aspect = final_width / final_height;
-			gl.viewport( camera._viewport[0] * width, camera._viewport[1] * height, camera._viewport[2] * width, camera._viewport[3] * height );
+			if(options && options.ignore_viewports)
+			{
+				camera._aspect = width / height;
+				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
+			}
+			else
+			{
+				camera._aspect = final_width / final_height;
+				gl.viewport( camera._viewport[0] * width, camera._viewport[1] * height, camera._viewport[2] * width, camera._viewport[3] * height );
+			}
 		}
 
 		camera.updateMatrices();
