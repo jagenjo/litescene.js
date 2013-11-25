@@ -63,6 +63,8 @@ var LS = {
 	*/
 	request: function(request)
 	{
+		if(typeof(request) === "string")
+			throw("LS.request expects object, not string. Use LS.get or LS.getJSON");
 		var dataType = request.dataType || "text";
 		if(dataType == "json") //parse it locally
 			dataType = "text";
@@ -96,6 +98,15 @@ var LS = {
         xhr.onload = function(load)
 		{
 			var response = this.response;
+			if(this.status != 200)
+			{
+				var err = "Error " + this.status;
+				if(request.error)
+					request.error(err);
+				LEvent.trigger(xhr,"fail", this.status);
+				return;
+			}
+
 			if(request.dataType == "json") //chrome doesnt support json format
 			{
 				try
@@ -123,14 +134,43 @@ var LS = {
 			}
 			if(request.success)
 				request.success.call(this, response);
+			LEvent.trigger(xhr,"done",response);
 		};
-        xhr.onerror = request.error;
+        xhr.onerror = function(err) {
+			if(request.error)
+				request.error(err);
+			LEvent.trigger(this,"fail", err);
+		}
         xhr.send(request.data);
+
 		return xhr;
 
 		//return $.ajax(request);
+	},
+
+	get: function(url, data)
+	{
+		return LS.request({url:url, data:data});
+	},
+
+	getJSON: function(url, data)
+	{
+		return LS.request({url:url, data:data, dataType:"json"});
 	}
 };
+
+//simple promises
+XMLHttpRequest.prototype.done = function(callback)
+{
+	LEvent.bind(this,"done", function(e,err) { callback(err); } );
+	return this;
+}
+
+XMLHttpRequest.prototype.fail = function(callback)
+{
+	LEvent.bind(this,"fail", function(e,err) { callback(err); } );
+	return this;
+}
 
 /**
 * copy the properties of one class into another class
@@ -219,6 +259,13 @@ function getObjectClassName(obj) {
 }
 LS.getObjectClassName = getObjectClassName;
 
+
+/**
+* Returns an string with the class name
+* @method getClassName
+* @param {Object} class object
+* @return {String} returns the string with the name
+*/
 function getClassName(obj) {
     if (obj && obj.toString) {
         var arr = obj.toString().match(
@@ -232,7 +279,68 @@ function getClassName(obj) {
 }
 LS.getClassName = getClassName;
 
+/**
+* Returns the attributes of one object and the type
+* @method getObjectAttributes
+* @param {Object} object
+* @return {Object} returns object with attribute name and its type
+*/
 
+function getObjectAttributes(object)
+{
+	if(object.getAttributes)
+		return object.getAttributes();
+	var class_object = object.constructor;
+	if(class_object.attributes)
+		return class_object.attributes;
+
+	var o = {};
+	for(var i in object)
+	{
+		//ignore some
+		if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+			continue;
+
+		if(class_object != Object)
+		{
+			var hint = class_object["@"+i];
+			if(hint && hint.type)
+			{
+				o[i] = hint.type;
+				continue;
+			}
+		}
+
+		var v = object[i];
+		if(v == null)
+			o[i] = null;
+		else if ( isFunction(v) )
+			continue;
+		else if (  v.constructor === Number )
+			o[i] = "number";
+		else if ( v.constructor === String )
+			o[i] = "string";
+		else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
+		{
+			if(v.length == 2)
+				o[i] = "vec2";
+			else if(v.length == 3)
+				o[i] = "vec3";
+			else if(v.length == 4)
+				o[i] = "vec4";
+			else if(v.length == 9)
+				o[i] = "mat3";
+			else if(v.length == 16)
+				o[i] = "mat4";
+			else
+				o[i] = "*";
+		}
+		else
+			o[i] = "*";
+	}
+	return o;
+}
+LS.getObjectAttributes = getObjectAttributes;
 
 
 //used to generate resources that doesnt come from files (procedural textures, meshes, etc)
@@ -318,3 +426,6 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
 	return result;
 }
+
+
+

@@ -21,6 +21,12 @@ function Transform(o)
 Transform.temp_matrix = mat4.create();
 Transform.icon = "mini-icon-gizmo.png";
 
+Transform.attributes = {
+		position:"vec3",
+		scale:"vec3",
+		rotation:"quat"
+	};
+
 Transform.prototype.onAddedToNode = function(node)
 {
 	if(!node.transform)
@@ -511,6 +517,30 @@ Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 }
 
 /**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuat = function(quaternion)
+{
+	quat.multiply(this._rotation, quaternion, this._rotation);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuatLocal = function(quaternion)
+{
+	quat.multiply(this._rotation, this._rotation, quaternion);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
 * scale the object
 * @method scale
 * @param {number} x 
@@ -636,8 +666,8 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVector
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVector = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this._rotation );
@@ -647,22 +677,21 @@ Transform.prototype.transformVector = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVectorGlobal
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
 /**
-* Applies the transformation to a vector (rotate but not translate)
-* If no destination is specified the transform is applied to vec
+* Applies the transformation using a matrix
 * @method applyTransformMatrix
-* @param {[[x,y,z]]} vector
-* @param {[[x,y,z]]} destination (optional)
+* @param {mat4} matrix with the transform
+* @param {bool} is_global (optional)
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
-	if(!is_global || !this._parent)
+	if(!this._parent)
 	{
 		if(is_global)
 			mat4.multiply(this._local_matrix, t, this._local_matrix);

@@ -132,6 +132,21 @@ ComponentContainer.prototype.removeAllComponents = function()
 
 
 /**
+* Returns if the class has an instance of this component
+* @method hasComponent
+* @param {bool}
+*/
+ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
+{
+	if(!this._components) return;
+	for(var i in this._components)
+		if( this._components[i].constructor == component_class )
+		return true;
+	return false;
+}
+
+
+/**
 * Returns the first component of this container that is of the same class
 * @method getComponent
 * @param {Object} component_class the class to search a component from (not the name of the class)
@@ -158,3 +173,4 @@ ComponentContainer.prototype.processActionInComponents = function(action_name,pa
 		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
 			this._components[i][action_name](params);
 }
+

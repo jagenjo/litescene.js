@@ -265,7 +265,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 			{
 				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
 				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = "";
+					macros.USE_BUMP_FACTOR = "";
 			}
 			continue;
 		}

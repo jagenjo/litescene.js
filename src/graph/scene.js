@@ -139,8 +139,20 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var r = [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 		var node = this.getNode();
+		/*
+		var r = [];
+		for(var i = 0; i < node._components.length; ++i)
+		{
+			var comp = node._components[i];
+			var classname = getObjectClassName(comp);
+			var vars = getObjectAttributes(comp);
+			r.push([classname,vars]);
+		}
+		return r;
+		*/
+
+		var r = [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 		if(node.light)
 			r.push(["Light","Light"]);
 		if(node.camera)

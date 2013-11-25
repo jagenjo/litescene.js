@@ -78,13 +78,6 @@ var Renderer = {
 		LEvent.trigger(Scene, "afterRenderShadows" );
 		scene.sendEventToNodes("afterRenderShadows" );
 
-		/*
-		//generate RTs
-		if(scene.settings.enable_rts && !options.skip_rts)
-			if(scene.rt_cameras.length > 0)
-				this.renderRTCameras();
-		*/
-
 		//render one camera or all the cameras
 		var current_camera = null;
 
@@ -180,6 +173,8 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, options, skip_viewport)
 	{
+		LEvent.trigger(camera, "cameraEnabled", options);
+
 		//camera.setActive();
 		var width = Renderer._full_viewport[2];
 		var height = Renderer._full_viewport[3];
@@ -200,10 +195,15 @@ var Renderer = {
 			}
 		}
 
+		//compute matrices
 		camera.updateMatrices();
+
+		//store matrices locally
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
+
+		//set as the current camera
 		this.active_camera = camera;
 	},
 
@@ -323,7 +323,7 @@ var Renderer = {
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
-		this.enableInstanceFlags(instance, node, options);
+		this.enableInstanceFlags(instance, options);
 
 		//alpha blending flags
 		if(mat.blending == Material.ADDITIVE_BLENDING)
@@ -449,7 +449,7 @@ var Renderer = {
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
-		this.enableInstanceFlags(instance, node, options);
+		this.enableInstanceFlags(instance, options);
 
 		if(node.flags.alpha_shadows == true && (mat.getTexture("color") || mat.getTexture("opacity")))
 		{
@@ -548,7 +548,7 @@ var Renderer = {
 		instance.render(shader);
 	},
 
-	enableInstanceFlags: function(instance)
+	enableInstanceFlags: function(instance, options)
 	{
 		var flags = instance.flags;
 
@@ -571,10 +571,12 @@ var Renderer = {
 			gl.depthMask(false);
 
 		//when to reverse the normals?
+		var order = gl.CCW;
 		if(flags & RI_CW)
-			gl.frontFace(gl.CW);
-		else
-			gl.frontFace(gl.CCW);
+			order = gl.CW;
+		if(options.reverse_backfacing)
+			order = order == gl.CW ? gl.CCW : gl.CW;
+		gl.frontFace(order);
 	},
 
 	//collects the rendering instances and lights that are visible
@@ -839,7 +841,7 @@ var Renderer = {
 				gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 1.0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
-			Renderer.enableCamera(cam);
+			Renderer.enableCamera(cam,options,true);
 			Renderer.renderSceneMeshes(step,options);
 		});
 

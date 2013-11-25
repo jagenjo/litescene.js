@@ -430,7 +430,8 @@
 				vec2 uvs_worldxz = v_pos.xz * 0.1;
 				vec2 uvs_worldyz = v_pos.yz * 0.1;
 				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-				uvs_screen.y = 1.0 - uvs_screen.y;
+				//uvs_screen.y = 1.0 - uvs_screen.y;
+				//uvs_screen.x = 1.0 - uvs_screen.x;
 
 
 				vec3 prev_norm = N;
@@ -679,29 +680,35 @@
 				#ifdef FIRST_PASS
 				#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
 					float reflection_factor = abs(u_reflection_info.x) * pow( 1.0 - clamp(0.0,EdotN,1.0), u_reflection_info.y );
+					float reflection_gloss = 0.0;
 
 					#ifdef USE_REFLECTIVITY_TEXTURE
 						reflection_factor *= texture2D(reflectivity_texture, USE_REFLECTIVITY_TEXTURE).x;
 					#endif
 
 					#ifdef USE_SPECULAR_IN_REFLECTION
-						reflection_factor *= spec_factor;
+						//reflection_factor *= spec_factor;
+						reflection_gloss = max(0.0, (20.0 - spec_gloss) / 4.0);
 					#endif
 
 					vec3 reflection_color;
 					#ifdef USE_ENVIRONMENT_CUBEMAP
-						reflection_color = textureCube(environment_cubemap,vec3(-1.,1.,1.)*R).xyz;
+						reflection_color = textureCube(environment_cubemap,vec3(-1.,1.,1.)*R, reflection_gloss).xyz;
 					#endif
 					#ifdef USE_ENVIRONMENT_TEXTURE
 						temp_v2 = vec2(0.0);
+						vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
+						env_uv.x = 1.0 - env_uv.x;
+
 						#ifdef USE_NORMAL_TEXTURE
 							//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
 							temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
 							#ifdef USE_NORMALMAP_FACTOR
 								temp_v2 *= u_normalmap_factor;
 							#endif
+							env_uv += temp_v2;
 						#endif
-						reflection_color = texture2D(environment_texture, (USE_ENVIRONMENT_TEXTURE + temp_v2)).xyz;
+						reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
 					#endif
 
 					if( u_reflection_info.x > 0.0 )

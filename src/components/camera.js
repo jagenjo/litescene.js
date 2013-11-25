@@ -33,12 +33,22 @@ function Camera(o)
 
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
+
+	//LEvent.bind(this,"cameraEnabled", this.onCameraEnabled.bind(this));
 }
 
 Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
+
+/*
+Camera.prototype.onCameraEnabled = function(e,options)
+{
+	if(this.flip_x)
+		options.reverse_backfacing = !options.reverse_backfacing;
+}
+*/
 
 /**
 * Camera type, could be Camera.PERSPECTIVE or Camera.ORTHOGRAPHIC
@@ -229,6 +239,11 @@ Camera.prototype.updateMatrices = function()
 	else
 		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
+	if(this.flip_x) //used in reflections
+	{
+		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
+	};
+
 	//if(this._root && this._root.transform)
 
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
@@ -304,24 +319,48 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	var eye = vec3.clone( this._eye );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
-	return vec3.clone( this._eye );
+		return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
+	return eye;
+}
+
+Camera.prototype.getFront = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.rotateVec3(front, this._root.transform.getGlobalMatrixRef(), front );
+	return vec3.normalize(front, front);
 }
 
 
 Camera.prototype.getUp = function()
 {
+	var up = vec3.clone( this._up );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
-	return vec3.clone( this._up );
+		return mat4.rotateVec3( up, this._root.transform.getGlobalMatrixRef(), up );
+	return up;
 }
+
+Camera.prototype.getTop = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	var right = vec3.cross( vec3.create(), this._up, front );
+	var top = vec3.cross( vec3.create(), front, right );
+	vec3.normalize(top,top);
+
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.rotateVec3( top, this._root.transform.getGlobalMatrixRef(), top );
+	return top;
+}
+
 
 Camera.prototype.getCenter = function()
 {
+	var center = vec3.clone( this._center );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
-	return vec3.clone( this._center );
+		return mat4.multiplyVec3(center, this._root.transform.getGlobalMatrixRef(), center );
+	return center;
 }
 
 Camera.prototype.setEye = function(v)
@@ -334,6 +373,7 @@ Camera.prototype.setCenter = function(v)
 	return vec3.copy( this._center, v );
 }
 
+/*
 //in global coordinates (when inside a node)
 Camera.prototype.getGlobalFront = function(dest)
 {
@@ -358,6 +398,7 @@ Camera.prototype.getGlobalTop = function(dest)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }
+*/
 
 Camera.prototype.move = function(v)
 {

@@ -529,6 +529,11 @@ var Draw = {
 		mat4.invert(this.model_matrix, this.model_matrix);
 	},
 
+	fromTranslationFrontTop: function(position, front, top)
+	{
+		mat4.fromTranslationFrontTop(this.model_matrix, position, front, top);
+	},
+
 	project: function( position, dest )
 	{
 		dest = dest || vec3.create();

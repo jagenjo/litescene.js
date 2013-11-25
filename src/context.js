@@ -88,7 +88,7 @@ Context.prototype._ondraw = function()
 		this.onPreDraw();
 
 	if(Scene._must_redraw || this.force_redraw )
-		Scene.render( Scene.current_camera, this.render_options );
+		Scene.render( Scene.getCamera(), this.render_options );
 
 	if(this.onDraw)
 		this.onDraw();
@@ -113,7 +113,7 @@ Context.prototype._onmouse = function(e)
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
-		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+		var node = Renderer.getNodeAtCanvasPosition(Scene, null, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 

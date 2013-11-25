@@ -20,9 +20,11 @@ function GraphComponent(o)
 		var graphnode = LiteGraph.createNode("scene/node");
 		this._graph.add(graphnode);
 	}
+	
+	LEvent.bind(this,"trigger", this.trigger, this );	
 }
 
-GraphComponent["@on_event"] = { type:"enum", values: ["start","update"] };
+GraphComponent["@on_event"] = { type:"enum", values: ["start","update","trigger"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -79,6 +81,11 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 {
 	if(this.on_event == "update")
 		this.runGraph();
+}
+
+GraphComponent.prototype.trigger = function(e)
+{
+	this.runGraph();
 }
 
 GraphComponent.prototype.runGraph = function()

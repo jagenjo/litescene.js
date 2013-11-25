@@ -1195,6 +1195,11 @@ var Draw = {
 		mat4.invert(this.model_matrix, this.model_matrix);
 	},
 
+	fromTranslationFrontTop: function(position, front, top)
+	{
+		mat4.fromTranslationFrontTop(this.model_matrix, position, front, top);
+	},
+
 	project: function( position, dest )
 	{
 		dest = dest || vec3.create();
@@ -2097,6 +2102,8 @@ var LS = {
 	*/
 	request: function(request)
 	{
+		if(typeof(request) === "string")
+			throw("LS.request expects object, not string. Use LS.get or LS.getJSON");
 		var dataType = request.dataType || "text";
 		if(dataType == "json") //parse it locally
 			dataType = "text";
@@ -2130,6 +2137,15 @@ var LS = {
         xhr.onload = function(load)
 		{
 			var response = this.response;
+			if(this.status != 200)
+			{
+				var err = "Error " + this.status;
+				if(request.error)
+					request.error(err);
+				LEvent.trigger(xhr,"fail", this.status);
+				return;
+			}
+
 			if(request.dataType == "json") //chrome doesnt support json format
 			{
 				try
@@ -2157,14 +2173,43 @@ var LS = {
 			}
 			if(request.success)
 				request.success.call(this, response);
+			LEvent.trigger(xhr,"done",response);
 		};
-        xhr.onerror = request.error;
+        xhr.onerror = function(err) {
+			if(request.error)
+				request.error(err);
+			LEvent.trigger(this,"fail", err);
+		}
         xhr.send(request.data);
+
 		return xhr;
 
 		//return $.ajax(request);
+	},
+
+	get: function(url, data)
+	{
+		return LS.request({url:url, data:data});
+	},
+
+	getJSON: function(url, data)
+	{
+		return LS.request({url:url, data:data, dataType:"json"});
 	}
 };
+
+//simple promises
+XMLHttpRequest.prototype.done = function(callback)
+{
+	LEvent.bind(this,"done", function(e,err) { callback(err); } );
+	return this;
+}
+
+XMLHttpRequest.prototype.fail = function(callback)
+{
+	LEvent.bind(this,"fail", function(e,err) { callback(err); } );
+	return this;
+}
 
 /**
 * copy the properties of one class into another class
@@ -2253,6 +2298,13 @@ function getObjectClassName(obj) {
 }
 LS.getObjectClassName = getObjectClassName;
 
+
+/**
+* Returns an string with the class name
+* @method getClassName
+* @param {Object} class object
+* @return {String} returns the string with the name
+*/
 function getClassName(obj) {
     if (obj && obj.toString) {
         var arr = obj.toString().match(
@@ -2266,7 +2318,68 @@ function getClassName(obj) {
 }
 LS.getClassName = getClassName;
 
+/**
+* Returns the attributes of one object and the type
+* @method getObjectAttributes
+* @param {Object} object
+* @return {Object} returns object with attribute name and its type
+*/
 
+function getObjectAttributes(object)
+{
+	if(object.getAttributes)
+		return object.getAttributes();
+	var class_object = object.constructor;
+	if(class_object.attributes)
+		return class_object.attributes;
+
+	var o = {};
+	for(var i in object)
+	{
+		//ignore some
+		if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+			continue;
+
+		if(class_object != Object)
+		{
+			var hint = class_object["@"+i];
+			if(hint && hint.type)
+			{
+				o[i] = hint.type;
+				continue;
+			}
+		}
+
+		var v = object[i];
+		if(v == null)
+			o[i] = null;
+		else if ( isFunction(v) )
+			continue;
+		else if (  v.constructor === Number )
+			o[i] = "number";
+		else if ( v.constructor === String )
+			o[i] = "string";
+		else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
+		{
+			if(v.length == 2)
+				o[i] = "vec2";
+			else if(v.length == 3)
+				o[i] = "vec3";
+			else if(v.length == 4)
+				o[i] = "vec4";
+			else if(v.length == 9)
+				o[i] = "mat3";
+			else if(v.length == 16)
+				o[i] = "mat4";
+			else
+				o[i] = "*";
+		}
+		else
+			o[i] = "*";
+	}
+	return o;
+}
+LS.getObjectAttributes = getObjectAttributes;
 
 
 //used to generate resources that doesnt come from files (procedural textures, meshes, etc)
@@ -2352,6 +2465,9 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
 	return result;
 }
+
+
+
 
 /**
 * Static class that contains all the resources loaded, parsed and ready to use.
@@ -3281,7 +3397,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 			{
 				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
 				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = "";
+					macros.USE_BUMP_FACTOR = "";
 			}
 			continue;
 		}
@@ -3842,6 +3958,21 @@ ComponentContainer.prototype.removeAllComponents = function()
 
 
 /**
+* Returns if the class has an instance of this component
+* @method hasComponent
+* @param {bool}
+*/
+ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
+{
+	if(!this._components) return;
+	for(var i in this._components)
+		if( this._components[i].constructor == component_class )
+		return true;
+	return false;
+}
+
+
+/**
 * Returns the first component of this container that is of the same class
 * @method getComponent
 * @param {Object} component_class the class to search a component from (not the name of the class)
@@ -3868,6 +3999,8 @@ ComponentContainer.prototype.processActionInComponents = function(action_name,pa
 		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
 			this._components[i][action_name](params);
 }
+
+
 //TODO: a class to remove the tree methods from SceneTree and SceneNode
 
 function CompositePattern()
@@ -4076,6 +4209,12 @@ function Transform(o)
 
 Transform.temp_matrix = mat4.create();
 Transform.icon = "mini-icon-gizmo.png";
+
+Transform.attributes = {
+		position:"vec3",
+		scale:"vec3",
+		rotation:"quat"
+	};
 
 Transform.prototype.onAddedToNode = function(node)
 {
@@ -4567,6 +4706,30 @@ Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 }
 
 /**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuat = function(quaternion)
+{
+	quat.multiply(this._rotation, quaternion, this._rotation);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuatLocal = function(quaternion)
+{
+	quat.multiply(this._rotation, this._rotation, quaternion);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
 * scale the object
 * @method scale
 * @param {number} x 
@@ -4692,8 +4855,8 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVector
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVector = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this._rotation );
@@ -4703,22 +4866,21 @@ Transform.prototype.transformVector = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVectorGlobal
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
 /**
-* Applies the transformation to a vector (rotate but not translate)
-* If no destination is specified the transform is applied to vec
+* Applies the transformation using a matrix
 * @method applyTransformMatrix
-* @param {[[x,y,z]]} vector
-* @param {[[x,y,z]]} destination (optional)
+* @param {mat4} matrix with the transform
+* @param {bool} is_global (optional)
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
-	if(!is_global || !this._parent)
+	if(!this._parent)
 	{
 		if(is_global)
 			mat4.multiply(this._local_matrix, t, this._local_matrix);
@@ -4777,12 +4939,22 @@ function Camera(o)
 
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
+
+	//LEvent.bind(this,"cameraEnabled", this.onCameraEnabled.bind(this));
 }
 
 Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
+
+/*
+Camera.prototype.onCameraEnabled = function(e,options)
+{
+	if(this.flip_x)
+		options.reverse_backfacing = !options.reverse_backfacing;
+}
+*/
 
 /**
 * Camera type, could be Camera.PERSPECTIVE or Camera.ORTHOGRAPHIC
@@ -4973,6 +5145,11 @@ Camera.prototype.updateMatrices = function()
 	else
 		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
+	if(this.flip_x) //used in reflections
+	{
+		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
+	};
+
 	//if(this._root && this._root.transform)
 
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
@@ -5048,24 +5225,48 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	var eye = vec3.clone( this._eye );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
-	return vec3.clone( this._eye );
+		return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
+	return eye;
+}
+
+Camera.prototype.getFront = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.rotateVec3(front, this._root.transform.getGlobalMatrixRef(), front );
+	return vec3.normalize(front, front);
 }
 
 
 Camera.prototype.getUp = function()
 {
+	var up = vec3.clone( this._up );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
-	return vec3.clone( this._up );
+		return mat4.rotateVec3( up, this._root.transform.getGlobalMatrixRef(), up );
+	return up;
 }
+
+Camera.prototype.getTop = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	var right = vec3.cross( vec3.create(), this._up, front );
+	var top = vec3.cross( vec3.create(), front, right );
+	vec3.normalize(top,top);
+
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.rotateVec3( top, this._root.transform.getGlobalMatrixRef(), top );
+	return top;
+}
+
 
 Camera.prototype.getCenter = function()
 {
+	var center = vec3.clone( this._center );
 	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
-	return vec3.clone( this._center );
+		return mat4.multiplyVec3(center, this._root.transform.getGlobalMatrixRef(), center );
+	return center;
 }
 
 Camera.prototype.setEye = function(v)
@@ -5078,6 +5279,7 @@ Camera.prototype.setCenter = function(v)
 	return vec3.copy( this._center, v );
 }
 
+/*
 //in global coordinates (when inside a node)
 Camera.prototype.getGlobalFront = function(dest)
 {
@@ -5102,6 +5304,7 @@ Camera.prototype.getGlobalTop = function(dest)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
 }
+*/
 
 Camera.prototype.move = function(v)
 {
@@ -6053,6 +6256,139 @@ SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
 }
 
 LS.registerComponent(SpriteRenderer);
+function AnnotationComponent(o)
+{
+	this.text = "";
+	this.notes = [];
+	this._screen_pos = vec3.create();
+	this._selected = null;
+	this.configure(o);
+}
+
+AnnotationComponent.editor_color = [0.33,0.874,0.56,0.9];
+
+
+AnnotationComponent.onShowMainAnnotation = function (node)
+{
+	if(typeof(AnnotationModule) != "undefined")
+		AnnotationModule.editAnnotation(node);
+}
+
+AnnotationComponent.onShowPointAnnotation = function (node, note)
+{
+	var comp = node.getComponent( AnnotationComponent );
+	if(!comp) return;
+
+	//in editor...
+	if(typeof(AnnotationModule) != "undefined")
+	{
+		AnnotationModule.showDialog( note.text, { 
+			item: note, 
+			on_close: inner_update_note.bind(note), 
+			on_delete: function(info) { 
+				comp.removeAnnotation(info.item);
+				Scene.refresh();
+			},
+			on_focus: function(info) { 
+				AnnotationModule.focusInAnnotation(info.item);
+				comp._selected = info.item;
+			}});
+	}
+
+
+	function inner_update_note(text)
+	{
+		this.text = text;
+	}
+}
+
+AnnotationComponent.prototype.addAnnotation = function(item)
+{
+	this._selected = null;
+	this.notes.push(item);
+}
+
+AnnotationComponent.prototype.removeAnnotation = function(item)
+{
+	this._selected = null;
+	var pos = this.notes.indexOf(item);
+	if(pos != -1)
+		this.notes.splice(pos,1);
+}
+
+AnnotationComponent.prototype.setStartTransform = function()
+{
+	this.start_position = this.getObjectCenter();
+}
+
+AnnotationComponent.prototype.getObjectCenter = function()
+{
+	var center = vec3.create();
+	var mesh = this._root.getMesh();
+	if(mesh && mesh.bounding )
+		vec3.copy( center, mesh.bounding.aabb_center );
+	var pos = this._root.transform.transformPointGlobal(center, vec3.create());
+	return pos;
+}
+
+AnnotationComponent.prototype.serialize = function()
+{
+	var o = {
+		text: this.text,
+		notes: [],
+		start_position: this.start_position
+	};
+	
+	for(var i in this.notes)
+	{
+		var note = this.notes[i];
+		for(var j in note)
+		{
+			if(note[j].constructor == Float32Array)
+				Array.prototype.slice.call( note[j] );
+		}
+		o.notes.push(note);
+	}
+	return o;
+}
+
+AnnotationComponent.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node,"mousedown",this.onMouse.bind(this),this);
+}
+
+AnnotationComponent.prototype.onRemovedFromNode = function(node)
+{
+}
+
+AnnotationComponent.prototype.onMouse = function(type, e)
+{
+	if(e.eventType == "mousedown")
+	{
+		var node = this._root;
+		this._screen_pos[2] = 0;
+		var dist = vec3.dist( this._screen_pos, [e.canvasx, gl.canvas.height - e.canvasy, 0] );
+		if(dist < 30)
+		{
+			var that = this;
+			AnnotationComponent.onShowMainAnnotation(this._root);
+		}
+
+		for(var i in this.notes)
+		{
+			var note = this.notes[i];
+			dist = vec2.dist( note._end_screen, [e.mousex, gl.canvas.height - e.mousey] );
+			if(dist < 30)
+			{
+				this._selected = note;
+				AnnotationComponent.onShowPointAnnotation(this._root, note);
+				return true;
+			}
+		}
+	}
+}
+
+LS.registerComponent(AnnotationComponent);
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
@@ -6510,12 +6846,11 @@ LS.registerComponent(FollowNode);
 
 function GeometricPrimitive(o)
 {
-	//this.size = 10;
-	this.two_sided = false;
+	this.size = 10;
+	this.subdivisions = 10;
 	this.geometry = GeometricPrimitive.CUBE;
+	this.primitive = null;
 	this.align_z = false;
-	if(!GeometricPrimitive.MESHES)
-		GeometricPrimitive.MESHES = {};
 
 	if(o)
 		this.configure(o);
@@ -6526,10 +6861,9 @@ GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
 
-GeometricPrimitive.MESHES = null;
-
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
+GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
 {
@@ -6541,27 +6875,28 @@ GeometricPrimitive.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
-/**
-* Configure the component getting the info from the object
-* @method configure
-* @param {Object} object to configure from
-*/
-
-GeometricPrimitive.prototype.configure = function(o)
+GeometricPrimitive.prototype.updateMesh = function()
 {
-	cloneObject(o, this);
-}
+	var subdivisions = Math.max(1,this.subdivisions|0);
 
-/**
-* Serialize this component)
-* @method serialize
-* @return {Object} object with the serialization info
-*/
+	var key = "" + this.geometry + "|" + this.size + "|" + subdivisions + "|" + this.align_z;
 
-GeometricPrimitive.prototype.serialize = function()
-{
-	 var o = cloneObject(this);
-	 return o;
+	switch (this.geometry)
+	{
+		case GeometricPrimitive.CUBE: 
+			this._mesh = GL.Mesh.cube({size: this.size, normals:true,coords:true});
+			break;
+		case GeometricPrimitive.PLANE:
+			this._mesh = GL.Mesh.plane({size: this.size, detail: subdivisions, xz: this.align_z, normals:true,coords:true});
+			break;
+		case GeometricPrimitive.CYLINDER:
+			this._mesh = GL.Mesh.cylinder({size: this.size, subdivisions: subdivisions, normals:true,coords:true});
+			break;
+		case GeometricPrimitive.SPHERE:
+			this._mesh = GL.Mesh.sphere({size: this.size, "long":subdivisions, lat: subdivisions, normals:true,coords:true});
+			break;
+	}
+	this._key = key;
 }
 
 //GeometricPrimitive.prototype.getRenderInstance = function()
@@ -6571,59 +6906,25 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	var mesh = null;
 	if(!this._root) return;
 
-	if(this.geometry == GeometricPrimitive.CUBE)
-	{
-		if(!GeometricPrimitive.MESHES[GeometricPrimitive.CUBE])
-			GeometricPrimitive.MESHES[GeometricPrimitive.CUBE] = GL.Mesh.cube({normals:true,coords:true});
-		mesh = GeometricPrimitive.MESHES[GeometricPrimitive.CUBE];
-	}
-	else if(this.geometry == GeometricPrimitive.PLANE)
-	{
-		if(!GeometricPrimitive.MESHES[GeometricPrimitive.PLANE])
-			GeometricPrimitive.MESHES[GeometricPrimitive.PLANE] = GL.Mesh.plane({xz:true,normals:true,coords:true});
-		mesh = GeometricPrimitive.MESHES[GeometricPrimitive.PLANE];
-	}
-	else if(this.geometry == GeometricPrimitive.CYLINDER)
-	{
-		if(!GeometricPrimitive.MESHES[GeometricPrimitive.CYLINDER])
-			GeometricPrimitive.MESHES[GeometricPrimitive.CYLINDER] = GL.Mesh.cylinder({normals:true,coords:true});
-		mesh = GeometricPrimitive.MESHES[GeometricPrimitive.CYLINDER];
-	}
-	else if(this.geometry == GeometricPrimitive.SPHERE)
-	{
-		if(!GeometricPrimitive.MESHES[GeometricPrimitive.SPHERE])
-			GeometricPrimitive.MESHES[GeometricPrimitive.SPHERE] = GL.Mesh.sphere({"long":32,"lat":32,normals:true,coords:true});
-		mesh = GeometricPrimitive.MESHES[GeometricPrimitive.SPHERE];
-	}
-	else 
-		return null;
+	var subdivisions = Math.max(1,this.subdivisions|0);
+	var key = "" + this.geometry + "|" + this.size + "|" + subdivisions + "|" + this.align_z;
+
+	if(!this._mesh || this._key != key)
+		this.updateMesh();
 
 	var RI = this._render_instance;
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
-
-	if(this.align_z)
-	{
-		mat4.rotateX( RI.matrix, RI.matrix, Math.PI * -0.5 );
-		//mat4.rotateZ( matrix, Math.PI );
-	}
-	//mat4.scale(matrix, [this.size,this.size,this.size]);
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-
-	this._root.mesh = mesh;
-
-	RI.mesh = mesh;
+	RI.mesh = this._root.mesh = this._mesh;
 	RI.material = this.material || this._root.getMaterial();
-
+	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
-	if(this.two_sided)
-		RI.flags ^= RI_CULL_FACE;
 
 	instances.push(RI);
-	//return RI;
 }
 
 LS.registerComponent(GeometricPrimitive);
@@ -6650,9 +6951,11 @@ function GraphComponent(o)
 		var graphnode = LiteGraph.createNode("scene/node");
 		this._graph.add(graphnode);
 	}
+	
+	LEvent.bind(this,"trigger", this.trigger, this );	
 }
 
-GraphComponent["@on_event"] = { type:"enum", values: ["start","update"] };
+GraphComponent["@on_event"] = { type:"enum", values: ["start","update","trigger"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -6709,6 +7012,11 @@ GraphComponent.prototype.onUpdate = function(e,dt)
 {
 	if(this.on_event == "update")
 		this.runGraph();
+}
+
+GraphComponent.prototype.trigger = function(e)
+{
+	this.runGraph();
 }
 
 GraphComponent.prototype.runGraph = function()
@@ -7482,6 +7790,7 @@ function RealtimeReflector(o)
 	this.clip_offset = 0.5; //to avoid ugly edges near clipping plane
 	this.rt_name = "";
 	this.use_cubemap = false;
+	this.generate_mipmaps = false;
 	this.use_mesh_info = false;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
@@ -7525,14 +7834,18 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		this.texture_size = 256;
 
 	var texture_type = this.use_cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type )
-		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type });
+	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
+	{
+		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		this._rt.mipmaps = this.generate_mipmaps;
+	}
 
+	//compute planes
 	var plane_center = this._root.transform.getGlobalPosition();
 	var plane_normal = this._root.transform.getTop();
 	var cam_eye = camera.getEye();
 	var cam_center = camera.getCenter();
-	var cam_up = camera._up;
+	var cam_up = camera.getUp();
 
 	//use the first vertex and normal from a mesh
 	if(this.use_mesh_info)
@@ -7540,8 +7853,8 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		var mesh = this._root.getMesh();
 		if(mesh)
 		{
-			plane_center = this._root.transform.transformPointGlobal( [mesh.vertices[0],mesh.vertices[1],mesh.vertices[2]] );
-			plane_normal = this._root.transform.transformVectorGlobal( [mesh.normals[0],mesh.normals[1],mesh.normals[2]] );
+			plane_center = this._root.transform.transformPointGlobal( mesh.vertices.subarray(0,3) );
+			plane_normal = this._root.transform.transformVectorGlobal( mesh.normals.subarray(0,3) );
 		}
 	}
 
@@ -7557,6 +7870,7 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		reflected_camera.eye = geo.reflectPointInPlane( cam_eye, plane_center, plane_normal );
 		reflected_camera.center = geo.reflectPointInPlane( cam_center, plane_center, plane_normal );
 		reflected_camera.up = geo.reflectPointInPlane( cam_up, [0,0,0], plane_normal );
+		//reflected_camera.up = cam_up;
 
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
@@ -7568,6 +7882,13 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 	{
 		reflected_camera.eye = plane_center;
 		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+	}
+
+
+	if(this.generate_mipmaps)
+	{
+		this._rt.bind();
+		gl.generateMipmap(this._rt.texture_type);
 	}
 
 	this._root.flags.visible = visible;
@@ -8381,8 +8702,20 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var r = [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 		var node = this.getNode();
+		/*
+		var r = [];
+		for(var i = 0; i < node._components.length; ++i)
+		{
+			var comp = node._components[i];
+			var classname = getObjectClassName(comp);
+			var vars = getObjectAttributes(comp);
+			r.push([classname,vars]);
+		}
+		return r;
+		*/
+
+		var r = [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 		if(node.light)
 			r.push(["Light","Light"]);
 		if(node.camera)
@@ -9822,13 +10155,6 @@ var Renderer = {
 		LEvent.trigger(Scene, "afterRenderShadows" );
 		scene.sendEventToNodes("afterRenderShadows" );
 
-		/*
-		//generate RTs
-		if(scene.settings.enable_rts && !options.skip_rts)
-			if(scene.rt_cameras.length > 0)
-				this.renderRTCameras();
-		*/
-
 		//render one camera or all the cameras
 		var current_camera = null;
 
@@ -9924,6 +10250,8 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, options, skip_viewport)
 	{
+		LEvent.trigger(camera, "cameraEnabled", options);
+
 		//camera.setActive();
 		var width = Renderer._full_viewport[2];
 		var height = Renderer._full_viewport[3];
@@ -9944,10 +10272,15 @@ var Renderer = {
 			}
 		}
 
+		//compute matrices
 		camera.updateMatrices();
+
+		//store matrices locally
 		mat4.copy( this._view_matrix, camera._view_matrix );
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
+
+		//set as the current camera
 		this.active_camera = camera;
 	},
 
@@ -10067,7 +10400,7 @@ var Renderer = {
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
-		this.enableInstanceFlags(instance, node, options);
+		this.enableInstanceFlags(instance, options);
 
 		//alpha blending flags
 		if(mat.blending == Material.ADDITIVE_BLENDING)
@@ -10193,7 +10526,7 @@ var Renderer = {
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
 		//FLAGS
-		this.enableInstanceFlags(instance, node, options);
+		this.enableInstanceFlags(instance, options);
 
 		if(node.flags.alpha_shadows == true && (mat.getTexture("color") || mat.getTexture("opacity")))
 		{
@@ -10292,7 +10625,7 @@ var Renderer = {
 		instance.render(shader);
 	},
 
-	enableInstanceFlags: function(instance)
+	enableInstanceFlags: function(instance, options)
 	{
 		var flags = instance.flags;
 
@@ -10315,10 +10648,12 @@ var Renderer = {
 			gl.depthMask(false);
 
 		//when to reverse the normals?
+		var order = gl.CCW;
 		if(flags & RI_CW)
-			gl.frontFace(gl.CW);
-		else
-			gl.frontFace(gl.CCW);
+			order = gl.CW;
+		if(options.reverse_backfacing)
+			order = order == gl.CW ? gl.CCW : gl.CW;
+		gl.frontFace(order);
 	},
 
 	//collects the rendering instances and lights that are visible
@@ -10583,7 +10918,7 @@ var Renderer = {
 				gl.clearColor(Scene.background_color[0],Scene.background_color[1],Scene.background_color[2], Scene.background_color.length > 3 ? Scene.background_color[3] : 1.0);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
-			Renderer.enableCamera(cam);
+			Renderer.enableCamera(cam,options,true);
 			Renderer.renderSceneMeshes(step,options);
 		});
 
@@ -13827,7 +14162,7 @@ Context.prototype._ondraw = function()
 		this.onPreDraw();
 
 	if(Scene._must_redraw || this.force_redraw )
-		Scene.render( Scene.current_camera, this.render_options );
+		Scene.render( Scene.getCamera(), this.render_options );
 
 	if(this.onDraw)
 		this.onDraw();
@@ -13852,7 +14187,7 @@ Context.prototype._onmouse = function(e)
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
-		var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+		var node = Renderer.getNodeAtCanvasPosition(Scene, null, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 

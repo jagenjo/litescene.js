@@ -19,6 +19,7 @@
 ../src/components/skinnedMeshRenderer.js
 ../src/components/spriteRenderer.js
 
+../src/components/annotations.js
 ../src/components/animator.js
 ../src/components/cameraController.js
 ../src/components/nodeManipulator.js
