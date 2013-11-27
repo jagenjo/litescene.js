@@ -11,9 +11,11 @@ function CameraController(o)
 	this.rot_speed = 1;
 	this.wheel_speed = 1;
 	this.smooth = false;
+	this.allow_panning = true;
 	this.cam_type = "orbit"; //"fps"
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
+	this._collision = vec3.create();
 
 	this.configure(o);
 }
@@ -22,6 +24,7 @@ CameraController.icon = "mini-icon-cameracontroller.png";
 
 CameraController.prototype.onAddedToNode = function(node)
 {
+	LEvent.bind(node,"mousedown",this.onMouse,this);
 	LEvent.bind(node,"mousemove",this.onMouse,this);
 	LEvent.bind(node,"mousewheel",this.onMouse,this);
 	LEvent.bind(node,"keydown",this.onKey,this);
@@ -74,6 +77,11 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		return;
 	}
 
+	if(mouse_event.eventType == "mousedown")
+	{
+		this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), this._collision );
+	}
+
 	//regular mouse dragging
 	if(!mouse_event.dragging)
 		return;
@@ -94,10 +102,13 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		}
 		else if(this.cam_type == "orbit")
 		{
-			if(mouse_event.ctrlKey) //pan
+			if(this.allow_panning && (mouse_event.ctrlKey || mouse_event.button == 1)) //pan
 			{
-				var delta = cam.getLocalVector( [ this.speed * -mouse_event.deltax * 0.1, this.speed * mouse_event.deltay * 0.1, 0]);
-				cam.move(delta);
+				var collision = vec3.create();
+				this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), collision );
+				var delta = vec3.sub( vec3.create(), this._collision, collision);
+				cam.move( delta );
+				//vec3.copy(  this._collision, collision );
 				cam.updateMatrices();
 			}
 			else
@@ -119,6 +130,21 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 		}
 	}
+}
+
+CameraController.prototype.testPerpendicularPlane = function(x,y, center, result)
+{
+	var cam = this._root.camera;
+	var ray = cam.getRayInPixel( x, gl.canvas.height - y );
+
+	var front = cam.getFront();
+	var center = center || cam.getCenter();
+	var result = result || vec3.create();
+
+	//test against plane
+	if( geo.testRayPlane( ray.start, ray.direction, center, front, result ) )
+		return true;
+	return false;
 }
 
 CameraController.prototype.onKey = function(e, key_event)

@@ -791,7 +791,7 @@ SceneNode.prototype.setId = function(new_id)
 
 	if( scene.getNode(new_id) != null)
 	{
-		trace("ID already in use");
+		console.error("ID already in use");
 		return false;
 	}
 
@@ -812,6 +812,7 @@ SceneNode.prototype.getResources = function(res)
 	for(var i in this._components)
 		if( this._components[i].getResources )
 			this._components[i].getResources( res );
+
 	//res in material
 	if(this.material)
 	{

@@ -157,22 +157,22 @@ var ResourcesManager = {
 		var resource = null;
 		if(data.object_type && window[ data.object_type ] )
 			resource = new window[ data.object_type ](data);
-
-		if(resource)
+		else if(typeof(resource) == "object")
+			resource = data; //its a JSON
+		else
 		{
-			if(!resource.fullpath)
-				resource.fullpath = url;
-
-			if(resource.getResources) //associate resources
-			{
-				ResourcesManager.loadResources( resource.getResources({}) );
-			}
-
-			this.registerResource(url,resource);
-			return resource;
+			console.error("Unknown resource");
+			return null;
 		}
 
-		console.log("Unknown resource loaded");
+		if(!resource.fullpath)
+			resource.fullpath = url;
+
+		if(resource.getResources) //associate resources
+			ResourcesManager.loadResources( resource.getResources({}) );
+
+		this.registerResource(url,resource);
+		return resource;
 	},
 	
 	/**
@@ -547,8 +547,6 @@ var ResourcesManager = {
 			this.textures[filename] = res;
 		else if(type == "Material")
 			Scene.materials[filename] = res;
-		else
-			console.log("Unknown res type: " + type);
 
 		this.resources[filename] = res;
 		LEvent.trigger(this,"resource_loaded", res);

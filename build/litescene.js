@@ -2628,22 +2628,22 @@ var ResourcesManager = {
 		var resource = null;
 		if(data.object_type && window[ data.object_type ] )
 			resource = new window[ data.object_type ](data);
-
-		if(resource)
+		else if(typeof(resource) == "object")
+			resource = data; //its a JSON
+		else
 		{
-			if(!resource.fullpath)
-				resource.fullpath = url;
-
-			if(resource.getResources) //associate resources
-			{
-				ResourcesManager.loadResources( resource.getResources({}) );
-			}
-
-			this.registerResource(url,resource);
-			return resource;
+			console.error("Unknown resource");
+			return null;
 		}
 
-		console.log("Unknown resource loaded");
+		if(!resource.fullpath)
+			resource.fullpath = url;
+
+		if(resource.getResources) //associate resources
+			ResourcesManager.loadResources( resource.getResources({}) );
+
+		this.registerResource(url,resource);
+		return resource;
 	},
 	
 	/**
@@ -3018,8 +3018,6 @@ var ResourcesManager = {
 			this.textures[filename] = res;
 		else if(type == "Material")
 			Scene.materials[filename] = res;
-		else
-			console.log("Unknown res type: " + type);
 
 		this.resources[filename] = res;
 		LEvent.trigger(this,"resource_loaded", res);
@@ -3458,7 +3456,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 		macros.USE_PROJECTIVE_LIGHT = "";
 
 	if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-		macros.USE_AMBIENT_ONLY = "";
+		macros.USE_IGNORE_LIGHT = "";
 
 	if(light.offset > 0.001)
 		macros.USE_LIGHT_OFFSET = "";
@@ -3534,7 +3532,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		}
 
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
+		if(texture.type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
@@ -3563,7 +3561,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 			continue;
 		else if(i == "bump")
 			continue;
-		else if(i == "irradiance")
+		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
@@ -6460,9 +6458,11 @@ function CameraController(o)
 	this.rot_speed = 1;
 	this.wheel_speed = 1;
 	this.smooth = false;
+	this.allow_panning = true;
 	this.cam_type = "orbit"; //"fps"
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
+	this._collision = vec3.create();
 
 	this.configure(o);
 }
@@ -6471,6 +6471,7 @@ CameraController.icon = "mini-icon-cameracontroller.png";
 
 CameraController.prototype.onAddedToNode = function(node)
 {
+	LEvent.bind(node,"mousedown",this.onMouse,this);
 	LEvent.bind(node,"mousemove",this.onMouse,this);
 	LEvent.bind(node,"mousewheel",this.onMouse,this);
 	LEvent.bind(node,"keydown",this.onKey,this);
@@ -6523,6 +6524,11 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		return;
 	}
 
+	if(mouse_event.eventType == "mousedown")
+	{
+		this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), this._collision );
+	}
+
 	//regular mouse dragging
 	if(!mouse_event.dragging)
 		return;
@@ -6543,10 +6549,13 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		}
 		else if(this.cam_type == "orbit")
 		{
-			if(mouse_event.ctrlKey) //pan
+			if(this.allow_panning && (mouse_event.ctrlKey || mouse_event.button == 1)) //pan
 			{
-				var delta = cam.getLocalVector( [ this.speed * -mouse_event.deltax * 0.1, this.speed * mouse_event.deltay * 0.1, 0]);
-				cam.move(delta);
+				var collision = vec3.create();
+				this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), collision );
+				var delta = vec3.sub( vec3.create(), this._collision, collision);
+				cam.move( delta );
+				//vec3.copy(  this._collision, collision );
 				cam.updateMatrices();
 			}
 			else
@@ -6568,6 +6577,21 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 		}
 	}
+}
+
+CameraController.prototype.testPerpendicularPlane = function(x,y, center, result)
+{
+	var cam = this._root.camera;
+	var ray = cam.getRayInPixel( x, gl.canvas.height - y );
+
+	var front = cam.getFront();
+	var center = center || cam.getCenter();
+	var result = result || vec3.create();
+
+	//test against plane
+	if( geo.testRayPlane( ray.start, ray.direction, center, front, result ) )
+		return true;
+	return false;
 }
 
 CameraController.prototype.onKey = function(e, key_event)
@@ -7876,12 +7900,12 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
 
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
 	}
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
 	}
 
 
@@ -8998,15 +9022,35 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTexture.title = "Texture";
 	LGraphTexture.desc = "Texture";
+	LGraphTexture.widgets_info = {"name": { widget:"texture"} };
+
+	LGraphTexture.textures_container = null; //where to seek for the textures
+	LGraphTexture.loadTextureCallback = null;
 
 	LGraphTexture.prototype.onExecute = function()
 	{
 		if(!this.properties.name)
 			return;
 
-		var tex = ResourcesManager.textures[ this.properties.name ];
+		if(!ResourcesManager) return;
+
+		var container = LGraphTexture.textures_container;
+		if(!container && typeof(ResourcesManager) != "undefined")
+			container = ResourcesManager.textures;
+		if(!container)
+			throw("Cannot load texture, container of textures not found");
+
+		var tex = container[ this.properties.name ];
 		if(!tex && this.properties.name[0] != ":")
-			ResourcesManager.loadImage( this.properties.name );
+		{
+			if(!LGraphTexture.loadTextureCallback && typeof(ResourcesManager) != "undefined")
+				LGraphTexture.loadTextureCallback = ResourcesManager.loadImage.bind(ResourcesManager);
+
+			var loader = LGraphTexture.loadTextureCallback;
+			if(loader)
+				loader( this.properties.name );
+			return;
+		}
 		this.setOutputData(0, tex);
 	}
 
@@ -9050,10 +9094,10 @@ if(typeof(LiteGraph) != "undefined")
 			<p>uvcode must be vec2, is optional</p>\
 			<p><strong>uv:</strong> tex. coords</p><p><strong>color:</strong> texture</p><p><strong>colorB:</strong> textureB</p><p><strong>time:</strong> scene time</p><p><strong>value:</strong> input value</p>";
 
-		this.properties = {value:1, uvcode:"", pixelcode:"color + colorB * value"};
-		this.widgets_info = {"uvcode": { widget:"textarea", height: 100 }, "pixelcode": { widget:"textarea", height: 100 } };
+		this.properties = {value:1, uvcode:"", pixelcode:"color + colorB * value", low_precision: false };
 	}
 
+	LGraphTextureOperation.widgets_info = {"uvcode": { widget:"textarea", height: 100 }, "pixelcode": { widget:"textarea", height: 100 } };
 	LGraphTextureOperation.title = "Operation";
 	LGraphTextureOperation.desc = "Texture shader operation";
 
@@ -9080,6 +9124,9 @@ if(typeof(LiteGraph) != "undefined")
 			height = texB.height;
 			type = texB.type;
 		}
+
+		if(this.properties.low_precision)
+			type = gl.UNSIGNED_BYTE;
 
 		if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
 			this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
@@ -9441,6 +9488,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTextureCopy.title = "Copy";
 	LGraphTextureCopy.desc = "Copy Texture";
+	LGraphTextureCopy.widgets_info = { size: { widget:"combo", values:[0,32,64,128,256,512,1024,2048]} };
 
 	LGraphTextureCopy.prototype.onExecute = function()
 	{
@@ -9467,6 +9515,102 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("texture/copy", LGraphTextureCopy );
 	window.LGraphTextureCopy = LGraphTextureCopy;
+
+
+	// Texture LUT *****************************************
+	function LGraphTextureLUT()
+	{
+		this.addInput("Texture","Texture");
+		this.addInput("LUT","Texture");
+		this.addInput("Intensity","number");
+		this.addOutput("","Texture");
+		this.properties = { intensity: 1 };
+
+		if(!LGraphTextureLUT._shader)
+			LGraphTextureLUT._shader = new GL.Shader( LGraphTextureLUT.vertex_shader, LGraphTextureLUT.pixel_shader );
+	}
+
+	LGraphTextureLUT.title = "LUT";
+	LGraphTextureLUT.desc = "Apply LUT to Texture";
+
+	LGraphTextureLUT.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(!tex) return;
+
+		var lut_tex = this.getInputData(1);
+		if(!lut_tex)
+		{
+			this.setOutputData(0,tex);
+			return;
+		}
+		lut_tex.bind(0);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		var intensity = this.properties.intensity;
+		if( this.isInputConnected(2) )
+			this.properties.intensity = intensity = this.getInputData(2);
+
+		var width = tex.width;
+		var height = tex.height;
+		var temp = this._temp_texture;
+		if(!temp || temp.width != width || temp.height != height) //type is always UNSIGNED_BYTE
+			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
+
+		var mesh = Mesh.getScreenQuad();
+
+		this._temp_texture.drawTo(function() {
+			tex.bind(0);
+			lut_tex.bind(1);
+			LGraphTextureLUT._shader.uniforms({texture:0, textureB:1, u_amount: intensity, uViewportSize:[tex.width,tex.height]}).draw(mesh);
+		});
+
+		this.setOutputData(0,this._temp_texture);
+	}
+
+	LGraphTextureLUT.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 coord;\n\
+			void main() {\n\
+				coord = a_coord; gl_Position = vec4(a_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureLUT.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 coord;\n\
+			uniform sampler2D texture;\n\
+			uniform sampler2D textureB;\n\
+			uniform float u_amount;\n\
+			\n\
+			void main() {\n\
+				 lowp vec4 textureColor = clamp( texture2D(texture, coord), vec4(0.0), vec4(1.0) );\n\
+				 mediump float blueColor = textureColor.b * 63.0;\n\
+				 mediump vec2 quad1;\n\
+				 quad1.y = floor(floor(blueColor) / 8.0);\n\
+				 quad1.x = floor(blueColor) - (quad1.y * 8.0);\n\
+				 mediump vec2 quad2;\n\
+				 quad2.y = floor(ceil(blueColor) / 8.0);\n\
+				 quad2.x = ceil(blueColor) - (quad2.y * 8.0);\n\
+				 highp vec2 texPos1;\n\
+				 texPos1.x = (quad1.x * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.r);\n\
+				 texPos1.y = 1.0 - ((quad1.y * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.g));\n\
+				 highp vec2 texPos2;\n\
+				 texPos2.x = (quad2.x * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.r);\n\
+				 texPos2.y = 1.0 - ((quad2.y * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.g));\n\
+				 lowp vec4 newColor1 = texture2D(textureB, texPos1);\n\
+				 lowp vec4 newColor2 = texture2D(textureB, texPos2);\n\
+				 lowp vec4 newColor = mix(newColor1, newColor2, fract(blueColor));\n\
+				 gl_FragColor = vec4( mix( textureColor.rgb, newColor.rgb, u_amount), textureColor.w);\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/LUT", LGraphTextureLUT );
+	window.LGraphTextureLUT = LGraphTextureLUT;
 
 	// Texture Mix *****************************************
 	function LGraphTextureChannels()
@@ -10086,6 +10230,9 @@ RenderInstance.prototype.render = function(shader)
 
 var Renderer = {
 
+	default_shader: "globalshader",
+	default_low_shader: "lowglobalshader",
+
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
 	generate_shadowmaps: true,
@@ -10149,7 +10296,7 @@ var Renderer = {
 		Renderer.main_camera = cameras[0];
 
 		//generate shadowmap
-		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled)
+		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled && !options.low_quality)
 			this.renderShadowMaps();
 
 		LEvent.trigger(Scene, "afterRenderShadows" );
@@ -10220,12 +10367,12 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//render scene
-			//RenderPipeline.renderSceneMeshes(options);
+			//RenderPipeline.renderInstances(options);
 
 			LEvent.trigger(scene, "beforeRenderScene", camera);
 			scene.sendEventToNodes("beforeRenderScene", camera);
 
-			Renderer.renderSceneMeshes("main",options);
+			Renderer.renderInstances("main",options);
 
 			LEvent.trigger(scene, "afterRenderScene", camera);
 			scene.sendEventToNodes("afterRenderScene", camera);
@@ -10285,7 +10432,7 @@ var Renderer = {
 	},
 
 	//Work in progress
-	renderSceneMeshes: function(step, options)
+	renderInstances: function(step, options)
 	{
 		var scene = this.current_scene || Scene;
 		options = options || {};
@@ -10313,7 +10460,7 @@ var Renderer = {
 			}
 		}
 
-
+		//reset state of everything!
 		gl.enable( gl.DEPTH_TEST );
 		gl.depthFunc( gl.LESS );
 		gl.disable( gl.BLEND );
@@ -10424,7 +10571,11 @@ var Renderer = {
 			s[1].bind(i);
 		}
 
-		var shader_name = instance.material.shader_name || "globalshader";
+		var shader_name = instance.material.shader_name;
+		if(options.low_quality)
+			shader_name = Renderer.default_low_shader;
+		else
+			shader_name = Renderer.default_shader;
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -10760,8 +10911,8 @@ var Renderer = {
 		//sort RIs in Z for alpha sorting
 		if(this.sort_nodes_in_z)
 		{
-			opaque_instances.sort(function(a,b) { return a._dist < b._dist ? -1 : (a._dist > b._dist ? +1 : 0); });
-			alpha_instances.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
+			opaque_instances.sort(function(a,b) { return a._dist - b._dist; });
+			alpha_instances.sort(function(a,b) { return b._dist - a._dist; });
 			//opaque_meshes = opaque_meshes.sort( function(a,b){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); });
 			//alpha_meshes = alpha_meshes.sort( function(b,a){return vec3.dist( a.center, camera.eye ) - vec3.dist( b.center, camera.eye ); }); //reverse sort
 		}
@@ -10792,7 +10943,7 @@ var Renderer = {
 	},
 
 	//Renders the scene to an RT, not in use anymore
-	renderSceneMeshesToRT: function(cam, texture, options)
+	renderInstancesToRT: function(cam, texture, options)
 	{
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -10808,7 +10959,7 @@ var Renderer = {
 			if(options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
-			Renderer.renderSceneMeshes("main",options);
+			Renderer.renderInstances("main",options);
 		}
 	},
 
@@ -10855,7 +11006,7 @@ var Renderer = {
 					if( !light._lightMatrix ) light._lightMatrix = mat4.create();
 					mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
 
-					Renderer.renderSceneMeshes("shadow", { is_shadowmap: true });
+					Renderer.renderInstances("shadow", { is_shadowmap: true });
 				});
 			}
 		}
@@ -10883,12 +11034,13 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 				var options = {is_rt: true, clipping_plane: camera.clipping_plane};
-				Renderer.renderSceneMeshes("rts",options);
+				Renderer.renderInstances("rts",options);
 			});
 		}
 	},
 	*/
 
+	/* reverse
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
 		{dir: [-1,0,0], up:[0,1,0]}, //negative X
@@ -10897,6 +11049,17 @@ var Renderer = {
 		{dir: [0,0,-1], up:[0,1,0]}, //positive Z
 		{dir: [0,0,1], up:[0,1,0]} //negative Z
 	],
+	*/
+
+	cubemap_camera_parameters: [
+		{dir: [1,0,0], up:[0,-1,0]}, //positive X
+		{dir: [-1,0,0], up:[0,-1,0]}, //negative X
+		{dir: [0,1,0], up:[0,0,1]}, //positive Y
+		{dir: [0,-1,0], up:[0,0,-1]}, //negative Y
+		{dir: [0,0,1], up:[0,-1,0]}, //positive Z
+		{dir: [0,0,-1], up:[0,-1,0]} //negative Z
+	],
+
 
 	//renders the current scene to a cubemap centered in the given position
 	renderToCubemap: function(position, size, texture, options, near, far, step)
@@ -10919,7 +11082,7 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
 			Renderer.enableCamera(cam,options,true);
-			Renderer.renderSceneMeshes(step,options);
+			Renderer.renderInstances(step,options);
 		});
 
 		return texture;
@@ -10968,7 +11131,7 @@ var Renderer = {
 			Renderer.enableCamera(camera);
 
 			//gl.viewport(x-20,y-20,40,40);
-			Renderer.renderSceneMeshes("picking",{is_picking:true});
+			Renderer.renderInstances("picking",{is_picking:true});
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,Renderer._picking_color);
@@ -13577,7 +13740,7 @@ SceneNode.prototype.setId = function(new_id)
 
 	if( scene.getNode(new_id) != null)
 	{
-		trace("ID already in use");
+		console.error("ID already in use");
 		return false;
 	}
 
@@ -13598,6 +13761,7 @@ SceneNode.prototype.getResources = function(res)
 	for(var i in this._components)
 		if( this._components[i].getResources )
 			this._components[i].getResources( res );
+
 	//res in material
 	if(this.material)
 	{

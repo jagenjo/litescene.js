@@ -10,15 +10,35 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTexture.title = "Texture";
 	LGraphTexture.desc = "Texture";
+	LGraphTexture.widgets_info = {"name": { widget:"texture"} };
+
+	LGraphTexture.textures_container = null; //where to seek for the textures
+	LGraphTexture.loadTextureCallback = null;
 
 	LGraphTexture.prototype.onExecute = function()
 	{
 		if(!this.properties.name)
 			return;
 
-		var tex = ResourcesManager.textures[ this.properties.name ];
+		if(!ResourcesManager) return;
+
+		var container = LGraphTexture.textures_container;
+		if(!container && typeof(ResourcesManager) != "undefined")
+			container = ResourcesManager.textures;
+		if(!container)
+			throw("Cannot load texture, container of textures not found");
+
+		var tex = container[ this.properties.name ];
 		if(!tex && this.properties.name[0] != ":")
-			ResourcesManager.loadImage( this.properties.name );
+		{
+			if(!LGraphTexture.loadTextureCallback && typeof(ResourcesManager) != "undefined")
+				LGraphTexture.loadTextureCallback = ResourcesManager.loadImage.bind(ResourcesManager);
+
+			var loader = LGraphTexture.loadTextureCallback;
+			if(loader)
+				loader( this.properties.name );
+			return;
+		}
 		this.setOutputData(0, tex);
 	}
 
@@ -62,10 +82,10 @@ if(typeof(LiteGraph) != "undefined")
 			<p>uvcode must be vec2, is optional</p>\
 			<p><strong>uv:</strong> tex. coords</p><p><strong>color:</strong> texture</p><p><strong>colorB:</strong> textureB</p><p><strong>time:</strong> scene time</p><p><strong>value:</strong> input value</p>";
 
-		this.properties = {value:1, uvcode:"", pixelcode:"color + colorB * value"};
-		this.widgets_info = {"uvcode": { widget:"textarea", height: 100 }, "pixelcode": { widget:"textarea", height: 100 } };
+		this.properties = {value:1, uvcode:"", pixelcode:"color + colorB * value", low_precision: false };
 	}
 
+	LGraphTextureOperation.widgets_info = {"uvcode": { widget:"textarea", height: 100 }, "pixelcode": { widget:"textarea", height: 100 } };
 	LGraphTextureOperation.title = "Operation";
 	LGraphTextureOperation.desc = "Texture shader operation";
 
@@ -92,6 +112,9 @@ if(typeof(LiteGraph) != "undefined")
 			height = texB.height;
 			type = texB.type;
 		}
+
+		if(this.properties.low_precision)
+			type = gl.UNSIGNED_BYTE;
 
 		if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
 			this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
@@ -453,6 +476,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTextureCopy.title = "Copy";
 	LGraphTextureCopy.desc = "Copy Texture";
+	LGraphTextureCopy.widgets_info = { size: { widget:"combo", values:[0,32,64,128,256,512,1024,2048]} };
 
 	LGraphTextureCopy.prototype.onExecute = function()
 	{
@@ -479,6 +503,102 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("texture/copy", LGraphTextureCopy );
 	window.LGraphTextureCopy = LGraphTextureCopy;
+
+
+	// Texture LUT *****************************************
+	function LGraphTextureLUT()
+	{
+		this.addInput("Texture","Texture");
+		this.addInput("LUT","Texture");
+		this.addInput("Intensity","number");
+		this.addOutput("","Texture");
+		this.properties = { intensity: 1 };
+
+		if(!LGraphTextureLUT._shader)
+			LGraphTextureLUT._shader = new GL.Shader( LGraphTextureLUT.vertex_shader, LGraphTextureLUT.pixel_shader );
+	}
+
+	LGraphTextureLUT.title = "LUT";
+	LGraphTextureLUT.desc = "Apply LUT to Texture";
+
+	LGraphTextureLUT.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(!tex) return;
+
+		var lut_tex = this.getInputData(1);
+		if(!lut_tex)
+		{
+			this.setOutputData(0,tex);
+			return;
+		}
+		lut_tex.bind(0);
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+		gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+		gl.bindTexture(gl.TEXTURE_2D, null);
+
+		var intensity = this.properties.intensity;
+		if( this.isInputConnected(2) )
+			this.properties.intensity = intensity = this.getInputData(2);
+
+		var width = tex.width;
+		var height = tex.height;
+		var temp = this._temp_texture;
+		if(!temp || temp.width != width || temp.height != height) //type is always UNSIGNED_BYTE
+			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
+
+		var mesh = Mesh.getScreenQuad();
+
+		this._temp_texture.drawTo(function() {
+			tex.bind(0);
+			lut_tex.bind(1);
+			LGraphTextureLUT._shader.uniforms({texture:0, textureB:1, u_amount: intensity, uViewportSize:[tex.width,tex.height]}).draw(mesh);
+		});
+
+		this.setOutputData(0,this._temp_texture);
+	}
+
+	LGraphTextureLUT.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 coord;\n\
+			void main() {\n\
+				coord = a_coord; gl_Position = vec4(a_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureLUT.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 coord;\n\
+			uniform sampler2D texture;\n\
+			uniform sampler2D textureB;\n\
+			uniform float u_amount;\n\
+			\n\
+			void main() {\n\
+				 lowp vec4 textureColor = clamp( texture2D(texture, coord), vec4(0.0), vec4(1.0) );\n\
+				 mediump float blueColor = textureColor.b * 63.0;\n\
+				 mediump vec2 quad1;\n\
+				 quad1.y = floor(floor(blueColor) / 8.0);\n\
+				 quad1.x = floor(blueColor) - (quad1.y * 8.0);\n\
+				 mediump vec2 quad2;\n\
+				 quad2.y = floor(ceil(blueColor) / 8.0);\n\
+				 quad2.x = ceil(blueColor) - (quad2.y * 8.0);\n\
+				 highp vec2 texPos1;\n\
+				 texPos1.x = (quad1.x * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.r);\n\
+				 texPos1.y = 1.0 - ((quad1.y * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.g));\n\
+				 highp vec2 texPos2;\n\
+				 texPos2.x = (quad2.x * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.r);\n\
+				 texPos2.y = 1.0 - ((quad2.y * 0.125) + 0.5/512.0 + ((0.125 - 1.0/512.0) * textureColor.g));\n\
+				 lowp vec4 newColor1 = texture2D(textureB, texPos1);\n\
+				 lowp vec4 newColor2 = texture2D(textureB, texPos2);\n\
+				 lowp vec4 newColor = mix(newColor1, newColor2, fract(blueColor));\n\
+				 gl_FragColor = vec4( mix( textureColor.rgb, newColor.rgb, u_amount), textureColor.w);\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/LUT", LGraphTextureLUT );
+	window.LGraphTextureLUT = LGraphTextureLUT;
 
 	// Texture Mix *****************************************
 	function LGraphTextureChannels()

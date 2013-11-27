@@ -326,7 +326,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 		macros.USE_PROJECTIVE_LIGHT = "";
 
 	if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-		macros.USE_AMBIENT_ONLY = "";
+		macros.USE_IGNORE_LIGHT = "";
 
 	if(light.offset > 0.001)
 		macros.USE_LIGHT_OFFSET = "";
@@ -402,7 +402,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		}
 
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
+		if(texture.type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
@@ -431,7 +431,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 			continue;
 		else if(i == "bump")
 			continue;
-		else if(i == "irradiance")
+		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );

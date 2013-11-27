@@ -100,12 +100,12 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
 
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
 	}
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
 	}
 
 
