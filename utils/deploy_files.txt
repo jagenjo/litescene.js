@@ -15,9 +15,11 @@
 ../src/components/transform.js
 ../src/components/camera.js
 ../src/components/light.js
+../src/components/lightFX.js
 ../src/components/meshRenderer.js
 ../src/components/skinnedMeshRenderer.js
 ../src/components/spriteRenderer.js
+../src/components/skybox.js
 
 ../src/components/annotations.js
 ../src/components/animator.js

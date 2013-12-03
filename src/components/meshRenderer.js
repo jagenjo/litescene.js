@@ -22,7 +22,7 @@ MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
 MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
-	var component = this.component;
+	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
 	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)

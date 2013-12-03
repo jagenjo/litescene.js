@@ -5,7 +5,7 @@
 		
 	</snippet>
 
-	<shader id="globalshader" tags="texture,shadow,phong" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
+	<shader id="globalshader" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -45,6 +45,7 @@
 			varying vec2 v_uvs_transformed;
 
 			varying vec3 v_pos;
+			varying vec3 v_local_pos;
 			varying vec3 v_normal;
 			//varying vec3 v_tangent;
 			varying vec2 v_uvs;
@@ -119,6 +120,7 @@
 
 				//position
 				gl_Position =  u_mvp * vec4(vertex,1.0);
+				v_local_pos = vertex;
 				v_pos = (u_model * vec4(vertex,1.0)).xyz;
 				v_screenpos = gl_Position;
 
@@ -139,6 +141,7 @@
 			varying vec2 v_uvs_transformed;
 			//varying vec3 v_tangent;
 			varying vec4 v_screenpos; //used for projective textures
+			varying vec3 v_local_pos;
 
 			#ifdef USE_COLOR_STREAM
 				varying vec4 v_color;
@@ -467,6 +470,7 @@
 					#endif
 				#endif
 
+				vec2 uvs_direction = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
 				vec2 uvs_polar = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
 				vec2 uvs_polar_reflected = uvs_polar; //computed later when we know the Reflected vector
 				//uvs_polar_reflected = vec2( 1.0 - (atan(R.z,R.x) / 6.28318531 + 0.5), 0.5 - asin(R.y) / 1.57079633 * 0.5);
@@ -483,7 +487,7 @@
 						diffuse_tex = texture2D(color_texture, USE_COLOR_TEXTURE );
 					#endif
 					#ifdef USE_COLOR_CUBEMAP
-						diffuse_tex = textureCube(color_cubemap, N);
+						diffuse_tex = textureCube(color_cubemap, normalize(v_local_pos) );
 					#endif
 
 					color *= diffuse_tex.xyz;
@@ -588,7 +592,7 @@
 					#endif
 
 					#ifdef USE_IRRADIANCE_CUBEMAP
-						temp_v3 *= textureCube(irradiance_cubemap,R).xyz;
+						temp_v3 *= textureCube(irradiance_cubemap,N).xyz;
 					#else
 						#ifdef USE_IRRADIANCE_TEXTURE
 							temp_v3 *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
@@ -790,7 +794,7 @@
 		</code>
 	</shader>
 
-	<shader id="lowglobalshader" tags="texture,shadow,phong" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS"  multipass="true">
+	<shader id="lowglobalshader" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS"  multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1182,7 +1186,7 @@
 		</code>
 	</shader>
 
-	<shader id="cell_outline" tags="">
+	<shader id="cell_outline" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1213,7 +1217,7 @@
 		</code>
 	</shader>
 
-	<shader id="flat_texture" tags="texture">
+	<shader id="flat_texture" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1245,7 +1249,7 @@
 		</code>
 	</shader>
 
-	<shader id="normal" tags="debug" macros="USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_TANGENT_NORMALMAP">
+	<shader id="normal" tags="debug,instance" macros="USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_TANGENT_NORMALMAP">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1358,7 +1362,7 @@
 		</code>
 	</shader>
 
-	<shader id="phong" tags="phong" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
+	<shader id="phong" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1412,7 +1416,7 @@
 		</code>
 	</shader>
 
-	<shader id="debug" tags="texture">
+	<shader id="debug" tags="instance,debug">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1450,7 +1454,7 @@
 		</code>
 	</shader>
 
-	<shader id="phong_texture" tags="phong,texture" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
+	<shader id="phong_texture" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1510,7 +1514,7 @@
 		</code>
 	</shader>
 
-	<shader id="flat" tags="">
+	<shader id="flat" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1536,7 +1540,7 @@
 		</code>
 	</shader>
 
-	<shader id="phong_shadow" tags="phong,shadow">
+	<shader id="phong_shadow" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1619,7 +1623,7 @@
 		</code>
 	</shader>
 
-	<shader id="texture" tags="texture,phong">
+	<shader id="texture" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1670,7 +1674,7 @@
 		</code>
 	</shader>
 
-	<shader id="texture_shadow" tags="texture,shadow,phong">
+	<shader id="texture_shadow" tags="instance">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1822,98 +1826,6 @@
 	</shader>
 
 
-	<!--
-	<shader id="texture_flat" tags="texture">
-		<code type="vertex_shader">
-		<![CDATA[
-			varying vec2 v_uvs;
-			
-			void main() {
-				#ifdef WEBGL
-					v_uvs = gl_TexCoord.xy;
-				#else
-					v_uvs = a_uv;
-				#endif
-				gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
-			}
-		]]>
-		</code>
-		<code type="pixel_shader">
-		<![CDATA[
-			varying vec2 v_uvs;
-			uniform sampler2D texture;
-
-			void main() {
-				vec3 tex = texture2D(texture,v_uvs).xyz;
-				gl_FragColor = vec4(tex.x, tex.y, tex.z, 1.0);
-			}
-		]]>
-		</code>
-	</shader>
-	-->
-
-	<!--
-	<shader id="paint3D" tags="" macros="USE_PAINT_LINE">
-		<code type="vertex_shader">
-		<![CDATA[
-			precision highp float;
-
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-
-			uniform mat4 u_model;
-			varying vec3 v_pos;
-			
-			void main() {
-				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;
-				vec2 coord = a_coord;
-				gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		]]>
-		</code>
-		<code type="pixel_shader">
-		<![CDATA[
-			precision highp float;
-
-			varying vec3 v_pos;
-			uniform vec3 u_brushpos;
-			#ifdef USE_PAINT_LINE
-				uniform vec3 u_brushpos2;
-
-				float distToLine(vec3 P, vec3 A, vec3 B)
-				{
-					float dist_A = length(P-A);
-					float dist_B = length(P-B);
-					float dist_line = length( cross( P-A, P-B ) ) / length(B-A);
-					return min(dist_line, min(dist_A, dist_B) );
-				}
-			#endif
-
-			uniform float u_brushsize;
-			uniform vec4 u_brushcolor;
-			void main() {
-
-				#ifdef USE_PAINT_LINE
-					float dist = distToLine(v_pos, u_brushpos, u_brushpos2);
-				#else
-					vec3 v = v_pos - u_brushpos;
-					if( abs(v.x) > u_brushsize || abs(v.y) > u_brushsize)
-						discard;
-
-					float dist = length(v);
-					if( dist > u_brushsize )
-						discard;
-				#endif
-
-				vec4 color = u_brushcolor;
-				color.a *= 1.0 - (dist / u_brushsize);
-				gl_FragColor = color;
-			}
-		]]>
-		</code>
-	</shader>
-	-->
-
 	<shader id="screen" tags="">
 		<code type="vertex_shader">
 			precision highp float;
@@ -1941,7 +1853,7 @@
 		</code>
 	</shader>
 
-	<shader id="colorFX" tags="">
+	<shader id="colorFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -1968,7 +1880,7 @@
 		</code>
 	</shader>
 
-	<shader id="contrastFX" tags="">
+	<shader id="contrastFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -1997,7 +1909,7 @@
 		</code>
 	</shader>
 
-	<shader id="hueFX" tags="">
+	<shader id="hueFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2039,7 +1951,7 @@
 		</code>
 	</shader>
 
-	<shader id="curvesFX" tags="">
+	<shader id="curvesFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2069,7 +1981,7 @@
 		</code>
 	</shader>
 
-	<shader id="glowFX" tags="">
+	<shader id="glowFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2094,7 +2006,7 @@
 		</code>
 	</shader>
 
-	<shader id="bwFX" tags="">
+	<shader id="bwFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2123,7 +2035,7 @@
 		</code>
 	</shader>
 
-	<shader id="lensFX" tags="">
+	<shader id="lensFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2162,7 +2074,7 @@
 		</code>
 	</shader>
 
-	<shader id="tvFX" tags="">
+	<shader id="tvFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2194,7 +2106,7 @@
 		</code>
 	</shader>
 
-	<shader id="8bitsFX" tags="">
+	<shader id="8bitsFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2223,7 +2135,7 @@
 		</code>
 	</shader>
 
-	<shader id="instagramFX" tags="">
+	<shader id="instagramFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2254,7 +2166,7 @@
 		</code>
 	</shader>
 
-	<shader id="edgesFX" tags="">
+	<shader id="edgesFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2293,7 +2205,7 @@
 		</code>
 	</shader>
 
-	<shader id="edgesDepthFX" tags="">
+	<shader id="edgesDepthFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2343,7 +2255,7 @@
 		</code>
 	</shader>
 
-	<shader id="DOFFX" tags="">
+	<shader id="DOFFX" tags="fx">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;
@@ -2391,7 +2303,7 @@
 		</code>
 	</shader>
 
-	<shader id="blurFX" tags="" macros="USE_HBLUR">
+	<shader id="blurFX" tags="fx" macros="USE_HBLUR">
 		<code type="vertex_shader">
 			precision highp float;
 			attribute vec3 a_vertex;

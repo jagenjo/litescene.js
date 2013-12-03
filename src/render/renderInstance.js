@@ -15,9 +15,12 @@ var RI_ALPHA_TEST =	1 << 5;
 var RI_BLEND = 1 << 6; 
 
 var RI_CAST_SHADOWS = 1 << 8;
+var RI_IGNORE_LIGHTS = 1 << 9;
+var RI_RENDER_2D = 1 << 10;
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
+var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
 
 function RenderInstance(node, component)
 {
@@ -27,6 +30,7 @@ function RenderInstance(node, component)
 	this.node = node;
 	this.component = component;
 	this.primitive = gl.TRIANGLES;
+	this.priority = 10; //instances are rendered from higher to lower priority
 
 	this.flags = RI_DEFAULT_FLAGS;
 

@@ -4,7 +4,7 @@
 * Light that contains the info about the camera
 * @class Light
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Light(o)
@@ -106,10 +106,6 @@ function Light(o)
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
 
-	this.volume_visibility = 0;
-	this.volume_radius = 1;
-	this.volume_density = 1;
-
 	//for caching purposes
 	this._macros = {};
 	this._uniforms = {};
@@ -134,18 +130,11 @@ Light.prototype.onAddedToNode = function(node)
 	if(!node.light) node.light = this;
 
 	LEvent.bind(node, "collectLights", this.onCollectLights, this );
-
-	if(this.volume_visibility)
-	{
-		LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
-		this._volume_event = true;
-	}
 }
 
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
-	this._volume_event = false;
 }
 
 Light.prototype.onCollectLights = function(e, lights)
@@ -160,66 +149,13 @@ Light.prototype.onCollectLights = function(e, lights)
 	//add to lights vector
 	lights.push(this);
 
-	if(this.volume_visibility && !this._volume_event)
+	if((this.volume_visibility || this.flare_visibility) && !this._volume_event)
 	{
 		LEvent.bind(this._root, "collectRenderInstances", this.onCollectInstances, this);
 		this._volume_event = true;
 	}
 
 }
-
-Light.prototype.onCollectInstances = function(e,instances)
-{
-	if(!this.enabled) return;
-
-	if(!this.volume_visibility) 
-	{
-		LEvent.unbind(this._root, "collectRenderInstances", this.onCollectInstances, this);
-		this._volume_event = false;
-		return;
-	}
-
-	//sphere
-	if(!this._mesh)
-	{
-		this._mesh = GL.Mesh.sphere();
-	}
-
-	var RI = this._render_instance;
-	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
-
-	RI.flags = RenderInstance.ALPHA; //reset and set
-	
-	//material
-	var mat = this._material;
-	if(!mat)
-		mat = this._material = new Material({shader_name:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
-	vec3.copy( mat.color, this.color );
-	mat.opacity = this.volume_visibility;
-	RI.material = mat;
-
-	//do not need to update
-	RI.matrix.set( this._root.transform._global_matrix );
-	//mat4.identity( RI.matrix );
-	//mat4.setTranslation( RI.matrix, this.getPosition() ); 
-
-	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
-	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
-
-	var volume_info = vec4.create();
-	volume_info.set(RI.center);
-	volume_info[3] = this.volume_radius * 0.5;
-	RI.uniforms["u_volume_info"] = volume_info;
-	RI.uniforms["u_volume_density"] = this.volume_density;
-	
-	RI.mesh = this._mesh;
-	RI.primitive = gl.TRIANGLES;
-	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
-
-	instances.push(RI);
-}
-
 
 Light._temp_matrix = mat4.create();
 Light._temp2_matrix = mat4.create();

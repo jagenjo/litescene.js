@@ -41,6 +41,7 @@ function Material(o)
 	this.normalmap_factor = 1.0;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
+	this.use_scene_ambient = true;
 
 	this.textures = {};
 	this.extra_uniforms = {};
@@ -325,8 +326,8 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 	if(light_projective_texture)
 		macros.USE_PROJECTIVE_LIGHT = "";
 
-	if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-		macros.USE_IGNORE_LIGHT = "";
+	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
+	//	macros.USE_IGNORE_LIGHT = "";
 
 	if(light.offset > 0.001)
 		macros.USE_LIGHT_OFFSET = "";
@@ -371,7 +372,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	if(this.use_scene_ambient)
+		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	else
+		uniforms.u_ambient_color = this.ambient;
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
@@ -535,6 +539,7 @@ Material.prototype.configure = function(o)
 			case "specular_ontop":
 			case "normalmap_tangent":
 			case "reflection_specular":
+			case "use_scene_ambient":
 				r = v; 
 				break;
 			//vectors
