@@ -9,8 +9,8 @@
 
 var Renderer = {
 
-	default_shader: "globalshader",
-	default_low_shader: "lowglobalshader",
+	default_shader: "global",
+	default_low_shader: "lowglobal",
 
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
@@ -84,6 +84,7 @@ var Renderer = {
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
+			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
 			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
 				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
@@ -184,7 +185,8 @@ var Renderer = {
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
 
-		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, -1, 1 );
+		//2d Camera
+		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, 1, -1 );
 
 		//set as the current camera
 		this.active_camera = camera;
@@ -385,6 +387,10 @@ var Renderer = {
 			macros.merge(instance.macros);
 			if( node.flags.ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
+
+			if( mat.onModifyMacros )
+				mat.onModifyMacros( macros );
+
 			var shader = Shaders.get(shader_name, macros);
 
 			//assign uniforms
@@ -422,7 +428,10 @@ var Renderer = {
 				macros.merge(mat._macros);
 				macros.merge(instance.macros);
 				macros.merge(light_macros);
- 
+
+				if( mat.onModifyMacros )
+					mat.onModifyMacros( macros );
+
 				shader = Shaders.get(shader_name, macros);
 			}
 
@@ -478,11 +487,13 @@ var Renderer = {
 		else
 		{
 			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
+			if(pos[2] < 0) return;
 			pos[2] = 0;
 		}
 
 		mat4.translate( model, model, pos );
-		var scale = vec3.fromValues(1,2,1);
+		var aspect = gl.canvas.width / gl.canvas.height;
+		var scale = vec3.fromValues(1, aspect ,1);
 		if(instance.scale_2D)
 		{
 			scale[0] *= instance.scale_2D[0];
@@ -621,7 +632,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.getEye(),
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene.current_time || new Date().getTime() * 0.001,
+			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
 			u_ambient_color: scene.ambient_color

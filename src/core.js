@@ -50,6 +50,28 @@ var LS = {
 		}
 	},
 
+	/**
+	* Contains all the registered material classes
+	* 
+	* @property MaterialClasses
+	* @type {Object}
+	* @default {}
+	*/
+	MaterialClasses: {},
+
+	/**
+	* Register a component so it is listed when searching for new components to attach
+	*
+	* @method registerMaterialClass
+	* @param {ComponentClass} comp component class to register
+	*/
+	registerMaterialClass: function(material_class) { 
+		//register
+		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+		//event
+		LEvent.trigger(LS,"materialclass_registered",material_class);
+	},	
+
 	_configure: function(o) { LS.cloneObject(o, this); },
 	_serialize: function() { return LS.cloneObject(this); },
 
@@ -173,7 +195,7 @@ XMLHttpRequest.prototype.fail = function(callback)
 }
 
 /**
-* copy the properties of one class into another class
+* copy the properties (methods and attributes) of origin class into target class
 * @method extendClass
 * @param {Class} origin
 * @param {Class} target
@@ -182,10 +204,14 @@ XMLHttpRequest.prototype.fail = function(callback)
 function extendClass( origin, target ) {
 	for(var i in origin) //copy class properties
 		target[i] = origin[i];
+
 	if(origin.prototype) //copy prototype properties
 		for(var i in origin.prototype) //only enumerables
 		{
 			if(!origin.prototype.hasOwnProperty(i))
+				continue;
+
+			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
 				continue;
 
 			if(origin.prototype.__lookupGetter__(i))

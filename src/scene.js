@@ -990,7 +990,12 @@ SceneNode.prototype.configure = function(info)
 
 	//first the no components
 	if(info.material)
-		this.material = typeof(info.material) == "string" ? info.material : new Material(info.material);
+	{
+		var mat_class = info.material.material_class;
+		if(!mat_class) 
+			mat_class = "Material";
+		this.material = typeof(info.material) == "string" ? info.material : new LS.MaterialClasses[mat_class](info.material);
+	}
 
 	if(info.flags) //merge
 		for(var i in info.flags)

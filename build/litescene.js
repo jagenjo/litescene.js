@@ -2089,6 +2089,28 @@ var LS = {
 		}
 	},
 
+	/**
+	* Contains all the registered material classes
+	* 
+	* @property MaterialClasses
+	* @type {Object}
+	* @default {}
+	*/
+	MaterialClasses: {},
+
+	/**
+	* Register a component so it is listed when searching for new components to attach
+	*
+	* @method registerMaterialClass
+	* @param {ComponentClass} comp component class to register
+	*/
+	registerMaterialClass: function(material_class) { 
+		//register
+		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+		//event
+		LEvent.trigger(LS,"materialclass_registered",material_class);
+	},	
+
 	_configure: function(o) { LS.cloneObject(o, this); },
 	_serialize: function() { return LS.cloneObject(this); },
 
@@ -2212,7 +2234,7 @@ XMLHttpRequest.prototype.fail = function(callback)
 }
 
 /**
-* copy the properties of one class into another class
+* copy the properties (methods and attributes) of origin class into target class
 * @method extendClass
 * @param {Class} origin
 * @param {Class} target
@@ -2221,10 +2243,14 @@ XMLHttpRequest.prototype.fail = function(callback)
 function extendClass( origin, target ) {
 	for(var i in origin) //copy class properties
 		target[i] = origin[i];
+
 	if(origin.prototype) //copy prototype properties
 		for(var i in origin.prototype) //only enumerables
 		{
 			if(!origin.prototype.hasOwnProperty(i))
+				continue;
+
+			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
 				continue;
 
 			if(origin.prototype.__lookupGetter__(i))
@@ -3331,7 +3357,7 @@ Material.COORDS_WORLDYZ = "worldyz";
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
-Material.available_shaders = ["default","lowglobalshader","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
 //not used yet
 Material.prototype.setDirty = function()
@@ -3707,6 +3733,7 @@ Material.prototype.configure = function(o)
 Material.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
+	 o.material_class = getObjectClassName(this);
 	 return o;
 }
 
@@ -3826,7 +3853,107 @@ Material.prototype.registerMaterial = function(name)
 	this.material = name;
 }
 
+LS.registerMaterialClass(Material);
 LS.Material = Material;
+function CustomMaterial(o)
+{
+	this._uid = LS.generateUId();
+	this._dirty = true;
+
+	this.shader_name = "base";
+
+	//this.shader_name = null; //default shader
+	this.color = new Float32Array([1.0,1.0,1.0]);
+	this.opacity = 1.0;
+	this.vs_code = "";
+	this.code = "vec4 surf() {\n\treturn u_material_color * vec4(1.0,0.0,0.0,1.0);\n}\n";
+
+	this._uniforms = {};
+	this._macros = {};
+
+	this.textures = {};
+
+	if(o) 
+		this.configure(o);
+	this.computeCode();
+}
+
+/*
+CustomMaterial.ps_shader_definitions = "\n\
+struct SurfaceOutput {\n\
+    vec3 Albedo;\n\
+    vec3 Normal;\n\
+    vec3 Emission;\n\
+    float Specular;\n\
+    float Gloss;\n\
+    float Alpha;\n\
+};";
+*/
+
+CustomMaterial.ps_shader_definitions = "\n\
+";
+
+CustomMaterial.icon = "mini-icon-material.png";
+
+CustomMaterial.prototype.onCodeChange = function()
+{
+	this.computeCode();
+}
+
+CustomMaterial.prototype.computeCode = function()
+{
+	this._ps_uniforms_code = "";
+	this._ps_functions_code = this.code.split("\n").join("");
+	this._ps_code = "vec4 result = surf(); color = result.xyz; alpha = result.a;";
+}
+
+// RENDERING METHODS
+CustomMaterial.prototype.onModifyMacros = function(macros)
+{
+	if(macros.USE_PIXEL_SHADER_UNIFORMS)
+		macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
+	else
+		macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
+
+	if(macros.USE_PIXEL_SHADER_FUNCTIONS)
+		macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
+	else
+		macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
+
+	if(macros.USE_PIXEL_SHADER_CODE)
+		macros.USE_PIXEL_SHADER_CODE += this._ps_code;
+	else
+		macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
+}
+
+CustomMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+{
+	var macros = {};
+	this._macros = macros;
+}
+
+
+CustomMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+{
+	var samplers = [];
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+	}
+
+	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._samplers = samplers;
+}
+
+CustomMaterial.prototype.configure = function(o) { LS.cloneObject(o, this); },
+CustomMaterial.prototype.serialize = function() { return LS.cloneObject(this); },
+
+
+LS.extendClass( Material, CustomMaterial );
+LS.registerMaterialClass(CustomMaterial);
+LS.CustomMaterial = CustomMaterial;
 /*
 *  Components are elements that attach to Nodes to add functionality
 *  Some important components are Transform,Light or Camera
@@ -5779,6 +5906,8 @@ LS.Light = Light;
 
 function LightFX(o)
 {
+	this.enabled = true;
+
 	this.volume_visibility = 0;
 	this.volume_radius = 1;
 	this.volume_density = 1;
@@ -5811,7 +5940,11 @@ LightFX.prototype.onRemovedFromNode = function(node)
 
 LightFX.prototype.onCollectInstances = function(e,instances)
 {
+	if(!this.enabled) return;
+
 	var light = this._root.light;
+	if(light && !light.enabled)
+		return;
 
 	if(this.volume_visibility && light)
 		instances.push( this.getVolumetricRenderInstance(light) );
@@ -7344,9 +7477,11 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		var v = gl.getParameter(gl.VIEWPORT);
-		width = v[2];
-		height = v[3];
+		width = gl.canvas.width;
+		height = gl.canvas.height;
+		//var v = gl.getParameter(gl.VIEWPORT);
+		//width = v[2];
+		//height = v[3];
 	}
 
 	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
@@ -10414,8 +10549,8 @@ RenderInstance.prototype.render = function(shader)
 
 var Renderer = {
 
-	default_shader: "globalshader",
-	default_low_shader: "lowglobalshader",
+	default_shader: "global",
+	default_low_shader: "lowglobal",
 
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
@@ -10489,6 +10624,7 @@ var Renderer = {
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
+			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
 			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
 				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
@@ -10589,7 +10725,8 @@ var Renderer = {
 		mat4.copy( this._projection_matrix, camera._projection_matrix );
 		mat4.copy( this._viewprojection_matrix, camera._viewprojection_matrix );
 
-		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, -1, 1 );
+		//2d Camera
+		mat4.ortho( this._2Dviewprojection_matrix, -1, 1, -1, 1, 1, -1 );
 
 		//set as the current camera
 		this.active_camera = camera;
@@ -10790,6 +10927,10 @@ var Renderer = {
 			macros.merge(instance.macros);
 			if( node.flags.ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
+
+			if( mat.onModifyMacros )
+				mat.onModifyMacros( macros );
+
 			var shader = Shaders.get(shader_name, macros);
 
 			//assign uniforms
@@ -10827,7 +10968,10 @@ var Renderer = {
 				macros.merge(mat._macros);
 				macros.merge(instance.macros);
 				macros.merge(light_macros);
- 
+
+				if( mat.onModifyMacros )
+					mat.onModifyMacros( macros );
+
 				shader = Shaders.get(shader_name, macros);
 			}
 
@@ -10883,11 +11027,13 @@ var Renderer = {
 		else
 		{
 			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
+			if(pos[2] < 0) return;
 			pos[2] = 0;
 		}
 
 		mat4.translate( model, model, pos );
-		var scale = vec3.fromValues(1,2,1);
+		var aspect = gl.canvas.width / gl.canvas.height;
+		var scale = vec3.fromValues(1, aspect ,1);
 		if(instance.scale_2D)
 		{
 			scale[0] *= instance.scale_2D[0];
@@ -11026,7 +11172,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.getEye(),
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene.current_time || new Date().getTime() * 0.001,
+			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
 			u_ambient_color: scene.ambient_color
@@ -14228,7 +14374,12 @@ SceneNode.prototype.configure = function(info)
 
 	//first the no components
 	if(info.material)
-		this.material = typeof(info.material) == "string" ? info.material : new Material(info.material);
+	{
+		var mat_class = info.material.material_class;
+		if(!mat_class) 
+			mat_class = "Material";
+		this.material = typeof(info.material) == "string" ? info.material : new LS.MaterialClasses[mat_class](info.material);
+	}
 
 	if(info.flags) //merge
 		for(var i in info.flags)

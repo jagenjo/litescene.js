@@ -201,7 +201,7 @@ Material.COORDS_WORLDYZ = "worldyz";
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
-Material.available_shaders = ["default","lowglobalshader","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
 //not used yet
 Material.prototype.setDirty = function()
@@ -577,6 +577,7 @@ Material.prototype.configure = function(o)
 Material.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
+	 o.material_class = getObjectClassName(this);
 	 return o;
 }
 
@@ -696,4 +697,5 @@ Material.prototype.registerMaterial = function(name)
 	this.material = name;
 }
 
+LS.registerMaterialClass(Material);
 LS.Material = Material;

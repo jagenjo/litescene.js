@@ -209,9 +209,11 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		var v = gl.getParameter(gl.VIEWPORT);
-		width = v[2];
-		height = v[3];
+		width = gl.canvas.width;
+		height = gl.canvas.height;
+		//var v = gl.getParameter(gl.VIEWPORT);
+		//width = v[2];
+		//height = v[3];
 	}
 
 	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;

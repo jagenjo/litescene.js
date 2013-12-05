@@ -8,6 +8,7 @@
 ../src/core.js
 ../src/resourcesManager.js
 ../src/materials/material.js
+../src/materials/customMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js

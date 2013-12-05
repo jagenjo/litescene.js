@@ -8,6 +8,8 @@
 
 function LightFX(o)
 {
+	this.enabled = true;
+
 	this.volume_visibility = 0;
 	this.volume_radius = 1;
 	this.volume_density = 1;
@@ -40,7 +42,11 @@ LightFX.prototype.onRemovedFromNode = function(node)
 
 LightFX.prototype.onCollectInstances = function(e,instances)
 {
+	if(!this.enabled) return;
+
 	var light = this._root.light;
+	if(light && !light.enabled)
+		return;
 
 	if(this.volume_visibility && light)
 		instances.push( this.getVolumetricRenderInstance(light) );
