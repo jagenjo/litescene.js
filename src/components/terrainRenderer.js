@@ -167,7 +167,8 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 	};
 
 	RI.material = this._root.getMaterial();
-	RI.mesh = this._mesh;
+	RI.setMesh( this._mesh, gl.TRIANGLES );
+	
 	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());

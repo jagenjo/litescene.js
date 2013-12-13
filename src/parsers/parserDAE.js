@@ -77,35 +77,50 @@ var parserDAE = {
 				node.mesh = url;
 
 				//binded material
-				var xmlmaterial = xmlchild.querySelector("instance_material");
-				if(xmlmaterial)
+				try 
 				{
-					var matname = xmlmaterial.getAttribute("symbol");
-					if(scene.materials[matname])
-						node.material = matname;
-					else
+					var xmlmaterial = xmlchild.querySelector("instance_material");
+					if(xmlmaterial)
 					{
-						var material = this.readMaterial(matname);
-						if(material)
+						var matname = xmlmaterial.getAttribute("symbol");
+						if(scene.materials[matname])
+							node.material = matname;
+						else
 						{
-							material.id = matname;
-							scene.materials[matname] = material;
+							var material = this.readMaterial(matname);
+							if(material)
+							{
+								material.id = matname;
+								scene.materials[matname] = material;
+							}
+							node.material = matname;
 						}
-						node.material = matname;
 					}
+				}
+				catch(err)
+				{
+					console.error("Error parsing material, check that materials doesnt have space in their names");
 				}
 			}
 
-			//skinned
+
+			//skinned or morph targets
 			if(xmlchild.localName == "instance_controller")
 			{
 				var url = xmlchild.getAttribute("url");
-				var mesh_data = this.readController(url, flip);
+				var mesh_data = this.readController(url, flip, scene );
 				if(mesh_data)
 				{
-					mesh_data.name = url;
+					var mesh = mesh_data;
+					if( mesh_data.type == "morph" )
+					{
+						mesh = mesh_data.mesh;
+						node.morph_targets = mesh_data.morph_targets;
+					}
+
+					mesh.name = url;
 					node.mesh = url;
-					scene.meshes[url] = mesh_data;
+					scene.meshes[url] = mesh;
 				}
 			}
 
@@ -368,7 +383,7 @@ var parserDAE = {
 		var xmlmesh = xmlgeometry.querySelector("mesh");
 			
 		//for data sources
-		var sources = [];
+		var sources = {};
 		var xmlsources = xmlmesh.querySelectorAll("source");
 		for(var i = 0; i < xmlsources.length; i++)
 		{
@@ -386,14 +401,31 @@ var parserDAE = {
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var triangles = false;
+		var polylist = false;
+		var vcount = null;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("polylist");
+			if(xmlpolygons)
+			{
+				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
+				return null;
+			}
+			//polylist = true;
+			//var xmlvcount = xmlpolygons.querySelector("vcount");
+			//var vcount = this.readContentAsUInt32( xmlvcount );
+		}
 		if(!xmlpolygons)
 		{
 			xmlpolygons = xmlmesh.querySelector("triangles");
 			triangles = true;
 		}
 		if(!xmlpolygons)
-			throw("no polygons or triangles in mesh");
+		{
+			console.log("no polygons or triangles in mesh: " + id);
+			return null;
+		}
 
 
 		var xmlinputs = xmlpolygons.querySelectorAll("input");
@@ -543,7 +575,7 @@ var parserDAE = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//swap coords
-		if(flip && 0)
+		if(flip && 1)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -573,7 +605,7 @@ var parserDAE = {
 	},
 
 	//used for skinning and morphing
-	readController: function(id, flip)
+	readController: function(id, flip, scene)
 	{
 		//get root
 		var xmlcontroller = this._xmlroot.querySelector("controller" + id);
@@ -581,38 +613,25 @@ var parserDAE = {
 
 		var use_indices = false;
 		var xmlskin = xmlcontroller.querySelector("skin");
-		if(!xmlskin) return null;
+		if(xmlskin)
+			return this.readSkinController(xmlskin, flip, scene);
 
+		var xmlmorph = xmlcontroller.querySelector("morph");
+		if(xmlmorph)
+			return this.readMorphController(xmlmorph, flip, scene);
+
+		return null;
+	},
+
+	readSkinController: function(xmlskin, flip, scene)
+	{
 		//base geometry
 		var id_geometry = xmlskin.getAttribute("source");
 		var mesh = this.readGeometry( id_geometry, flip );
 		if(!mesh)
 			return null;
 
-		//for data sources
-		var sources = [];
-		var xmlsources = xmlskin.querySelectorAll("source");
-		for(var i = 0; i < xmlsources.length; i++)
-		{
-			var xmlsource = xmlsources[i];
-			if(!xmlsource.querySelector) continue;
-			var float_array = xmlsource.querySelector("float_array");
-			if(float_array)
-			{
-				var floats = this.readContentAsFloats( xmlsource );
-				sources[ xmlsource.getAttribute("id") ] = floats;
-				continue;
-			}
-			var name_array = xmlsource.querySelector("Name_array");
-			if(name_array)
-			{
-				var names = this.readContentAsStringsArray( name_array );
-				if(!names)
-					return null;
-				sources[ xmlsource.getAttribute("id") ] = names;
-				continue;
-			}
-		}
+		var sources = this.readSources(xmlskin, flip);
 
 		//matrix
 		var bind_matrix = null;
@@ -717,6 +736,84 @@ var parserDAE = {
 		}
 
 		return mesh;
+	},
+
+	readMorphController: function(xmlmorph, flip, scene)
+	{
+		var id_geometry = xmlmorph.getAttribute("source");
+		var base_mesh = this.readGeometry( id_geometry, flip );
+		if(!base_mesh)
+			return null;
+
+		//read sources with blend shapes info (which ones, and the weight)
+		var sources = this.readSources(xmlmorph, flip);
+
+		var morphs = [];
+
+		//targets
+		var xmltargets = xmlmorph.querySelector("targets");
+		if(!xmltargets)
+			return null;
+
+		var xmlinputs = xmltargets.querySelectorAll("input");
+		var targets = null;
+		var weights = null;
+
+		for(var i = 0; i < xmlinputs.length; i++)
+		{
+			var semantic = xmlinputs[i].getAttribute("semantic").toUpperCase();
+			var data = sources[ xmlinputs[i].getAttribute("source").substr(1) ];
+			if( semantic == "MORPH_TARGET" )
+				targets = data;
+			else if( semantic == "MORPH_WEIGHT" )
+				weights = data;
+		}
+
+		if(!targets || !weights)
+			return null;
+
+		//get targets
+		for(var i in targets)
+		{
+			var id = "#" + targets[i];
+			var geometry = this.readGeometry( id, flip );
+			scene.meshes[id] = geometry;
+			morphs.push([id, weights[i]]);
+		}
+
+		return { type: "morph", mesh: base_mesh, morph_targets: morphs };
+	},
+
+	readSources: function(xmlnode, flip)
+	{
+		//for data sources
+		var sources = {};
+		var xmlsources = xmlnode.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+
+			var float_array = xmlsource.querySelector("float_array");
+			if(float_array)
+			{
+				var floats = this.readContentAsFloats( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = floats;
+				continue;
+			}
+
+			var name_array = xmlsource.querySelector("Name_array");
+			if(name_array)
+			{
+				var names = this.readContentAsStringsArray( name_array );
+				if(!names)
+					return null;
+				sources[ xmlsource.getAttribute("id") ] = names;
+				continue;
+			}
+		}
+
+		return sources;
 	},
 
 	readContentAsUInt32: function(xmlnode)

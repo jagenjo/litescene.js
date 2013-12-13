@@ -19,7 +19,7 @@ SpriteRenderer.prototype.onRemovedFromNode = function(node)
 
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
-SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
+SpriteRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var node = this._root;
 	if(!this._root) return;
@@ -39,7 +39,7 @@ SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
 	RI.matrix.set( this._root.transform._global_matrix );
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
+	RI.setMesh(mesh, gl.TRIANGLES);
 	RI.material = this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;

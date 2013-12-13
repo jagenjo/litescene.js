@@ -14,9 +14,10 @@ var RI_DEPTH_WRITE = 1 << 4;
 var RI_ALPHA_TEST =	1 << 5; 
 var RI_BLEND = 1 << 6; 
 
-var RI_CAST_SHADOWS = 1 << 8;
-var RI_IGNORE_LIGHTS = 1 << 9;
-var RI_RENDER_2D = 1 << 10;
+var RI_CAST_SHADOWS = 1 << 8;	//render in shadowmaps
+var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
+var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
@@ -26,7 +27,14 @@ function RenderInstance(node, component)
 {
 	this._key = "";
 	this._uid = LS.generateUId();
+
+	this.vertex_buffers = null;
+	this.index_buffer = null;
+	this.wireframe_index_buffer = null;
+	this.range = new Int32Array([0,-1]); //start, offset
+
 	this.mesh = null;
+
 	this.node = node;
 	this.component = component;
 	this.primitive = gl.TRIANGLES;
@@ -37,6 +45,8 @@ function RenderInstance(node, component)
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
+
+	//not in use right now
 	this.oobb_center = vec3.create();
 	this.oobb_halfsize = vec3.create();
 	this.aabb_center = vec3.create();
@@ -54,6 +64,46 @@ RenderInstance.prototype.generateKey = function(step, options)
 {
 	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
 	return this._key;
+}
+
+RenderInstance.prototype.setMesh = function(mesh, primitive)
+{
+	if( !primitive && primitive != 0)
+		primitive = gl.TRIANGLES;
+
+	this.mesh = mesh;
+	this.primitive = primitive;
+	this.vertex_buffers = mesh.vertexBuffers;
+
+	switch(primitive)
+	{
+		case gl.TRIANGLES: 
+			this.index_buffer = mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
+			break;
+		case gl.LINES: 
+			if(!mesh.indexBuffers["lines"])
+				mesh.computeWireframe();
+			this.index_buffer = mesh.indexBuffers["lines"];
+			break;
+		case gl.POINTS: 
+		default:
+			this.index_buffer = null;
+			break;
+	}
+
+	/*
+	if(mesh.bounding)
+	{
+		this.aabb_center.set( mesh.bounding.aabb_center );
+		this.aabb_halfsize.set( mesh.bounding.aabb_halfsize );
+	}
+	*/
+}
+
+RenderInstance.prototype.setRange = function(start, offset)
+{
+	this.range[0] = start;
+	this.range[1] = offset;
 }
 
 /**
@@ -168,10 +218,17 @@ RenderInstance.prototype.computeBounding = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
+	shader.drawBuffers( this.vertex_buffers,
+	  this.index_buffer,
+	  this.primitive, this.range[0], this.range[1] );
+
+
+	/*
 	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
 		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
 	else if(this.start || this.length)
 		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
 	else
 		shader.draw(this.mesh, this.primitive);
+	*/
 }

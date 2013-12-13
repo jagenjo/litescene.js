@@ -1594,6 +1594,7 @@ var Shaders = {
 	shaders: {},
 	globals: {},
 	default_shader: null,
+	on_compile_error: null, 
 
 	init: function(url, ignore_cache)
 	{
@@ -1695,6 +1696,9 @@ var Shaders = {
 			lines = (this.global_extra_code + ps_code).split("\n");
 			for(var i in lines)
 				console.log(i + ": " + lines[i]);
+
+			if(this.on_compile_error)
+				this.on_compile_error(err);
 
 			return null;
 		}
@@ -2982,6 +2986,15 @@ var ResourcesManager = {
 			{
 				var mesh_data = scene_data.meshes[i];
 				var mesh = GL.Mesh.load(mesh_data);
+				/*
+				var morphs = [];
+				if(mesh.morph_targets)
+					for(var j in mesh.morph_targets)
+					{
+
+					}
+				*/
+
 				ResourcesManager.registerResource(i,mesh);
 			}
 		}
@@ -3902,8 +3915,13 @@ CustomMaterial.prototype.onCodeChange = function()
 
 CustomMaterial.prototype.computeCode = function()
 {
+
+
 	this._ps_uniforms_code = "";
-	this._ps_functions_code = this.code.split("\n").join("");
+	var lines = this.code.split("\n");
+	for(var i in lines)
+		lines[i] = lines[i].split("//")[0]; //remove comments
+	this._ps_functions_code = lines.join("");
 	this._ps_code = "vec4 result = surf(); color = result.xyz; alpha = result.a;";
 }
 
@@ -5993,8 +6011,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 	RI.uniforms["u_volume_info"] = volume_info;
 	RI.uniforms["u_volume_density"] = this.volume_density;
 	
-	RI.mesh = this._mesh;
-	RI.primitive = gl.TRIANGLES;
+	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
 
 	return RI;
@@ -6009,7 +6026,7 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(!RI)
 	{
 		this._glare_render_instance = RI = new RenderInstance(this._root, this);
-		RI.mesh = GL.Mesh.plane({size:1});
+		RI.setMesh( GL.Mesh.plane({size:1}), gl.TRIANGLES );
 		RI.priority = 1;
 		//RI.onPreRender = LightFX.onGlarePreRender;
 		//RI.pos2D = vec3.create();
@@ -6116,6 +6133,9 @@ MeshRenderer.prototype.configure = function(o)
 	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
+
+	if(o.morph_targets)
+		this.morph_targets = o.morph_targets;
 }
 
 /**
@@ -6164,7 +6184,7 @@ MeshRenderer.prototype.getResources = function(res)
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -6181,10 +6201,12 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
+	//buffers
+	RI.setMesh( mesh, this.primitive );
+
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
+
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -6223,7 +6245,7 @@ SkinnedMeshRenderer["@mesh"] = { widget: "mesh" };
 SkinnedMeshRenderer["@lod_mesh"] = { widget: "mesh" };
 SkinnedMeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 SkinnedMeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
-	var component = this.component;
+	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
 	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)
@@ -6401,10 +6423,10 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
-		RI.mesh = this._skinned_mesh;
+		RI.setMesh(this._skinned_mesh, this.primitive);
 	}
 	else
-		RI.mesh = mesh;
+		RI.setMesh(mesh, this.primitive);
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -6413,7 +6435,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -6448,7 +6469,7 @@ SpriteRenderer.prototype.onRemovedFromNode = function(node)
 
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
-SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
+SpriteRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var node = this._root;
 	if(!this._root) return;
@@ -6468,7 +6489,7 @@ SpriteRenderer.prototype.onCollectInstances = function(e, instances, options)
 	RI.matrix.set( this._root.transform._global_matrix );
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
+	RI.setMesh(mesh, gl.TRIANGLES);
 	RI.material = this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -7255,9 +7276,9 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-	RI.mesh = this._root.mesh = this._mesh;
+	RI.setMesh( this._mesh, this.primitive );
+	
 	RI.material = this.material || this._root.getMaterial();
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 
@@ -8099,7 +8120,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	else
 		mat4.copy( RI.matrix, ParticleEmissor._identity );
 
-	RI.mesh = this._mesh;
+	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
@@ -8512,7 +8533,8 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 	};
 
 	RI.material = this._root.getMaterial();
-	RI.mesh = this._mesh;
+	RI.setMesh( this._mesh, gl.TRIANGLES );
+	
 	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
@@ -10376,9 +10398,10 @@ var RI_DEPTH_WRITE = 1 << 4;
 var RI_ALPHA_TEST =	1 << 5; 
 var RI_BLEND = 1 << 6; 
 
-var RI_CAST_SHADOWS = 1 << 8;
-var RI_IGNORE_LIGHTS = 1 << 9;
-var RI_RENDER_2D = 1 << 10;
+var RI_CAST_SHADOWS = 1 << 8;	//render in shadowmaps
+var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
+var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
@@ -10388,7 +10411,14 @@ function RenderInstance(node, component)
 {
 	this._key = "";
 	this._uid = LS.generateUId();
+
+	this.vertex_buffers = null;
+	this.index_buffer = null;
+	this.wireframe_index_buffer = null;
+	this.range = new Int32Array([0,-1]); //start, offset
+
 	this.mesh = null;
+
 	this.node = node;
 	this.component = component;
 	this.primitive = gl.TRIANGLES;
@@ -10399,6 +10429,8 @@ function RenderInstance(node, component)
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
+
+	//not in use right now
 	this.oobb_center = vec3.create();
 	this.oobb_halfsize = vec3.create();
 	this.aabb_center = vec3.create();
@@ -10416,6 +10448,46 @@ RenderInstance.prototype.generateKey = function(step, options)
 {
 	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
 	return this._key;
+}
+
+RenderInstance.prototype.setMesh = function(mesh, primitive)
+{
+	if( !primitive && primitive != 0)
+		primitive = gl.TRIANGLES;
+
+	this.mesh = mesh;
+	this.primitive = primitive;
+	this.vertex_buffers = mesh.vertexBuffers;
+
+	switch(primitive)
+	{
+		case gl.TRIANGLES: 
+			this.index_buffer = mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
+			break;
+		case gl.LINES: 
+			if(!mesh.indexBuffers["lines"])
+				mesh.computeWireframe();
+			this.index_buffer = mesh.indexBuffers["lines"];
+			break;
+		case gl.POINTS: 
+		default:
+			this.index_buffer = null;
+			break;
+	}
+
+	/*
+	if(mesh.bounding)
+	{
+		this.aabb_center.set( mesh.bounding.aabb_center );
+		this.aabb_halfsize.set( mesh.bounding.aabb_halfsize );
+	}
+	*/
+}
+
+RenderInstance.prototype.setRange = function(start, offset)
+{
+	this.range[0] = start;
+	this.range[1] = offset;
 }
 
 /**
@@ -10530,12 +10602,19 @@ RenderInstance.prototype.computeBounding = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
+	shader.drawBuffers( this.vertex_buffers,
+	  this.index_buffer,
+	  this.primitive, this.range[0], this.range[1] );
+
+
+	/*
 	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
 		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
 	else if(this.start || this.length)
 		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
 	else
 		shader.draw(this.mesh, this.primitive);
+	*/
 }
 
 //************************************
@@ -11306,9 +11385,16 @@ var Renderer = {
 			//TODO
 
 			//change conditionaly
-			if(options.force_wireframe) instance.primitive = gl.LINES;
-			if(instance.primitive == gl.LINES && !instance.mesh.lines)
-				instance.mesh.computeWireframe();
+			if(options.force_wireframe) 
+			{
+				instance.primitive = gl.LINES;
+				if(instance.mesh)
+				{
+					if(!instance.mesh.indexBuffers["lines"])
+						instance.mesh.computeWireframe();
+					instance.index_buffer = instance.mesh.indexBuffers["lines"];
+				}
+			}
 
 			//and finally, the alpha thing to determine if it is visible or not
 			var mat = instance.material;
@@ -11324,14 +11410,14 @@ var Renderer = {
 			else if(macros["USE_ALPHA_TEST"])
 				delete macros["USE_ALPHA_TEST"];
 
-			var mesh = instance.mesh;
-			if(!("a_normal" in mesh.vertexBuffers))
+			var buffers = instance.vertex_buffers;
+			if(!("a_normal" in buffers))
 				macros.NO_NORMALS = "";
-			if(!("a_coord" in mesh.vertexBuffers))
+			if(!("a_coord" in buffers))
 				macros.NO_COORDS = "";
-			if(("a_color" in mesh.vertexBuffers))
+			if(("a_color" in buffers))
 				macros.USE_COLOR_STREAM = "";
-			if(("a_tangent" in mesh.vertexBuffers))
+			if(("a_tangent" in buffers))
 				macros.USE_TANGENT_STREAM = "";
 		}
 
@@ -11722,8 +11808,8 @@ var Parser = {
 		bounding.aabb_min = min;
 		bounding.aabb_max = max;
 		bounding.aabb_center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
-		bounding.aabb_half = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
-		bounding.radius = Math.sqrt(bounding.aabb_half[0] * bounding.aabb_half[0] + bounding.aabb_half[1] * bounding.aabb_half[1] + bounding.aabb_half[2] * bounding.aabb_half[2]);
+		bounding.aabb_halfsize = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
+		bounding.radius = Math.sqrt(bounding.aabb_halfsize[0] * bounding.aabb_halfsize[0] + bounding.aabb_halfsize[1] * bounding.aabb_halfsize[1] + bounding.aabb_halfsize[2] * bounding.aabb_halfsize[2]);
 		return bounding;
 	},
 
@@ -12108,35 +12194,50 @@ var parserDAE = {
 				node.mesh = url;
 
 				//binded material
-				var xmlmaterial = xmlchild.querySelector("instance_material");
-				if(xmlmaterial)
+				try 
 				{
-					var matname = xmlmaterial.getAttribute("symbol");
-					if(scene.materials[matname])
-						node.material = matname;
-					else
+					var xmlmaterial = xmlchild.querySelector("instance_material");
+					if(xmlmaterial)
 					{
-						var material = this.readMaterial(matname);
-						if(material)
+						var matname = xmlmaterial.getAttribute("symbol");
+						if(scene.materials[matname])
+							node.material = matname;
+						else
 						{
-							material.id = matname;
-							scene.materials[matname] = material;
+							var material = this.readMaterial(matname);
+							if(material)
+							{
+								material.id = matname;
+								scene.materials[matname] = material;
+							}
+							node.material = matname;
 						}
-						node.material = matname;
 					}
+				}
+				catch(err)
+				{
+					console.error("Error parsing material, check that materials doesnt have space in their names");
 				}
 			}
 
-			//skinned
+
+			//skinned or morph targets
 			if(xmlchild.localName == "instance_controller")
 			{
 				var url = xmlchild.getAttribute("url");
-				var mesh_data = this.readController(url, flip);
+				var mesh_data = this.readController(url, flip, scene );
 				if(mesh_data)
 				{
-					mesh_data.name = url;
+					var mesh = mesh_data;
+					if( mesh_data.type == "morph" )
+					{
+						mesh = mesh_data.mesh;
+						node.morph_targets = mesh_data.morph_targets;
+					}
+
+					mesh.name = url;
 					node.mesh = url;
-					scene.meshes[url] = mesh_data;
+					scene.meshes[url] = mesh;
 				}
 			}
 
@@ -12399,7 +12500,7 @@ var parserDAE = {
 		var xmlmesh = xmlgeometry.querySelector("mesh");
 			
 		//for data sources
-		var sources = [];
+		var sources = {};
 		var xmlsources = xmlmesh.querySelectorAll("source");
 		for(var i = 0; i < xmlsources.length; i++)
 		{
@@ -12417,14 +12518,31 @@ var parserDAE = {
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var triangles = false;
+		var polylist = false;
+		var vcount = null;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("polylist");
+			if(xmlpolygons)
+			{
+				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
+				return null;
+			}
+			//polylist = true;
+			//var xmlvcount = xmlpolygons.querySelector("vcount");
+			//var vcount = this.readContentAsUInt32( xmlvcount );
+		}
 		if(!xmlpolygons)
 		{
 			xmlpolygons = xmlmesh.querySelector("triangles");
 			triangles = true;
 		}
 		if(!xmlpolygons)
-			throw("no polygons or triangles in mesh");
+		{
+			console.log("no polygons or triangles in mesh: " + id);
+			return null;
+		}
 
 
 		var xmlinputs = xmlpolygons.querySelectorAll("input");
@@ -12574,7 +12692,7 @@ var parserDAE = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//swap coords
-		if(flip && 0)
+		if(flip && 1)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -12604,7 +12722,7 @@ var parserDAE = {
 	},
 
 	//used for skinning and morphing
-	readController: function(id, flip)
+	readController: function(id, flip, scene)
 	{
 		//get root
 		var xmlcontroller = this._xmlroot.querySelector("controller" + id);
@@ -12612,38 +12730,25 @@ var parserDAE = {
 
 		var use_indices = false;
 		var xmlskin = xmlcontroller.querySelector("skin");
-		if(!xmlskin) return null;
+		if(xmlskin)
+			return this.readSkinController(xmlskin, flip, scene);
 
+		var xmlmorph = xmlcontroller.querySelector("morph");
+		if(xmlmorph)
+			return this.readMorphController(xmlmorph, flip, scene);
+
+		return null;
+	},
+
+	readSkinController: function(xmlskin, flip, scene)
+	{
 		//base geometry
 		var id_geometry = xmlskin.getAttribute("source");
 		var mesh = this.readGeometry( id_geometry, flip );
 		if(!mesh)
 			return null;
 
-		//for data sources
-		var sources = [];
-		var xmlsources = xmlskin.querySelectorAll("source");
-		for(var i = 0; i < xmlsources.length; i++)
-		{
-			var xmlsource = xmlsources[i];
-			if(!xmlsource.querySelector) continue;
-			var float_array = xmlsource.querySelector("float_array");
-			if(float_array)
-			{
-				var floats = this.readContentAsFloats( xmlsource );
-				sources[ xmlsource.getAttribute("id") ] = floats;
-				continue;
-			}
-			var name_array = xmlsource.querySelector("Name_array");
-			if(name_array)
-			{
-				var names = this.readContentAsStringsArray( name_array );
-				if(!names)
-					return null;
-				sources[ xmlsource.getAttribute("id") ] = names;
-				continue;
-			}
-		}
+		var sources = this.readSources(xmlskin, flip);
 
 		//matrix
 		var bind_matrix = null;
@@ -12748,6 +12853,84 @@ var parserDAE = {
 		}
 
 		return mesh;
+	},
+
+	readMorphController: function(xmlmorph, flip, scene)
+	{
+		var id_geometry = xmlmorph.getAttribute("source");
+		var base_mesh = this.readGeometry( id_geometry, flip );
+		if(!base_mesh)
+			return null;
+
+		//read sources with blend shapes info (which ones, and the weight)
+		var sources = this.readSources(xmlmorph, flip);
+
+		var morphs = [];
+
+		//targets
+		var xmltargets = xmlmorph.querySelector("targets");
+		if(!xmltargets)
+			return null;
+
+		var xmlinputs = xmltargets.querySelectorAll("input");
+		var targets = null;
+		var weights = null;
+
+		for(var i = 0; i < xmlinputs.length; i++)
+		{
+			var semantic = xmlinputs[i].getAttribute("semantic").toUpperCase();
+			var data = sources[ xmlinputs[i].getAttribute("source").substr(1) ];
+			if( semantic == "MORPH_TARGET" )
+				targets = data;
+			else if( semantic == "MORPH_WEIGHT" )
+				weights = data;
+		}
+
+		if(!targets || !weights)
+			return null;
+
+		//get targets
+		for(var i in targets)
+		{
+			var id = "#" + targets[i];
+			var geometry = this.readGeometry( id, flip );
+			scene.meshes[id] = geometry;
+			morphs.push([id, weights[i]]);
+		}
+
+		return { type: "morph", mesh: base_mesh, morph_targets: morphs };
+	},
+
+	readSources: function(xmlnode, flip)
+	{
+		//for data sources
+		var sources = {};
+		var xmlsources = xmlnode.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+
+			var float_array = xmlsource.querySelector("float_array");
+			if(float_array)
+			{
+				var floats = this.readContentAsFloats( xmlsource );
+				sources[ xmlsource.getAttribute("id") ] = floats;
+				continue;
+			}
+
+			var name_array = xmlsource.querySelector("Name_array");
+			if(name_array)
+			{
+				var names = this.readContentAsStringsArray( name_array );
+				if(!names)
+					return null;
+				sources[ xmlsource.getAttribute("id") ] = names;
+				continue;
+			}
+		}
+
+		return sources;
 	},
 
 	readContentAsUInt32: function(xmlnode)
@@ -14187,6 +14370,7 @@ SceneNode.prototype.setId = function(new_id)
 		scene._nodes_by_id[ this.id ] = this;
 
 	LEvent.trigger(this,"id_changed", new_id);
+	LEvent.trigger(Scene,"nodeIdChanged", this);
 	return true;
 }
 
@@ -14363,12 +14547,13 @@ SceneNode.prototype.configure = function(info)
 		var mesh = info.mesh;
 		if(typeof(mesh) == "string")
 			mesh = ResourcesManager.meshes[mesh];
+
 		if(mesh)
 		{
 			if(mesh.bones)
 				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
 			else
-				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id, morph_targets: info.morph_targets }) );
 		}
 	}
 

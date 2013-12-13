@@ -485,6 +485,15 @@ var ResourcesManager = {
 			{
 				var mesh_data = scene_data.meshes[i];
 				var mesh = GL.Mesh.load(mesh_data);
+				/*
+				var morphs = [];
+				if(mesh.morph_targets)
+					for(var j in mesh.morph_targets)
+					{
+
+					}
+				*/
+
 				ResourcesManager.registerResource(i,mesh);
 			}
 		}

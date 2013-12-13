@@ -9,6 +9,7 @@ var Shaders = {
 	shaders: {},
 	globals: {},
 	default_shader: null,
+	on_compile_error: null, 
 
 	init: function(url, ignore_cache)
 	{
@@ -110,6 +111,9 @@ var Shaders = {
 			lines = (this.global_extra_code + ps_code).split("\n");
 			for(var i in lines)
 				console.log(i + ": " + lines[i]);
+
+			if(this.on_compile_error)
+				this.on_compile_error(err);
 
 			return null;
 		}

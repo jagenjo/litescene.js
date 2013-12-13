@@ -803,6 +803,7 @@ SceneNode.prototype.setId = function(new_id)
 		scene._nodes_by_id[ this.id ] = this;
 
 	LEvent.trigger(this,"id_changed", new_id);
+	LEvent.trigger(Scene,"nodeIdChanged", this);
 	return true;
 }
 
@@ -979,12 +980,13 @@ SceneNode.prototype.configure = function(info)
 		var mesh = info.mesh;
 		if(typeof(mesh) == "string")
 			mesh = ResourcesManager.meshes[mesh];
+
 		if(mesh)
 		{
 			if(mesh.bones)
 				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
 			else
-				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
+				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id, morph_targets: info.morph_targets }) );
 		}
 	}
 

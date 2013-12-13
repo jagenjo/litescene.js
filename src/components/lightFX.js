@@ -95,8 +95,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 	RI.uniforms["u_volume_info"] = volume_info;
 	RI.uniforms["u_volume_density"] = this.volume_density;
 	
-	RI.mesh = this._mesh;
-	RI.primitive = gl.TRIANGLES;
+	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
 
 	return RI;
@@ -111,7 +110,7 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(!RI)
 	{
 		this._glare_render_instance = RI = new RenderInstance(this._root, this);
-		RI.mesh = GL.Mesh.plane({size:1});
+		RI.setMesh( GL.Mesh.plane({size:1}), gl.TRIANGLES );
 		RI.priority = 1;
 		//RI.onPreRender = LightFX.onGlarePreRender;
 		//RI.pos2D = vec3.create();

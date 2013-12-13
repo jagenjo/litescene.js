@@ -79,9 +79,9 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-	RI.mesh = this._root.mesh = this._mesh;
+	RI.setMesh( this._mesh, this.primitive );
+	
 	RI.material = this.material || this._root.getMaterial();
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 

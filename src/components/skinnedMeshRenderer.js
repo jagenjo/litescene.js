@@ -23,7 +23,7 @@ SkinnedMeshRenderer["@mesh"] = { widget: "mesh" };
 SkinnedMeshRenderer["@lod_mesh"] = { widget: "mesh" };
 SkinnedMeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 SkinnedMeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
-	var component = this.component;
+	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
 	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length < 2)
@@ -201,10 +201,10 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
-		RI.mesh = this._skinned_mesh;
+		RI.setMesh(this._skinned_mesh, this.primitive);
 	}
 	else
-		RI.mesh = mesh;
+		RI.setMesh(mesh, this.primitive);
 
 	//do not need to update
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -213,7 +213,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;

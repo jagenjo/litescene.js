@@ -117,8 +117,8 @@ var Parser = {
 		bounding.aabb_min = min;
 		bounding.aabb_max = max;
 		bounding.aabb_center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
-		bounding.aabb_half = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
-		bounding.radius = Math.sqrt(bounding.aabb_half[0] * bounding.aabb_half[0] + bounding.aabb_half[1] * bounding.aabb_half[1] + bounding.aabb_half[2] * bounding.aabb_half[2]);
+		bounding.aabb_halfsize = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
+		bounding.radius = Math.sqrt(bounding.aabb_halfsize[0] * bounding.aabb_halfsize[0] + bounding.aabb_halfsize[1] * bounding.aabb_halfsize[1] + bounding.aabb_halfsize[2] * bounding.aabb_halfsize[2]);
 		return bounding;
 	},
 

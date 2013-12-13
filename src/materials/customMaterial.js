@@ -45,8 +45,13 @@ CustomMaterial.prototype.onCodeChange = function()
 
 CustomMaterial.prototype.computeCode = function()
 {
+
+
 	this._ps_uniforms_code = "";
-	this._ps_functions_code = this.code.split("\n").join("");
+	var lines = this.code.split("\n");
+	for(var i in lines)
+		lines[i] = lines[i].split("//")[0]; //remove comments
+	this._ps_functions_code = lines.join("");
 	this._ps_code = "vec4 result = surf(); color = result.xyz; alpha = result.a;";
 }
 

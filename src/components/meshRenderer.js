@@ -62,6 +62,9 @@ MeshRenderer.prototype.configure = function(o)
 	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
+
+	if(o.morph_targets)
+		this.morph_targets = o.morph_targets;
 }
 
 /**
@@ -110,7 +113,7 @@ MeshRenderer.prototype.getResources = function(res)
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -127,10 +130,12 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
+	//buffers
+	RI.setMesh( mesh, this.primitive );
+
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
+
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;

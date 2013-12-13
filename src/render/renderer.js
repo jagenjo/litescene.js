@@ -766,9 +766,16 @@ var Renderer = {
 			//TODO
 
 			//change conditionaly
-			if(options.force_wireframe) instance.primitive = gl.LINES;
-			if(instance.primitive == gl.LINES && !instance.mesh.lines)
-				instance.mesh.computeWireframe();
+			if(options.force_wireframe) 
+			{
+				instance.primitive = gl.LINES;
+				if(instance.mesh)
+				{
+					if(!instance.mesh.indexBuffers["lines"])
+						instance.mesh.computeWireframe();
+					instance.index_buffer = instance.mesh.indexBuffers["lines"];
+				}
+			}
 
 			//and finally, the alpha thing to determine if it is visible or not
 			var mat = instance.material;
@@ -784,14 +791,14 @@ var Renderer = {
 			else if(macros["USE_ALPHA_TEST"])
 				delete macros["USE_ALPHA_TEST"];
 
-			var mesh = instance.mesh;
-			if(!("a_normal" in mesh.vertexBuffers))
+			var buffers = instance.vertex_buffers;
+			if(!("a_normal" in buffers))
 				macros.NO_NORMALS = "";
-			if(!("a_coord" in mesh.vertexBuffers))
+			if(!("a_coord" in buffers))
 				macros.NO_COORDS = "";
-			if(("a_color" in mesh.vertexBuffers))
+			if(("a_color" in buffers))
 				macros.USE_COLOR_STREAM = "";
-			if(("a_tangent" in mesh.vertexBuffers))
+			if(("a_tangent" in buffers))
 				macros.USE_TANGENT_STREAM = "";
 		}
 
