@@ -802,7 +802,7 @@ SceneNode.prototype.setId = function(new_id)
 	if(this.id)
 		scene._nodes_by_id[ this.id ] = this;
 
-	LEvent.trigger(this,"id_changed", new_id);
+	LEvent.trigger(this,"idChanged", new_id);
 	LEvent.trigger(Scene,"nodeIdChanged", this);
 	return true;
 }

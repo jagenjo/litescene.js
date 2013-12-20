@@ -1591,21 +1591,29 @@ Octree.hitTestTriangle = function(origin, ray, a, b, c) {
 */
 
 var Shaders = {
-	shaders: {},
-	globals: {},
+
+	compiled_shaders: {},
+	global_shaders: {},
+
 	default_shader: null,
 	on_compile_error: null, 
 
 	init: function(url, ignore_cache)
 	{
 		//set a default shader 
-		this.shaders = {};
-		this.globals = {};
 		this.default_shader = null;
 
+		//storage
+		this.compiled_shaders = {};
+		this.global_shaders = {};
+
+		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
 
+		//compile some shaders
 		this.createDefaultShaders();
+
+		//a flat shader as default
 		this.default_shader = this.get("flat");
 
 		url = url ||"data/shaders.xml";
@@ -1625,12 +1633,12 @@ var Shaders = {
 		//if there is no macros, just get the old one
 		if(!macros)
 		{
-			var shader = this.shaders[id];
+			var shader = this.compiled_shaders[id];
 			if (shader != null)
 				return shader;
 		}
 
-		var global = this.globals[id];
+		var global = this.global_shaders[id];
 
 		if (global == null)
 			return this.default_shader;
@@ -1655,8 +1663,8 @@ var Shaders = {
 		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.shaders[hashkey] != null)
-			return this.shaders[hashkey];
+		if (this.compiled_shaders[hashkey] != null)
+			return this.compiled_shaders[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -1665,12 +1673,12 @@ var Shaders = {
 		var shader = this.compileShader(vs_code, ps_code, key);
 		if(shader)
 			shader.global = global;
-		return this.registerShader(shader, hashkey, id);
+		return this.registerCompiledShader(shader, hashkey, id);
 	},
 
 	getGlobalShaderInfo: function(id)
 	{
-		return this.globals[id];
+		return this.global_shaders[id];
 	},
 
 	compileShader: function(vs_code, ps_code, name)
@@ -1706,17 +1714,17 @@ var Shaders = {
 	},
 
 	// given a compiled shader it caches it for later reuse
-	registerShader: function(shader, key, id)
+	registerCompiledShader: function(shader, key, id)
 	{
 		if(shader == null)
 		{
-			this.shaders[key] = this.default_shader;
+			this.compiled_shaders[key] = this.default_shader;
 			return this.default_shader;
 		}
 
 		shader.id = id;
 		shader.key = key;
-		this.shaders[key] = shader;
+		this.compiled_shaders[key] = shader;
 		return shader;
 	},
 
@@ -1730,8 +1738,8 @@ var Shaders = {
 				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
-					Shaders.globals = {};
-					Shaders.shaders = {};
+					Shaders.global_shaders = {};
+					Shaders.compiled_shaders = {};
 				}
 				Shaders.processShadersXML(response);
 				if(on_complete)
@@ -1782,14 +1790,14 @@ var Shaders = {
 			else
 				multipass = false;
 
-			Shaders.addGlobalShader(vs_code,ps_code,id,_macros, multipass);
+			Shaders.registerGlobalShader(vs_code,ps_code,id,_macros, multipass);
 		}
 	},
 	
 	//adds source code of a shader that could be compiled if needed
 	//id: name
 	//macros: supported macros by the shader
-	addGlobalShader: function(vs_code, ps_code, id, macros, multipass )
+	registerGlobalShader: function(vs_code, ps_code, id, macros, multipass )
 	{
 		var macros_found = {};
 		/*
@@ -1818,7 +1826,8 @@ var Shaders = {
 			macros_found: macros_found,
 			multipass: multipass
 		};
-		this.globals[id] = global;
+		this.global_shaders[id] = global;
+		LEvent.trigger(Shaders,"newShader");
 		return global;
 	},
 
@@ -1837,7 +1846,7 @@ var Shaders = {
 	createDefaultShaders: function()
 	{
 		//flat
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			void main() {\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\
 			}\
@@ -1849,7 +1858,7 @@ var Shaders = {
 		',"flat");
 
 		//flat texture
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec2 v_uvs;\
 			void main() {\n\
 				v_uvs = a_coord;\n\
@@ -1866,7 +1875,7 @@ var Shaders = {
 
 		//object space normals
 		/*
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			uniform mat4 u_normal_model;\n\
 			varying vec3 v_normal;\n\
 			\
@@ -1883,7 +1892,7 @@ var Shaders = {
 		',"normal");
 		*/
 
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec2 coord;\
 			void main() {\
 			coord = a_coord;\
@@ -1897,9 +1906,8 @@ var Shaders = {
 			gl_FragColor = texture2D(texture, coord) * color;\
 			}\
 		',"screen");
-		//this.shaders["screen"].uniforms({color: [1,1,1,1]});
 
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec4 v_pos;\
 			void main() {\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\
@@ -4197,6 +4205,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+
 	//Same tree
 	node._in_tree = this._in_tree;
 
@@ -4209,6 +4218,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		LEvent.trigger(this._in_tree, "treeItemAdded", node);
 		inner_recursive(node);
 	}
+	
 
 	//recursive action
 	function inner_recursive(item)
@@ -4217,9 +4227,9 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree)
+			if(!child._in_tree && item._in_tree)
 			{
-				LEvent.trigger( child._in_tree, "treeItemAdded", child );
+				LEvent.trigger( item._in_tree, "treeItemAdded", child );
 				child._in_tree = item._in_tree;
 			}
 			inner_recursive( child );
@@ -6196,23 +6206,24 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
-	//do not need to update
+	//matrix: do not need to update, already done
 	RI.matrix.set( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	//buffers
-	RI.setMesh( mesh, this.primitive );
-
-	if(this.submesh_id != -1 && this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
-
+	//material
 	RI.material = this.material || this._root.getMaterial();
 
+	//flags
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
+
+	//buffers from mesh and bounding
+	RI.setMesh( mesh, this.primitive );
+	if(this.submesh_id != -1 && this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
 
 	instances.push(RI);
 	//return RI;
@@ -6572,7 +6583,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
 	mat.textures["color"] = texture;
 
-	RI.mesh = mesh;
+	RI.setMesh(mesh);
 	RI.material = mat;
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -6582,6 +6593,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	RI.enableFlag( RI_CW ); //no lights
 	RI.disableFlag( RI_DEPTH_WRITE ); 
 	RI.disableFlag( RI_DEPTH_TEST ); 
+	RI.enableFlag( RI_IGNORE_FRUSTRUM );
 
 	instances.push(RI);
 }
@@ -7488,7 +7500,7 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 
 FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 {
-	if(!this._graph) return;
+	if(!this._graph || !Renderer.render_fx) return;
 
 	var use_depth = false;
 	if(this._graph_depth_texture_node && this._graph_depth_texture_node.isOutputConnected(0))
@@ -7539,7 +7551,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 FXGraphComponent.prototype.onAfterRender = function(e,dt)
 {
-	if(!this._graph || !this.enabled) return;
+	if(!this._graph || !this.enabled || !Renderer.render_fx) return;
 
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
@@ -7578,15 +7590,15 @@ window.FXGraphComponent = FXGraphComponent;
 
 function KnobComponent(o)
 {
-	this.value = o.value || 0;
-	this.delta = o.delta || 0.01; //pixels to value delta
+	this.value = 0;
+	this.delta = 0.01;
 
-	this.steps = o.steps || 0; //0 = continuous
-	this.min_value = o.min_value || 0;
-	this.max_value = o.max_value || 1;
-	this.min_angle = o.min_angle || -120;
-	this.max_angle = o.max_angle || 120;
-	this.axis = o.axis || [0,0,1];
+	this.steps = 0; //0 = continuous
+	this.min_value = 0;
+	this.max_value = 1;
+	this.min_angle = -120;
+	this.max_angle = 120;
+	this.axis = vec3.fromValues(0,0,1);
 
 	if(o)
 		this.configure(o);
@@ -8120,13 +8132,14 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	else
 		mat4.copy( RI.matrix, ParticleEmissor._identity );
 
-	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
-	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
+
+	RI.setMesh( this._mesh, gl.TRIANGLES );
+	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
 
 	instances.push(RI);
 	//return RI;
@@ -8692,7 +8705,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		else //for the rest just reuse the same as the first one
 			RI.flags = flags;
 
-		RI.mesh = mesh;
+		RI.setMesh(mesh);
 		RI.material = material;
 
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
@@ -10409,33 +10422,35 @@ var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
 
 function RenderInstance(node, component)
 {
-	this._key = "";
-	this._uid = LS.generateUId();
+	this._key = ""; //not used yet
+	this._uid = LS.generateUId(); //unique identifier for this RI
 
+	//info about the mesh
 	this.vertex_buffers = null;
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
+	this.mesh = null; //shouldnt be used, but just in case
+	this.primitive = gl.TRIANGLES;
 
-	this.mesh = null;
-
+	//where does it come from
 	this.node = node;
 	this.component = component;
-	this.primitive = gl.TRIANGLES;
 	this.priority = 10; //instances are rendered from higher to lower priority
 
+	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
 
+	//transformation
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
 
-	//not in use right now
-	this.oobb_center = vec3.create();
-	this.oobb_halfsize = vec3.create();
-	this.aabb_center = vec3.create();
-	this.aabb_halfsize = vec3.create();
+	//for visibility computation
+	this.oobb = BBox.create(); //object space bounding box
+	this.aabb = BBox.create(); //axis aligned bounding box
 
+	//info about the material
 	this.material = null;
 
 	//globals, never reseted
@@ -10475,13 +10490,13 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 			break;
 	}
 
-	/*
 	if(mesh.bounding)
 	{
-		this.aabb_center.set( mesh.bounding.aabb_center );
-		this.aabb_halfsize.set( mesh.bounding.aabb_halfsize );
+		BBox.setCenterHalfsize(this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
+		this.flags &= ~RI_IGNORE_FRUSTRUM; //test against frustrum
 	}
-	*/
+	else
+		this.flags |= RI_IGNORE_FRUSTRUM; //no frustrum, no test
 }
 
 RenderInstance.prototype.setRange = function(start, offset)
@@ -10556,8 +10571,16 @@ RenderInstance.prototype.computeNormalMatrix = function()
 /**
 * Computes the instance bounding box
 *
-* @method computeBounding
+* @method updateBounding
 */
+RenderInstance.prototype.updateAABB = function()
+{
+	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+}
+
+
+
+/*
 RenderInstance.prototype.computeBounding = function()
 {
 	if(!this.mesh ||!this.mesh.bounding) return;
@@ -10593,6 +10616,7 @@ RenderInstance.prototype.computeBounding = function()
 	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
 	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
 }
+*/
 
 /**
 * Calls render taking into account primitive and submesh id
@@ -10637,6 +10661,7 @@ var Renderer = {
 	update_materials: true,
 	sort_instances_by_distance: true,
 	sort_instances_by_priority: true,
+	render_fx: true,
 
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
@@ -10649,6 +10674,7 @@ var Renderer = {
 
 	//stats
 	_rendercalls: 0,
+	_rendered_instances: 0,
 
 	reset: function()
 	{
@@ -10672,6 +10698,7 @@ var Renderer = {
 		this._current_scene = scene;
 		options.main_camera = camera;
 		this._rendercalls = 0;
+		this._rendered_instances = 0;
 
 		//events
 		LEvent.trigger(Scene, "beforeRender" );
@@ -10696,6 +10723,7 @@ var Renderer = {
 		//render one camera or all the cameras
 		var current_camera = null;
 
+		//for each camera
 		for(var i in cameras)
 		{
 			current_camera = cameras[i];
@@ -10705,9 +10733,9 @@ var Renderer = {
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
-			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+			if(this.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
 				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
-			else if(this.color_rendertarget) //render color to RT
+			else if(this.render_fx && this.color_rendertarget) //render color to RT
 				this.color_rendertarget.drawTo(inner_draw);
 			else //Screen render
 			{
@@ -10818,6 +10846,8 @@ var Renderer = {
 		options = options || {};
 		options.camera = this.active_camera;
 
+		var frustrum_planes = geo.extractPlanes( this._viewprojection_matrix );
+
 		LEvent.trigger(scene, "beforeRenderPass", options);
 		scene.sendEventToNodes("beforeRenderPass", options);
 
@@ -10872,6 +10902,10 @@ var Renderer = {
 			if(instance.onPreRender)
 				instance.onPreRender(options);
 
+			//test visibility against camera frustrum
+			if( !(instance.flags & RI_IGNORE_FRUSTRUM) && geo.frustrumTestBox( frustrum_planes, instance.aabb ) == CLIP_OUTSIDE)
+				continue;
+
 			//Compute lights affecting this RI
 			//TODO
 
@@ -10883,6 +10917,7 @@ var Renderer = {
 				continue;
 			}
 
+			this._rendered_instances += 1;
 
 			//choose the appropiate render pass
 			if(options.is_shadowmap)
@@ -11365,7 +11400,7 @@ var Renderer = {
 			LEvent.trigger(node,"collectCameras", cameras );
 		}
 
-		//complete render instances
+		//process render instances (add stuff if needed)
 		for(var i in instances)
 		{
 			var instance = instances[i];
@@ -11381,8 +11416,9 @@ var Renderer = {
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
 
-			//add AABBs
-			//TODO
+			//compute the axis aligned bounding box
+			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+				instance.updateAABB();
 
 			//change conditionaly
 			if(options.force_wireframe) 
@@ -14369,7 +14405,7 @@ SceneNode.prototype.setId = function(new_id)
 	if(this.id)
 		scene._nodes_by_id[ this.id ] = this;
 
-	LEvent.trigger(this,"id_changed", new_id);
+	LEvent.trigger(this,"idChanged", new_id);
 	LEvent.trigger(Scene,"nodeIdChanged", this);
 	return true;
 }

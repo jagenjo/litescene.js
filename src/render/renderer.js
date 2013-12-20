@@ -18,6 +18,7 @@ var Renderer = {
 	update_materials: true,
 	sort_instances_by_distance: true,
 	sort_instances_by_priority: true,
+	render_fx: true,
 
 	z_pass: false, //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 
@@ -30,6 +31,7 @@ var Renderer = {
 
 	//stats
 	_rendercalls: 0,
+	_rendered_instances: 0,
 
 	reset: function()
 	{
@@ -53,6 +55,7 @@ var Renderer = {
 		this._current_scene = scene;
 		options.main_camera = camera;
 		this._rendercalls = 0;
+		this._rendered_instances = 0;
 
 		//events
 		LEvent.trigger(Scene, "beforeRender" );
@@ -77,6 +80,7 @@ var Renderer = {
 		//render one camera or all the cameras
 		var current_camera = null;
 
+		//for each camera
 		for(var i in cameras)
 		{
 			current_camera = cameras[i];
@@ -86,9 +90,9 @@ var Renderer = {
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
-			if(this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
+			if(this.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
 				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, inner_draw);
-			else if(this.color_rendertarget) //render color to RT
+			else if(this.render_fx && this.color_rendertarget) //render color to RT
 				this.color_rendertarget.drawTo(inner_draw);
 			else //Screen render
 			{
@@ -199,6 +203,8 @@ var Renderer = {
 		options = options || {};
 		options.camera = this.active_camera;
 
+		var frustrum_planes = geo.extractPlanes( this._viewprojection_matrix );
+
 		LEvent.trigger(scene, "beforeRenderPass", options);
 		scene.sendEventToNodes("beforeRenderPass", options);
 
@@ -253,6 +259,10 @@ var Renderer = {
 			if(instance.onPreRender)
 				instance.onPreRender(options);
 
+			//test visibility against camera frustrum
+			if( !(instance.flags & RI_IGNORE_FRUSTRUM) && geo.frustrumTestBox( frustrum_planes, instance.aabb ) == CLIP_OUTSIDE)
+				continue;
+
 			//Compute lights affecting this RI
 			//TODO
 
@@ -264,6 +274,7 @@ var Renderer = {
 				continue;
 			}
 
+			this._rendered_instances += 1;
 
 			//choose the appropiate render pass
 			if(options.is_shadowmap)
@@ -746,7 +757,7 @@ var Renderer = {
 			LEvent.trigger(node,"collectCameras", cameras );
 		}
 
-		//complete render instances
+		//process render instances (add stuff if needed)
 		for(var i in instances)
 		{
 			var instance = instances[i];
@@ -762,8 +773,9 @@ var Renderer = {
 			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
 
-			//add AABBs
-			//TODO
+			//compute the axis aligned bounding box
+			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+				instance.updateAABB();
 
 			//change conditionaly
 			if(options.force_wireframe) 

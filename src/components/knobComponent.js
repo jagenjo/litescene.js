@@ -7,15 +7,15 @@
 
 function KnobComponent(o)
 {
-	this.value = o.value || 0;
-	this.delta = o.delta || 0.01; //pixels to value delta
+	this.value = 0;
+	this.delta = 0.01;
 
-	this.steps = o.steps || 0; //0 = continuous
-	this.min_value = o.min_value || 0;
-	this.max_value = o.max_value || 1;
-	this.min_angle = o.min_angle || -120;
-	this.max_angle = o.max_angle || 120;
-	this.axis = o.axis || [0,0,1];
+	this.steps = 0; //0 = continuous
+	this.min_value = 0;
+	this.max_value = 1;
+	this.min_angle = -120;
+	this.max_angle = 120;
+	this.axis = vec3.fromValues(0,0,1);
 
 	if(o)
 		this.configure(o);

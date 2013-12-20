@@ -143,7 +143,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		else //for the rest just reuse the same as the first one
 			RI.flags = flags;
 
-		RI.mesh = mesh;
+		RI.setMesh(mesh);
 		RI.material = material;
 
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);

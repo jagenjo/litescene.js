@@ -125,23 +125,24 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
-	//do not need to update
+	//matrix: do not need to update, already done
 	RI.matrix.set( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	//buffers
-	RI.setMesh( mesh, this.primitive );
-
-	if(this.submesh_id != -1 && this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
-
+	//material
 	RI.material = this.material || this._root.getMaterial();
 
+	//flags
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
+
+	//buffers from mesh and bounding
+	RI.setMesh( mesh, this.primitive );
+	if(this.submesh_id != -1 && this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
 
 	instances.push(RI);
 	//return RI;

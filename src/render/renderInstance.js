@@ -25,33 +25,35 @@ var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
 
 function RenderInstance(node, component)
 {
-	this._key = "";
-	this._uid = LS.generateUId();
+	this._key = ""; //not used yet
+	this._uid = LS.generateUId(); //unique identifier for this RI
 
+	//info about the mesh
 	this.vertex_buffers = null;
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
+	this.mesh = null; //shouldnt be used, but just in case
+	this.primitive = gl.TRIANGLES;
 
-	this.mesh = null;
-
+	//where does it come from
 	this.node = node;
 	this.component = component;
-	this.primitive = gl.TRIANGLES;
 	this.priority = 10; //instances are rendered from higher to lower priority
 
+	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
 
+	//transformation
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
 
-	//not in use right now
-	this.oobb_center = vec3.create();
-	this.oobb_halfsize = vec3.create();
-	this.aabb_center = vec3.create();
-	this.aabb_halfsize = vec3.create();
+	//for visibility computation
+	this.oobb = BBox.create(); //object space bounding box
+	this.aabb = BBox.create(); //axis aligned bounding box
 
+	//info about the material
 	this.material = null;
 
 	//globals, never reseted
@@ -91,13 +93,13 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 			break;
 	}
 
-	/*
 	if(mesh.bounding)
 	{
-		this.aabb_center.set( mesh.bounding.aabb_center );
-		this.aabb_halfsize.set( mesh.bounding.aabb_halfsize );
+		BBox.setCenterHalfsize(this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
+		this.flags &= ~RI_IGNORE_FRUSTRUM; //test against frustrum
 	}
-	*/
+	else
+		this.flags |= RI_IGNORE_FRUSTRUM; //no frustrum, no test
 }
 
 RenderInstance.prototype.setRange = function(start, offset)
@@ -172,8 +174,16 @@ RenderInstance.prototype.computeNormalMatrix = function()
 /**
 * Computes the instance bounding box
 *
-* @method computeBounding
+* @method updateBounding
 */
+RenderInstance.prototype.updateAABB = function()
+{
+	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+}
+
+
+
+/*
 RenderInstance.prototype.computeBounding = function()
 {
 	if(!this.mesh ||!this.mesh.bounding) return;
@@ -209,6 +219,7 @@ RenderInstance.prototype.computeBounding = function()
 	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
 	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
 }
+*/
 
 /**
 * Calls render taking into account primitive and submesh id

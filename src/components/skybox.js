@@ -71,7 +71,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
 	mat.textures["color"] = texture;
 
-	RI.mesh = mesh;
+	RI.setMesh(mesh);
 	RI.material = mat;
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -81,6 +81,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	RI.enableFlag( RI_CW ); //no lights
 	RI.disableFlag( RI_DEPTH_WRITE ); 
 	RI.disableFlag( RI_DEPTH_TEST ); 
+	RI.enableFlag( RI_IGNORE_FRUSTRUM );
 
 	instances.push(RI);
 }

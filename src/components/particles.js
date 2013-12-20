@@ -471,13 +471,14 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	else
 		mat4.copy( RI.matrix, ParticleEmissor._identity );
 
-	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
-	RI.length = this._visible_particles * 6;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
+
+	RI.setMesh( this._mesh, gl.TRIANGLES );
+	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
 
 	instances.push(RI);
 	//return RI;

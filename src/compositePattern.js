@@ -46,6 +46,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+
 	//Same tree
 	node._in_tree = this._in_tree;
 
@@ -58,6 +59,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		LEvent.trigger(this._in_tree, "treeItemAdded", node);
 		inner_recursive(node);
 	}
+	
 
 	//recursive action
 	function inner_recursive(item)
@@ -66,9 +68,9 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree)
+			if(!child._in_tree && item._in_tree)
 			{
-				LEvent.trigger( child._in_tree, "treeItemAdded", child );
+				LEvent.trigger( item._in_tree, "treeItemAdded", child );
 				child._in_tree = item._in_tree;
 			}
 			inner_recursive( child );

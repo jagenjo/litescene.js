@@ -6,21 +6,29 @@
 */
 
 var Shaders = {
-	shaders: {},
-	globals: {},
+
+	compiled_shaders: {},
+	global_shaders: {},
+
 	default_shader: null,
 	on_compile_error: null, 
 
 	init: function(url, ignore_cache)
 	{
 		//set a default shader 
-		this.shaders = {};
-		this.globals = {};
 		this.default_shader = null;
 
+		//storage
+		this.compiled_shaders = {};
+		this.global_shaders = {};
+
+		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
 
+		//compile some shaders
 		this.createDefaultShaders();
+
+		//a flat shader as default
 		this.default_shader = this.get("flat");
 
 		url = url ||"data/shaders.xml";
@@ -40,12 +48,12 @@ var Shaders = {
 		//if there is no macros, just get the old one
 		if(!macros)
 		{
-			var shader = this.shaders[id];
+			var shader = this.compiled_shaders[id];
 			if (shader != null)
 				return shader;
 		}
 
-		var global = this.globals[id];
+		var global = this.global_shaders[id];
 
 		if (global == null)
 			return this.default_shader;
@@ -70,8 +78,8 @@ var Shaders = {
 		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.shaders[hashkey] != null)
-			return this.shaders[hashkey];
+		if (this.compiled_shaders[hashkey] != null)
+			return this.compiled_shaders[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -80,12 +88,12 @@ var Shaders = {
 		var shader = this.compileShader(vs_code, ps_code, key);
 		if(shader)
 			shader.global = global;
-		return this.registerShader(shader, hashkey, id);
+		return this.registerCompiledShader(shader, hashkey, id);
 	},
 
 	getGlobalShaderInfo: function(id)
 	{
-		return this.globals[id];
+		return this.global_shaders[id];
 	},
 
 	compileShader: function(vs_code, ps_code, name)
@@ -121,17 +129,17 @@ var Shaders = {
 	},
 
 	// given a compiled shader it caches it for later reuse
-	registerShader: function(shader, key, id)
+	registerCompiledShader: function(shader, key, id)
 	{
 		if(shader == null)
 		{
-			this.shaders[key] = this.default_shader;
+			this.compiled_shaders[key] = this.default_shader;
 			return this.default_shader;
 		}
 
 		shader.id = id;
 		shader.key = key;
-		this.shaders[key] = shader;
+		this.compiled_shaders[key] = shader;
 		return shader;
 	},
 
@@ -145,8 +153,8 @@ var Shaders = {
 				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
-					Shaders.globals = {};
-					Shaders.shaders = {};
+					Shaders.global_shaders = {};
+					Shaders.compiled_shaders = {};
 				}
 				Shaders.processShadersXML(response);
 				if(on_complete)
@@ -197,14 +205,14 @@ var Shaders = {
 			else
 				multipass = false;
 
-			Shaders.addGlobalShader(vs_code,ps_code,id,_macros, multipass);
+			Shaders.registerGlobalShader(vs_code,ps_code,id,_macros, multipass);
 		}
 	},
 	
 	//adds source code of a shader that could be compiled if needed
 	//id: name
 	//macros: supported macros by the shader
-	addGlobalShader: function(vs_code, ps_code, id, macros, multipass )
+	registerGlobalShader: function(vs_code, ps_code, id, macros, multipass )
 	{
 		var macros_found = {};
 		/*
@@ -233,7 +241,8 @@ var Shaders = {
 			macros_found: macros_found,
 			multipass: multipass
 		};
-		this.globals[id] = global;
+		this.global_shaders[id] = global;
+		LEvent.trigger(Shaders,"newShader");
 		return global;
 	},
 
@@ -252,7 +261,7 @@ var Shaders = {
 	createDefaultShaders: function()
 	{
 		//flat
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			void main() {\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\
 			}\
@@ -264,7 +273,7 @@ var Shaders = {
 		',"flat");
 
 		//flat texture
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec2 v_uvs;\
 			void main() {\n\
 				v_uvs = a_coord;\n\
@@ -281,7 +290,7 @@ var Shaders = {
 
 		//object space normals
 		/*
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			uniform mat4 u_normal_model;\n\
 			varying vec3 v_normal;\n\
 			\
@@ -298,7 +307,7 @@ var Shaders = {
 		',"normal");
 		*/
 
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec2 coord;\
 			void main() {\
 			coord = a_coord;\
@@ -312,9 +321,8 @@ var Shaders = {
 			gl_FragColor = texture2D(texture, coord) * color;\
 			}\
 		',"screen");
-		//this.shaders["screen"].uniforms({color: [1,1,1,1]});
 
-		this.addGlobalShader(this.common_vscode + '\
+		this.registerGlobalShader(this.common_vscode + '\
 			varying vec4 v_pos;\
 			void main() {\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\

@@ -199,7 +199,7 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 
 FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 {
-	if(!this._graph) return;
+	if(!this._graph || !Renderer.render_fx) return;
 
 	var use_depth = false;
 	if(this._graph_depth_texture_node && this._graph_depth_texture_node.isOutputConnected(0))
@@ -250,7 +250,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 FXGraphComponent.prototype.onAfterRender = function(e,dt)
 {
-	if(!this._graph || !this.enabled) return;
+	if(!this._graph || !this.enabled || !Renderer.render_fx) return;
 
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
