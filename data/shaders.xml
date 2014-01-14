@@ -933,7 +933,7 @@
 					#endif
 
 					if( u_reflection_info.x > 0.0 )
-						final_color = mix( final_color, reflection_color, reflection_factor );
+						final_color = final_color * max(0.0, 1.0 - reflection_factor) + reflection_color * reflection_factor;
 					else
 						final_color += reflection_color * reflection_factor;
 

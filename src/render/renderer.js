@@ -45,15 +45,15 @@ var Renderer = {
 	* @method render
 	* @param {SceneTree} scene
 	* @param {Camera} camera
-	* @param {Object} options
+	* @param {Object} render_options
 	*/
-	render: function(scene, camera, options)
+	render: function(scene, camera, render_options)
 	{
-		options = options || {};
+		render_options = render_options || {};
 
 		scene = scene || Scene;
 		this._current_scene = scene;
-		options.main_camera = camera;
+		render_options.main_camera = camera;
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 
@@ -62,20 +62,23 @@ var Renderer = {
 		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
-		this.collectVisibleData(scene, options);
+		this.collectVisibleData(scene, render_options);
 
 		//settings for cameras
 		var cameras = this._visible_cameras;
-		if(camera && !options.render_all_cameras )
+		if(camera && !render_options.render_all_cameras )
 			cameras = [ camera ];
 		Renderer.main_camera = cameras[0];
 
 		//generate shadowmap
-		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled && !options.low_quality)
+		if(scene.settings.enable_shadows && !render_options.skip_shadowmaps && this.generate_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality)
 			this.renderShadowMaps();
 
 		LEvent.trigger(Scene, "afterRenderShadows" );
 		scene.sendEventToNodes("afterRenderShadows" );
+
+		LEvent.trigger(Scene, "renderReflections" );
+		scene.sendEventToNodes("renderReflections" );
 
 		//render one camera or all the cameras
 		var current_camera = null;
@@ -119,20 +122,20 @@ var Renderer = {
 			if(tex)
 				Renderer._full_viewport.set([0,0,tex.width, tex.height]);
 
-			Renderer.enableCamera( camera, options ); //set as active camera and set viewport
+			Renderer.enableCamera( camera, render_options ); //set as active camera and set viewport
 
 			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
-			if(options.ignore_clear != true && !camera._ignore_clear)
+			if(render_options.ignore_clear != true && !camera._ignore_clear)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//render scene
-			//RenderPipeline.renderInstances(options);
+			//RenderPipeline.renderInstances(render_options);
 
 			LEvent.trigger(scene, "beforeRenderScene", camera);
 			scene.sendEventToNodes("beforeRenderScene", camera);
 
-			Renderer.renderInstances(options);
+			Renderer.renderInstances(render_options);
 
 			LEvent.trigger(scene, "afterRenderScene", camera);
 			scene.sendEventToNodes("afterRenderScene", camera);
@@ -389,14 +392,15 @@ var Renderer = {
 		var num_lights = lights.length;
 
 		//no lights
-		if(!num_lights || node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) )
+		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || options.ignore_lights;
+		if(!num_lights || ignore_lights)
 		{
 			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
 			macros.merge(scene._macros);
 			macros.merge(node_macros);
 			macros.merge(mat._macros);
 			macros.merge(instance.macros);
-			if( node.flags.ignore_lights )
+			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
 
 			if( mat.onModifyMacros )
@@ -481,6 +485,7 @@ var Renderer = {
 		}
 	},
 
+	//renders using an orthographic projection
 	render2DInstance:  function(instance, scene, options)
 	{
 		var node = instance.node;
@@ -750,11 +755,14 @@ var Renderer = {
 
 			node._macros = node_macros;
 			node._uniforms = node_uniforms;
+			node._instances = [];
 
 			//get render instances: remember, triggers only support one parameter
-			LEvent.trigger(node,"collectRenderInstances", instances );
+			LEvent.trigger(node,"collectRenderInstances", node._instances );
 			LEvent.trigger(node,"collectLights", lights );
 			LEvent.trigger(node,"collectCameras", cameras );
+
+			instances = instances.concat( node._instances );
 		}
 
 		//process render instances (add stuff if needed)

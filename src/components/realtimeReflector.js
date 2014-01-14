@@ -32,13 +32,13 @@ RealtimeReflector.prototype.onAddedToNode = function(node)
 	if(!this._bind_onRenderRT)
 		this._bind_onRenderRT = this.onRenderRT.bind(this);
 
-	LEvent.bind(node,"afterRenderShadows",this._bind_onRenderRT,this);
+	LEvent.bind(node,"renderReflections",this._bind_onRenderRT,this);
 }
 
 
 RealtimeReflector.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,"afterRenderShadows",this._bind_onRenderRT,this);
+	LEvent.unbind(node,"renderReflections",this._bind_onRenderRT,this);
 }
 
 

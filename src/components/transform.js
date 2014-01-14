@@ -129,10 +129,10 @@ Transform.prototype.getGlobalPosition = function(p)
 	if(this._parent)
 	{
 		var tmp = vec3.create();
-		return mat4.multiplyVec3( tmp || p, this.getGlobalMatrix(), tmp );
+		return mat4.multiplyVec3( p || tmp, this.getGlobalMatrix(), tmp );
 	}
 	if(p) return vec3.copy(p,this._position);
-	return vec3.clone( this._position);
+	return vec3.clone( this._position );
 }
 
 /**

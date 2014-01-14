@@ -682,7 +682,6 @@ var Draw = {
 		this.color = new Float32Array(4);
 		this.color[3] = 1;
 		this.mvp_matrix = mat4.create();
-		this.camera_position = vec3.create();
 		this.temp_matrix = mat4.create();
 		this.point_size = 2;
 
@@ -690,8 +689,14 @@ var Draw = {
 		this.model_matrix = new Float32Array(this.stack.buffer,0,16*4);
 		mat4.identity( this.model_matrix );
 
+		//matrices
+		this.camera = null;
+		this.camera_position = vec3.create();
+		this.view_matrix = mat4.create();
+		this.projection_matrix = mat4.create();
 		this.viewprojection_matrix = mat4.create();
-		this.camera_stack = [];
+
+		this.camera_stack = []; //not used yet
 
 		//create shaders
 		this.shader = new Shader('\
@@ -788,14 +793,28 @@ var Draw = {
 		this.point_size = v;
 	},
 
+	setCamera: function(camera)
+	{
+		this.camera = camera;
+		vec3.copy( this.camera_position, camera.getEye() );	
+		mat4.copy( this.view_matrix, camera._view_matrix );
+		mat4.copy( this.projection_matrix, camera._projection_matrix );
+		mat4.copy( this.viewprojection_matrix, camera._viewprojection_matrix );
+	},
+
 	setCameraPosition: function(center)
 	{
 		vec3.copy( this.camera_position, center);
 	},
 
-	setViewProjectionMatrix: function(vp)
+	setViewProjectionMatrix: function(view, projection, vp)
 	{
-		mat4.copy( this.viewprojection_matrix, vp);
+		mat4.copy( this.view_matrix, view);
+		mat4.copy( this.projection_matrix, projection);
+		if(vp)
+			mat4.copy( this.viewprojection_matrix, vp);
+		else
+			mat4.multiply( this.viewprojection_matrix, view, vp);
 	},
 
 	setMatrix: function(matrix)
@@ -916,6 +935,21 @@ var Draw = {
 		return this.renderMesh(mesh, gl.TRIANGLES);
 	},
 
+	renderPlane: function(position, size, texture)
+	{
+		this.push();
+		this.translate(position);
+		this.scale( size[0], size[1], 1 );
+		if(texture)
+		{
+			texture.bind(0);
+			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
+		}
+		else
+			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN);
+		this.pop();
+	},	
+
 	renderGrid: function(dist,num)
 	{
 		dist = dist || 20;
@@ -1003,9 +1037,14 @@ var Draw = {
 			else if(texture == 1)
 				return; //loading
 		}
+		else if(image.constructor == Texture)
+			texture = image;
+
+		if(!texture) return;
 
 		this.push();
-		this.lookAt(position, this.camera_position,[0,1,0]);
+		//this.lookAt(position, this.camera_position,[0,1,0]);
+		this.billboard(position);
 		this.scale(size,size,size);
 		texture.bind(0);
 		this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
@@ -1193,6 +1232,12 @@ var Draw = {
 	{
 		mat4.lookAt(this.model_matrix, position, target, up);
 		mat4.invert(this.model_matrix, this.model_matrix);
+	},
+
+	billboard: function(position)
+	{
+		mat4.invert(this.model_matrix, this.view_matrix);
+		mat4.setTranslation(this.model_matrix, position);
 	},
 
 	fromTranslationFrontTop: function(position, front, top)
@@ -2960,17 +3005,21 @@ var ResourcesManager = {
 		else //regular texture
 		{
 			var default_mag_filter = gl.LINEAR;
+			var default_wrap = gl.REPEAT;
 			//var default_min_filter = img.width == img.height ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
 			var default_min_filter = gl.LINEAR_MIPMAP_LINEAR;
 			if( !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height) )
+			{
 				default_min_filter = gl.LINEAR;
+				default_wrap = gl.CLAMP_TO_EDGE; 
+			}
 			var texture = null;
 
 			//from TGAs...
 			if(img.pixels)
 				texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 			else //RGBA because particles have alpha (PNGs)
-				texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
+				texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
 			texture.img = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
@@ -4476,10 +4525,10 @@ Transform.prototype.getGlobalPosition = function(p)
 	if(this._parent)
 	{
 		var tmp = vec3.create();
-		return mat4.multiplyVec3( tmp || p, this.getGlobalMatrix(), tmp );
+		return mat4.multiplyVec3( p || tmp, this.getGlobalMatrix(), tmp );
 	}
 	if(p) return vec3.copy(p,this._position);
-	return vec3.clone( this._position);
+	return vec3.clone( this._position );
 }
 
 /**
@@ -5077,14 +5126,20 @@ function Camera(o)
 	this.enabled = true;
 
 	this._type = Camera.PERSPECTIVE;
+
 	this._eye = vec3.fromValues(0,100, 100); //change to position
 	this._center = vec3.fromValues(0,0,0);	//change to target
 	this._up = vec3.fromValues(0,1,0);
+	
 	this._near = 1;
 	this._far = 1000;
+
+	this._ortho = new Float32Array([-1,1,-1,1]);
+
 	this._aspect = 1.0;
 	this._fov = 45; //persp
 	this._frustrum_size = 50; //ortho
+
 	this._viewport = new Float32Array([0,0,1,1]);
 
 	this._view_matrix = mat4.create();
@@ -5105,6 +5160,7 @@ Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
+Camera.ORTHO2D = 3;
 
 /*
 Camera.prototype.onCameraEnabled = function(e,options)
@@ -5300,9 +5356,14 @@ Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
 		mat4.ortho(this._projection_matrix, -this._frustrum_size*this._aspect*0.5, this._frustrum_size*this._aspect*0.5, -this._frustrum_size*0.5, this._frustrum_size*0.5, this._near, this._far);
+	else if (this.type == Camera.ORTHO2D)
+		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
 		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
+
+	//if (this.type != Camera.ORTHO2D)
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
+
 	if(this.flip_x) //used in reflections
 	{
 		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
@@ -5463,6 +5524,15 @@ Camera.prototype.getGlobalTop = function(dest)
 	return dest;
 }
 */
+
+Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
+{
+	this._near = near;
+	this._far = far;
+	this._ortho.set([left,right,bottom,top]);
+	this._type = Camera.ORTHO2D;
+	this._dirty_matrices = true;
+}
 
 Camera.prototype.move = function(v)
 {
@@ -5740,11 +5810,12 @@ function Light(o)
 	this.use_specular = true;
 	this.linear_attenuation = false;
 	this.range_attenuation = false;
-	this.target_in_world_coords = false;
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;
 	this.spot_cone = true;
+
+	this.target_in_world_coords = false;
 
 	/**
 	* The color of the light
@@ -5785,6 +5856,10 @@ function Light(o)
 	}
 }
 
+//do not change
+Light.FRONT_VECTOR = new Float32Array(0,0,-1); //const
+Light.UP_VECTOR = new Float32Array(0,1,0); //const
+
 Light.OMNI = 1;
 Light.SPOT = 2;
 Light.DIRECTIONAL = 3;
@@ -5815,13 +5890,6 @@ Light.prototype.onCollectLights = function(e, lights)
 
 	//add to lights vector
 	lights.push(this);
-
-	if((this.volume_visibility || this.flare_visibility) && !this._volume_event)
-	{
-		LEvent.bind(this._root, "collectRenderInstances", this.onCollectInstances, this);
-		this._volume_event = true;
-	}
-
 }
 
 Light._temp_matrix = mat4.create();
@@ -5890,20 +5958,23 @@ Light.prototype.configure = function(o)
 
 Light.prototype.getPosition = function(p)
 {
-	if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	if(this._root && this._root.transform) return this._root.transform.getGlobalPosition();
 	return vec3.clone(this.position);
 }
 
 Light.prototype.getTarget = function(p)
 {
+	//if(this._root && this._root.transform && !this.target_in_world_coords) 
+	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
 	if(this._root && this._root.transform && !this.target_in_world_coords) 
-		return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
+		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , p || vec3.create() );
 	return vec3.clone(this.target);
 }
 
 Light.prototype.getUp = function(p)
 {
-	if(this._root && this._root.transform) return this._root.transform.transformVector(this.up, p || vec3.create() );
+	if(this._root && this._root.transform) return this._root.transform.transformVector( Light.UP_VECTOR , p || vec3.create() );
 	return vec3.clone(this.up);
 }
 
@@ -5955,6 +6026,8 @@ function LightFX(o)
 LightFX["@glare_texture"] = { type:"texture" };
 LightFX["@glare_size"] = { type:"vec2", step: 0.001 };
 LightFX["@glare_visibility"] = { type:"number", step: 0.001 };
+
+LightFX.icon = "mini-icon-lightfx.png";
 
 LightFX.prototype.onAddedToNode = function(node)
 {
@@ -6079,6 +6152,7 @@ LightFX.prototype.getResources = function (res)
 
 LS.registerComponent(LightFX);
 LS.LightFX = LightFX;
+
 
 function MeshRenderer(o)
 {
@@ -7289,6 +7363,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 	RI.setMesh( this._mesh, this.primitive );
+	this._root.mesh = this._mesh;
 	
 	RI.material = this.material || this._root.getMaterial();
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -8181,13 +8256,13 @@ RealtimeReflector.prototype.onAddedToNode = function(node)
 	if(!this._bind_onRenderRT)
 		this._bind_onRenderRT = this.onRenderRT.bind(this);
 
-	LEvent.bind(node,"afterRenderShadows",this._bind_onRenderRT,this);
+	LEvent.bind(node,"renderReflections",this._bind_onRenderRT,this);
 }
 
 
 RealtimeReflector.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,"afterRenderShadows",this._bind_onRenderRT,this);
+	LEvent.unbind(node,"renderReflections",this._bind_onRenderRT,this);
 }
 
 
@@ -10688,15 +10763,15 @@ var Renderer = {
 	* @method render
 	* @param {SceneTree} scene
 	* @param {Camera} camera
-	* @param {Object} options
+	* @param {Object} render_options
 	*/
-	render: function(scene, camera, options)
+	render: function(scene, camera, render_options)
 	{
-		options = options || {};
+		render_options = render_options || {};
 
 		scene = scene || Scene;
 		this._current_scene = scene;
-		options.main_camera = camera;
+		render_options.main_camera = camera;
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 
@@ -10705,20 +10780,23 @@ var Renderer = {
 		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
-		this.collectVisibleData(scene, options);
+		this.collectVisibleData(scene, render_options);
 
 		//settings for cameras
 		var cameras = this._visible_cameras;
-		if(camera && !options.render_all_cameras )
+		if(camera && !render_options.render_all_cameras )
 			cameras = [ camera ];
 		Renderer.main_camera = cameras[0];
 
 		//generate shadowmap
-		if(scene.settings.enable_shadows && !options.skip_shadowmaps && this.generate_shadowmaps && !options.shadows_disabled && !options.lights_disabled && !options.low_quality)
+		if(scene.settings.enable_shadows && !render_options.skip_shadowmaps && this.generate_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality)
 			this.renderShadowMaps();
 
 		LEvent.trigger(Scene, "afterRenderShadows" );
 		scene.sendEventToNodes("afterRenderShadows" );
+
+		LEvent.trigger(Scene, "renderReflections" );
+		scene.sendEventToNodes("renderReflections" );
 
 		//render one camera or all the cameras
 		var current_camera = null;
@@ -10762,20 +10840,20 @@ var Renderer = {
 			if(tex)
 				Renderer._full_viewport.set([0,0,tex.width, tex.height]);
 
-			Renderer.enableCamera( camera, options ); //set as active camera and set viewport
+			Renderer.enableCamera( camera, render_options ); //set as active camera and set viewport
 
 			//clear
 			gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
-			if(options.ignore_clear != true && !camera._ignore_clear)
+			if(render_options.ignore_clear != true && !camera._ignore_clear)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//render scene
-			//RenderPipeline.renderInstances(options);
+			//RenderPipeline.renderInstances(render_options);
 
 			LEvent.trigger(scene, "beforeRenderScene", camera);
 			scene.sendEventToNodes("beforeRenderScene", camera);
 
-			Renderer.renderInstances(options);
+			Renderer.renderInstances(render_options);
 
 			LEvent.trigger(scene, "afterRenderScene", camera);
 			scene.sendEventToNodes("afterRenderScene", camera);
@@ -11032,14 +11110,15 @@ var Renderer = {
 		var num_lights = lights.length;
 
 		//no lights
-		if(!num_lights || node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) )
+		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || options.ignore_lights;
+		if(!num_lights || ignore_lights)
 		{
 			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
 			macros.merge(scene._macros);
 			macros.merge(node_macros);
 			macros.merge(mat._macros);
 			macros.merge(instance.macros);
-			if( node.flags.ignore_lights )
+			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
 
 			if( mat.onModifyMacros )
@@ -11124,6 +11203,7 @@ var Renderer = {
 		}
 	},
 
+	//renders using an orthographic projection
 	render2DInstance:  function(instance, scene, options)
 	{
 		var node = instance.node;
@@ -11393,11 +11473,14 @@ var Renderer = {
 
 			node._macros = node_macros;
 			node._uniforms = node_uniforms;
+			node._instances = [];
 
 			//get render instances: remember, triggers only support one parameter
-			LEvent.trigger(node,"collectRenderInstances", instances );
+			LEvent.trigger(node,"collectRenderInstances", node._instances );
 			LEvent.trigger(node,"collectLights", lights );
 			LEvent.trigger(node,"collectCameras", cameras );
+
+			instances = instances.concat( node._instances );
 		}
 
 		//process render instances (add stuff if needed)

@@ -30,6 +30,8 @@ LightFX["@glare_texture"] = { type:"texture" };
 LightFX["@glare_size"] = { type:"vec2", step: 0.001 };
 LightFX["@glare_visibility"] = { type:"number", step: 0.001 };
 
+LightFX.icon = "mini-icon-lightfx.png";
+
 LightFX.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);

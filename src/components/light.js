@@ -73,11 +73,12 @@ function Light(o)
 	this.use_specular = true;
 	this.linear_attenuation = false;
 	this.range_attenuation = false;
-	this.target_in_world_coords = false;
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;
 	this.spot_cone = true;
+
+	this.target_in_world_coords = false;
 
 	/**
 	* The color of the light
@@ -118,6 +119,10 @@ function Light(o)
 	}
 }
 
+//do not change
+Light.FRONT_VECTOR = new Float32Array(0,0,-1); //const
+Light.UP_VECTOR = new Float32Array(0,1,0); //const
+
 Light.OMNI = 1;
 Light.SPOT = 2;
 Light.DIRECTIONAL = 3;
@@ -148,13 +153,6 @@ Light.prototype.onCollectLights = function(e, lights)
 
 	//add to lights vector
 	lights.push(this);
-
-	if((this.volume_visibility || this.flare_visibility) && !this._volume_event)
-	{
-		LEvent.bind(this._root, "collectRenderInstances", this.onCollectInstances, this);
-		this._volume_event = true;
-	}
-
 }
 
 Light._temp_matrix = mat4.create();
@@ -223,20 +221,23 @@ Light.prototype.configure = function(o)
 
 Light.prototype.getPosition = function(p)
 {
-	if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	if(this._root && this._root.transform) return this._root.transform.getGlobalPosition();
 	return vec3.clone(this.position);
 }
 
 Light.prototype.getTarget = function(p)
 {
+	//if(this._root && this._root.transform && !this.target_in_world_coords) 
+	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
 	if(this._root && this._root.transform && !this.target_in_world_coords) 
-		return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
+		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , p || vec3.create() );
 	return vec3.clone(this.target);
 }
 
 Light.prototype.getUp = function(p)
 {
-	if(this._root && this._root.transform) return this._root.transform.transformVector(this.up, p || vec3.create() );
+	if(this._root && this._root.transform) return this._root.transform.transformVector( Light.UP_VECTOR , p || vec3.create() );
 	return vec3.clone(this.up);
 }
 

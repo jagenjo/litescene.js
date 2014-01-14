@@ -13,14 +13,20 @@ function Camera(o)
 	this.enabled = true;
 
 	this._type = Camera.PERSPECTIVE;
+
 	this._eye = vec3.fromValues(0,100, 100); //change to position
 	this._center = vec3.fromValues(0,0,0);	//change to target
 	this._up = vec3.fromValues(0,1,0);
+	
 	this._near = 1;
 	this._far = 1000;
+
+	this._ortho = new Float32Array([-1,1,-1,1]);
+
 	this._aspect = 1.0;
 	this._fov = 45; //persp
 	this._frustrum_size = 50; //ortho
+
 	this._viewport = new Float32Array([0,0,1,1]);
 
 	this._view_matrix = mat4.create();
@@ -41,6 +47,7 @@ Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
+Camera.ORTHO2D = 3;
 
 /*
 Camera.prototype.onCameraEnabled = function(e,options)
@@ -236,9 +243,14 @@ Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
 		mat4.ortho(this._projection_matrix, -this._frustrum_size*this._aspect*0.5, this._frustrum_size*this._aspect*0.5, -this._frustrum_size*0.5, this._frustrum_size*0.5, this._near, this._far);
+	else if (this.type == Camera.ORTHO2D)
+		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
 		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
+
+	//if (this.type != Camera.ORTHO2D)
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
+
 	if(this.flip_x) //used in reflections
 	{
 		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
@@ -399,6 +411,15 @@ Camera.prototype.getGlobalTop = function(dest)
 	return dest;
 }
 */
+
+Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
+{
+	this._near = near;
+	this._far = far;
+	this._ortho.set([left,right,bottom,top]);
+	this._type = Camera.ORTHO2D;
+	this._dirty_matrices = true;
+}
 
 Camera.prototype.move = function(v)
 {

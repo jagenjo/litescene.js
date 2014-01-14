@@ -16,7 +16,6 @@ var Draw = {
 		this.color = new Float32Array(4);
 		this.color[3] = 1;
 		this.mvp_matrix = mat4.create();
-		this.camera_position = vec3.create();
 		this.temp_matrix = mat4.create();
 		this.point_size = 2;
 
@@ -24,8 +23,14 @@ var Draw = {
 		this.model_matrix = new Float32Array(this.stack.buffer,0,16*4);
 		mat4.identity( this.model_matrix );
 
+		//matrices
+		this.camera = null;
+		this.camera_position = vec3.create();
+		this.view_matrix = mat4.create();
+		this.projection_matrix = mat4.create();
 		this.viewprojection_matrix = mat4.create();
-		this.camera_stack = [];
+
+		this.camera_stack = []; //not used yet
 
 		//create shaders
 		this.shader = new Shader('\
@@ -122,14 +127,28 @@ var Draw = {
 		this.point_size = v;
 	},
 
+	setCamera: function(camera)
+	{
+		this.camera = camera;
+		vec3.copy( this.camera_position, camera.getEye() );	
+		mat4.copy( this.view_matrix, camera._view_matrix );
+		mat4.copy( this.projection_matrix, camera._projection_matrix );
+		mat4.copy( this.viewprojection_matrix, camera._viewprojection_matrix );
+	},
+
 	setCameraPosition: function(center)
 	{
 		vec3.copy( this.camera_position, center);
 	},
 
-	setViewProjectionMatrix: function(vp)
+	setViewProjectionMatrix: function(view, projection, vp)
 	{
-		mat4.copy( this.viewprojection_matrix, vp);
+		mat4.copy( this.view_matrix, view);
+		mat4.copy( this.projection_matrix, projection);
+		if(vp)
+			mat4.copy( this.viewprojection_matrix, vp);
+		else
+			mat4.multiply( this.viewprojection_matrix, view, vp);
 	},
 
 	setMatrix: function(matrix)
@@ -250,6 +269,21 @@ var Draw = {
 		return this.renderMesh(mesh, gl.TRIANGLES);
 	},
 
+	renderPlane: function(position, size, texture)
+	{
+		this.push();
+		this.translate(position);
+		this.scale( size[0], size[1], 1 );
+		if(texture)
+		{
+			texture.bind(0);
+			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
+		}
+		else
+			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN);
+		this.pop();
+	},	
+
 	renderGrid: function(dist,num)
 	{
 		dist = dist || 20;
@@ -337,9 +371,14 @@ var Draw = {
 			else if(texture == 1)
 				return; //loading
 		}
+		else if(image.constructor == Texture)
+			texture = image;
+
+		if(!texture) return;
 
 		this.push();
-		this.lookAt(position, this.camera_position,[0,1,0]);
+		//this.lookAt(position, this.camera_position,[0,1,0]);
+		this.billboard(position);
 		this.scale(size,size,size);
 		texture.bind(0);
 		this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
@@ -527,6 +566,12 @@ var Draw = {
 	{
 		mat4.lookAt(this.model_matrix, position, target, up);
 		mat4.invert(this.model_matrix, this.model_matrix);
+	},
+
+	billboard: function(position)
+	{
+		mat4.invert(this.model_matrix, this.view_matrix);
+		mat4.setTranslation(this.model_matrix, position);
 	},
 
 	fromTranslationFrontTop: function(position, front, top)

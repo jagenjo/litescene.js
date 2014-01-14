@@ -451,17 +451,21 @@ var ResourcesManager = {
 		else //regular texture
 		{
 			var default_mag_filter = gl.LINEAR;
+			var default_wrap = gl.REPEAT;
 			//var default_min_filter = img.width == img.height ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
 			var default_min_filter = gl.LINEAR_MIPMAP_LINEAR;
 			if( !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height) )
+			{
 				default_min_filter = gl.LINEAR;
+				default_wrap = gl.CLAMP_TO_EDGE; 
+			}
 			var texture = null;
 
 			//from TGAs...
 			if(img.pixels)
 				texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 			else //RGBA because particles have alpha (PNGs)
-				texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
+				texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
 			texture.img = img;
 			texture.filename = filename;
 			this.registerResource(filename, texture);
