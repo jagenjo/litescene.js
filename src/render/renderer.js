@@ -215,8 +215,8 @@ var Renderer = {
 		this.fillSceneShaderMacros( scene, options );
 		this.fillSceneShaderUniforms( scene, options );
 
-		//render background
-		if(scene.textures["background"])
+		//render background: maybe this should be moved to a component
+		if(!options.is_shadowmap && !options.is_picking && scene.textures["background"])
 		{
 			var texture = null;
 			if(typeof(scene.textures["background"]) == "string")
@@ -295,7 +295,7 @@ var Renderer = {
 
 
 		//foreground
-		if(scene.textures["foreground"])
+		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
 			var texture = null;
 			if(typeof(scene.textures["foreground"]) == "string")
@@ -651,7 +651,7 @@ var Renderer = {
 			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
-			u_ambient_color: scene.ambient_color
+			u_ambient_light: scene.ambient_color
 		};
 
 		if(options.clipping_plane)
@@ -665,17 +665,31 @@ var Renderer = {
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-
+		var pick_color = this.getNextPickingColor( instance );
+		/*
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
 		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 		this._picking_nodes[this._picking_next_color_id] = node;
+		*/
 
 		var shader = Shaders.get("flat");
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]) });
+		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
 		instance.render(shader);
+	},
+
+	getNextPickingColor: function(instance, data)
+	{
+		this._picking_next_color_id += 10;
+		var pick_color = new Uint32Array(1); //store four bytes number
+		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
+		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
+		//byte_pick_color[3] = 255; //Set the alpha to 1
+
+		this._picking_nodes[ this._picking_next_color_id ] = [instance, data];
+		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
 	enableInstanceFlags: function(instance, options)
@@ -1055,6 +1069,8 @@ var Renderer = {
 			Renderer.renderInstances({is_picking:true});
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
+			LEvent.trigger(Scene,"renderPicking", [x,y] );
+
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,Renderer._picking_color);
 
 			if(small_area)
@@ -1072,15 +1088,40 @@ var Renderer = {
 		camera = camera || Scene.getCamera();
 
 		this._picking_nodes = {};
+
+		//render all Render Instances
 		this.renderPickingBuffer(camera, x,y);
+
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
-		var node = this._picking_nodes[id];
+		var instance_info = this._picking_nodes[id];
 		this._picking_nodes = {};
 
-		return node;
+		if(!instance_info) return null;
+
+		var instance = instance_info[0];
+		return instance.node;
 	},
+
+	//used to get special info about the instance below the mouse
+	getInstanceAtCanvasPosition: function(scene, camera, x,y)
+	{
+		scene = scene || Scene;
+		camera = camera || Scene.getCamera();
+
+		this._picking_nodes = {};
+
+		//render all Render Instances
+		this.renderPickingBuffer(camera, x,y);
+
+		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
+		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
+
+		var instance_info = this._picking_nodes[id];
+		this._picking_nodes = {};
+		return instance_info;
+	},	
 
 	projectToCanvas: function(x,y,z)
 	{

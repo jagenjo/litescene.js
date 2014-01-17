@@ -251,10 +251,12 @@ Camera.prototype.updateMatrices = function()
 	//if (this.type != Camera.ORTHO2D)
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
 
+	/*
 	if(this.flip_x) //used in reflections
 	{
 		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
 	};
+	*/
 
 	//if(this._root && this._root.transform)
 

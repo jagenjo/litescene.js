@@ -659,7 +659,7 @@ SceneTree.prototype.update = function(dt)
 	LEvent.trigger(this,"beforeUpdate", this);
 
 	this._global_time = new Date().getTime() * 0.001;
-	this._time = this._start_time - this._global_time;
+	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
 	LEvent.trigger(this,"update", dt);
@@ -715,7 +715,7 @@ SceneTree.prototype.refresh = function()
 
 SceneTree.prototype.getTime = function()
 {
-	return this._global_time;
+	return this._time;
 }
 
 

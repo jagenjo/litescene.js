@@ -1,11 +1,10 @@
 if(typeof(LiteGraph) != "undefined")
 {
-	//**************************************
-
 	function LGraphTexture()
 	{
 		this.addOutput("Texture","Texture");
 		this.properties = {name:""};
+		this.size = [LGraphTexture.image_preview_size, LGraphTexture.image_preview_size];
 	}
 
 	LGraphTexture.title = "Texture";
@@ -13,7 +12,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphTexture.widgets_info = {"name": { widget:"texture"} };
 
 	LGraphTexture.textures_container = null; //where to seek for the textures
-	LGraphTexture.loadTextureCallback = null;
+	LGraphTexture.loadTextureCallback = null; //function in charge of loading textures when not present in the container
 
 	LGraphTexture.prototype.onExecute = function()
 	{
@@ -39,7 +38,75 @@ if(typeof(LiteGraph) != "undefined")
 				loader( this.properties.name );
 			return;
 		}
+
+		this._last_tex = tex;
 		this.setOutputData(0, tex);
+	}
+
+	LGraphTexture.prototype.onDrawBackground = function(ctx)
+	{
+		if(!this.properties.name || this.flags.collapsed || this.size[1] <= 20)
+			return;
+
+		//Different texture? then get it from the GPU
+		if(this._last_preview_tex != this._last_tex)
+		{
+			var tex_canvas = LGraphTexture.generateLowResTexturePreview(this._last_tex);
+			if(!tex_canvas) return;
+
+			this._last_preview_tex = this._last_tex;
+			this._canvas = cloneCanvas(tex_canvas);
+		}
+
+		if(!this._canvas)
+			return;
+
+		//render to graph canvas
+		ctx.save();
+		if(1)
+		{
+			ctx.translate(0,this.size[1]);
+			ctx.scale(1,-1);
+		}
+		ctx.drawImage(this._canvas,0,0,this.size[0],this.size[1]);
+		ctx.restore();
+	}
+
+
+	LGraphTexture.image_preview_size = 256;
+	LGraphTexture.generateLowResTexturePreview = function(tex)
+	{
+		if(!tex) return null;
+
+		var size = LGraphTexture.image_preview_size;
+		var temp_tex = tex;
+
+		//Generate low-level version in the GPU to speed up
+		if(tex.width > size || tex.height > size)
+		{
+			temp_tex = this._preview_temp_tex;
+			if(!this._preview_temp_tex)
+			{
+				temp_tex = new GL.Texture(size,size, { minFilter: gl.NEAREST });
+				this._preview_temp_tex = temp_tex;
+			}
+
+			//copy
+			tex.copyTo(temp_tex);
+			tex = temp_tex;
+		}
+
+		//create intermediate canvas with lowquality version
+		var tex_canvas = this._preview_canvas;
+		if(!tex_canvas)
+		{
+			tex_canvas = createCanvas(size,size);
+			this._preview_canvas = tex_canvas;
+		}
+
+		if(temp_tex)
+			temp_tex.toCanvas(tex_canvas);
+		return tex_canvas;
 	}
 
 	LiteGraph.registerNodeType("texture/texture", LGraphTexture );
@@ -303,46 +370,20 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.properties = { flipY: false };
-		this.size = [LGraphTexturePreview.img_size, LGraphTexturePreview.img_size];
+		this.size = [LGraphTexture.image_preview_size, LGraphTexture.image_preview_size];
 	}
 
 	LGraphTexturePreview.title = "Preview";
 	LGraphTexturePreview.desc = "Show a texture in the graph canvas";
-	LGraphTexturePreview.img_size = 256;
 
 	LGraphTexturePreview.prototype.onDrawBackground = function(ctx)
 	{
+		if(this.flags.collapsed) return;
+
 		var tex = this.getInputData(0);
 		if(!tex) return;
-		var size = LGraphTexturePreview.img_size;
 
-		var temp_tex = tex;
-
-		//Generate low-level version in the GPU to speed up
-		if(tex.width > size || tex.height > size)
-		{
-			temp_tex = this._temp_tex;
-			if(!this._temp_tex)
-			{
-				temp_tex = new GL.Texture(size,size, { minFilter: gl.NEAREST });
-				this._temp_tex = temp_tex;
-			}
-
-			//copy
-			tex.copyTo(temp_tex);
-			tex = temp_tex;
-		}
-
-		//create intermediate canvas with lowquality version
-		var tex_canvas = this._canvas;
-		if(!tex_canvas)
-		{
-			tex_canvas = createCanvas(size,size);
-			this._canvas = tex_canvas;
-		}
-
-		if(temp_tex)
-			temp_tex.toCanvas(tex_canvas);
+		var tex_canvas = LGraphTexture.generateLowResTexturePreview(tex);
 
 		//render to graph canvas
 		ctx.save();

@@ -9,6 +9,7 @@
 ../src/resourcesManager.js
 ../src/materials/material.js
 ../src/materials/customMaterial.js
+../src/materials/surfaceMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js

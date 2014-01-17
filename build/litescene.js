@@ -4029,6 +4029,109 @@ CustomMaterial.prototype.serialize = function() { return LS.cloneObject(this); }
 LS.extendClass( Material, CustomMaterial );
 LS.registerMaterialClass(CustomMaterial);
 LS.CustomMaterial = CustomMaterial;
+function SurfaceMaterial(o)
+{
+	this._uid = LS.generateUId();
+	this._dirty = true;
+
+	this.shader_name = "surface";
+
+	//this.shader_name = null; //default shader
+	this.color = new Float32Array([1.0,1.0,1.0]);
+	this.opacity = 1.0;
+	this.blending = Material.NORMAL;
+
+	this.vs_code = "";
+	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
+	o.Albedo = vec3(1.0,0.5,0.1);\n\
+	o.Normal = IN.worldNormal;\n\
+	o.Emission = vec3(0.0);\n\
+	o.Specular = 2.0;\n\
+	o.Gloss = 10.0;\n\
+	o.Reflectivity = 0.5;\n\
+	o.Alpha = 1.0;\n}\n";
+
+	this._uniforms = {};
+	this._macros = {};
+
+	this.textures = {};
+
+	if(o) 
+		this.configure(o);
+	this.computeCode();
+}
+
+SurfaceMaterial.icon = "mini-icon-material.png";
+
+SurfaceMaterial.prototype.onCodeChange = function()
+{
+	this.computeCode();
+}
+
+SurfaceMaterial.prototype.computeCode = function()
+{
+	var lines = this.code.split("\n");
+	for(var i in lines)
+		lines[i] = lines[i].split("//")[0]; //remove comments
+	this._surf_code = lines.join("");
+}
+
+// RENDERING METHODS
+SurfaceMaterial.prototype.onModifyMacros = function(macros)
+{
+	if(this._ps_uniforms_code)
+	{
+		if(macros.USE_PIXEL_SHADER_UNIFORMS)
+			macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
+		else
+			macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
+	}
+
+	if(this._ps_functions_code)
+	{
+		if(macros.USE_PIXEL_SHADER_FUNCTIONS)
+			macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
+		else
+			macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
+	}
+
+	if(this._ps_code)
+	{
+		if(macros.USE_PIXEL_SHADER_CODE)
+			macros.USE_PIXEL_SHADER_CODE += this._ps_code;
+		else
+			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
+	}
+
+	macros.USE_SURF = this._surf_code;
+}
+
+SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+{
+	var macros = {};
+	this._macros = macros;
+}
+
+
+SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+{
+	var samplers = [];
+	for(var i in this.textures) 
+	{
+		var texture = this.getTexture(i);
+		if(!texture) continue;
+		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+	}
+
+	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._samplers = samplers;
+}
+
+SurfaceMaterial.prototype.configure = function(o) { LS.cloneObject(o, this); },
+
+LS.extendClass( Material, SurfaceMaterial );
+LS.registerMaterialClass(SurfaceMaterial);
+LS.SurfaceMaterial = SurfaceMaterial;
 /*
 *  Components are elements that attach to Nodes to add functionality
 *  Some important components are Transform,Light or Camera
@@ -5364,10 +5467,12 @@ Camera.prototype.updateMatrices = function()
 	//if (this.type != Camera.ORTHO2D)
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
 
+	/*
 	if(this.flip_x) //used in reflections
 	{
 		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
 	};
+	*/
 
 	//if(this._root && this._root.transform)
 
@@ -9437,12 +9542,11 @@ if(typeof(LiteGraph) != "undefined")
 };
 if(typeof(LiteGraph) != "undefined")
 {
-	//**************************************
-
 	function LGraphTexture()
 	{
 		this.addOutput("Texture","Texture");
 		this.properties = {name:""};
+		this.size = [LGraphTexture.image_preview_size, LGraphTexture.image_preview_size];
 	}
 
 	LGraphTexture.title = "Texture";
@@ -9450,7 +9554,7 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphTexture.widgets_info = {"name": { widget:"texture"} };
 
 	LGraphTexture.textures_container = null; //where to seek for the textures
-	LGraphTexture.loadTextureCallback = null;
+	LGraphTexture.loadTextureCallback = null; //function in charge of loading textures when not present in the container
 
 	LGraphTexture.prototype.onExecute = function()
 	{
@@ -9476,7 +9580,75 @@ if(typeof(LiteGraph) != "undefined")
 				loader( this.properties.name );
 			return;
 		}
+
+		this._last_tex = tex;
 		this.setOutputData(0, tex);
+	}
+
+	LGraphTexture.prototype.onDrawBackground = function(ctx)
+	{
+		if(!this.properties.name || this.flags.collapsed || this.size[1] <= 20)
+			return;
+
+		//Different texture? then get it from the GPU
+		if(this._last_preview_tex != this._last_tex)
+		{
+			var tex_canvas = LGraphTexture.generateLowResTexturePreview(this._last_tex);
+			if(!tex_canvas) return;
+
+			this._last_preview_tex = this._last_tex;
+			this._canvas = cloneCanvas(tex_canvas);
+		}
+
+		if(!this._canvas)
+			return;
+
+		//render to graph canvas
+		ctx.save();
+		if(1)
+		{
+			ctx.translate(0,this.size[1]);
+			ctx.scale(1,-1);
+		}
+		ctx.drawImage(this._canvas,0,0,this.size[0],this.size[1]);
+		ctx.restore();
+	}
+
+
+	LGraphTexture.image_preview_size = 256;
+	LGraphTexture.generateLowResTexturePreview = function(tex)
+	{
+		if(!tex) return null;
+
+		var size = LGraphTexture.image_preview_size;
+		var temp_tex = tex;
+
+		//Generate low-level version in the GPU to speed up
+		if(tex.width > size || tex.height > size)
+		{
+			temp_tex = this._preview_temp_tex;
+			if(!this._preview_temp_tex)
+			{
+				temp_tex = new GL.Texture(size,size, { minFilter: gl.NEAREST });
+				this._preview_temp_tex = temp_tex;
+			}
+
+			//copy
+			tex.copyTo(temp_tex);
+			tex = temp_tex;
+		}
+
+		//create intermediate canvas with lowquality version
+		var tex_canvas = this._preview_canvas;
+		if(!tex_canvas)
+		{
+			tex_canvas = createCanvas(size,size);
+			this._preview_canvas = tex_canvas;
+		}
+
+		if(temp_tex)
+			temp_tex.toCanvas(tex_canvas);
+		return tex_canvas;
 	}
 
 	LiteGraph.registerNodeType("texture/texture", LGraphTexture );
@@ -9740,46 +9912,20 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.properties = { flipY: false };
-		this.size = [LGraphTexturePreview.img_size, LGraphTexturePreview.img_size];
+		this.size = [LGraphTexture.image_preview_size, LGraphTexture.image_preview_size];
 	}
 
 	LGraphTexturePreview.title = "Preview";
 	LGraphTexturePreview.desc = "Show a texture in the graph canvas";
-	LGraphTexturePreview.img_size = 256;
 
 	LGraphTexturePreview.prototype.onDrawBackground = function(ctx)
 	{
+		if(this.flags.collapsed) return;
+
 		var tex = this.getInputData(0);
 		if(!tex) return;
-		var size = LGraphTexturePreview.img_size;
 
-		var temp_tex = tex;
-
-		//Generate low-level version in the GPU to speed up
-		if(tex.width > size || tex.height > size)
-		{
-			temp_tex = this._temp_tex;
-			if(!this._temp_tex)
-			{
-				temp_tex = new GL.Texture(size,size, { minFilter: gl.NEAREST });
-				this._temp_tex = temp_tex;
-			}
-
-			//copy
-			tex.copyTo(temp_tex);
-			tex = temp_tex;
-		}
-
-		//create intermediate canvas with lowquality version
-		var tex_canvas = this._canvas;
-		if(!tex_canvas)
-		{
-			tex_canvas = createCanvas(size,size);
-			this._canvas = tex_canvas;
-		}
-
-		if(temp_tex)
-			temp_tex.toCanvas(tex_canvas);
+		var tex_canvas = LGraphTexture.generateLowResTexturePreview(tex);
 
 		//render to graph canvas
 		ctx.save();
@@ -10933,8 +11079,8 @@ var Renderer = {
 		this.fillSceneShaderMacros( scene, options );
 		this.fillSceneShaderUniforms( scene, options );
 
-		//render background
-		if(scene.textures["background"])
+		//render background: maybe this should be moved to a component
+		if(!options.is_shadowmap && !options.is_picking && scene.textures["background"])
 		{
 			var texture = null;
 			if(typeof(scene.textures["background"]) == "string")
@@ -11013,7 +11159,7 @@ var Renderer = {
 
 
 		//foreground
-		if(scene.textures["foreground"])
+		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
 			var texture = null;
 			if(typeof(scene.textures["foreground"]) == "string")
@@ -11369,7 +11515,7 @@ var Renderer = {
 			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
-			u_ambient_color: scene.ambient_color
+			u_ambient_light: scene.ambient_color
 		};
 
 		if(options.clipping_plane)
@@ -11383,17 +11529,31 @@ var Renderer = {
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-
+		var pick_color = this.getNextPickingColor( instance );
+		/*
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
 		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 		this._picking_nodes[this._picking_next_color_id] = node;
+		*/
 
 		var shader = Shaders.get("flat");
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]) });
+		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
 		instance.render(shader);
+	},
+
+	getNextPickingColor: function(instance, data)
+	{
+		this._picking_next_color_id += 10;
+		var pick_color = new Uint32Array(1); //store four bytes number
+		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
+		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
+		//byte_pick_color[3] = 255; //Set the alpha to 1
+
+		this._picking_nodes[ this._picking_next_color_id ] = [instance, data];
+		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
 	enableInstanceFlags: function(instance, options)
@@ -11773,6 +11933,8 @@ var Renderer = {
 			Renderer.renderInstances({is_picking:true});
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
+			LEvent.trigger(Scene,"renderPicking", [x,y] );
+
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,Renderer._picking_color);
 
 			if(small_area)
@@ -11790,15 +11952,40 @@ var Renderer = {
 		camera = camera || Scene.getCamera();
 
 		this._picking_nodes = {};
+
+		//render all Render Instances
 		this.renderPickingBuffer(camera, x,y);
+
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
-		var node = this._picking_nodes[id];
+		var instance_info = this._picking_nodes[id];
 		this._picking_nodes = {};
 
-		return node;
+		if(!instance_info) return null;
+
+		var instance = instance_info[0];
+		return instance.node;
 	},
+
+	//used to get special info about the instance below the mouse
+	getInstanceAtCanvasPosition: function(scene, camera, x,y)
+	{
+		scene = scene || Scene;
+		camera = camera || Scene.getCamera();
+
+		this._picking_nodes = {};
+
+		//render all Render Instances
+		this.renderPickingBuffer(camera, x,y);
+
+		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
+		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
+
+		var instance_info = this._picking_nodes[id];
+		this._picking_nodes = {};
+		return instance_info;
+	},	
 
 	projectToCanvas: function(x,y,z)
 	{
@@ -14345,7 +14532,7 @@ SceneTree.prototype.update = function(dt)
 	LEvent.trigger(this,"beforeUpdate", this);
 
 	this._global_time = new Date().getTime() * 0.001;
-	this._time = this._start_time - this._global_time;
+	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
 	LEvent.trigger(this,"update", dt);
@@ -14401,7 +14588,7 @@ SceneTree.prototype.refresh = function()
 
 SceneTree.prototype.getTime = function()
 {
-	return this._global_time;
+	return this._time;
 }
 
 

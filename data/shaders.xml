@@ -1,9 +1,482 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <shaders>
 
-	<snippet id="">
-		
+	<snippet id="shadowmap_pixelcode">
+		<![CDATA[
+			#ifdef USE_SHADOW_MAP
+
+				#ifndef SHADOWMAP_OFFSET 
+					#define SHADOWMAP_OFFSET (1.0/1024.0)
+				#endif 
+
+				#ifdef USE_SHADOW_CUBEMAP
+					uniform samplerCube shadowMap;
+				#else
+					uniform sampler2D shadowMap;
+				#endif
+				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
+
+				float UnpackDepth24(vec3 depth)
+				{
+					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
+				}
+
+				float UnpackDepth32(vec4 depth)
+				{
+					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
+					return dot(depth.xyzw , bitShifts);
+				}
+
+				float testShadow(vec2 offset)
+				{
+					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
+					float shadow = 0.0;
+					float depth = 0.0;
+					
+					//is inside light frustum
+					if (clamp(sample, 0.0, 1.0) == sample) { 
+						float sampleDepth = UnpackDepth32( texture2D(shadowMap, sample) );
+						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
+					}
+					else return 0.0; //outside of shadowmap, no shadow
+
+					if (depth > 0.0) {
+						float bias = -1.0 * u_shadow_params.y;
+						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
+					}
+					return shadow;
+				}
+			#endif			
+		]]>
 	</snippet>
+
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,				USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
+		<code type="vertex_shader">
+		<![CDATA[
+			precision mediump float;
+			attribute vec3 a_vertex;
+
+			#ifndef NO_NORMALS
+				attribute vec3 a_normal;
+			#endif
+
+			#ifndef NO_COORDS
+				attribute vec2 a_coord;
+			#endif
+
+			#ifdef USE_COLOR_STREAM
+				attribute vec4 a_color;
+				varying vec4 v_color;
+			#endif
+
+			#ifdef USE_TANGENT_STREAM
+				//attribute vec3 a_tangent;
+			#endif
+
+			uniform mat4 u_mvp;
+			uniform mat4 u_model;
+			//uniform mat4 u_viewprojection;
+			uniform mat4 u_normal_model;
+
+			varying vec3 v_pos;
+			varying vec3 v_local_pos;
+			varying vec3 v_normal;
+			//varying vec3 v_tangent;
+			varying vec2 v_uvs;
+
+			varying vec4 v_screenpos; //used for projective textures
+			uniform vec3 u_camera_eye;
+
+			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+				uniform mat4 u_lightMatrix;
+				varying vec4 v_light_coord;
+			#endif			
+
+			#ifdef USE_VERTEX_SHADER_UNIFORMS
+				USE_VERTEX_SHADER_UNIFORMS
+			#endif
+
+			#ifdef USE_VERTEX_SHADER_FUNCTIONS
+				USE_VERTEX_SHADER_FUNCTIONS
+			#endif
+
+			void main() {
+
+				vec3 vertex = a_vertex;
+
+				#ifdef NO_NORMALS
+					v_normal = vec3(0.,1.,0.);
+				#else
+					v_normal = a_normal;
+				#endif
+
+				#ifdef USE_COLOR_STREAM
+					v_color = a_color;
+				#endif
+
+				#ifdef NO_COORDS
+					v_uvs = vec2(0.5);
+				#else
+					v_uvs = a_coord;
+				#endif
+
+				#ifdef USE_VERTEX_SHADER_CODE
+					USE_VERTEX_SHADER_CODE
+				#endif
+
+				//position
+				vec4 vertex4 = vec4(vertex,1.0);
+
+				gl_Position =  u_mvp * vertex4;
+				v_local_pos = vertex;
+				v_pos = (u_model * vertex4).xyz;
+				v_screenpos = gl_Position;
+
+				//normal
+				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
+
+				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+					v_light_coord = (u_lightMatrix) * vertex4;
+				#endif				
+
+				gl_PointSize = max(1000.0,1000.0 / length(u_camera_eye - v_pos));
+			}
+		]]>
+		</code>
+		<code type="pixel_shader">
+		<![CDATA[
+			precision mediump float;
+
+			varying vec3 v_pos;
+			varying vec3 v_normal;
+			varying vec2 v_uvs;
+			//varying vec3 v_tangent;
+			varying vec4 v_screenpos; //used for projective textures
+			varying vec3 v_local_pos;
+
+			#ifdef USE_COLOR_STREAM
+				varying vec4 v_color;
+			#endif
+			
+			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_planes; //far near
+			uniform vec4 u_clipping_plane;
+			uniform float u_time;
+
+			struct Input {
+				vec4 color;
+				vec3 camPos;
+				vec3 viewDir;
+				vec3 worldPos;
+				vec3 worldNormal;
+				vec4 screenPos;
+			};
+
+			struct SurfaceOutput {
+				vec3 Albedo;
+				vec3 Normal;
+				vec3 Emission;
+				float Specular;
+				float Gloss;
+				float Alpha;
+				float Reflectivity;
+			};
+
+			uniform vec3 u_ambient_light;
+			uniform vec3 u_light_pos;
+			uniform vec3 u_light_front;
+			uniform vec3 u_light_color;
+			uniform vec4 u_light_angle; //cone start,end,phi,theta
+			uniform vec2 u_light_att; //start,end
+
+			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+				varying vec4 v_light_coord;
+			#endif
+
+			#ifdef USE_SHADOW_MAP
+
+				#ifndef SHADOWMAP_OFFSET 
+					#define SHADOWMAP_OFFSET (1.0/1024.0)
+				#endif 
+
+				#ifdef USE_SHADOW_CUBEMAP
+					uniform samplerCube shadowMap;
+				#else
+					uniform sampler2D shadowMap;
+				#endif
+				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
+
+				float UnpackDepth24(vec3 depth)
+				{
+					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
+				}
+
+				float UnpackDepth32(vec4 depth)
+				{
+					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
+					return dot(depth.xyzw , bitShifts);
+				}
+
+				float testShadow(vec2 offset)
+				{
+					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
+					float shadow = 0.0;
+					float depth = 0.0;
+					
+					//is inside light frustum
+					if (clamp(sample, 0.0, 1.0) == sample) { 
+						float sampleDepth = UnpackDepth32( texture2D(shadowMap, sample) );
+						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
+					}
+					else return 0.0; //outside of shadowmap, no shadow
+
+					if (depth > 0.0) {
+						float bias = -1.0 * u_shadow_params.y;
+						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
+					}
+					return shadow;
+				}
+			#endif			
+
+			vec3 computeLight(in SurfaceOutput IN)
+			{
+				vec3 final_color = vec3(0.0);
+				vec3 N = IN.Normal;
+				float spec_light = 0.0;
+
+				//lighting calculation
+				float shadow = 1.0;
+				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
+					#ifdef USE_HARD_SHADOWS
+						shadow = 1.0 - testShadow(vec2(0.,0.));
+					#else
+						if (v_light_coord.w > 0.0) //inside the light frustrum
+						{
+							shadow = 2.0 * testShadow(vec2(0.0,0.0));
+							shadow += testShadow(vec2(0.0,u_shadow_params.x));
+							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
+							shadow += testShadow(vec2(-u_shadow_params.x,0.0));
+							shadow += testShadow(vec2(u_shadow_params.x,0.0));
+							shadow += testShadow(vec2(-u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec2(u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec2(-u_shadow_params.x,u_shadow_params.x));
+							shadow += testShadow(vec2(u_shadow_params.x,u_shadow_params.x));
+							shadow = 1.0 - shadow * 0.1;
+						}
+					#endif	
+				#endif
+
+				vec3 E = (u_camera_eye - v_pos);
+				float cam_dist = length(E);
+
+				#ifdef USE_ORTHOGRAPHIC_CAMERA
+					E = normalize(u_camera_eye); //wrong, should be center - eye
+				#else
+					E /= cam_dist;
+				#endif
+
+				vec3 L = (u_light_pos - v_pos);
+				float light_dist = length(L);
+				L /= light_dist;
+
+				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
+					L = u_light_front;
+				#endif
+
+				vec3 R = reflect(E,N);
+
+				float NdotL = 1.0;
+				#ifdef USE_DIFFUSE_LIGHT
+					NdotL = dot(N,L);
+				#endif
+				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
+				#ifdef USE_SPECULAR_LIGHT
+					spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
+				#endif
+
+				vec3 light = vec3(0.0);
+
+				//ambient light
+				vec3 ambient = vec3(0.0);
+				#ifdef FIRST_PASS
+					ambient = u_ambient_light;
+					#ifdef USE_IRRADIANCE_CUBEMAP
+						ambient *= textureCube( irradiance_cubemap, N).xyz;
+					#else
+					/*
+						#ifdef USE_IRRADIANCE_TEXTURE
+							ambient *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
+						#endif
+					*/
+					#endif
+				#endif
+
+				float att = 1.0;
+				#ifdef USE_LINEAR_ATTENUATION
+					att = 100.0 / light_dist;
+				#endif
+
+				#ifdef USE_RANGE_ATTENUATION
+					if(light_dist >= u_light_att.y)
+						att = 0.0;
+					else if(light_dist >= u_light_att.x)
+						att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
+				#endif
+
+				vec3 light_color = u_light_color;
+
+				#ifdef USE_PROJECTIVE_LIGHT
+					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
+					light_color *= texture2D(light_texture,light_sample).xyz;
+
+					#ifndef USE_SPOT_CONE
+						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
+							att = 0.0;
+					#endif
+				#endif
+
+				#ifdef USE_SPOT_LIGHT
+					#ifdef USE_SPOT_CONE
+						att *= spotFalloff(u_light_front, -normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
+					#endif
+				#endif
+
+				#ifndef USE_AMBIENT_ONLY
+					#ifdef USE_LIGHT_OFFSET
+						NdotL += u_light_offset;
+					#endif
+
+					#ifdef USE_BACKLIGHT
+						if(NdotL > 0.0 != gl_FrontFacing)
+							NdotL *= u_backlight_factor;
+					#else
+						if(NdotL > 0.0 != gl_FrontFacing)
+							NdotL = 0.0;
+					#endif
+
+					NdotL = abs(NdotL);
+					light += light_color * att * NdotL * shadow; 
+				#endif
+
+				//emissive
+				light += IN.Emission;
+
+				#ifdef USE_IGNORE_LIGHT
+					light = vec3(1.0);
+				#endif
+
+				//FINAL COLOR ************************* 
+				final_color = IN.Albedo * (att * light * shadow) + light_color * spec_light * att;
+				final_color = max(final_color, vec3(0.0)); //(clamped from 0)
+
+				//apply ENVIRONMENT
+				#ifdef FIRST_PASS
+				#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+					vec3 reflection_color = vec3(0.0);
+					#ifdef USE_ENVIRONMENT_CUBEMAP
+						reflection_color = textureCube(environment_cubemap,-R).xyz;
+					#endif
+					/*
+					#ifdef USE_ENVIRONMENT_TEXTURE
+						vec2 temp_v2 = vec2(0.0);
+						vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
+						env_uv.x = 1.0 - env_uv.x;
+
+						#ifdef USE_NORMAL_TEXTURE
+							//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
+							temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
+							#ifdef USE_NORMALMAP_FACTOR
+								temp_v2 *= u_normalmap_factor;
+							#endif
+							env_uv += temp_v2;
+						#endif
+						reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
+					#endif
+					*/
+
+					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
+
+				#endif //environtment
+				#endif //firstpass
+
+				/*
+				//apply spec factor
+				#ifndef USE_AMBIENT_ONLY
+					#ifdef USE_SPECULAR_ONTOP
+						final_color += light_color * max(0.0, att * spec_light * shadow);
+					#else
+						final_color += color * light_color * max(0.0, att * spec_light * shadow);
+					#endif
+				#endif
+				*/
+
+				return final_color;
+			}
+			
+			#ifdef USE_PIXEL_SHADER_UNIFORMS
+				USE_PIXEL_SHADER_UNIFORMS
+			#endif
+
+			#ifdef USE_PIXEL_SHADER_FUNCTIONS
+				USE_PIXEL_SHADER_FUNCTIONS
+			#endif
+
+			#ifdef USE_SURF
+				USE_SURF
+			#else
+				void surf(in Input IN, inout SurfaceOutput o)
+				{
+				}
+			#endif
+
+			void main() {
+
+				#ifdef USE_CLIPPING_PLANE
+					if( dot(v_pos, u_clipping_plane.xyz) < u_clipping_plane.w)
+						discard;
+				#endif
+				
+				Input IN;
+				IN.camPos = u_camera_eye;
+				IN.viewDir = normalize(u_camera_eye - v_pos);
+				IN.worldPos = v_pos;
+				IN.worldNormal = normalize(v_normal);
+				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
+
+				#ifdef USE_COLOR_STREAM
+					IN.color = v_color;
+				#else
+					IN.color = vec4(1.0);
+				#endif
+
+				SurfaceOutput o;
+				o.Albedo = vec3(1.0);
+				o.Normal = IN.worldNormal;
+				o.Emission = vec3(0.0);
+				o.Specular = 0.0;
+				o.Gloss = 0.0;
+				o.Alpha = 1.0;
+				o.Reflectivity = 0.0;
+
+				//* INCLUDED CODE ***************************
+				#ifdef USE_PIXEL_SHADER_CODE
+					USE_PIXEL_SHADER_CODE
+				#endif				
+				//********************************************
+
+				surf(IN,o);
+
+				#ifdef USE_ALPHA_TEST
+					if(o.Alpha < USE_ALPHA_TEST)
+						discard;
+				#endif
+
+				//generate lighting
+				gl_FragColor = vec4( computeLight(o), o.Alpha );
+			}
+		]]>
+		</code>
+	</shader>	
 
 	<shader id="base" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE" multipass="false">
 		<code type="vertex_shader">
@@ -450,6 +923,7 @@
 			uniform vec3 u_ambient_color;
 			uniform vec3 u_diffuse_color;
 			uniform vec3 u_emissive_color;
+
 			uniform vec3 u_light_pos;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
@@ -724,21 +1198,6 @@
 
 						if (v_light_coord.w > 0.0) //inside the light frustrum
 						{
-							/* poison distribution
-							shadow = testShadow(vec2(-0.326212*u_shadow_params.x, -0.405805*u_shadow_params.x));
-							shadow += testShadow(vec2(-0.840144*u_shadow_params.x, -0.07358*u_shadow_params.x));
-							shadow += testShadow(vec2(-0.695914*u_shadow_params.x, 0.457137*u_shadow_params.x));
-							shadow += testShadow(vec2(-0.203345*u_shadow_params.x, 0.620716*u_shadow_params.x));
-							shadow += testShadow(vec2(0.96234*u_shadow_params.x, -0.194983*u_shadow_params.x));
-							shadow += testShadow(vec2(0.473434*u_shadow_params.x, -0.480026*u_shadow_params.x));
-							shadow += testShadow(vec2(0.519456*u_shadow_params.x, 0.767022*u_shadow_params.x));
-							shadow += testShadow(vec2(0.185461*u_shadow_params.x, -0.893124*u_shadow_params.x));
-							shadow += testShadow(vec2(0.507431*u_shadow_params.x, 0.064425*u_shadow_params.x));
-							shadow += testShadow(vec2(0.89642*u_shadow_params.x, 0.412458*u_shadow_params.x));
-							shadow += testShadow(vec2(-0.32194*u_shadow_params.x, -0.932615*u_shadow_params.x));
-							shadow += testShadow(vec2(-0.791559*u_shadow_params.x, -0.597705*u_shadow_params.x));
-							shadow = 1.0 - shadow / 12.;
-							*/
 							shadow = 2.0 * testShadow(vec2(0.0,0.0));
 							shadow += testShadow(vec2(0.0,u_shadow_params.x));
 							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
