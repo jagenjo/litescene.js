@@ -670,3 +670,12 @@ var ResourcesManager = {
 
 LS.ResourcesManager = ResourcesManager;
 LS.RM = ResourcesManager;
+
+LS.getTexture = function(name_or_texture) {
+	if(name_or_texture.constructor === Texture) return name_or_texture;
+	var v = LS.ResourcesManager.textures[name_or_texture];
+	if(!v) return null;
+	if(v.constructor === Texture)
+		return v;
+	return null;
+}	

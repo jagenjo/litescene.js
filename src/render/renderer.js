@@ -375,9 +375,10 @@ var Renderer = {
 			gl.disable( gl.BLEND );
 
 		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i < mat._samplers.length; i++)
+		var samplers = scene._samplers.concat( mat._samplers );
+		for(var i = 0; i < samplers.length; i++)
 		{
-			var s = mat._samplers[i];
+			var s = samplers[i];
 			mat._uniforms[ s[0] ] = i;
 			s[1].bind(i);
 		}
@@ -651,13 +652,29 @@ var Renderer = {
 			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
-			u_ambient_light: scene.ambient_color
+			u_ambient_light: scene.ambient_color,
+			u_background_color: scene.background_color.subarray(0,3)
 		};
 
 		if(options.clipping_plane)
 			uniforms.u_clipping_plane = options.clipping_plane;
 
 		scene._uniforms = uniforms;
+		scene._samplers = [];
+
+
+		//if(scene.textures.environment)
+		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
+
+		for(var i in scene.textures) 
+		{
+			var texture = LS.getTexture( scene.textures[i] );
+			if(!texture) continue;
+			if(i != "environment") continue; //TO DO: improve this, I dont want all textures to be binded 
+			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
+			scene._samplers.push([i + type , texture]);		
+			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
+		}
 	},
 
 	renderPickingInstance: function(instance, options)

@@ -50,7 +50,7 @@
 		]]>
 	</snippet>
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,				USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -81,6 +81,7 @@
 			varying vec3 v_pos;
 			varying vec3 v_local_pos;
 			varying vec3 v_normal;
+			varying vec3 v_local_normal;
 			//varying vec3 v_tangent;
 			varying vec2 v_uvs;
 
@@ -133,6 +134,7 @@
 				v_screenpos = gl_Position;
 
 				//normal
+				v_local_normal = v_normal;
 				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
 
 				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
@@ -153,6 +155,7 @@
 			//varying vec3 v_tangent;
 			varying vec4 v_screenpos; //used for projective textures
 			varying vec3 v_local_pos;
+			varying vec3 v_local_normal;
 
 			#ifdef USE_COLOR_STREAM
 				varying vec4 v_color;
@@ -163,8 +166,12 @@
 			uniform vec4 u_clipping_plane;
 			uniform float u_time;
 
+			uniform vec4 u_material_color; //color and alpha
+
 			struct Input {
 				vec4 color;
+				vec3 objectPos;
+				vec3 objectNormal;
 				vec3 camPos;
 				vec3 viewDir;
 				vec3 worldPos;
@@ -183,15 +190,55 @@
 			};
 
 			uniform vec3 u_ambient_light;
+			uniform vec3 u_background_color;
 			uniform vec3 u_light_pos;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
 			uniform vec4 u_light_angle; //cone start,end,phi,theta
 			uniform vec2 u_light_att; //start,end
 
+			#ifdef USE_LIGHT_OFFSET
+				uniform float u_light_offset;
+			#endif			
+
+			#ifdef USE_PROJECTIVE_LIGHT
+				uniform sampler2D light_texture;
+			#endif
+
+			#ifdef USE_ENVIRONMENT_TEXTURE
+				uniform sampler2D environment_texture;
+			#endif
+
+			#ifdef USE_ENVIRONMENT_CUBEMAP
+				uniform samplerCube environment_cubemap;
+			#endif			
+
 			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
 				varying vec4 v_light_coord;
 			#endif
+
+
+			#ifdef USE_SPOT_LIGHT
+				float spotFalloff(vec3 spotDir,  vec3 lightDir, float angle_phi, float angle_theta)
+				{
+					float sqlen = dot(lightDir,lightDir);
+					float atten = 1.0;
+
+					vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );
+					spotParams.w = 1.0 / (spotParams.x-spotParams.y);
+
+					vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized
+					float spotDot = dot(spotDir, -dirUnit);
+					if (spotDot <= spotParams.y)// spotDot <= cos phi/2
+						return 0.0;
+					else if (spotDot > spotParams.x) // spotDot > cos theta/2
+						return 1.0;
+
+					// vertex lies somewhere beyond the two regions
+					float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );
+					return ifallof;
+				}
+			#endif			
 
 			#ifdef USE_SHADOW_MAP
 
@@ -310,6 +357,7 @@
 					*/
 					#endif
 				#endif
+				light += ambient;
 
 				float att = 1.0;
 				#ifdef USE_LINEAR_ATTENUATION
@@ -369,6 +417,35 @@
 				final_color = IN.Albedo * (att * light * shadow) + light_color * spec_light * att;
 				final_color = max(final_color, vec3(0.0)); //(clamped from 0)
 
+
+				//REFLECTION
+				vec3 reflection_color = u_background_color;
+
+				#ifdef FIRST_PASS
+				if(IN.Reflectivity > 0.0)
+				{
+					//compute reflection color from environment
+					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+
+						#ifdef USE_ENVIRONMENT_CUBEMAP
+							reflection_color = textureCube(environment_cubemap,-R).xyz;
+						#endif
+						/*
+						#ifdef USE_ENVIRONMENT_TEXTURE
+							temp_v2 = vec2(0.0);
+							vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
+							env_uv.x = 1.0 - env_uv.x;
+							reflection_color = texture2D(environment_texture, env_uv).xyz;
+						#endif
+						*/
+					#endif //environtment
+
+					//apply reflection
+					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
+				}
+				#endif //firstpass
+
+				/*
 				//apply ENVIRONMENT
 				#ifdef FIRST_PASS
 				#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
@@ -376,38 +453,11 @@
 					#ifdef USE_ENVIRONMENT_CUBEMAP
 						reflection_color = textureCube(environment_cubemap,-R).xyz;
 					#endif
-					/*
-					#ifdef USE_ENVIRONMENT_TEXTURE
-						vec2 temp_v2 = vec2(0.0);
-						vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
-						env_uv.x = 1.0 - env_uv.x;
-
-						#ifdef USE_NORMAL_TEXTURE
-							//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
-							temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
-							#ifdef USE_NORMALMAP_FACTOR
-								temp_v2 *= u_normalmap_factor;
-							#endif
-							env_uv += temp_v2;
-						#endif
-						reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
-					#endif
-					*/
 
 					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
 
 				#endif //environtment
 				#endif //firstpass
-
-				/*
-				//apply spec factor
-				#ifndef USE_AMBIENT_ONLY
-					#ifdef USE_SPECULAR_ONTOP
-						final_color += light_color * max(0.0, att * spec_light * shadow);
-					#else
-						final_color += color * light_color * max(0.0, att * spec_light * shadow);
-					#endif
-				#endif
 				*/
 
 				return final_color;
@@ -437,25 +487,26 @@
 				#endif
 				
 				Input IN;
+				IN.objectPos = v_local_pos;
+				IN.objectNormal = v_local_normal;
 				IN.camPos = u_camera_eye;
 				IN.viewDir = normalize(u_camera_eye - v_pos);
 				IN.worldPos = v_pos;
 				IN.worldNormal = normalize(v_normal);
 				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
 
+				IN.color = u_material_color;
 				#ifdef USE_COLOR_STREAM
 					IN.color = v_color;
-				#else
-					IN.color = vec4(1.0);
 				#endif
 
 				SurfaceOutput o;
-				o.Albedo = vec3(1.0);
+				o.Albedo = IN.color.xyz;
 				o.Normal = IN.worldNormal;
 				o.Emission = vec3(0.0);
 				o.Specular = 0.0;
 				o.Gloss = 0.0;
-				o.Alpha = 1.0;
+				o.Alpha = IN.color.a;
 				o.Reflectivity = 0.0;
 
 				//* INCLUDED CODE ***************************
@@ -680,7 +731,7 @@
 	</shader>
 
 
-	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
+	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -918,6 +969,8 @@
 			#ifdef USE_COLORCLIP_FACTOR
 				uniform float u_colorclip_factor;
 			#endif
+
+			uniform vec3 u_background_color;
 
 			uniform vec4 u_material_color;
 			uniform vec3 u_ambient_color;
@@ -1356,9 +1409,10 @@
 				#endif
 				#endif
 
-				//apply reflection
-				#ifdef FIRST_PASS
-				#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+				//get reflection factor and gloss
+				#ifdef USE_REFLECTION
+					vec3 reflection_color = u_background_color;
+
 					float reflection_factor = abs(u_reflection_info.x) * pow( 1.0 - clamp(0.0,EdotN,1.0), u_reflection_info.y );
 					float reflection_gloss = 0.0;
 
@@ -1371,33 +1425,40 @@
 						reflection_gloss = max(0.0, (20.0 - spec_gloss) / 4.0);
 					#endif
 
-					vec3 reflection_color;
-					#ifdef USE_ENVIRONMENT_CUBEMAP
-						reflection_color = textureCube(environment_cubemap,-R, reflection_gloss).xyz;
-					#endif
-					#ifdef USE_ENVIRONMENT_TEXTURE
-						temp_v2 = vec2(0.0);
-						vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
-						env_uv.x = 1.0 - env_uv.x;
 
-						#ifdef USE_NORMAL_TEXTURE
-							//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
-							temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
-							#ifdef USE_NORMALMAP_FACTOR
-								temp_v2 *= u_normalmap_factor;
-							#endif
-							env_uv += temp_v2;
+					#ifdef FIRST_PASS
+
+					//compute reflection color from environment
+					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+
+						#ifdef USE_ENVIRONMENT_CUBEMAP
+							reflection_color = textureCube(environment_cubemap,-R, reflection_gloss).xyz;
 						#endif
-						reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
-					#endif
+						#ifdef USE_ENVIRONMENT_TEXTURE
+							temp_v2 = vec2(0.0);
+							vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
+							env_uv.x = 1.0 - env_uv.x;
+
+							#ifdef USE_NORMAL_TEXTURE
+								//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
+								temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
+								#ifdef USE_NORMALMAP_FACTOR
+									temp_v2 *= u_normalmap_factor;
+								#endif
+								env_uv += temp_v2;
+							#endif
+							reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
+						#endif
+					#endif //environtment
+
+					//apply reflection
 
 					if( u_reflection_info.x > 0.0 )
 						final_color = final_color * max(0.0, 1.0 - reflection_factor) + reflection_color * reflection_factor;
 					else
 						final_color += reflection_color * reflection_factor;
-
-				#endif //environtment
-				#endif //firstpass
+					#endif //firstpass
+				#endif //use_reflection
 
 				//apply spec factor
 				#ifndef USE_AMBIENT_ONLY

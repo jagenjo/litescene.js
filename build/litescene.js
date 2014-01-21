@@ -3224,6 +3224,16 @@ var ResourcesManager = {
 
 LS.ResourcesManager = ResourcesManager;
 LS.RM = ResourcesManager;
+
+LS.getTexture = function(name_or_texture) {
+	if(name_or_texture.constructor === Texture) return name_or_texture;
+	var v = LS.ResourcesManager.textures[name_or_texture];
+	if(!v) return null;
+	if(v.constructor === Texture)
+		return v;
+	return null;
+}	
+
 //Material class **************************
 /* Warning: a material is not a component, because it can be shared by multiple nodes */
 
@@ -3429,6 +3439,9 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
+
+Material.REFLECTIVE_FLAG = 1;
+
 //not used yet
 Material.prototype.setDirty = function()
 {
@@ -3440,17 +3453,20 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 {
 	var macros = {};
 
+	/*
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
 		if(!texture) continue;
 
-		if(i == "environment")
-			if(this.reflection_factor <= 0) continue;
+		//if(i == "environment")
+		//	if(this.reflection_factor <= 0) continue;
+
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -3459,12 +3475,16 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		if(!texture) continue;
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		//special cases
+
+		/*
 		if(i == "environment")
 		{
 			if(this.reflection_factor <= 0) 
 				continue;
 		}
-		else if(i == "normal")
+		else */
+
+		if(i == "normal")
 		{
 			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
 			{
@@ -3511,6 +3531,10 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros.USE_SPECULAR_IN_REFLECTION = "";
 	if(this.backlight_factor > 0.001)
 		macros.USE_BACKLIGHT = "";
+
+	if(this.reflection_factor > 0.0) 
+		macros.USE_REFLECTION = "";
+
 
 	//extra macros
 	if(this.extra_macros)
@@ -3616,6 +3640,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	//iterate through textures in the scene (environment and irradiance)
+	/*
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
@@ -3626,10 +3651,9 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 		//last_slot += 1;
 
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) continue;
-		}
+		
+		//if(i == "environment")
+		//	if(this.reflection_factor <= 0) continue;
 
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		if(texture.type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
@@ -3639,6 +3663,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -3653,9 +3678,12 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//last_slot += 1;
 
 		//special cases
+		/*
 		if(i == "environment")
 			if(this.reflection_factor <= 0) continue;
-		else if(i == "normal")
+		else */
+
+		if(i == "normal")
 			continue;
 		else if(i == "displacement")
 			continue;
@@ -4043,21 +4071,24 @@ function SurfaceMaterial(o)
 
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
-	o.Albedo = vec3(1.0,0.5,0.1);\n\
+	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
 	o.Normal = IN.worldNormal;\n\
 	o.Emission = vec3(0.0);\n\
 	o.Specular = 2.0;\n\
 	o.Gloss = 10.0;\n\
 	o.Reflectivity = 0.5;\n\
-	o.Alpha = 1.0;\n}\n";
+	o.Alpha = IN.color.a;\n}\n";
 
 	this._uniforms = {};
 	this._macros = {};
 
+	this.properties = [];
 	this.textures = {};
-
 	if(o) 
 		this.configure(o);
+
+	this.flags = 0;
+
 	this.computeCode();
 }
 
@@ -4070,10 +4101,30 @@ SurfaceMaterial.prototype.onCodeChange = function()
 
 SurfaceMaterial.prototype.computeCode = function()
 {
+	var uniforms_code = "";
+	for(var i in this.properties)
+	{
+		var code = "uniform ";
+		var prop = this.properties[i];
+		switch(prop.type)
+		{
+			case 'number': code += "float "; break;
+			case 'vec2': code += "vec2 "; break;
+			case 'vec3': code += "vec3 "; break;
+			case 'vec4':
+			case 'color':
+			 	code += "vec4 "; break;
+			case 'texture': code += "sampler2D "; break;
+			default: continue;
+		}
+		code += prop.name + ";";
+		uniforms_code += code;
+	}
+
 	var lines = this.code.split("\n");
 	for(var i in lines)
 		lines[i] = lines[i].split("//")[0]; //remove comments
-	this._surf_code = lines.join("");
+	this._surf_code = uniforms_code + lines.join("");
 }
 
 // RENDERING METHODS
@@ -4115,6 +4166,12 @@ SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		this._uniforms[ prop.name ] = prop.value;
+	}
+
 	var samplers = [];
 	for(var i in this.textures) 
 	{
@@ -11239,9 +11296,10 @@ var Renderer = {
 			gl.disable( gl.BLEND );
 
 		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i < mat._samplers.length; i++)
+		var samplers = scene._samplers.concat( mat._samplers );
+		for(var i = 0; i < samplers.length; i++)
 		{
-			var s = mat._samplers[i];
+			var s = samplers[i];
 			mat._uniforms[ s[0] ] = i;
 			s[1].bind(i);
 		}
@@ -11515,13 +11573,29 @@ var Renderer = {
 			u_time: scene._time || new Date().getTime() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
-			u_ambient_light: scene.ambient_color
+			u_ambient_light: scene.ambient_color,
+			u_background_color: scene.background_color.subarray(0,3)
 		};
 
 		if(options.clipping_plane)
 			uniforms.u_clipping_plane = options.clipping_plane;
 
 		scene._uniforms = uniforms;
+		scene._samplers = [];
+
+
+		//if(scene.textures.environment)
+		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
+
+		for(var i in scene.textures) 
+		{
+			var texture = LS.getTexture( scene.textures[i] );
+			if(!texture) continue;
+			if(i != "environment") continue; //TO DO: improve this, I dont want all textures to be binded 
+			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
+			scene._samplers.push([i + type , texture]);		
+			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
+		}
 	},
 
 	renderPickingInstance: function(instance, options)

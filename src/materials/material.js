@@ -203,6 +203,9 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
+
+Material.REFLECTIVE_FLAG = 1;
+
 //not used yet
 Material.prototype.setDirty = function()
 {
@@ -214,17 +217,20 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 {
 	var macros = {};
 
+	/*
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
 		if(!texture) continue;
 
-		if(i == "environment")
-			if(this.reflection_factor <= 0) continue;
+		//if(i == "environment")
+		//	if(this.reflection_factor <= 0) continue;
+
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -233,12 +239,16 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		if(!texture) continue;
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		//special cases
+
+		/*
 		if(i == "environment")
 		{
 			if(this.reflection_factor <= 0) 
 				continue;
 		}
-		else if(i == "normal")
+		else */
+
+		if(i == "normal")
 		{
 			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
 			{
@@ -285,6 +295,10 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros.USE_SPECULAR_IN_REFLECTION = "";
 	if(this.backlight_factor > 0.001)
 		macros.USE_BACKLIGHT = "";
+
+	if(this.reflection_factor > 0.0) 
+		macros.USE_REFLECTION = "";
+
 
 	//extra macros
 	if(this.extra_macros)
@@ -390,6 +404,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	//iterate through textures in the scene (environment and irradiance)
+	/*
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
@@ -400,10 +415,9 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 		//last_slot += 1;
 
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) continue;
-		}
+		
+		//if(i == "environment")
+		//	if(this.reflection_factor <= 0) continue;
 
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
 		if(texture.type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
@@ -413,6 +427,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -427,9 +442,12 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//last_slot += 1;
 
 		//special cases
+		/*
 		if(i == "environment")
 			if(this.reflection_factor <= 0) continue;
-		else if(i == "normal")
+		else */
+
+		if(i == "normal")
 			continue;
 		else if(i == "displacement")
 			continue;
