@@ -144,6 +144,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
+	if(this.lod_mesh)
+	{
+		if(typeof(this.lod_mesh) === "string")
+			RI.setCollisionMesh( ResourcesManager.meshes[this.lod_mesh] );
+		else
+			RI.setCollisionMesh( this.lod_mesh );
+	}
+
 	instances.push(RI);
 	//return RI;
 }

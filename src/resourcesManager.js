@@ -290,7 +290,7 @@ var ResourcesManager = {
 		mesh.filename = filename;
 		mesh.generateMetadata(); //useful
 		if(!mesh.bounding)
-			mesh.computeBounding();
+			mesh.updateBounding();
 
 		if(this.free_data) //free buffers to reduce memory usage
 			mesh.freeData();
@@ -554,6 +554,10 @@ var ResourcesManager = {
 		if(!res.object_type)
 			res.object_type = getObjectClassName(res);
 		var type = res.object_type;
+
+		if(res.constructor.resource_type)
+			type = res.constructor.resource_type;
+
 		if(type == "Mesh")
 			this.meshes[filename] = res;
 		else if(type == "Texture")

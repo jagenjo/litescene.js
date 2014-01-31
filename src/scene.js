@@ -50,7 +50,7 @@ Object.defineProperty( SceneTree.prototype, "root", {
 SceneTree.prototype.init = function()
 {
 	this.id = "";
-	this.materials = {}; //material cache
+	this.materials = {}; //shared materials cache
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
@@ -76,6 +76,7 @@ SceneTree.prototype.init = function()
 	};
 
 	this._frame = 0;
+	this._last_collect_frame = -1; //force collect
 	this._time = 0;
 	this._global_time = 0; //in seconds
 	this._start_time = 0; //in seconds
@@ -653,6 +654,67 @@ SceneTree.prototype.render = function(camera, options)
 	this._renderer.render(this, camera, options);
 }
 
+SceneTree.prototype.collectVisibleData = function()
+{
+	//var nodes = scene.nodes;
+	var nodes = this.getNodes();
+	var instances = [];
+	var lights = [];
+	var cameras = [];
+
+	//collect render instances, lights and cameras
+	for(var i in nodes)
+	{
+		var node = nodes[i];
+
+		if(node.flags.visible == false) //skip invisibles
+			continue;
+
+		//trigger event
+		LEvent.trigger(node, "computeVisibility"); //, {camera: camera} options: options }
+
+		//compute global matrix
+		if(node.transform)
+			node.transform.updateGlobalMatrix();
+
+		//special node deformers (done here because they are shared for every node)
+			//this should be moved to Renderer but not a clean way to do it
+			var node_macros = {};
+			LEvent.trigger(node, "computingShaderMacros", node_macros );
+
+			var node_uniforms = {};
+			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
+
+		//store info
+		node._macros = node_macros;
+		node._uniforms = node_uniforms;
+		node._instances = [];
+
+		//get render instances: remember, triggers only support one parameter
+		LEvent.trigger(node,"collectRenderInstances", node._instances );
+		LEvent.trigger(node,"collectLights", lights );
+		LEvent.trigger(node,"collectCameras", cameras );
+
+		for(var j in node._instances)
+		{
+			var instance = node._instances[j];
+			instance.computeNormalMatrix();
+			//compute the axis aligned bounding box
+			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+				instance.updateAABB();
+		}
+
+		instances = instances.concat( node._instances );
+	}
+
+	this._instances = instances;
+	this._lights = lights;
+	this._cameras = cameras;
+
+	//remember when was last time I collected to avoid repeating it
+	this._last_collect_frame = this._frame;
+}
+
 
 SceneTree.prototype.update = function(dt)
 {
@@ -817,9 +879,19 @@ SceneNode.prototype.getResources = function(res)
 	//res in material
 	if(this.material)
 	{
-		var mat = this.getMaterial();
-		if(mat)
-			mat.getResources( res );
+		if(typeof(this.material) == "string")
+		{
+			if(this.material[0] != ":") //not a local material, then its a reference
+			{
+				res[this.material] = LS.Material;
+			}
+		}
+		else //get the material to get the resources
+		{
+			var mat = this.getMaterial();
+			if(mat)
+				mat.getResources( res );
+		}
 	}
 	return res;
 }
@@ -1143,119 +1215,6 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 	}
 }
 
-/**
-* Adds to this node a child node (use it carefully)
-* @method addChild
-* @param {Object} node the node to add as child
-*/
-/*
-SceneNode.prototype.addChild = function(node, recompute_transform )
-{
-	//be careful with weird recursions...
-	var aux = this;
-	while( aux.parentNode )
-	{
-		if(aux == node)
-			throw("SceneNode.addChild: Cannot insert a node as his own child");
-		aux = aux.parentNode;
-	}
-
-	//if(node.parentNode)
-	//	throw("SceneNode.addChild: this node already have a parent, use removeChild first");
-	if(node.parentNode && node.parentNode.constructor == SceneNode)
-	{
-		node.parentNode.removeChild(this);
-		if(node._in_tree != this._in_tree)
-		{
-			if(node._in_tree)
-				node._in_tree.removeNode(node);
-			this._in_tree.addNode(node);
-		}
-	}
-
-	node.parentNode = this;
-	if( !this._children )
-		this._children = [node];
-	else
-		this._children.push(node);
-
-	if(recompute_transform)
-	{
-		var M = node.transform.getGlobalMatrix(); //get son transform
-		var M_parent = this.transform.getGlobalMatrix(); //parent transform
-		mat4.invert(M_parent,M_parent);
-		node.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
-	}
-
-	//link transform
-	node.transform._parent = this.transform;
-
-	LEvent.trigger(this,"nodeAdded", node);
-}
-*/
-
-/**
-* Removes a node child from this node, it keeps it in the bottom level
-* @method removeChild
-* @param {Object} node the node to remove
-*/
-/*
-SceneNode.prototype.removeChild = function(node, recompute_transform)
-{
-	if(!this._children || node.parentNode != this) return;
-	if( node.parentNode != this) return; //not his son
-	var pos = this._children.indexOf(node);
-	if(pos == -1) return; //not his son ¿?
-	this._children.splice(pos,1);
-
-	//unlink transform
-	if(recompute_transform)
-	{
-		var m = node.transform.getGlobalMatrix();
-		node.transform._parent = null;
-		node.transform.fromMatrix(m);
-	}
-	else
-		node.transform._parent = null;
-
-	LEvent.trigger(this,"nodeRemoved", node);
-}
-*/
-
-/**
-* Removes a node child from this node
-* @method removeChild
-* @param {Object} node the node to remove
-*/
-/*
-SceneNode.prototype.getAllChildNodes = function(container)
-{
-	container = container || [];
-
-	if(!this._children)
-		return container;
-	for(var i in this._children)
-	{
-		container.push(this._children[i]);
-		this._children[i].getAllChildNodes(container);
-	}
-	return container;
-}
-*/
-
-/*
-SceneNode.prototype.renderEditor = function(selected)
-{
-	Draw.setColor([1,0,1]);
-	Draw.setLineWidth(2);
-	Draw.renderCircle(10);
-}
-*/
-
-
-
-
-
 //***************************************************************************
 
 //create one default scene
@@ -1289,6 +1248,60 @@ LS.newCameraNode = function(id)
 	var node = new SceneNode(id);
 	node.addComponent( new Camera() );
 	return node;
+}
+
+//this will be better in another place, but dont know where
+LS.SceneTree.prototype.testRay = function(start, destination)
+{
+	var instances = this._instances;
+
+	var collisions = [];
+
+	//for every instance
+	for(var i = 0; i < this._instances.length; ++i)
+	{
+		var instance = this._instances[i];
+
+		//test against AABB
+		var collision_point = vec3.create();
+		if( !geo.testRayBBox(start, destination, instance.aabb, null, collision_point) )
+			continue;
+
+		var model = instance.matrix;
+
+		//ray to local
+		var inv = mat4.invert( mat4.create(), model );
+		var local_start = vec3.transformMat4(vec3.create(), start, inv);
+		var local_destination = vec3.transformMat4(vec3.create(), destination, inv);
+
+		//test against OOBB (a little bit more expensive)
+		if( !geo.testRayBBox(local_start, local_destination, instance.oobb, null, collision_point) )
+			continue;
+
+
+		//if it has collision_mesh test it against it
+		if(instance.flags & RI_USE_MESH_AS_COLLIDER && instance.mesh)
+		{
+			var octree = instance.mesh.octree;
+			if(!octree)
+				octree = instance.mesh.octree = new Octree( instance.mesh );
+			var local_direction = vec3.sub(vec3.create(), local_destination, local_start );
+			vec3.normalize( local_direction, local_direction);
+			var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+			if(!hit)
+				continue;
+
+			mat4.multiplyVec3(collision_point, model, hit.pos);
+		}
+		else
+			vec3.transformMat4(collision_point, collision_point, model);
+
+		var distance = vec3.distance( start, collision_point );
+		collisions.push([instance, collision_point, distance]);
+	}
+
+	collisions.sort( function(a,b) { return a[2] - a[2]; } );
+	return collisions;
 }
 
 //*******************************/

@@ -26,9 +26,10 @@ FollowNode.prototype.updatePosition = function(e,info)
 	if(!this._root) return;
 
 	var pos = null;
+	var camera = Scene.getCamera(); //main camera
 
 	if(this.follow_camera)
-		pos =  info.camera.getEye();
+		pos =  camera.getEye();
 	else
 	{
 		var target_node = Scene.getNode( this.node_name );

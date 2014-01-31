@@ -1,7 +1,6 @@
 ../src/utils/binaryPacker.js
 ../src/utils/wbin.js
 ../src/utils/draw.js
-../src/utils/octree.js
 ../src/utils/shaders.js
 ../src/utils/lscript.js
 

@@ -70,6 +70,7 @@ var LS = {
 		this.MaterialClasses[ getClassName(material_class) ] = material_class;
 		//event
 		LEvent.trigger(LS,"materialclass_registered",material_class);
+		material_class.resource_type = "Material";
 	},	
 
 	_configure: function(o) { LS.cloneObject(o, this); },
@@ -257,7 +258,7 @@ function cloneObject(object, target)
 			if( o[i] && o[i].constructor == Float32Array ) //reuse old container
 				o[i].set(v);
 			else
-				o[i] = v.slice(0); //clone array
+				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 		}
 		else //slow but safe
 			o[i] = JSON.parse( JSON.stringify(v) );

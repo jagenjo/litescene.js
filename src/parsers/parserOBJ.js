@@ -263,14 +263,13 @@ var parserOBJ = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//extra info
-		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = Mesh.computeBounding(mesh.vertices);
 		var info = {};
 		if(groups.length > 1)
 			info.groups = groups;
 		mesh.info = info;
 		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
 			console.log("no radius found in mesh");
-
 		return mesh;
 	}
 };

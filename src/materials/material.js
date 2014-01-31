@@ -203,7 +203,6 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 
-
 Material.REFLECTIVE_FLAG = 1;
 
 //not used yet
@@ -597,6 +596,17 @@ Material.prototype.serialize = function()
 	 var o = cloneObject(this);
 	 o.material_class = getObjectClassName(this);
 	 return o;
+}
+
+
+/**
+* Clone this material (keeping the class)
+* @method clone
+* @return {Material} Material instance
+*/
+Material.prototype.clone = function()
+{
+	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
 }
 
 /**

@@ -62,7 +62,7 @@ var Renderer = {
 		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
-		this.collectVisibleData(scene, render_options);
+		this.processVisibleData(scene, render_options);
 
 		//settings for cameras
 		var cameras = this._visible_cameras;
@@ -670,9 +670,9 @@ var Renderer = {
 		{
 			var texture = LS.getTexture( scene.textures[i] );
 			if(!texture) continue;
-			if(i != "environment") continue; //TO DO: improve this, I dont want all textures to be binded 
+			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
-			scene._samplers.push([i + type , texture]);		
+			scene._samplers.push([i + type , texture]);
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
 		}
 	},
@@ -740,61 +740,24 @@ var Renderer = {
 		gl.frontFace(order);
 	},
 
-	//collects the rendering instances and lights that are visible
-	collectVisibleData: function(scene, options)
+	//collects and process the rendering instances, cameras and lights that are visible
+	//its like a prepass shared among all rendering passes
+	processVisibleData: function(scene, options)
 	{
 		options = options || {};
 		options.scene = scene;
 
-		//var nodes = scene.nodes;
-		var nodes = scene.getNodes();
-		if (options.nodes)
-			nodes = options.nodes;
+		//update containers in scene
+		scene.collectVisibleData();
 
-		var camera = options.main_camera;
-		options.current_camera = camera;
-		var camera_eye = camera.getEye();
-
-		var instances = [];
 		var opaque_instances = [];
 		var alpha_instances = [];
-		var lights = [];
-		var cameras = [];
 		var materials = {}; //I dont want repeated materials here
 
-		//collect render instances and lights
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-
-			if(node.flags.visible == false) //skip invisibles
-				continue;
-
-			//trigger event
-			LEvent.trigger(node, "computeVisibility", {camera: camera, options: options});
-
-			//compute global matrix
-			if(node.transform)
-				node.transform.updateGlobalMatrix();
-
-			//special node deformers
-			var node_macros = {};
-			LEvent.trigger(node, "computingShaderMacros", node_macros );
-
-			var node_uniforms = {};
-			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
-
-			node._macros = node_macros;
-			node._uniforms = node_uniforms;
-			node._instances = [];
-
-			//get render instances: remember, triggers only support one parameter
-			LEvent.trigger(node,"collectRenderInstances", node._instances );
-			LEvent.trigger(node,"collectLights", lights );
-			LEvent.trigger(node,"collectCameras", cameras );
-
-			instances = instances.concat( node._instances );
-		}
+		var instances = scene._instances;
+		var camera = options.main_camera || scene.getCamera();
+		options.current_camera = camera;
+		var camera_eye = camera.getEye();
 
 		//process render instances (add stuff if needed)
 		for(var i in instances)
@@ -809,12 +772,7 @@ var Renderer = {
 			materials[instance.material._uid] = instance.material;
 
 			//add extra info
-			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
-
-			//compute the axis aligned bounding box
-			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
-				instance.updateAABB();
 
 			//change conditionaly
 			if(options.force_wireframe) 
@@ -885,9 +843,9 @@ var Renderer = {
 
 		this._alpha_instances = alpha_instances;
 		this._opaque_instances = opaque_instances;
-		this._visible_instances = all_instances;
-		this._visible_lights = lights;
-		this._visible_cameras = cameras;
+		this._visible_instances = all_instances; //sorted version
+		this._visible_lights = scene._lights; //sorted version
+		this._visible_cameras = scene._cameras; //sorted version
 		this._visible_materials = materials;
 	},
 

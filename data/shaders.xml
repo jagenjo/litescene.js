@@ -50,7 +50,7 @@
 		]]>
 	</snippet>
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -170,8 +170,10 @@
 
 			struct Input {
 				vec4 color;
-				vec3 objectPos;
-				vec3 objectNormal;
+				vec3 vertex;
+				vec3 normal;
+				vec2 uv;
+
 				vec3 camPos;
 				vec3 viewDir;
 				vec3 worldPos;
@@ -205,12 +207,12 @@
 				uniform sampler2D light_texture;
 			#endif
 
-			#ifdef USE_ENVIRONMENT_TEXTURE
-				uniform sampler2D environment_texture;
-			#endif
-
 			#ifdef USE_ENVIRONMENT_CUBEMAP
 				uniform samplerCube environment_cubemap;
+			#endif			
+
+			#ifdef USE_IRRADIANCE_CUBEMAP
+				uniform samplerCube irradiance_cubemap;
 			#endif			
 
 			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
@@ -283,7 +285,7 @@
 					}
 					return shadow;
 				}
-			#endif			
+			#endif		
 
 			vec3 computeLight(in SurfaceOutput IN)
 			{
@@ -337,9 +339,7 @@
 					NdotL = dot(N,L);
 				#endif
 				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
-				#ifdef USE_SPECULAR_LIGHT
-					spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
-				#endif
+				spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
 
 				vec3 light = vec3(0.0);
 
@@ -487,18 +487,19 @@
 				#endif
 				
 				Input IN;
-				IN.objectPos = v_local_pos;
-				IN.objectNormal = v_local_normal;
+				IN.vertex = v_local_pos;
+				IN.normal = v_local_normal;
+				IN.color = u_material_color;
+				#ifdef USE_COLOR_STREAM
+					IN.color = v_color;
+				#endif
+				IN.uv = v_uvs;
+
 				IN.camPos = u_camera_eye;
 				IN.viewDir = normalize(u_camera_eye - v_pos);
 				IN.worldPos = v_pos;
 				IN.worldNormal = normalize(v_normal);
 				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-
-				IN.color = u_material_color;
-				#ifdef USE_COLOR_STREAM
-					IN.color = v_color;
-				#endif
 
 				SurfaceOutput o;
 				o.Albedo = IN.color.xyz;

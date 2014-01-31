@@ -1251,383 +1251,6 @@ var Draw = {
 		return mat4.multiplyVec3(dest, this.mvp_matrix, position);
 	}
 };
-/**
-*   Octree generator for fast ray triangle collision with meshes
-*	Dependencies: glmatrix.js (for vector and matrix operations)
-* @class Octree
-* @constructor
-* @param {Mesh} mesh object containing vertices buffer (indices buffer optional)
-*/
-
-function HitTest(t, hit, normal) {
-  this.t = arguments.length ? t : Number.MAX_VALUE;
-  this.hit = hit;
-  this.normal = normal;
-}
-
-HitTest.prototype = {
-  mergeWith: function(other) {
-    if (other.t > 0 && other.t < this.t) {
-      this.t = other.t;
-      this.hit = other.hit;
-      this.normal = other.normal;
-    }
-  }
-};
-
-
-function Octree(mesh)
-{
-	this.root = null;
-	this.total_depth = 0;
-	this.total_nodes = 0;
-	if(mesh)
-	{
-		this.buildFromMesh(mesh);
-		this.total_nodes = this.trim();
-	}
-}
-
-Octree.MAX_NODE_TRIANGLES_RATIO = 0.1;
-Octree.MAX_OCTREE_DEPTH = 8;
-Octree.OCTREE_MARGIN_RATIO = 0.01;
-Octree.OCTREE_MIN_MARGIN = 0.1;
-
-var octree_tested_boxes = 0;
-var octree_tested_triangles = 0;
-
-Octree.prototype.buildFromMesh = function(mesh)
-{
-	this.total_depth = 0;
-	this.total_nodes = 0;
-
-	var vertices = mesh.vertices;
-	var triangles = mesh.triangles;
-
-	var root = this.computeAABB(vertices);
-	this.root = root;
-	this.total_nodes = 1;
-	this.total_triangles = triangles ? triangles.length / 3 : vertices.length / 9;
-	this.max_node_triangles = this.total_triangles * Octree.MAX_NODE_TRIANGLES_RATIO;
-
-	var margin = vec3.create();
-	vec3.scale( margin, root.size, Octree.OCTREE_MARGIN_RATIO );
-	if(margin[0] < Octree.OCTREE_MIN_MARGIN) margin[0] = Octree.OCTREE_MIN_MARGIN;
-	if(margin[1] < Octree.OCTREE_MIN_MARGIN) margin[1] = Octree.OCTREE_MIN_MARGIN;
-	if(margin[2] < Octree.OCTREE_MIN_MARGIN) margin[2] = Octree.OCTREE_MIN_MARGIN;
-
-	vec3.sub(root.min, root.min, margin);
-	vec3.add(root.max, root.max, margin);
-
-	root.faces = [];
-	root.inside = 0;
-
-
-	//indexed
-	if(triangles)
-	{
-		for(var i = 0; i < triangles.length; i+=3)
-		{
-			var face = new Float32Array([vertices[triangles[i]*3], vertices[triangles[i]*3+1],vertices[triangles[i]*3+2],
-						vertices[triangles[i+1]*3], vertices[triangles[i+1]*3+1],vertices[triangles[i+1]*3+2],
-						vertices[triangles[i+2]*3], vertices[triangles[i+2]*3+1],vertices[triangles[i+2]*3+2]]);
-			this.addToNode(face,root,0);
-			//if(i%3000 == 0) trace("Tris: " + i);
-		}
-	}
-	else
-	{
-		for(var i = 0; i < vertices.length; i+=9)
-		{
-			var face = new Float32Array( vertices.subarray(i,i+9) );
-			this.addToNode(face,root,0);
-			//if(i%3000 == 0) trace("Tris: " + i);
-		}
-	}
-
-	return root;
-}
-
-Octree.prototype.addToNode = function(face,node, depth)
-{
-	node.inside += 1;
-
-	//has children
-	if(node.c)
-	{
-		var aabb = this.computeAABB(face);
-		var added = false;
-		for(var i in node.c)
-		{
-			var child = node.c[i];
-			if (Octree.isInsideAABB(aabb,child))
-			{
-				this.addToNode(face,child, depth+1);
-				added = true;
-				break;
-			}
-		}
-		if(!added)
-		{
-			if(node.faces == null) node.faces = [];
-			node.faces.push(face);
-		}
-	}
-	else //add till full, then split
-	{
-		if(node.faces == null) node.faces = [];
-		node.faces.push(face);
-
-		//split
-		if(node.faces.length > this.max_node_triangles && depth < Octree.MAX_OCTREE_DEPTH)
-		{
-			this.splitNode(node);
-			if(this.total_depth < depth + 1)
-				this.total_depth = depth + 1;
-
-			var faces = node.faces.concat();
-			node.faces = null;
-
-			//redistribute all nodes
-			for(var i in faces)
-			{
-				var face = faces[i];
-				var aabb = this.computeAABB(face);
-				var added = false;
-				for(var j in node.c)
-				{
-					var child = node.c[j];
-					if (Octree.isInsideAABB(aabb,child))
-					{
-						this.addToNode(face,child, depth+1);
-						added = true;
-						break;
-					}
-				}
-				if (!added)
-				{
-					if(node.faces == null) node.faces = [];
-					node.faces.push(face);
-				}
-			}
-		}
-	}
-};
-
-Octree.prototype.octree_pos_ref = [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]];
-
-Octree.prototype.splitNode = function(node)
-{
-	node.c = [];
-	var half = [(node.max[0] - node.min[0]) * 0.5, (node.max[1] - node.min[1]) * 0.5, (node.max[2] - node.min[2]) * 0.5];
-
-	for(var i in this.octree_pos_ref)
-	{
-		var ref = this.octree_pos_ref[i];
-
-		var newnode = {};
-		this.total_nodes += 1;
-
-		newnode.min = [ node.min[0] + half[0] * ref[0],  node.min[1] + half[1] * ref[1],  node.min[2] + half[2] * ref[2]];
-		newnode.max = [newnode.min[0] + half[0], newnode.min[1] + half[1], newnode.min[2] + half[2]];
-		newnode.faces = null;
-		newnode.inside = 0;
-		node.c.push(newnode);
-	}
-}
-
-Octree.prototype.computeAABB = function(vertices)
-{
-	var min = new Float32Array([ vertices[0], vertices[1], vertices[2] ]);
-	var max = new Float32Array([ vertices[0], vertices[1], vertices[2] ]);
-
-	for(var i = 0; i < vertices.length; i+=3)
-	{
-		for(var j = 0; j < 3; j++)
-		{
-			if(min[j] > vertices[i+j]) 
-				min[j] = vertices[i+j];
-			if(max[j] < vertices[i+j]) 
-				max[j] = vertices[i+j];
-		}
-	}
-
-	return {min: min, max: max, size: vec3.sub( vec3.create(), max, min) };
-}
-
-Octree.prototype.trim = function(node)
-{
-	node = node || this.root;
-	if(!node.c)
-		return 1;
-
-	var num = 1;
-	var valid = [];
-	for(var i in node.c)
-	{
-		if(node.c[i].inside)
-		{
-			valid.push(node.c[i]);
-			num += this.trim(node.c[i]);
-		}
-	}
-	node.c = valid;
-	return num;
-}
-
-/**
-* Uploads a set of uniforms to the Shader
-* @method testRay
-* @param {vec3} origin ray origin position
-* @param {vec3} direction ray direction position
-* @param {number} dist_min
-* @param {number} dist_max
-* @return {HitTest} object containing pos and normal
-*/
-Octree.prototype.testRay = function(origin, direction, dist_min, dist_max)
-{
-	origin = vec3.clone(origin);
-	direction = vec3.clone(direction);
-	//direction = direction.unit();
-	octree_tested_boxes = 0;
-	octree_tested_triangles = 0;
-
-	if(!this.root)
-	{
-		throw("Error: octree not build");
-	}
-
-	var test = Octree.hitTestBox( origin, direction, vec3.clone(this.root.min), vec3.clone(this.root.max) );
-	if(!test) //no collision with mesh bounding box
-		return null;
-
-	var test = Octree.testRayInNode(this.root,origin,direction);
-	if(test != null)
-	{
-		var pos = vec3.scale( vec3.create(), direction, test.t );
-		vec3.add( pos, pos, origin );
-		test.pos = pos;
-		return test;
-	}
-
-	return null;
-}
-
-Octree.testRayInNode = function(node, origin, direction)
-{
-	var test = null;
-	var prev_test = null;
-	octree_tested_boxes += 1;
-
-	//test faces
-	if(node.faces)
-		for(var i = 0, l = node.faces.length; i < l; ++i)
-		{
-			var face = node.faces[i];
-			
-			octree_tested_triangles += 1;
-			test = Octree.hitTestTriangle(origin,direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9) );
-			if (test==null)
-				continue;
-			if(prev_test)
-				prev_test.mergeWith(test);
-			else
-				prev_test = test;
-		}
-
-	//test children nodes faces
-	var child;
-	if(node.c)
-		for(var i in node.c)
-		{
-			child = node.c[i];
-			//test with node box
-			test = Octree.hitTestBox( origin, direction, vec3.clone(child.min), vec3.clone(child.max) );
-			if( test == null )
-				continue;
-
-			//nodebox behind current collision, then ignore node
-			if(prev_test && test.t > prev_test.t)
-				continue;
-
-			//test collision with node
-			test = Octree.testRayInNode(child, origin, direction);
-			if(test == null)
-				continue;
-
-			if(prev_test)
-				prev_test.mergeWith(test);
-			else
-				prev_test = test;
-		}
-
-	return prev_test;
-}
-
-//test if one bounding is inside or overlapping another bounding
-Octree.isInsideAABB = function(a,b)
-{
-	if(a.min[0] < b.min[0] || a.min[1] < b.min[1] || a.min[2] < b.min[2] ||
-		a.max[0] > b.max[0] || a.max[1] > b.max[1] || a.max[2] > b.max[2])
-		return false;
-	return true;
-}
-
-
-Octree.hitTestBox = function(origin, ray, box_min, box_max) {
-	var tMin = vec3.subtract( vec3.create(), box_min, origin );
-	var tMax = vec3.subtract( vec3.create(), box_max, origin );
-	
-	if(	vec3.maxValue(tMin) < 0 && vec3.minValue(tMax) > 0)
-		return new HitTest(0,origin,ray);
-
-	vec3.multiply(tMin, tMin, [1/ray[0],1/ray[1],1/ray[2]]);
-	vec3.multiply(tMax, tMax, [1/ray[0],1/ray[1],1/ray[2]]);
-	var t1 = vec3.min(vec3.create(), tMin, tMax);
-	var t2 = vec3.max(vec3.create(), tMin, tMax);
-	var tNear = vec3.maxValue(t1);
-	var tFar = vec3.minValue(t2);
-
-	if (tNear > 0 && tNear < tFar) {
-		var epsilon = 1.0e-6, hit = vec3.add( vec3.create(), vec3.scale(vec3.create(), ray, tNear ), origin);
-		vec3.add(box_min, box_min,[epsilon,epsilon,epsilon]);
-		vec3.subtract(box_min, box_min,[epsilon,epsilon,epsilon]);
-		return new HitTest(tNear, hit, vec3.fromValues(
-		  (hit[0] > box_max[0]) - (hit[0] < box_min[0]),
-		  (hit[1] > box_max[1]) - (hit[1] < box_min[1]),
-		  (hit[2] > box_max[2]) - (hit[2] < box_min[2]) ));
-	}
-
-	return null;
-}
-
-Octree.hitTestTriangle = function(origin, ray, a, b, c) {
-	var ab = vec3.subtract( vec3.create(), b,a );
-	var ac = vec3.subtract( vec3.create(), c,a );
-	var normal = vec3.cross( vec3.create(), ab, ac );
-	vec3.normalize( normal, normal );
-	if( vec3.dot(normal,ray) > 0) return; //ignore backface
-
-	var t = vec3.dot(normal, vec3.subtract( vec3.create(), a, origin )) / vec3.dot(normal,ray);
-
-  if (t > 0) {
-	var hit = vec3.scale(vec3.create(), ray, t);
-	vec3.add(hit, hit, origin);
-	var toHit = vec3.subtract( vec3.create(), hit,a );
-	var dot00 = vec3.dot(ac,ac);
-	var dot01 = vec3.dot(ac,ab);
-	var dot02 = vec3.dot(ac,toHit);
-	var dot11 = vec3.dot(ab,ab);
-	var dot12 = vec3.dot(ab,toHit);
-	var divide = dot00 * dot11 - dot01 * dot01;
-	var u = (dot11 * dot02 - dot01 * dot12) / divide;
-	var v = (dot00 * dot12 - dot01 * dot02) / divide;
-	if (u >= 0 && v >= 0 && u + v <= 1) return new HitTest(t, hit, normal);
-  }
-
-  return null;
-}
-
 /* Basic shader manager 
 	- Allows to load all shaders from XML
 	- Allows to use a global shader
@@ -2166,6 +1789,7 @@ var LS = {
 		this.MaterialClasses[ getClassName(material_class) ] = material_class;
 		//event
 		LEvent.trigger(LS,"materialclass_registered",material_class);
+		material_class.resource_type = "Material";
 	},	
 
 	_configure: function(o) { LS.cloneObject(o, this); },
@@ -2353,7 +1977,7 @@ function cloneObject(object, target)
 			if( o[i] && o[i].constructor == Float32Array ) //reuse old container
 				o[i].set(v);
 			else
-				o[i] = v.slice(0); //clone array
+				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 		}
 		else //slow but safe
 			o[i] = JSON.parse( JSON.stringify(v) );
@@ -2844,7 +2468,7 @@ var ResourcesManager = {
 		mesh.filename = filename;
 		mesh.generateMetadata(); //useful
 		if(!mesh.bounding)
-			mesh.computeBounding();
+			mesh.updateBounding();
 
 		if(this.free_data) //free buffers to reduce memory usage
 			mesh.freeData();
@@ -3108,6 +2732,10 @@ var ResourcesManager = {
 		if(!res.object_type)
 			res.object_type = getObjectClassName(res);
 		var type = res.object_type;
+
+		if(res.constructor.resource_type)
+			type = res.constructor.resource_type;
+
 		if(type == "Mesh")
 			this.meshes[filename] = res;
 		else if(type == "Texture")
@@ -3438,7 +3066,6 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-
 
 Material.REFLECTIVE_FLAG = 1;
 
@@ -3835,6 +3462,17 @@ Material.prototype.serialize = function()
 	 return o;
 }
 
+
+/**
+* Clone this material (keeping the class)
+* @method clone
+* @return {Material} Material instance
+*/
+Material.prototype.clone = function()
+{
+	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
+}
+
 /**
 * Loads and assigns a texture to a channel
 * @method loadAndSetTexture
@@ -4074,9 +3712,9 @@ function SurfaceMaterial(o)
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
 	o.Normal = IN.worldNormal;\n\
 	o.Emission = vec3(0.0);\n\
-	o.Specular = 2.0;\n\
-	o.Gloss = 10.0;\n\
-	o.Reflectivity = 0.5;\n\
+	o.Specular = 1.0;\n\
+	o.Gloss = 40.0;\n\
+	o.Reflectivity = 0.0;\n\
 	o.Alpha = IN.color.a;\n}\n";
 
 	this._uniforms = {};
@@ -4115,6 +3753,7 @@ SurfaceMaterial.prototype.computeCode = function()
 			case 'color':
 			 	code += "vec4 "; break;
 			case 'texture': code += "sampler2D "; break;
+			case 'cubemap': code += "samplerCube "; break;
 			default: continue;
 		}
 		code += prop.name + ";";
@@ -4124,7 +3763,8 @@ SurfaceMaterial.prototype.computeCode = function()
 	var lines = this.code.split("\n");
 	for(var i in lines)
 		lines[i] = lines[i].split("//")[0]; //remove comments
-	this._surf_code = uniforms_code + lines.join("");
+
+	this.surf_code = uniforms_code + lines.join("");
 }
 
 // RENDERING METHODS
@@ -4154,7 +3794,7 @@ SurfaceMaterial.prototype.onModifyMacros = function(macros)
 			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 	}
 
-	macros.USE_SURF = this._surf_code;
+	macros.USE_SURF = this.surf_code;
 }
 
 SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
@@ -4166,25 +3806,28 @@ SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
+	var samplers = [];
+
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
-		this._uniforms[ prop.name ] = prop.value;
-	}
-
-	var samplers = [];
-	for(var i in this.textures) 
-	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		if(prop.type == "texture" || prop.type == "cubemap")
+		{
+			var texture = LS.getTexture( prop.value );
+			if(!texture) continue;
+			samplers.push([prop.name, texture]);
+		}
+		else
+			this._uniforms[ prop.name ] = prop.value;
 	}
 
 	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	this._samplers = samplers;
 }
 
-SurfaceMaterial.prototype.configure = function(o) { LS.cloneObject(o, this); },
+SurfaceMaterial.prototype.configure = function(o) { 
+	LS.cloneObject(o, this);
+}
 
 LS.extendClass( Material, SurfaceMaterial );
 LS.registerMaterialClass(SurfaceMaterial);
@@ -6461,6 +6104,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
+	if(this.lod_mesh)
+	{
+		if(typeof(this.lod_mesh) === "string")
+			RI.setCollisionMesh( ResourcesManager.meshes[this.lod_mesh] );
+		else
+			RI.setCollisionMesh( this.lod_mesh );
+	}
+
 	instances.push(RI);
 	//return RI;
 }
@@ -7427,9 +7078,10 @@ FollowNode.prototype.updatePosition = function(e,info)
 	if(!this._root) return;
 
 	var pos = null;
+	var camera = Scene.getCamera(); //main camera
 
 	if(this.follow_camera)
-		pos =  info.camera.getEye();
+		pos =  camera.getEye();
 	else
 	{
 		var target_node = Scene.getNode( this.node_name );
@@ -10694,6 +10346,9 @@ var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
 var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
+var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+
+
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
 var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
@@ -10919,6 +10574,14 @@ RenderInstance.prototype.render = function(shader)
 	*/
 }
 
+
+
+RenderInstance.prototype.setCollisionMesh = function(mesh)
+{
+	this.flags |= RI_USE_MESH_AS_COLLIDER;
+	this.collision_mesh = mesh;
+}
+
 //************************************
 /**
 * The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.
@@ -10983,7 +10646,7 @@ var Renderer = {
 		scene.sendEventToNodes("beforeRender" );
 
 		//get render instances, lights, materials and all rendering info ready
-		this.collectVisibleData(scene, render_options);
+		this.processVisibleData(scene, render_options);
 
 		//settings for cameras
 		var cameras = this._visible_cameras;
@@ -11591,9 +11254,9 @@ var Renderer = {
 		{
 			var texture = LS.getTexture( scene.textures[i] );
 			if(!texture) continue;
-			if(i != "environment") continue; //TO DO: improve this, I dont want all textures to be binded 
+			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
-			scene._samplers.push([i + type , texture]);		
+			scene._samplers.push([i + type , texture]);
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
 		}
 	},
@@ -11661,61 +11324,24 @@ var Renderer = {
 		gl.frontFace(order);
 	},
 
-	//collects the rendering instances and lights that are visible
-	collectVisibleData: function(scene, options)
+	//collects and process the rendering instances, cameras and lights that are visible
+	//its like a prepass shared among all rendering passes
+	processVisibleData: function(scene, options)
 	{
 		options = options || {};
 		options.scene = scene;
 
-		//var nodes = scene.nodes;
-		var nodes = scene.getNodes();
-		if (options.nodes)
-			nodes = options.nodes;
+		//update containers in scene
+		scene.collectVisibleData();
 
-		var camera = options.main_camera;
-		options.current_camera = camera;
-		var camera_eye = camera.getEye();
-
-		var instances = [];
 		var opaque_instances = [];
 		var alpha_instances = [];
-		var lights = [];
-		var cameras = [];
 		var materials = {}; //I dont want repeated materials here
 
-		//collect render instances and lights
-		for(var i in nodes)
-		{
-			var node = nodes[i];
-
-			if(node.flags.visible == false) //skip invisibles
-				continue;
-
-			//trigger event
-			LEvent.trigger(node, "computeVisibility", {camera: camera, options: options});
-
-			//compute global matrix
-			if(node.transform)
-				node.transform.updateGlobalMatrix();
-
-			//special node deformers
-			var node_macros = {};
-			LEvent.trigger(node, "computingShaderMacros", node_macros );
-
-			var node_uniforms = {};
-			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
-
-			node._macros = node_macros;
-			node._uniforms = node_uniforms;
-			node._instances = [];
-
-			//get render instances: remember, triggers only support one parameter
-			LEvent.trigger(node,"collectRenderInstances", node._instances );
-			LEvent.trigger(node,"collectLights", lights );
-			LEvent.trigger(node,"collectCameras", cameras );
-
-			instances = instances.concat( node._instances );
-		}
+		var instances = scene._instances;
+		var camera = options.main_camera || scene.getCamera();
+		options.current_camera = camera;
+		var camera_eye = camera.getEye();
 
 		//process render instances (add stuff if needed)
 		for(var i in instances)
@@ -11730,12 +11356,7 @@ var Renderer = {
 			materials[instance.material._uid] = instance.material;
 
 			//add extra info
-			instance.computeNormalMatrix();
 			instance._dist = vec3.dist( instance.center, camera_eye );
-
-			//compute the axis aligned bounding box
-			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
-				instance.updateAABB();
 
 			//change conditionaly
 			if(options.force_wireframe) 
@@ -11806,9 +11427,9 @@ var Renderer = {
 
 		this._alpha_instances = alpha_instances;
 		this._opaque_instances = opaque_instances;
-		this._visible_instances = all_instances;
-		this._visible_lights = lights;
-		this._visible_cameras = cameras;
+		this._visible_instances = all_instances; //sorted version
+		this._visible_lights = scene._lights; //sorted version
+		this._visible_cameras = scene._cameras; //sorted version
 		this._visible_materials = materials;
 	},
 
@@ -13885,14 +13506,13 @@ var parserOBJ = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//extra info
-		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = Mesh.computeBounding(mesh.vertices);
 		var info = {};
 		if(groups.length > 1)
 			info.groups = groups;
 		mesh.info = info;
 		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
 			console.log("no radius found in mesh");
-
 		return mesh;
 	}
 };
@@ -13997,7 +13617,7 @@ Object.defineProperty( SceneTree.prototype, "root", {
 SceneTree.prototype.init = function()
 {
 	this.id = "";
-	this.materials = {}; //material cache
+	this.materials = {}; //shared materials cache
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
@@ -14023,6 +13643,7 @@ SceneTree.prototype.init = function()
 	};
 
 	this._frame = 0;
+	this._last_collect_frame = -1; //force collect
 	this._time = 0;
 	this._global_time = 0; //in seconds
 	this._start_time = 0; //in seconds
@@ -14600,6 +14221,67 @@ SceneTree.prototype.render = function(camera, options)
 	this._renderer.render(this, camera, options);
 }
 
+SceneTree.prototype.collectVisibleData = function()
+{
+	//var nodes = scene.nodes;
+	var nodes = this.getNodes();
+	var instances = [];
+	var lights = [];
+	var cameras = [];
+
+	//collect render instances, lights and cameras
+	for(var i in nodes)
+	{
+		var node = nodes[i];
+
+		if(node.flags.visible == false) //skip invisibles
+			continue;
+
+		//trigger event
+		LEvent.trigger(node, "computeVisibility"); //, {camera: camera} options: options }
+
+		//compute global matrix
+		if(node.transform)
+			node.transform.updateGlobalMatrix();
+
+		//special node deformers (done here because they are shared for every node)
+			//this should be moved to Renderer but not a clean way to do it
+			var node_macros = {};
+			LEvent.trigger(node, "computingShaderMacros", node_macros );
+
+			var node_uniforms = {};
+			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
+
+		//store info
+		node._macros = node_macros;
+		node._uniforms = node_uniforms;
+		node._instances = [];
+
+		//get render instances: remember, triggers only support one parameter
+		LEvent.trigger(node,"collectRenderInstances", node._instances );
+		LEvent.trigger(node,"collectLights", lights );
+		LEvent.trigger(node,"collectCameras", cameras );
+
+		for(var j in node._instances)
+		{
+			var instance = node._instances[j];
+			instance.computeNormalMatrix();
+			//compute the axis aligned bounding box
+			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+				instance.updateAABB();
+		}
+
+		instances = instances.concat( node._instances );
+	}
+
+	this._instances = instances;
+	this._lights = lights;
+	this._cameras = cameras;
+
+	//remember when was last time I collected to avoid repeating it
+	this._last_collect_frame = this._frame;
+}
+
 
 SceneTree.prototype.update = function(dt)
 {
@@ -14764,9 +14446,19 @@ SceneNode.prototype.getResources = function(res)
 	//res in material
 	if(this.material)
 	{
-		var mat = this.getMaterial();
-		if(mat)
-			mat.getResources( res );
+		if(typeof(this.material) == "string")
+		{
+			if(this.material[0] != ":") //not a local material, then its a reference
+			{
+				res[this.material] = LS.Material;
+			}
+		}
+		else //get the material to get the resources
+		{
+			var mat = this.getMaterial();
+			if(mat)
+				mat.getResources( res );
+		}
 	}
 	return res;
 }
@@ -15090,119 +14782,6 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 	}
 }
 
-/**
-* Adds to this node a child node (use it carefully)
-* @method addChild
-* @param {Object} node the node to add as child
-*/
-/*
-SceneNode.prototype.addChild = function(node, recompute_transform )
-{
-	//be careful with weird recursions...
-	var aux = this;
-	while( aux.parentNode )
-	{
-		if(aux == node)
-			throw("SceneNode.addChild: Cannot insert a node as his own child");
-		aux = aux.parentNode;
-	}
-
-	//if(node.parentNode)
-	//	throw("SceneNode.addChild: this node already have a parent, use removeChild first");
-	if(node.parentNode && node.parentNode.constructor == SceneNode)
-	{
-		node.parentNode.removeChild(this);
-		if(node._in_tree != this._in_tree)
-		{
-			if(node._in_tree)
-				node._in_tree.removeNode(node);
-			this._in_tree.addNode(node);
-		}
-	}
-
-	node.parentNode = this;
-	if( !this._children )
-		this._children = [node];
-	else
-		this._children.push(node);
-
-	if(recompute_transform)
-	{
-		var M = node.transform.getGlobalMatrix(); //get son transform
-		var M_parent = this.transform.getGlobalMatrix(); //parent transform
-		mat4.invert(M_parent,M_parent);
-		node.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
-	}
-
-	//link transform
-	node.transform._parent = this.transform;
-
-	LEvent.trigger(this,"nodeAdded", node);
-}
-*/
-
-/**
-* Removes a node child from this node, it keeps it in the bottom level
-* @method removeChild
-* @param {Object} node the node to remove
-*/
-/*
-SceneNode.prototype.removeChild = function(node, recompute_transform)
-{
-	if(!this._children || node.parentNode != this) return;
-	if( node.parentNode != this) return; //not his son
-	var pos = this._children.indexOf(node);
-	if(pos == -1) return; //not his son ¿?
-	this._children.splice(pos,1);
-
-	//unlink transform
-	if(recompute_transform)
-	{
-		var m = node.transform.getGlobalMatrix();
-		node.transform._parent = null;
-		node.transform.fromMatrix(m);
-	}
-	else
-		node.transform._parent = null;
-
-	LEvent.trigger(this,"nodeRemoved", node);
-}
-*/
-
-/**
-* Removes a node child from this node
-* @method removeChild
-* @param {Object} node the node to remove
-*/
-/*
-SceneNode.prototype.getAllChildNodes = function(container)
-{
-	container = container || [];
-
-	if(!this._children)
-		return container;
-	for(var i in this._children)
-	{
-		container.push(this._children[i]);
-		this._children[i].getAllChildNodes(container);
-	}
-	return container;
-}
-*/
-
-/*
-SceneNode.prototype.renderEditor = function(selected)
-{
-	Draw.setColor([1,0,1]);
-	Draw.setLineWidth(2);
-	Draw.renderCircle(10);
-}
-*/
-
-
-
-
-
 //***************************************************************************
 
 //create one default scene
@@ -15236,6 +14815,60 @@ LS.newCameraNode = function(id)
 	var node = new SceneNode(id);
 	node.addComponent( new Camera() );
 	return node;
+}
+
+//this will be better in another place, but dont know where
+LS.SceneTree.prototype.testRay = function(start, destination)
+{
+	var instances = this._instances;
+
+	var collisions = [];
+
+	//for every instance
+	for(var i = 0; i < this._instances.length; ++i)
+	{
+		var instance = this._instances[i];
+
+		//test against AABB
+		var collision_point = vec3.create();
+		if( !geo.testRayBBox(start, destination, instance.aabb, null, collision_point) )
+			continue;
+
+		var model = instance.matrix;
+
+		//ray to local
+		var inv = mat4.invert( mat4.create(), model );
+		var local_start = vec3.transformMat4(vec3.create(), start, inv);
+		var local_destination = vec3.transformMat4(vec3.create(), destination, inv);
+
+		//test against OOBB (a little bit more expensive)
+		if( !geo.testRayBBox(local_start, local_destination, instance.oobb, null, collision_point) )
+			continue;
+
+
+		//if it has collision_mesh test it against it
+		if(instance.flags & RI_USE_MESH_AS_COLLIDER && instance.mesh)
+		{
+			var octree = instance.mesh.octree;
+			if(!octree)
+				octree = instance.mesh.octree = new Octree( instance.mesh );
+			var local_direction = vec3.sub(vec3.create(), local_destination, local_start );
+			vec3.normalize( local_direction, local_direction);
+			var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+			if(!hit)
+				continue;
+
+			mat4.multiplyVec3(collision_point, model, hit.pos);
+		}
+		else
+			vec3.transformMat4(collision_point, collision_point, model);
+
+		var distance = vec3.distance( start, collision_point );
+		collisions.push([instance, collision_point, distance]);
+	}
+
+	collisions.sort( function(a,b) { return a[2] - a[2]; } );
+	return collisions;
 }
 
 //*******************************/

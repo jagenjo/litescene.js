@@ -19,6 +19,9 @@ var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
 var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
+var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+
+
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
 var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
@@ -242,4 +245,12 @@ RenderInstance.prototype.render = function(shader)
 	else
 		shader.draw(this.mesh, this.primitive);
 	*/
+}
+
+
+
+RenderInstance.prototype.setCollisionMesh = function(mesh)
+{
+	this.flags |= RI_USE_MESH_AS_COLLIDER;
+	this.collision_mesh = mesh;
 }

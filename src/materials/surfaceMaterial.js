@@ -15,9 +15,9 @@ function SurfaceMaterial(o)
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
 	o.Normal = IN.worldNormal;\n\
 	o.Emission = vec3(0.0);\n\
-	o.Specular = 2.0;\n\
-	o.Gloss = 10.0;\n\
-	o.Reflectivity = 0.5;\n\
+	o.Specular = 1.0;\n\
+	o.Gloss = 40.0;\n\
+	o.Reflectivity = 0.0;\n\
 	o.Alpha = IN.color.a;\n}\n";
 
 	this._uniforms = {};
@@ -56,6 +56,7 @@ SurfaceMaterial.prototype.computeCode = function()
 			case 'color':
 			 	code += "vec4 "; break;
 			case 'texture': code += "sampler2D "; break;
+			case 'cubemap': code += "samplerCube "; break;
 			default: continue;
 		}
 		code += prop.name + ";";
@@ -65,7 +66,8 @@ SurfaceMaterial.prototype.computeCode = function()
 	var lines = this.code.split("\n");
 	for(var i in lines)
 		lines[i] = lines[i].split("//")[0]; //remove comments
-	this._surf_code = uniforms_code + lines.join("");
+
+	this.surf_code = uniforms_code + lines.join("");
 }
 
 // RENDERING METHODS
@@ -95,7 +97,7 @@ SurfaceMaterial.prototype.onModifyMacros = function(macros)
 			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 	}
 
-	macros.USE_SURF = this._surf_code;
+	macros.USE_SURF = this.surf_code;
 }
 
 SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
@@ -107,25 +109,28 @@ SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
+	var samplers = [];
+
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
-		this._uniforms[ prop.name ] = prop.value;
-	}
-
-	var samplers = [];
-	for(var i in this.textures) 
-	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		if(prop.type == "texture" || prop.type == "cubemap")
+		{
+			var texture = LS.getTexture( prop.value );
+			if(!texture) continue;
+			samplers.push([prop.name, texture]);
+		}
+		else
+			this._uniforms[ prop.name ] = prop.value;
 	}
 
 	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	this._samplers = samplers;
 }
 
-SurfaceMaterial.prototype.configure = function(o) { LS.cloneObject(o, this); },
+SurfaceMaterial.prototype.configure = function(o) { 
+	LS.cloneObject(o, this);
+}
 
 LS.extendClass( Material, SurfaceMaterial );
 LS.registerMaterialClass(SurfaceMaterial);
