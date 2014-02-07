@@ -121,9 +121,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var node = this._root;
 	if(!this._root) return;
 
-	var RI = this._render_instance;
+	var RI = this._RI;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._RI = RI = new RenderInstance(this._root, this);
 
 	//matrix: do not need to update, already done
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -144,6 +144,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
+	/* moved to collider
 	if(this.lod_mesh)
 	{
 		if(typeof(this.lod_mesh) === "string")
@@ -151,6 +152,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		else
 			RI.setCollisionMesh( this.lod_mesh );
 	}
+	*/
 
 	instances.push(RI);
 	//return RI;

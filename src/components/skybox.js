@@ -61,7 +61,6 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 			mat4.setTranslation( this.matrix, cam_pos );
 			vec3.copy( this.center, cam_pos );
 		};
-		
 	}
 
 	var mat = this._material;

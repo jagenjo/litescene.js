@@ -232,8 +232,29 @@ var Draw = {
 		segments = segments || 100;
 		var R = quat.create();
 		var temp = vec3.create();
-		var vertices = new Float32Array((segments) * 3 * 3); //3 arcs
+		var vertices = new Float32Array( segments * 2 * 3 * 3); 
 
+		var delta = 1.0 / segments * Math.PI * 2;
+
+		for(var i = 0; i < segments; i++)
+		{
+			temp.set([ Math.sin( i * delta) * radius, Math.cos( i * delta) * radius, 0]);
+			vertices.set(temp, i*18);
+			temp.set([Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius, 0]);
+			vertices.set(temp, i*18 + 3);
+
+			temp.set([ Math.sin( i * delta) * radius, 0, Math.cos( i * delta) * radius ]);
+			vertices.set(temp, i*18 + 6);
+			temp.set([Math.sin( (i+1) * delta) * radius, 0, Math.cos( (i+1) * delta) * radius ]);
+			vertices.set(temp, i*18 + 9);
+
+			temp.set([ 0, Math.sin( i * delta) * radius, Math.cos( i * delta) * radius ]);
+			vertices.set(temp, i*18 + 12);
+			temp.set([ 0, Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius ]);
+			vertices.set(temp, i*18 + 15);
+		}
+
+		/*
 		for(var i = 0; i < segments; i++)
 		{
 			quat.setAxisAngle(R,axis, 2 * Math.PI * (i/segments));
@@ -242,6 +263,7 @@ var Draw = {
 			vertices.set([temp[0],temp[2],temp[1]], i*3+segments*3);
 			vertices.set([temp[1],temp[0],temp[2]], i*3+segments*3*2);
 		}
+		*/
 
 		var mesh = GL.Mesh.load({vertices: vertices});
 		return this.renderMesh(mesh, gl.LINES);

@@ -74,7 +74,7 @@ LScript.prototype.callMethod = function(name, argv)
 	if(!this._context || !this._context[name]) return;
 
 	if(!this.catch_exceptions)
-			return this._context[name].apply(this._context, argv);
+		return this._context[name].apply(this._context, argv);
 
 	try
 	{

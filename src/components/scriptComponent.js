@@ -6,6 +6,8 @@ function ScriptComponent(o)
 
 	this._script = new LScript();
 	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+	this._last_error = null;
+	this._script.onerror = (function(err) { this.onError(err); }).bind(this);
 
 	this.configure(o);
 	if(this.code)
@@ -16,7 +18,7 @@ ScriptComponent.icon = "mini-icon-script.png";
 
 ScriptComponent["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update"];
+ScriptComponent.valid_callbacks = ["start","update","trigger"];
 
 ScriptComponent.prototype.getContext = function()
 {
@@ -29,40 +31,6 @@ ScriptComponent.prototype.processCode = function()
 {
 	this._script.code = this.code;
 	this._script.compile({component:this, node: this._root});
-
-	/*
-	var name = this.component_name || "__last_component";
-	var code = this.code;
-	code = "function "+name+"(component, node) {\n" + code + "\n";
-
-	var extra_code = "";
-	for(var i in ScriptComponent.valid_callbacks)
-		extra_code += "	if(typeof("+ScriptComponent.valid_callbacks[i]+") != 'undefined') this."+ ScriptComponent.valid_callbacks[i] + " = "+ScriptComponent.valid_callbacks[i]+";\n";
-
-	extra_code += "\n}\nwindow."+name+" = "+name+";\n";
-
-	//disabled feature
-	var register = false && this.component_name && this.register_component;
-
-	code += extra_code;
-
-	try
-	{
-		this._last_executed_code = code;
-		//trace(code);
-		eval(code);
-		this._component_class = window[name];
-		this._component = new this._component_class( this, this._root );
-		//if(register) LS.registerComponent(this._component_class);
-	}
-	catch (err)
-	{
-		this._component_class = null;
-		this._component = null;
-		trace("Error in script\n" + err);
-		trace(this._last_executed_code );
-	}
-	*/
 }
 
 
@@ -96,6 +64,12 @@ ScriptComponent.prototype.onUpdate = function(e,dt)
 
 	//if(this.enabled && this._component && this._component.update)
 	//	this._component.update(dt);
+}
+
+ScriptComponent.prototype.onError = function(err)
+{
+	console.log("app stopping due to error in script");
+	Scene.stop();
 }
 
 

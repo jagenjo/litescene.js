@@ -9,7 +9,7 @@ var parserDAE = {
 	{
 		options = options || {};
 
-		trace("Parsing collada");
+		//console.log("Parsing collada");
 		var flip = true;
 
 		var xmlparser = new DOMParser();
@@ -392,6 +392,207 @@ var parserDAE = {
 			var float_array = xmlsource.querySelector("float_array");
 			if(!float_array) continue;
 			var floats = this.readContentAsFloats( xmlsource );
+
+			var xmlaccessor = xmlsource.querySelector("accessor");
+			var stride = parseInt( xmlaccessor.getAttribute("stride") );
+
+			sources[ xmlsource.getAttribute("id") ] = {stride: stride, data: floats};
+		}
+
+		//get streams
+		var xmlvertices = xmlmesh.querySelector("vertices input");
+		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
+		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
+
+		var triangles = false;
+		var polylist = false;
+		var vcount = null;
+		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("polylist");
+			if(xmlpolygons)
+			{
+				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
+				return null;
+			}
+			//polylist = true;
+			//var xmlvcount = xmlpolygons.querySelector("vcount");
+			//var vcount = this.readContentAsUInt32( xmlvcount );
+		}
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("triangles");
+			triangles = true;
+		}
+		if(!xmlpolygons)
+		{
+			console.log("no polygons or triangles in mesh: " + id);
+			return null;
+		}
+
+
+		//for each buffer (input)
+		var buffers = [];
+		var xmlinputs = xmlpolygons.querySelectorAll("input");
+		for(var i = 0; i < xmlinputs.length; i++)
+		{
+			var xmlinput = xmlinputs[i];
+			if(!xmlinput.getAttribute) continue;
+			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
+			var offset = parseInt( xmlinput.getAttribute("offset") );
+			var data_set = 0;
+			if(xmlinput.getAttribute("set"))
+				data_set = parseInt( xmlinput.getAttribute("set") );
+
+			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+		}
+		//assuming buffers are ordered by offset
+
+		var last_index = 0;
+		var facemap = {};
+
+		var xmlps = xmlpolygons.querySelectorAll("p");
+		var vertex_remap = [];
+		var indicesArray = [];
+
+		var num_data_vertex = buffers.length; //one value per input buffer
+
+		//for every polygon
+		for(var i = 0; i < xmlps.length; i++)
+		{
+			var xmlp = xmlps[i];
+			if(!xmlp || !xmlp.textContent) break;
+
+			var data = xmlp.textContent.trim().split(" ");
+
+			var first_index = -1;
+			var current_index = -1;
+			var prev_index = -1;
+
+			if(use_indices && last_index >= 256*256)
+				break;
+
+			//for every pack of indices in the polygon (vertex, normal, uv, ... )
+			for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+			{
+				var id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+
+				prev_index = current_index;
+				if(facemap.hasOwnProperty(id)) //add to arrays, keep the index
+					current_index = facemap[id];
+				else
+				{
+					for(var j = 0; j < buffers.length; ++j)
+					{
+						var buffer = buffers[j];
+						var index = parseInt(data[k + j]);
+						var array = buffer[1]; //array with all the data
+						var source = buffer[3]; //where to read the data from
+						if(j == 0)
+							vertex_remap[ array.length / num_data_vertex ] = index;
+						index *= buffer[2]; //stride
+						for(var x = 0; x < buffer[2]; ++x)
+							array.push( source[index+x] );
+					}
+					
+					current_index = last_index;
+					last_index += 1;
+					facemap[id] = current_index;
+				}
+
+				if(!triangles) //split polygons then
+				{
+					if(k == 0)	first_index = current_index;
+					if(k > 2 * num_data_vertex) //triangulate polygons
+					{
+						indicesArray.push( first_index );
+						indicesArray.push( prev_index );
+					}
+				}
+
+				indicesArray.push( current_index );
+			}//per vertex
+		}//per polygon
+
+		var mesh = {
+			vertices: new Float32Array(buffers[0][1]),
+			_remap: new Uint16Array(vertex_remap)
+		};
+
+		var translator = {
+			"normal":"normals",
+			"texcoord":"coords"
+		};
+
+		for(var i = 1; i < buffers.length; ++i)
+		{
+			var name = buffers[i][0].toLowerCase();
+			var data = buffers[i][1];
+			if(translator[name])
+				name = translator[name];
+			if(mesh[name])
+				name = name + buffers[i][5];
+			mesh[ name ] = new Float32Array(data); //are they always float32? I think so
+		}
+		
+		if(indicesArray.length)
+			mesh.triangles = new Uint16Array(indicesArray);
+
+		console.log(mesh);
+
+
+		//swap coords X and Y
+		if(flip && 1)
+		{
+			var tmp = 0;
+			var array = mesh.vertices;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+
+			array = mesh.normals;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+		}
+
+		//extra info
+		var bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = bounding;
+		if( isNaN(bounding.radius) )
+			return null;
+
+		return mesh;
+		
+	},
+
+	/* old version
+	readGeometry2: function(id, flip)
+	{
+		var xmlgeometry = this._xmlroot.querySelector("geometry" + id);
+		if(!xmlgeometry) return null;
+
+		var use_indices = false;
+		var xmlmesh = xmlgeometry.querySelector("mesh");
+			
+		//for data sources
+		var sources = {};
+		var xmlsources = xmlmesh.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+			var float_array = xmlsource.querySelector("float_array");
+			if(!float_array) continue;
+			var floats = this.readContentAsFloats( xmlsource );
 			sources[ xmlsource.getAttribute("id") ] = floats;
 		}
 
@@ -472,6 +673,8 @@ var parserDAE = {
 		var xmlps = xmlpolygons.querySelectorAll("p");
 		var vertex_remap = [];
 
+		var num_data_vertex = 3;
+
 		//for every polygon
 		for(var i = 0; i < xmlps.length; i++)
 		{
@@ -485,8 +688,8 @@ var parserDAE = {
 			if(use_indices && last_index >= 256*256)
 				break;
 
-			//for every triplet of indices in the polygon (vertex, normal, uv, ... )
-			for(var k = 0; k < data.length; k += 3)
+			//for every pack of indices in the polygon (vertex, normal, uv, ... )
+			for(var k = 0; k < data.length; k += num_data_vertex)
 			{
 				if(use_indices && last_index >= 256*256)
 				{
@@ -603,6 +806,7 @@ var parserDAE = {
 
 		return mesh;
 	},
+	*/
 
 	//used for skinning and morphing
 	readController: function(id, flip, scene)

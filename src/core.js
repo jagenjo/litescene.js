@@ -126,7 +126,6 @@ var LS = {
 				var err = "Error " + this.status;
 				if(request.error)
 					request.error(err);
-				LEvent.trigger(xhr,"fail", this.status);
 				return;
 			}
 

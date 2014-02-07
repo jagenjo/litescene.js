@@ -898,8 +898,29 @@ var Draw = {
 		segments = segments || 100;
 		var R = quat.create();
 		var temp = vec3.create();
-		var vertices = new Float32Array((segments) * 3 * 3); //3 arcs
+		var vertices = new Float32Array( segments * 2 * 3 * 3); 
 
+		var delta = 1.0 / segments * Math.PI * 2;
+
+		for(var i = 0; i < segments; i++)
+		{
+			temp.set([ Math.sin( i * delta) * radius, Math.cos( i * delta) * radius, 0]);
+			vertices.set(temp, i*18);
+			temp.set([Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius, 0]);
+			vertices.set(temp, i*18 + 3);
+
+			temp.set([ Math.sin( i * delta) * radius, 0, Math.cos( i * delta) * radius ]);
+			vertices.set(temp, i*18 + 6);
+			temp.set([Math.sin( (i+1) * delta) * radius, 0, Math.cos( (i+1) * delta) * radius ]);
+			vertices.set(temp, i*18 + 9);
+
+			temp.set([ 0, Math.sin( i * delta) * radius, Math.cos( i * delta) * radius ]);
+			vertices.set(temp, i*18 + 12);
+			temp.set([ 0, Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius ]);
+			vertices.set(temp, i*18 + 15);
+		}
+
+		/*
 		for(var i = 0; i < segments; i++)
 		{
 			quat.setAxisAngle(R,axis, 2 * Math.PI * (i/segments));
@@ -908,6 +929,7 @@ var Draw = {
 			vertices.set([temp[0],temp[2],temp[1]], i*3+segments*3);
 			vertices.set([temp[1],temp[0],temp[2]], i*3+segments*3*2);
 		}
+		*/
 
 		var mesh = GL.Mesh.load({vertices: vertices});
 		return this.renderMesh(mesh, gl.LINES);
@@ -1694,7 +1716,7 @@ LScript.prototype.callMethod = function(name, argv)
 	if(!this._context || !this._context[name]) return;
 
 	if(!this.catch_exceptions)
-			return this._context[name].apply(this._context, argv);
+		return this._context[name].apply(this._context, argv);
 
 	try
 	{
@@ -1845,7 +1867,6 @@ var LS = {
 				var err = "Error " + this.status;
 				if(request.error)
 					request.error(err);
-				LEvent.trigger(xhr,"fail", this.status);
 				return;
 			}
 
@@ -3995,6 +4016,28 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 }
 
 /**
+* Returns the position in the components array of this component
+* @method getIndexOfComponent
+* @param {Number} position in the array, -1 if not found
+*/
+ComponentContainer.prototype.getIndexOfComponent = function(component)
+{
+	if(!this._components) return -1;
+	return this._components.indexOf(component);
+}
+
+/**
+* Returns the component at index position
+* @method getComponentByIndex
+* @param {Object} component
+*/
+ComponentContainer.prototype.getComponentByIndex = function(index)
+{
+	if(!this._components) return null;
+	return this._components[index];
+}
+
+/**
 * executes the method with a given name in all the components
 * @method processActionInComponents
 * @param {String} action_name the name of the function to execute in all components (in string format)
@@ -6081,9 +6124,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var node = this._root;
 	if(!this._root) return;
 
-	var RI = this._render_instance;
+	var RI = this._RI;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._RI = RI = new RenderInstance(this._root, this);
 
 	//matrix: do not need to update, already done
 	RI.matrix.set( this._root.transform._global_matrix );
@@ -6104,6 +6147,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
+	/* moved to collider
 	if(this.lod_mesh)
 	{
 		if(typeof(this.lod_mesh) === "string")
@@ -6111,6 +6155,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		else
 			RI.setCollisionMesh( this.lod_mesh );
 	}
+	*/
 
 	instances.push(RI);
 	//return RI;
@@ -6460,7 +6505,6 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 			mat4.setTranslation( this.matrix, cam_pos );
 			vec3.copy( this.center, cam_pos );
 		};
-		
 	}
 
 	var mat = this._material;
@@ -6487,6 +6531,145 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 LS.registerComponent(Skybox);
 LS.Skybox = Skybox;
+
+function BackgroundRenderer(o)
+{
+	this.texture = null;
+	if(o)
+		this.configure(o);
+}
+
+BackgroundRenderer.icon = "mini-icon-teapot.png";
+BackgroundRenderer["@texture"] = { widget: "texture" };
+
+BackgroundRenderer.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+BackgroundRenderer.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+BackgroundRenderer.prototype.getResources = function(res)
+{
+	if(typeof(this.texture) == "string")
+		res[this.texture] = Texture;
+	return res;
+}
+
+BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
+{
+	var texture = this.texture;
+	if(!texture) return;
+	if(texture.constructor === String)
+		texture = LS.ResourcesManager.textures[texture];
+
+	var mesh = this._mesh;
+	if(!mesh)
+		mesh = this._mesh = GL.Mesh.getScreenQuad();
+
+	var mat = this._material;
+	if(!mat)
+		mat = this._material = new LS.Material({use_scene_ambient:false});
+	mat.textures["color"] = texture;
+
+	var RI = this._render_instance;
+	if(!RI)
+	{
+		this._render_instance = RI = new RenderInstance(this._root, this);
+		RI.priority = 100;
+	}
+
+	RI.setMesh(mesh);
+	RI.material = mat;
+
+	RI.flags = RI_DEFAULT_FLAGS;
+	RI.applyNodeFlags();
+	RI.disableFlag( RI_CAST_SHADOWS ); //never cast shadows
+	RI.enableFlag( RI_IGNORE_LIGHTS ); //no lights
+	RI.enableFlag( RI_CW );
+	RI.disableFlag( RI_DEPTH_WRITE ); 
+	RI.disableFlag( RI_DEPTH_TEST ); 
+	RI.enableFlag( RI_IGNORE_FRUSTRUM );
+	RI.enableFlag( RI_IGNORE_VIEWPROJECTION );
+
+	instances.push(RI);
+}
+
+//Not working
+//LS.registerComponent(BackgroundRenderer);
+//LS.BackgroundRenderer = BackgroundRenderer;
+
+function Collider(o)
+{
+	this.shape = 1;
+	this.mesh = null;
+	this.size = vec3.fromValues(0.5,0.5,0.5);
+	this.center = vec3.create();
+	if(o)
+		this.configure(o);
+}
+
+Collider.icon = "mini-icon-teapot.png";
+
+//vars
+Collider["@size"] = { type: "vec3", step: 0.01 };
+Collider["@center"] = { type: "vec3", step: 0.01 };
+Collider["@mesh"] = { type: "mesh" };
+Collider["@shape"] = { widget:"combo", values: {"Box":1, "Sphere": 2, "Mesh":5 }};
+
+Collider.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, "collectPhysicInstances", this.onGetColliders, this);
+}
+
+Collider.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, "collectPhysicInstances", this.onGetColliders, this);
+}
+
+Collider.prototype.getMesh = function() {
+	if(typeof(this.mesh) === "string")
+		return ResourcesManager.meshes[this.mesh];
+	return this.mesh;
+}
+
+Collider.prototype.getResources = function(res)
+{
+	if(!this.mesh) return;
+	if(typeof(this.mesh) == "string")
+		res[this.mesh] = Mesh;
+	return res;
+}
+
+Collider.prototype.onGetColliders = function(e, colliders)
+{
+	var PI = this._PI;
+	if(!PI)
+		this._PI = PI = new PhysicsInstance(this._root, this);
+
+	PI.matrix.set( this._root.transform._global_matrix );
+	PI.type = this.shape;
+
+	if(PI.type == PhysicsInstance.SPHERE)
+		BBox.setCenterHalfsize( PI.oobb, this.center, [this.size[0],this.size[0],this.size[0]]);
+	else
+		BBox.setCenterHalfsize( PI.oobb, this.center, this.size);
+	vec3.copy( PI.center, this.center );
+	if(PI.type == PhysicsInstance.MESH)
+	{
+		var mesh = this.getMesh();
+		if(!mesh) return;
+		PI.setMesh(mesh);
+	}
+	colliders.push(PI);
+}
+
+
+LS.registerComponent(Collider);
+LS.Collider = Collider;
 function AnnotationComponent(o)
 {
 	this.text = "";
@@ -8172,6 +8355,8 @@ function ScriptComponent(o)
 
 	this._script = new LScript();
 	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+	this._last_error = null;
+	this._script.onerror = (function(err) { this.onError(err); }).bind(this);
 
 	this.configure(o);
 	if(this.code)
@@ -8182,7 +8367,7 @@ ScriptComponent.icon = "mini-icon-script.png";
 
 ScriptComponent["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update"];
+ScriptComponent.valid_callbacks = ["start","update","trigger"];
 
 ScriptComponent.prototype.getContext = function()
 {
@@ -8195,40 +8380,6 @@ ScriptComponent.prototype.processCode = function()
 {
 	this._script.code = this.code;
 	this._script.compile({component:this, node: this._root});
-
-	/*
-	var name = this.component_name || "__last_component";
-	var code = this.code;
-	code = "function "+name+"(component, node) {\n" + code + "\n";
-
-	var extra_code = "";
-	for(var i in ScriptComponent.valid_callbacks)
-		extra_code += "	if(typeof("+ScriptComponent.valid_callbacks[i]+") != 'undefined') this."+ ScriptComponent.valid_callbacks[i] + " = "+ScriptComponent.valid_callbacks[i]+";\n";
-
-	extra_code += "\n}\nwindow."+name+" = "+name+";\n";
-
-	//disabled feature
-	var register = false && this.component_name && this.register_component;
-
-	code += extra_code;
-
-	try
-	{
-		this._last_executed_code = code;
-		//trace(code);
-		eval(code);
-		this._component_class = window[name];
-		this._component = new this._component_class( this, this._root );
-		//if(register) LS.registerComponent(this._component_class);
-	}
-	catch (err)
-	{
-		this._component_class = null;
-		this._component = null;
-		trace("Error in script\n" + err);
-		trace(this._last_executed_code );
-	}
-	*/
 }
 
 
@@ -8262,6 +8413,12 @@ ScriptComponent.prototype.onUpdate = function(e,dt)
 
 	//if(this.enabled && this._component && this._component.update)
 	//	this._component.update(dt);
+}
+
+ScriptComponent.prototype.onError = function(err)
+{
+	console.log("app stopping due to error in script");
+	Scene.stop();
 }
 
 
@@ -10346,7 +10503,8 @@ var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
 var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
-var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+//var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
 
 
 //default flags for any instance
@@ -10502,9 +10660,9 @@ RenderInstance.prototype.computeNormalMatrix = function()
 }
 
 /**
-* Computes the instance bounding box
+* Computes the instance bounding box in world space from the one in local space
 *
-* @method updateBounding
+* @method updateAABB
 */
 RenderInstance.prototype.updateAABB = function()
 {
@@ -10575,12 +10733,13 @@ RenderInstance.prototype.render = function(shader)
 }
 
 
-
+/* moved to PhysicsInstance
 RenderInstance.prototype.setCollisionMesh = function(mesh)
 {
 	this.flags |= RI_USE_MESH_AS_COLLIDER;
 	this.collision_mesh = mesh;
 }
+*/
 
 //************************************
 /**
@@ -10919,19 +11078,16 @@ var Renderer = {
 	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderMultiPassInstance: function(instance, lights, scene, options)
 	{
-		//for every light
-		//1. Generate the renderkey:  nodeuid|matuid|lightuid
-		//2. Get shader, if it doesnt exist:
-		//		a. Compute the shader
-		//		b. Store shader with renderkey
-		//3. Fill the shader with uniforms
-		//4. Render instance
+
 		var node = instance.node;
 		var mat = instance.material;
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+		if(instance.flags & RI_IGNORE_VIEWPROJECTION)
+			this._mvp_matrix.set( model );
+		else
+			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
 		var node_macros = node._macros;
@@ -11332,7 +11488,7 @@ var Renderer = {
 		options.scene = scene;
 
 		//update containers in scene
-		scene.collectVisibleData();
+		scene.collectData();
 
 		var opaque_instances = [];
 		var alpha_instances = [];
@@ -11389,6 +11545,8 @@ var Renderer = {
 				macros.NO_NORMALS = "";
 			if(!("a_coord" in buffers))
 				macros.NO_COORDS = "";
+			if(("a_coord1" in buffers))
+				macros.USE_COORDS1_STREAM = "";
 			if(("a_color" in buffers))
 				macros.USE_COLOR_STREAM = "";
 			if(("a_tangent" in buffers))
@@ -11690,6 +11848,130 @@ var Renderer = {
 
 //Add to global Scope
 LS.Renderer = Renderer;
+/* This is in charge of basic physics actions like ray tracing against the colliders */
+
+/**
+* PhysicsInstance contains info of one object to test physics against
+*
+* @class PhysicsInstance
+* @namespace LS
+* @constructor
+*/
+function PhysicsInstance(node, component)
+{
+	this._uid = LS.generateUId(); //unique identifier for this RI
+
+	this.type = PhysicsInstance.BOX;
+	this.mesh = null; 
+
+	//where does it come from
+	this.node = node;
+	this.component = component;
+
+	//transformation
+	this.matrix = mat4.create();
+	this.center = vec3.create();
+
+	//for visibility computation
+	this.oobb = BBox.create(); //object space bounding box
+	this.aabb = BBox.create(); //axis aligned bounding box
+}
+
+PhysicsInstance.BOX = 1;
+PhysicsInstance.SPHERE = 2;
+PhysicsInstance.PLANE = 3;
+PhysicsInstance.CAPSULE = 4;
+PhysicsInstance.MESH = 5;
+PhysicsInstance.FUNCTION = 6; //used to test against a internal function
+
+/**
+* Computes the instance bounding box in world space from the one in local space
+*
+* @method updateAABB
+*/
+PhysicsInstance.prototype.updateAABB = function()
+{
+	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+}
+
+PhysicsInstance.prototype.setMesh = function(mesh)
+{
+	this.mesh = mesh;
+	this.type = PhysicsInstance.MESH;	
+	BBox.setCenterHalfsize( this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
+}
+
+
+
+/**
+* Physics is in charge of all physics testing methods
+*
+* @class Physics
+* @namespace LS
+* @constructor
+*/
+var Physics = {
+	raycast: function(scene, origin, direction)
+	{
+		var colliders = scene._colliders;
+		var collisions = [];
+
+		//for every instance
+		for(var i = 0; i < colliders.length; ++i)
+		{
+			var instance = colliders[i];
+
+			//test against AABB
+			var collision_point = vec3.create();
+			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			var local_start = mat4.multiplyVec3(vec3.create(), inv, origin);
+			var local_direction = mat4.rotateVec3(vec3.create(), inv, direction);
+
+			//test in world space, is cheaper
+			if( instance.type == PhysicsInstance.SPHERE)
+			{
+				if(!geo.testRaySphere(local_start, local_direction, instance.center, instance.oobb[3], collision_point))
+					continue;
+				vec3.transformMat4(collision_point, collision_point, model);
+			}
+			else //the rest test first with the local BBox
+			{
+				//test against OOBB (a little bit more expensive)
+				if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+					continue;
+
+				if( instance.type == PhysicsInstance.MESH)
+				{
+					var octree = instance.mesh.octree;
+					if(!octree)
+						octree = instance.mesh.octree = new Octree( instance.mesh );
+					var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+					if(!hit)
+						continue;
+
+					mat4.multiplyVec3(collision_point, model, hit.pos);
+				}
+				else
+					vec3.transformMat4(collision_point, collision_point, model);
+			}
+
+			var distance = vec3.distance( origin, collision_point );
+			collisions.push([instance, collision_point, distance]);
+		}
+
+		collisions.sort( function(a,b) { return a[2] - b[2]; } );
+		return collisions;
+	}
+}
+
+
+LS.Physics = Physics;
 
 var Parser = {
 
@@ -12127,7 +12409,7 @@ var parserDAE = {
 	{
 		options = options || {};
 
-		trace("Parsing collada");
+		//console.log("Parsing collada");
 		var flip = true;
 
 		var xmlparser = new DOMParser();
@@ -12510,6 +12792,207 @@ var parserDAE = {
 			var float_array = xmlsource.querySelector("float_array");
 			if(!float_array) continue;
 			var floats = this.readContentAsFloats( xmlsource );
+
+			var xmlaccessor = xmlsource.querySelector("accessor");
+			var stride = parseInt( xmlaccessor.getAttribute("stride") );
+
+			sources[ xmlsource.getAttribute("id") ] = {stride: stride, data: floats};
+		}
+
+		//get streams
+		var xmlvertices = xmlmesh.querySelector("vertices input");
+		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
+		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
+
+		var triangles = false;
+		var polylist = false;
+		var vcount = null;
+		var xmlpolygons = xmlmesh.querySelector("polygons");
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("polylist");
+			if(xmlpolygons)
+			{
+				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
+				return null;
+			}
+			//polylist = true;
+			//var xmlvcount = xmlpolygons.querySelector("vcount");
+			//var vcount = this.readContentAsUInt32( xmlvcount );
+		}
+		if(!xmlpolygons)
+		{
+			xmlpolygons = xmlmesh.querySelector("triangles");
+			triangles = true;
+		}
+		if(!xmlpolygons)
+		{
+			console.log("no polygons or triangles in mesh: " + id);
+			return null;
+		}
+
+
+		//for each buffer (input)
+		var buffers = [];
+		var xmlinputs = xmlpolygons.querySelectorAll("input");
+		for(var i = 0; i < xmlinputs.length; i++)
+		{
+			var xmlinput = xmlinputs[i];
+			if(!xmlinput.getAttribute) continue;
+			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
+			var offset = parseInt( xmlinput.getAttribute("offset") );
+			var data_set = 0;
+			if(xmlinput.getAttribute("set"))
+				data_set = parseInt( xmlinput.getAttribute("set") );
+
+			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+		}
+		//assuming buffers are ordered by offset
+
+		var last_index = 0;
+		var facemap = {};
+
+		var xmlps = xmlpolygons.querySelectorAll("p");
+		var vertex_remap = [];
+		var indicesArray = [];
+
+		var num_data_vertex = buffers.length; //one value per input buffer
+
+		//for every polygon
+		for(var i = 0; i < xmlps.length; i++)
+		{
+			var xmlp = xmlps[i];
+			if(!xmlp || !xmlp.textContent) break;
+
+			var data = xmlp.textContent.trim().split(" ");
+
+			var first_index = -1;
+			var current_index = -1;
+			var prev_index = -1;
+
+			if(use_indices && last_index >= 256*256)
+				break;
+
+			//for every pack of indices in the polygon (vertex, normal, uv, ... )
+			for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+			{
+				var id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+
+				prev_index = current_index;
+				if(facemap.hasOwnProperty(id)) //add to arrays, keep the index
+					current_index = facemap[id];
+				else
+				{
+					for(var j = 0; j < buffers.length; ++j)
+					{
+						var buffer = buffers[j];
+						var index = parseInt(data[k + j]);
+						var array = buffer[1]; //array with all the data
+						var source = buffer[3]; //where to read the data from
+						if(j == 0)
+							vertex_remap[ array.length / num_data_vertex ] = index;
+						index *= buffer[2]; //stride
+						for(var x = 0; x < buffer[2]; ++x)
+							array.push( source[index+x] );
+					}
+					
+					current_index = last_index;
+					last_index += 1;
+					facemap[id] = current_index;
+				}
+
+				if(!triangles) //split polygons then
+				{
+					if(k == 0)	first_index = current_index;
+					if(k > 2 * num_data_vertex) //triangulate polygons
+					{
+						indicesArray.push( first_index );
+						indicesArray.push( prev_index );
+					}
+				}
+
+				indicesArray.push( current_index );
+			}//per vertex
+		}//per polygon
+
+		var mesh = {
+			vertices: new Float32Array(buffers[0][1]),
+			_remap: new Uint16Array(vertex_remap)
+		};
+
+		var translator = {
+			"normal":"normals",
+			"texcoord":"coords"
+		};
+
+		for(var i = 1; i < buffers.length; ++i)
+		{
+			var name = buffers[i][0].toLowerCase();
+			var data = buffers[i][1];
+			if(translator[name])
+				name = translator[name];
+			if(mesh[name])
+				name = name + buffers[i][5];
+			mesh[ name ] = new Float32Array(data); //are they always float32? I think so
+		}
+		
+		if(indicesArray.length)
+			mesh.triangles = new Uint16Array(indicesArray);
+
+		console.log(mesh);
+
+
+		//swap coords X and Y
+		if(flip && 1)
+		{
+			var tmp = 0;
+			var array = mesh.vertices;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+
+			array = mesh.normals;
+			for(var i = 0, l = array.length; i < l; i += 3)
+			{
+				tmp = array[i+1]; 
+				array[i+1] = array[i+2];
+				array[i+2] = -tmp; 
+			}
+		}
+
+		//extra info
+		var bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = bounding;
+		if( isNaN(bounding.radius) )
+			return null;
+
+		return mesh;
+		
+	},
+
+	/* old version
+	readGeometry2: function(id, flip)
+	{
+		var xmlgeometry = this._xmlroot.querySelector("geometry" + id);
+		if(!xmlgeometry) return null;
+
+		var use_indices = false;
+		var xmlmesh = xmlgeometry.querySelector("mesh");
+			
+		//for data sources
+		var sources = {};
+		var xmlsources = xmlmesh.querySelectorAll("source");
+		for(var i = 0; i < xmlsources.length; i++)
+		{
+			var xmlsource = xmlsources[i];
+			if(!xmlsource.querySelector) continue;
+			var float_array = xmlsource.querySelector("float_array");
+			if(!float_array) continue;
+			var floats = this.readContentAsFloats( xmlsource );
 			sources[ xmlsource.getAttribute("id") ] = floats;
 		}
 
@@ -12590,6 +13073,8 @@ var parserDAE = {
 		var xmlps = xmlpolygons.querySelectorAll("p");
 		var vertex_remap = [];
 
+		var num_data_vertex = 3;
+
 		//for every polygon
 		for(var i = 0; i < xmlps.length; i++)
 		{
@@ -12603,8 +13088,8 @@ var parserDAE = {
 			if(use_indices && last_index >= 256*256)
 				break;
 
-			//for every triplet of indices in the polygon (vertex, normal, uv, ... )
-			for(var k = 0; k < data.length; k += 3)
+			//for every pack of indices in the polygon (vertex, normal, uv, ... )
+			for(var k = 0; k < data.length; k += num_data_vertex)
 			{
 				if(use_indices && last_index >= 256*256)
 				{
@@ -12721,6 +13206,7 @@ var parserDAE = {
 
 		return mesh;
 	},
+	*/
 
 	//used for skinning and morphing
 	readController: function(id, flip, scene)
@@ -13581,6 +14067,7 @@ function SceneTree()
 	this._root._is_root  = true;
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
+	this._nodes_by_id = {"root":this._root};
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
@@ -13622,7 +14109,7 @@ SceneTree.prototype.init = function()
 
 	this._root.removeAllComponents();
 	this._nodes = [ this._root ];
-	this._nodes_by_id = {};
+	this._nodes_by_id = {"root":this._root};
 	this.rt_cameras = [];
 
 	//this._components = []; //remove all components
@@ -14191,6 +14678,8 @@ SceneTree.prototype.loadResources = function(on_complete)
 */
 SceneTree.prototype.start = function()
 {
+	if(this._state == "running") return;
+
 	this._state = "running";
 	this._start_time = new Date().getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
@@ -14205,6 +14694,8 @@ SceneTree.prototype.start = function()
 */
 SceneTree.prototype.stop = function()
 {
+	if(this._state == "stopped") return;
+
 	this._state = "stopped";
 	LEvent.trigger(this,"stop",this);
 	this.sendEventToNodes("stop");
@@ -14221,13 +14712,14 @@ SceneTree.prototype.render = function(camera, options)
 	this._renderer.render(this, camera, options);
 }
 
-SceneTree.prototype.collectVisibleData = function()
+SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
 	var nodes = this.getNodes();
 	var instances = [];
 	var lights = [];
 	var cameras = [];
+	var colliders = [];
 
 	//collect render instances, lights and cameras
 	for(var i in nodes)
@@ -14259,24 +14751,34 @@ SceneTree.prototype.collectVisibleData = function()
 
 		//get render instances: remember, triggers only support one parameter
 		LEvent.trigger(node,"collectRenderInstances", node._instances );
+		LEvent.trigger(node,"collectPhysicInstances", colliders );
 		LEvent.trigger(node,"collectLights", lights );
 		LEvent.trigger(node,"collectCameras", cameras );
 
-		for(var j in node._instances)
-		{
-			var instance = node._instances[j];
-			instance.computeNormalMatrix();
-			//compute the axis aligned bounding box
-			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
-				instance.updateAABB();
-		}
-
 		instances = instances.concat( node._instances );
+	}
+
+	//for each render instance collected
+	for(var j in instances)
+	{
+		var instance = instances[j];
+		instance.computeNormalMatrix();
+		//compute the axis aligned bounding box
+		if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+			instance.updateAABB();
+	}
+
+	//for each physics instance collected
+	for(var j in colliders)
+	{
+		var collider = colliders[j];
+		collider.updateAABB();
 	}
 
 	this._instances = instances;
 	this._lights = lights;
 	this._cameras = cameras;
+	this._colliders = colliders;
 
 	//remember when was last time I collected to avoid repeating it
 	this._last_collect_frame = this._frame;
@@ -14815,60 +15317,6 @@ LS.newCameraNode = function(id)
 	var node = new SceneNode(id);
 	node.addComponent( new Camera() );
 	return node;
-}
-
-//this will be better in another place, but dont know where
-LS.SceneTree.prototype.testRay = function(start, destination)
-{
-	var instances = this._instances;
-
-	var collisions = [];
-
-	//for every instance
-	for(var i = 0; i < this._instances.length; ++i)
-	{
-		var instance = this._instances[i];
-
-		//test against AABB
-		var collision_point = vec3.create();
-		if( !geo.testRayBBox(start, destination, instance.aabb, null, collision_point) )
-			continue;
-
-		var model = instance.matrix;
-
-		//ray to local
-		var inv = mat4.invert( mat4.create(), model );
-		var local_start = vec3.transformMat4(vec3.create(), start, inv);
-		var local_destination = vec3.transformMat4(vec3.create(), destination, inv);
-
-		//test against OOBB (a little bit more expensive)
-		if( !geo.testRayBBox(local_start, local_destination, instance.oobb, null, collision_point) )
-			continue;
-
-
-		//if it has collision_mesh test it against it
-		if(instance.flags & RI_USE_MESH_AS_COLLIDER && instance.mesh)
-		{
-			var octree = instance.mesh.octree;
-			if(!octree)
-				octree = instance.mesh.octree = new Octree( instance.mesh );
-			var local_direction = vec3.sub(vec3.create(), local_destination, local_start );
-			vec3.normalize( local_direction, local_direction);
-			var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
-			if(!hit)
-				continue;
-
-			mat4.multiplyVec3(collision_point, model, hit.pos);
-		}
-		else
-			vec3.transformMat4(collision_point, collision_point, model);
-
-		var distance = vec3.distance( start, collision_point );
-		collisions.push([instance, collision_point, distance]);
-	}
-
-	collisions.sort( function(a,b) { return a[2] - a[2]; } );
-	return collisions;
 }
 
 //*******************************/

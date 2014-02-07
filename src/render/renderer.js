@@ -335,19 +335,16 @@ var Renderer = {
 	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderMultiPassInstance: function(instance, lights, scene, options)
 	{
-		//for every light
-		//1. Generate the renderkey:  nodeuid|matuid|lightuid
-		//2. Get shader, if it doesnt exist:
-		//		a. Compute the shader
-		//		b. Store shader with renderkey
-		//3. Fill the shader with uniforms
-		//4. Render instance
+
 		var node = instance.node;
 		var mat = instance.material;
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+		if(instance.flags & RI_IGNORE_VIEWPROJECTION)
+			this._mvp_matrix.set( model );
+		else
+			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
 		var node_macros = node._macros;
@@ -748,7 +745,7 @@ var Renderer = {
 		options.scene = scene;
 
 		//update containers in scene
-		scene.collectVisibleData();
+		scene.collectData();
 
 		var opaque_instances = [];
 		var alpha_instances = [];
@@ -805,6 +802,8 @@ var Renderer = {
 				macros.NO_NORMALS = "";
 			if(!("a_coord" in buffers))
 				macros.NO_COORDS = "";
+			if(("a_coord1" in buffers))
+				macros.USE_COORDS1_STREAM = "";
 			if(("a_color" in buffers))
 				macros.USE_COLOR_STREAM = "";
 			if(("a_tangent" in buffers))

@@ -161,6 +161,28 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 }
 
 /**
+* Returns the position in the components array of this component
+* @method getIndexOfComponent
+* @param {Number} position in the array, -1 if not found
+*/
+ComponentContainer.prototype.getIndexOfComponent = function(component)
+{
+	if(!this._components) return -1;
+	return this._components.indexOf(component);
+}
+
+/**
+* Returns the component at index position
+* @method getComponentByIndex
+* @param {Object} component
+*/
+ComponentContainer.prototype.getComponentByIndex = function(index)
+{
+	if(!this._components) return null;
+	return this._components[index];
+}
+
+/**
 * executes the method with a given name in all the components
 * @method processActionInComponents
 * @param {String} action_name the name of the function to execute in all components (in string format)

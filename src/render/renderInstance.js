@@ -19,7 +19,8 @@ var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
 var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
 
-var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+//var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
+var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
 
 
 //default flags for any instance
@@ -175,9 +176,9 @@ RenderInstance.prototype.computeNormalMatrix = function()
 }
 
 /**
-* Computes the instance bounding box
+* Computes the instance bounding box in world space from the one in local space
 *
-* @method updateBounding
+* @method updateAABB
 */
 RenderInstance.prototype.updateAABB = function()
 {
@@ -248,9 +249,10 @@ RenderInstance.prototype.render = function(shader)
 }
 
 
-
+/* moved to PhysicsInstance
 RenderInstance.prototype.setCollisionMesh = function(mesh)
 {
 	this.flags |= RI_USE_MESH_AS_COLLIDER;
 	this.collision_mesh = mesh;
 }
+*/

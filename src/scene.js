@@ -14,6 +14,7 @@ function SceneTree()
 	this._root._is_root  = true;
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
+	this._nodes_by_id = {"root":this._root};
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
@@ -55,7 +56,7 @@ SceneTree.prototype.init = function()
 
 	this._root.removeAllComponents();
 	this._nodes = [ this._root ];
-	this._nodes_by_id = {};
+	this._nodes_by_id = {"root":this._root};
 	this.rt_cameras = [];
 
 	//this._components = []; //remove all components
@@ -624,6 +625,8 @@ SceneTree.prototype.loadResources = function(on_complete)
 */
 SceneTree.prototype.start = function()
 {
+	if(this._state == "running") return;
+
 	this._state = "running";
 	this._start_time = new Date().getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
@@ -638,6 +641,8 @@ SceneTree.prototype.start = function()
 */
 SceneTree.prototype.stop = function()
 {
+	if(this._state == "stopped") return;
+
 	this._state = "stopped";
 	LEvent.trigger(this,"stop",this);
 	this.sendEventToNodes("stop");
@@ -654,13 +659,14 @@ SceneTree.prototype.render = function(camera, options)
 	this._renderer.render(this, camera, options);
 }
 
-SceneTree.prototype.collectVisibleData = function()
+SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
 	var nodes = this.getNodes();
 	var instances = [];
 	var lights = [];
 	var cameras = [];
+	var colliders = [];
 
 	//collect render instances, lights and cameras
 	for(var i in nodes)
@@ -692,24 +698,34 @@ SceneTree.prototype.collectVisibleData = function()
 
 		//get render instances: remember, triggers only support one parameter
 		LEvent.trigger(node,"collectRenderInstances", node._instances );
+		LEvent.trigger(node,"collectPhysicInstances", colliders );
 		LEvent.trigger(node,"collectLights", lights );
 		LEvent.trigger(node,"collectCameras", cameras );
 
-		for(var j in node._instances)
-		{
-			var instance = node._instances[j];
-			instance.computeNormalMatrix();
-			//compute the axis aligned bounding box
-			if(!(instance.flags & RI_IGNORE_FRUSTRUM))
-				instance.updateAABB();
-		}
-
 		instances = instances.concat( node._instances );
+	}
+
+	//for each render instance collected
+	for(var j in instances)
+	{
+		var instance = instances[j];
+		instance.computeNormalMatrix();
+		//compute the axis aligned bounding box
+		if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+			instance.updateAABB();
+	}
+
+	//for each physics instance collected
+	for(var j in colliders)
+	{
+		var collider = colliders[j];
+		collider.updateAABB();
 	}
 
 	this._instances = instances;
 	this._lights = lights;
 	this._cameras = cameras;
+	this._colliders = colliders;
 
 	//remember when was last time I collected to avoid repeating it
 	this._last_collect_frame = this._frame;
@@ -1248,60 +1264,6 @@ LS.newCameraNode = function(id)
 	var node = new SceneNode(id);
 	node.addComponent( new Camera() );
 	return node;
-}
-
-//this will be better in another place, but dont know where
-LS.SceneTree.prototype.testRay = function(start, destination)
-{
-	var instances = this._instances;
-
-	var collisions = [];
-
-	//for every instance
-	for(var i = 0; i < this._instances.length; ++i)
-	{
-		var instance = this._instances[i];
-
-		//test against AABB
-		var collision_point = vec3.create();
-		if( !geo.testRayBBox(start, destination, instance.aabb, null, collision_point) )
-			continue;
-
-		var model = instance.matrix;
-
-		//ray to local
-		var inv = mat4.invert( mat4.create(), model );
-		var local_start = vec3.transformMat4(vec3.create(), start, inv);
-		var local_destination = vec3.transformMat4(vec3.create(), destination, inv);
-
-		//test against OOBB (a little bit more expensive)
-		if( !geo.testRayBBox(local_start, local_destination, instance.oobb, null, collision_point) )
-			continue;
-
-
-		//if it has collision_mesh test it against it
-		if(instance.flags & RI_USE_MESH_AS_COLLIDER && instance.mesh)
-		{
-			var octree = instance.mesh.octree;
-			if(!octree)
-				octree = instance.mesh.octree = new Octree( instance.mesh );
-			var local_direction = vec3.sub(vec3.create(), local_destination, local_start );
-			vec3.normalize( local_direction, local_direction);
-			var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
-			if(!hit)
-				continue;
-
-			mat4.multiplyVec3(collision_point, model, hit.pos);
-		}
-		else
-			vec3.transformMat4(collision_point, collision_point, model);
-
-		var distance = vec3.distance( start, collision_point );
-		collisions.push([instance, collision_point, distance]);
-	}
-
-	collisions.sort( function(a,b) { return a[2] - a[2]; } );
-	return collisions;
 }
 
 //*******************************/
