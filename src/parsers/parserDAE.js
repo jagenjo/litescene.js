@@ -404,6 +404,8 @@ var parserDAE = {
 		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
+		var groups = [];
+
 		var triangles = false;
 		var polylist = false;
 		var vcount = null;
@@ -432,89 +434,107 @@ var parserDAE = {
 		}
 
 
-		//for each buffer (input)
-		var buffers = [];
-		var xmlinputs = xmlpolygons.querySelectorAll("input");
-		for(var i = 0; i < xmlinputs.length; i++)
+		var xmltriangles = xmlmesh.querySelectorAll("triangles");
+		if(!xmltriangles.length)
 		{
-			var xmlinput = xmlinputs[i];
-			if(!xmlinput.getAttribute) continue;
-			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
-			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
-			var offset = parseInt( xmlinput.getAttribute("offset") );
-			var data_set = 0;
-			if(xmlinput.getAttribute("set"))
-				data_set = parseInt( xmlinput.getAttribute("set") );
-
-			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+			console.error("no triangles in mesh: " + id);
+			return null;
 		}
-		//assuming buffers are ordered by offset
+		else
+			triangles = true;
 
+		var buffers = [];
 		var last_index = 0;
 		var facemap = {};
-
-		var xmlps = xmlpolygons.querySelectorAll("p");
 		var vertex_remap = [];
 		var indicesArray = [];
 
-		var num_data_vertex = buffers.length; //one value per input buffer
-
-		//for every polygon
-		for(var i = 0; i < xmlps.length; i++)
+		for(var tris = 0; tris < xmltriangles.length; tris++)
 		{
-			var xmlp = xmlps[i];
-			if(!xmlp || !xmlp.textContent) break;
+			var xml_shape_root = xmltriangles[tris];
 
-			var data = xmlp.textContent.trim().split(" ");
+			//for each buffer (input)
+			var xmlinputs = xml_shape_root.querySelectorAll("input");
+			if(tris == 0) //first iteration, create buffers
+				for(var i = 0; i < xmlinputs.length; i++)
+				{
+					var xmlinput = xmlinputs[i];
+					if(!xmlinput.getAttribute) continue;
+					var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+					var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
+					var offset = parseInt( xmlinput.getAttribute("offset") );
+					var data_set = 0;
+					if(xmlinput.getAttribute("set"))
+						data_set = parseInt( xmlinput.getAttribute("set") );
 
-			var first_index = -1;
-			var current_index = -1;
-			var prev_index = -1;
+					buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+				}
+			//assuming buffers are ordered by offset
 
-			if(use_indices && last_index >= 256*256)
-				break;
+			var xmlps = xml_shape_root.querySelectorAll("p");
+			var num_data_vertex = buffers.length; //one value per input buffer
 
-			//for every pack of indices in the polygon (vertex, normal, uv, ... )
-			for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+			//for every polygon
+			for(var i = 0; i < xmlps.length; i++)
 			{
-				var id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+				var xmlp = xmlps[i];
+				if(!xmlp || !xmlp.textContent) break;
 
-				prev_index = current_index;
-				if(facemap.hasOwnProperty(id)) //add to arrays, keep the index
-					current_index = facemap[id];
-				else
+				var data = xmlp.textContent.trim().split(" ");
+
+				//used for triangulate polys
+				var first_index = -1;
+				var current_index = -1;
+				var prev_index = -1;
+
+				if(use_indices && last_index >= 256*256)
+					break;
+
+				//for every pack of indices in the polygon (vertex, normal, uv, ... )
+				for(var k = 0, l = data.length; k < l; k += num_data_vertex)
 				{
-					for(var j = 0; j < buffers.length; ++j)
-					{
-						var buffer = buffers[j];
-						var index = parseInt(data[k + j]);
-						var array = buffer[1]; //array with all the data
-						var source = buffer[3]; //where to read the data from
-						if(j == 0)
-							vertex_remap[ array.length / num_data_vertex ] = index;
-						index *= buffer[2]; //stride
-						for(var x = 0; x < buffer[2]; ++x)
-							array.push( source[index+x] );
-					}
-					
-					current_index = last_index;
-					last_index += 1;
-					facemap[id] = current_index;
-				}
+					var vertex_id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
 
-				if(!triangles) //split polygons then
-				{
-					if(k == 0)	first_index = current_index;
-					if(k > 2 * num_data_vertex) //triangulate polygons
+					prev_index = current_index;
+					if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
+						current_index = facemap[vertex_id];
+					else
 					{
-						indicesArray.push( first_index );
-						indicesArray.push( prev_index );
+						for(var j = 0; j < buffers.length; ++j)
+						{
+							var buffer = buffers[j];
+							var index = parseInt(data[k + j]);
+							var array = buffer[1]; //array with all the data
+							var source = buffer[3]; //where to read the data from
+							if(j == 0)
+								vertex_remap[ array.length / num_data_vertex ] = index;
+							index *= buffer[2]; //stride
+							for(var x = 0; x < buffer[2]; ++x)
+								array.push( source[index+x] );
+						}
+						
+						current_index = last_index;
+						last_index += 1;
+						facemap[vertex_id] = current_index;
 					}
-				}
 
-				indicesArray.push( current_index );
-			}//per vertex
-		}//per polygon
+					if(!triangles) //split polygons then
+					{
+						if(k == 0)	first_index = current_index;
+						if(k > 2 * num_data_vertex) //triangulate polygons
+						{
+							indicesArray.push( first_index );
+							indicesArray.push( prev_index );
+						}
+					}
+
+					indicesArray.push( current_index );
+				}//per vertex
+			}//per polygon
+
+			//groups.push(indicesArray.length);
+		}//per triangles group
+
 
 		var mesh = {
 			vertices: new Float32Array(buffers[0][1]),
@@ -530,6 +550,8 @@ var parserDAE = {
 		{
 			var name = buffers[i][0].toLowerCase();
 			var data = buffers[i][1];
+			if(!data.length) continue;
+
 			if(translator[name])
 				name = translator[name];
 			if(mesh[name])
@@ -540,7 +562,7 @@ var parserDAE = {
 		if(indicesArray.length)
 			mesh.triangles = new Uint16Array(indicesArray);
 
-		console.log(mesh);
+		//console.log(mesh);
 
 
 		//swap coords X and Y
@@ -570,6 +592,7 @@ var parserDAE = {
 		if( isNaN(bounding.radius) )
 			return null;
 
+		mesh.filename = id;
 		return mesh;
 		
 	},

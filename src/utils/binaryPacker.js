@@ -29,6 +29,7 @@ BinaryPack.CODES = {
 	"Uint32Array": {code: "i4", bytes: 4},
 	"Float32Array": {code: "F4", bytes: 4},
 	"Float64Array": {code: "F8", bytes: 8},
+	"ArrayBuffer": {code: "AB", bytes: 1},	
 	"Object": {code: "OB", bytes: 1},
 	"string": {code: "ST", bytes: 1},
 	"number": {code: "NU", bytes: 1},
@@ -60,7 +61,7 @@ BinaryPack.prototype = {
 		for(var i = 0; i < header.length; i++)
 			if(header[i] != 0 && header[i] != BinaryPack.HEADER_STRING.charCodeAt(i))
 			{
-				trace("Warning: deprecated bin format, please upgrade mesh");
+				console.log("Warning: deprecated bin format, please upgrade mesh");
 				//return false; //this file is not a binarypack
 				good_header = false;
 				break;
@@ -100,6 +101,10 @@ BinaryPack.prototype = {
 				var bp = new BinaryPack();
 				data = bp.load(data);
 			}
+			else if(class_name == "ArrayBuffer")
+			{
+				data = new Uint8Array(data).buffer; //clone and get the buffer
+			}
 			else
 			{
 				data = new Uint8Array(data); //clone to avoid problems with bytes alignment
@@ -138,6 +143,8 @@ BinaryPack.prototype = {
 				data = JSON.stringify(data); //serialize the object
 			else if(classname == "BinaryPack")
 				data = data.getData();
+			else if(classname == "ArrayBuffer")
+				data = new Uint8Array( data );
 
 			chunks.push({code:code, data: data});
 			var chunk_size = data.length * data_info.bytes + BinaryPack.CHUNK_CODE_SIZE + 4;

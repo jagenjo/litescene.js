@@ -885,7 +885,7 @@ SceneNode.prototype.setId = function(new_id)
 	return true;
 }
 
-SceneNode.prototype.getResources = function(res)
+SceneNode.prototype.getResources = function(res, include_children)
 {
 	//resources in components
 	for(var i in this._components)
@@ -909,6 +909,12 @@ SceneNode.prototype.getResources = function(res)
 				mat.getResources( res );
 		}
 	}
+
+	//propagate
+	if(include_children)
+		for(var i in this._children)
+			this._children[i].getResources(res, true);
+
 	return res;
 }
 
@@ -1038,6 +1044,7 @@ SceneNode.prototype.clone = function()
 	info.id = null;
 	newnode.configure( info );
 
+	/*
 	//clone children (none of them is added to the SceneTree)
 	for(var i in this._children)
 	{
@@ -1048,6 +1055,7 @@ SceneNode.prototype.clone = function()
 		childnode.configure( info );
 		newnode.addChild(childnode);
 	}
+	*/
 
 	return newnode;
 }

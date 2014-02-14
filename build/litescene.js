@@ -30,6 +30,7 @@ BinaryPack.CODES = {
 	"Uint32Array": {code: "i4", bytes: 4},
 	"Float32Array": {code: "F4", bytes: 4},
 	"Float64Array": {code: "F8", bytes: 8},
+	"ArrayBuffer": {code: "AB", bytes: 1},	
 	"Object": {code: "OB", bytes: 1},
 	"string": {code: "ST", bytes: 1},
 	"number": {code: "NU", bytes: 1},
@@ -61,7 +62,7 @@ BinaryPack.prototype = {
 		for(var i = 0; i < header.length; i++)
 			if(header[i] != 0 && header[i] != BinaryPack.HEADER_STRING.charCodeAt(i))
 			{
-				trace("Warning: deprecated bin format, please upgrade mesh");
+				console.log("Warning: deprecated bin format, please upgrade mesh");
 				//return false; //this file is not a binarypack
 				good_header = false;
 				break;
@@ -101,6 +102,10 @@ BinaryPack.prototype = {
 				var bp = new BinaryPack();
 				data = bp.load(data);
 			}
+			else if(class_name == "ArrayBuffer")
+			{
+				data = new Uint8Array(data).buffer; //clone and get the buffer
+			}
 			else
 			{
 				data = new Uint8Array(data); //clone to avoid problems with bytes alignment
@@ -139,6 +144,8 @@ BinaryPack.prototype = {
 				data = JSON.stringify(data); //serialize the object
 			else if(classname == "BinaryPack")
 				data = data.getData();
+			else if(classname == "ArrayBuffer")
+				data = new Uint8Array( data );
 
 			chunks.push({code:code, data: data});
 			var chunk_size = data.length * data_info.bytes + BinaryPack.CHUNK_CODE_SIZE + 4;
@@ -432,197 +439,291 @@ ByteStruct.prototype = {
 */
 
 
+/* WBin: Javi Agenjo javi.agenjo@gmail.com  Febrary 2014
+
+WBin works by packing info
+Works similar to WAD file format from ID Software. You have binary lumps with a given name (and a special type code).
+First we store a file header, then info about every lump, then a big binary chunk where all the lumps data is located.
+The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
+
+Header: (64 bytes total)
+	* FOURCC: 4 bytes with WBIN
+	* Version: 4 bytes for Float32, represents WBin version used to store
+	* Flags: 2 bytes to store flags (first byte reserved, second is free to use)
+	* Num. lumps: 2 bytes number with the total amount of lumps in this wbin
+	* ClassName: 32 bytes to store a classname, used to know info about the object stored
+	* extra space for future improvements
+
+Lump header: (32 bytes total)
+	* start: 4 bytes, where the lump start in the binary area
+	* length: 4 bytes, size of the lump
+	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
+	* name: 22 bytes name for the lump
+
+Lump binary: all the binary data...
+
+*/
+
 function WBin()
 {
 }
 
+WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.1; //use numbers, never strings
-WBin.CLASSNAME_SIZE = 32; //32 bytes
-WBin.CHUNKNAME_SIZE = 14; //14 bytes + 2 of data code
+WBin.VERSION = 0.1; //use numbers, never strings, fixed size in binary
+WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
+
+WBin.LUMPHEADER_SIZE = 4+4+2+22; //32 bytes: 4 start, 4 length, 2 code, 22 name
+WBin.LUMPNAME_SIZE = 22; 
+
 WBin.CODES = {
-	"Int8Array":"I1","Uint8Array":"i1","Int16Array":"I2","Uint16Array":"i2","Int32Array":"I4","Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","string":"ST","number":"NU","WBin":"WB"
+	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00", "WBin":"WB"
 };
 
 WBin.REVERSE_CODES = {};
 for(var i in WBin.CODES)
 	WBin.REVERSE_CODES[ WBin.CODES[i] ] = i;
 
-//Takes a Uint8Array and creates the object with all the data
-WBin.load = function( data_array )
-{
-	//clone
-	data_array = new Uint8Array(data_array); //clone
+WBin.FULL_BINARY = 1; //means this binary should be passed as binary, not as object of chunks
 
-	//check FOURCC
-	var header = data_array.subarray(0,4);
-	var good_header = true;
-	for(var i = 0; i < header.length; i++)
-		if(header[i] != 0 && header[i] != WBin.FOUR_CC.charCodeAt(i))
-		{
-			console.err("WBin header is wrong");
+//converts and object in a arraybuffer
+WBin.create = function( origin, origin_class_name )
+{
+	if(!origin)
+		throw("WBin null origin passed");
+
+	var flags = new Uint8Array([0,0]);
+	var version = new Uint8Array( new Float32Array( [WBin.VERSION] ).buffer );
+	origin_class_name = origin_class_name || "";
+
+	//use class binary creator
+	if(origin.toBinary)
+	{
+		var content = origin.toBinary();
+		if(!content)
 			return null;
-		}
 
-	//check version
-	var version = new Float32Array(data_array.subarray(4,8).buffer)[0];
-	if(version > WBin.VERSION)
-		console.log("ALERT: WBin version is higher that code version");
-
-	//get class name
-	var classname = WBin.Uint8ArrayToString( data_array.subarray(8,8 + WBin.CLASSNAME_SIZE) );
-
-	//get rest of data
-	var content_data = data_array.subarray(8+WBin.CLASSNAME_SIZE);
-
-	//check if class exists
-	if(classname)
-	{
-		var ctor = window[ classname ];
-		if(ctor && ctor.prototype.fromBinary)
+		if(content.constructor == ArrayBuffer)
 		{
-			var object = new ctor();
-			object.fromBinary( content_data );
-			return object;
+			flags[0] |= WBin.FULL_BINARY;
+
+			var classname = WBin.getObjectClassName( origin );
+			//alloc memory
+			var data = new Uint8Array(WBin.HEADER_SIZE + content.length);
+			//set fourcc
+			data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
+			//set version
+			data.set(version, 4);
+			//Set flags
+			data.set(flags, 8);
+			//set classname
+			data.set(WBin.stringToUint8Array(classname,WBin.CLASSNAME_SIZE), 14);
+			//set data
+			data.set(content, WBin.HEADER_SIZE);
+			return data;
 		}
+		else
+			origin = content;
 	}
 
-	//if class do not exist use regular chunk unpacking
-	var object = {};
-	var current_position = 0;
-	while(true)
+	//create 
+	var total_size = WBin.HEADER_SIZE;
+	var lumps = [];
+	var lump_offset = 0;
+
+	//gather lumps
+	for(var i in origin)
 	{
-		if (current_position == content_data.length)
-			break;
-
-		var code = WBin.Uint8ArrayToString( content_data.subarray( current_position, current_position + WBin.CHUNKNAME_SIZE + 2) );
-		if(code == "") break;
-
-		var length = WBin.readUint32(content_data, current_position + WBin.CHUNKNAME_SIZE + 2);
-		if(length == 0) break;
-
-		current_position += WBin.CHUNKNAME_SIZE + 2 + 4;
-		var data = content_data.subarray(current_position, current_position + length);
-		current_position += length;
-
-		if(code == "" || length == 0) return null;
-		var chunk = { code: code, length: length, data: data };
-
-		chunks[ chunk.code ] = chunk;
-
-		//process chunk
-		var data_code = chunk.code.substring(0,2);
-		var data_name = chunk.code.substring(2,WBin.CHUNKNAME_SIZE);
-		var data = chunk.data;
-		var data_class_name = WBin.REVERSE_CODE[data_code];
-
-		switch(data_class_name)
-		{
-			case "string": data = WBin.Uint8ArrayToString( data ); break;
-			case "number": data = parseFloat( WBin.Uint8ArrayToString( data ) ); break;
-			case "Object": data = JSON.parse( WBin.Uint8ArrayToString( data ) ); break;
-			default:
-				data = new Uint8Array(data); //clone to avoid problems with bytes alignment
-				data = new window[data_class_name](data.buffer);
-		}
-		object[data_name] = data;
-	}
-
-	return object;
-}
-
-WBin.create = function( object )
-{
-	if(!object)
-		throw("WBin null object passed");
-
-	//generate content
-	if(object.toBinary)
-	{
-		var content = object.toBinary();
-		var classname = WBin.getObjectClassName( object );
-		//alloc memory
-		var data = new Uint8Array(8+WBin.CLASSNAME_SIZE + content.length);
-		//set fourcc
-		data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
-		//set version
-		data.set(new Float32Array([WBin.VERSION]).buffer, 4);
-		//set classname
-		data.set(WBin.stringToUint8Array(classname,WBin.CLASSNAME_SIZE), 8);
-		//set data
-		data.set(content, 8 + WBin.CLASSNAME_SIZE);
-		return data;
-	}
-
-	//create object
-	var total_size = 8 + WBin.CLASSNAME_SIZE;
-	var chunks = [];
-
-	//gather chunks
-	for(var i in object)
-	{
-		var data = object[i];
+		var data = origin[i];
 		if(data == null) continue;
 
-		var classname = WBin.getClassName(data);
+		var classname = WBin.getObjectClassName(data);
 
-		var data_info = WBin.CHUNK_CODES[ classname ];
-		if(data_info == null)
-			continue; //type not supported
-
-		var code = data_info + i.substring(0,WBin.CHUNKNAME_SIZE); //max 14 chars per varname
-		var bytes = 1;
-		if(data.BYTES_PER_ELEMENT)
-			bytes = data.BYTES_PER_ELEMENT;
+		var code = WBin.CODES[ classname ];
+		if(!code) 
+			code = "OB"; //generic
 
 		//class specific actions
-		if (classname == "number")
-			data = data.toString();
-		else if(classname == "Object")
-			data = JSON.stringify(data); //serialize the object
+		if (code == "NU")
+			data = data.toString(); //numbers are stored as strings
+		else if(code == "OB")
+			data = JSON.stringify(data); //serialize the data
 
-		chunks.push({code:code, data: data});
-		var chunk_size = 4 + 2 + BinaryPack.CHUNKNAME_SIZE + data.length * bytes;
-		//chunk_size += chunk_size % 4; //use multiple of 4 sizes to avoid problems with typed arrays
-		total_size += chunk_size;
+		var data_length = 0;
+
+		//convert all to typed arrays
+		if(typeof(data) == "string")
+			data = WBin.stringToUint8Array(data);
+
+		//typed array
+		if(data.buffer && data.buffer.constructor == ArrayBuffer)
+		{
+			//clone the data, to avoid problems with shared arrays
+			data = new Uint8Array( new Uint8Array( data.buffer, data.buffer.byteOffset, data.buffer.byteLength ) ); 
+			data_length = data.byteLength;
+		}
+		else if(data.constructor == ArrayBuffer) //plain buffer
+			data_length = data.byteLength;
+		else
+			throw("WBin: cannot be anything different to ArrayBuffer");
+
+		lumps.push({code: code, name: i.substring(0,WBin.LUMPNAME_SIZE), data: data, start: lump_offset, size: data_length});
+		lump_offset += data_length;
+		total_size += WBin.LUMPHEADER_SIZE + data_length;
 	}
 
-	//construct the binary pack
+	//construct the final file
 	var data = new Uint8Array(total_size);
 	//set fourcc
 	data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
 	//set version
-	data.set(new Float32Array([WBin.VERSION]).buffer, 4);
+	data.set(version, 4);
+	//set flags
+	data.set(flags, 8);	
+	//set num lumps
+	data.set( new Uint8Array( new Uint16Array([lumps.length]).buffer ), 10);	
+	//set origin_class_name
+	if(origin_class_name)
+		data.set( WBin.stringToUint8Array( origin_class_name, WBin.CLASSNAME_SIZE ), 12);
 
-	//copy chunks
-	var nextChunkPos = 8 + WBin.CLASSNAME_SIZE;
-	for(var j in chunks)
+	var lump_data_start = WBin.HEADER_SIZE + lumps.length * WBin.LUMPHEADER_SIZE;
+
+	//copy lumps to final file
+	var nextPos = WBin.HEADER_SIZE;
+	for(var j in lumps)
 	{
-		var chunk = chunks[j];
-		var buffer = chunk.data;
+		var lump = lumps[j];
+		var buffer = lump.data;
 
-		if(typeof(buffer) == "string")
-			buffer = WBin.stringToUint8Array(buffer);
+		//create lump header
+		var lump_header = new Uint8Array( WBin.LUMPHEADER_SIZE );
+		lump_header.set( new Uint8Array( (new Uint32Array([lump.start])).buffer ), 0);
+		lump_header.set( new Uint8Array( (new Uint32Array([lump.size])).buffer ), 4);
+		lump_header.set( WBin.stringToUint8Array( lump.code, 2), 8);
+		lump_header.set( WBin.stringToUint8Array( lump.name, WBin.LUMPNAME_SIZE), 10);
 
-		//code
-		var code_array = WBin.stringToUint8Array( chunk.code, WBin.CHUNKNAME_SIZE + 2);
-		data.set(code_array, nextChunkPos);
-		nextChunkPos += code_array.length;
+		//copy lump header
+		data.set(lump_header,nextPos); 
+		nextPos += WBin.LUMPHEADER_SIZE;
 
-		//chunk size, convert to bytes
-		var length_array = new Uint32Array([buffer.byteLength]);
-		var temp = new Uint8Array(length_array.buffer);
-		data.set(temp, nextChunkPos);
-		nextChunkPos += temp.length; //4
-
-		//data
-		var view = new Uint8Array(buffer.buffer);
-		data.set(view, nextChunkPos);
-		this.nextChunkPos += view.length; 
+		//copy lump data
+		var view = new Uint8Array( lump.data );
+		data.set(view, lump_data_start + lump.start);
 	}
 
 	return data;
+}
+
+
+//Takes a Uint8Array and creates the object with all the data
+WBin.load = function( data_array )
+{
+	//clone to avoid possible memory aligment problems
+	data_array = new Uint8Array(data_array);
+
+	var header = WBin.getHeaderInfo(data_array);
+	if(!header)
+	{
+		console.error("Wrong WBin");
+		return null;
+	}
+
+	if(header.version > (new Float32Array([WBin.VERSION])[0]) ) //all this because sometimes there are precission problems
+		console.log("ALERT: WBin version is higher that code version");
+
+	//lump unpacking
+	var object = {};
+	for(var i in header.lumps)
+	{
+		var lump = header.lumps[i];
+		var lump_data = header.lump_data.subarray( lump.start, lump.start + lump.size );
+
+		if(lump.size != lump_data.length )
+			throw("WBin: incorrect wbin lump size");
+
+		var lump_final = null;
+
+		var data_class_name = WBin.REVERSE_CODES[ lump.code ];
+		if(!data_class_name)
+			throw("WBin: Incorrect data code");
+
+		switch(data_class_name)
+		{
+			case "null": break;
+			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
+			case "Number": lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
+			default:
+				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
+				var ctor = window[data_class_name];
+				if(!ctor) throw("ctor not found in WBin: " + data_class_name );
+
+				if( (lump_data.length / ctor.BYTES_PER_ELEMENT)%1 != 0)
+					throw("WBin: size do not match type");
+				lump_final = new ctor(lump_data.buffer);
+		}
+		object[ lump.name ] = lump_final;
+	}
+
+
+	//check if className exists, if it does use internal class parser
+	if(header.classname)
+	{
+		var ctor = window[ header.classname ];
+		if(ctor && ctor.fromBinary)
+			return ctor.fromBinary(object);
+		else if(ctor && ctor.prototype.fromBinary)
+		{
+			var inst = new ctor();
+			inst.fromBinary(object);
+			return inst;
+		}
+		else
+			console.log("Classname not found or method fromBinary not found: " + header.classname );
+	}	
+
+	return object;
+}
+
+
+WBin.getHeaderInfo = function(data_array)
+{
+	//check FOURCC
+	var fourcc = data_array.subarray(0,4);
+	var good_header = true;
+	for(var i = 0; i < fourcc.length; i++)
+		if(fourcc[i] != 0 && fourcc[i] != WBin.FOUR_CC.charCodeAt(i))
+			return null; //wrong fourcc
+
+	var version = WBin.readFloat32( data_array, 4);
+	var flags = new Uint8Array( data_array.subarray(8,10) );
+	var numlumps = WBin.readUint16(data_array, 10);
+	var classname = WBin.Uint8ArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
+
+	var lumps = [];
+	for(var i = 0; i < numlumps; ++i)
+	{
+		var lumpheader = data_array.subarray( WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE );
+		var lump = {};
+		lump.start = WBin.readUint32(lumpheader,0);
+		lump.size  = WBin.readUint32(lumpheader,4);
+		lump.code  = WBin.Uint8ArrayToString(lumpheader.subarray(8,10));
+		lump.name  = WBin.Uint8ArrayToString(lumpheader.subarray(10));
+		lumps.push(lump);
+	}
+
+	var lump_data = data_array.subarray( WBin.HEADER_SIZE + numlumps * WBin.LUMPHEADER_SIZE );
+
+	return {
+		version: version,
+		flags: flags,
+		classname: classname,
+		numlumps: numlumps,
+		lumps: lumps,
+		lump_data: lump_data
+	};
 }
 
 WBin.getObjectClassName = function(obj) {
@@ -655,11 +756,27 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 	return r;
 }
 
+WBin.readUint16 = function(buffer, pos)
+{
+	var f = new Uint16Array(1);
+	var view = new Uint8Array(f.buffer);
+	view.set( buffer.subarray(pos,pos+2) );
+	return f[0];
+}
+
 WBin.readUint32 = function(buffer, pos)
 {
 	var f = new Uint32Array(1);
 	var view = new Uint8Array(f.buffer);
-	view.set( buffer.subarray(pos,pos+4), 0 );
+	view.set( buffer.subarray(pos,pos+4) );
+	return f[0];
+}
+
+WBin.readFloat32 = function(buffer, pos)
+{
+	var f = new Float32Array(1);
+	var view = new Uint8Array(f.buffer);
+	view.set( buffer.subarray(pos,pos+4) );
 	return f[0];
 }
 
@@ -2230,7 +2347,7 @@ var ResourcesManager = {
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
-	formats: {"js":"text", "json":"json", "xml":"xml", "jpg":"image", "png":"image", "bmp":"image" },
+	formats: {"js":"text", "json":"json", "xml":"xml", "jpg":"image", "png":"image", "bmp":"image", "bin":"binary", "wbin":"binary" },
 	resource_parsers: {}, //in charge or converting a file in a resource
 
 	/**
@@ -2271,6 +2388,23 @@ var ResourcesManager = {
 		question = (question == -1 ? url.length : (question - 1) ) - point;
 		return url.substr(point+1,question).toLowerCase();
 	},
+
+	/**
+	* Returns the filename from a full path
+	*
+	* @method getFilename
+	* @param {String} fullpath
+	* @return {String} filename extension
+	*/
+
+	getFilename: function(fullpath)
+	{
+		var pos = fullpath.lastIndexOf("/");
+		//if(pos == -1) return fullpath;
+		var question = fullpath.lastIndexOf("?");
+		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
+		return fullpath.substr(pos+1,question).toLowerCase();
+	},	
 
 	/**
 	* Loads a generic resource, the type will be inferet from the extension
@@ -2340,6 +2474,17 @@ var ResourcesManager = {
 		settings.dataType = file_format;
 		LS.request(settings); //ajax call
 		return false;
+	},
+
+	/**
+	* Tells if it is loading resources
+	*
+	* @method isLoading
+	* @return {Boolean}
+	*/
+	isLoading: function()
+	{
+		return this.num_resources_being_loaded > 0;
 	},
 
 	/**
@@ -2741,7 +2886,7 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Stores the resource in the manager containers
+	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
 	*
 	* @method registerResource
 	* @param {String} filename 
@@ -2750,13 +2895,14 @@ var ResourcesManager = {
 
 	registerResource: function(filename,res)
 	{
+		//get which kind of resource
 		if(!res.object_type)
 			res.object_type = getObjectClassName(res);
 		var type = res.object_type;
-
 		if(res.constructor.resource_type)
 			type = res.constructor.resource_type;
 
+		//some resources have special containers
 		if(type == "Mesh")
 			this.meshes[filename] = res;
 		else if(type == "Texture")
@@ -2765,7 +2911,9 @@ var ResourcesManager = {
 			Scene.materials[filename] = res;
 
 		this.resources[filename] = res;
-		LEvent.trigger(this,"resource_loaded", res);
+
+		//send message to inform new resource is available
+		LEvent.trigger(this,"resource_registered", res);
 	},
 
 	/**
@@ -2827,6 +2975,66 @@ var ResourcesManager = {
 			LEvent.trigger( ResourcesManager, "end_loading_resources");
 			//$(ResourcesManager).trigger("end_loading_resources");
 	},
+
+	/**
+	* returns an object with a representation of the resource internal data
+	*
+	* @method computeResourceInternalData
+	* @param {Object} resource 
+	* @return {Object} it has two fields: data and encoding
+	*/
+	computeResourceInternalData: function(resource)
+	{
+		if(!resource) throw("Resource is null");
+
+		var data = null;
+		var encoding = "text";
+		var extension = "";
+
+		//get the data
+		if (resource.file)
+		{
+			data = resource.file;
+			encoding = "file";
+		}
+		else if(resource.original_data) //text
+			data = resource.original_data;
+		else if(resource.toBinary) //a buffer
+		{
+			data = resource.toBinary();
+			extension = "wbin";
+		}
+		else if(resource.toBlob) //a blob
+		{
+			data = resource.toBlob();
+			encoding = "file";
+		}
+		else if(resource.toBase64) //a string
+		{
+			data = resource.toBase64();
+			encoding = "base64";
+		}
+		else if(resource.serialize) //a json object
+			data = JSON.stringify( resource.serialize() );
+		else if(resource.data)
+			data = resource.data;
+		else
+			data = JSON.stringify( resource );
+
+		if(data.buffer && data.buffer.constructor == ArrayBuffer)
+			data = data.buffer; //store the data in the arraybuffer
+
+		/* do not blobify here
+		//Arraybuffers are transformed in blobs to be transfered as files...
+		if(data.constructor == ArrayBuffer)
+		{
+			data = new Blob([data], {type: "application/octet-binary"});
+			encoding = "file";
+		}
+		*/
+
+		return {data:data, encoding: encoding, extension: extension};
+	},	
 
 	//NOT TESTED: to load script asyncronously, not finished. similar to require.js
 	require: function(files, on_complete)
@@ -4181,15 +4389,27 @@ CompositePattern.prototype.removeChild = function(node, options)
 	return true;
 }
 
+/**
+* Serialize the data from all the children
+*
+* @method serializeChildren
+* @return {Array} array containing all serialized data from every children
+*/
 CompositePattern.prototype.serializeChildren = function()
 {
 	var r = [];
 	if(this._children)
 		for(var i in this._children)
-			r.push( this._children[i].serialize() );
+			r.push( this._children[i].serialize() ); //serialize calls serializeChildren
 	return r;
 }
 
+/**
+* Configure every children with the data
+*
+* @method configureChildren
+* @return {Array} o array containing all serialized data 
+*/
 CompositePattern.prototype.configureChildren = function(o)
 {
 	if(!o.children) return;
@@ -4203,6 +4423,12 @@ CompositePattern.prototype.configureChildren = function(o)
 	}
 }
 
+/**
+* Returns parent node
+*
+* @method getParent
+* @return {SceneNode} parent node
+*/
 CompositePattern.prototype.getParent = function()
 {
 	return this._parentNode;
@@ -4212,6 +4438,24 @@ CompositePattern.prototype.getChildren = function()
 {
 	return this._children || [];
 }
+
+/*
+CompositePattern.prototype.childNodes = function()
+{
+	return this._children || [];
+}
+*/
+
+//DOM style
+Object.defineProperty( CompositePattern.prototype, "childNodes", {
+	enumerable: true,
+	get: function() {
+		return this._children || [];
+	},
+	set: function(v) {
+		//TODO
+	}
+});
 
 Object.defineProperty( CompositePattern.prototype, "parentNode", {
 	enumerable: true,
@@ -4223,20 +4467,21 @@ Object.defineProperty( CompositePattern.prototype, "parentNode", {
 	}
 });
 
-CompositePattern.prototype.childNodes = function()
+/**
+* get all nodes below this in the hierarchy (children and children of children)
+*
+* @method getDescendants
+* @return {Array} array containing all descendants
+*/
+CompositePattern.prototype.getDescendants = function()
 {
-	return this._children || [];
+	if(!this._children || this._children.length == 0)
+		return [];
+	var r = this._children.concat();
+	for(var i = 0;  i < this._children.length; ++i)
+		r = r.concat( this._children[i].getDescendants() );
+	return r;
 }
-
-Object.defineProperty( CompositePattern.prototype, "childNodes", {
-	enumerable: true,
-	get: function() {
-		return this._children || [];
-	},
-	set: function(v) {
-		//TODO
-	}
-});
 
 
 
@@ -7967,7 +8212,9 @@ ParticleEmissor.prototype.createMesh = function ()
 	}
 
 	this._computed_grid_size = 1;
-	this._mesh = Mesh.load({ vertices:this._vertices, coords: this._coords, colors: this._colors, stream_type: gl.STREAM_DRAW });
+	//this._mesh = Mesh.load({ vertices:this._vertices, coords: this._coords, colors: this._colors, stream_type: gl.STREAM_DRAW });
+	this._mesh = new GL.Mesh();
+	this._mesh.addBuffers({ vertices:this._vertices, coords: this._coords, colors: this._colors}, null, gl.STREAM_DRAW);
 	this._mesh_maxparticles = this.max_particles;
 }
 
@@ -8156,15 +8403,16 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	this._visible_particles = i;
 
 	//upload geometry
-	this._mesh.vertexBuffers.a_vertex.data = this._vertices;
-	this._mesh.vertexBuffers.a_color.data = this._colors;
-	this._mesh.vertexBuffers.a_vertex.compile();
-	this._mesh.vertexBuffers.a_color.compile();
+	this._mesh.vertexBuffers["vertices"].data = this._vertices;
+	this._mesh.vertexBuffers["vertices"].compile();
+
+	this._mesh.vertexBuffers["colors"].data = this._colors;
+	this._mesh.vertexBuffers["colors"].compile();
 
 	if(recompute_coords)
 	{
-		this._mesh.vertexBuffers.a_coord.data = this._coords;
-		this._mesh.vertexBuffers.a_coord.compile();
+		this._mesh.vertexBuffers["coords"].data = this._coords;
+		this._mesh.vertexBuffers["coords"].compile();
 	}
 
 	//this._mesh.vertices = this._vertices;
@@ -8237,6 +8485,8 @@ function RealtimeReflector(o)
 	this.use_cubemap = false;
 	this.generate_mipmaps = false;
 	this.use_mesh_info = false;
+	this.offset = vec3.create();
+	this.ignore_this_mesh = true;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
 
@@ -8303,10 +8553,13 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		}
 	}
 
+	vec3.add( plane_center, plane_center, this.offset );
+
 	//camera
 	var reflected_camera = new Camera( camera.serialize() );
 	var visible = this._root.flags.visible;
-	this._root.flags.visible = false;
+	if(this.ignore_this_mesh)
+		this._root.flags.visible = false;
 
 	if( !this.use_cubemap ) //planar reflection
 	{
@@ -8343,7 +8596,9 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 
 	if(!this._root.material) return;
 	
-	this._root.material.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
+	var mat = this._root.getMaterial();
+	if(mat)
+		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
 }
 
 LS.registerComponent(RealtimeReflector);
@@ -11541,15 +11796,15 @@ var Renderer = {
 				delete macros["USE_ALPHA_TEST"];
 
 			var buffers = instance.vertex_buffers;
-			if(!("a_normal" in buffers))
+			if(!("normals" in buffers))
 				macros.NO_NORMALS = "";
-			if(!("a_coord" in buffers))
+			if(!("coords" in buffers))
 				macros.NO_COORDS = "";
-			if(("a_coord1" in buffers))
+			if(("coords1" in buffers))
 				macros.USE_COORDS1_STREAM = "";
-			if(("a_color" in buffers))
+			if(("colors" in buffers))
 				macros.USE_COLOR_STREAM = "";
-			if(("a_tangent" in buffers))
+			if(("tangents" in buffers))
 				macros.USE_TANGENT_STREAM = "";
 		}
 
@@ -12161,16 +12416,74 @@ var Parser = {
 	}
 };
 
+Mesh.fromBinary = function( data_array )
+{
+	var o = null;
+	if(data_array.constructor == ArrayBuffer )
+		o = WBin.load( data_array );
+	else
+		o = data_array;
+
+	var vertex_buffers = {};
+	for(var i in o.vertex_buffers)
+		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
+
+	var index_buffers = {};
+	for(var i in o.index_buffers)
+		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
+
+	var mesh = Mesh.load(vertex_buffers, index_buffers);
+	mesh.info = o.info;
+	mesh.bounding = o.bounding;
+	return mesh;
+}
+
 Mesh.prototype.toBinary = function()
 {
-	if(!window.BinaryPack)
-		throw("BinaryPack not imported, no binary formats supported");
-
 	if(!this.info)
+		this.info = {};
+
+	//clean data
+	var o = {
+		object_type: "Mesh",
+		info: this.info,
+		bounding: this.bounding,
+		groups: this.groups
+	};
+
+	var vertex_buffers = [];
+	var index_buffers = [];
+
+	for(var i in this.vertexBuffers)
 	{
-		trace("Error: Mesh info not found");
-		return;
+		var stream = this.vertexBuffers[i];
+		o[ stream.name ] = stream.data;
+		vertex_buffers.push( stream.name );
+
+		if(stream.name == "vertices")
+			o.info.num_vertices = stream.data.length / 3;
 	}
+
+	for(var i in this.indexBuffers)
+	{
+		var stream = this.indexBuffers[i];
+		o[i] = stream.data;
+		index_buffers.push( i );
+	}
+
+	o.vertex_buffers = vertex_buffers;
+	o.index_buffers = index_buffers;
+
+	//create pack file
+	return WBin.create(o, "Mesh");
+}
+
+
+/*
+Mesh.prototype.toBinary = function()
+{
+	if(!this.info)
+		this.info = {};
 
 	//clean data
 	var o = {
@@ -12190,24 +12503,12 @@ Mesh.prototype.toBinary = function()
 		o[i] = stream.data;
 	}
 
-	/*
-	this.info.num_vertices = mesh.vertices.length;
-	var o = {
-		vertices: this.vertices,
-		info: this.info
-	};
-	if(this.normals) o.normals = this.normals;
-	if(this.coords) o.coords = this.coords;
-	if(this.colors) o.colors = this.colors;
-	if(this.triangles) o.triangles = this.triangles;
-	*/
-
 	//create pack file
 	var pack = new BinaryPack();
 	pack.save(o);
-	return pack.getData();
+	return pack.getData().buffer;
 }
-
+*/
 
 
 
@@ -12804,6 +13105,8 @@ var parserDAE = {
 		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
+		var groups = [];
+
 		var triangles = false;
 		var polylist = false;
 		var vcount = null;
@@ -12832,89 +13135,107 @@ var parserDAE = {
 		}
 
 
-		//for each buffer (input)
-		var buffers = [];
-		var xmlinputs = xmlpolygons.querySelectorAll("input");
-		for(var i = 0; i < xmlinputs.length; i++)
+		var xmltriangles = xmlmesh.querySelectorAll("triangles");
+		if(!xmltriangles.length)
 		{
-			var xmlinput = xmlinputs[i];
-			if(!xmlinput.getAttribute) continue;
-			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
-			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
-			var offset = parseInt( xmlinput.getAttribute("offset") );
-			var data_set = 0;
-			if(xmlinput.getAttribute("set"))
-				data_set = parseInt( xmlinput.getAttribute("set") );
-
-			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+			console.error("no triangles in mesh: " + id);
+			return null;
 		}
-		//assuming buffers are ordered by offset
+		else
+			triangles = true;
 
+		var buffers = [];
 		var last_index = 0;
 		var facemap = {};
-
-		var xmlps = xmlpolygons.querySelectorAll("p");
 		var vertex_remap = [];
 		var indicesArray = [];
 
-		var num_data_vertex = buffers.length; //one value per input buffer
-
-		//for every polygon
-		for(var i = 0; i < xmlps.length; i++)
+		for(var tris = 0; tris < xmltriangles.length; tris++)
 		{
-			var xmlp = xmlps[i];
-			if(!xmlp || !xmlp.textContent) break;
+			var xml_shape_root = xmltriangles[tris];
 
-			var data = xmlp.textContent.trim().split(" ");
+			//for each buffer (input)
+			var xmlinputs = xml_shape_root.querySelectorAll("input");
+			if(tris == 0) //first iteration, create buffers
+				for(var i = 0; i < xmlinputs.length; i++)
+				{
+					var xmlinput = xmlinputs[i];
+					if(!xmlinput.getAttribute) continue;
+					var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+					var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
+					var offset = parseInt( xmlinput.getAttribute("offset") );
+					var data_set = 0;
+					if(xmlinput.getAttribute("set"))
+						data_set = parseInt( xmlinput.getAttribute("set") );
 
-			var first_index = -1;
-			var current_index = -1;
-			var prev_index = -1;
+					buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+				}
+			//assuming buffers are ordered by offset
 
-			if(use_indices && last_index >= 256*256)
-				break;
+			var xmlps = xml_shape_root.querySelectorAll("p");
+			var num_data_vertex = buffers.length; //one value per input buffer
 
-			//for every pack of indices in the polygon (vertex, normal, uv, ... )
-			for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+			//for every polygon
+			for(var i = 0; i < xmlps.length; i++)
 			{
-				var id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+				var xmlp = xmlps[i];
+				if(!xmlp || !xmlp.textContent) break;
 
-				prev_index = current_index;
-				if(facemap.hasOwnProperty(id)) //add to arrays, keep the index
-					current_index = facemap[id];
-				else
+				var data = xmlp.textContent.trim().split(" ");
+
+				//used for triangulate polys
+				var first_index = -1;
+				var current_index = -1;
+				var prev_index = -1;
+
+				if(use_indices && last_index >= 256*256)
+					break;
+
+				//for every pack of indices in the polygon (vertex, normal, uv, ... )
+				for(var k = 0, l = data.length; k < l; k += num_data_vertex)
 				{
-					for(var j = 0; j < buffers.length; ++j)
-					{
-						var buffer = buffers[j];
-						var index = parseInt(data[k + j]);
-						var array = buffer[1]; //array with all the data
-						var source = buffer[3]; //where to read the data from
-						if(j == 0)
-							vertex_remap[ array.length / num_data_vertex ] = index;
-						index *= buffer[2]; //stride
-						for(var x = 0; x < buffer[2]; ++x)
-							array.push( source[index+x] );
-					}
-					
-					current_index = last_index;
-					last_index += 1;
-					facemap[id] = current_index;
-				}
+					var vertex_id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
 
-				if(!triangles) //split polygons then
-				{
-					if(k == 0)	first_index = current_index;
-					if(k > 2 * num_data_vertex) //triangulate polygons
+					prev_index = current_index;
+					if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
+						current_index = facemap[vertex_id];
+					else
 					{
-						indicesArray.push( first_index );
-						indicesArray.push( prev_index );
+						for(var j = 0; j < buffers.length; ++j)
+						{
+							var buffer = buffers[j];
+							var index = parseInt(data[k + j]);
+							var array = buffer[1]; //array with all the data
+							var source = buffer[3]; //where to read the data from
+							if(j == 0)
+								vertex_remap[ array.length / num_data_vertex ] = index;
+							index *= buffer[2]; //stride
+							for(var x = 0; x < buffer[2]; ++x)
+								array.push( source[index+x] );
+						}
+						
+						current_index = last_index;
+						last_index += 1;
+						facemap[vertex_id] = current_index;
 					}
-				}
 
-				indicesArray.push( current_index );
-			}//per vertex
-		}//per polygon
+					if(!triangles) //split polygons then
+					{
+						if(k == 0)	first_index = current_index;
+						if(k > 2 * num_data_vertex) //triangulate polygons
+						{
+							indicesArray.push( first_index );
+							indicesArray.push( prev_index );
+						}
+					}
+
+					indicesArray.push( current_index );
+				}//per vertex
+			}//per polygon
+
+			//groups.push(indicesArray.length);
+		}//per triangles group
+
 
 		var mesh = {
 			vertices: new Float32Array(buffers[0][1]),
@@ -12930,6 +13251,8 @@ var parserDAE = {
 		{
 			var name = buffers[i][0].toLowerCase();
 			var data = buffers[i][1];
+			if(!data.length) continue;
+
 			if(translator[name])
 				name = translator[name];
 			if(mesh[name])
@@ -12940,7 +13263,7 @@ var parserDAE = {
 		if(indicesArray.length)
 			mesh.triangles = new Uint16Array(indicesArray);
 
-		console.log(mesh);
+		//console.log(mesh);
 
 
 		//swap coords X and Y
@@ -12970,6 +13293,7 @@ var parserDAE = {
 		if( isNaN(bounding.radius) )
 			return null;
 
+		mesh.filename = id;
 		return mesh;
 		
 	},
@@ -14938,7 +15262,7 @@ SceneNode.prototype.setId = function(new_id)
 	return true;
 }
 
-SceneNode.prototype.getResources = function(res)
+SceneNode.prototype.getResources = function(res, include_children)
 {
 	//resources in components
 	for(var i in this._components)
@@ -14962,6 +15286,12 @@ SceneNode.prototype.getResources = function(res)
 				mat.getResources( res );
 		}
 	}
+
+	//propagate
+	if(include_children)
+		for(var i in this._children)
+			this._children[i].getResources(res, true);
+
 	return res;
 }
 
@@ -15091,6 +15421,7 @@ SceneNode.prototype.clone = function()
 	info.id = null;
 	newnode.configure( info );
 
+	/*
 	//clone children (none of them is added to the SceneTree)
 	for(var i in this._children)
 	{
@@ -15101,6 +15432,7 @@ SceneNode.prototype.clone = function()
 		childnode.configure( info );
 		newnode.addChild(childnode);
 	}
+	*/
 
 	return newnode;
 }

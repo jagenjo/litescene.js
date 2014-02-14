@@ -187,16 +187,74 @@ var Parser = {
 	}
 };
 
+Mesh.fromBinary = function( data_array )
+{
+	var o = null;
+	if(data_array.constructor == ArrayBuffer )
+		o = WBin.load( data_array );
+	else
+		o = data_array;
+
+	var vertex_buffers = {};
+	for(var i in o.vertex_buffers)
+		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
+
+	var index_buffers = {};
+	for(var i in o.index_buffers)
+		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
+
+	var mesh = Mesh.load(vertex_buffers, index_buffers);
+	mesh.info = o.info;
+	mesh.bounding = o.bounding;
+	return mesh;
+}
+
 Mesh.prototype.toBinary = function()
 {
-	if(!window.BinaryPack)
-		throw("BinaryPack not imported, no binary formats supported");
-
 	if(!this.info)
+		this.info = {};
+
+	//clean data
+	var o = {
+		object_type: "Mesh",
+		info: this.info,
+		bounding: this.bounding,
+		groups: this.groups
+	};
+
+	var vertex_buffers = [];
+	var index_buffers = [];
+
+	for(var i in this.vertexBuffers)
 	{
-		trace("Error: Mesh info not found");
-		return;
+		var stream = this.vertexBuffers[i];
+		o[ stream.name ] = stream.data;
+		vertex_buffers.push( stream.name );
+
+		if(stream.name == "vertices")
+			o.info.num_vertices = stream.data.length / 3;
 	}
+
+	for(var i in this.indexBuffers)
+	{
+		var stream = this.indexBuffers[i];
+		o[i] = stream.data;
+		index_buffers.push( i );
+	}
+
+	o.vertex_buffers = vertex_buffers;
+	o.index_buffers = index_buffers;
+
+	//create pack file
+	return WBin.create(o, "Mesh");
+}
+
+
+/*
+Mesh.prototype.toBinary = function()
+{
+	if(!this.info)
+		this.info = {};
 
 	//clean data
 	var o = {
@@ -216,24 +274,12 @@ Mesh.prototype.toBinary = function()
 		o[i] = stream.data;
 	}
 
-	/*
-	this.info.num_vertices = mesh.vertices.length;
-	var o = {
-		vertices: this.vertices,
-		info: this.info
-	};
-	if(this.normals) o.normals = this.normals;
-	if(this.coords) o.coords = this.coords;
-	if(this.colors) o.colors = this.colors;
-	if(this.triangles) o.triangles = this.triangles;
-	*/
-
 	//create pack file
 	var pack = new BinaryPack();
 	pack.save(o);
-	return pack.getData();
+	return pack.getData().buffer;
 }
-
+*/
 
 
 

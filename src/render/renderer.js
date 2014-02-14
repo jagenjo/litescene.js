@@ -798,15 +798,15 @@ var Renderer = {
 				delete macros["USE_ALPHA_TEST"];
 
 			var buffers = instance.vertex_buffers;
-			if(!("a_normal" in buffers))
+			if(!("normals" in buffers))
 				macros.NO_NORMALS = "";
-			if(!("a_coord" in buffers))
+			if(!("coords" in buffers))
 				macros.NO_COORDS = "";
-			if(("a_coord1" in buffers))
+			if(("coords1" in buffers))
 				macros.USE_COORDS1_STREAM = "";
-			if(("a_color" in buffers))
+			if(("colors" in buffers))
 				macros.USE_COLOR_STREAM = "";
-			if(("a_tangent" in buffers))
+			if(("tangents" in buffers))
 				macros.USE_TANGENT_STREAM = "";
 		}
 

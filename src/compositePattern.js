@@ -127,15 +127,27 @@ CompositePattern.prototype.removeChild = function(node, options)
 	return true;
 }
 
+/**
+* Serialize the data from all the children
+*
+* @method serializeChildren
+* @return {Array} array containing all serialized data from every children
+*/
 CompositePattern.prototype.serializeChildren = function()
 {
 	var r = [];
 	if(this._children)
 		for(var i in this._children)
-			r.push( this._children[i].serialize() );
+			r.push( this._children[i].serialize() ); //serialize calls serializeChildren
 	return r;
 }
 
+/**
+* Configure every children with the data
+*
+* @method configureChildren
+* @return {Array} o array containing all serialized data 
+*/
 CompositePattern.prototype.configureChildren = function(o)
 {
 	if(!o.children) return;
@@ -149,6 +161,12 @@ CompositePattern.prototype.configureChildren = function(o)
 	}
 }
 
+/**
+* Returns parent node
+*
+* @method getParent
+* @return {SceneNode} parent node
+*/
 CompositePattern.prototype.getParent = function()
 {
 	return this._parentNode;
@@ -158,6 +176,24 @@ CompositePattern.prototype.getChildren = function()
 {
 	return this._children || [];
 }
+
+/*
+CompositePattern.prototype.childNodes = function()
+{
+	return this._children || [];
+}
+*/
+
+//DOM style
+Object.defineProperty( CompositePattern.prototype, "childNodes", {
+	enumerable: true,
+	get: function() {
+		return this._children || [];
+	},
+	set: function(v) {
+		//TODO
+	}
+});
 
 Object.defineProperty( CompositePattern.prototype, "parentNode", {
 	enumerable: true,
@@ -169,19 +205,20 @@ Object.defineProperty( CompositePattern.prototype, "parentNode", {
 	}
 });
 
-CompositePattern.prototype.childNodes = function()
+/**
+* get all nodes below this in the hierarchy (children and children of children)
+*
+* @method getDescendants
+* @return {Array} array containing all descendants
+*/
+CompositePattern.prototype.getDescendants = function()
 {
-	return this._children || [];
+	if(!this._children || this._children.length == 0)
+		return [];
+	var r = this._children.concat();
+	for(var i = 0;  i < this._children.length; ++i)
+		r = r.concat( this._children[i].getDescendants() );
+	return r;
 }
-
-Object.defineProperty( CompositePattern.prototype, "childNodes", {
-	enumerable: true,
-	get: function() {
-		return this._children || [];
-	},
-	set: function(v) {
-		//TODO
-	}
-});
 
 

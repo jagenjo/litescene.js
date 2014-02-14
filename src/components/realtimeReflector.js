@@ -16,6 +16,8 @@ function RealtimeReflector(o)
 	this.use_cubemap = false;
 	this.generate_mipmaps = false;
 	this.use_mesh_info = false;
+	this.offset = vec3.create();
+	this.ignore_this_mesh = true;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
 
@@ -82,10 +84,13 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		}
 	}
 
+	vec3.add( plane_center, plane_center, this.offset );
+
 	//camera
 	var reflected_camera = new Camera( camera.serialize() );
 	var visible = this._root.flags.visible;
-	this._root.flags.visible = false;
+	if(this.ignore_this_mesh)
+		this._root.flags.visible = false;
 
 	if( !this.use_cubemap ) //planar reflection
 	{
@@ -122,7 +127,9 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 
 	if(!this._root.material) return;
 	
-	this._root.material.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
+	var mat = this._root.getMaterial();
+	if(mat)
+		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
 }
 
 LS.registerComponent(RealtimeReflector);

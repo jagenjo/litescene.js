@@ -234,7 +234,9 @@ ParticleEmissor.prototype.createMesh = function ()
 	}
 
 	this._computed_grid_size = 1;
-	this._mesh = Mesh.load({ vertices:this._vertices, coords: this._coords, colors: this._colors, stream_type: gl.STREAM_DRAW });
+	//this._mesh = Mesh.load({ vertices:this._vertices, coords: this._coords, colors: this._colors, stream_type: gl.STREAM_DRAW });
+	this._mesh = new GL.Mesh();
+	this._mesh.addBuffers({ vertices:this._vertices, coords: this._coords, colors: this._colors}, null, gl.STREAM_DRAW);
 	this._mesh_maxparticles = this.max_particles;
 }
 
@@ -423,15 +425,16 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	this._visible_particles = i;
 
 	//upload geometry
-	this._mesh.vertexBuffers.a_vertex.data = this._vertices;
-	this._mesh.vertexBuffers.a_color.data = this._colors;
-	this._mesh.vertexBuffers.a_vertex.compile();
-	this._mesh.vertexBuffers.a_color.compile();
+	this._mesh.vertexBuffers["vertices"].data = this._vertices;
+	this._mesh.vertexBuffers["vertices"].compile();
+
+	this._mesh.vertexBuffers["colors"].data = this._colors;
+	this._mesh.vertexBuffers["colors"].compile();
 
 	if(recompute_coords)
 	{
-		this._mesh.vertexBuffers.a_coord.data = this._coords;
-		this._mesh.vertexBuffers.a_coord.compile();
+		this._mesh.vertexBuffers["coords"].data = this._coords;
+		this._mesh.vertexBuffers["coords"].compile();
 	}
 
 	//this._mesh.vertices = this._vertices;

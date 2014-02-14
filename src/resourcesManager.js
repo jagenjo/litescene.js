@@ -31,7 +31,7 @@ var ResourcesManager = {
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
-	formats: {"js":"text", "json":"json", "xml":"xml", "jpg":"image", "png":"image", "bmp":"image" },
+	formats: {"js":"text", "json":"json", "xml":"xml", "jpg":"image", "png":"image", "bmp":"image", "bin":"binary", "wbin":"binary" },
 	resource_parsers: {}, //in charge or converting a file in a resource
 
 	/**
@@ -72,6 +72,23 @@ var ResourcesManager = {
 		question = (question == -1 ? url.length : (question - 1) ) - point;
 		return url.substr(point+1,question).toLowerCase();
 	},
+
+	/**
+	* Returns the filename from a full path
+	*
+	* @method getFilename
+	* @param {String} fullpath
+	* @return {String} filename extension
+	*/
+
+	getFilename: function(fullpath)
+	{
+		var pos = fullpath.lastIndexOf("/");
+		//if(pos == -1) return fullpath;
+		var question = fullpath.lastIndexOf("?");
+		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
+		return fullpath.substr(pos+1,question).toLowerCase();
+	},	
 
 	/**
 	* Loads a generic resource, the type will be inferet from the extension
@@ -141,6 +158,17 @@ var ResourcesManager = {
 		settings.dataType = file_format;
 		LS.request(settings); //ajax call
 		return false;
+	},
+
+	/**
+	* Tells if it is loading resources
+	*
+	* @method isLoading
+	* @return {Boolean}
+	*/
+	isLoading: function()
+	{
+		return this.num_resources_being_loaded > 0;
 	},
 
 	/**
@@ -542,7 +570,7 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Stores the resource in the manager containers
+	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
 	*
 	* @method registerResource
 	* @param {String} filename 
@@ -551,13 +579,14 @@ var ResourcesManager = {
 
 	registerResource: function(filename,res)
 	{
+		//get which kind of resource
 		if(!res.object_type)
 			res.object_type = getObjectClassName(res);
 		var type = res.object_type;
-
 		if(res.constructor.resource_type)
 			type = res.constructor.resource_type;
 
+		//some resources have special containers
 		if(type == "Mesh")
 			this.meshes[filename] = res;
 		else if(type == "Texture")
@@ -566,7 +595,9 @@ var ResourcesManager = {
 			Scene.materials[filename] = res;
 
 		this.resources[filename] = res;
-		LEvent.trigger(this,"resource_loaded", res);
+
+		//send message to inform new resource is available
+		LEvent.trigger(this,"resource_registered", res);
 	},
 
 	/**
@@ -628,6 +659,66 @@ var ResourcesManager = {
 			LEvent.trigger( ResourcesManager, "end_loading_resources");
 			//$(ResourcesManager).trigger("end_loading_resources");
 	},
+
+	/**
+	* returns an object with a representation of the resource internal data
+	*
+	* @method computeResourceInternalData
+	* @param {Object} resource 
+	* @return {Object} it has two fields: data and encoding
+	*/
+	computeResourceInternalData: function(resource)
+	{
+		if(!resource) throw("Resource is null");
+
+		var data = null;
+		var encoding = "text";
+		var extension = "";
+
+		//get the data
+		if (resource.file)
+		{
+			data = resource.file;
+			encoding = "file";
+		}
+		else if(resource.original_data) //text
+			data = resource.original_data;
+		else if(resource.toBinary) //a buffer
+		{
+			data = resource.toBinary();
+			extension = "wbin";
+		}
+		else if(resource.toBlob) //a blob
+		{
+			data = resource.toBlob();
+			encoding = "file";
+		}
+		else if(resource.toBase64) //a string
+		{
+			data = resource.toBase64();
+			encoding = "base64";
+		}
+		else if(resource.serialize) //a json object
+			data = JSON.stringify( resource.serialize() );
+		else if(resource.data)
+			data = resource.data;
+		else
+			data = JSON.stringify( resource );
+
+		if(data.buffer && data.buffer.constructor == ArrayBuffer)
+			data = data.buffer; //store the data in the arraybuffer
+
+		/* do not blobify here
+		//Arraybuffers are transformed in blobs to be transfered as files...
+		if(data.constructor == ArrayBuffer)
+		{
+			data = new Blob([data], {type: "application/octet-binary"});
+			encoding = "file";
+		}
+		*/
+
+		return {data:data, encoding: encoding, extension: extension};
+	},	
 
 	//NOT TESTED: to load script asyncronously, not finished. similar to require.js
 	require: function(files, on_complete)

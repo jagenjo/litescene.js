@@ -1,194 +1,288 @@
+/* WBin: Javi Agenjo javi.agenjo@gmail.com  Febrary 2014
+
+WBin works by packing info
+Works similar to WAD file format from ID Software. You have binary lumps with a given name (and a special type code).
+First we store a file header, then info about every lump, then a big binary chunk where all the lumps data is located.
+The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
+
+Header: (64 bytes total)
+	* FOURCC: 4 bytes with WBIN
+	* Version: 4 bytes for Float32, represents WBin version used to store
+	* Flags: 2 bytes to store flags (first byte reserved, second is free to use)
+	* Num. lumps: 2 bytes number with the total amount of lumps in this wbin
+	* ClassName: 32 bytes to store a classname, used to know info about the object stored
+	* extra space for future improvements
+
+Lump header: (32 bytes total)
+	* start: 4 bytes, where the lump start in the binary area
+	* length: 4 bytes, size of the lump
+	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
+	* name: 22 bytes name for the lump
+
+Lump binary: all the binary data...
+
+*/
+
 function WBin()
 {
 }
 
+WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.1; //use numbers, never strings
-WBin.CLASSNAME_SIZE = 32; //32 bytes
-WBin.CHUNKNAME_SIZE = 14; //14 bytes + 2 of data code
+WBin.VERSION = 0.1; //use numbers, never strings, fixed size in binary
+WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
+
+WBin.LUMPHEADER_SIZE = 4+4+2+22; //32 bytes: 4 start, 4 length, 2 code, 22 name
+WBin.LUMPNAME_SIZE = 22; 
+
 WBin.CODES = {
-	"Int8Array":"I1","Uint8Array":"i1","Int16Array":"I2","Uint16Array":"i2","Int32Array":"I4","Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","string":"ST","number":"NU","WBin":"WB"
+	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00", "WBin":"WB"
 };
 
 WBin.REVERSE_CODES = {};
 for(var i in WBin.CODES)
 	WBin.REVERSE_CODES[ WBin.CODES[i] ] = i;
 
-//Takes a Uint8Array and creates the object with all the data
-WBin.load = function( data_array )
-{
-	//clone
-	data_array = new Uint8Array(data_array); //clone
+WBin.FULL_BINARY = 1; //means this binary should be passed as binary, not as object of chunks
 
-	//check FOURCC
-	var header = data_array.subarray(0,4);
-	var good_header = true;
-	for(var i = 0; i < header.length; i++)
-		if(header[i] != 0 && header[i] != WBin.FOUR_CC.charCodeAt(i))
-		{
-			console.err("WBin header is wrong");
+//converts and object in a arraybuffer
+WBin.create = function( origin, origin_class_name )
+{
+	if(!origin)
+		throw("WBin null origin passed");
+
+	var flags = new Uint8Array([0,0]);
+	var version = new Uint8Array( new Float32Array( [WBin.VERSION] ).buffer );
+	origin_class_name = origin_class_name || "";
+
+	//use class binary creator
+	if(origin.toBinary)
+	{
+		var content = origin.toBinary();
+		if(!content)
 			return null;
-		}
 
-	//check version
-	var version = new Float32Array(data_array.subarray(4,8).buffer)[0];
-	if(version > WBin.VERSION)
-		console.log("ALERT: WBin version is higher that code version");
-
-	//get class name
-	var classname = WBin.Uint8ArrayToString( data_array.subarray(8,8 + WBin.CLASSNAME_SIZE) );
-
-	//get rest of data
-	var content_data = data_array.subarray(8+WBin.CLASSNAME_SIZE);
-
-	//check if class exists
-	if(classname)
-	{
-		var ctor = window[ classname ];
-		if(ctor && ctor.prototype.fromBinary)
+		if(content.constructor == ArrayBuffer)
 		{
-			var object = new ctor();
-			object.fromBinary( content_data );
-			return object;
+			flags[0] |= WBin.FULL_BINARY;
+
+			var classname = WBin.getObjectClassName( origin );
+			//alloc memory
+			var data = new Uint8Array(WBin.HEADER_SIZE + content.length);
+			//set fourcc
+			data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
+			//set version
+			data.set(version, 4);
+			//Set flags
+			data.set(flags, 8);
+			//set classname
+			data.set(WBin.stringToUint8Array(classname,WBin.CLASSNAME_SIZE), 14);
+			//set data
+			data.set(content, WBin.HEADER_SIZE);
+			return data;
 		}
+		else
+			origin = content;
 	}
 
-	//if class do not exist use regular chunk unpacking
-	var object = {};
-	var current_position = 0;
-	while(true)
+	//create 
+	var total_size = WBin.HEADER_SIZE;
+	var lumps = [];
+	var lump_offset = 0;
+
+	//gather lumps
+	for(var i in origin)
 	{
-		if (current_position == content_data.length)
-			break;
-
-		var code = WBin.Uint8ArrayToString( content_data.subarray( current_position, current_position + WBin.CHUNKNAME_SIZE + 2) );
-		if(code == "") break;
-
-		var length = WBin.readUint32(content_data, current_position + WBin.CHUNKNAME_SIZE + 2);
-		if(length == 0) break;
-
-		current_position += WBin.CHUNKNAME_SIZE + 2 + 4;
-		var data = content_data.subarray(current_position, current_position + length);
-		current_position += length;
-
-		if(code == "" || length == 0) return null;
-		var chunk = { code: code, length: length, data: data };
-
-		chunks[ chunk.code ] = chunk;
-
-		//process chunk
-		var data_code = chunk.code.substring(0,2);
-		var data_name = chunk.code.substring(2,WBin.CHUNKNAME_SIZE);
-		var data = chunk.data;
-		var data_class_name = WBin.REVERSE_CODE[data_code];
-
-		switch(data_class_name)
-		{
-			case "string": data = WBin.Uint8ArrayToString( data ); break;
-			case "number": data = parseFloat( WBin.Uint8ArrayToString( data ) ); break;
-			case "Object": data = JSON.parse( WBin.Uint8ArrayToString( data ) ); break;
-			default:
-				data = new Uint8Array(data); //clone to avoid problems with bytes alignment
-				data = new window[data_class_name](data.buffer);
-		}
-		object[data_name] = data;
-	}
-
-	return object;
-}
-
-WBin.create = function( object )
-{
-	if(!object)
-		throw("WBin null object passed");
-
-	//generate content
-	if(object.toBinary)
-	{
-		var content = object.toBinary();
-		var classname = WBin.getObjectClassName( object );
-		//alloc memory
-		var data = new Uint8Array(8+WBin.CLASSNAME_SIZE + content.length);
-		//set fourcc
-		data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
-		//set version
-		data.set(new Float32Array([WBin.VERSION]).buffer, 4);
-		//set classname
-		data.set(WBin.stringToUint8Array(classname,WBin.CLASSNAME_SIZE), 8);
-		//set data
-		data.set(content, 8 + WBin.CLASSNAME_SIZE);
-		return data;
-	}
-
-	//create object
-	var total_size = 8 + WBin.CLASSNAME_SIZE;
-	var chunks = [];
-
-	//gather chunks
-	for(var i in object)
-	{
-		var data = object[i];
+		var data = origin[i];
 		if(data == null) continue;
 
-		var classname = WBin.getClassName(data);
+		var classname = WBin.getObjectClassName(data);
 
-		var data_info = WBin.CHUNK_CODES[ classname ];
-		if(data_info == null)
-			continue; //type not supported
-
-		var code = data_info + i.substring(0,WBin.CHUNKNAME_SIZE); //max 14 chars per varname
-		var bytes = 1;
-		if(data.BYTES_PER_ELEMENT)
-			bytes = data.BYTES_PER_ELEMENT;
+		var code = WBin.CODES[ classname ];
+		if(!code) 
+			code = "OB"; //generic
 
 		//class specific actions
-		if (classname == "number")
-			data = data.toString();
-		else if(classname == "Object")
-			data = JSON.stringify(data); //serialize the object
+		if (code == "NU")
+			data = data.toString(); //numbers are stored as strings
+		else if(code == "OB")
+			data = JSON.stringify(data); //serialize the data
 
-		chunks.push({code:code, data: data});
-		var chunk_size = 4 + 2 + BinaryPack.CHUNKNAME_SIZE + data.length * bytes;
-		//chunk_size += chunk_size % 4; //use multiple of 4 sizes to avoid problems with typed arrays
-		total_size += chunk_size;
+		var data_length = 0;
+
+		//convert all to typed arrays
+		if(typeof(data) == "string")
+			data = WBin.stringToUint8Array(data);
+
+		//typed array
+		if(data.buffer && data.buffer.constructor == ArrayBuffer)
+		{
+			//clone the data, to avoid problems with shared arrays
+			data = new Uint8Array( new Uint8Array( data.buffer, data.buffer.byteOffset, data.buffer.byteLength ) ); 
+			data_length = data.byteLength;
+		}
+		else if(data.constructor == ArrayBuffer) //plain buffer
+			data_length = data.byteLength;
+		else
+			throw("WBin: cannot be anything different to ArrayBuffer");
+
+		lumps.push({code: code, name: i.substring(0,WBin.LUMPNAME_SIZE), data: data, start: lump_offset, size: data_length});
+		lump_offset += data_length;
+		total_size += WBin.LUMPHEADER_SIZE + data_length;
 	}
 
-	//construct the binary pack
+	//construct the final file
 	var data = new Uint8Array(total_size);
 	//set fourcc
 	data.set(WBin.stringToUint8Array( WBin.FOUR_CC ));
 	//set version
-	data.set(new Float32Array([WBin.VERSION]).buffer, 4);
+	data.set(version, 4);
+	//set flags
+	data.set(flags, 8);	
+	//set num lumps
+	data.set( new Uint8Array( new Uint16Array([lumps.length]).buffer ), 10);	
+	//set origin_class_name
+	if(origin_class_name)
+		data.set( WBin.stringToUint8Array( origin_class_name, WBin.CLASSNAME_SIZE ), 12);
 
-	//copy chunks
-	var nextChunkPos = 8 + WBin.CLASSNAME_SIZE;
-	for(var j in chunks)
+	var lump_data_start = WBin.HEADER_SIZE + lumps.length * WBin.LUMPHEADER_SIZE;
+
+	//copy lumps to final file
+	var nextPos = WBin.HEADER_SIZE;
+	for(var j in lumps)
 	{
-		var chunk = chunks[j];
-		var buffer = chunk.data;
+		var lump = lumps[j];
+		var buffer = lump.data;
 
-		if(typeof(buffer) == "string")
-			buffer = WBin.stringToUint8Array(buffer);
+		//create lump header
+		var lump_header = new Uint8Array( WBin.LUMPHEADER_SIZE );
+		lump_header.set( new Uint8Array( (new Uint32Array([lump.start])).buffer ), 0);
+		lump_header.set( new Uint8Array( (new Uint32Array([lump.size])).buffer ), 4);
+		lump_header.set( WBin.stringToUint8Array( lump.code, 2), 8);
+		lump_header.set( WBin.stringToUint8Array( lump.name, WBin.LUMPNAME_SIZE), 10);
 
-		//code
-		var code_array = WBin.stringToUint8Array( chunk.code, WBin.CHUNKNAME_SIZE + 2);
-		data.set(code_array, nextChunkPos);
-		nextChunkPos += code_array.length;
+		//copy lump header
+		data.set(lump_header,nextPos); 
+		nextPos += WBin.LUMPHEADER_SIZE;
 
-		//chunk size, convert to bytes
-		var length_array = new Uint32Array([buffer.byteLength]);
-		var temp = new Uint8Array(length_array.buffer);
-		data.set(temp, nextChunkPos);
-		nextChunkPos += temp.length; //4
-
-		//data
-		var view = new Uint8Array(buffer.buffer);
-		data.set(view, nextChunkPos);
-		this.nextChunkPos += view.length; 
+		//copy lump data
+		var view = new Uint8Array( lump.data );
+		data.set(view, lump_data_start + lump.start);
 	}
 
 	return data;
+}
+
+
+//Takes a Uint8Array and creates the object with all the data
+WBin.load = function( data_array )
+{
+	//clone to avoid possible memory aligment problems
+	data_array = new Uint8Array(data_array);
+
+	var header = WBin.getHeaderInfo(data_array);
+	if(!header)
+	{
+		console.error("Wrong WBin");
+		return null;
+	}
+
+	if(header.version > (new Float32Array([WBin.VERSION])[0]) ) //all this because sometimes there are precission problems
+		console.log("ALERT: WBin version is higher that code version");
+
+	//lump unpacking
+	var object = {};
+	for(var i in header.lumps)
+	{
+		var lump = header.lumps[i];
+		var lump_data = header.lump_data.subarray( lump.start, lump.start + lump.size );
+
+		if(lump.size != lump_data.length )
+			throw("WBin: incorrect wbin lump size");
+
+		var lump_final = null;
+
+		var data_class_name = WBin.REVERSE_CODES[ lump.code ];
+		if(!data_class_name)
+			throw("WBin: Incorrect data code");
+
+		switch(data_class_name)
+		{
+			case "null": break;
+			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
+			case "Number": lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
+			default:
+				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
+				var ctor = window[data_class_name];
+				if(!ctor) throw("ctor not found in WBin: " + data_class_name );
+
+				if( (lump_data.length / ctor.BYTES_PER_ELEMENT)%1 != 0)
+					throw("WBin: size do not match type");
+				lump_final = new ctor(lump_data.buffer);
+		}
+		object[ lump.name ] = lump_final;
+	}
+
+
+	//check if className exists, if it does use internal class parser
+	if(header.classname)
+	{
+		var ctor = window[ header.classname ];
+		if(ctor && ctor.fromBinary)
+			return ctor.fromBinary(object);
+		else if(ctor && ctor.prototype.fromBinary)
+		{
+			var inst = new ctor();
+			inst.fromBinary(object);
+			return inst;
+		}
+		else
+			console.log("Classname not found or method fromBinary not found: " + header.classname );
+	}	
+
+	return object;
+}
+
+
+WBin.getHeaderInfo = function(data_array)
+{
+	//check FOURCC
+	var fourcc = data_array.subarray(0,4);
+	var good_header = true;
+	for(var i = 0; i < fourcc.length; i++)
+		if(fourcc[i] != 0 && fourcc[i] != WBin.FOUR_CC.charCodeAt(i))
+			return null; //wrong fourcc
+
+	var version = WBin.readFloat32( data_array, 4);
+	var flags = new Uint8Array( data_array.subarray(8,10) );
+	var numlumps = WBin.readUint16(data_array, 10);
+	var classname = WBin.Uint8ArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
+
+	var lumps = [];
+	for(var i = 0; i < numlumps; ++i)
+	{
+		var lumpheader = data_array.subarray( WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE );
+		var lump = {};
+		lump.start = WBin.readUint32(lumpheader,0);
+		lump.size  = WBin.readUint32(lumpheader,4);
+		lump.code  = WBin.Uint8ArrayToString(lumpheader.subarray(8,10));
+		lump.name  = WBin.Uint8ArrayToString(lumpheader.subarray(10));
+		lumps.push(lump);
+	}
+
+	var lump_data = data_array.subarray( WBin.HEADER_SIZE + numlumps * WBin.LUMPHEADER_SIZE );
+
+	return {
+		version: version,
+		flags: flags,
+		classname: classname,
+		numlumps: numlumps,
+		lumps: lumps,
+		lump_data: lump_data
+	};
 }
 
 WBin.getObjectClassName = function(obj) {
@@ -221,11 +315,27 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 	return r;
 }
 
+WBin.readUint16 = function(buffer, pos)
+{
+	var f = new Uint16Array(1);
+	var view = new Uint8Array(f.buffer);
+	view.set( buffer.subarray(pos,pos+2) );
+	return f[0];
+}
+
 WBin.readUint32 = function(buffer, pos)
 {
 	var f = new Uint32Array(1);
 	var view = new Uint8Array(f.buffer);
-	view.set( buffer.subarray(pos,pos+4), 0 );
+	view.set( buffer.subarray(pos,pos+4) );
+	return f[0];
+}
+
+WBin.readFloat32 = function(buffer, pos)
+{
+	var f = new Float32Array(1);
+	var view = new Uint8Array(f.buffer);
+	view.set( buffer.subarray(pos,pos+4) );
 	return f[0];
 }
 
