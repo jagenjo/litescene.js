@@ -1,6 +1,6 @@
 /* WBin: Javi Agenjo javi.agenjo@gmail.com  Febrary 2014
 
-WBin works by packing info
+WBin allows to pack binary information easily
 Works similar to WAD file format from ID Software. You have binary lumps with a given name (and a special type code).
 First we store a file header, then info about every lump, then a big binary chunk where all the lumps data is located.
 The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
@@ -13,14 +13,19 @@ Header: (64 bytes total)
 	* ClassName: 32 bytes to store a classname, used to know info about the object stored
 	* extra space for future improvements
 
-Lump header: (32 bytes total)
+Lump header: (64 bytes total)
 	* start: 4 bytes, where the lump start in the binary area
 	* length: 4 bytes, size of the lump
 	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
-	* name: 22 bytes name for the lump
+	* name: 54 bytes name for the lump
 
 Lump binary: all the binary data...
 
+*/
+
+/**
+* WBin allows to create binary files easily (similar to WAD format). You can pack lots of resources in one file or extract them.
+* @class WBin
 */
 
 function WBin()
@@ -29,15 +34,15 @@ function WBin()
 
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.1; //use numbers, never strings, fixed size in binary
+WBin.VERSION = 0.2; //use numbers, never strings, fixed size in binary
 WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
 
-WBin.LUMPHEADER_SIZE = 4+4+2+22; //32 bytes: 4 start, 4 length, 2 code, 22 name
-WBin.LUMPNAME_SIZE = 22; 
+WBin.LUMPNAME_SIZE = 54; //max size of a lump name, it is big because sometimes some names have urls
+WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 2 code, 54 name
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00", "WBin":"WB"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -46,7 +51,29 @@ for(var i in WBin.CODES)
 
 WBin.FULL_BINARY = 1; //means this binary should be passed as binary, not as object of chunks
 
-//converts and object in a arraybuffer
+/**
+* Allows to check if one Uint8Array contains a WBin file
+* @method WBin.isWBin
+* @param {UInt8Array} data
+* @return {boolean}
+*/
+WBin.isWBin = function(data)
+{
+	var fourcc = data.subarray(0,4);
+	for(var i = 0; i < fourcc.length; i++)
+		if(fourcc[i] != 0 && fourcc[i] != WBin.FOUR_CC.charCodeAt(i))
+			return false;
+	return true;
+}
+
+/**
+* Builds a WBin data stream from an object (every property of the object will be considered a lump with data)
+* It supports Numbers, Strings and TypedArrays or ArrayBuffer
+* @method WBin.create
+* @param {Object} origin object containing all the lumps, the key will be used as lump name
+* @param {String} origin_class_name [Optional] allows to add a classname to the WBin, this is used to detect which class to instance when extracting it
+* @return {Uint8Array} all the bytes
+*/
 WBin.create = function( origin, origin_class_name )
 {
 	if(!origin)
@@ -127,7 +154,10 @@ WBin.create = function( origin, origin_class_name )
 		else
 			throw("WBin: cannot be anything different to ArrayBuffer");
 
-		lumps.push({code: code, name: i.substring(0,WBin.LUMPNAME_SIZE), data: data, start: lump_offset, size: data_length});
+		var lumpname = i.substring(0,WBin.LUMPNAME_SIZE);
+		if(lumpname.length < i.length)
+			console.error("Lump name is too long (max is "+WBin.LUMPNAME_SIZE+"), it has been cut down, this could lead to an error in the future");
+		lumps.push({code: code, name: lumpname, data: data, start: lump_offset, size: data_length});
 		lump_offset += data_length;
 		total_size += WBin.LUMPHEADER_SIZE + data_length;
 	}
@@ -175,8 +205,15 @@ WBin.create = function( origin, origin_class_name )
 }
 
 
-//Takes a Uint8Array and creates the object with all the data
-WBin.load = function( data_array )
+/**
+* Extract the info from a Uint8Array containing WBin info and returns the object with all the lumps.
+* If the data contains info about the class to instantiate, the WBin instantiates the class and passes the data to it
+* @method WBin.load
+* @param {UInt8Array} data_array 
+* @param {bool} skip_classname avoid getting the instance of the class specified in classname, and get only the lumps
+* @return {*} Could be an Object with all the lumps or an instance to the class specified in the WBin data
+*/
+WBin.load = function( data_array, skip_classname )
 {
 	//clone to avoid possible memory aligment problems
 	data_array = new Uint8Array(data_array);
@@ -226,9 +263,8 @@ WBin.load = function( data_array )
 		object[ lump.name ] = lump_final;
 	}
 
-
 	//check if className exists, if it does use internal class parser
-	if(header.classname)
+	if(!skip_classname && header.classname)
 	{
 		var ctor = window[ header.classname ];
 		if(ctor && ctor.fromBinary)
@@ -240,13 +276,21 @@ WBin.load = function( data_array )
 			return inst;
 		}
 		else
-			console.log("Classname not found or method fromBinary not found: " + header.classname );
+		{
+			object["@classname"] = header.classname;
+		}
 	}	
 
 	return object;
 }
 
 
+/**
+* Extract the header info from an ArrayBuffer (it contains version, and lumps info)
+* @method WBin.getHeaderInfo
+* @param {UInt8Array} data_array 
+* @return {Object} Header
+*/
 WBin.getHeaderInfo = function(data_array)
 {
 	//check FOURCC
@@ -264,7 +308,8 @@ WBin.getHeaderInfo = function(data_array)
 	var lumps = [];
 	for(var i = 0; i < numlumps; ++i)
 	{
-		var lumpheader = data_array.subarray( WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE );
+		var start = WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE;
+		var lumpheader = data_array.subarray( start, start + WBin.LUMPHEADER_SIZE );
 		var lump = {};
 		lump.start = WBin.readUint32(lumpheader,0);
 		lump.size  = WBin.readUint32(lumpheader,4);
@@ -315,6 +360,7 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 	return r;
 }
 
+//I could use DataView but I prefeer my own version
 WBin.readUint16 = function(buffer, pos)
 {
 	var f = new Uint16Array(1);
@@ -339,3 +385,39 @@ WBin.readFloat32 = function(buffer, pos)
 	return f[0];
 }
 
+/* CANNOT BE DONE, XMLHTTPREQUEST DO NOT ALLOW TO READ PROGRESSIVE BINARY DATA (yet)
+//ACCORDING TO THIS SOURCE: http://chimera.labs.oreilly.com/books/1230000000545/ch15.html#XHR_STREAMING
+
+WBin.progressiveLoad = function(url, on_header, on_lump, on_complete, on_error)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+
+    //get binary format
+	xhr.responseType = "arraybuffer";
+  	xhr.overrideMimeType( "application/octet-stream" );
+
+    //get data as it arrives
+	xhr.onprogress = function(evt)
+    {
+		console.log(this.response); //this is null till the last packet
+		if (!evt.lengthComputable) return;
+		var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+		//on_progress( percentComplete );
+    }
+
+    xhr.onload = function(load)
+	{
+		var response = this.response;
+		if(on_complete)
+			on_complete.call(this, response);
+	};
+    xhr.onerror = function(err) {
+    	console.error(err);
+		if(on_error)
+			on_error(err);
+	}
+	//start downloading
+    xhr.send();
+}
+*/

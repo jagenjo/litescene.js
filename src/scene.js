@@ -186,6 +186,9 @@ SceneTree.prototype.configure = function(scene_info)
 		}
 	}
 
+	//if(scene_info.animations)
+	//	this._root.animations = scene_info.animations;
+
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
 }
@@ -300,107 +303,17 @@ SceneTree.prototype.getCamera = function()
 	return this._root.camera;
 }
 
-
-/*
-SceneTree.prototype.addNode = function(node, index)
+SceneTree.prototype.getLight = function()
 {
-	//remove from old scene
-	if(node._in_tree && node._in_tree != this)
-		node._in_tree.removeNode(node);
-
-	if(index == undefined)
-		this.nodes.push(node);
-	else
-		this.nodes.splice(index,0,node);
-
-	//generate unique id
-	if(node.id && node.id != -1)
-	{
-		if(this.nodes_by_id[node.id] != null)
-			node.id = node.id + "_" + (Math.random() * 1000).toFixed(0);
-		this.nodes_by_id[node.id] = node;
-	}
-
-	//add to new
-	node._in_tree = this;
-
-	//LEvent.trigger(node,"onAddedToScene", this);
-	node.processActionInComponents("onAddedToScene",this); //send to components
-	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
-	//$(this).trigger("nodeAdded", node);
+	return this._root.light;
 }
-*/
-
-
-/**
-* inserts a Node in the scene
-*
-* @method addNode
-* @param {Object} node the node object
-* @param {Number}[index=null] index to specify if you want to insert it after another node
-*/
-
-/*
-SceneTree.prototype.addNode = function(node, index)
-{
-	//remove from old scene
-	if(node._in_tree && node._in_tree != this)
-		node._in_tree.removeNode(node);
-
-	if(index == undefined)
-		this.nodes.push(node);
-	else
-		this.nodes.splice(index,0,node);
-
-	//generate unique id
-	if(node.id && node.id != -1)
-	{
-		if(this.nodes_by_id[node.id] != null)
-			node.id = node.id + "_" + (Math.random() * 1000).toFixed(0);
-		this.nodes_by_id[node.id] = node;
-	}
-
-	//add to new
-	node._in_tree = this;
-
-	//LEvent.trigger(node,"onAddedToScene", this);
-	node.processActionInComponents("onAddedToScene",this); //send to components
-	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
-	//$(this).trigger("nodeAdded", node);
-}
-*/
-
-
-/**
-* removes the node from the scene
-*
-* @method removeNode
-* @param {Object} node the node
-* @return {Boolean} returns true if it was found and deleted
-*/
 
 /*
 SceneTree.prototype.removeNode = function(node)
 {
-	if(node.parentNode)
-		node.parentNode.removeChild(node);
-
-	var pos = this.nodes.indexOf(node);
-	if(pos != -1)
-	{
-		this.nodes.splice(pos,1);
-		if(node.id)
-			delete this.nodes_by_id[ node.id ];
-		node._in_tree = null;
-		node.processActionInComponents("onRemovedFromNode",this); //send to components
-		node.processActionInComponents("onRemovedFromScene",this); //send to components
-		LEvent.trigger(this,"nodeRemoved", node);
-		LEvent.trigger(this,"change");
-		return true;
-	}
-	return false;
+	if(!node._in_tree || node._in_tree != this)
+		return;
+	node.parentNode.removeChild(node);
 }
 */
 
@@ -628,7 +541,7 @@ SceneTree.prototype.start = function()
 	if(this._state == "running") return;
 
 	this._state = "running";
-	this._start_time = new Date().getTime() * 0.001;
+	this._start_time = window.performance.now() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.sendEventToNodes("start");
 }
@@ -711,7 +624,7 @@ SceneTree.prototype.collectData = function()
 		var instance = instances[j];
 		instance.computeNormalMatrix();
 		//compute the axis aligned bounding box
-		if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+		if(!(instance.flags & RI_IGNORE_FRUSTUM))
 			instance.updateAABB();
 	}
 
@@ -736,7 +649,7 @@ SceneTree.prototype.update = function(dt)
 {
 	LEvent.trigger(this,"beforeUpdate", this);
 
-	this._global_time = new Date().getTime() * 0.001;
+	this._global_time = window.performance.now() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
@@ -795,8 +708,6 @@ SceneTree.prototype.getTime = function()
 {
 	return this._time;
 }
-
-
 
 //****************************************************************************
 
@@ -910,6 +821,10 @@ SceneNode.prototype.getResources = function(res, include_children)
 		}
 	}
 
+	//prefab
+	if(this.prefab)
+		res[this.prefab] = LS.Prefab;
+
 	//propagate
 	if(include_children)
 		for(var i in this._children)
@@ -1010,23 +925,17 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
-// related to materials
-/*
-SceneNode.prototype.setTexture = function(texture_or_filename, channel)
+
+SceneNode.prototype.setPrefab = function(prefab_name)
 {
-	if(!this.material) this.material = new Material();
-	this.material.setTexture(texture_or_filename,channel);
+	this._prefab_name = prefab_name;
+	var prefab = LS.ResourcesManager.resources[prefab_name];
+	if(!prefab)
+		return;
+
+
 }
 
-SceneNode.prototype.getTexture = function(channel) {
-	channel = channel || "diffuse";
-	if(!this.material) return null;
-	var tex_name = this.material.textures[channel];
-	if(tex_name)
-		return ResourcesManager.textures[ tex_name ];
-	return null;
-}
-*/
 
 /**
 * remember clones this node and returns the new copy (you need to add it to the scene to see it)
@@ -1107,6 +1016,15 @@ SceneNode.prototype.configure = function(info)
 	//DEPRECATED: model in matrix format
 	if(info.model) this.transform.fromMatrix( info.model ); 
 
+	if(info.prefab) this.prefab = info.prefab;
+
+	//add animation
+	if(info.animations)
+	{
+		this.animations = info.animations;
+		this.addComponent( new PlayAnimation({animation:this.animations}) );
+	}
+
 	//extra user info
 	if(info.extra)
 		this.extra = info.extra;
@@ -1155,6 +1073,7 @@ SceneNode.prototype.serialize = function()
 	if(this.mesh && typeof(this.mesh) == "string") o.mesh = this.mesh; //do not save procedural meshes
 	if(this.submesh_id != null) o.submesh_id = this.submesh_id;
 	if(this.material) o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+	if(this.prefab) o.prefab = this.prefab;
 
 	if(this.flags) o.flags = cloneObject(this.flags);
 
@@ -1184,15 +1103,6 @@ SceneNode.prototype.serialize = function()
 	LEvent.trigger(this,"serialize",o);
 
 	return o;
-}
-
-//scene graph tree ************************
-
-SceneTree.prototype.removeNode = function(node)
-{
-	if(!node._in_tree || node._in_tree != this)
-		return;
-	node.parentNode.removeChild(node);
 }
 
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)

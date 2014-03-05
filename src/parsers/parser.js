@@ -1,4 +1,7 @@
-
+/* 
+Parser should only be in charge of extracting info from a data chunk (text or binary) and returning in a better way
+It shouldnt have any dependency to allow to be used in workers in the future
+*/
 var Parser = {
 
 	flipAxis: 0,
@@ -13,6 +16,7 @@ var Parser = {
 	xml_extensions: ["xml","dae"], //for sure is XML
 	json_extensions: ["js","json"], //for sure is JSON
 	binary_extensions: ["bin","tga","dds"], //for sure is binary and needs to be read as a byte array
+
 	parsers: {},
 
 	registerParser: function(parser)
@@ -23,27 +27,27 @@ var Parser = {
 	parse: function(filename,data,options)
 	{
 		options = options || {};
-		var info = this.getResourceInfo(filename);
+		var info = this.getFileFormatInfo(filename);
 		if(options.extension)
 			info.extension = options.extension; //force a format
 		var parser = this.parsers[info.extension];
 		if(!parser)
 		{
-			trace("Perser Error: No parser found for " + info.extension + " format");
+			console.error("Parser Error: No parser found for " + info.extension + " format");
 			return null;
 		}
 
 		var result = null;
 		if(!this.safe_parsing)
-			result = parser.parse(data,options);
+			result = parser.parse(data,options,filename);
 		else
 			try
 			{
-				result = parser.parse(data,options);
+				result = parser.parse(data,options,filename);
 			}
 			catch (err)
 			{
-				trace("Error parsing content", err );
+				console.error("Error parsing content", err );
 				return null;
 			}
 		if(result)
@@ -97,8 +101,6 @@ var Parser = {
 	/* extract important Mesh info from vertices (center, radius, bouding box) */
 	computeMeshBounding: function(vertices)
 	{
-		//if(vertices.length > (65536 * 3)) trace("Warning: the number of vertices excedes 65536");
-
 		//compute AABB and useful info
 		var min = [vertices[0],vertices[1],vertices[2]];
 		var max = [vertices[0],vertices[1],vertices[2]];
@@ -113,13 +115,9 @@ var Parser = {
 			else if (v[2] > max[2]) max[2] = v[2];
 		}
 
-		var bounding = {};
-		bounding.aabb_min = min;
-		bounding.aabb_max = max;
-		bounding.aabb_center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
-		bounding.aabb_halfsize = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
-		bounding.radius = Math.sqrt(bounding.aabb_halfsize[0] * bounding.aabb_halfsize[0] + bounding.aabb_halfsize[1] * bounding.aabb_halfsize[1] + bounding.aabb_halfsize[2] * bounding.aabb_halfsize[2]);
-		return bounding;
+		var center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
+		var halfsize = [ min[0] - center[0], min[1] - center[1], min[2] - center[2]];
+		return BBox.setCenterHalfsize( BBox.create(), center, halfsize );
 	},
 
 	//takes an string an returns a Uint8Array typed array containing that string
@@ -154,7 +152,7 @@ var Parser = {
 	NONATIVE_IMAGE_DATA: "NONATIVE_IMAGE",
 	GENERIC_DATA: "GENERIC",
 	
-	getResourceInfo: function(filename)
+	getFileFormatInfo: function(filename)
 	{
 		var extension = filename.substr( filename.lastIndexOf(".") + 1).toLowerCase();
 		
@@ -186,101 +184,6 @@ var Parser = {
 		return r;
 	}
 };
-
-Mesh.fromBinary = function( data_array )
-{
-	var o = null;
-	if(data_array.constructor == ArrayBuffer )
-		o = WBin.load( data_array );
-	else
-		o = data_array;
-
-	var vertex_buffers = {};
-	for(var i in o.vertex_buffers)
-		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
-
-	var index_buffers = {};
-	for(var i in o.index_buffers)
-		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
-
-	var mesh = Mesh.load(vertex_buffers, index_buffers);
-	mesh.info = o.info;
-	mesh.bounding = o.bounding;
-	return mesh;
-}
-
-Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		object_type: "Mesh",
-		info: this.info,
-		bounding: this.bounding,
-		groups: this.groups
-	};
-
-	var vertex_buffers = [];
-	var index_buffers = [];
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-		vertex_buffers.push( stream.name );
-
-		if(stream.name == "vertices")
-			o.info.num_vertices = stream.data.length / 3;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-		index_buffers.push( i );
-	}
-
-	o.vertex_buffers = vertex_buffers;
-	o.index_buffers = index_buffers;
-
-	//create pack file
-	return WBin.create(o, "Mesh");
-}
-
-
-/*
-Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		info: this.info
-	};
-	this.info.num_vertices = this.vertices.length;
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-	}
-
-	//create pack file
-	var pack = new BinaryPack();
-	pack.save(o);
-	return pack.getData().buffer;
-}
-*/
-
 
 
 

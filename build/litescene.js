@@ -1,447 +1,7 @@
 //packer version
-//This class allows to construct or read a binary file easily
-//you can pack different chunks of data with a 14 bytes string code associated
-//Javi Agenjo @tamats   February 2012
-//BinaryPack file structure: 
-//	every chunk
-//		dataype  2bytes 
-//		varname  14bytes
-//		chunksize  4bytes unsigned int (chunk size in bytes)
-//		chunk    undefined uint8[chunksize] array
-//  ...
-
-// dependencies: none
-
-function BinaryPack()
-{
-	this.nextChunkPos = 0;
-	this.dataArray = null;
-	this.chunks = {};
-}
-
-BinaryPack.HEADER_STRING = "JBIN";
-BinaryPack.CHUNK_CODE_SIZE = 16;
-BinaryPack.CODES = {
-	"Int8Array": {code: "I1", bytes: 1},
-	"Uint8Array": {code: "i1", bytes: 1},
-	"Int16Array": {code: "I2", bytes: 2},
-	"Uint16Array": {code: "i2", bytes: 2},
-	"Int32Array": {code: "I4", bytes: 4},
-	"Uint32Array": {code: "i4", bytes: 4},
-	"Float32Array": {code: "F4", bytes: 4},
-	"Float64Array": {code: "F8", bytes: 8},
-	"ArrayBuffer": {code: "AB", bytes: 1},	
-	"Object": {code: "OB", bytes: 1},
-	"string": {code: "ST", bytes: 1},
-	"number": {code: "NU", bytes: 1},
-	"BinaryPack": {code: "BP", bytes: 1}
-};
-
-
-//consts
-BinaryPack.prototype = {
-	//set the size
-	reserve: function(max_size)
-	{
-		max_size = max_size || 1024*1024; //1MB
-		this.dataArray = new Uint8Array(max_size);
-		this.nextChunkPos = 0;
-	},
-
-	//loads a uint8array as the data source and retrieves the object
-	load: function(arraybuffer)
-	{
-		this.dataArray = new Uint8Array(arraybuffer); //clone
-		this.nextChunkPos = 0;
-		this.chunks = {};
-		var object = {};
-
-		//get header
-		var header = this.dataArray.subarray(0,4);
-		var good_header = true;
-		for(var i = 0; i < header.length; i++)
-			if(header[i] != 0 && header[i] != BinaryPack.HEADER_STRING.charCodeAt(i))
-			{
-				console.log("Warning: deprecated bin format, please upgrade mesh");
-				//return false; //this file is not a binarypack
-				good_header = false;
-				break;
-			}
-
-		if(good_header) //move 
-			this.nextChunkPos = 4;
-		
-		//yep, this is ugly but I dont know a better way
-		var code_to_type = {};
-		for(var i in BinaryPack.CODES)
-			code_to_type[ BinaryPack.CODES[i].code ] = i;
-
-		//for every chunk
-		while(true)
-		{
-			var chunk = this.getChunk();
-			if(chunk == null) break;
-
-			this.chunks[ chunk.code ] = chunk;
-
-			//process chunk
-			var data_code = chunk.code.substring(0,2);
-			var data_name = chunk.code.substring(2,BinaryPack.CHUNK_CODE_SIZE-2);
-			var data = chunk.data;
-			var class_name = code_to_type[data_code];
-
-			if(class_name == "string")
-				data = BinaryPack.typedArrayToString( data );
-			else if(class_name == "number")
-				data = parseFloat( BinaryPack.typedArrayToString( data ) );
-			else if(class_name == "Object")
-				data = JSON.parse( BinaryPack.typedArrayToString( data ) );
-			else if(class_name == "BinaryPack")
-			{
-				data = new Uint8Array(data);  //clone to avoid problems with bytes alignment
-				var bp = new BinaryPack();
-				data = bp.load(data);
-			}
-			else if(class_name == "ArrayBuffer")
-			{
-				data = new Uint8Array(data).buffer; //clone and get the buffer
-			}
-			else
-			{
-				data = new Uint8Array(data); //clone to avoid problems with bytes alignment
-				data = new window[class_name](data.buffer);
-			}
-			object[data_name] = data;
-		}
-
-		return object;
-	},
-
-	//gets an object and created the binary pack
-	save: function(object)
-	{
-		var chunks = [];
-
-		var header_size = BinaryPack.HEADER_STRING.length;
-		var total_size = header_size;
-
-		//gather chunks
-		for(var i in object)
-		{
-			var data = object[i];
-			var classname = BinaryPack.getClassName(data);
-
-			var data_info = BinaryPack.CODES[ classname ];
-			if(data_info == null)
-				continue; //type not supported
-
-			var code = data_info.code + i.substring(0,BinaryPack.CHUNK_CODE_SIZE-2); //max 14 chars per varname
-
-			//class specific actions
-			if (classname == "number")
-				data = data.toString();
-			else if(classname == "Object")
-				data = JSON.stringify(data); //serialize the object
-			else if(classname == "BinaryPack")
-				data = data.getData();
-			else if(classname == "ArrayBuffer")
-				data = new Uint8Array( data );
-
-			chunks.push({code:code, data: data});
-			var chunk_size = data.length * data_info.bytes + BinaryPack.CHUNK_CODE_SIZE + 4;
-			//chunk_size += chunk_size % 4; //use multiple of 4 sizes to avoid problems with typed arrays
-			total_size += chunk_size;
-		}
-
-		//construct the binary pack
-		this.reserve(total_size);
-		
-		//copy header
-		var header_data = BinaryPack.stringToTypedArray( BinaryPack.HEADER_STRING );
-		this._addArrayData(header_data);
-
-		//copy chunks
-		for(var j in chunks)
-		{
-			var chunk = chunks[j];
-			this.addChunk( chunk.code, chunk.data );
-		}
-		this.finalize();
-
-		return this.getData();
-	},
-
-	getData: function()
-	{
-		return this.dataArray;
-	},
-
-	//inserts a data chunk inside the binary file
-	addChunk: function( code, buffer )
-	{
-		if(this.dataArray == null)
-			throw("BinaryPack needs to reserve space before adding data");
-
-		if(typeof(buffer) == "string") //this doesnt works usually: TODO
-			buffer = BinaryPack.stringToTypedArray(buffer);
-
-		//code
-		var code_array = BinaryPack.stringToTypedArray(code, BinaryPack.CHUNK_CODE_SIZE);
-		this.dataArray.set(code_array, this.nextChunkPos);
-		this.nextChunkPos += code_array.length;
-
-		//chunk size
-		var length_array = new Uint32Array([buffer.byteLength]);
-		var temp = new Uint8Array(length_array.buffer);
-		this.dataArray.set(temp, this.nextChunkPos);
-		this.nextChunkPos += temp.length;
-
-		//trace("Chunk Saved: Name: "+ code +" Length: " + buffer.byteLength); 
-
-		//data
-		this._addArrayData(buffer.buffer);
-	},
-
-	_addArrayData: function(data)
-	{
-		var view = new Uint8Array(data);
-		this.dataArray.set(view, this.nextChunkPos);
-		this.nextChunkPos += view.length; 
-	},
-
-	//retrieve the next data chunk from the file
-	getChunk: function()
-	{
-		if(this.dataArray == null)
-			throw("BinaryPack is empty, no data assigned");
-
-		if (this.nextChunkPos == this.dataArray.length)
-			return null;
-
-		//var view = new DataView(this.buffer); //not implemented yet in Firefox, arg
-
-		var code = BinaryPack.typedArrayToString( this.dataArray.subarray(this.nextChunkPos, this.nextChunkPos + BinaryPack.CHUNK_CODE_SIZE) );
-		if(code == "") return null;
-
-		var length = this.getUint32(this.nextChunkPos + BinaryPack.CHUNK_CODE_SIZE);
-		if(length == 0) return null;
-
-		var data = this.dataArray.subarray(this.nextChunkPos + BinaryPack.CHUNK_CODE_SIZE+4, this.nextChunkPos + BinaryPack.CHUNK_CODE_SIZE+4 + length);
-		this.nextChunkPos = this.nextChunkPos + BinaryPack.CHUNK_CODE_SIZE+4 + length;
-
-		if(code == "" || length == 0) return null;
-		//trace("Chunk Found: Name: "+ code +" Length: " + length);
-		return { code: code, length: length, data: data };
-	},
-
-	//closes the file and packs the data
-	finalize: function()
-	{
-		if(this.nextChunkPos == 0 || this.nextChunkPos == this.dataArray.length) 
-			return;
-
-		//adjust the buffer size (crop the final part)
-		var new_data = new Uint8Array(this.nextChunkPos);
-		new_data.set( this.dataArray.subarray(0, new_data.length),0);
-		this.dataArray = new_data;
-	},
-
-	//reads a uint32 (used for the chunk size)
-	getUint32: function(pos)
-	{
-		//var v = this.subarray(pos,pos+4);
-		var f = new Uint32Array(1);
-		var view = new Uint8Array(f.buffer);
-		view.set( this.dataArray.subarray(pos,pos+4), 0 );
-		
-		return f[0];
-	}
-};
-
-
-//static funcs ****
-//takes a string and stores it as a typed array
-BinaryPack.stringToTypedArray = function(str, fixed_length)
-{
-	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
-	for(var i = 0; i < str.length; i++)
-		r[i] = str.charCodeAt(i);
-	return r;
-}
-
-//takes a typed array with ASCII codes and returns the string
-BinaryPack.typedArrayToString = function(typed_array, same_size)
-{
-	var r = "";
-	for(var i = 0; i < typed_array.length; i++)
-		if (typed_array[i] == 0 && !same_size)
-			break;
-		else
-			r += String.fromCharCode( typed_array[i] );
-	return r;
-}
-
-//Extra functions ************************
-//useful, it takes a multidimensional javascript array full of numbers and 
-//stores it in the propper array
-BinaryPack.getClassName = function(obj)
-{
-	if (typeof obj != "object")
-	{
-		if(obj === null) 
-			return false;
-		return typeof obj;
-	}
-	return /(\w+)\(/.exec(obj.constructor.toString())[1];
-}
-
-BinaryPack.linearizeArray = function(array, classtype)
-{
-	classtype = classtype || Float32Array;
-	var components = array[0].length;
-	var size = array.length * components;
-	var buffer = null;
-	buffer = new classtype(size);
-
-	for (var i=0; i < array.length;++i)
-		for(var j=0; j < components; ++j)
-			buffer[i*components + j] = array[i][j];
-
-	return buffer;
-}
-
-//takes a typed array and returns the base64 string
-BinaryPack.encode64Array = function (input)
-{
-  var output = "";
-  var chr1, chr2, chr3 = "";
-  var enc1, enc2, enc3, enc4 = "";
-  var i = 0;
-
-  if(input.constructor == ArrayBuffer)
-	  input = new Uint8Array(input);
-  if(input.length == undefined) throw("binaryPacker: this input is not an array");
-  var length = input.length;
-
-  do {
-	 chr1 = input[i++];
-	 chr2 = input[i++];
-	 chr3 = input[i++];
-
-	 enc1 = chr1 >> 2;
-	 enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
-	 enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
-	 enc4 = chr3 & 63;
-
-	 if (isNaN(chr2)) {
-		enc3 = enc4 = 64;
-	 } else if (isNaN(chr3)) {
-		enc4 = 64;
-	 }
-
-	 output = output +
-		keyStr[enc1] +
-		keyStr[enc2] +
-		keyStr[enc3] +
-		keyStr[enc4];
-	 chr1 = chr2 = chr3 = "";
-	 enc1 = enc2 = enc3 = enc4 = "";
-  } while (i < length);
-
-  return output;
-}
-
-//takes a string encoded in base64 and returns the typed array
-BinaryPack.decode64ToArray = function(input)
-{
-	 var output = new Uint8Array( input.length );
-
-	 var chr1, chr2, chr3 = "";
-	 var enc1, enc2, enc3, enc4 = "";
-	 var i = 0;
- 
-	 // remove all characters that are not A-Z, a-z, 0-9, +, /, or =
-	 var base64test = /[^A-Za-z0-9\+\/\=]/g;
-	 if (base64test.exec(input)) {
-		throw("There were invalid base64 characters in the input text.\n" +
-			  "Valid base64 characters are A-Z, a-z, 0-9, '+', '/',and '='\n" +
-			  "Expect errors in decoding.");
-	 }
-	 input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
-	 var pos = 0;
- 
-	 do {
-		enc1 = keyStr.indexOf(input.charAt(i++));
-		enc2 = keyStr.indexOf(input.charAt(i++));
-		enc3 = keyStr.indexOf(input.charAt(i++));
-		enc4 = keyStr.indexOf(input.charAt(i++));
- 
-		chr1 = (enc1 << 2) | (enc2 >> 4);
-		chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-		chr3 = ((enc3 & 3) << 6) | enc4;
- 
-		output[pos++] = chr1;
- 
-		if (enc3 != 64) {
-		   output[pos++] = chr2;
-		}
-		if (enc4 != 64) {
-		   output[pos++] = chr3;
-		}
- 
-		chr1 = chr2 = chr3 = "";
-		enc1 = enc2 = enc3 = enc4 = "";
- 
-	 } while (i < input.length);
-
-	 return new Uint8Array( output.subarray(0, pos) ); //clone
-}
-
-
-//********************/
-
-function ByteStruct()
-{
-	this.fields = [];
-}
-
-/*
-ByteStruct.prototype = {
-	types: {
-		'byte': Int8Array,
-		'char': Int8Array,
-		'unsigned byte': Uint8Array,
-		'unsigned char': Uint8Array,
-		'short': Int16Array,
-		'unsigned short': Uint16Array,
-		'int': Int32Array,
-		'uint': Uint32Array,
-		'float': Float32Array,
-		'double': Float64Array,
-		'pointer': Int32Array,
-	},
-
-	addField: function(name,type)
-	{
-		var field = {
-			name: name,
-			type: type,
-		};
-
-		this.fields.push(field);
-	},
-
-	parse: function( data )
-	{
-
-	},
-};
-*/
-
-
 /* WBin: Javi Agenjo javi.agenjo@gmail.com  Febrary 2014
 
-WBin works by packing info
+WBin allows to pack binary information easily
 Works similar to WAD file format from ID Software. You have binary lumps with a given name (and a special type code).
 First we store a file header, then info about every lump, then a big binary chunk where all the lumps data is located.
 The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
@@ -454,14 +14,19 @@ Header: (64 bytes total)
 	* ClassName: 32 bytes to store a classname, used to know info about the object stored
 	* extra space for future improvements
 
-Lump header: (32 bytes total)
+Lump header: (64 bytes total)
 	* start: 4 bytes, where the lump start in the binary area
 	* length: 4 bytes, size of the lump
 	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
-	* name: 22 bytes name for the lump
+	* name: 54 bytes name for the lump
 
 Lump binary: all the binary data...
 
+*/
+
+/**
+* WBin allows to create binary files easily (similar to WAD format). You can pack lots of resources in one file or extract them.
+* @class WBin
 */
 
 function WBin()
@@ -470,15 +35,15 @@ function WBin()
 
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.1; //use numbers, never strings, fixed size in binary
+WBin.VERSION = 0.2; //use numbers, never strings, fixed size in binary
 WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
 
-WBin.LUMPHEADER_SIZE = 4+4+2+22; //32 bytes: 4 start, 4 length, 2 code, 22 name
-WBin.LUMPNAME_SIZE = 22; 
+WBin.LUMPNAME_SIZE = 54; //max size of a lump name, it is big because sometimes some names have urls
+WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 2 code, 54 name
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00", "WBin":"WB"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -487,7 +52,29 @@ for(var i in WBin.CODES)
 
 WBin.FULL_BINARY = 1; //means this binary should be passed as binary, not as object of chunks
 
-//converts and object in a arraybuffer
+/**
+* Allows to check if one Uint8Array contains a WBin file
+* @method WBin.isWBin
+* @param {UInt8Array} data
+* @return {boolean}
+*/
+WBin.isWBin = function(data)
+{
+	var fourcc = data.subarray(0,4);
+	for(var i = 0; i < fourcc.length; i++)
+		if(fourcc[i] != 0 && fourcc[i] != WBin.FOUR_CC.charCodeAt(i))
+			return false;
+	return true;
+}
+
+/**
+* Builds a WBin data stream from an object (every property of the object will be considered a lump with data)
+* It supports Numbers, Strings and TypedArrays or ArrayBuffer
+* @method WBin.create
+* @param {Object} origin object containing all the lumps, the key will be used as lump name
+* @param {String} origin_class_name [Optional] allows to add a classname to the WBin, this is used to detect which class to instance when extracting it
+* @return {Uint8Array} all the bytes
+*/
 WBin.create = function( origin, origin_class_name )
 {
 	if(!origin)
@@ -568,7 +155,10 @@ WBin.create = function( origin, origin_class_name )
 		else
 			throw("WBin: cannot be anything different to ArrayBuffer");
 
-		lumps.push({code: code, name: i.substring(0,WBin.LUMPNAME_SIZE), data: data, start: lump_offset, size: data_length});
+		var lumpname = i.substring(0,WBin.LUMPNAME_SIZE);
+		if(lumpname.length < i.length)
+			console.error("Lump name is too long (max is "+WBin.LUMPNAME_SIZE+"), it has been cut down, this could lead to an error in the future");
+		lumps.push({code: code, name: lumpname, data: data, start: lump_offset, size: data_length});
 		lump_offset += data_length;
 		total_size += WBin.LUMPHEADER_SIZE + data_length;
 	}
@@ -616,8 +206,15 @@ WBin.create = function( origin, origin_class_name )
 }
 
 
-//Takes a Uint8Array and creates the object with all the data
-WBin.load = function( data_array )
+/**
+* Extract the info from a Uint8Array containing WBin info and returns the object with all the lumps.
+* If the data contains info about the class to instantiate, the WBin instantiates the class and passes the data to it
+* @method WBin.load
+* @param {UInt8Array} data_array 
+* @param {bool} skip_classname avoid getting the instance of the class specified in classname, and get only the lumps
+* @return {*} Could be an Object with all the lumps or an instance to the class specified in the WBin data
+*/
+WBin.load = function( data_array, skip_classname )
 {
 	//clone to avoid possible memory aligment problems
 	data_array = new Uint8Array(data_array);
@@ -667,9 +264,8 @@ WBin.load = function( data_array )
 		object[ lump.name ] = lump_final;
 	}
 
-
 	//check if className exists, if it does use internal class parser
-	if(header.classname)
+	if(!skip_classname && header.classname)
 	{
 		var ctor = window[ header.classname ];
 		if(ctor && ctor.fromBinary)
@@ -681,13 +277,21 @@ WBin.load = function( data_array )
 			return inst;
 		}
 		else
-			console.log("Classname not found or method fromBinary not found: " + header.classname );
+		{
+			object["@classname"] = header.classname;
+		}
 	}	
 
 	return object;
 }
 
 
+/**
+* Extract the header info from an ArrayBuffer (it contains version, and lumps info)
+* @method WBin.getHeaderInfo
+* @param {UInt8Array} data_array 
+* @return {Object} Header
+*/
 WBin.getHeaderInfo = function(data_array)
 {
 	//check FOURCC
@@ -705,7 +309,8 @@ WBin.getHeaderInfo = function(data_array)
 	var lumps = [];
 	for(var i = 0; i < numlumps; ++i)
 	{
-		var lumpheader = data_array.subarray( WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE );
+		var start = WBin.HEADER_SIZE + i * WBin.LUMPHEADER_SIZE;
+		var lumpheader = data_array.subarray( start, start + WBin.LUMPHEADER_SIZE );
 		var lump = {};
 		lump.start = WBin.readUint32(lumpheader,0);
 		lump.size  = WBin.readUint32(lumpheader,4);
@@ -756,6 +361,7 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 	return r;
 }
 
+//I could use DataView but I prefeer my own version
 WBin.readUint16 = function(buffer, pos)
 {
 	var f = new Uint16Array(1);
@@ -780,6 +386,42 @@ WBin.readFloat32 = function(buffer, pos)
 	return f[0];
 }
 
+/* CANNOT BE DONE, XMLHTTPREQUEST DO NOT ALLOW TO READ PROGRESSIVE BINARY DATA (yet)
+//ACCORDING TO THIS SOURCE: http://chimera.labs.oreilly.com/books/1230000000545/ch15.html#XHR_STREAMING
+
+WBin.progressiveLoad = function(url, on_header, on_lump, on_complete, on_error)
+{
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+
+    //get binary format
+	xhr.responseType = "arraybuffer";
+  	xhr.overrideMimeType( "application/octet-stream" );
+
+    //get data as it arrives
+	xhr.onprogress = function(evt)
+    {
+		console.log(this.response); //this is null till the last packet
+		if (!evt.lengthComputable) return;
+		var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+		//on_progress( percentComplete );
+    }
+
+    xhr.onload = function(load)
+	{
+		var response = this.response;
+		if(on_complete)
+			on_complete.call(this, response);
+	};
+    xhr.onerror = function(err) {
+    	console.error(err);
+		if(on_error)
+			on_error(err);
+	}
+	//start downloading
+    xhr.send();
+}
+*/
 
 //this module is in charge of rendering basic objects like lines, points, and primitives
 //it works over litegl (no need of scene)
@@ -1537,7 +1179,7 @@ var Shaders = {
 
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
-		var nocache = ignore_cache ? "?nocache=" + new Date().getTime() + Math.floor(Math.random() * 1000) : "";
+		var nocache = ignore_cache ? "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000) : "";
 		LS.request({
 		  url: url + nocache,
 		  dataType: 'xml',
@@ -1750,7 +1392,7 @@ var Shaders = {
 String.prototype.hashCode = function(){
     var hash = 0, i, c;
     if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; i++) {
+    for (i = 0, l = this.length; i < l; ++i) {
         c  = this.charCodeAt(i);
         hash  = ((hash<<5)-hash)+c;
         hash |= 0; // Convert to 32bit integer
@@ -2323,32 +1965,39 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 */
 
 // **** RESOURCES MANANGER *********************************************
-// Resources should follow the text structure
-// + id: if stored in remote server
+// Resources should follow the text structure:
+// + id: number, if stored in remote server
 // + resource_type: string ("Mesh","Texture",...) or if omitted the classname will be used
-// + filename: string
+// + filename: string (this string will be used to get the filetype)
 // + fullpath: the full path to reach the file on the server (folder + filename)
-// + preview: img
+// + preview: img url
 // + toBinary: generates a binary version to store on the server
 // + serialize: generates an stringifible object to store on the server
+
+// + _original_data: ArrayBuffer with the bytes form the original file
+// + _original_file: File with the original file where this res came from
 
 var ResourcesManager = {
 
 	path: "", //url to retrieve resources relative to the index.html
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
+	keep_files: false, //keep the original files inside the resource (used mostly in the webglstudio editor)
 
+	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
-
 	meshes: {}, //loadead meshes
 	textures: {}, //loadead textures
 
 	resources_being_loaded: {}, //resources waiting to be loaded
+	resources_being_processes: {}, //used to avoid loading stuff that is being processes
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
-	formats: {"js":"text", "json":"json", "xml":"xml", "jpg":"image", "png":"image", "bmp":"image", "bin":"binary", "wbin":"binary" },
-	resource_parsers: {}, //in charge or converting a file in a resource
+	formats: {"js":"text", "json":"json", "xml":"xml"},
+	formats_resource: {},	//tells which resource expect from this file format
+	resource_pre_callbacks: {}, //used to extract resource info from a file ->  "obj":callback
+	resource_post_callbacks: {}, //used to post process a resource type -> "Mesh":callback
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -2358,7 +2007,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "?nocache=" + new Date().getTime() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -2372,6 +2021,30 @@ var ResourcesManager = {
 		this.textures = {};
 	},
 
+	registerFileFormat: function(extension, data_type)
+	{
+		this.formats[extension.toLowerCase()] = data_type;
+	},	
+
+	registerResourcePreProcessor: function(fileformats, callback, data_type, resource_type)
+	{
+		var ext = fileformats.split(",");
+		for(var i in ext)
+		{
+			var extension = ext[i].toLowerCase();
+			this.resource_pre_callbacks[ extension ] = callback;
+			if(data_type)
+				this.formats[ extension ] = data_type;
+			if(resource_type)
+				this.formats_resource[ extension ] = resource_type;
+		}
+	},
+
+	registerResourcePostProcessor: function(resource_type, callback)
+	{
+		this.resource_post_callbacks[ resource_type ] = callback;
+	},
+
 	/**
 	* Returns the filename extension from an url
 	*
@@ -2382,11 +2055,13 @@ var ResourcesManager = {
 
 	getExtension: function(url)
 	{
+		var question = url.indexOf("?");
+		if(question != -1)
+			url = url.substr(0,question);
+
 		var point = url.lastIndexOf(".");
 		if(point == -1) return "";
-		var question = url.lastIndexOf("?");
-		question = (question == -1 ? url.length : (question - 1) ) - point;
-		return url.substr(point+1,question).toLowerCase();
+		return url.substr(point+1).toLowerCase();
 	},
 
 	/**
@@ -2403,11 +2078,45 @@ var ResourcesManager = {
 		//if(pos == -1) return fullpath;
 		var question = fullpath.lastIndexOf("?");
 		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
-		return fullpath.substr(pos+1,question).toLowerCase();
+		return fullpath.substr(pos+1,question);
 	},	
 
 	/**
-	* Loads a generic resource, the type will be inferet from the extension
+	* Returns the filename without the extension
+	*
+	* @method getBasename
+	* @param {String} fullpath
+	* @return {String} filename extension
+	*/
+
+	getBasename: function(fullpath)
+	{
+		var name = this.getFilename(fullpath);
+		var pos = name.indexOf(".");
+		if(pos == -1) return name;
+		return name.substr(0,pos);
+	},		
+
+	/**
+	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
+	*
+	* @method loadResources
+	* @param {Object} resources contains all the resources, associated with its type
+	* @param {Object}[options={}] options to apply to the loaded resources
+	*/
+
+	loadResources: function(res, options )
+	{
+		for(var i in res)
+		{
+			if( typeof(i) != "string" || i[0] == ":" )
+				continue;
+			this.load(i, options );
+		}
+	},	
+
+	/**
+	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
@@ -2418,6 +2127,8 @@ var ResourcesManager = {
 	load: function(url, options, on_complete)
 	{
 		options = options || {};
+
+		//if we already have it, then nothing to do
 		if(this.resources[url] != null)
 		{
 			if(on_complete)
@@ -2425,22 +2136,29 @@ var ResourcesManager = {
 			return true;
 		}
 
-		//already being loaded
+		//extract the filename extension
+		var extension = this.getExtension(url);
+		if(!extension) //unknown file type
+			return false;
+
+		//if it is already being loaded, then add the callback and wait
 		if(this.resources_being_loaded[url] != null)
 		{
 			this.resources_being_loaded[url].push( {options: options, callback: on_complete} );
 			return;
 		}
 
-		//load a new one
+		if(this.resources_being_processes[url])
+			return; //nothing to load, just waiting for the callback to process it
+
+		//otherwise we have to load it
+		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
+		//send an event if we are starting to load (used for loading icons)
 		if(this.num_resources_being_loaded == 0)
 			LEvent.trigger(ResourcesManager,"start_loading_resources",url);
-			//$(ResourcesManager).trigger("start_loading_resources", url);
 		this.num_resources_being_loaded++;
 
-		var pos = url.lastIndexOf(".")+1;
-		var extension = url.substr(pos,url.length).toLowerCase();
 
 		var full_url = "";
 		if(url.substr(0,7) == "http://")
@@ -2453,27 +2171,237 @@ var ResourcesManager = {
 				full_url = this.path + url;
 		}
 
+		//you can ignore the resources server for some assets if you want
 		if(options.force_local_url)
 			full_url = url;
 
+		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
 
-		//ajax call
+		//create the ajax request
 		var settings = {
 			url: full_url + nocache,
 			success: function(response){
-				var res = ResourcesManager.processResource(url,response,options);
-				ResourcesManager._resource_loaded_success(url,res); //triggers the on_complete
+				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
-			error: function(err) { 	ResourcesManager._resource_loaded_error(url,err); }
+			error: function(err) { 	ResourcesManager._resourceLoadedError(url,err); }
 		};
 
-		var extension = this.getExtension(url);
+		//in case we need to force a response format 
 		var file_format = this.formats[ extension ];
-		if(!file_format) file_format = "text";
-		settings.dataType = file_format;
+		if(file_format) //if not it will be set by http server
+			settings.dataType = file_format;
+
+		//send the REQUEST
 		LS.request(settings); //ajax call
 		return false;
+	},
+
+	/**
+	* Process resource: transform some data in an Object ready to use and stores it (in most cases uploads it to the GPU)
+	*
+	* @method processResource
+	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
+	* @param {*} data the data of the resource (could be string, arraybuffer, image... )
+	* @param {Object}[options={}] options to apply to the loaded resource
+	*/
+
+	processResource: function(url, data, options, on_complete)
+	{
+		options = options || {};
+		if(!data) throw("No data found when processing resource: " + url);
+		var resource = null;
+		var extension = this.getExtension(url);
+
+		//this.resources_being_loaded[url] = [];
+		this.resources_being_processes[url] = true;
+
+		//no extension, then or it is a JSON, or an object with object_type or a WBin
+		if(!extension)
+		{
+			if(typeof(data) == "string")
+				data = JSON.parse(data);
+
+			if(data.constructor == ArrayBuffer)
+			{
+				resource = WBin.load(data);
+				inner_onResource(url, resource);
+				return;
+			}
+			else
+			{
+				var type = data.object_type;
+				if(type && window[type])
+				{
+					var ctor = window[type];
+					var resource = null;
+					if(ctor.prototype.configure)
+					{
+						resource = new window[type]();
+						resource.configure( data );
+					}
+					else
+						resource = new window[type]( data );
+					inner_onResource(url, resource);
+					return;
+				}
+				else
+					return false;
+			}
+		}
+
+		var callback = this.resource_pre_callbacks[extension.toLowerCase()];
+		if(!callback)
+		{
+			console.log("Resource format unknown: " + extension)
+			return false;
+		}
+
+		//parse
+		var resource = callback(url, data, options, inner_onResource);
+		if(resource)
+			inner_onResource(url, resource);
+
+		//callback when the resource is ready
+		function inner_onResource(filename, resource)
+		{
+			resource.filename = filename;
+			if(options.filename) //used to overwrite
+				resource.filename = options.filename;
+
+			if(!resource.fullpath)
+				resource.fullpath = url;
+
+			if(LS.ResourcesManager.resources_being_processes[filename])
+				delete LS.ResourcesManager.resources_being_processes[filename];
+
+			//keep original file inside the resource
+			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) )
+				resource._original_data = data;
+
+			//load associated resources
+			if(resource.getResources)
+				ResourcesManager.loadResources( resource.getResources({}) );
+
+			//register in the containers
+			LS.ResourcesManager.registerResource(url, resource);
+
+			//callback 
+			if(on_complete)
+				on_complete(url, resource, options);
+		}
+	},
+
+	/**
+	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
+	*
+	* @method registerResource
+	* @param {String} filename 
+	* @param {Object} resource 
+	*/
+
+	registerResource: function(filename,resource)
+	{
+		//get which kind of resource
+		if(!resource.object_type)
+			resource.object_type = LS.getObjectClassName(resource);
+		var type = resource.object_type;
+		if(resource.constructor.resource_type)
+			type = resource.constructor.resource_type;
+
+		//some resources could be postprocessed after being loaded
+		var post_callback = this.resource_post_callbacks[ type ];
+		if(post_callback)
+			post_callback(filename, resource);
+
+		//global container
+		this.resources[filename] = resource;
+
+		//send message to inform new resource is available
+		LEvent.trigger(this,"resource_registered", resource);
+		Scene.refresh(); //render scene
+	},	
+
+	/**
+	* Returns an object with a representation of the resource internal data
+	* The order to obtain that object is:
+	* 1. test for _original_file (File or Blob)
+	* 2. test for _original_data (ArrayBuffer)
+	* 3. toBinary() (ArrayBuffer)
+	* 4. toBlob() (Blob)
+	* 5. toBase64() (String)
+	* 6. serialize() (Object in JSON format)
+	* 7. data property 
+	* 8. JSON.stringify(...)
+	*
+	* @method computeResourceInternalData
+	* @param {Object} resource 
+	* @return {Object} it has two fields: data and encoding
+	*/
+	computeResourceInternalData: function(resource)
+	{
+		if(!resource) throw("Resource is null");
+
+		var data = null;
+		var encoding = "text";
+		var extension = "";
+
+		//get the data
+		if (resource._original_file) //file
+		{
+			data = resource._original_file;
+			encoding = "file";
+		}
+		else if(resource._original_data) //file in ArrayBuffer format
+			data = resource._original_data;
+		else if(resource.toBinary) //a function to compute the ArrayBuffer format
+		{
+			data = resource.toBinary();
+			encoding = "binary";
+			extension = "wbin";
+		}
+		else if(resource.toBlob) //a blob (Canvas should have this)
+		{
+			data = resource.toBlob();
+			encoding = "file";
+		}
+		else if(resource.toBase64) //a base64 string
+		{
+			data = resource.toBase64();
+			encoding = "base64";
+		}
+		else if(resource.serialize) //a json object
+			data = JSON.stringify( resource.serialize() );
+		else if(resource.data) //regular string data
+			data = resource.data;
+		else
+			data = JSON.stringify( resource );
+
+		if(data.buffer && data.buffer.constructor == ArrayBuffer)
+			data = data.buffer; //store the data in the arraybuffer
+
+		return {data:data, encoding: encoding, extension: extension};
+	},	
+
+	renameResource: function(old, newname)	
+	{
+		var res = this.resources[ old ];
+		if(!res) return;
+
+		res.filename = newname;
+		res.fullpath = newname;
+		this.resources[newname] = res;
+		delete this.resources[ old ];
+
+		//ugly: too hardcoded
+		if( this.meshes[old] ) {
+			delete this.meshes[ old ];
+			this.meshes[ newname ] = res;
+		}
+		if( this.textures[old] ) {
+			delete this.textures[ old ];
+			this.textures[ newname ] = res;
+		}
 	},
 
 	/**
@@ -2485,342 +2413,7 @@ var ResourcesManager = {
 	isLoading: function()
 	{
 		return this.num_resources_being_loaded > 0;
-	},
-
-	/**
-	* Process resource (most cases to upload it to the GPU)
-	*
-	* @method processResource
-	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
-	* @param {*} data the data of the resource (could be string, arraybuffer, image... )
-	* @param {Object}[options={}] options to apply to the loaded resource
-	*/
-
-	processResource: function(url, data, options)
-	{
-		var resource = null;
-		if(data.object_type && window[ data.object_type ] )
-			resource = new window[ data.object_type ](data);
-		else if(typeof(resource) == "object")
-			resource = data; //its a JSON
-		else
-		{
-			console.error("Unknown resource");
-			return null;
-		}
-
-		if(!resource.fullpath)
-			resource.fullpath = url;
-
-		if(resource.getResources) //associate resources
-			ResourcesManager.loadResources( resource.getResources({}) );
-
-		this.registerResource(url,resource);
-		return resource;
-	},
-	
-	/**
-	* Loads a Mesh from url (in case it is already cached it skips the loading)
-	*
-	* @method loadMesh
-	* @param {String} url where the mesh is located (if its a relative url it depends on the path attribute
-	* @param {Object}[options={}] options to apply to the loaded image
-	* @param {Function} [on_complete=null] callback when the mesh is loaded and cached
-	*/
-
-	loadMesh: function(url, options, on_complete)
-	{
-		options = options || {};
-
-		if(this.meshes[url] != null)
-		{
-			if(on_complete)
-				on_complete(this.meshes[url]);
-			return true;
-		}
-
-		//already being loaded
-		if(this.resources_being_loaded[url] != null)
-		{
-			this.resources_being_loaded[url].push( {options: options, callback: on_complete} );
-			return;
-		}
-
-		//load a new one
-		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
-		if(this.num_resources_being_loaded == 0)
-			LEvent.trigger(ResourcesManager,"start_loading_resources",url);
-			//$(ResourcesManager).trigger("start_loading_resources", url);
-		this.num_resources_being_loaded++;
-
-		var pos = url.lastIndexOf(".")+1;
-		var extension = url.substr(pos,url.length).toLowerCase();
-
-		var full_url = "";
-		if(url.substr(0,7) == "http://")
-			full_url = url;
-		else
-		{
-			if(options.local_repository)
-				full_url = options.local_repository + "/" + url;
-			else
-				full_url = this.path + url;
-		}
-
-		if(options.force_local_url)
-			full_url = url;
-
-		var nocache = this.getNoCache();
-
-		//ajax call
-		var settings = {
-			url: full_url + nocache,
-			success: function(response){
-				var mesh = ResourcesManager.processMesh(url,response,options);
-				ResourcesManager._resource_loaded_success(url,mesh);
-			},
-			error: function(err) { 	ResourcesManager._resource_loaded_error(url,err); }
-		};
-
-		var res_info = Parser.getResourceInfo(url);
-
-		settings.dataType = "text";
-		if(res_info.format == Parser.JSON_FORMAT)
-			settings.dataType = 'json';
-		else if(res_info.format == Parser.XML_FORMAT)
-			settings.dataType = 'xml';
-		else if(res_info.format == Parser.BINARY_FORMAT)
-			settings.dataType = 'binary';
-
-		LS.request(settings);
-		return false;
-	},
-
-	/**
-	* Takes mesh raw data and creates a propper Mesh instance (uploads to GPU), caches it and launch the associated events
-	*
-	* @method processMesh
-	* @param {String} filename the filename to process this raw data
-	* @param {Object} data raw data of the mesh
-	* @return {Object} the mesh instance
-	*/
-
-	processMesh: function(filename, data, options)
-	{
-		options = options || {};
-		if(!gl) return null;
-
-		//obtain info about the resource (extension, type of res, etc)
-		var res_info = Parser.getResourceInfo(filename);
-
-		var mesh_data = null;
-
-		if(options.ignore_parser)
-			mesh_data = data;
-		else
-			mesh_data = Parser.parse(filename, data, options);
-
-		if(mesh_data == null)
-		{
-			throw ("Error parsing mesh: " + filename);
-		}
-
-		filename = options.name || filename; //used to rename AFTER parsing (otherwise parser can get the format wrong)
-
-		var mesh = GL.Mesh.load(mesh_data);
-		mesh.object_type = "Mesh"; //useful
-		mesh.info = mesh_data.info; //save extra info like bounding
-		mesh.metadata = {};
-		mesh.filename = filename;
-		mesh.generateMetadata(); //useful
-		if(!mesh.bounding)
-			mesh.updateBounding();
-
-		if(this.free_data) //free buffers to reduce memory usage
-			mesh.freeData();
-
-		//save mesh in manager
-		this.registerResource(filename,mesh);
-		return mesh;
-	},
-
-	/**
-	* Loads an Image from the internet and calls processImage (it the image is already loaded it skips the loading)
-	*
-	* @method loadImage
-	* @param {String} url where the mesh is located (if its a relative url it depends on the path attribute
-	* @param {Function} [on_complete=null] callback when the image is loaded, uploaded to GPU and cached
-	* @param {Object}[options={}] options to apply to the loaded image
-	*/
-
-	loadImage: function(url, options, on_complete)
-	{
-		options = options || {};
-		if(this.textures[url] != null) //reuse old version
-		{
-			if(on_complete)
-				on_complete(this.textures[url]);
-			return true;
-		}
-
-		//already being loaded
-		if(this.resources_being_loaded[url] != null)
-		{
-			this.resources_being_loaded[url].push( {options: null, callback: on_complete} );
-			return;
-		}
-
-		if(url[0] == ":")
-		{
-			console.error("loadImage: cannot load filenames starting with ':'");
-			return null;
-		}
-
-		this.resources_being_loaded[url] = [{options: null, callback: on_complete}];
-		if(this.num_resources_being_loaded == 0)
-			LEvent.trigger(ResourcesManager,"start_loading_resources", url);
-			//$(ResourcesManager).trigger("start_loading_resources", url);
-		this.num_resources_being_loaded++;
-
-		var full_url = "";
-		if(url.substr(0,7) == "http://" || url.substr(0,8) == "https://" || options.force_local_url)
-			full_url = url;
-		else
-		{
-			if(options.local_repository)
-				full_url = options.local_repository + "/" + url;
-			else
-				full_url = this.path + url;
-		}
-
-		var nocache = this.getNoCache();
-
-		//console.log("Processing image: " + url);
-		var res_info = Parser.getResourceInfo(url);
-		if(res_info.type == Parser.IMAGE_DATA)
-		{
-			var img = new Image();
-			img.type = 'IMG';
-			img.onload = function()
-			{
-				this.onload = null;
-				this.filename = url;
-				if(options.flipY) this.flipY = options.flipY;
-				var texture = ResourcesManager.processImage(url,this, options);
-				ResourcesManager._resource_loaded_success(url,texture);
-			}
-
-			//img.onprogress = function(e) { console.log("Image: " + url + "    " + e); }
-			img.onerror = function(err) { ResourcesManager._resource_loaded_error(url,err); }
-
-			img.src = full_url + nocache;
-		}
-		else if (res_info.type == Parser.NONATIVE_IMAGE_DATA)
-		{
-			var full_url = this.path + url;
-			var nocache = this.getNoCache();
-
-			LS.request({
-				url: full_url + nocache,
-				dataType: "binary",
-				success: function(response){
-					var img = Parser.parse(url, response);
-					var texture = null;
-					if (img) {
-						texture = ResourcesManager.processImage(url,img, options);
-						ResourcesManager._resource_loaded_success(url,texture);
-					}
-					delete ResourcesManager.resources_being_loaded[url];
-				},
-				error: function(err) { ResourcesManager._resource_loaded_error(url,err); }
-			});
-		}
-		else
-			ResourcesManager._resource_loaded_error(url,"Wront file format");
-
-		return false;
-	},
-
-	/**
-	* Takes image raw data and creates a propper Texture instance, caches it and launch the associated events
-	*
-	* @method processImage
-	* @param {String} filename the filename to process this raw data
-	* @param {Object} data raw data of the image (could be an Image tag or a Canvas tag)
-	* @param {Object}[options={}] options to process the data
-	* @return {Object} the Texture instance
-	*/
-
-	processImage: function(filename, img, options)
-	{
-		options = options || {};
-		if(!gl) return null;
-
-		if (img.width > this.MAX_TEXTURE_SIZE)
-		{
-			console.log("too big, max is " + this.MAX_TEXTURE_SIZE);
-			return null;
-		}
-		/*
-		else if (img.width != img.height)
-		{
-			if(img.width != (img.height / 6) && (img.height % 6) != 0)
-			{
-				console.log("Warning: Image must be square (same width and height)");
-				//return null;
-			}
-		}
-		else if ( ((Math.log(img.width) / Math.log(2)) % 1) != 0 || ((Math.log(img.height) / Math.log(2)) % 1) != 0)
-		{
-			console.log("Image dimensions must be power of two (64,128,256,512)");
-			return null;
-		}
-		*/
-
-		if(img.constructor == Texture)
-		{
-			var texture = img;
-			texture.filename = filename;
-			this.registerResource(filename, texture);
-			console.log("DDS created");
-		}
-		else if(img.width == (img.height / 6)) //cubemap
-		{
-			var texture = Texture.cubemapFromImage(img, { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR });
-			texture.img = img;
-			texture.filename = filename;
-			this.registerResource(filename, texture);
-			console.log("Cubemap created");
-		}
-		else //regular texture
-		{
-			var default_mag_filter = gl.LINEAR;
-			var default_wrap = gl.REPEAT;
-			//var default_min_filter = img.width == img.height ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
-			var default_min_filter = gl.LINEAR_MIPMAP_LINEAR;
-			if( !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height) )
-			{
-				default_min_filter = gl.LINEAR;
-				default_wrap = gl.CLAMP_TO_EDGE; 
-			}
-			var texture = null;
-
-			//from TGAs...
-			if(img.pixels)
-				texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
-			else //RGBA because particles have alpha (PNGs)
-				texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
-			texture.img = img;
-			texture.filename = filename;
-			this.registerResource(filename, texture);
-		}
-
-		texture.filename = filename;
-		texture.generateMetadata(); //useful
-
-		LEvent.trigger(Scene,"change");
-		return texture;
-	},
+	},	
 
 	processScene: function(filename, data, options)
 	{
@@ -2855,66 +2448,12 @@ var ResourcesManager = {
 		return scene;
 	},
 
-	/**
-	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
-	*
-	* @method loadResources
-	* @param {Object} resources contains all the resources, associated with its type
-	* @param {Object}[options={}] options to apply to the loaded resources
-	*/
-
-	loadResources: function(res, options )
-	{
-		for(var i in res)
-		{
-			if( typeof(i) != "string" || i[0] == ":" )
-				continue;
-		
-			if(res[i] == Mesh)
-				this.loadMesh( i, options );
-			else if(res[i] == Texture)
-				this.loadImage( i, options );
-			else
-				this.load(i, options );
-		}
-	},
-
 	computeImageMetadata: function(texture)
 	{
 		var metadata = { width: texture.width, height: texture.height };
 		return metadata;
 	},
 
-	/**
-	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
-	*
-	* @method registerResource
-	* @param {String} filename 
-	* @param {Object} resource 
-	*/
-
-	registerResource: function(filename,res)
-	{
-		//get which kind of resource
-		if(!res.object_type)
-			res.object_type = getObjectClassName(res);
-		var type = res.object_type;
-		if(res.constructor.resource_type)
-			type = res.constructor.resource_type;
-
-		//some resources have special containers
-		if(type == "Mesh")
-			this.meshes[filename] = res;
-		else if(type == "Texture")
-			this.textures[filename] = res;
-		else if(type == "Material")
-			Scene.materials[filename] = res;
-
-		this.resources[filename] = res;
-
-		//send message to inform new resource is available
-		LEvent.trigger(this,"resource_registered", res);
-	},
 
 	/**
 	* returns a mesh resource if it is loaded
@@ -2945,7 +2484,7 @@ var ResourcesManager = {
 	//*************************************
 
 	//Called after a resource has been loaded successfully and processed
-	_resource_loaded_success: function(url,res)
+	_resourceLoadedSuccess: function(url,res)
 	{
 		if( LS.ResourcesManager.debug )
 			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
@@ -2965,7 +2504,7 @@ var ResourcesManager = {
 		}
 	},
 
-	_resource_loaded_error: function(url, error)
+	_resourceLoadedError: function(url, error)
 	{
 		console.log("Error loading " + url);
 		delete ResourcesManager.resources_being_loaded[url];
@@ -2975,66 +2514,6 @@ var ResourcesManager = {
 			LEvent.trigger( ResourcesManager, "end_loading_resources");
 			//$(ResourcesManager).trigger("end_loading_resources");
 	},
-
-	/**
-	* returns an object with a representation of the resource internal data
-	*
-	* @method computeResourceInternalData
-	* @param {Object} resource 
-	* @return {Object} it has two fields: data and encoding
-	*/
-	computeResourceInternalData: function(resource)
-	{
-		if(!resource) throw("Resource is null");
-
-		var data = null;
-		var encoding = "text";
-		var extension = "";
-
-		//get the data
-		if (resource.file)
-		{
-			data = resource.file;
-			encoding = "file";
-		}
-		else if(resource.original_data) //text
-			data = resource.original_data;
-		else if(resource.toBinary) //a buffer
-		{
-			data = resource.toBinary();
-			extension = "wbin";
-		}
-		else if(resource.toBlob) //a blob
-		{
-			data = resource.toBlob();
-			encoding = "file";
-		}
-		else if(resource.toBase64) //a string
-		{
-			data = resource.toBase64();
-			encoding = "base64";
-		}
-		else if(resource.serialize) //a json object
-			data = JSON.stringify( resource.serialize() );
-		else if(resource.data)
-			data = resource.data;
-		else
-			data = JSON.stringify( resource );
-
-		if(data.buffer && data.buffer.constructor == ArrayBuffer)
-			data = data.buffer; //store the data in the arraybuffer
-
-		/* do not blobify here
-		//Arraybuffers are transformed in blobs to be transfered as files...
-		if(data.constructor == ArrayBuffer)
-		{
-			data = new Blob([data], {type: "application/octet-binary"});
-			encoding = "file";
-		}
-		*/
-
-		return {data:data, encoding: encoding, extension: extension};
-	},	
 
 	//NOT TESTED: to load script asyncronously, not finished. similar to require.js
 	require: function(files, on_complete)
@@ -3083,13 +2562,305 @@ LS.ResourcesManager = ResourcesManager;
 LS.RM = ResourcesManager;
 
 LS.getTexture = function(name_or_texture) {
-	if(name_or_texture.constructor === Texture) return name_or_texture;
-	var v = LS.ResourcesManager.textures[name_or_texture];
-	if(!v) return null;
-	if(v.constructor === Texture)
-		return v;
-	return null;
+	return LS.ResourcesManager.getTexture(name_or_texture);
 }	
+
+
+//Post process resources *******************
+
+LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mesh ) {
+
+	mesh.object_type = "Mesh"; //useful
+	if(mesh.metadata)
+	{
+		mesh.metadata = {};
+		mesh.generateMetadata(); //useful
+	}
+	if(!mesh.bounding || mesh.bounding.length != BBox.data_length)
+	{
+		mesh.bounding = null; //remove bad one (just in case)
+		mesh.updateBounding();
+	}
+	if(!mesh.getBuffer("normals"))
+		mesh.computeNormals();
+
+	if(LS.ResourcesManager.free_data) //free buffers to reduce memory usage
+		mesh.freeData();
+
+	LS.ResourcesManager.meshes[filename] = mesh;
+});
+
+LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, texture ) {
+	//store
+	LS.ResourcesManager.textures[filename] = texture;
+});
+
+LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
+	//store
+	Scene.materials[filename] = material;
+});
+
+
+
+//Resources readers *********
+//global formats: take a file and extract info
+LS.ResourcesManager.registerResourcePreProcessor("wbin", function(filename, data, options) {
+	var data = new WBin.load(data);
+	return data;
+},"binary");
+
+LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {
+	var resource = data;
+	if(typeof(data) == "object" && data.object_type && window[ data.object_type ])
+	{
+		var ctor = window[ data.object_type ];
+		if(ctor.prototype.configure)
+		{
+			resource = new ctor();
+			resource.configure(data);
+		}
+		else
+			resource = new ctor(data);
+	}
+	return resource;
+});
+
+//Textures ********
+//Takes one image (or canvas) as input and creates a Texture
+LS.ResourcesManager.processImage = function(filename, img, options)
+{
+	if(img.width == (img.height / 6)) //cubemap
+	{
+		var texture = Texture.cubemapFromImage(img, { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR });
+		texture.img = img;
+		console.log("Cubemap created");
+	}
+	else //regular texture
+	{
+		var default_mag_filter = gl.LINEAR;
+		var default_wrap = gl.REPEAT;
+		//var default_min_filter = img.width == img.height ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR;
+		var default_min_filter = gl.LINEAR_MIPMAP_LINEAR;
+		if( !isPowerOfTwo(img.width) || !isPowerOfTwo(img.height) )
+		{
+			default_min_filter = gl.LINEAR;
+			default_wrap = gl.CLAMP_TO_EDGE; 
+		}
+		var texture = null;
+
+		//from TGAs...
+		if(img.pixels) //not a real image, just an object with width,height and a buffer with all the pixels
+			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
+		else //default format is RGBA (because particles have alpha)
+			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
+		texture.img = img;
+	}
+
+	texture.filename = filename;
+	texture.generateMetadata(); //useful
+	return texture;
+}
+
+//basic formats
+LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp", function(filename, data, options, callback) {
+
+	var extension = LS.ResourcesManager.getExtension(filename);
+	var mimetype = 'image/png';
+	if(extension == "jpg" || extension == "jpeg")
+		mimetype = "image/jpg";
+	if(extension == "webp")
+		mimetype = "image/webp";
+
+	var blob = new Blob([data],{type: mimetype});
+	var objectURL = URL.createObjectURL(blob);
+	var image = new Image();
+	image.src = objectURL;
+	image.real_filename = filename; //hard to get the original name from the image
+	image.onload = function()
+	{
+		var filename = this.real_filename;
+		var texture = LS.ResourcesManager.processImage(filename, this, options);
+		if(texture)
+		{
+			LS.ResourcesManager.registerResource(filename, texture);
+			if(LS.ResourcesManager.keep_files)
+				texture._original_data = data;
+		}
+		URL.revokeObjectURL(objectURL); //free memory
+		if(!texture)
+			return;
+
+		if(callback)
+			callback(filename,texture,options);
+	}
+
+},"binary","Texture");
+
+//special formats parser inside the system
+LS.ResourcesManager.registerResourcePreProcessor("dds,tga", function(filename, data, options) {
+
+	//clone because DDS changes the original data
+	var cloned_data = new Uint8Array(data).buffer;
+	var texture_data = Parser.parse(filename, cloned_data, options);	
+
+	if(texture_data.constructor == Texture)
+	{
+		var texture = texture_data;
+		texture.filename = filename;
+		console.log("DDS created");
+		return texture;
+	}
+
+	var texture = LS.ResourcesManager.processImage(filename, texture_data);
+	return texture;
+}, "binary","Texture");
+
+
+//Meshes ********
+LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
+
+	var mesh_data = Parser.parse(filename, data, options);
+
+	if(mesh_data == null)
+	{
+		console.error("Error parsing mesh: " + filename);
+		return null;
+	}
+
+	var mesh = GL.Mesh.load(mesh_data);
+	return mesh;
+}
+
+LS.ResourcesManager.registerResourcePreProcessor("obj", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
+
+LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
+
+	var scene_data = Parser.parse(filename, data, options);
+
+	if(scene_data == null)
+	{
+		console.error("Error parsing mesh: " + filename);
+		return null;
+	}
+
+	//resources
+	for(var i in scene_data.resources)
+	{
+		var resource = scene_data.resources[i];
+		LS.ResourcesManager.processResource(i,resource);
+	}
+	/*
+	if(scene_data.materials)
+	{
+		for(var i in scene_data.materials)
+		{
+			var mat_info = scene_data.materials[i];
+			mat_info.object_type = "Material";
+			LS.ResourcesManager.processResource(i,mat_info);
+		}
+	}
+
+	//resources
+	if(scene_data.meshes)
+	{
+		for(var i in scene_data.meshes)
+		{
+			var mesh_info = scene_data.meshes[i];
+			mesh_info.object_type = "Mesh";
+			LS.ResourcesManager.processResource(i,mesh_info);
+		}
+	}
+	*/
+
+	var node = new LS.SceneNode();
+	node.configure(scene_data.root);
+
+	/*
+	//resources
+	if(scene_data.animations)
+		node.animations = scene_data.animations;
+	*/
+
+
+	Scene.root.addChild(node);
+	return node;
+}
+
+LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.processASCIIScene, "text","Scene");
+
+
+
+
+
+
+Mesh.fromBinary = function( data_array )
+{
+	var o = null;
+	if(data_array.constructor == ArrayBuffer )
+		o = WBin.load( data_array );
+	else
+		o = data_array;
+
+	var vertex_buffers = {};
+	for(var i in o.vertex_buffers)
+		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
+
+	var index_buffers = {};
+	for(var i in o.index_buffers)
+		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
+
+	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
+	mesh.info = o.info;
+	mesh.bounding = o.bounding;
+	
+	return mesh;
+}
+
+Mesh.prototype.toBinary = function()
+{
+	if(!this.info)
+		this.info = {};
+
+
+	//clean data
+	var o = {
+		object_type: "Mesh",
+		info: this.info,
+		groups: this.groups
+	};
+
+	//bounding box
+	if(!this.bounding)	
+		this.updateBounding();
+	o.bounding = this.bounding;
+
+	var vertex_buffers = [];
+	var index_buffers = [];
+
+	for(var i in this.vertexBuffers)
+	{
+		var stream = this.vertexBuffers[i];
+		o[ stream.name ] = stream.data;
+		vertex_buffers.push( stream.name );
+
+		if(stream.name == "vertices")
+			o.info.num_vertices = stream.data.length / 3;
+	}
+
+	for(var i in this.indexBuffers)
+	{
+		var stream = this.indexBuffers[i];
+		o[i] = stream.data;
+		index_buffers.push( i );
+	}
+
+	o.vertex_buffers = vertex_buffers;
+	o.index_buffers = index_buffers;
+
+	//create pack file
+	return WBin.create(o, "Mesh");
+}
+
 
 //Material class **************************
 /* Warning: a material is not a component, because it can be shared by multiple nodes */
@@ -3718,7 +3489,7 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 	if( typeof(texture_or_filename) === "string" ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
-			ResourcesManager.loadImage(texture_or_filename,options, function(texture) {
+			ResourcesManager.load(texture_or_filename,options, function(texture) {
 				that.setTexture(texture, channel);
 				if(options.on_complete)
 					options.on_complete();
@@ -3755,7 +3526,7 @@ Material.prototype.setTexture = function(texture, channel, uvs) {
 
 	if(!texture) return;
 	if(texture.constructor == String && texture[0] != ":")
-		ResourcesManager.loadImage(texture);
+		ResourcesManager.load(texture);
 }
 
 /**
@@ -3797,7 +3568,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		ResourcesManager.loadImage( res[i] );
+		ResourcesManager.load( res[i] );
 }
 
 //not implemented yet
@@ -4261,7 +4032,12 @@ ComponentContainer.prototype.processActionInComponents = function(action_name,pa
 
 
 //TODO: a class to remove the tree methods from SceneTree and SceneNode
-
+/**
+* CompositePattern implements the Composite Pattern, which allows to one class to contain instances of its own class
+* creating a tree-like structure.
+* @class CompositePattern
+* @constructor
+*/
 function CompositePattern()
 {
 	//WARNING! do not add anything here, it will never be called
@@ -4270,6 +4046,14 @@ function CompositePattern()
 CompositePattern.prototype.compositeCtor = function()
 {
 }
+
+/**
+* Adds one child to this instance
+* @method addChild
+* @param {*} child
+* @param {number} index [optional]  in which position you want to insert it, if not specified it goes to the last position
+* @param {*} options [optional] data to be passed when adding it, used for special cases when moving nodes around
+**/
 
 CompositePattern.prototype.addChild = function(node, index, options)
 {
@@ -6721,6 +6505,8 @@ Skybox.prototype.getResources = function(res)
 
 Skybox.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this._root) return;
+
 	var texture = null;
 	if (this.use_environment)
 		texture = Renderer._current_scene.textures["environment"];
@@ -6737,7 +6523,6 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mesh = this._mesh = GL.Mesh.cube({size: 10});
 
 	var node = this._root;
-	if(!this._root) return;
 
 	var RI = this._render_instance;
 	if(!RI)
@@ -6747,7 +6532,15 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 		RI.onPreRender = function(options) { 
 			var cam_pos = options.camera.getEye();
+			mat4.identity(this.matrix);
 			mat4.setTranslation( this.matrix, cam_pos );
+			if(this.node.transform)
+			{
+				var R = this.node.transform.getGlobalRotationMatrix();
+				mat4.multiply( this.matrix, this.matrix, R );
+			}
+
+			//this.updateAABB(); this node doesnt have AABB (its always visible)
 			vec3.copy( this.center, cam_pos );
 		};
 	}
@@ -6764,12 +6557,8 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
-	RI.disableFlag( RI_CAST_SHADOWS ); //never cast shadows
-	RI.enableFlag( RI_IGNORE_LIGHTS ); //no lights
-	RI.enableFlag( RI_CW ); //no lights
-	RI.disableFlag( RI_DEPTH_WRITE ); 
-	RI.disableFlag( RI_DEPTH_TEST ); 
-	RI.enableFlag( RI_IGNORE_FRUSTRUM );
+	RI.enableFlag( RI_CW | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM | RI_IGNORE_CLIPPING_PLANE); 
+	RI.disableFlag( RI_CAST_SHADOWS | RI_DEPTH_WRITE | RI_DEPTH_TEST ); 
 
 	instances.push(RI);
 }
@@ -8455,18 +8244,100 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
 	RI.applyNodeFlags();
 
 	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
 
 	instances.push(RI);
-	//return RI;
 }
 
 
 LS.registerComponent(ParticleEmissor);
+/**
+* Moves objects acording to animation
+* @class PlayAnimation
+* @constructor
+* @param {String} object to configure from
+*/
+
+
+function PlayAnimation(o)
+{
+	this.animation = "";
+	this.playback_speed = 1.0;
+	if(o)
+		this.configure(o);
+}
+
+PlayAnimation["@animation"] = { widget: "resource" };
+
+
+PlayAnimation.prototype.configure = function(o)
+{
+	this.animation = o.animation;
+	if(o.playback_speed)
+		this.playback_speed = parseFloat( o.playback_speed );
+}
+
+
+PlayAnimation.icon = "mini-icon-reflector.png";
+
+PlayAnimation.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node,"update",this.onUpdate,this);
+}
+
+
+PlayAnimation.prototype.onRemoveFromNode = function(node)
+{
+	LEvent.unbind(node,"update",this.onUpdate,this);
+}
+
+PlayAnimation.prototype.onUpdate = function(e)
+{
+	if(!this.animation) return;
+
+	var animation = LS.ResourcesManager.resources[ this.animation ];
+	if(!animation) return;
+
+	var time = Scene.getTime() * this.playback_speed;
+
+	for(var i in animation.tracks)
+	{
+		var track = animation.tracks[i];
+		var nodename = track.nodename;
+		var node = Scene.getNode(nodename);
+		if(!node) continue;
+
+		var local_time = time % track.duration;
+		var data = track.data;
+		var last_value = null;
+		var value = null;
+		for(var p = 0; p < data.length; p += track.value_size + 1)
+		{
+			var t = data[p];
+			last_value = value;
+			value = data.subarray(p + 1, p + track.value_size + 1);
+			if(t < local_time) continue;
+			break;
+		}
+
+		//var final_value = new Float32Array(value.length);
+
+		switch(track.property)
+		{
+			case "matrix": if(node.transform)
+								node.transform.fromMatrix(value);
+			default: break;
+		}
+	}
+
+	Scene.refresh();
+}
+
+LS.registerComponent(PlayAnimation);
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
@@ -9694,7 +9565,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!tex && this.properties.name[0] != ":")
 		{
 			if(!LGraphTexture.loadTextureCallback && typeof(ResourcesManager) != "undefined")
-				LGraphTexture.loadTextureCallback = ResourcesManager.loadImage.bind(ResourcesManager);
+				LGraphTexture.loadTextureCallback = ResourcesManager.load.bind(ResourcesManager);
 
 			var loader = LGraphTexture.loadTextureCallback;
 			if(loader)
@@ -10090,7 +9961,7 @@ if(typeof(LiteGraph) != "undefined")
 		gl.disable( gl.DEPTH_TEST );
 		if(this.properties.antialiasing)
 		{
-			var viewport = gl.getParameter(gl.VIEWPORT);
+			var viewport = gl.getViewport(); //gl.getParameter(gl.VIEWPORT);
 			if(tex)	tex.bind(0);
 			var mesh = Mesh.getScreenQuad();
 			LGraphTextureToViewport._shader.uniforms({texture:0, uViewportSize:[tex.width,tex.height], inverseVP: [1/tex.width,1/tex.height] }).draw(mesh);
@@ -10746,20 +10617,20 @@ if(typeof(LiteGraph) != "undefined")
 */
 
 //flags enums
-var RI_CULL_FACE =	1;		//two sided
-var RI_CW =		1 << 2; //reverse normals
-var RI_DEPTH_TEST =	1 << 3; 
-var RI_DEPTH_WRITE = 1 << 4; 
-var RI_ALPHA_TEST =	1 << 5; 
-var RI_BLEND = 1 << 6; 
+var RI_CULL_FACE =			1;		//for two sided
+var RI_CW =					1 << 1; //reverse normals
+var RI_DEPTH_TEST =			1 << 2; 
+var RI_DEPTH_WRITE = 		1 << 3; 
+var RI_ALPHA_TEST =			1 << 4; 
+var RI_BLEND = 				1 << 5; 
 
-var RI_CAST_SHADOWS = 1 << 8;	//render in shadowmaps
-var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
-var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
+var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
+var RI_IGNORE_LIGHTS = 		1 << 9;	//render without taking into account light info
+var RI_RENDER_2D = 			1 << 10;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
 
-//var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
-var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
 
 
 //default flags for any instance
@@ -10838,11 +10709,11 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 
 	if(mesh.bounding)
 	{
-		BBox.setCenterHalfsize(this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
-		this.flags &= ~RI_IGNORE_FRUSTRUM; //test against frustrum
+		this.oobb.set( mesh.bounding ); //copy
+		this.flags &= ~RI_IGNORE_FRUSTUM; //test against frustum
 	}
 	else
-		this.flags |= RI_IGNORE_FRUSTRUM; //no frustrum, no test
+		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
 }
 
 RenderInstance.prototype.setRange = function(start, offset)
@@ -11204,7 +11075,7 @@ var Renderer = {
 		options = options || {};
 		options.camera = this.active_camera;
 
-		var frustrum_planes = geo.extractPlanes( this._viewprojection_matrix );
+		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
 
 		LEvent.trigger(scene, "beforeRenderPass", options);
 		scene.sendEventToNodes("beforeRenderPass", options);
@@ -11237,13 +11108,13 @@ var Renderer = {
 		var lights = this._visible_lights;
 		var render_instances = this._visible_instances;
 
-		//for each render instance
+		//compute visibility pass
 		for(var i in render_instances)
 		{
 			//render instance
 			var instance = render_instances[i];
-
 			var node_flags = instance.node.flags;
+			instance._in_camera = false;
 
 			//hidden nodes
 			if(options.is_rt && node_flags.seen_by_reflections == false)
@@ -11257,11 +11128,26 @@ var Renderer = {
 			if(instance.material.opacity <= 0)
 				continue;
 
+			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
 				instance.onPreRender(options);
 
-			//test visibility against camera frustrum
-			if( !(instance.flags & RI_IGNORE_FRUSTRUM) && geo.frustrumTestBox( frustrum_planes, instance.aabb ) == CLIP_OUTSIDE)
+			//test visibility against camera frustum
+			if( !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+				continue;
+
+			//save visibility info
+			instance._in_camera = true;
+		}
+
+
+		//for each render instance
+		for(var i in render_instances)
+		{
+			//render instance
+			var instance = render_instances[i];
+
+			if(!instance._in_camera)
 				continue;
 
 			//Compute lights affecting this RI
@@ -11292,7 +11178,7 @@ var Renderer = {
 		LEvent.trigger(scene, "renderScreenSpace", options);
 
 
-		//foreground
+		//foreground object
 		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
 			var texture = null;
@@ -11352,7 +11238,7 @@ var Renderer = {
 		node_uniforms.u_model = model;
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
-		//FLAGS
+		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, options);
 
 		//alpha blending flags
@@ -11387,7 +11273,7 @@ var Renderer = {
 		//multi pass instance rendering
 		var num_lights = lights.length;
 
-		//no lights
+		//no lights rendering (flat light)
 		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || options.ignore_lights;
 		if(!num_lights || ignore_lights)
 		{
@@ -11398,6 +11284,8 @@ var Renderer = {
 			macros.merge(instance.macros);
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
+			if(options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+				macros.USE_CLIPPING_PLANE = "";
 
 			if( mat.onModifyMacros )
 				mat.onModifyMacros( macros );
@@ -11416,7 +11304,7 @@ var Renderer = {
 			return;
 		}
 
-
+		//Regular rendering
 		for(var iLight = 0; iLight < num_lights; iLight++)
 		{
 			var light = lights[iLight];
@@ -11439,6 +11327,8 @@ var Renderer = {
 				macros.merge(mat._macros);
 				macros.merge(instance.macros);
 				macros.merge(light_macros);
+				if(options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+					macros.USE_CLIPPING_PLANE = "";
 
 				if( mat.onModifyMacros )
 					mat.onModifyMacros( macros );
@@ -11624,9 +11514,6 @@ var Renderer = {
 		if(options.camera.type == Camera.ORTHOGRAPHIC)
 			macros.USE_ORTHOGRAPHIC_CAMERA = "";
 
-		if(options.clipping_plane)
-			macros.USE_CLIPPING_PLANE = "";
-
 		if(options.brightness_factor && options.brightness_factor != 1)
 			macros.USE_BRIGHTNESS_FACTOR = "";
 
@@ -11644,7 +11531,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.getEye(),
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene._time || new Date().getTime() * 0.001,
+			u_time: scene._time || window.performance.now() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
 			u_ambient_light: scene.ambient_color,
@@ -12007,7 +11894,6 @@ var Renderer = {
 	{
 		var scene = this.current_scene || Scene;
 
-		//trace("Starting Picking at : (" + x + "," + y + ")  T:" + new Date().getTime() );
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
@@ -12227,7 +12113,10 @@ var Physics = {
 
 
 LS.Physics = Physics;
-
+/* 
+Parser should only be in charge of extracting info from a data chunk (text or binary) and returning in a better way
+It shouldnt have any dependency to allow to be used in workers in the future
+*/
 var Parser = {
 
 	flipAxis: 0,
@@ -12242,6 +12131,7 @@ var Parser = {
 	xml_extensions: ["xml","dae"], //for sure is XML
 	json_extensions: ["js","json"], //for sure is JSON
 	binary_extensions: ["bin","tga","dds"], //for sure is binary and needs to be read as a byte array
+
 	parsers: {},
 
 	registerParser: function(parser)
@@ -12252,27 +12142,27 @@ var Parser = {
 	parse: function(filename,data,options)
 	{
 		options = options || {};
-		var info = this.getResourceInfo(filename);
+		var info = this.getFileFormatInfo(filename);
 		if(options.extension)
 			info.extension = options.extension; //force a format
 		var parser = this.parsers[info.extension];
 		if(!parser)
 		{
-			trace("Perser Error: No parser found for " + info.extension + " format");
+			console.error("Parser Error: No parser found for " + info.extension + " format");
 			return null;
 		}
 
 		var result = null;
 		if(!this.safe_parsing)
-			result = parser.parse(data,options);
+			result = parser.parse(data,options,filename);
 		else
 			try
 			{
-				result = parser.parse(data,options);
+				result = parser.parse(data,options,filename);
 			}
 			catch (err)
 			{
-				trace("Error parsing content", err );
+				console.error("Error parsing content", err );
 				return null;
 			}
 		if(result)
@@ -12326,8 +12216,6 @@ var Parser = {
 	/* extract important Mesh info from vertices (center, radius, bouding box) */
 	computeMeshBounding: function(vertices)
 	{
-		//if(vertices.length > (65536 * 3)) trace("Warning: the number of vertices excedes 65536");
-
 		//compute AABB and useful info
 		var min = [vertices[0],vertices[1],vertices[2]];
 		var max = [vertices[0],vertices[1],vertices[2]];
@@ -12342,13 +12230,9 @@ var Parser = {
 			else if (v[2] > max[2]) max[2] = v[2];
 		}
 
-		var bounding = {};
-		bounding.aabb_min = min;
-		bounding.aabb_max = max;
-		bounding.aabb_center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
-		bounding.aabb_halfsize = [ min[0] - bounding.aabb_center[0], min[1] - bounding.aabb_center[1], min[2] - bounding.aabb_center[2]];
-		bounding.radius = Math.sqrt(bounding.aabb_halfsize[0] * bounding.aabb_halfsize[0] + bounding.aabb_halfsize[1] * bounding.aabb_halfsize[1] + bounding.aabb_halfsize[2] * bounding.aabb_halfsize[2]);
-		return bounding;
+		var center = [(min[0] + max[0]) * 0.5,(min[1] + max[1]) * 0.5, (min[2] + max[2]) * 0.5];
+		var halfsize = [ min[0] - center[0], min[1] - center[1], min[2] - center[2]];
+		return BBox.setCenterHalfsize( BBox.create(), center, halfsize );
 	},
 
 	//takes an string an returns a Uint8Array typed array containing that string
@@ -12383,7 +12267,7 @@ var Parser = {
 	NONATIVE_IMAGE_DATA: "NONATIVE_IMAGE",
 	GENERIC_DATA: "GENERIC",
 	
-	getResourceInfo: function(filename)
+	getFileFormatInfo: function(filename)
 	{
 		var extension = filename.substr( filename.lastIndexOf(".") + 1).toLowerCase();
 		
@@ -12415,101 +12299,6 @@ var Parser = {
 		return r;
 	}
 };
-
-Mesh.fromBinary = function( data_array )
-{
-	var o = null;
-	if(data_array.constructor == ArrayBuffer )
-		o = WBin.load( data_array );
-	else
-		o = data_array;
-
-	var vertex_buffers = {};
-	for(var i in o.vertex_buffers)
-		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
-
-	var index_buffers = {};
-	for(var i in o.index_buffers)
-		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
-
-	var mesh = Mesh.load(vertex_buffers, index_buffers);
-	mesh.info = o.info;
-	mesh.bounding = o.bounding;
-	return mesh;
-}
-
-Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		object_type: "Mesh",
-		info: this.info,
-		bounding: this.bounding,
-		groups: this.groups
-	};
-
-	var vertex_buffers = [];
-	var index_buffers = [];
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-		vertex_buffers.push( stream.name );
-
-		if(stream.name == "vertices")
-			o.info.num_vertices = stream.data.length / 3;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-		index_buffers.push( i );
-	}
-
-	o.vertex_buffers = vertex_buffers;
-	o.index_buffers = index_buffers;
-
-	//create pack file
-	return WBin.create(o, "Mesh");
-}
-
-
-/*
-Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		info: this.info
-	};
-	this.info.num_vertices = this.vertices.length;
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-	}
-
-	//create pack file
-	var pack = new BinaryPack();
-	pack.save(o);
-	return pack.getData().buffer;
-}
-*/
-
 
 
 
@@ -12674,31 +12463,6 @@ var parserASE = {
 };
 Parser.registerParser( parserASE );
 
-var parserBIN = {
-	extension: 'bin',
-	data_type: 'mesh',
-	format: 'binary',
-
-	parse: function(data, options)
-	{
-		//trace("Binary Mesh loading");
-		if(!window.BinaryPack)
-			throw("BinaryPack not imported, no binary formats supported");
-
-		if (typeof(data) == "string")
-		{
-			data = BinaryPack.stringToTypedArray(data);
-		}
-		else 
-			data = new Uint8Array(data); //copy for safety
-
-		var pack = new BinaryPack();
-		var o = pack.load(data);
-
-		return o;
-	}
-};
-Parser.registerParser(parserBIN);
 var parserDAE = {
 	extension: 'dae',
 	data_type: 'scene',
@@ -12706,7 +12470,7 @@ var parserDAE = {
 
 	_xmlroot: null,
 
-	parse: function(data, options)
+	parse: function(data, options, filename)
 	{
 		options = options || {};
 
@@ -12722,8 +12486,7 @@ var parserDAE = {
 		var scene = { 
 			object_type:"SceneTree", 
 			light: null,
-			meshes: {},
-			materials: {},
+			resources: {},
 			root:{ children:[] }
 		};
 
@@ -12734,6 +12497,15 @@ var parserDAE = {
 
 			var node = this.readNode( xmlnodes[i], scene, 0, flip );
 			scene.root.children.push(node);
+		}
+
+		//read animations
+		var animations = this.readAnimations(root, scene);
+		if(animations)
+		{
+			var animations_name = "#animations_" + filename.substr(0,filename.indexOf("."));
+			scene.resources[ animations_name ] = animations;
+			scene.root.animations = animations_name;
 		}
 
 		console.log(scene);
@@ -12765,13 +12537,13 @@ var parserDAE = {
 			if(xmlchild.localName == "instance_geometry")
 			{
 				var url = xmlchild.getAttribute("url");
-				if(!scene.meshes[ url ])
+				if(!scene.resources[ url ])
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
 					{
 						mesh_data.name = url;
-						scene.meshes[url] = mesh_data;
+						scene.resources[url] = mesh_data;
 					}
 				}
 
@@ -12784,7 +12556,7 @@ var parserDAE = {
 					if(xmlmaterial)
 					{
 						var matname = xmlmaterial.getAttribute("symbol");
-						if(scene.materials[matname])
+						if(scene.resources[matname])
 							node.material = matname;
 						else
 						{
@@ -12821,7 +12593,7 @@ var parserDAE = {
 
 					mesh.name = url;
 					node.mesh = url;
-					scene.meshes[url] = mesh;
+					scene.resources[url] = mesh;
 				}
 			}
 
@@ -12897,6 +12669,7 @@ var parserDAE = {
 				material[param] = 1 - material[param]; //reverse 
 		}
 
+		material.object_Type = "Material";
 		return material;
 	},
 
@@ -13083,7 +12856,7 @@ var parserDAE = {
 		var use_indices = false;
 		var xmlmesh = xmlgeometry.querySelector("mesh");
 			
-		//for data sources
+		//get data sources
 		var sources = {};
 		var xmlsources = xmlmesh.querySelectorAll("source");
 		for(var i = 0; i < xmlsources.length; i++)
@@ -13150,6 +12923,7 @@ var parserDAE = {
 		var vertex_remap = [];
 		var indicesArray = [];
 
+		//for every triangles set
 		for(var tris = 0; tris < xmltriangles.length; tris++)
 		{
 			var xml_shape_root = xmltriangles[tris];
@@ -13288,12 +13062,8 @@ var parserDAE = {
 		}
 
 		//extra info
-		var bounding = Parser.computeMeshBounding(mesh.vertices);
-		mesh.bounding = bounding;
-		if( isNaN(bounding.radius) )
-			return null;
-
 		mesh.filename = id;
+		mesh.object_type = "Mesh";
 		return mesh;
 		
 	},
@@ -13532,6 +13302,147 @@ var parserDAE = {
 	},
 	*/
 
+	readAnimations: function(root, scene)
+	{
+		var xmlanimations = root.querySelector("library_animations");
+		if(!xmlanimations) return null;
+
+		var xmlanimation_childs = xmlanimations.childNodes;
+
+		var animations = {
+			object_type: "Animation",
+			tracks: []
+		};
+
+		for(var i = 0; i < xmlanimation_childs.length; ++i)
+		{
+			var xmlanimation = xmlanimation_childs[i];
+			if(xmlanimation.nodeType != 1 ) //no tag
+				continue;
+
+			xmlanimation = xmlanimation.querySelector("animation"); //yes... DAE has animation inside animation...
+			if(!xmlanimation) continue;
+
+			//channels are like animated properties
+			var xmlchannel = xmlanimation.querySelector("channel");
+			if(!xmlchannel) continue;
+
+			var source = xmlchannel.getAttribute("source");
+			var target = xmlchannel.getAttribute("target");
+
+			//sampler, is in charge of the interpolation
+			var xmlsampler = xmlanimation.querySelector("sampler" + source);
+
+			var inputs = {};
+			var sources = {};
+			var params = {};
+			var xmlinputs = xmlsampler.querySelectorAll("input");
+
+			var time_data = null;
+
+			//iterate inputs
+			for(var j = 0; j < xmlinputs.length; j++)
+			{
+				var xmlinput = xmlinputs[j];
+				var source_name =  xmlinput.getAttribute("source");
+				var semantic = xmlinput.getAttribute("semantic");
+
+				//Search for source
+				var xmlsource = xmlanimation.querySelector("source" + source_name);
+				if(!xmlsource)
+					continue;
+
+				var xmlparam = xmlsource.querySelector("param");
+				if(!xmlparam) continue;
+
+				var type = xmlparam.getAttribute("type");
+				inputs[ semantic ] = { source: source_name, type: type };
+
+				var data_array = null;
+
+				if(type == "float" || type == "float4x4")
+				{
+					var xmlfloatarray = xmlsource.querySelector("float_array");
+					var floats = this.readContentAsFloats( xmlfloatarray );
+					sources[ source_name ] = floats;
+					data_array = floats;
+
+				}
+				else
+					continue;
+
+				var param_name = xmlparam.getAttribute("name");
+				if(param_name == "TIME")
+					time_data = data_array;
+				params[ param_name || "OUTPUT" ] = type;
+			}
+
+			//construct animation
+			var path = target.split("/");
+
+			var anim = {}
+			anim.nodename = path[0]; //where it goes
+			anim.property = path[1];
+
+			var element_size = 1;
+			var param_type = params["OUTPUT"];
+			switch(param_type)
+			{
+				case "float": element_size = 1; break;
+				case "float3x3": element_size = 9; break;
+				case "float4x4": element_size = 16; break;
+				default: break;
+			}
+
+			anim.value_size = element_size;
+			anim.duration = time_data[ time_data.length - 1]; //last sample
+
+			var value_data = sources[ inputs["OUTPUT"].source ];
+			if(!value_data) continue;
+
+			//pack data
+			var num_samples = time_data.length;
+			var sample_size = element_size + 1;
+			var anim_data = new Float32Array( num_samples * sample_size );
+
+			for(var j = 0; j < time_data.length; ++j)
+			{
+				anim_data[j * sample_size] = time_data[j]; //set time
+				var value = value_data.subarray( j * element_size, (j+1) * element_size );
+				if(param_type == "float4x4")
+					mat4.transpose(value, value);
+				anim_data.set(value, j * sample_size + 1); //set data
+			}
+
+			anim.data = anim_data;
+			animations.tracks.push(anim);
+
+			/* store per node? no, better do it global
+			var node = this.findNode( scene.root, anim.node );
+			if(node)
+			{
+				if(!node.animations)
+					node.animations = [];
+				node.animations.push(anim);
+			}
+			*/
+		}
+
+		return animations;
+	},		
+
+	findNode: function(root, id)
+	{
+		if(root.id == id) return root;
+		if(root.children)
+			for(var i in root.children)
+			{
+				var ret = this.findNode(root.children[i], id);
+				if(ret) return ret;
+			}
+		return null;
+	},
+
 	//used for skinning and morphing
 	readController: function(id, flip, scene)
 	{
@@ -13705,7 +13616,7 @@ var parserDAE = {
 		{
 			var id = "#" + targets[i];
 			var geometry = this.readGeometry( id, flip );
-			scene.meshes[id] = geometry;
+			scene.resources[id] = geometry;
 			morphs.push([id, weights[i]]);
 		}
 
@@ -14563,6 +14474,9 @@ SceneTree.prototype.configure = function(scene_info)
 		}
 	}
 
+	//if(scene_info.animations)
+	//	this._root.animations = scene_info.animations;
+
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
 }
@@ -14677,107 +14591,17 @@ SceneTree.prototype.getCamera = function()
 	return this._root.camera;
 }
 
-
-/*
-SceneTree.prototype.addNode = function(node, index)
+SceneTree.prototype.getLight = function()
 {
-	//remove from old scene
-	if(node._in_tree && node._in_tree != this)
-		node._in_tree.removeNode(node);
-
-	if(index == undefined)
-		this.nodes.push(node);
-	else
-		this.nodes.splice(index,0,node);
-
-	//generate unique id
-	if(node.id && node.id != -1)
-	{
-		if(this.nodes_by_id[node.id] != null)
-			node.id = node.id + "_" + (Math.random() * 1000).toFixed(0);
-		this.nodes_by_id[node.id] = node;
-	}
-
-	//add to new
-	node._in_tree = this;
-
-	//LEvent.trigger(node,"onAddedToScene", this);
-	node.processActionInComponents("onAddedToScene",this); //send to components
-	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
-	//$(this).trigger("nodeAdded", node);
+	return this._root.light;
 }
-*/
-
-
-/**
-* inserts a Node in the scene
-*
-* @method addNode
-* @param {Object} node the node object
-* @param {Number}[index=null] index to specify if you want to insert it after another node
-*/
-
-/*
-SceneTree.prototype.addNode = function(node, index)
-{
-	//remove from old scene
-	if(node._in_tree && node._in_tree != this)
-		node._in_tree.removeNode(node);
-
-	if(index == undefined)
-		this.nodes.push(node);
-	else
-		this.nodes.splice(index,0,node);
-
-	//generate unique id
-	if(node.id && node.id != -1)
-	{
-		if(this.nodes_by_id[node.id] != null)
-			node.id = node.id + "_" + (Math.random() * 1000).toFixed(0);
-		this.nodes_by_id[node.id] = node;
-	}
-
-	//add to new
-	node._in_tree = this;
-
-	//LEvent.trigger(node,"onAddedToScene", this);
-	node.processActionInComponents("onAddedToScene",this); //send to components
-	LEvent.trigger(this,"nodeAdded", node);
-	LEvent.trigger(this,"change");
-	//$(this).trigger("nodeAdded", node);
-}
-*/
-
-
-/**
-* removes the node from the scene
-*
-* @method removeNode
-* @param {Object} node the node
-* @return {Boolean} returns true if it was found and deleted
-*/
 
 /*
 SceneTree.prototype.removeNode = function(node)
 {
-	if(node.parentNode)
-		node.parentNode.removeChild(node);
-
-	var pos = this.nodes.indexOf(node);
-	if(pos != -1)
-	{
-		this.nodes.splice(pos,1);
-		if(node.id)
-			delete this.nodes_by_id[ node.id ];
-		node._in_tree = null;
-		node.processActionInComponents("onRemovedFromNode",this); //send to components
-		node.processActionInComponents("onRemovedFromScene",this); //send to components
-		LEvent.trigger(this,"nodeRemoved", node);
-		LEvent.trigger(this,"change");
-		return true;
-	}
-	return false;
+	if(!node._in_tree || node._in_tree != this)
+		return;
+	node.parentNode.removeChild(node);
 }
 */
 
@@ -15005,7 +14829,7 @@ SceneTree.prototype.start = function()
 	if(this._state == "running") return;
 
 	this._state = "running";
-	this._start_time = new Date().getTime() * 0.001;
+	this._start_time = window.performance.now() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.sendEventToNodes("start");
 }
@@ -15088,7 +14912,7 @@ SceneTree.prototype.collectData = function()
 		var instance = instances[j];
 		instance.computeNormalMatrix();
 		//compute the axis aligned bounding box
-		if(!(instance.flags & RI_IGNORE_FRUSTRUM))
+		if(!(instance.flags & RI_IGNORE_FRUSTUM))
 			instance.updateAABB();
 	}
 
@@ -15113,7 +14937,7 @@ SceneTree.prototype.update = function(dt)
 {
 	LEvent.trigger(this,"beforeUpdate", this);
 
-	this._global_time = new Date().getTime() * 0.001;
+	this._global_time = window.performance.now() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
@@ -15172,8 +14996,6 @@ SceneTree.prototype.getTime = function()
 {
 	return this._time;
 }
-
-
 
 //****************************************************************************
 
@@ -15287,6 +15109,10 @@ SceneNode.prototype.getResources = function(res, include_children)
 		}
 	}
 
+	//prefab
+	if(this.prefab)
+		res[this.prefab] = LS.Prefab;
+
 	//propagate
 	if(include_children)
 		for(var i in this._children)
@@ -15387,23 +15213,17 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
-// related to materials
-/*
-SceneNode.prototype.setTexture = function(texture_or_filename, channel)
+
+SceneNode.prototype.setPrefab = function(prefab_name)
 {
-	if(!this.material) this.material = new Material();
-	this.material.setTexture(texture_or_filename,channel);
+	this._prefab_name = prefab_name;
+	var prefab = LS.ResourcesManager.resources[prefab_name];
+	if(!prefab)
+		return;
+
+
 }
 
-SceneNode.prototype.getTexture = function(channel) {
-	channel = channel || "diffuse";
-	if(!this.material) return null;
-	var tex_name = this.material.textures[channel];
-	if(tex_name)
-		return ResourcesManager.textures[ tex_name ];
-	return null;
-}
-*/
 
 /**
 * remember clones this node and returns the new copy (you need to add it to the scene to see it)
@@ -15484,6 +15304,15 @@ SceneNode.prototype.configure = function(info)
 	//DEPRECATED: model in matrix format
 	if(info.model) this.transform.fromMatrix( info.model ); 
 
+	if(info.prefab) this.prefab = info.prefab;
+
+	//add animation
+	if(info.animations)
+	{
+		this.animations = info.animations;
+		this.addComponent( new PlayAnimation({animation:this.animations}) );
+	}
+
 	//extra user info
 	if(info.extra)
 		this.extra = info.extra;
@@ -15532,6 +15361,7 @@ SceneNode.prototype.serialize = function()
 	if(this.mesh && typeof(this.mesh) == "string") o.mesh = this.mesh; //do not save procedural meshes
 	if(this.submesh_id != null) o.submesh_id = this.submesh_id;
 	if(this.material) o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+	if(this.prefab) o.prefab = this.prefab;
 
 	if(this.flags) o.flags = cloneObject(this.flags);
 
@@ -15561,15 +15391,6 @@ SceneNode.prototype.serialize = function()
 	LEvent.trigger(this,"serialize",o);
 
 	return o;
-}
-
-//scene graph tree ************************
-
-SceneTree.prototype.removeNode = function(node)
-{
-	if(!node._in_tree || node._in_tree != this)
-		return;
-	node.parentNode.removeChild(node);
 }
 
 SceneNode.prototype._onChildAdded = function(node, recompute_transform)
@@ -15654,6 +15475,257 @@ LS.newCameraNode = function(id)
 //*******************************/
 
 
+
+/**
+* A Prefab behaves as a container of something packed with resources. This allow to have in one single file
+* textures, meshes, etc.
+* @class Prefab
+* @constructor
+*/
+
+function Prefab(o)
+{
+	if(o)
+		this.configure(o);
+}
+
+/**
+* configure the prefab
+* @method configure
+* @param {*} data
+**/
+
+Prefab.prototype.configure = function(data)
+{
+	var prefab_json = data["@json"];
+	var resources_names = data["@resources_name"];
+	this.prefab_json = prefab_json;
+
+	//extract resource names
+	if(resources_names)
+	{
+		var resources = {};
+		for(var i in resources_names)
+			resources[ resources_names[i] ] = data[ resources_names[i] ];
+		this.resources = resources;
+	}
+
+	//store resources in ResourcesManager
+	this.processResources();
+}
+
+Prefab.fromBinary = function(data)
+{
+	if(data.constructor == ArrayBuffer)
+		data = WBin.load(data, true);
+
+	return new Prefab(data);
+}
+
+Prefab.prototype.processResources = function()
+{
+	if(!this.resources)
+		return;
+
+	var resources = this.resources;
+
+	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
+	//another one contained in this Prefab
+	for(var resname in resources)
+	{
+		if( LS.ResourcesManager.resources[resname] )
+			continue; //already loaded
+		LS.ResourcesManager.resources_being_processes[resname] = true;
+	}
+
+	//process and store in ResourcesManager
+	for(var resname in resources)
+	{
+		if( LS.ResourcesManager.resources[resname] )
+			continue; //already loaded
+
+		var resdata = resources[resname];
+		LS.ResourcesManager.processResource(resname,resdata);
+	}
+}
+
+/**
+* Creates an instance of the object inside the prefab
+* @method createObject
+* @return object contained 
+**/
+
+Prefab.prototype.createObject = function()
+{
+	if(!this.prefab_json)
+		return null;
+
+	var conf_data = JSON.parse(this.prefab_json);
+
+	var node = new LS.SceneNode();
+	node.configure(conf_data);
+	ResourcesManager.loadResources( node.getResources({},true) );
+
+	if(this.fullpath)
+		node.prefab = this.fullpath;
+
+	return node;
+}
+
+/**
+* to create a new prefab, it packs all the data an instantiates the resource
+* @method createPrefab
+* @return object contained 
+**/
+
+Prefab.createPrefab = function(filename, node_data, resources)
+{
+	if(!filename) return;
+
+	filename = filename.replace(/ /gi,"_");
+	resources = resources || {};
+
+	node_data.id = null; //remove the id
+	node_data.object_type = "SceneNode";
+
+	var prefab = new Prefab();
+	filename += ".wbin";
+
+	prefab.filename = filename;
+	prefab.resources = resources;
+	prefab.prefab_json = JSON.stringify( node_data );
+
+	//get all the resources and store them
+	var bindata = Prefab.packResources(resources, { "@json": prefab.prefab_json });
+	prefab._original_file = bindata;
+
+	return prefab;
+}
+
+Prefab.packResources = function(resources, base_data)
+{
+	var to_binary = base_data || {};
+	var resources_name = [];
+	for(var i in resources)
+	{
+		var res_name = resources[i];
+		var resource = LS.ResourcesManager.resources[res_name];
+		if(!resource) continue;
+
+		var data = null;
+		if(resource._original_data) //must be string or bytes
+			data = resource._original_data;
+		else
+		{
+			var data_info = LS.ResourcesManager.computeResourceInternalData(resource);
+			data = data_info.data;
+		}
+
+		if(!data)
+		{
+			console.warning("Wrong data in resource");
+			continue;
+		}
+
+		resources_name.push(res_name);
+		to_binary[res_name] = data;
+	}
+
+	to_binary["@resources_name"] = resources_name;
+	return WBin.create( to_binary, "Prefab" );
+}
+
+LS.Prefab = Prefab;
+
+
+/**
+* An Animation is a resource that contains samples of properties over time, similar to animation curves
+* Values could be associated to an specific node.
+* Data is contained in tracks
+*
+* @class Animation
+* @namespace LS
+* @constructor
+*/
+
+function Animation(o)
+{
+	//array of Tracks
+	this.tracks = [];
+	if(o)
+		this.configure(o);
+}
+
+Animation.prototype.configure = function(data)
+{
+	if(data.tracks)
+		for(var i in data.tracks)
+			this.addTrack( data.tracks[i] );
+}
+
+Animation.fromBinary = function(data)
+{
+	if(data.constructor == ArrayBuffer)
+		data = WBin.load(data, true);
+
+	var o = data["@json"];
+	if(o.tracks)
+		for(var i in o.tracks)
+		{
+			var track = o.tracks[i];
+			var bindata = data["@track_" + i];
+			track.data = bindata;
+		}
+
+	return new Animation(o);
+}
+
+Animation.prototype.toBinary = function()
+{
+	var o = {};
+	var track_data = [];
+	for(var i in this.tracks)
+	{
+		var track = this.tracks[i];
+		var bindata = track.data;
+		o["@track_" + i] = bindata;
+		track.data = null;
+		track_data.push(bindata); //to restore after
+	}
+
+	//fill
+	o["@json"] = { tracks: this.tracks };
+
+	//generate the binary
+	var bin = WBin.create(o, "Animation");
+
+	//restore the bin data state
+	for(var i in track_data)
+		this.tracks[i].data = track_data[i];
+
+	return bin;
+}
+
+Animation.prototype.addTrack = function(track)
+{
+	this.tracks.push(track);
+}
+
+
+
+
+LS.Animation = Animation;
+
+
+function Track(o)
+{
+	this.nodename = ""; //nodename
+	this.property = ""; //property
+	this.duration = 0;
+	this.data = null;
+}
+
+Animation.Track = Track;
 /**
 * Context class allows to handle the app context easily without having to glue manually all events
 	There is a list of options

@@ -145,7 +145,7 @@ var Shaders = {
 
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
-		var nocache = ignore_cache ? "?nocache=" + new Date().getTime() + Math.floor(Math.random() * 1000) : "";
+		var nocache = ignore_cache ? "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000) : "";
 		LS.request({
 		  url: url + nocache,
 		  dataType: 'xml',
@@ -358,7 +358,7 @@ var Shaders = {
 String.prototype.hashCode = function(){
     var hash = 0, i, c;
     if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; i++) {
+    for (i = 0, l = this.length; i < l; ++i) {
         c  = this.charCodeAt(i);
         hash  = ((hash<<5)-hash)+c;
         hash |= 0; // Convert to 32bit integer

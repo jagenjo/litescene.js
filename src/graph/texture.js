@@ -31,7 +31,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!tex && this.properties.name[0] != ":")
 		{
 			if(!LGraphTexture.loadTextureCallback && typeof(ResourcesManager) != "undefined")
-				LGraphTexture.loadTextureCallback = ResourcesManager.loadImage.bind(ResourcesManager);
+				LGraphTexture.loadTextureCallback = ResourcesManager.load.bind(ResourcesManager);
 
 			var loader = LGraphTexture.loadTextureCallback;
 			if(loader)
@@ -427,7 +427,7 @@ if(typeof(LiteGraph) != "undefined")
 		gl.disable( gl.DEPTH_TEST );
 		if(this.properties.antialiasing)
 		{
-			var viewport = gl.getParameter(gl.VIEWPORT);
+			var viewport = gl.getViewport(); //gl.getParameter(gl.VIEWPORT);
 			if(tex)	tex.bind(0);
 			var mesh = Mesh.getScreenQuad();
 			LGraphTextureToViewport._shader.uniforms({texture:0, uViewportSize:[tex.width,tex.height], inverseVP: [1/tex.width,1/tex.height] }).draw(mesh);

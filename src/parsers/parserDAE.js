@@ -5,7 +5,7 @@ var parserDAE = {
 
 	_xmlroot: null,
 
-	parse: function(data, options)
+	parse: function(data, options, filename)
 	{
 		options = options || {};
 
@@ -21,8 +21,7 @@ var parserDAE = {
 		var scene = { 
 			object_type:"SceneTree", 
 			light: null,
-			meshes: {},
-			materials: {},
+			resources: {},
 			root:{ children:[] }
 		};
 
@@ -33,6 +32,15 @@ var parserDAE = {
 
 			var node = this.readNode( xmlnodes[i], scene, 0, flip );
 			scene.root.children.push(node);
+		}
+
+		//read animations
+		var animations = this.readAnimations(root, scene);
+		if(animations)
+		{
+			var animations_name = "#animations_" + filename.substr(0,filename.indexOf("."));
+			scene.resources[ animations_name ] = animations;
+			scene.root.animations = animations_name;
 		}
 
 		console.log(scene);
@@ -64,13 +72,13 @@ var parserDAE = {
 			if(xmlchild.localName == "instance_geometry")
 			{
 				var url = xmlchild.getAttribute("url");
-				if(!scene.meshes[ url ])
+				if(!scene.resources[ url ])
 				{
 					var mesh_data = this.readGeometry(url, flip);
 					if(mesh_data)
 					{
 						mesh_data.name = url;
-						scene.meshes[url] = mesh_data;
+						scene.resources[url] = mesh_data;
 					}
 				}
 
@@ -83,7 +91,7 @@ var parserDAE = {
 					if(xmlmaterial)
 					{
 						var matname = xmlmaterial.getAttribute("symbol");
-						if(scene.materials[matname])
+						if(scene.resources[matname])
 							node.material = matname;
 						else
 						{
@@ -120,7 +128,7 @@ var parserDAE = {
 
 					mesh.name = url;
 					node.mesh = url;
-					scene.meshes[url] = mesh;
+					scene.resources[url] = mesh;
 				}
 			}
 
@@ -196,6 +204,7 @@ var parserDAE = {
 				material[param] = 1 - material[param]; //reverse 
 		}
 
+		material.object_Type = "Material";
 		return material;
 	},
 
@@ -382,7 +391,7 @@ var parserDAE = {
 		var use_indices = false;
 		var xmlmesh = xmlgeometry.querySelector("mesh");
 			
-		//for data sources
+		//get data sources
 		var sources = {};
 		var xmlsources = xmlmesh.querySelectorAll("source");
 		for(var i = 0; i < xmlsources.length; i++)
@@ -449,6 +458,7 @@ var parserDAE = {
 		var vertex_remap = [];
 		var indicesArray = [];
 
+		//for every triangles set
 		for(var tris = 0; tris < xmltriangles.length; tris++)
 		{
 			var xml_shape_root = xmltriangles[tris];
@@ -587,12 +597,8 @@ var parserDAE = {
 		}
 
 		//extra info
-		var bounding = Parser.computeMeshBounding(mesh.vertices);
-		mesh.bounding = bounding;
-		if( isNaN(bounding.radius) )
-			return null;
-
 		mesh.filename = id;
+		mesh.object_type = "Mesh";
 		return mesh;
 		
 	},
@@ -831,6 +837,147 @@ var parserDAE = {
 	},
 	*/
 
+	readAnimations: function(root, scene)
+	{
+		var xmlanimations = root.querySelector("library_animations");
+		if(!xmlanimations) return null;
+
+		var xmlanimation_childs = xmlanimations.childNodes;
+
+		var animations = {
+			object_type: "Animation",
+			tracks: []
+		};
+
+		for(var i = 0; i < xmlanimation_childs.length; ++i)
+		{
+			var xmlanimation = xmlanimation_childs[i];
+			if(xmlanimation.nodeType != 1 ) //no tag
+				continue;
+
+			xmlanimation = xmlanimation.querySelector("animation"); //yes... DAE has animation inside animation...
+			if(!xmlanimation) continue;
+
+			//channels are like animated properties
+			var xmlchannel = xmlanimation.querySelector("channel");
+			if(!xmlchannel) continue;
+
+			var source = xmlchannel.getAttribute("source");
+			var target = xmlchannel.getAttribute("target");
+
+			//sampler, is in charge of the interpolation
+			var xmlsampler = xmlanimation.querySelector("sampler" + source);
+
+			var inputs = {};
+			var sources = {};
+			var params = {};
+			var xmlinputs = xmlsampler.querySelectorAll("input");
+
+			var time_data = null;
+
+			//iterate inputs
+			for(var j = 0; j < xmlinputs.length; j++)
+			{
+				var xmlinput = xmlinputs[j];
+				var source_name =  xmlinput.getAttribute("source");
+				var semantic = xmlinput.getAttribute("semantic");
+
+				//Search for source
+				var xmlsource = xmlanimation.querySelector("source" + source_name);
+				if(!xmlsource)
+					continue;
+
+				var xmlparam = xmlsource.querySelector("param");
+				if(!xmlparam) continue;
+
+				var type = xmlparam.getAttribute("type");
+				inputs[ semantic ] = { source: source_name, type: type };
+
+				var data_array = null;
+
+				if(type == "float" || type == "float4x4")
+				{
+					var xmlfloatarray = xmlsource.querySelector("float_array");
+					var floats = this.readContentAsFloats( xmlfloatarray );
+					sources[ source_name ] = floats;
+					data_array = floats;
+
+				}
+				else
+					continue;
+
+				var param_name = xmlparam.getAttribute("name");
+				if(param_name == "TIME")
+					time_data = data_array;
+				params[ param_name || "OUTPUT" ] = type;
+			}
+
+			//construct animation
+			var path = target.split("/");
+
+			var anim = {}
+			anim.nodename = path[0]; //where it goes
+			anim.property = path[1];
+
+			var element_size = 1;
+			var param_type = params["OUTPUT"];
+			switch(param_type)
+			{
+				case "float": element_size = 1; break;
+				case "float3x3": element_size = 9; break;
+				case "float4x4": element_size = 16; break;
+				default: break;
+			}
+
+			anim.value_size = element_size;
+			anim.duration = time_data[ time_data.length - 1]; //last sample
+
+			var value_data = sources[ inputs["OUTPUT"].source ];
+			if(!value_data) continue;
+
+			//pack data
+			var num_samples = time_data.length;
+			var sample_size = element_size + 1;
+			var anim_data = new Float32Array( num_samples * sample_size );
+
+			for(var j = 0; j < time_data.length; ++j)
+			{
+				anim_data[j * sample_size] = time_data[j]; //set time
+				var value = value_data.subarray( j * element_size, (j+1) * element_size );
+				if(param_type == "float4x4")
+					mat4.transpose(value, value);
+				anim_data.set(value, j * sample_size + 1); //set data
+			}
+
+			anim.data = anim_data;
+			animations.tracks.push(anim);
+
+			/* store per node? no, better do it global
+			var node = this.findNode( scene.root, anim.node );
+			if(node)
+			{
+				if(!node.animations)
+					node.animations = [];
+				node.animations.push(anim);
+			}
+			*/
+		}
+
+		return animations;
+	},		
+
+	findNode: function(root, id)
+	{
+		if(root.id == id) return root;
+		if(root.children)
+			for(var i in root.children)
+			{
+				var ret = this.findNode(root.children[i], id);
+				if(ret) return ret;
+			}
+		return null;
+	},
+
 	//used for skinning and morphing
 	readController: function(id, flip, scene)
 	{
@@ -1004,7 +1151,7 @@ var parserDAE = {
 		{
 			var id = "#" + targets[i];
 			var geometry = this.readGeometry( id, flip );
-			scene.meshes[id] = geometry;
+			scene.resources[id] = geometry;
 			morphs.push([id, weights[i]]);
 		}
 

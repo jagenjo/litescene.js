@@ -77,23 +77,25 @@
 			
 
 			//global camera
-			Scene.camera.center = [0,35,0];
-			Scene.camera.eye = [150,40,150];
-			Scene.camera.far = 1000;
-			Scene.camera.near = 1;
+			var camera = Scene.getCamera();
+			camera.center = [0,35,0];
+			camera.eye = [150,40,150];
+			camera.far = 1000;
+			camera.near = 1;
 
 			//light
-			Scene.light.color = [0.6,0.6,0.6];
-			Scene.light.position = [0,100,150];
-			Scene.light.type = Light.SPOT;
-			Scene.light.spot_cone = true;
-			Scene.light.far = 500;
-			Scene.light.near = 20;
-			Scene.light.size = 200;
-			Scene.light.resolution = 2048;
-			Scene.light.cast_shadows = false;
-			Scene.light.hard_shadows = true;
-			Scene.light.shadow_bias = 0.001;
+			var light = Scene.getLight();
+			light.color = [0.6,0.6,0.6];
+			light.position = [0,100,150];
+			light.type = Light.SPOT;
+			light.spot_cone = true;
+			light.far = 500;
+			light.near = 20;
+			light.size = 200;
+			light.resolution = 2048;
+			light.cast_shadows = false;
+			light.hard_shadows = true;
+			light.shadow_bias = 0.001;
 			//Scene.light.projective_texture = "window.png";//"stained-glass.png";
 
 			Scene.loadResources();
@@ -102,8 +104,9 @@
 		ondraw: function()
 		{
 			var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
-			vec3.copy(Scene.camera.eye, [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)]);
-			Scene.render(Scene.current_camera,APP.render_options);
+			var camera = Scene.getCamera();
+			vec3.copy(camera.eye, [15 * (APP.cam_dist + idle),40, 15 * (APP.cam_dist + idle)]);
+			Scene.render(camera, APP.render_options);
 		},
 
 		onupdate: function(dt)
@@ -119,7 +122,7 @@
 		{
 			APP.click_time = new Date().getTime();
 
-			var node = Renderer.getNodeAtCanvasPosition(Scene, e.mousex,e.mousey);
+			var node = Renderer.getNodeAtCanvasPosition(Scene, Scene.getCamera(), e.mousex, e.mousey );
 			if(node && node.interactive)
 			{
 				LEvent.trigger(node,"mousedown",e);
@@ -145,8 +148,8 @@
 				{
 					var node = Scene.getNode("monitor");
 					if(node)
-						node.transform.rotate(e.deltaX,[0,1,0]);
-					APP.cam_dist += e.deltaY * 0.01;
+						node.transform.rotate(e.deltax,[0,1,0]);
+					APP.cam_dist += e.deltay * 0.01;
 					if(APP.cam_dist < 5) APP.cam_dist = 5;
 					else if(APP.cam_dist > 10) APP.cam_dist = 10;
 				}

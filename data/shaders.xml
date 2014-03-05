@@ -442,7 +442,7 @@
 					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
 
 						#ifdef USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap,-R).xyz;
+							reflection_color = textureCube(environment_cubemap,-R, 0.0).xyz;
 						#endif
 						/*
 						#ifdef USE_ENVIRONMENT_TEXTURE
@@ -1112,7 +1112,7 @@
 					vec3 dp1perp = cross( N, dp1 );
 					vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
 					vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-					B *= -1.0; //reverse y, HACK, dont know why but works
+					//B *= -1.0; //reverse y, HACK, dont know why but works
 				 
 					// construct a scale-invariant frame 
 					float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
@@ -1125,7 +1125,7 @@
 					// V, the view vector (vertex to eye)
 					//vec3 map = texture2D(normalmap, texcoord ).xyz;
 					map = map * 255./127. - 128./127.;
-					mat3 TBN = cotangent_frame(N, -V, texcoord);
+					mat3 TBN = cotangent_frame(N, V, texcoord);
 					return normalize(TBN * map);
 				}
 			#endif

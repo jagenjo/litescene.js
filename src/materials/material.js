@@ -625,7 +625,7 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 	if( typeof(texture_or_filename) === "string" ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
-			ResourcesManager.loadImage(texture_or_filename,options, function(texture) {
+			ResourcesManager.load(texture_or_filename,options, function(texture) {
 				that.setTexture(texture, channel);
 				if(options.on_complete)
 					options.on_complete();
@@ -662,7 +662,7 @@ Material.prototype.setTexture = function(texture, channel, uvs) {
 
 	if(!texture) return;
 	if(texture.constructor == String && texture[0] != ":")
-		ResourcesManager.loadImage(texture);
+		ResourcesManager.load(texture);
 }
 
 /**
@@ -704,7 +704,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		ResourcesManager.loadImage( res[i] );
+		ResourcesManager.load( res[i] );
 }
 
 //not implemented yet

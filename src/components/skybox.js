@@ -32,6 +32,8 @@ Skybox.prototype.getResources = function(res)
 
 Skybox.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this._root) return;
+
 	var texture = null;
 	if (this.use_environment)
 		texture = Renderer._current_scene.textures["environment"];
@@ -48,7 +50,6 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mesh = this._mesh = GL.Mesh.cube({size: 10});
 
 	var node = this._root;
-	if(!this._root) return;
 
 	var RI = this._render_instance;
 	if(!RI)
@@ -58,7 +59,15 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 		RI.onPreRender = function(options) { 
 			var cam_pos = options.camera.getEye();
+			mat4.identity(this.matrix);
 			mat4.setTranslation( this.matrix, cam_pos );
+			if(this.node.transform)
+			{
+				var R = this.node.transform.getGlobalRotationMatrix();
+				mat4.multiply( this.matrix, this.matrix, R );
+			}
+
+			//this.updateAABB(); this node doesnt have AABB (its always visible)
 			vec3.copy( this.center, cam_pos );
 		};
 	}
@@ -75,12 +84,8 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
-	RI.disableFlag( RI_CAST_SHADOWS ); //never cast shadows
-	RI.enableFlag( RI_IGNORE_LIGHTS ); //no lights
-	RI.enableFlag( RI_CW ); //no lights
-	RI.disableFlag( RI_DEPTH_WRITE ); 
-	RI.disableFlag( RI_DEPTH_TEST ); 
-	RI.enableFlag( RI_IGNORE_FRUSTRUM );
+	RI.enableFlag( RI_CW | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM | RI_IGNORE_CLIPPING_PLANE); 
+	RI.disableFlag( RI_CAST_SHADOWS | RI_DEPTH_WRITE | RI_DEPTH_TEST ); 
 
 	instances.push(RI);
 }

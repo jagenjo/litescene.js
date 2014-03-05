@@ -7,20 +7,20 @@
 */
 
 //flags enums
-var RI_CULL_FACE =	1;		//two sided
-var RI_CW =		1 << 2; //reverse normals
-var RI_DEPTH_TEST =	1 << 3; 
-var RI_DEPTH_WRITE = 1 << 4; 
-var RI_ALPHA_TEST =	1 << 5; 
-var RI_BLEND = 1 << 6; 
+var RI_CULL_FACE =			1;		//for two sided
+var RI_CW =					1 << 1; //reverse normals
+var RI_DEPTH_TEST =			1 << 2; 
+var RI_DEPTH_WRITE = 		1 << 3; 
+var RI_ALPHA_TEST =			1 << 4; 
+var RI_BLEND = 				1 << 5; 
 
-var RI_CAST_SHADOWS = 1 << 8;	//render in shadowmaps
-var RI_IGNORE_LIGHTS = 1 << 9;	//render without taking into account light info
-var RI_RENDER_2D = 1 << 10;		//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_FRUSTRUM = 1 << 11; //render even when outside of frustrum 
+var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
+var RI_IGNORE_LIGHTS = 		1 << 9;	//render without taking into account light info
+var RI_RENDER_2D = 			1 << 10;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
 
-//var RI_USE_MESH_AS_COLLIDER = 1 << 12; //use mesh to compute ray collisions
-var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
 
 
 //default flags for any instance
@@ -99,11 +99,11 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 
 	if(mesh.bounding)
 	{
-		BBox.setCenterHalfsize(this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
-		this.flags &= ~RI_IGNORE_FRUSTRUM; //test against frustrum
+		this.oobb.set( mesh.bounding ); //copy
+		this.flags &= ~RI_IGNORE_FRUSTUM; //test against frustum
 	}
 	else
-		this.flags |= RI_IGNORE_FRUSTRUM; //no frustrum, no test
+		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
 }
 
 RenderInstance.prototype.setRange = function(start, offset)

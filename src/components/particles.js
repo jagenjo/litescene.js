@@ -477,14 +477,13 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
 	RI.applyNodeFlags();
 
 	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
 
 	instances.push(RI);
-	//return RI;
 }
 
 

@@ -1,5 +1,10 @@
 //TODO: a class to remove the tree methods from SceneTree and SceneNode
-
+/**
+* CompositePattern implements the Composite Pattern, which allows to one class to contain instances of its own class
+* creating a tree-like structure.
+* @class CompositePattern
+* @constructor
+*/
 function CompositePattern()
 {
 	//WARNING! do not add anything here, it will never be called
@@ -8,6 +13,14 @@ function CompositePattern()
 CompositePattern.prototype.compositeCtor = function()
 {
 }
+
+/**
+* Adds one child to this instance
+* @method addChild
+* @param {*} child
+* @param {number} index [optional]  in which position you want to insert it, if not specified it goes to the last position
+* @param {*} options [optional] data to be passed when adding it, used for special cases when moving nodes around
+**/
 
 CompositePattern.prototype.addChild = function(node, index, options)
 {

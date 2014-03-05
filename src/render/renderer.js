@@ -206,7 +206,7 @@ var Renderer = {
 		options = options || {};
 		options.camera = this.active_camera;
 
-		var frustrum_planes = geo.extractPlanes( this._viewprojection_matrix );
+		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
 
 		LEvent.trigger(scene, "beforeRenderPass", options);
 		scene.sendEventToNodes("beforeRenderPass", options);
@@ -239,13 +239,13 @@ var Renderer = {
 		var lights = this._visible_lights;
 		var render_instances = this._visible_instances;
 
-		//for each render instance
+		//compute visibility pass
 		for(var i in render_instances)
 		{
 			//render instance
 			var instance = render_instances[i];
-
 			var node_flags = instance.node.flags;
+			instance._in_camera = false;
 
 			//hidden nodes
 			if(options.is_rt && node_flags.seen_by_reflections == false)
@@ -259,11 +259,26 @@ var Renderer = {
 			if(instance.material.opacity <= 0)
 				continue;
 
+			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
 				instance.onPreRender(options);
 
-			//test visibility against camera frustrum
-			if( !(instance.flags & RI_IGNORE_FRUSTRUM) && geo.frustrumTestBox( frustrum_planes, instance.aabb ) == CLIP_OUTSIDE)
+			//test visibility against camera frustum
+			if( !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+				continue;
+
+			//save visibility info
+			instance._in_camera = true;
+		}
+
+
+		//for each render instance
+		for(var i in render_instances)
+		{
+			//render instance
+			var instance = render_instances[i];
+
+			if(!instance._in_camera)
 				continue;
 
 			//Compute lights affecting this RI
@@ -294,7 +309,7 @@ var Renderer = {
 		LEvent.trigger(scene, "renderScreenSpace", options);
 
 
-		//foreground
+		//foreground object
 		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
 			var texture = null;
@@ -354,7 +369,7 @@ var Renderer = {
 		node_uniforms.u_model = model;
 		node_uniforms.u_normal_model = instance.normal_matrix; 
 
-		//FLAGS
+		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, options);
 
 		//alpha blending flags
@@ -389,7 +404,7 @@ var Renderer = {
 		//multi pass instance rendering
 		var num_lights = lights.length;
 
-		//no lights
+		//no lights rendering (flat light)
 		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || options.ignore_lights;
 		if(!num_lights || ignore_lights)
 		{
@@ -400,6 +415,8 @@ var Renderer = {
 			macros.merge(instance.macros);
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
+			if(options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+				macros.USE_CLIPPING_PLANE = "";
 
 			if( mat.onModifyMacros )
 				mat.onModifyMacros( macros );
@@ -418,7 +435,7 @@ var Renderer = {
 			return;
 		}
 
-
+		//Regular rendering
 		for(var iLight = 0; iLight < num_lights; iLight++)
 		{
 			var light = lights[iLight];
@@ -441,6 +458,8 @@ var Renderer = {
 				macros.merge(mat._macros);
 				macros.merge(instance.macros);
 				macros.merge(light_macros);
+				if(options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+					macros.USE_CLIPPING_PLANE = "";
 
 				if( mat.onModifyMacros )
 					mat.onModifyMacros( macros );
@@ -626,9 +645,6 @@ var Renderer = {
 		if(options.camera.type == Camera.ORTHOGRAPHIC)
 			macros.USE_ORTHOGRAPHIC_CAMERA = "";
 
-		if(options.clipping_plane)
-			macros.USE_CLIPPING_PLANE = "";
-
 		if(options.brightness_factor && options.brightness_factor != 1)
 			macros.USE_BRIGHTNESS_FACTOR = "";
 
@@ -646,7 +662,7 @@ var Renderer = {
 			u_camera_eye: this.active_camera.getEye(),
 			u_camera_planes: [this.active_camera.near, this.active_camera.far],
 			//u_viewprojection: this._viewprojection_matrix,
-			u_time: scene._time || new Date().getTime() * 0.001,
+			u_time: scene._time || window.performance.now() * 0.001,
 			u_brightness_factor: options.brightness_factor != null ? options.brightness_factor : 1,
 			u_colorclip_factor: options.colorclip_factor != null ? options.colorclip_factor : 0,
 			u_ambient_light: scene.ambient_color,
@@ -1009,7 +1025,6 @@ var Renderer = {
 	{
 		var scene = this.current_scene || Scene;
 
-		//trace("Starting Picking at : (" + x + "," + y + ")  T:" + new Date().getTime() );
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
