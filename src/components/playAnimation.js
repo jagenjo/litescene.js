@@ -9,6 +9,7 @@
 function PlayAnimation(o)
 {
 	this.animation = "";
+	this.take = "default";
 	this.playback_speed = 1.0;
 	if(o)
 		this.configure(o);
@@ -19,8 +20,11 @@ PlayAnimation["@animation"] = { widget: "resource" };
 
 PlayAnimation.prototype.configure = function(o)
 {
-	this.animation = o.animation;
-	if(o.playback_speed)
+	if(o.animation)
+		this.animation = o.animation;
+	if(o.take)
+		this.take = o.take;
+	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
 }
 
@@ -29,13 +33,13 @@ PlayAnimation.icon = "mini-icon-reflector.png";
 
 PlayAnimation.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"update",this.onUpdate,this);
+	LEvent.bind(node,"update",this.onUpdate, this);
 }
 
 
 PlayAnimation.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,"update",this.onUpdate,this);
+	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
 PlayAnimation.prototype.onUpdate = function(e)
@@ -47,37 +51,32 @@ PlayAnimation.prototype.onUpdate = function(e)
 
 	var time = Scene.getTime() * this.playback_speed;
 
-	for(var i in animation.tracks)
-	{
-		var track = animation.tracks[i];
-		var nodename = track.nodename;
-		var node = Scene.getNode(nodename);
-		if(!node) continue;
+	var take = animation.takes[ this.take ];
+	if(!take) return;
 
-		var local_time = time % track.duration;
-		var data = track.data;
-		var last_value = null;
-		var value = null;
-		for(var p = 0; p < data.length; p += track.value_size + 1)
-		{
-			var t = data[p];
-			last_value = value;
-			value = data.subarray(p + 1, p + track.value_size + 1);
-			if(t < local_time) continue;
-			break;
-		}
-
-		//var final_value = new Float32Array(value.length);
-
-		switch(track.property)
-		{
-			case "matrix": if(node.transform)
-								node.transform.fromMatrix(value);
-			default: break;
-		}
-	}
-
+	take.actionPerSample( time, this._processSample );
 	Scene.refresh();
+}
+
+PlayAnimation.prototype._processSample = function(nodename, property, value, options)
+{
+	var node = Scene.getNode(nodename);
+	if(!node) 
+		return;
+
+	switch(property)
+	{
+		case "matrix": if(node.transform)
+							node.transform.fromMatrix(value);
+						break;
+		default: break;
+	}
+}
+
+PlayAnimation.prototype.getResources = function(res)
+{
+	if(this.animation)
+		res[ this.animation ] = LS.Animation;
 }
 
 LS.registerComponent(PlayAnimation);

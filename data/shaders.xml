@@ -417,7 +417,7 @@
 					#endif
 
 					NdotL = abs(NdotL);
-					light += light_color * att * NdotL * shadow; 
+					light += light_color * (att * ( NdotL + spec_light ) * shadow); 
 				#endif
 
 				//emissive
@@ -428,7 +428,8 @@
 				#endif
 
 				//FINAL COLOR ************************* 
-				final_color = IN.Albedo * (att * light * shadow) + light_color * spec_light * att;
+				final_color = IN.Albedo * light;
+
 				final_color = max(final_color, vec3(0.0)); //(clamped from 0)
 
 
@@ -874,6 +875,7 @@
 
 				//position
 				gl_Position =  u_mvp * vec4(vertex,1.0);
+				//gl_Position.xy = (v_uvs * 2.0 - 1.0) * gl_Position.w ; // lightmapping
 				v_local_pos = vertex;
 				v_pos = (u_model * vec4(vertex,1.0)).xyz;
 				v_screenpos = gl_Position;
@@ -1542,7 +1544,8 @@
 				#endif
 
 				gl_FragColor = vec4(final_color, alpha); //regular color
-				
+
+				//gl_FragColor.xyz = v_pos;
 				//gl_FragColor = vec4(-E,1.0); //front vector
 				//gl_FragColor = vec4(v_pos * 0.005,1.0); //pos vector
 				//gl_FragColor = vec4(light,1.0);

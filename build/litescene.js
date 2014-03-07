@@ -8266,6 +8266,7 @@ LS.registerComponent(ParticleEmissor);
 function PlayAnimation(o)
 {
 	this.animation = "";
+	this.take = "default";
 	this.playback_speed = 1.0;
 	if(o)
 		this.configure(o);
@@ -8276,8 +8277,11 @@ PlayAnimation["@animation"] = { widget: "resource" };
 
 PlayAnimation.prototype.configure = function(o)
 {
-	this.animation = o.animation;
-	if(o.playback_speed)
+	if(o.animation)
+		this.animation = o.animation;
+	if(o.take)
+		this.take = o.take;
+	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
 }
 
@@ -8286,13 +8290,13 @@ PlayAnimation.icon = "mini-icon-reflector.png";
 
 PlayAnimation.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"update",this.onUpdate,this);
+	LEvent.bind(node,"update",this.onUpdate, this);
 }
 
 
 PlayAnimation.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,"update",this.onUpdate,this);
+	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
 PlayAnimation.prototype.onUpdate = function(e)
@@ -8304,37 +8308,32 @@ PlayAnimation.prototype.onUpdate = function(e)
 
 	var time = Scene.getTime() * this.playback_speed;
 
-	for(var i in animation.tracks)
-	{
-		var track = animation.tracks[i];
-		var nodename = track.nodename;
-		var node = Scene.getNode(nodename);
-		if(!node) continue;
+	var take = animation.takes[ this.take ];
+	if(!take) return;
 
-		var local_time = time % track.duration;
-		var data = track.data;
-		var last_value = null;
-		var value = null;
-		for(var p = 0; p < data.length; p += track.value_size + 1)
-		{
-			var t = data[p];
-			last_value = value;
-			value = data.subarray(p + 1, p + track.value_size + 1);
-			if(t < local_time) continue;
-			break;
-		}
-
-		//var final_value = new Float32Array(value.length);
-
-		switch(track.property)
-		{
-			case "matrix": if(node.transform)
-								node.transform.fromMatrix(value);
-			default: break;
-		}
-	}
-
+	take.actionPerSample( time, this._processSample );
 	Scene.refresh();
+}
+
+PlayAnimation.prototype._processSample = function(nodename, property, value, options)
+{
+	var node = Scene.getNode(nodename);
+	if(!node) 
+		return;
+
+	switch(property)
+	{
+		case "matrix": if(node.transform)
+							node.transform.fromMatrix(value);
+						break;
+		default: break;
+	}
+}
+
+PlayAnimation.prototype.getResources = function(res)
+{
+	if(this.animation)
+		res[ this.animation ] = LS.Animation;
 }
 
 LS.registerComponent(PlayAnimation);
@@ -12751,11 +12750,13 @@ var parserDAE = {
 	{
 		//3ds max coords conversion
 		mat4.transpose(matrix,matrix);
+		return;
 
 		//flip
-		var temp = new Float32Array(matrix.subarray(4,8));
+		var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
 		matrix.set( matrix.subarray(8,12), 4 );
 		matrix.set( temp, 8 );
+
 		matrix[10] *= -1;
 		matrix[14] *= -1;
 	},
@@ -13041,7 +13042,7 @@ var parserDAE = {
 
 
 		//swap coords X and Y
-		if(flip && 1)
+		if(flip && 0)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -13311,8 +13312,11 @@ var parserDAE = {
 
 		var animations = {
 			object_type: "Animation",
-			tracks: []
+			takes: {}
 		};
+
+		var default_take = { tracks: [] };
+		var tracks = default_take.tracks;
 
 		for(var i = 0; i < xmlanimation_childs.length; ++i)
 		{
@@ -13400,34 +13404,31 @@ var parserDAE = {
 			var value_data = sources[ inputs["OUTPUT"].source ];
 			if(!value_data) continue;
 
-			//pack data
+			//Pack data ****************
 			var num_samples = time_data.length;
 			var sample_size = element_size + 1;
 			var anim_data = new Float32Array( num_samples * sample_size );
-
+			//for every sample
 			for(var j = 0; j < time_data.length; ++j)
 			{
 				anim_data[j * sample_size] = time_data[j]; //set time
 				var value = value_data.subarray( j * element_size, (j+1) * element_size );
 				if(param_type == "float4x4")
-					mat4.transpose(value, value);
+				{
+					this.transformMatrix( value );
+					//mat4.transpose(value, value);
+				}
 				anim_data.set(value, j * sample_size + 1); //set data
 			}
 
 			anim.data = anim_data;
-			animations.tracks.push(anim);
-
-			/* store per node? no, better do it global
-			var node = this.findNode( scene.root, anim.node );
-			if(node)
-			{
-				if(!node.animations)
-					node.animations = [];
-				node.animations.push(anim);
-			}
-			*/
+			tracks.push(anim);
 		}
 
+		if(!tracks.length) 
+			return null; //empty animation
+
+		animations.takes["default"] = default_take;
 		return animations;
 	},		
 
@@ -15650,17 +15651,22 @@ LS.Prefab = Prefab;
 
 function Animation(o)
 {
-	//array of Tracks
-	this.tracks = [];
+	this.takes = {}; //packs of tracks
 	if(o)
 		this.configure(o);
 }
 
 Animation.prototype.configure = function(data)
 {
-	if(data.tracks)
-		for(var i in data.tracks)
-			this.addTrack( data.tracks[i] );
+	if(data.takes)
+	{
+		for(var i in data.takes)
+		{
+			var take = data.takes[i];
+			for(var j in take.tracks)
+				this.addTrackToTake( i, new LS.Animation.Track( take.tracks[j] ) );
+		}
+	}
 }
 
 Animation.fromBinary = function(data)
@@ -15669,13 +15675,15 @@ Animation.fromBinary = function(data)
 		data = WBin.load(data, true);
 
 	var o = data["@json"];
-	if(o.tracks)
-		for(var i in o.tracks)
+	for(var i in o.takes)
+	{
+		var take = o.takes[i];
+		for(var j in take.tracks)
 		{
-			var track = o.tracks[i];
-			var bindata = data["@track_" + i];
-			track.data = bindata;
+			var track = take.tracks[j];
+			track.data = data["@track_" + track.data];
 		}
+	}
 
 	return new Animation(o);
 }
@@ -15683,46 +15691,157 @@ Animation.fromBinary = function(data)
 Animation.prototype.toBinary = function()
 {
 	var o = {};
-	var track_data = [];
-	for(var i in this.tracks)
+	var tracks_data = [];
+
+	//we need to remove the bin data to generate the JSON
+	for(var i in this.takes)
 	{
-		var track = this.tracks[i];
-		var bindata = track.data;
-		o["@track_" + i] = bindata;
-		track.data = null;
-		track_data.push(bindata); //to restore after
+		var take = this.takes[i];
+		for(var j in take.tracks)
+		{
+			var track = take.tracks[j];
+			var bindata = track.data;
+			var num = tracks_data.length;
+			o["@track_" + num] = bindata;
+			track.data = num;
+			tracks_data.push(bindata); //to restore after
+		}
 	}
 
-	//fill
-	o["@json"] = { tracks: this.tracks };
-
-	//generate the binary
+	//create the binary
+	o["@json"] = { takes: this.takes };
 	var bin = WBin.create(o, "Animation");
 
-	//restore the bin data state
-	for(var i in track_data)
-		this.tracks[i].data = track_data[i];
+	//restore the bin data state in this instance
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		for(var j in take.tracks)
+		{
+			var track = take.tracks[j];
+			track.data = tracks_data[ track.data ];
+		}
+	}
 
 	return bin;
 }
 
-Animation.prototype.addTrack = function(track)
+Animation.prototype.addTrackToTake = function(takename, track)
 {
-	this.tracks.push(track);
+	var take = this.takes[takename];
+	if(!take)
+		take = this.takes[takename] = new Take();
+	take.tracks.push(track);
 }
-
-
 
 
 LS.Animation = Animation;
 
+/** Represents a set of animations **/
+function Take(o)
+{
+	this.tracks = [];
+	this.duration = 0;
+}
 
+Take.prototype.getPropertiesSample = function(time, result)
+{
+	result = result || [];
+	for(var i in this.tracks)
+	{
+		var track = this.tracks[i];
+		var value = track.getSample(time);
+		result.push([track.nodename, track.property, value ]);
+	}
+	return result;
+}
+
+Take.prototype.actionPerSample = function(time, callback, options)
+{
+	for(var i in this.tracks)
+	{
+		var track = this.tracks[i];
+		var value = track.getSample(time, true);
+		callback(track.nodename, track.property, value, options);
+	}
+}
+
+Animation.Take = Take;
+
+
+/** Represents one track with data over time about one property **/
 function Track(o)
 {
 	this.nodename = ""; //nodename
 	this.property = ""; //property
-	this.duration = 0;
+	this.duration = 0; //length of the animation
+	this.value_size = 0; //how many numbers contains every sample of this property
 	this.data = null;
+
+	if(o)
+		this.configure(o);
+}
+
+Track.prototype.configure = function(data)
+{
+	this.property = data.property;
+	this.duration = data.duration;
+	this.nodename = data.nodename;
+	this.value_size = data.value_size;
+	this.data = data.data;
+}
+
+Track.prototype.getSample = function(time, interpolate)
+{
+	var local_time = time % this.duration;
+	var data = this.data;
+	var last_time = 0;
+
+	var value = data.subarray(1,offset);
+	var last_value = value;
+
+	var value_size = this.value_size;
+	var offset = this.value_size + 1;
+	var current_time = time;
+
+	for(var p = 0, l = data.length; p < l; p += offset)
+	{
+		last_time = current_time;
+		current_time = data[p];
+		last_value = value;
+		value = data.subarray(p + 1, p + offset);
+		if(current_time < local_time) 
+			continue;
+		break;
+	}
+
+	if(!interpolate || last_value == value)
+	{
+		if(value_size == 1)
+			return last_value[0];
+		else
+			return last_value;
+	}
+
+	var factor = (local_time - last_time) / (current_time - last_time);
+
+	if(last_value != null && value != null)
+	{
+		if(value_size == 1)
+			return last_value[0] * (1.0 - factor) +  value[0] * factor;
+		else
+		{
+			if(!this._last_sample)	
+				this._last_sample = new Float32Array( value_size );
+			var result = this._last_sample;
+			for(var i = 0; i < value_size; i++)
+				result[i] = last_value[i] * (1.0 - factor) +  value[i] * factor;
+			return result;
+		}
+	}
+	else if(last_value != null)
+		return last_value;
+	return value;
 }
 
 Animation.Track = Track;

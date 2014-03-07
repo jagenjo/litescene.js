@@ -286,11 +286,13 @@ var parserDAE = {
 	{
 		//3ds max coords conversion
 		mat4.transpose(matrix,matrix);
+		return;
 
 		//flip
-		var temp = new Float32Array(matrix.subarray(4,8));
+		var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
 		matrix.set( matrix.subarray(8,12), 4 );
 		matrix.set( temp, 8 );
+
 		matrix[10] *= -1;
 		matrix[14] *= -1;
 	},
@@ -576,7 +578,7 @@ var parserDAE = {
 
 
 		//swap coords X and Y
-		if(flip && 1)
+		if(flip && 0)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -846,8 +848,11 @@ var parserDAE = {
 
 		var animations = {
 			object_type: "Animation",
-			tracks: []
+			takes: {}
 		};
+
+		var default_take = { tracks: [] };
+		var tracks = default_take.tracks;
 
 		for(var i = 0; i < xmlanimation_childs.length; ++i)
 		{
@@ -935,34 +940,31 @@ var parserDAE = {
 			var value_data = sources[ inputs["OUTPUT"].source ];
 			if(!value_data) continue;
 
-			//pack data
+			//Pack data ****************
 			var num_samples = time_data.length;
 			var sample_size = element_size + 1;
 			var anim_data = new Float32Array( num_samples * sample_size );
-
+			//for every sample
 			for(var j = 0; j < time_data.length; ++j)
 			{
 				anim_data[j * sample_size] = time_data[j]; //set time
 				var value = value_data.subarray( j * element_size, (j+1) * element_size );
 				if(param_type == "float4x4")
-					mat4.transpose(value, value);
+				{
+					this.transformMatrix( value );
+					//mat4.transpose(value, value);
+				}
 				anim_data.set(value, j * sample_size + 1); //set data
 			}
 
 			anim.data = anim_data;
-			animations.tracks.push(anim);
-
-			/* store per node? no, better do it global
-			var node = this.findNode( scene.root, anim.node );
-			if(node)
-			{
-				if(!node.animations)
-					node.animations = [];
-				node.animations.push(anim);
-			}
-			*/
+			tracks.push(anim);
 		}
 
+		if(!tracks.length) 
+			return null; //empty animation
+
+		animations.takes["default"] = default_take;
 		return animations;
 	},		
 
