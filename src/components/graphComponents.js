@@ -24,7 +24,7 @@ function GraphComponent(o)
 	LEvent.bind(this,"trigger", this.trigger, this );	
 }
 
-GraphComponent["@on_event"] = { type:"enum", values: ["start","update","trigger"] };
+GraphComponent["@on_event"] = { type:"enum", values: ["start","render","update","trigger"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -59,33 +59,33 @@ GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
 
-	LEvent.bind(node,"start", this.onStart, this );
-	LEvent.bind(node,"update", this.onUpdate, this );
+	LEvent.bind(node,"start", this.onEvent, this );
+	LEvent.bind(node,"beforeRenderMainPass", this.onEvent, this );
+	LEvent.bind(node,"update", this.onEvent, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,"start", this.onStart, this );
-	LEvent.unbind(node,"update", this.onUpdate, this );
+	LEvent.unbind(node,"start", this.onEvent, this );
+	LEvent.unbind(node,"beforeRenderMainPass", this.onEvent, this );
+	LEvent.unbind(node,"update", this.onEvent, this );
 }
 
 
-GraphComponent.prototype.onStart = function(e)
+GraphComponent.prototype.onEvent = function(e)
 {
-	if(this.on_event == "start")
-		this.runGraph();
-}
+	var type = e.type;
+	if(type == "beforeRenderMainPass")
+		type = "render";
 
-
-GraphComponent.prototype.onUpdate = function(e,dt)
-{
-	if(this.on_event == "update")
+	if(this.on_event == type)
 		this.runGraph();
 }
 
 GraphComponent.prototype.trigger = function(e)
 {
-	this.runGraph();
+	if(this.on_event == "trigger")
+		this.runGraph();
 }
 
 GraphComponent.prototype.runGraph = function()
@@ -126,20 +126,27 @@ function FXGraphComponent(o)
 
 		this._graph_depth_texture_node = LiteGraph.createNode("texture/texture","Depth Buffer");
 		this._graph_depth_texture_node.ignore_remove = true;
-		this._graph_depth_texture_node.pos[1] = 200;
+		this._graph_depth_texture_node.pos[1] = 400;
 
 		this._graph.add( this._graph_color_texture_node );
 		this._graph.add( this._graph_depth_texture_node );
 
 		this._graph_viewport_node = LiteGraph.createNode("texture/toviewport","Viewport");
-		this._graph_viewport_node.pos[0] = 200;
+		this._graph_viewport_node.pos[0] = 500;
 		this._graph.add( this._graph_viewport_node );
 
 		this._graph_color_texture_node.connect(0, this._graph_viewport_node );
 	}
 
 	if(FXGraphComponent.high_precision_format == null)
-		FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+	{
+		if(gl.half_float_ext)
+			FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+		else if(gl.float_ext)
+			FXGraphComponent.high_precision_format = gl.FLOAT;
+		else
+			FXGraphComponent.high_precision_format = gl.UNSIGNED_BYTE;
+	}
 }
 
 FXGraphComponent.icon = "mini-icon-graph.png";
@@ -185,14 +192,14 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,"beforeRender", this.onBeforeRender, this );
-	LEvent.bind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.bind(Scene,"beforeRenderPass", this.onBeforeRender, this );
+	LEvent.bind(Scene,"afterRenderPass", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRender", this.onBeforeRender, this );
-	LEvent.unbind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.unbind(Scene,"beforeRenderPass", this.onBeforeRender, this );
+	LEvent.unbind(Scene,"afterRenderPass", this.onAfterRender, this );
 	Renderer.color_rendertarget = null;
 	Renderer.depth_rendertarget = null;
 }
@@ -217,8 +224,6 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	}
 
 	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
-	if( !gl.half_float_ext )
-		type = gl.UNSIGNED_BYTE;
 
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
@@ -228,7 +233,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && use_depth)
 	{
-		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_SHORT });
+		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 		ResourcesManager.textures[":depth_buffer"] = this.depth_texture;
 	}		
 

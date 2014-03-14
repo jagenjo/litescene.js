@@ -62,6 +62,7 @@ function Context(options)
 
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+	gl.animate();
 }
 
 /**

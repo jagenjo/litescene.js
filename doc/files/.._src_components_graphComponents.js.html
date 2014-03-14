@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -156,9 +172,11 @@ function GraphComponent(o)
 		var graphnode = LiteGraph.createNode(&quot;scene/node&quot;);
 		this._graph.add(graphnode);
 	}
+	
+	LEvent.bind(this,&quot;trigger&quot;, this.trigger, this );	
 }
 
-GraphComponent[&quot;@on_event&quot;] = { type:&quot;enum&quot;, values: [&quot;start&quot;,&quot;update&quot;] };
+GraphComponent[&quot;@on_event&quot;] = { type:&quot;enum&quot;, values: [&quot;start&quot;,&quot;render&quot;,&quot;update&quot;,&quot;trigger&quot;] };
 
 GraphComponent.icon = &quot;mini-icon-graph.png&quot;;
 
@@ -193,27 +211,32 @@ GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
 
-	LEvent.bind(node,&quot;start&quot;, this.onStart, this );
-	LEvent.bind(node,&quot;update&quot;, this.onUpdate, this );
+	LEvent.bind(node,&quot;start&quot;, this.onEvent, this );
+	LEvent.bind(node,&quot;beforeRenderMainPass&quot;, this.onEvent, this );
+	LEvent.bind(node,&quot;update&quot;, this.onEvent, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,&quot;start&quot;, this.onStart, this );
-	LEvent.unbind(node,&quot;update&quot;, this.onUpdate, this );
+	LEvent.unbind(node,&quot;start&quot;, this.onEvent, this );
+	LEvent.unbind(node,&quot;beforeRenderMainPass&quot;, this.onEvent, this );
+	LEvent.unbind(node,&quot;update&quot;, this.onEvent, this );
 }
 
 
-GraphComponent.prototype.onStart = function(e)
+GraphComponent.prototype.onEvent = function(e)
 {
-	if(this.on_event == &quot;start&quot;)
+	var type = e.type;
+	if(type == &quot;beforeRenderMainPass&quot;)
+		type = &quot;render&quot;;
+
+	if(this.on_event == type)
 		this.runGraph();
 }
 
-
-GraphComponent.prototype.onUpdate = function(e,dt)
+GraphComponent.prototype.trigger = function(e)
 {
-	if(this.on_event == &quot;update&quot;)
+	if(this.on_event == &quot;trigger&quot;)
 		this.runGraph();
 }
 
@@ -255,20 +278,27 @@ function FXGraphComponent(o)
 
 		this._graph_depth_texture_node = LiteGraph.createNode(&quot;texture/texture&quot;,&quot;Depth Buffer&quot;);
 		this._graph_depth_texture_node.ignore_remove = true;
-		this._graph_depth_texture_node.pos[1] = 200;
+		this._graph_depth_texture_node.pos[1] = 400;
 
 		this._graph.add( this._graph_color_texture_node );
 		this._graph.add( this._graph_depth_texture_node );
 
 		this._graph_viewport_node = LiteGraph.createNode(&quot;texture/toviewport&quot;,&quot;Viewport&quot;);
-		this._graph_viewport_node.pos[0] = 200;
+		this._graph_viewport_node.pos[0] = 500;
 		this._graph.add( this._graph_viewport_node );
 
 		this._graph_color_texture_node.connect(0, this._graph_viewport_node );
 	}
 
 	if(FXGraphComponent.high_precision_format == null)
-		FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+	{
+		if(gl.half_float_ext)
+			FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+		else if(gl.float_ext)
+			FXGraphComponent.high_precision_format = gl.FLOAT;
+		else
+			FXGraphComponent.high_precision_format = gl.UNSIGNED_BYTE;
+	}
 }
 
 FXGraphComponent.icon = &quot;mini-icon-graph.png&quot;;
@@ -314,21 +344,21 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
-	LEvent.bind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.bind(Scene,&quot;beforeRenderPass&quot;, this.onBeforeRender, this );
+	LEvent.bind(Scene,&quot;afterRenderPass&quot;, this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
-	LEvent.unbind(Scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.unbind(Scene,&quot;beforeRenderPass&quot;, this.onBeforeRender, this );
+	LEvent.unbind(Scene,&quot;afterRenderPass&quot;, this.onAfterRender, this );
 	Renderer.color_rendertarget = null;
 	Renderer.depth_rendertarget = null;
 }
 
 FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 {
-	if(!this._graph) return;
+	if(!this._graph || !Renderer.render_fx) return;
 
 	var use_depth = false;
 	if(this._graph_depth_texture_node &amp;&amp; this._graph_depth_texture_node.isOutputConnected(0))
@@ -338,14 +368,14 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		var v = gl.getParameter(gl.VIEWPORT);
-		width = v[2];
-		height = v[3];
+		width = gl.canvas.width;
+		height = gl.canvas.height;
+		//var v = gl.getParameter(gl.VIEWPORT);
+		//width = v[2];
+		//height = v[3];
 	}
 
 	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
-	if( !gl.half_float_ext )
-		type = gl.UNSIGNED_BYTE;
 
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
@@ -355,7 +385,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) &amp;&amp; use_depth)
 	{
-		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_SHORT });
+		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 		ResourcesManager.textures[&quot;:depth_buffer&quot;] = this.depth_texture;
 	}		
 
@@ -377,7 +407,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 FXGraphComponent.prototype.onAfterRender = function(e,dt)
 {
-	if(!this._graph || !this.enabled) return;
+	if(!this._graph || !this.enabled || !Renderer.render_fx) return;
 
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];

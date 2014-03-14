@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -159,7 +175,7 @@ SkinnedMeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
 SkinnedMeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
 SkinnedMeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
 SkinnedMeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
-	var component = this.component;
+	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
 	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length &lt; 2)
@@ -257,19 +273,19 @@ SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 {
-	var original_vertices = ref_mesh.vertexBuffers[&quot;a_vertex&quot;].data;
-	var weights = ref_mesh.vertexBuffers[&quot;a_weights&quot;].data;
-	var bone_indices = ref_mesh.vertexBuffers[&quot;a_bone_indices&quot;].data;
+	var original_vertices = ref_mesh.getBuffer(&quot;vertices&quot;).data;
+	var weights = ref_mesh.getBuffer(&quot;weights&quot;).data;
+	var bone_indices = ref_mesh.getBuffer(&quot;bone_indices&quot;).data;
 
-	var vertices_buffer = skin_mesh.vertexBuffers[&quot;a_vertex&quot;];
+	var vertices_buffer = skin_mesh.getBuffer(&quot;vertices&quot;);
 	var vertices = vertices_buffer.data;
 
 	//bone matrices
 	var bones = [];
 	for(var i in ref_mesh.bones)
 	{
-		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] );
-		bones.push( mat4.multiply( mat4.create(), ref_mesh.bones[i][1], mat ) );
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+		bones.push( mat4.multiply( mat4.create(), mat, ref_mesh.bones[i][1] ) ); //multiply by the inv bindpose matrix
 	}
 
 	//vertices
@@ -284,8 +300,9 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 
 		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
 
-		mat4.multiplyVec3(v, bmat[0] ,ov);
-		vec3.scale(v,v,w[0]);
+		mat4.multiplyVec3(v, bmat[0], ov);
+		//vec3.scale(v,v,w[0]);
+		/*
 		for(var j = 1; j &lt; 4; ++j)
 			if(w[j] &gt; 0.0)
 			{
@@ -293,10 +310,11 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 				vec3.scale(temp,temp,w[j]);
 				vec3.add(v,v,temp);
 			}
+		*/
 	}
 
 	//upload
-	vertices_buffer.compile();
+	vertices_buffer.compile(gl.STREAM_DRAW);
 }
 
 
@@ -314,7 +332,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	//this mesh doesnt have skinning info
-	if(!mesh.weights || !mesh.bone_indices)
+	if(!mesh.getBuffer(&quot;vertices&quot;) || !mesh.getBuffer(&quot;bone_indices&quot;))
 		return;
 
 	if(this.cpu_skinning)
@@ -323,6 +341,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			this._skinned_mesh = new GL.Mesh();
 			this._skinned_mesh._reference = mesh;
+			var vertex_buffer = mesh.getBuffer(&quot;vertices&quot;);
 
 			//clone 
 			for (var i in mesh.vertexBuffers)
@@ -331,31 +350,31 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 				this._skinned_mesh.indexBuffers[i] = mesh.indexBuffers[i];
 
 			//new ones clonning old ones
-			this._skinned_mesh.addVertexBuffer(&quot;vertices&quot;,&quot;a_vertex&quot;, 3, new Float32Array( mesh.vertices ), gl.STREAM_DRAW );
+			this._skinned_mesh.addVertexBuffer(&quot;vertices&quot;,&quot;a_vertex&quot;, 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
 		}
 
 
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
-		RI.mesh = this._skinned_mesh;
+		RI.setMesh(this._skinned_mesh, this.primitive);
 	}
 	else
-		RI.mesh = mesh;
+		RI.setMesh(mesh, this.primitive);
 
 	//do not need to update
-	RI.matrix.set( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
+	//RI.matrix.set( this._root.transform._global_matrix );
+	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &amp;= ~RI_CULL_FACE;
+	RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
 
 	instances.push(RI);
 	//return RI;

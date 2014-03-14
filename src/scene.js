@@ -51,7 +51,7 @@ Object.defineProperty( SceneTree.prototype, "root", {
 SceneTree.prototype.init = function()
 {
 	this.id = "";
-	this.materials = {}; //shared materials cache
+	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
@@ -152,9 +152,11 @@ SceneTree.prototype.configure = function(scene_info)
 		this.root.configure( { children: scene_info.nodes } );
 
 	//parse materials
+	/*
 	if(scene_info.materials)
 		for(var i in scene_info.materials)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
+	*/
 
 	//legacy
 	if(scene_info.components)
@@ -223,12 +225,14 @@ SceneTree.prototype.serialize = function()
 	o.root = this.root.serialize();
 
 	//add shared materials
+	/*
 	if(this.materials)
 	{
 		o.materials = {};
 		for(var i in this.materials)
 			o.materials[ i ] = this.materials[i].serialize();
 	}
+	*/
 
 	//serialize scene components
 	//this.serializeComponents(o);
@@ -284,9 +288,11 @@ SceneTree.prototype.appendScene = function(scene)
 	//clone: because addNode removes it from scene.nodes array
 	var nodes = scene.root.childNodes;
 
+	/*
 	//bring materials
 	for(var i in scene.materials)
 		this.materials[i] = scene.materials[i];
+	*/
 	
 	//add every node one by one
 	for(var i in nodes)
@@ -921,7 +927,7 @@ SceneNode.prototype.getMaterial = function()
 {
 	if (!this.material) return null;
 	if(this.material.constructor === String)
-		return this._in_tree ? this._in_tree.materials[this.material] : null;
+		return this._in_tree ? LS.ResourcesManager.materials[ this.material ] : null;
 	return this.material;
 }
 

@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -150,7 +166,11 @@ function RealtimeReflector(o)
 	this.clip_offset = 0.5; //to avoid ugly edges near clipping plane
 	this.rt_name = &quot;&quot;;
 	this.use_cubemap = false;
+	this.generate_mipmaps = false;
 	this.use_mesh_info = false;
+	this.offset = vec3.create();
+	this.ignore_this_mesh = true;
+	this.high_precision = false;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
 
@@ -167,13 +187,13 @@ RealtimeReflector.prototype.onAddedToNode = function(node)
 	if(!this._bind_onRenderRT)
 		this._bind_onRenderRT = this.onRenderRT.bind(this);
 
-	LEvent.bind(node,&quot;afterRenderShadows&quot;,this._bind_onRenderRT,this);
+	LEvent.bind(node,&quot;renderReflections&quot;,this._bind_onRenderRT,this);
 }
 
 
 RealtimeReflector.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,&quot;afterRenderShadows&quot;,this._bind_onRenderRT,this);
+	LEvent.unbind(node,&quot;renderReflections&quot;,this._bind_onRenderRT,this);
 }
 
 
@@ -193,14 +213,19 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		this.texture_size = 256;
 
 	var texture_type = this.use_cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type )
-		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type });
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	if(!this._rt || this._rt.width != this.texture_size || this._rt.type != type || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
+	{
+		this._rt = new Texture(this.texture_size,this.texture_size, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		this._rt.mipmaps = this.generate_mipmaps;
+	}
 
+	//compute planes
 	var plane_center = this._root.transform.getGlobalPosition();
 	var plane_normal = this._root.transform.getTop();
 	var cam_eye = camera.getEye();
 	var cam_center = camera.getCenter();
-	var cam_up = camera._up;
+	var cam_up = camera.getUp();
 
 	//use the first vertex and normal from a mesh
 	if(this.use_mesh_info)
@@ -208,15 +233,18 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		var mesh = this._root.getMesh();
 		if(mesh)
 		{
-			plane_center = this._root.transform.transformPointGlobal( [mesh.vertices[0],mesh.vertices[1],mesh.vertices[2]] );
-			plane_normal = this._root.transform.transformVectorGlobal( [mesh.normals[0],mesh.normals[1],mesh.normals[2]] );
+			plane_center = this._root.transform.transformPointGlobal( mesh.vertices.subarray(0,3) );
+			plane_normal = this._root.transform.transformVectorGlobal( mesh.normals.subarray(0,3) );
 		}
 	}
+
+	vec3.add( plane_center, plane_center, this.offset );
 
 	//camera
 	var reflected_camera = new Camera( camera.serialize() );
 	var visible = this._root.flags.visible;
-	this._root.flags.visible = false;
+	if(this.ignore_this_mesh)
+		this._root.flags.visible = false;
 
 	if( !this.use_cubemap ) //planar reflection
 	{
@@ -225,17 +253,25 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		reflected_camera.eye = geo.reflectPointInPlane( cam_eye, plane_center, plane_normal );
 		reflected_camera.center = geo.reflectPointInPlane( cam_center, plane_center, plane_normal );
 		reflected_camera.up = geo.reflectPointInPlane( cam_up, [0,0,0], plane_normal );
+		//reflected_camera.up = cam_up;
 
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
 
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
 	}
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderSceneMeshesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+	}
+
+
+	if(this.generate_mipmaps)
+	{
+		this._rt.bind();
+		gl.generateMipmap(this._rt.texture_type);
 	}
 
 	this._root.flags.visible = visible;
@@ -245,7 +281,9 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 
 	if(!this._root.material) return;
 	
-	this._root.material.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
+	var mat = this._root.getMaterial();
+	if(mat)
+		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
 }
 
 LS.registerComponent(RealtimeReflector);

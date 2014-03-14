@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -236,13 +252,6 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_addNode">addNode</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_clear">clear</a>
 
                                 
@@ -313,13 +322,6 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_removeNode">removeNode</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_render">render</a>
 
                                 
@@ -370,118 +372,6 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_addNode" class="method item">
-    <h3 class="name"><code>addNode</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[index=null]</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l334"><code>..&#x2F;src&#x2F;scene.js:334</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>inserts a Node in the scene</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the node object</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[index=null]</code>
-                        <span class="type">Number</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>index to specify if you want to insert it after another node</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
                     <div id="method_clear" class="method item">
     <h3 class="name"><code>clear</code></h3>
 
@@ -514,7 +404,7 @@
             
         
         
-        <a href="../files/.._src_scene.js.html#l92"><code>..&#x2F;src&#x2F;scene.js:92</code></a>
+        <a href="../files/.._src_scene.js.html#l94"><code>..&#x2F;src&#x2F;scene.js:94</code></a>
         
         </p>
 
@@ -580,7 +470,7 @@ and trigger a &quot;clear&quot; LEvent</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l113"><code>..&#x2F;src&#x2F;scene.js:113</code></a>
+        <a href="../files/.._src_scene.js.html#l115"><code>..&#x2F;src&#x2F;scene.js:115</code></a>
         
         </p>
 
@@ -674,7 +564,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l472"><code>..&#x2F;src&#x2F;scene.js:472</code></a>
+        <a href="../files/.._src_scene.js.html#l393"><code>..&#x2F;src&#x2F;scene.js:393</code></a>
         
         </p>
 
@@ -781,7 +671,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l518"><code>..&#x2F;src&#x2F;scene.js:518</code></a>
+        <a href="../files/.._src_scene.js.html#l439"><code>..&#x2F;src&#x2F;scene.js:439</code></a>
         
         </p>
 
@@ -888,7 +778,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l500"><code>..&#x2F;src&#x2F;scene.js:500</code></a>
+        <a href="../files/.._src_scene.js.html#l421"><code>..&#x2F;src&#x2F;scene.js:421</code></a>
         
         </p>
 
@@ -995,7 +885,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l532"><code>..&#x2F;src&#x2F;scene.js:532</code></a>
+        <a href="../files/.._src_scene.js.html#l453"><code>..&#x2F;src&#x2F;scene.js:453</code></a>
         
         </p>
 
@@ -1101,7 +991,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l546"><code>..&#x2F;src&#x2F;scene.js:546</code></a>
+        <a href="../files/.._src_scene.js.html#l467"><code>..&#x2F;src&#x2F;scene.js:467</code></a>
         
         </p>
 
@@ -1198,7 +1088,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l43"><code>..&#x2F;src&#x2F;scene.js:43</code></a>
+        <a href="../files/.._src_scene.js.html#l44"><code>..&#x2F;src&#x2F;scene.js:44</code></a>
         
         </p>
 
@@ -1268,7 +1158,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l566"><code>..&#x2F;src&#x2F;scene.js:566</code></a>
+        <a href="../files/.._src_scene.js.html#l487"><code>..&#x2F;src&#x2F;scene.js:487</code></a>
         
         </p>
 
@@ -1347,7 +1237,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l236"><code>..&#x2F;src&#x2F;scene.js:236</code></a>
+        <a href="../files/.._src_scene.js.html#l245"><code>..&#x2F;src&#x2F;scene.js:245</code></a>
         
         </p>
 
@@ -1428,113 +1318,6 @@ and load them in bulk using the ResourceManager</p>
 </div>
 
                 
-                    <div id="method_removeNode" class="method item">
-    <h3 class="name"><code>removeNode</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Boolean</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l374"><code>..&#x2F;src&#x2F;scene.js:374</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>removes the node from the scene</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the node</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Boolean</span>:
-                    
-                    <p>returns true if it was found and deleted</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
                     <div id="method_render" class="method item">
     <h3 class="name"><code>render</code></h3>
 
@@ -1567,7 +1350,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l646"><code>..&#x2F;src&#x2F;scene.js:646</code></a>
+        <a href="../files/.._src_scene.js.html#l571"><code>..&#x2F;src&#x2F;scene.js:571</code></a>
         
         </p>
 
@@ -1638,7 +1421,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l671"><code>..&#x2F;src&#x2F;scene.js:671</code></a>
+        <a href="../files/.._src_scene.js.html#l668"><code>..&#x2F;src&#x2F;scene.js:668</code></a>
         
         </p>
 
@@ -1737,7 +1520,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l191"><code>..&#x2F;src&#x2F;scene.js:191</code></a>
+        <a href="../files/.._src_scene.js.html#l198"><code>..&#x2F;src&#x2F;scene.js:198</code></a>
         
         </p>
 
@@ -1818,7 +1601,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l618"><code>..&#x2F;src&#x2F;scene.js:618</code></a>
+        <a href="../files/.._src_scene.js.html#l539"><code>..&#x2F;src&#x2F;scene.js:539</code></a>
         
         </p>
 
@@ -1907,7 +1690,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l632"><code>..&#x2F;src&#x2F;scene.js:632</code></a>
+        <a href="../files/.._src_scene.js.html#l555"><code>..&#x2F;src&#x2F;scene.js:555</code></a>
         
         </p>
 

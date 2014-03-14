@@ -18,6 +18,7 @@ function RealtimeReflector(o)
 	this.use_mesh_info = false;
 	this.offset = vec3.create();
 	this.ignore_this_mesh = true;
+	this.high_precision = false;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
 
@@ -60,9 +61,10 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		this.texture_size = 256;
 
 	var texture_type = this.use_cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	if(!this._rt || this._rt.width != this.texture_size || this._rt.type != type || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
 	{
-		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		this._rt = new Texture(this.texture_size,this.texture_size, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
 		this._rt.mipmaps = this.generate_mipmaps;
 	}
 

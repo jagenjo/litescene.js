@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -177,6 +193,7 @@ function Material(o)
 	this.normalmap_factor = 1.0;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
+	this.use_scene_ambient = true;
 
 	this.textures = {};
 	this.extra_uniforms = {};
@@ -336,7 +353,9 @@ Material.COORDS_WORLDYZ = &quot;worldyz&quot;;
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
 
-Material.available_shaders = [&quot;default&quot;,&quot;lowglobalshader&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
+Material.available_shaders = [&quot;default&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
+
+Material.REFLECTIVE_FLAG = 1;
 
 //not used yet
 Material.prototype.setDirty = function()
@@ -349,17 +368,20 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 {
 	var macros = {};
 
+	/*
 	//iterate through textures in the scene (environment and irradiance)
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
 		if(!texture) continue;
 
-		if(i == &quot;environment&quot;)
-			if(this.reflection_factor &lt;= 0) continue;
+		//if(i == &quot;environment&quot;)
+		//	if(this.reflection_factor &lt;= 0) continue;
+
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -368,12 +390,16 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		if(!texture) continue;
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 		//special cases
+
+		/*
 		if(i == &quot;environment&quot;)
 		{
 			if(this.reflection_factor &lt;= 0) 
 				continue;
 		}
-		else if(i == &quot;normal&quot;)
+		else */
+
+		if(i == &quot;normal&quot;)
 		{
 			if(this.normalmap_factor != 0.0 &amp;&amp; (!this.normalmap_tangent || (this.normalmap_tangent &amp;&amp; gl.derivatives_supported)) )
 			{
@@ -401,7 +427,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 			{
 				macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
 				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMPMAP_FACTOR = &quot;&quot;;
+					macros.USE_BUMP_FACTOR = &quot;&quot;;
 			}
 			continue;
 		}
@@ -420,6 +446,10 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
 	if(this.backlight_factor &gt; 0.001)
 		macros.USE_BACKLIGHT = &quot;&quot;;
+
+	if(this.reflection_factor &gt; 0.0) 
+		macros.USE_REFLECTION = &quot;&quot;;
+
 
 	//extra macros
 	if(this.extra_macros)
@@ -461,8 +491,8 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 	if(light_projective_texture)
 		macros.USE_PROJECTIVE_LIGHT = &quot;&quot;;
 
-	if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
-		macros.USE_AMBIENT_ONLY = &quot;&quot;;
+	//if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
+	//	macros.USE_IGNORE_LIGHT = &quot;&quot;;
 
 	if(light.offset &gt; 0.001)
 		macros.USE_LIGHT_OFFSET = &quot;&quot;;
@@ -507,7 +537,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	if(this.use_scene_ambient)
+		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	else
+		uniforms.u_ambient_color = this.ambient;
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
@@ -522,6 +555,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	//iterate through textures in the scene (environment and irradiance)
+	/*
 	for(var i in scene.textures)
 	{
 		var texture = Material.prototype.getTexture.call(scene, i); //hack
@@ -532,19 +566,19 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture;
 		//last_slot += 1;
 
-		if(i == &quot;environment&quot;)
-		{
-			if(this.reflection_factor &lt;= 0) continue;
-		}
+		
+		//if(i == &quot;environment&quot;)
+		//	if(this.reflection_factor &lt;= 0) continue;
 
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
-		if(texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR)
+		if(texture.type == gl.TEXTURE_2D &amp;&amp; (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 		}
 	}
+	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -559,15 +593,18 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//last_slot += 1;
 
 		//special cases
+		/*
 		if(i == &quot;environment&quot;)
 			if(this.reflection_factor &lt;= 0) continue;
-		else if(i == &quot;normal&quot;)
+		else */
+
+		if(i == &quot;normal&quot;)
 			continue;
 		else if(i == &quot;displacement&quot;)
 			continue;
 		else if(i == &quot;bump&quot;)
 			continue;
-		else if(i == &quot;irradiance&quot;)
+		else if(i == &quot;irradiance&quot; &amp;&amp; texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
@@ -671,6 +708,7 @@ Material.prototype.configure = function(o)
 			case &quot;specular_ontop&quot;:
 			case &quot;normalmap_tangent&quot;:
 			case &quot;reflection_specular&quot;:
+			case &quot;use_scene_ambient&quot;:
 				r = v; 
 				break;
 			//vectors
@@ -708,7 +746,19 @@ Material.prototype.configure = function(o)
 Material.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
+	 o.material_class = getObjectClassName(this);
 	 return o;
+}
+
+
+/**
+* Clone this material (keeping the class)
+* @method clone
+* @return {Material} Material instance
+*/
+Material.prototype.clone = function()
+{
+	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
 }
 
 /**
@@ -727,7 +777,7 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 	if( typeof(texture_or_filename) === &quot;string&quot; ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != &quot;:&quot;)//load if it is not an internal texture
-			ResourcesManager.loadImage(texture_or_filename,options, function(texture) {
+			ResourcesManager.load(texture_or_filename,options, function(texture) {
 				that.setTexture(texture, channel);
 				if(options.on_complete)
 					options.on_complete();
@@ -764,7 +814,7 @@ Material.prototype.setTexture = function(texture, channel, uvs) {
 
 	if(!texture) return;
 	if(texture.constructor == String &amp;&amp; texture[0] != &quot;:&quot;)
-		ResourcesManager.loadImage(texture);
+		ResourcesManager.load(texture);
 }
 
 /**
@@ -806,7 +856,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		ResourcesManager.loadImage( res[i] );
+		LS.ResourcesManager.load( res[i] );
 }
 
 //not implemented yet
@@ -823,10 +873,11 @@ Material.prototype.getRenderer = function()
 Material.prototype.registerMaterial = function(name)
 {
 	this.name = name;
-	Scene.materials[name] = this;
+	LS.ResourcesManager.registerResource(name, this);
 	this.material = name;
 }
 
+LS.registerMaterialClass(Material);
 LS.Material = Material;
     </pre>
 </div>

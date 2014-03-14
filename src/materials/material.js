@@ -704,7 +704,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		ResourcesManager.load( res[i] );
+		LS.ResourcesManager.load( res[i] );
 }
 
 //not implemented yet
@@ -721,7 +721,7 @@ Material.prototype.getRenderer = function()
 Material.prototype.registerMaterial = function(name)
 {
 	this.name = name;
-	Scene.materials[name] = this;
+	LS.ResourcesManager.registerResource(name, this);
 	this.material = name;
 }
 

@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -465,6 +481,20 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_rotateQuat">rotateQuat</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_rotateQuat">rotateQuat</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_scale">scale</a>
 
                                 
@@ -594,13 +624,13 @@
             
                 <li class="arg">
                     
-                        <code>vector</code>
+                        <code>matrix</code>
                     
                 </li>
             
                 <li class="arg">
                     
-                        <code>destination</code>
+                        <code>is_global</code>
                     
                 </li>
             
@@ -633,7 +663,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l657"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:657</code></a>
+        <a href="../files/.._src_components_transform.js.html#l687"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:687</code></a>
         
         </p>
 
@@ -644,8 +674,7 @@
     </div>
 
     <div class="description">
-        <p>Applies the transformation to a vector (rotate but not translate)
-If no destination is specified the transform is applied to vec</p>
+        <p>Applies the transformation using a matrix</p>
 
     </div>
 
@@ -657,14 +686,15 @@ If no destination is specified the transform is applied to vec</p>
             
                 <li class="param">
                     
-                        <code class="param-name">vector</code>
-                        <span class="type">[x,y,z]</span>
+                        <code class="param-name">matrix</code>
+                        <span class="type">Mat4</span>
                     
 
                     
 
                     <div class="param-description">
-                         
+                        <p>with the transform</p>
+
                     </div>
 
                     
@@ -672,8 +702,8 @@ If no destination is specified the transform is applied to vec</p>
             
                 <li class="param">
                     
-                        <code class="param-name">destination</code>
-                        <span class="type">[x,y,z]</span>
+                        <code class="param-name">is_global</code>
+                        <span class="type">Bool</span>
                     
 
                     
@@ -827,7 +857,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l47"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:47</code></a>
+        <a href="../files/.._src_components_transform.js.html#l53"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:53</code></a>
         
         </p>
 
@@ -916,7 +946,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l37"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:37</code></a>
+        <a href="../files/.._src_components_transform.js.html#l43"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:43</code></a>
         
         </p>
 
@@ -1004,7 +1034,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l356"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:356</code></a>
+        <a href="../files/.._src_components_transform.js.html#l362"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:362</code></a>
         
         </p>
 
@@ -1087,7 +1117,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l580"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:580</code></a>
+        <a href="../files/.._src_components_transform.js.html#l610"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:610</code></a>
         
         </p>
 
@@ -1158,7 +1188,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l305"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:305</code></a>
+        <a href="../files/.._src_components_transform.js.html#l253"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:253</code></a>
         
         </p>
 
@@ -1231,7 +1261,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l247"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:247</code></a>
+        <a href="../files/.._src_components_transform.js.html#l311"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:311</code></a>
         
         </p>
 
@@ -1304,7 +1334,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l116"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:116</code></a>
+        <a href="../files/.._src_components_transform.js.html#l122"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:122</code></a>
         
         </p>
 
@@ -1377,7 +1407,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l265"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:265</code></a>
+        <a href="../files/.._src_components_transform.js.html#l271"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:271</code></a>
         
         </p>
 
@@ -1450,7 +1480,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l285"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:285</code></a>
+        <a href="../files/.._src_components_transform.js.html#l291"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:291</code></a>
         
         </p>
 
@@ -1523,7 +1553,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l174"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:174</code></a>
+        <a href="../files/.._src_components_transform.js.html#l180"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:180</code></a>
         
         </p>
 
@@ -1596,7 +1626,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l221"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:221</code></a>
+        <a href="../files/.._src_components_transform.js.html#l227"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:227</code></a>
         
         </p>
 
@@ -1669,7 +1699,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l233"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:233</code></a>
+        <a href="../files/.._src_components_transform.js.html#l239"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:239</code></a>
         
         </p>
 
@@ -1742,7 +1772,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l326"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:326</code></a>
+        <a href="../files/.._src_components_transform.js.html#l332"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:332</code></a>
         
         </p>
 
@@ -1815,7 +1845,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l315"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:315</code></a>
+        <a href="../files/.._src_components_transform.js.html#l321"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:321</code></a>
         
         </p>
 
@@ -1888,7 +1918,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l338"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:338</code></a>
+        <a href="../files/.._src_components_transform.js.html#l344"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:344</code></a>
         
         </p>
 
@@ -1961,7 +1991,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l105"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:105</code></a>
+        <a href="../files/.._src_components_transform.js.html#l111"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:111</code></a>
         
         </p>
 
@@ -2034,7 +2064,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l598"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:598</code></a>
+        <a href="../files/.._src_components_transform.js.html#l628"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:628</code></a>
         
         </p>
 
@@ -2105,7 +2135,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l142"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:142</code></a>
+        <a href="../files/.._src_components_transform.js.html#l148"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:148</code></a>
         
         </p>
 
@@ -2178,7 +2208,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l132"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:132</code></a>
+        <a href="../files/.._src_components_transform.js.html#l138"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:138</code></a>
         
         </p>
 
@@ -2251,7 +2281,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l164"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:164</code></a>
+        <a href="../files/.._src_components_transform.js.html#l170"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:170</code></a>
         
         </p>
 
@@ -2324,7 +2354,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l589"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:589</code></a>
+        <a href="../files/.._src_components_transform.js.html#l619"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:619</code></a>
         
         </p>
 
@@ -2391,7 +2421,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l89"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:89</code></a>
+        <a href="../files/.._src_components_transform.js.html#l95"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:95</code></a>
         
         </p>
 
@@ -2474,7 +2504,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l530"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:530</code></a>
+        <a href="../files/.._src_components_transform.js.html#l560"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:560</code></a>
         
         </p>
 
@@ -2622,7 +2652,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l548"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:548</code></a>
+        <a href="../files/.._src_components_transform.js.html#l578"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:578</code></a>
         
         </p>
 
@@ -2746,7 +2776,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l485"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:485</code></a>
+        <a href="../files/.._src_components_transform.js.html#l491"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:491</code></a>
         
         </p>
 
@@ -2855,7 +2885,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l499"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:499</code></a>
+        <a href="../files/.._src_components_transform.js.html#l505"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:505</code></a>
         
         </p>
 
@@ -2895,6 +2925,182 @@ interpolate the transform between two transforms and stores the result in anothe
                     
                         <code class="param-name">axis</code>
                         <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_rotateQuat" class="method item">
+    <h3 class="name"><code>rotateQuat</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>quaternion</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l519"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:519</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>rotate object in world space using a quat</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">quaternion</code>
+                        <span class="type">Quat</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_rotateQuat" class="method item">
+    <h3 class="name"><code>rotateQuat</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>quaternion</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l531"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:531</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>rotate object in world space using a quat</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">quaternion</code>
+                        <span class="type">Quat</span>
                     
 
                     
@@ -2970,7 +3176,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l513"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:513</code></a>
+        <a href="../files/.._src_components_transform.js.html#l543"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:543</code></a>
         
         </p>
 
@@ -3082,7 +3288,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l74"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:74</code></a>
+        <a href="../files/.._src_components_transform.js.html#l80"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:80</code></a>
         
         </p>
 
@@ -3246,7 +3452,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l405"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:405</code></a>
+        <a href="../files/.._src_components_transform.js.html#l411"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:411</code></a>
         
         </p>
 
@@ -3364,7 +3570,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l422"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:422</code></a>
+        <a href="../files/.._src_components_transform.js.html#l428"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:428</code></a>
         
         </p>
 
@@ -3453,7 +3659,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l393"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:393</code></a>
+        <a href="../files/.._src_components_transform.js.html#l399"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:399</code></a>
         
         </p>
 
@@ -3554,7 +3760,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l434"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:434</code></a>
+        <a href="../files/.._src_components_transform.js.html#l440"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:440</code></a>
         
         </p>
 
@@ -3678,7 +3884,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l608"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:608</code></a>
+        <a href="../files/.._src_components_transform.js.html#l638"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:638</code></a>
         
         </p>
 
@@ -3789,7 +3995,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l621"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:621</code></a>
+        <a href="../files/.._src_components_transform.js.html#l651"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:651</code></a>
         
         </p>
 
@@ -3900,7 +4106,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l635"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:635</code></a>
+        <a href="../files/.._src_components_transform.js.html#l665"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:665</code></a>
         
         </p>
 
@@ -3925,7 +4131,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">vector</code>
-                        <span class="type">x,y,z</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -3940,7 +4146,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">x,y,z</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -4011,7 +4217,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l646"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:646</code></a>
+        <a href="../files/.._src_components_transform.js.html#l676"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:676</code></a>
         
         </p>
 
@@ -4036,7 +4242,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">vector</code>
-                        <span class="type">x,y,z</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -4051,7 +4257,7 @@ If no destination is specified the transform is applied to vec</p>
                 <li class="param">
                     
                         <code class="param-name">destination</code>
-                        <span class="type">x,y,z</span>
+                        <span class="type">Vec3</span>
                     
 
                     
@@ -4128,7 +4334,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l451"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:451</code></a>
+        <a href="../files/.._src_components_transform.js.html#l457"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:457</code></a>
         
         </p>
 
@@ -4258,7 +4464,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l468"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:468</code></a>
+        <a href="../files/.._src_components_transform.js.html#l474"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:474</code></a>
         
         </p>
 
@@ -4376,7 +4582,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l206"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:206</code></a>
+        <a href="../files/.._src_components_transform.js.html#l212"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:212</code></a>
         
         </p>
 
@@ -4455,7 +4661,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l195"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:195</code></a>
+        <a href="../files/.._src_components_transform.js.html#l201"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:201</code></a>
         
         </p>
 

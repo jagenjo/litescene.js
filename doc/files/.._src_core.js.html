@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -186,6 +202,29 @@ var LS = {
 		}
 	},
 
+	/**
+	* Contains all the registered material classes
+	* 
+	* @property MaterialClasses
+	* @type {Object}
+	* @default {}
+	*/
+	MaterialClasses: {},
+
+	/**
+	* Register a component so it is listed when searching for new components to attach
+	*
+	* @method registerMaterialClass
+	* @param {ComponentClass} comp component class to register
+	*/
+	registerMaterialClass: function(material_class) { 
+		//register
+		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+		//event
+		LEvent.trigger(LS,&quot;materialclass_registered&quot;,material_class);
+		material_class.resource_type = &quot;Material&quot;;
+	},	
+
 	_configure: function(o) { LS.cloneObject(o, this); },
 	_serialize: function() { return LS.cloneObject(this); },
 
@@ -199,6 +238,8 @@ var LS = {
 	*/
 	request: function(request)
 	{
+		if(typeof(request) === &quot;string&quot;)
+			throw(&quot;LS.request expects object, not string. Use LS.get or LS.getJSON&quot;);
 		var dataType = request.dataType || &quot;text&quot;;
 		if(dataType == &quot;json&quot;) //parse it locally
 			dataType = &quot;text&quot;;
@@ -232,6 +273,14 @@ var LS = {
         xhr.onload = function(load)
 		{
 			var response = this.response;
+			if(this.status != 200)
+			{
+				var err = &quot;Error &quot; + this.status;
+				if(request.error)
+					request.error(err);
+				return;
+			}
+
 			if(request.dataType == &quot;json&quot;) //chrome doesnt support json format
 			{
 				try
@@ -259,17 +308,46 @@ var LS = {
 			}
 			if(request.success)
 				request.success.call(this, response);
+			LEvent.trigger(xhr,&quot;done&quot;,response);
 		};
-        xhr.onerror = request.error;
+        xhr.onerror = function(err) {
+			if(request.error)
+				request.error(err);
+			LEvent.trigger(this,&quot;fail&quot;, err);
+		}
         xhr.send(request.data);
+
 		return xhr;
 
 		//return $.ajax(request);
+	},
+
+	get: function(url, data)
+	{
+		return LS.request({url:url, data:data});
+	},
+
+	getJSON: function(url, data)
+	{
+		return LS.request({url:url, data:data, dataType:&quot;json&quot;});
 	}
 };
 
+//simple promises
+XMLHttpRequest.prototype.done = function(callback)
+{
+	LEvent.bind(this,&quot;done&quot;, function(e,err) { callback(err); } );
+	return this;
+}
+
+XMLHttpRequest.prototype.fail = function(callback)
+{
+	LEvent.bind(this,&quot;fail&quot;, function(e,err) { callback(err); } );
+	return this;
+}
+
 /**
-* copy the properties of one class into another class
+* copy the properties (methods and attributes) of origin class into target class
 * @method extendClass
 * @param {Class} origin
 * @param {Class} target
@@ -278,10 +356,14 @@ var LS = {
 function extendClass( origin, target ) {
 	for(var i in origin) //copy class properties
 		target[i] = origin[i];
+
 	if(origin.prototype) //copy prototype properties
 		for(var i in origin.prototype) //only enumerables
 		{
 			if(!origin.prototype.hasOwnProperty(i))
+				continue;
+
+			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
 				continue;
 
 			if(origin.prototype.__lookupGetter__(i))
@@ -327,7 +409,7 @@ function cloneObject(object, target)
 			if( o[i] &amp;&amp; o[i].constructor == Float32Array ) //reuse old container
 				o[i].set(v);
 			else
-				o[i] = v.slice(0); //clone array
+				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 		}
 		else //slow but safe
 			o[i] = JSON.parse( JSON.stringify(v) );
@@ -355,6 +437,13 @@ function getObjectClassName(obj) {
 }
 LS.getObjectClassName = getObjectClassName;
 
+
+/**
+* Returns an string with the class name
+* @method getClassName
+* @param {Object} class object
+* @return {String} returns the string with the name
+*/
 function getClassName(obj) {
     if (obj &amp;&amp; obj.toString) {
         var arr = obj.toString().match(
@@ -368,7 +457,68 @@ function getClassName(obj) {
 }
 LS.getClassName = getClassName;
 
+/**
+* Returns the attributes of one object and the type
+* @method getObjectAttributes
+* @param {Object} object
+* @return {Object} returns object with attribute name and its type
+*/
 
+function getObjectAttributes(object)
+{
+	if(object.getAttributes)
+		return object.getAttributes();
+	var class_object = object.constructor;
+	if(class_object.attributes)
+		return class_object.attributes;
+
+	var o = {};
+	for(var i in object)
+	{
+		//ignore some
+		if(i[0] == &quot;_&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private)
+			continue;
+
+		if(class_object != Object)
+		{
+			var hint = class_object[&quot;@&quot;+i];
+			if(hint &amp;&amp; hint.type)
+			{
+				o[i] = hint.type;
+				continue;
+			}
+		}
+
+		var v = object[i];
+		if(v == null)
+			o[i] = null;
+		else if ( isFunction(v) )
+			continue;
+		else if (  v.constructor === Number )
+			o[i] = &quot;number&quot;;
+		else if ( v.constructor === String )
+			o[i] = &quot;string&quot;;
+		else if ( v.buffer &amp;&amp; v.buffer.constructor === ArrayBuffer ) //typed array
+		{
+			if(v.length == 2)
+				o[i] = &quot;vec2&quot;;
+			else if(v.length == 3)
+				o[i] = &quot;vec3&quot;;
+			else if(v.length == 4)
+				o[i] = &quot;vec4&quot;;
+			else if(v.length == 9)
+				o[i] = &quot;mat3&quot;;
+			else if(v.length == 16)
+				o[i] = &quot;mat4&quot;;
+			else
+				o[i] = &quot;*&quot;;
+		}
+		else
+			o[i] = &quot;*&quot;;
+	}
+	return o;
+}
+LS.getObjectAttributes = getObjectAttributes;
 
 
 //used to generate resources that doesnt come from files (procedural textures, meshes, etc)
@@ -454,6 +604,9 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
 	return result;
 }
+
+
+
 
     </pre>
 </div>

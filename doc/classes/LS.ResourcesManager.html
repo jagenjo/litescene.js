@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -237,7 +253,28 @@ It also contains the parsers and methods in charge of processing them</p>
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
+                                <a href="#method_computeResourceInternalData">computeResourceInternalData</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getBasename">getBasename</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getExtension">getExtension</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getFilename">getFilename</a>
 
                                 
                                 
@@ -265,6 +302,13 @@ It also contains the parsers and methods in charge of processing them</p>
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_isLoading">isLoading</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_load">load</a>
 
                                 
@@ -272,35 +316,7 @@ It also contains the parsers and methods in charge of processing them</p>
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_loadImage">loadImage</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_loadMesh">loadMesh</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_loadResources">loadResources</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_processImage">processImage</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_processMesh">processMesh</a>
 
                                 
                                 
@@ -341,6 +357,227 @@ It also contains the parsers and methods in charge of processing them</p>
         
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
+
+                
+                    <div id="method_computeResourceInternalData" class="method item">
+    <h3 class="name"><code>computeResourceInternalData</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>resource</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l368"><code>..&#x2F;src&#x2F;resourcesManager.js:368</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns an object with a representation of the resource internal data
+The order to obtain that object is:
+1. test for _original_file (File or Blob)
+2. test for _original_data (ArrayBuffer)
+3. toBinary() (ArrayBuffer)
+4. toBlob() (Blob)
+5. toBase64() (String)
+6. serialize() (Object in JSON format)
+7. data property 
+8. JSON.stringify(...)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">resource</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>it has two fields: data and encoding</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getBasename" class="method item">
+    <h3 class="name"><code>getBasename</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>fullpath</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l127"><code>..&#x2F;src&#x2F;resourcesManager.js:127</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the filename without the extension</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">fullpath</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>filename extension</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
 
                 
                     <div id="method_getExtension" class="method item">
@@ -389,7 +626,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l59"><code>..&#x2F;src&#x2F;resourcesManager.js:59</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l91"><code>..&#x2F;src&#x2F;resourcesManager.js:91</code></a>
         
         </p>
 
@@ -413,6 +650,112 @@ It also contains the parsers and methods in charge of processing them</p>
                 <li class="param">
                     
                         <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>filename extension</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getFilename" class="method item">
+    <h3 class="name"><code>getFilename</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>fullpath</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l110"><code>..&#x2F;src&#x2F;resourcesManager.js:110</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the filename from a full path</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">fullpath</code>
                         <span class="type">String</span>
                     
 
@@ -495,7 +838,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l557"><code>..&#x2F;src&#x2F;resourcesManager.js:557</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l501"><code>..&#x2F;src&#x2F;resourcesManager.js:501</code></a>
         
         </p>
 
@@ -599,7 +942,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l37"><code>..&#x2F;src&#x2F;resourcesManager.js:37</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l45"><code>..&#x2F;src&#x2F;resourcesManager.js:45</code></a>
         
         </p>
 
@@ -706,7 +1049,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l570"><code>..&#x2F;src&#x2F;resourcesManager.js:570</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l514"><code>..&#x2F;src&#x2F;resourcesManager.js:514</code></a>
         
         </p>
 
@@ -754,6 +1097,77 @@ It also contains the parsers and methods in charge of processing them</p>
                 
                     
                         <span class="type">Texture</span>:
+                    
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_isLoading" class="method item">
+    <h3 class="name"><code>isLoading</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l450"><code>..&#x2F;src&#x2F;resourcesManager.js:450</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Tells if it is loading resources</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Boolean</span>:
                     
                 
             </div>
@@ -818,7 +1232,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l76"><code>..&#x2F;src&#x2F;resourcesManager.js:76</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l161"><code>..&#x2F;src&#x2F;resourcesManager.js:161</code></a>
         
         </p>
 
@@ -829,7 +1243,7 @@ It also contains the parsers and methods in charge of processing them</p>
     </div>
 
     <div class="description">
-        <p>Loads a generic resource, the type will be inferet from the extension</p>
+        <p>Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed</p>
 
     </div>
 
@@ -899,276 +1313,6 @@ It also contains the parsers and methods in charge of processing them</p>
 </div>
 
                 
-                    <div id="method_loadImage" class="method item">
-    <h3 class="name"><code>loadImage</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>url</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[on_complete=null]</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[options={}]</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_resourcesManager.js.html#l303"><code>..&#x2F;src&#x2F;resourcesManager.js:303</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Loads an Image from the internet and calls processImage (it the image is already loaded it skips the loading)</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">url</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>where the mesh is located (if its a relative url it depends on the path attribute</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[on_complete=null]</code>
-                        <span class="type">Function</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>callback when the image is loaded, uploaded to GPU and cached</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[options={}]</code>
-                        <span class="type">Object</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>options to apply to the loaded image</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_loadMesh" class="method item">
-    <h3 class="name"><code>loadMesh</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>url</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[options={}]</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[on_complete=null]</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_resourcesManager.js.html#l178"><code>..&#x2F;src&#x2F;resourcesManager.js:178</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Loads a Mesh from url (in case it is already cached it skips the loading)</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">url</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>where the mesh is located (if its a relative url it depends on the path attribute</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[options={}]</code>
-                        <span class="type">Object</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>options to apply to the loaded image</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[on_complete=null]</code>
-                        <span class="type">Function</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>callback when the mesh is loaded and cached</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
                     <div id="method_loadResources" class="method item">
     <h3 class="name"><code>loadResources</code></h3>
 
@@ -1217,7 +1361,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l501"><code>..&#x2F;src&#x2F;resourcesManager.js:501</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l143"><code>..&#x2F;src&#x2F;resourcesManager.js:143</code></a>
         
         </p>
 
@@ -1281,287 +1425,6 @@ It also contains the parsers and methods in charge of processing them</p>
 </div>
 
                 
-                    <div id="method_processImage" class="method item">
-    <h3 class="name"><code>processImage</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>filename</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>data</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code class="optional">[options={}]</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_resourcesManager.js.html#l400"><code>..&#x2F;src&#x2F;resourcesManager.js:400</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Takes image raw data and creates a propper Texture instance, caches it and launch the associated events</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">filename</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the filename to process this raw data</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">data</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>raw data of the image (could be an Image tag or a Canvas tag)</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name optional">[options={}]</code>
-                        <span class="type">Object</span>
-                        <span class="flag optional" title="This parameter is optional.">optional</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>options to process the data</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>the Texture instance</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_processMesh" class="method item">
-    <h3 class="name"><code>processMesh</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>filename</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>data</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_resourcesManager.js.html#l255"><code>..&#x2F;src&#x2F;resourcesManager.js:255</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Takes mesh raw data and creates a propper Mesh instance (uploads to GPU), caches it and launch the associated events</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">filename</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the filename to process this raw data</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">data</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>raw data of the mesh</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>the mesh instance</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
                     <div id="method_processResource" class="method item">
     <h3 class="name"><code>processResource</code></h3>
 
@@ -1616,7 +1479,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l146"><code>..&#x2F;src&#x2F;resourcesManager.js:146</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l243"><code>..&#x2F;src&#x2F;resourcesManager.js:243</code></a>
         
         </p>
 
@@ -1627,7 +1490,7 @@ It also contains the parsers and methods in charge of processing them</p>
     </div>
 
     <div class="description">
-        <p>Process resource (most cases to upload it to the GPU)</p>
+        <p>Process resource: transform some data in an Object ready to use and stores it (in most cases uploads it to the GPU)</p>
 
     </div>
 
@@ -1744,7 +1607,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l531"><code>..&#x2F;src&#x2F;resourcesManager.js:531</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l338"><code>..&#x2F;src&#x2F;resourcesManager.js:338</code></a>
         
         </p>
 
@@ -1755,7 +1618,7 @@ It also contains the parsers and methods in charge of processing them</p>
     </div>
 
     <div class="description">
-        <p>Stores the resource in the manager containers</p>
+        <p>Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.</p>
 
     </div>
 
@@ -1837,7 +1700,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l47"><code>..&#x2F;src&#x2F;resourcesManager.js:47</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l55"><code>..&#x2F;src&#x2F;resourcesManager.js:55</code></a>
         
         </p>
 

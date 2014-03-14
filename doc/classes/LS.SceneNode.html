@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -138,7 +154,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_scene.js.html#l725"><code>..&#x2F;src&#x2F;scene.js:725</code></a>
+            Defined in: <a href="../files/.._src_scene.js.html#l720"><code>..&#x2F;src&#x2F;scene.js:720</code></a>
         </div>
     
 
@@ -200,7 +216,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l725"><code>..&#x2F;src&#x2F;scene.js:725</code></a>
+        <a href="../files/.._src_scene.js.html#l720"><code>..&#x2F;src&#x2F;scene.js:720</code></a>
         
         </p>
 
@@ -271,13 +287,6 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_addChild">addChild</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_clone">clone</a>
 
                                 
@@ -286,20 +295,6 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
                         
                             <li class="index-item method">
                                 <a href="#method_configure">configure</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_removeChild">removeChild</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_removeChild">removeChild</a>
 
                                 
                                 
@@ -333,95 +328,6 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
         
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
-
-                
-                    <div id="method_addChild" class="method item">
-    <h3 class="name"><code>addChild</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l1138"><code>..&#x2F;src&#x2F;scene.js:1138</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Adds to this node a child node (use it carefully)</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the node to add as child</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
 
                 
                     <div id="method_clone" class="method item">
@@ -460,7 +366,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l935"><code>..&#x2F;src&#x2F;scene.js:935</code></a>
+        <a href="../files/.._src_scene.js.html#l946"><code>..&#x2F;src&#x2F;scene.js:946</code></a>
         
         </p>
 
@@ -539,7 +445,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l965"><code>..&#x2F;src&#x2F;scene.js:965</code></a>
+        <a href="../files/.._src_scene.js.html#l978"><code>..&#x2F;src&#x2F;scene.js:978</code></a>
         
         </p>
 
@@ -570,184 +476,6 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
 
                     <div class="param-description">
                         <p>the object with all the info (comes from the serialize method)</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_removeChild" class="method item">
-    <h3 class="name"><code>removeChild</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l1189"><code>..&#x2F;src&#x2F;scene.js:1189</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Removes a node child from this node, it keeps it in the bottom level</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the node to remove</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_removeChild" class="method item">
-    <h3 class="name"><code>removeChild</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l1217"><code>..&#x2F;src&#x2F;scene.js:1217</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Removes a node child from this node</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>the node to remove</p>
 
                     </div>
 
@@ -800,7 +528,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l1037"><code>..&#x2F;src&#x2F;scene.js:1037</code></a>
+        <a href="../files/.._src_scene.js.html#l1065"><code>..&#x2F;src&#x2F;scene.js:1065</code></a>
         
         </p>
 
@@ -884,7 +612,7 @@ it contains info about the components too</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l773"><code>..&#x2F;src&#x2F;scene.js:773</code></a>
+        <a href="../files/.._src_scene.js.html#l768"><code>..&#x2F;src&#x2F;scene.js:768</code></a>
         
         </p>
 

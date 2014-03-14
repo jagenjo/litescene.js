@@ -800,7 +800,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addInput("Distance","number");
 		this.addInput("Range","number");
 		this.addOutput("Texture","Texture");
-		this.properties = { distance:100, range: 50 };
+		this.properties = { distance:100, range: 50, high_precision: false };
 
 		if(!LGraphTextureDepthRange._shader)
 			LGraphTextureDepthRange._shader = new GL.Shader( LGraphTextureDepthRange.vertex_shader, LGraphTextureDepthRange.pixel_shader );
@@ -814,8 +814,13 @@ if(typeof(LiteGraph) != "undefined")
 		var tex = this.getInputData(0);
 		if(!tex) return;
 
-		if(!this._temp_texture || this._temp_texture.width != tex.width || this._temp_texture.height != tex.height)
-			this._temp_texture = new GL.Texture( tex.width, tex.height, { format: gl.RGBA, filter: gl.LINEAR });
+		var precision = gl.UNSIGNED_BYTE;
+		if(this.properties.high_precision)
+			precision = gl.half_float_ext ? gl.HALF_FLOAT_OES : gl.FLOAT;			
+
+		if(!this._temp_texture || this._temp_texture.type != precision ||
+			this._temp_texture.width != tex.width || this._temp_texture.height != tex.height)
+			this._temp_texture = new GL.Texture( tex.width, tex.height, { type: precision, format: gl.RGBA, filter: gl.LINEAR });
 
 		//iterations
 		var distance = this.properties.distance;

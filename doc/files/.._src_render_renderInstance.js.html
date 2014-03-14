@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -143,37 +159,57 @@
 */
 
 //flags enums
-var RI_CULL_FACE =	1;		//two sided
-var RI_CW =		1 &lt;&lt; 2; //reverse normals
-var RI_DEPTH_TEST =	1 &lt;&lt; 3; 
-var RI_DEPTH_WRITE = 1 &lt;&lt; 4; 
-var RI_ALPHA_TEST =	1 &lt;&lt; 5; 
-var RI_BLEND = 1 &lt;&lt; 6; 
+var RI_CULL_FACE =			1;		//for two sided
+var RI_CW =					1 &lt;&lt; 1; //reverse normals
+var RI_DEPTH_TEST =			1 &lt;&lt; 2; 
+var RI_DEPTH_WRITE = 		1 &lt;&lt; 3; 
+var RI_ALPHA_TEST =			1 &lt;&lt; 4; 
+var RI_BLEND = 				1 &lt;&lt; 5; 
 
-var RI_CAST_SHADOWS = 1 &lt;&lt; 8;
+var RI_CAST_SHADOWS = 		1 &lt;&lt; 8;	//render in shadowmaps
+var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 9;	//render without taking into account light info
+var RI_RENDER_2D = 			1 &lt;&lt; 10;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum 
+
+var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 12; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 13; //ignore the plane clipping (in reflections)
+
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
+var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
 
 function RenderInstance(node, component)
 {
-	this._key = &quot;&quot;;
-	this._uid = LS.generateUId();
-	this.mesh = null;
-	this.node = node;
-	this.component = component;
+	this._key = &quot;&quot;; //not used yet
+	this._uid = LS.generateUId(); //unique identifier for this RI
+
+	//info about the mesh
+	this.vertex_buffers = null;
+	this.index_buffer = null;
+	this.wireframe_index_buffer = null;
+	this.range = new Int32Array([0,-1]); //start, offset
+	this.mesh = null; //shouldnt be used, but just in case
 	this.primitive = gl.TRIANGLES;
 
+	//where does it come from
+	this.node = node;
+	this.component = component;
+	this.priority = 10; //instances are rendered from higher to lower priority
+
+	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
 
+	//transformation
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
 	this.center = vec3.create();
-	this.oobb_center = vec3.create();
-	this.oobb_halfsize = vec3.create();
-	this.aabb_center = vec3.create();
-	this.aabb_halfsize = vec3.create();
 
+	//for visibility computation
+	this.oobb = BBox.create(); //object space bounding box
+	this.aabb = BBox.create(); //axis aligned bounding box
+
+	//info about the material
 	this.material = null;
 
 	//globals, never reseted
@@ -186,6 +222,46 @@ RenderInstance.prototype.generateKey = function(step, options)
 {
 	this._key = step + &quot;|&quot; + this.node._uid + &quot;|&quot; + this.material._uid + &quot;|&quot;;
 	return this._key;
+}
+
+RenderInstance.prototype.setMesh = function(mesh, primitive)
+{
+	if( !primitive &amp;&amp; primitive != 0)
+		primitive = gl.TRIANGLES;
+
+	this.mesh = mesh;
+	this.primitive = primitive;
+	this.vertex_buffers = mesh.vertexBuffers;
+
+	switch(primitive)
+	{
+		case gl.TRIANGLES: 
+			this.index_buffer = mesh.indexBuffers[&quot;triangles&quot;]; //works for indexed and non-indexed
+			break;
+		case gl.LINES: 
+			if(!mesh.indexBuffers[&quot;lines&quot;])
+				mesh.computeWireframe();
+			this.index_buffer = mesh.indexBuffers[&quot;lines&quot;];
+			break;
+		case gl.POINTS: 
+		default:
+			this.index_buffer = null;
+			break;
+	}
+
+	if(mesh.bounding)
+	{
+		this.oobb.set( mesh.bounding ); //copy
+		this.flags &amp;= ~RI_IGNORE_FRUSTUM; //test against frustum
+	}
+	else
+		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
+}
+
+RenderInstance.prototype.setRange = function(start, offset)
+{
+	this.range[0] = start;
+	this.range[1] = offset;
 }
 
 /**
@@ -252,10 +328,18 @@ RenderInstance.prototype.computeNormalMatrix = function()
 }
 
 /**
-* Computes the instance bounding box
+* Computes the instance bounding box in world space from the one in local space
 *
-* @method computeBounding
+* @method updateAABB
 */
+RenderInstance.prototype.updateAABB = function()
+{
+	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+}
+
+
+
+/*
 RenderInstance.prototype.computeBounding = function()
 {
 	if(!this.mesh ||!this.mesh.bounding) return;
@@ -291,6 +375,7 @@ RenderInstance.prototype.computeBounding = function()
 	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
 	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
 }
+*/
 
 /**
 * Calls render taking into account primitive and submesh id
@@ -300,13 +385,29 @@ RenderInstance.prototype.computeBounding = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
+	shader.drawBuffers( this.vertex_buffers,
+	  this.index_buffer,
+	  this.primitive, this.range[0], this.range[1] );
+
+
+	/*
 	if(this.submesh_id != null &amp;&amp; this.submesh_id != -1 &amp;&amp; this.mesh.info.groups &amp;&amp; this.mesh.info.groups.length &gt; this.submesh_id)
 		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
 	else if(this.start || this.length)
 		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
 	else
 		shader.draw(this.mesh, this.primitive);
+	*/
 }
+
+
+/* moved to PhysicsInstance
+RenderInstance.prototype.setCollisionMesh = function(mesh)
+{
+	this.flags |= RI_USE_MESH_AS_COLLIDER;
+	this.collision_mesh = mesh;
+}
+*/
 
     </pre>
 </div>

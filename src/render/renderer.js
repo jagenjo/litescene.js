@@ -80,6 +80,10 @@ var Renderer = {
 		LEvent.trigger(Scene, "renderReflections" );
 		scene.sendEventToNodes("renderReflections" );
 
+		LEvent.trigger(Scene, "beforeRenderMainPass" );
+		scene.sendEventToNodes("beforeRenderMainPass" );
+
+
 		//render one camera or all the cameras
 		var current_camera = null;
 
@@ -87,7 +91,8 @@ var Renderer = {
 		for(var i in cameras)
 		{
 			current_camera = cameras[i];
-			LEvent.trigger(current_camera, "beforeRender" );
+			LEvent.trigger(current_camera, "beforeRenderPass" );
+			LEvent.trigger(Scene, "beforeRenderPass" );
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
@@ -103,7 +108,8 @@ var Renderer = {
 				inner_draw(); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
-			LEvent.trigger(current_camera, "afterRender" );
+			LEvent.trigger(current_camera, "afterRenderPass" );
+			LEvent.trigger(Scene, "afterRenderPass" );
 		}
 
 		//events
@@ -208,8 +214,8 @@ var Renderer = {
 
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
 
-		LEvent.trigger(scene, "beforeRenderPass", options);
-		scene.sendEventToNodes("beforeRenderPass", options);
+		LEvent.trigger(scene, "beforeRenderInstances", options);
+		scene.sendEventToNodes("beforeRenderInstances", options);
 
 		//compute global scene info
 		this.fillSceneShaderMacros( scene, options );
@@ -308,7 +314,6 @@ var Renderer = {
 
 		LEvent.trigger(scene, "renderScreenSpace", options);
 
-
 		//foreground object
 		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
@@ -326,8 +331,6 @@ var Renderer = {
 			}
 		}
 
-
-
 		//restore state
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.LESS);
@@ -335,8 +338,8 @@ var Renderer = {
 		gl.disable(gl.BLEND);
 		gl.frontFace(gl.CCW);
 
-		LEvent.trigger(scene, "afterRenderPass",options);
-		scene.sendEventToNodes("afterRenderPass",options);
+		LEvent.trigger(scene, "afterRenderInstances",options);
+		scene.sendEventToNodes("afterRenderInstances",options);
 
 		//EVENT SCENE after_render
 		//restore state

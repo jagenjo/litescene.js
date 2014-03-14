@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -140,7 +156,7 @@
 * Light that contains the info about the camera
 * @class Light
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Light(o)
@@ -209,11 +225,12 @@ function Light(o)
 	this.use_specular = true;
 	this.linear_attenuation = false;
 	this.range_attenuation = false;
-	this.target_in_world_coords = false;
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;
 	this.spot_cone = true;
+
+	this.target_in_world_coords = false;
 
 	/**
 	* The color of the light
@@ -242,10 +259,6 @@ function Light(o)
 	this.type = Light.OMNI;
 	this.frustrum_size = 50; //ortho
 
-	this.volume_visibility = 0;
-	this.volume_radius = 1;
-	this.volume_density = 1;
-
 	//for caching purposes
 	this._macros = {};
 	this._uniforms = {};
@@ -257,6 +270,10 @@ function Light(o)
 			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
 	}
 }
+
+//do not change
+Light.FRONT_VECTOR = new Float32Array(0,0,-1); //const
+Light.UP_VECTOR = new Float32Array(0,1,0); //const
 
 Light.OMNI = 1;
 Light.SPOT = 2;
@@ -270,18 +287,11 @@ Light.prototype.onAddedToNode = function(node)
 	if(!node.light) node.light = this;
 
 	LEvent.bind(node, &quot;collectLights&quot;, this.onCollectLights, this );
-
-	if(this.volume_visibility)
-	{
-		LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
-		this._volume_event = true;
-	}
 }
 
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
-	this._volume_event = false;
 }
 
 Light.prototype.onCollectLights = function(e, lights)
@@ -295,67 +305,7 @@ Light.prototype.onCollectLights = function(e, lights)
 
 	//add to lights vector
 	lights.push(this);
-
-	if(this.volume_visibility &amp;&amp; !this._volume_event)
-	{
-		LEvent.bind(this._root, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
-		this._volume_event = true;
-	}
-
 }
-
-Light.prototype.onCollectInstances = function(e,instances)
-{
-	if(!this.enabled) return;
-
-	if(!this.volume_visibility) 
-	{
-		LEvent.unbind(this._root, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
-		this._volume_event = false;
-		return;
-	}
-
-	//sphere
-	if(!this._mesh)
-	{
-		this._mesh = GL.Mesh.sphere();
-	}
-
-	var RI = this._render_instance;
-	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
-
-	RI.flags = RenderInstance.ALPHA; //reset and set
-	
-	//material
-	var mat = this._material;
-	if(!mat)
-		mat = this._material = new Material({shader_name:&quot;volumetric_light&quot;, blending: Material.ADDITIVE_BLENDING });
-	vec3.copy( mat.color, this.color );
-	mat.opacity = this.volume_visibility;
-	RI.material = mat;
-
-	//do not need to update
-	RI.matrix.set( this._root.transform._global_matrix );
-	//mat4.identity( RI.matrix );
-	//mat4.setTranslation( RI.matrix, this.getPosition() ); 
-
-	mat4.multiplyVec3( RI.center, RI.matrix, this.position );
-	mat4.scale( RI.matrix, RI.matrix, [this.volume_radius,this.volume_radius,this.volume_radius]);
-
-	var volume_info = vec4.create();
-	volume_info.set(RI.center);
-	volume_info[3] = this.volume_radius * 0.5;
-	RI.uniforms[&quot;u_volume_info&quot;] = volume_info;
-	RI.uniforms[&quot;u_volume_density&quot;] = this.volume_density;
-	
-	RI.mesh = this._mesh;
-	RI.primitive = gl.TRIANGLES;
-	RI.flags = RI_CULL_FACE | RI_BLEND | RI_DEPTH_TEST;
-
-	instances.push(RI);
-}
-
 
 Light._temp_matrix = mat4.create();
 Light._temp2_matrix = mat4.create();
@@ -423,20 +373,23 @@ Light.prototype.configure = function(o)
 
 Light.prototype.getPosition = function(p)
 {
-	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	//if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	if(this._root &amp;&amp; this._root.transform) return this._root.transform.getGlobalPosition();
 	return vec3.clone(this.position);
 }
 
 Light.prototype.getTarget = function(p)
 {
+	//if(this._root &amp;&amp; this._root.transform &amp;&amp; !this.target_in_world_coords) 
+	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
 	if(this._root &amp;&amp; this._root.transform &amp;&amp; !this.target_in_world_coords) 
-		return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
+		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , p || vec3.create() );
 	return vec3.clone(this.target);
 }
 
 Light.prototype.getUp = function(p)
 {
-	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformVector(this.up, p || vec3.create() );
+	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformVector( Light.UP_VECTOR , p || vec3.create() );
 	return vec3.clone(this.up);
 }
 

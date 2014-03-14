@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -149,14 +165,20 @@ function Camera(o)
 	this.enabled = true;
 
 	this._type = Camera.PERSPECTIVE;
+
 	this._eye = vec3.fromValues(0,100, 100); //change to position
 	this._center = vec3.fromValues(0,0,0);	//change to target
 	this._up = vec3.fromValues(0,1,0);
+	
 	this._near = 1;
 	this._far = 1000;
+
+	this._ortho = new Float32Array([-1,1,-1,1]);
+
 	this._aspect = 1.0;
 	this._fov = 45; //persp
 	this._frustrum_size = 50; //ortho
+
 	this._viewport = new Float32Array([0,0,1,1]);
 
 	this._view_matrix = mat4.create();
@@ -169,12 +191,23 @@ function Camera(o)
 
 	if(o) this.configure(o);
 	//this.updateMatrices(); //done by configure
+
+	//LEvent.bind(this,&quot;cameraEnabled&quot;, this.onCameraEnabled.bind(this));
 }
 
 Camera.icon = &quot;mini-icon-camera.png&quot;;
 
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
+Camera.ORTHO2D = 3;
+
+/*
+Camera.prototype.onCameraEnabled = function(e,options)
+{
+	if(this.flip_x)
+		options.reverse_backfacing = !options.reverse_backfacing;
+}
+*/
 
 /**
 * Camera type, could be Camera.PERSPECTIVE or Camera.ORTHOGRAPHIC
@@ -362,9 +395,21 @@ Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
 		mat4.ortho(this._projection_matrix, -this._frustrum_size*this._aspect*0.5, this._frustrum_size*this._aspect*0.5, -this._frustrum_size*0.5, this._frustrum_size*0.5, this._near, this._far);
+	else if (this.type == Camera.ORTHO2D)
+		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
 		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
+
+	//if (this.type != Camera.ORTHO2D)
 	mat4.lookAt(this._view_matrix, this._eye, this._center, this._up);
+
+	/*
+	if(this.flip_x) //used in reflections
+	{
+		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
+	};
+	*/
+
 	//if(this._root &amp;&amp; this._root.transform)
 
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
@@ -440,24 +485,48 @@ Camera.prototype.getLocalVector = function(v, dest)
 
 Camera.prototype.getEye = function()
 {
+	var eye = vec3.clone( this._eye );
 	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._eye );
-	return vec3.clone( this._eye );
+		return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
+	return eye;
+}
+
+Camera.prototype.getFront = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
+		return mat4.rotateVec3(front, this._root.transform.getGlobalMatrixRef(), front );
+	return vec3.normalize(front, front);
 }
 
 
 Camera.prototype.getUp = function()
 {
+	var up = vec3.clone( this._up );
 	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._up );
-	return vec3.clone( this._up );
+		return mat4.rotateVec3( up, this._root.transform.getGlobalMatrixRef(), up );
+	return up;
 }
+
+Camera.prototype.getTop = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	var right = vec3.cross( vec3.create(), this._up, front );
+	var top = vec3.cross( vec3.create(), front, right );
+	vec3.normalize(top,top);
+
+	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
+		return mat4.rotateVec3( top, this._root.transform.getGlobalMatrixRef(), top );
+	return top;
+}
+
 
 Camera.prototype.getCenter = function()
 {
+	var center = vec3.clone( this._center );
 	if(this._root &amp;&amp; this._root.transform &amp;&amp; this._root._parent)
-		return mat4.multiplyVec3(vec3.create(), this._root.transform.getGlobalMatrixRef(), this._center );
-	return vec3.clone( this._center );
+		return mat4.multiplyVec3(center, this._root.transform.getGlobalMatrixRef(), center );
+	return center;
 }
 
 Camera.prototype.setEye = function(v)
@@ -470,6 +539,7 @@ Camera.prototype.setCenter = function(v)
 	return vec3.copy( this._center, v );
 }
 
+/*
 //in global coordinates (when inside a node)
 Camera.prototype.getGlobalFront = function(dest)
 {
@@ -493,6 +563,16 @@ Camera.prototype.getGlobalTop = function(dest)
 	if(this._root &amp;&amp; this._root.transform)
 		this._root.transform.transformVector(dest, dest);
 	return dest;
+}
+*/
+
+Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
+{
+	this._near = near;
+	this._far = far;
+	this._ortho.set([left,right,bottom,top]);
+	this._type = Camera.ORTHO2D;
+	this._dirty_matrices = true;
 }
 
 Camera.prototype.move = function(v)
@@ -644,6 +724,10 @@ Camera.prototype.getRayInPixel = function(x,y, viewport)
 		this.updateMatrices();
 	var eye = this.getEye();
 	var pos = vec3.unproject(vec3.create(), [x,y,1], this._view_matrix, this._projection_matrix, viewport );
+
+	if(this.type == Camera.ORTHOGRAPHIC)
+		eye = vec3.unproject(vec3.create(), [x,y,0], this._view_matrix, this._projection_matrix, viewport );
+
 	var dir = vec3.subtract( vec3.create(), pos, eye );
 	vec3.normalize(dir, dir);
 	return { start: eye, direction: dir };

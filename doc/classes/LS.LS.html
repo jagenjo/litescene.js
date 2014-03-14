@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -138,7 +154,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_core.js.html#l264"><code>..&#x2F;src&#x2F;core.js:264</code></a>
+            Defined in: <a href="../files/.._src_core.js.html#l398"><code>..&#x2F;src&#x2F;core.js:398</code></a>
         </div>
     
 
@@ -195,6 +211,20 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getClassName">getClassName</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getObjectAttributes">getObjectAttributes</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getObjectClassName">getObjectClassName</a>
 
                                 
@@ -203,6 +233,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_registerComponent">registerComponent</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_registerMaterialClass">registerMaterialClass</a>
 
                                 
                                 
@@ -234,6 +271,13 @@
                         
                             <li class="index-item property">
                                 <a href="#property_Components">Components</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item property">
+                                <a href="#property_MaterialClasses">MaterialClasses</a>
 
                                 
                                 
@@ -305,7 +349,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l162"><code>..&#x2F;src&#x2F;core.js:162</code></a>
+        <a href="../files/.._src_core.js.html#l228"><code>..&#x2F;src&#x2F;core.js:228</code></a>
         
         </p>
 
@@ -433,7 +477,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l135"><code>..&#x2F;src&#x2F;core.js:135</code></a>
+        <a href="../files/.._src_core.js.html#l197"><code>..&#x2F;src&#x2F;core.js:197</code></a>
         
         </p>
 
@@ -444,7 +488,7 @@
     </div>
 
     <div class="description">
-        <p>copy the properties of one class into another class</p>
+        <p>copy the properties (methods and attributes) of origin class into target class</p>
 
     </div>
 
@@ -488,6 +532,219 @@
         </div>
     
 
+    
+
+    
+</div>
+
+                
+                    <div id="method_getClassName" class="method item">
+    <h3 class="name"><code>getClassName</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>class</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l289"><code>..&#x2F;src&#x2F;core.js:289</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns an string with the class name</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">class</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>object</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>returns the string with the name</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getObjectAttributes" class="method item">
+    <h3 class="name"><code>getObjectAttributes</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>object</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l308"><code>..&#x2F;src&#x2F;core.js:308</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the attributes of one object and the type</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">object</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>returns object with attribute name and its type</p>
+
+                
+            </div>
+        </div>
     
 
     
@@ -540,7 +797,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l203"><code>..&#x2F;src&#x2F;core.js:203</code></a>
+        <a href="../files/.._src_core.js.html#l269"><code>..&#x2F;src&#x2F;core.js:269</code></a>
         
         </p>
 
@@ -690,6 +947,95 @@
 </div>
 
                 
+                    <div id="method_registerMaterialClass" class="method item">
+    <h3 class="name"><code>registerMaterialClass</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>comp</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l62"><code>..&#x2F;src&#x2F;core.js:62</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Register a component so it is listed when searching for new components to attach</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">comp</code>
+                        <span class="type">ComponentClass</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>component class to register</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_request" class="method item">
     <h3 class="name"><code>request</code></h3>
 
@@ -736,7 +1082,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l56"><code>..&#x2F;src&#x2F;core.js:56</code></a>
+        <a href="../files/.._src_core.js.html#l79"><code>..&#x2F;src&#x2F;core.js:79</code></a>
         
         </p>
 
@@ -868,7 +1214,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l300"><code>..&#x2F;src&#x2F;core.js:300</code></a>
+        <a href="../files/.._src_core.js.html#l434"><code>..&#x2F;src&#x2F;core.js:434</code></a>
         
         </p>
 
@@ -1031,6 +1377,53 @@
 
     <div class="description">
         <p>Contains all the registered components</p>
+
+    </div>
+
+    
+        <p><strong>Default:</strong> {}</p>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="property_MaterialClasses" class="property item">
+    <h3 class="name"><code>MaterialClasses</code></h3>
+    <span class="type">Object</span>
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l53"><code>..&#x2F;src&#x2F;core.js:53</code></a>
+        
+        </p>
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Contains all the registered material classes</p>
 
     </div>
 

@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -147,9 +163,11 @@ function CameraController(o)
 	this.rot_speed = 1;
 	this.wheel_speed = 1;
 	this.smooth = false;
+	this.allow_panning = true;
 	this.cam_type = &quot;orbit&quot;; //&quot;fps&quot;
 	this._moving = vec3.fromValues(0,0,0);
 	this.orbit_center = null;
+	this._collision = vec3.create();
 
 	this.configure(o);
 }
@@ -158,6 +176,7 @@ CameraController.icon = &quot;mini-icon-cameracontroller.png&quot;;
 
 CameraController.prototype.onAddedToNode = function(node)
 {
+	LEvent.bind(node,&quot;mousedown&quot;,this.onMouse,this);
 	LEvent.bind(node,&quot;mousemove&quot;,this.onMouse,this);
 	LEvent.bind(node,&quot;mousewheel&quot;,this.onMouse,this);
 	LEvent.bind(node,&quot;keydown&quot;,this.onKey,this);
@@ -210,6 +229,11 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		return;
 	}
 
+	if(mouse_event.eventType == &quot;mousedown&quot;)
+	{
+		this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), this._collision );
+	}
+
 	//regular mouse dragging
 	if(!mouse_event.dragging)
 		return;
@@ -230,10 +254,13 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		}
 		else if(this.cam_type == &quot;orbit&quot;)
 		{
-			if(mouse_event.ctrlKey) //pan
+			if(this.allow_panning &amp;&amp; (mouse_event.ctrlKey || mouse_event.button == 1)) //pan
 			{
-				var delta = cam.getLocalVector( [ this.speed * -mouse_event.deltax * 0.1, this.speed * mouse_event.deltay * 0.1, 0]);
-				cam.move(delta);
+				var collision = vec3.create();
+				this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), collision );
+				var delta = vec3.sub( vec3.create(), this._collision, collision);
+				cam.move( delta );
+				//vec3.copy(  this._collision, collision );
 				cam.updateMatrices();
 			}
 			else
@@ -255,6 +282,21 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 		}
 	}
+}
+
+CameraController.prototype.testPerpendicularPlane = function(x,y, center, result)
+{
+	var cam = this._root.camera;
+	var ray = cam.getRayInPixel( x, gl.canvas.height - y );
+
+	var front = cam.getFront();
+	var center = center || cam.getCenter();
+	var result = result || vec3.create();
+
+	//test against plane
+	if( geo.testRayPlane( ray.start, ray.direction, center, front, result ) )
+		return true;
+	return false;
 }
 
 CameraController.prototype.onKey = function(e, key_event)

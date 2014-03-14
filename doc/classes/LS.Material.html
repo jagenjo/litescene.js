@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -274,6 +290,13 @@ Materials could be shared among different objects.</p>
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
+                                <a href="#method_clone">clone</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_configure">configure</a>
 
                                 
@@ -458,6 +481,79 @@ Materials could be shared among different objects.</p>
                 <h2 class="off-left">Methods</h2>
 
                 
+                    <div id="method_clone" class="method item">
+    <h3 class="name"><code>clone</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Material</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_material.js.html#l602"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:602</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Clone this material (keeping the class)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Material</span>:
+                    
+                    <p>Material instance</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_configure" class="method item">
     <h3 class="name"><code>configure</code></h3>
 
@@ -500,7 +596,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l505"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:505</code></a>
+        <a href="../files/.._src_materials_material.js.html#l526"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:526</code></a>
         
         </p>
 
@@ -593,7 +689,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l650"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:650</code></a>
+        <a href="../files/.._src_materials_material.js.html#l684"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:684</code></a>
         
         </p>
 
@@ -700,7 +796,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l578"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:578</code></a>
+        <a href="../files/.._src_materials_material.js.html#l612"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:612</code></a>
         
         </p>
 
@@ -793,7 +889,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l664"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:664</code></a>
+        <a href="../files/.._src_materials_material.js.html#l698"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:698</code></a>
         
         </p>
 
@@ -858,7 +954,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l682"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:682</code></a>
+        <a href="../files/.._src_materials_material.js.html#l716"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:716</code></a>
         
         </p>
 
@@ -941,7 +1037,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l567"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:567</code></a>
+        <a href="../files/.._src_materials_material.js.html#l589"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:589</code></a>
         
         </p>
 
@@ -1026,7 +1122,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l610"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:610</code></a>
+        <a href="../files/.._src_materials_material.js.html#l644"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:644</code></a>
         
         </p>
 
@@ -1134,7 +1230,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l634"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:634</code></a>
+        <a href="../files/.._src_materials_material.js.html#l668"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:668</code></a>
         
         </p>
 
@@ -1224,7 +1320,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l83"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:83</code></a>
+        <a href="../files/.._src_materials_material.js.html#l84"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:84</code></a>
         
         </p>
 
@@ -1271,7 +1367,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l97"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:97</code></a>
+        <a href="../files/.._src_materials_material.js.html#l98"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:98</code></a>
         
         </p>
 
@@ -1318,7 +1414,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l75"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:75</code></a>
+        <a href="../files/.._src_materials_material.js.html#l76"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:76</code></a>
         
         </p>
 
@@ -1365,7 +1461,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l60"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:60</code></a>
+        <a href="../files/.._src_materials_material.js.html#l61"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:61</code></a>
         
         </p>
 
@@ -1412,7 +1508,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l90"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:90</code></a>
+        <a href="../files/.._src_materials_material.js.html#l91"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:91</code></a>
         
         </p>
 
@@ -1459,7 +1555,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l105"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:105</code></a>
+        <a href="../files/.._src_materials_material.js.html#l106"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:106</code></a>
         
         </p>
 
@@ -1506,7 +1602,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l67"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:67</code></a>
+        <a href="../files/.._src_materials_material.js.html#l68"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:68</code></a>
         
         </p>
 
@@ -1553,7 +1649,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l147"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:147</code></a>
+        <a href="../files/.._src_materials_material.js.html#l148"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:148</code></a>
         
         </p>
 
@@ -1600,7 +1696,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l133"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:133</code></a>
+        <a href="../files/.._src_materials_material.js.html#l134"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:134</code></a>
         
         </p>
 
@@ -1647,7 +1743,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l140"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:140</code></a>
+        <a href="../files/.._src_materials_material.js.html#l141"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:141</code></a>
         
         </p>
 
@@ -1694,7 +1790,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l154"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:154</code></a>
+        <a href="../files/.._src_materials_material.js.html#l155"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:155</code></a>
         
         </p>
 
@@ -1741,7 +1837,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l112"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:112</code></a>
+        <a href="../files/.._src_materials_material.js.html#l113"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:113</code></a>
         
         </p>
 
@@ -1788,7 +1884,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l119"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:119</code></a>
+        <a href="../files/.._src_materials_material.js.html#l120"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:120</code></a>
         
         </p>
 
@@ -1835,7 +1931,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l126"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:126</code></a>
+        <a href="../files/.._src_materials_material.js.html#l127"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:127</code></a>
         
         </p>
 
@@ -1882,7 +1978,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l161"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:161</code></a>
+        <a href="../files/.._src_materials_material.js.html#l162"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:162</code></a>
         
         </p>
 

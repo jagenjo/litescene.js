@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -268,6 +284,21 @@ ComponentContainer.prototype.removeAllComponents = function()
 
 
 /**
+* Returns if the class has an instance of this component
+* @method hasComponent
+* @param {bool}
+*/
+ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
+{
+	if(!this._components) return;
+	for(var i in this._components)
+		if( this._components[i].constructor == component_class )
+		return true;
+	return false;
+}
+
+
+/**
 * Returns the first component of this container that is of the same class
 * @method getComponent
 * @param {Object} component_class the class to search a component from (not the name of the class)
@@ -279,6 +310,28 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 		if( this._components[i].constructor == component_class )
 		return this._components[i];
 	return null;
+}
+
+/**
+* Returns the position in the components array of this component
+* @method getIndexOfComponent
+* @param {Number} position in the array, -1 if not found
+*/
+ComponentContainer.prototype.getIndexOfComponent = function(component)
+{
+	if(!this._components) return -1;
+	return this._components.indexOf(component);
+}
+
+/**
+* Returns the component at index position
+* @method getComponentByIndex
+* @param {Object} component
+*/
+ComponentContainer.prototype.getComponentByIndex = function(index)
+{
+	if(!this._components) return null;
+	return this._components[index];
 }
 
 /**
@@ -294,6 +347,8 @@ ComponentContainer.prototype.processActionInComponents = function(action_name,pa
 		if( this._components[i][action_name] &amp;&amp; typeof(this._components[i][action_name] ) == &quot;function&quot;)
 			this._components[i][action_name](params);
 }
+
+
     </pre>
 </div>
 

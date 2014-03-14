@@ -30,6 +30,7 @@ var ResourcesManager = {
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
 	meshes: {}, //loadead meshes
 	textures: {}, //loadead textures
+	materials: {}, //shared materials
 
 	resources_being_loaded: {}, //resources waiting to be loaded
 	resources_being_processes: {}, //used to avoid loading stuff that is being processes
@@ -530,11 +531,13 @@ var ResourcesManager = {
 	{
 		if( LS.ResourcesManager.debug )
 			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
+
 		for(var i in ResourcesManager.resources_being_loaded[url])
 		{
 			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
 				ResourcesManager.resources_being_loaded[url][i].callback(res);
 		}
+		//two pases, one for launching, one for removing
 		if(ResourcesManager.resources_being_loaded[url])
 		{
 			delete ResourcesManager.resources_being_loaded[url];
@@ -639,7 +642,7 @@ LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, 
 
 LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
 	//store
-	Scene.materials[filename] = material;
+	LS.ResourcesManager.materials[filename] = material;
 });
 
 
@@ -749,7 +752,6 @@ LS.ResourcesManager.registerResourcePreProcessor("dds,tga", function(filename, d
 	{
 		var texture = texture_data;
 		texture.filename = filename;
-		console.log("DDS created");
 		return texture;
 	}
 
@@ -791,38 +793,9 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 		var resource = scene_data.resources[i];
 		LS.ResourcesManager.processResource(i,resource);
 	}
-	/*
-	if(scene_data.materials)
-	{
-		for(var i in scene_data.materials)
-		{
-			var mat_info = scene_data.materials[i];
-			mat_info.object_type = "Material";
-			LS.ResourcesManager.processResource(i,mat_info);
-		}
-	}
-
-	//resources
-	if(scene_data.meshes)
-	{
-		for(var i in scene_data.meshes)
-		{
-			var mesh_info = scene_data.meshes[i];
-			mesh_info.object_type = "Mesh";
-			LS.ResourcesManager.processResource(i,mesh_info);
-		}
-	}
-	*/
 
 	var node = new LS.SceneNode();
 	node.configure(scene_data.root);
-
-	/*
-	//resources
-	if(scene_data.animations)
-		node.animations = scene_data.animations;
-	*/
-
 
 	Scene.root.addChild(node);
 	return node;

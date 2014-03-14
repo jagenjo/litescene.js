@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -135,7 +151,12 @@
 <div class="file">
     <pre class="code prettyprint linenums">
 //TODO: a class to remove the tree methods from SceneTree and SceneNode
-
+/**
+* CompositePattern implements the Composite Pattern, which allows to one class to contain instances of its own class
+* creating a tree-like structure.
+* @class CompositePattern
+* @constructor
+*/
 function CompositePattern()
 {
 	//WARNING! do not add anything here, it will never be called
@@ -144,6 +165,14 @@ function CompositePattern()
 CompositePattern.prototype.compositeCtor = function()
 {
 }
+
+/**
+* Adds one child to this instance
+* @method addChild
+* @param {*} child
+* @param {number} index [optional]  in which position you want to insert it, if not specified it goes to the last position
+* @param {*} options [optional] data to be passed when adding it, used for special cases when moving nodes around
+**/
 
 CompositePattern.prototype.addChild = function(node, index, options)
 {
@@ -182,6 +211,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+
 	//Same tree
 	node._in_tree = this._in_tree;
 
@@ -194,6 +224,7 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		LEvent.trigger(this._in_tree, &quot;treeItemAdded&quot;, node);
 		inner_recursive(node);
 	}
+	
 
 	//recursive action
 	function inner_recursive(item)
@@ -202,9 +233,9 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree)
+			if(!child._in_tree &amp;&amp; item._in_tree)
 			{
-				LEvent.trigger( child._in_tree, &quot;treeItemAdded&quot;, child );
+				LEvent.trigger( item._in_tree, &quot;treeItemAdded&quot;, child );
 				child._in_tree = item._in_tree;
 			}
 			inner_recursive( child );
@@ -261,15 +292,27 @@ CompositePattern.prototype.removeChild = function(node, options)
 	return true;
 }
 
+/**
+* Serialize the data from all the children
+*
+* @method serializeChildren
+* @return {Array} array containing all serialized data from every children
+*/
 CompositePattern.prototype.serializeChildren = function()
 {
 	var r = [];
 	if(this._children)
 		for(var i in this._children)
-			r.push( this._children[i].serialize() );
+			r.push( this._children[i].serialize() ); //serialize calls serializeChildren
 	return r;
 }
 
+/**
+* Configure every children with the data
+*
+* @method configureChildren
+* @return {Array} o array containing all serialized data 
+*/
 CompositePattern.prototype.configureChildren = function(o)
 {
 	if(!o.children) return;
@@ -283,6 +326,12 @@ CompositePattern.prototype.configureChildren = function(o)
 	}
 }
 
+/**
+* Returns parent node
+*
+* @method getParent
+* @return {SceneNode} parent node
+*/
 CompositePattern.prototype.getParent = function()
 {
 	return this._parentNode;
@@ -292,6 +341,24 @@ CompositePattern.prototype.getChildren = function()
 {
 	return this._children || [];
 }
+
+/*
+CompositePattern.prototype.childNodes = function()
+{
+	return this._children || [];
+}
+*/
+
+//DOM style
+Object.defineProperty( CompositePattern.prototype, &quot;childNodes&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._children || [];
+	},
+	set: function(v) {
+		//TODO
+	}
+});
 
 Object.defineProperty( CompositePattern.prototype, &quot;parentNode&quot;, {
 	enumerable: true,
@@ -303,20 +370,21 @@ Object.defineProperty( CompositePattern.prototype, &quot;parentNode&quot;, {
 	}
 });
 
-CompositePattern.prototype.childNodes = function()
+/**
+* get all nodes below this in the hierarchy (children and children of children)
+*
+* @method getDescendants
+* @return {Array} array containing all descendants
+*/
+CompositePattern.prototype.getDescendants = function()
 {
-	return this._children || [];
+	if(!this._children || this._children.length == 0)
+		return [];
+	var r = this._children.concat();
+	for(var i = 0;  i &lt; this._children.length; ++i)
+		r = r.concat( this._children[i].getDescendants() );
+	return r;
 }
-
-Object.defineProperty( CompositePattern.prototype, &quot;childNodes&quot;, {
-	enumerable: true,
-	get: function() {
-		return this._children || [];
-	},
-	set: function(v) {
-		//TODO
-	}
-});
 
 
 

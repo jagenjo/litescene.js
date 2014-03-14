@@ -11,11 +11,16 @@ function PlayAnimation(o)
 	this.animation = "";
 	this.take = "default";
 	this.playback_speed = 1.0;
+	this.mode = "loop";
+	this.play = true;
+	this.current_time = 0;
+
 	if(o)
 		this.configure(o);
 }
 
 PlayAnimation["@animation"] = { widget: "resource" };
+PlayAnimation["@mode"] = { type:"enum", values: ["loop","pingpong","once"] };
 
 
 PlayAnimation.prototype.configure = function(o)
@@ -42,19 +47,21 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
-PlayAnimation.prototype.onUpdate = function(e)
+PlayAnimation.prototype.onUpdate = function(e, dt)
 {
 	if(!this.animation) return;
 
 	var animation = LS.ResourcesManager.resources[ this.animation ];
 	if(!animation) return;
 
-	var time = Scene.getTime() * this.playback_speed;
+	//var time = Scene.getTime() * this.playback_speed;
+	if(this.play)
+		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
 	if(!take) return;
 
-	take.actionPerSample( time, this._processSample );
+	take.actionPerSample( this.current_time, this._processSample );
 	Scene.refresh();
 }
 

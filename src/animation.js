@@ -153,7 +153,10 @@ Track.prototype.configure = function(data)
 
 Track.prototype.getSample = function(time, interpolate)
 {
-	var local_time = time % this.duration;
+	var local_time = (time % this.duration);
+	if(local_time < 0)
+		local_time = this.duration + local_time;
+
 	var data = this.data;
 	var last_time = 0;
 

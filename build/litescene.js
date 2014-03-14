@@ -1988,6 +1988,7 @@ var ResourcesManager = {
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
 	meshes: {}, //loadead meshes
 	textures: {}, //loadead textures
+	materials: {}, //shared materials
 
 	resources_being_loaded: {}, //resources waiting to be loaded
 	resources_being_processes: {}, //used to avoid loading stuff that is being processes
@@ -2488,11 +2489,13 @@ var ResourcesManager = {
 	{
 		if( LS.ResourcesManager.debug )
 			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
+
 		for(var i in ResourcesManager.resources_being_loaded[url])
 		{
 			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
 				ResourcesManager.resources_being_loaded[url][i].callback(res);
 		}
+		//two pases, one for launching, one for removing
 		if(ResourcesManager.resources_being_loaded[url])
 		{
 			delete ResourcesManager.resources_being_loaded[url];
@@ -2597,7 +2600,7 @@ LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, 
 
 LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
 	//store
-	Scene.materials[filename] = material;
+	LS.ResourcesManager.materials[filename] = material;
 });
 
 
@@ -2707,7 +2710,6 @@ LS.ResourcesManager.registerResourcePreProcessor("dds,tga", function(filename, d
 	{
 		var texture = texture_data;
 		texture.filename = filename;
-		console.log("DDS created");
 		return texture;
 	}
 
@@ -2749,38 +2751,9 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 		var resource = scene_data.resources[i];
 		LS.ResourcesManager.processResource(i,resource);
 	}
-	/*
-	if(scene_data.materials)
-	{
-		for(var i in scene_data.materials)
-		{
-			var mat_info = scene_data.materials[i];
-			mat_info.object_type = "Material";
-			LS.ResourcesManager.processResource(i,mat_info);
-		}
-	}
-
-	//resources
-	if(scene_data.meshes)
-	{
-		for(var i in scene_data.meshes)
-		{
-			var mesh_info = scene_data.meshes[i];
-			mesh_info.object_type = "Mesh";
-			LS.ResourcesManager.processResource(i,mesh_info);
-		}
-	}
-	*/
 
 	var node = new LS.SceneNode();
 	node.configure(scene_data.root);
-
-	/*
-	//resources
-	if(scene_data.animations)
-		node.animations = scene_data.animations;
-	*/
-
 
 	Scene.root.addChild(node);
 	return node;
@@ -3568,7 +3541,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		ResourcesManager.load( res[i] );
+		LS.ResourcesManager.load( res[i] );
 }
 
 //not implemented yet
@@ -3585,7 +3558,7 @@ Material.prototype.getRenderer = function()
 Material.prototype.registerMaterial = function(name)
 {
 	this.name = name;
-	Scene.materials[name] = this;
+	LS.ResourcesManager.registerResource(name, this);
 	this.material = name;
 }
 
@@ -6315,19 +6288,19 @@ SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 {
-	var original_vertices = ref_mesh.vertexBuffers["a_vertex"].data;
-	var weights = ref_mesh.vertexBuffers["a_weights"].data;
-	var bone_indices = ref_mesh.vertexBuffers["a_bone_indices"].data;
+	var original_vertices = ref_mesh.getBuffer("vertices").data;
+	var weights = ref_mesh.getBuffer("weights").data;
+	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
 
-	var vertices_buffer = skin_mesh.vertexBuffers["a_vertex"];
+	var vertices_buffer = skin_mesh.getBuffer("vertices");
 	var vertices = vertices_buffer.data;
 
 	//bone matrices
 	var bones = [];
 	for(var i in ref_mesh.bones)
 	{
-		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] );
-		bones.push( mat4.multiply( mat4.create(), ref_mesh.bones[i][1], mat ) );
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+		bones.push( mat4.multiply( mat4.create(), mat, ref_mesh.bones[i][1] ) ); //multiply by the inv bindpose matrix
 	}
 
 	//vertices
@@ -6342,8 +6315,9 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 
 		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
 
-		mat4.multiplyVec3(v, bmat[0] ,ov);
-		vec3.scale(v,v,w[0]);
+		mat4.multiplyVec3(v, bmat[0], ov);
+		//vec3.scale(v,v,w[0]);
+		/*
 		for(var j = 1; j < 4; ++j)
 			if(w[j] > 0.0)
 			{
@@ -6351,10 +6325,11 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 				vec3.scale(temp,temp,w[j]);
 				vec3.add(v,v,temp);
 			}
+		*/
 	}
 
 	//upload
-	vertices_buffer.compile();
+	vertices_buffer.compile(gl.STREAM_DRAW);
 }
 
 
@@ -6372,7 +6347,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	//this mesh doesnt have skinning info
-	if(!mesh.weights || !mesh.bone_indices)
+	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
 	if(this.cpu_skinning)
@@ -6381,6 +6356,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			this._skinned_mesh = new GL.Mesh();
 			this._skinned_mesh._reference = mesh;
+			var vertex_buffer = mesh.getBuffer("vertices");
 
 			//clone 
 			for (var i in mesh.vertexBuffers)
@@ -6389,7 +6365,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 				this._skinned_mesh.indexBuffers[i] = mesh.indexBuffers[i];
 
 			//new ones clonning old ones
-			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( mesh.vertices ), gl.STREAM_DRAW );
+			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
 		}
 
 
@@ -6401,8 +6377,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		RI.setMesh(mesh, this.primitive);
 
 	//do not need to update
-	RI.matrix.set( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
+	//RI.matrix.set( this._root.transform._global_matrix );
+	this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	if(this.submesh_id != -1 && this.submesh_id != null)
@@ -6413,6 +6389,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
+	RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
 
 	instances.push(RI);
 	//return RI;
@@ -7431,7 +7408,7 @@ function GraphComponent(o)
 	LEvent.bind(this,"trigger", this.trigger, this );	
 }
 
-GraphComponent["@on_event"] = { type:"enum", values: ["start","update","trigger"] };
+GraphComponent["@on_event"] = { type:"enum", values: ["start","render","update","trigger"] };
 
 GraphComponent.icon = "mini-icon-graph.png";
 
@@ -7466,33 +7443,33 @@ GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
 
-	LEvent.bind(node,"start", this.onStart, this );
-	LEvent.bind(node,"update", this.onUpdate, this );
+	LEvent.bind(node,"start", this.onEvent, this );
+	LEvent.bind(node,"beforeRenderMainPass", this.onEvent, this );
+	LEvent.bind(node,"update", this.onEvent, this );
 }
 
 GraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,"start", this.onStart, this );
-	LEvent.unbind(node,"update", this.onUpdate, this );
+	LEvent.unbind(node,"start", this.onEvent, this );
+	LEvent.unbind(node,"beforeRenderMainPass", this.onEvent, this );
+	LEvent.unbind(node,"update", this.onEvent, this );
 }
 
 
-GraphComponent.prototype.onStart = function(e)
+GraphComponent.prototype.onEvent = function(e)
 {
-	if(this.on_event == "start")
-		this.runGraph();
-}
+	var type = e.type;
+	if(type == "beforeRenderMainPass")
+		type = "render";
 
-
-GraphComponent.prototype.onUpdate = function(e,dt)
-{
-	if(this.on_event == "update")
+	if(this.on_event == type)
 		this.runGraph();
 }
 
 GraphComponent.prototype.trigger = function(e)
 {
-	this.runGraph();
+	if(this.on_event == "trigger")
+		this.runGraph();
 }
 
 GraphComponent.prototype.runGraph = function()
@@ -7533,20 +7510,27 @@ function FXGraphComponent(o)
 
 		this._graph_depth_texture_node = LiteGraph.createNode("texture/texture","Depth Buffer");
 		this._graph_depth_texture_node.ignore_remove = true;
-		this._graph_depth_texture_node.pos[1] = 200;
+		this._graph_depth_texture_node.pos[1] = 400;
 
 		this._graph.add( this._graph_color_texture_node );
 		this._graph.add( this._graph_depth_texture_node );
 
 		this._graph_viewport_node = LiteGraph.createNode("texture/toviewport","Viewport");
-		this._graph_viewport_node.pos[0] = 200;
+		this._graph_viewport_node.pos[0] = 500;
 		this._graph.add( this._graph_viewport_node );
 
 		this._graph_color_texture_node.connect(0, this._graph_viewport_node );
 	}
 
 	if(FXGraphComponent.high_precision_format == null)
-		FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+	{
+		if(gl.half_float_ext)
+			FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
+		else if(gl.float_ext)
+			FXGraphComponent.high_precision_format = gl.FLOAT;
+		else
+			FXGraphComponent.high_precision_format = gl.UNSIGNED_BYTE;
+	}
 }
 
 FXGraphComponent.icon = "mini-icon-graph.png";
@@ -7592,14 +7576,14 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,"beforeRender", this.onBeforeRender, this );
-	LEvent.bind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.bind(Scene,"beforeRenderPass", this.onBeforeRender, this );
+	LEvent.bind(Scene,"afterRenderPass", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRender", this.onBeforeRender, this );
-	LEvent.unbind(Scene,"afterRender", this.onAfterRender, this );
+	LEvent.unbind(Scene,"beforeRenderPass", this.onBeforeRender, this );
+	LEvent.unbind(Scene,"afterRenderPass", this.onAfterRender, this );
 	Renderer.color_rendertarget = null;
 	Renderer.depth_rendertarget = null;
 }
@@ -7624,8 +7608,6 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 	}
 
 	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
-	if( !gl.half_float_ext )
-		type = gl.UNSIGNED_BYTE;
 
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
@@ -7635,7 +7617,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 
 	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && use_depth)
 	{
-		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_SHORT });
+		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 		ResourcesManager.textures[":depth_buffer"] = this.depth_texture;
 	}		
 
@@ -8268,11 +8250,16 @@ function PlayAnimation(o)
 	this.animation = "";
 	this.take = "default";
 	this.playback_speed = 1.0;
+	this.mode = "loop";
+	this.play = true;
+	this.current_time = 0;
+
 	if(o)
 		this.configure(o);
 }
 
 PlayAnimation["@animation"] = { widget: "resource" };
+PlayAnimation["@mode"] = { type:"enum", values: ["loop","pingpong","once"] };
 
 
 PlayAnimation.prototype.configure = function(o)
@@ -8299,19 +8286,21 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
-PlayAnimation.prototype.onUpdate = function(e)
+PlayAnimation.prototype.onUpdate = function(e, dt)
 {
 	if(!this.animation) return;
 
 	var animation = LS.ResourcesManager.resources[ this.animation ];
 	if(!animation) return;
 
-	var time = Scene.getTime() * this.playback_speed;
+	//var time = Scene.getTime() * this.playback_speed;
+	if(this.play)
+		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
 	if(!take) return;
 
-	take.actionPerSample( time, this._processSample );
+	take.actionPerSample( this.current_time, this._processSample );
 	Scene.refresh();
 }
 
@@ -8357,6 +8346,7 @@ function RealtimeReflector(o)
 	this.use_mesh_info = false;
 	this.offset = vec3.create();
 	this.ignore_this_mesh = true;
+	this.high_precision = false;
 	this.refresh_rate = 1; //in frames
 	this._rt = null;
 
@@ -8399,9 +8389,10 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		this.texture_size = 256;
 
 	var texture_type = this.use_cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(!this._rt || this._rt.width != this.texture_size || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	if(!this._rt || this._rt.width != this.texture_size || this._rt.type != type || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
 	{
-		this._rt = new Texture(this.texture_size,this.texture_size, { texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		this._rt = new Texture(this.texture_size,this.texture_size, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
 		this._rt.mipmaps = this.generate_mipmaps;
 	}
 
@@ -10333,7 +10324,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.addInput("Distance","number");
 		this.addInput("Range","number");
 		this.addOutput("Texture","Texture");
-		this.properties = { distance:100, range: 50 };
+		this.properties = { distance:100, range: 50, high_precision: false };
 
 		if(!LGraphTextureDepthRange._shader)
 			LGraphTextureDepthRange._shader = new GL.Shader( LGraphTextureDepthRange.vertex_shader, LGraphTextureDepthRange.pixel_shader );
@@ -10347,8 +10338,13 @@ if(typeof(LiteGraph) != "undefined")
 		var tex = this.getInputData(0);
 		if(!tex) return;
 
-		if(!this._temp_texture || this._temp_texture.width != tex.width || this._temp_texture.height != tex.height)
-			this._temp_texture = new GL.Texture( tex.width, tex.height, { format: gl.RGBA, filter: gl.LINEAR });
+		var precision = gl.UNSIGNED_BYTE;
+		if(this.properties.high_precision)
+			precision = gl.half_float_ext ? gl.HALF_FLOAT_OES : gl.FLOAT;			
+
+		if(!this._temp_texture || this._temp_texture.type != precision ||
+			this._temp_texture.width != tex.width || this._temp_texture.height != tex.height)
+			this._temp_texture = new GL.Texture( tex.width, tex.height, { type: precision, format: gl.RGBA, filter: gl.LINEAR });
 
 		//iterations
 		var distance = this.properties.distance;
@@ -10948,6 +10944,10 @@ var Renderer = {
 		LEvent.trigger(Scene, "renderReflections" );
 		scene.sendEventToNodes("renderReflections" );
 
+		LEvent.trigger(Scene, "beforeRenderMainPass" );
+		scene.sendEventToNodes("beforeRenderMainPass" );
+
+
 		//render one camera or all the cameras
 		var current_camera = null;
 
@@ -10955,7 +10955,8 @@ var Renderer = {
 		for(var i in cameras)
 		{
 			current_camera = cameras[i];
-			LEvent.trigger(current_camera, "beforeRender" );
+			LEvent.trigger(current_camera, "beforeRenderPass" );
+			LEvent.trigger(Scene, "beforeRenderPass" );
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
@@ -10971,7 +10972,8 @@ var Renderer = {
 				inner_draw(); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
-			LEvent.trigger(current_camera, "afterRender" );
+			LEvent.trigger(current_camera, "afterRenderPass" );
+			LEvent.trigger(Scene, "afterRenderPass" );
 		}
 
 		//events
@@ -11076,8 +11078,8 @@ var Renderer = {
 
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
 
-		LEvent.trigger(scene, "beforeRenderPass", options);
-		scene.sendEventToNodes("beforeRenderPass", options);
+		LEvent.trigger(scene, "beforeRenderInstances", options);
+		scene.sendEventToNodes("beforeRenderInstances", options);
 
 		//compute global scene info
 		this.fillSceneShaderMacros( scene, options );
@@ -11176,7 +11178,6 @@ var Renderer = {
 
 		LEvent.trigger(scene, "renderScreenSpace", options);
 
-
 		//foreground object
 		if(!options.is_shadowmap && !options.is_picking && scene.textures["foreground"])
 		{
@@ -11194,8 +11195,6 @@ var Renderer = {
 			}
 		}
 
-
-
 		//restore state
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.LESS);
@@ -11203,8 +11202,8 @@ var Renderer = {
 		gl.disable(gl.BLEND);
 		gl.frontFace(gl.CCW);
 
-		LEvent.trigger(scene, "afterRenderPass",options);
-		scene.sendEventToNodes("afterRenderPass",options);
+		LEvent.trigger(scene, "afterRenderInstances",options);
+		scene.sendEventToNodes("afterRenderInstances",options);
 
 		//EVENT SCENE after_render
 		//restore state
@@ -12462,12 +12461,20 @@ var parserASE = {
 };
 Parser.registerParser( parserASE );
 
+var temp_v3 = vec3.create();
+
 var parserDAE = {
 	extension: 'dae',
 	data_type: 'scene',
 	format: 'text',
 
 	_xmlroot: null,
+
+	no_flip: true,
+
+	_nodes_by_id: null,
+
+	safeString: function (str) { return str.replace(/ /g,"_"); },
 
 	parse: function(data, options, filename)
 	{
@@ -12479,8 +12486,11 @@ var parserDAE = {
 		var xmlparser = new DOMParser();
 		var root = xmlparser.parseFromString(data,"text/xml");
 		this._xmlroot = root;
-		var xmlnodes = root.querySelector("visual_scene");
-		xmlnodes = xmlnodes.childNodes;
+		var xmlvisual_scene = root.querySelector("visual_scene");
+
+		//hack to avoid problems with bones with spaces in names
+		this._nodes_by_id = {}; //clear
+		this.readAllNodeNames(xmlvisual_scene);
 
 		var scene = { 
 			object_type:"SceneTree", 
@@ -12489,6 +12499,8 @@ var parserDAE = {
 			root:{ children:[] }
 		};
 
+		//parse nodes tree
+		var xmlnodes = xmlvisual_scene.childNodes;
 		for(var i = 0; i < xmlnodes.length; i++)
 		{
 			if(xmlnodes[i].localName != "node")
@@ -12511,11 +12523,32 @@ var parserDAE = {
 		return scene;
 	},
 
+	/* Collect node ids, in case there is bones (with spaces in name) I need to know the nodenames in advance */
+	readAllNodeNames: function(xmlnode)
+	{
+		var node_id = this.safeString( xmlnode.getAttribute("id") );
+		if(node_id)
+			this._nodes_by_id[node_id] = true; //node found
+		for( var i = 0; i < xmlnode.childNodes.length; i++ )
+		{
+			var xmlchild = xmlnode.childNodes[i];
+
+			//children
+			if(xmlchild.localName != "node")
+				continue;
+			this.readAllNodeNames(xmlchild);
+		}
+	},
+
 	readNode: function(xmlnode, scene, level, flip)
 	{
-		var node_id = xmlnode.getAttribute("id");
+		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_type = xmlnode.getAttribute("type");
-		var node = { id: node_id, children:[] };
+		var node = { id: node_id, children:[], _depth: level };
+		this._nodes_by_id[node_id] = node;
+
+		//transform
+		node.model = this.readTransform(xmlnode, level, flip );
 
 		//node elements
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
@@ -12528,9 +12561,6 @@ var parserDAE = {
 				node.children.push( this.readNode(xmlchild, scene, level+1, flip) );
 				continue;
 			}
-
-			//transform
-			node.model = this.readTransform(xmlnode, level, flip );
 
 			//geometry
 			if(xmlchild.localName == "instance_geometry")
@@ -12563,7 +12593,7 @@ var parserDAE = {
 							if(material)
 							{
 								material.id = matname;
-								scene.materials[matname] = material;
+								scene.resources[matname] = material;
 							}
 							node.material = matname;
 						}
@@ -12746,19 +12776,55 @@ var parserDAE = {
 		node.light = light;
 	},
 
-	transformMatrix: function(matrix)
+	max3d_matrix_0: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
+	//max3d_matrix_other: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
+
+	transformMatrix: function(matrix, first_level, inverted)
 	{
-		//3ds max coords conversion
 		mat4.transpose(matrix,matrix);
-		return;
 
-		//flip
-		var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
-		matrix.set( matrix.subarray(8,12), 4 );
-		matrix.set( temp, 8 );
+		//inverted = false;
 
-		matrix[10] *= -1;
-		matrix[14] *= -1;
+		if(this.no_flip)
+			return matrix;
+
+		//WARNING: DO NOT CHANGE THIS FUNCTION, THE SKY WILL FALL
+		if(first_level){
+
+			//flip row two and tree
+			var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
+			matrix.set( matrix.subarray(8,12), 4 );
+			matrix.set( temp, 8 );
+
+			//reverse Z
+			temp = matrix.subarray(8,12);
+			vec4.scale(temp,temp,-1);
+		}
+		else 
+		{
+			var M = mat4.create();
+			var m = matrix;
+
+			//if(inverted) mat4.invert(m,m);
+
+			/* non trasposed
+			M.set([m[0],m[8],-m[4]], 0);
+			M.set([m[2],m[10],-m[6]], 4);
+			M.set([-m[1],-m[9],m[5]], 8);
+			M.set([m[3],m[11],-m[7]], 12);
+			*/
+
+			M.set([m[0],m[2],-m[1]], 0);
+			M.set([m[8],m[10],-m[9]], 4);
+			M.set([-m[4],-m[6],m[5]], 8);
+			M.set([m[12],m[14],-m[13]], 12);
+
+			m.set(M);
+
+			//if(inverted) mat4.invert(m,m);
+
+		}
+		return matrix;
 	},
 
 	readTransform: function(xmlnode, level, flip)
@@ -12781,7 +12847,10 @@ var parserDAE = {
 			if(xml.localName == "matrix")
 			{
 				var matrix = this.readContentAsFloats(xml);
-				this.transformMatrix(matrix);
+				console.log("Nodename: " + xmlnode.getAttribute("id"));
+				console.log(matrix);
+				this.transformMatrix(matrix, level == 0);
+				console.log(matrix);
 				return matrix;
 			}
 
@@ -13041,8 +13110,8 @@ var parserDAE = {
 		//console.log(mesh);
 
 
-		//swap coords X and Y
-		if(flip && 0)
+		//swap coords (X,Y,Z) -> (X,Z,-Y)
+		if(flip && !this.no_flip)
 		{
 			var tmp = 0;
 			var array = mesh.vertices;
@@ -13069,239 +13138,23 @@ var parserDAE = {
 		
 	},
 
-	/* old version
-	readGeometry2: function(id, flip)
+	//like querySelector but allows spaces in names...
+	findXMLNodeById: function(root, nodename, id)
 	{
-		var xmlgeometry = this._xmlroot.querySelector("geometry" + id);
-		if(!xmlgeometry) return null;
-
-		var use_indices = false;
-		var xmlmesh = xmlgeometry.querySelector("mesh");
-			
-		//for data sources
-		var sources = {};
-		var xmlsources = xmlmesh.querySelectorAll("source");
-		for(var i = 0; i < xmlsources.length; i++)
+		var childs = root.childNodes;
+		for(var i = 0; i < childs.length; ++i)
 		{
-			var xmlsource = xmlsources[i];
-			if(!xmlsource.querySelector) continue;
-			var float_array = xmlsource.querySelector("float_array");
-			if(!float_array) continue;
-			var floats = this.readContentAsFloats( xmlsource );
-			sources[ xmlsource.getAttribute("id") ] = floats;
+			var xmlnode = childs[i];
+			if(xmlnode.nodeType != 1 ) //no tag
+				continue;
+			if(xmlnode.localName != nodename)
+				continue;
+			var node_id = xmlnode.getAttribute("id");
+			if(node_id == id)
+				return xmlnode;
 		}
-
-		//get streams
-		var xmlvertices = xmlmesh.querySelector("vertices input");
-		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
-		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
-
-		var triangles = false;
-		var polylist = false;
-		var vcount = null;
-		var xmlpolygons = xmlmesh.querySelector("polygons");
-		if(!xmlpolygons)
-		{
-			xmlpolygons = xmlmesh.querySelector("polylist");
-			if(xmlpolygons)
-			{
-				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
-				return null;
-			}
-			//polylist = true;
-			//var xmlvcount = xmlpolygons.querySelector("vcount");
-			//var vcount = this.readContentAsUInt32( xmlvcount );
-		}
-		if(!xmlpolygons)
-		{
-			xmlpolygons = xmlmesh.querySelector("triangles");
-			triangles = true;
-		}
-		if(!xmlpolygons)
-		{
-			console.log("no polygons or triangles in mesh: " + id);
-			return null;
-		}
-
-
-		var xmlinputs = xmlpolygons.querySelectorAll("input");
-		var vertex_offset = -1;
-		var normal_offset = -1;
-		var uv_offset = -1;
-
-		var vertices = null;
-		var normals = null;
-		var coords = null;
-
-		for(var i = 0; i < xmlinputs.length; i++)
-		{
-			var xmlinput = xmlinputs[i];
-			if(!xmlinput.getAttribute) continue;
-			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
-			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
-			if (semantic == "VERTEX")
-			{
-				vertices = stream_source;
-				vertex_offset = parseInt( xmlinput.getAttribute("offset") );
-			}
-			else if (semantic == "NORMAL")
-			{
-				normals = stream_source;
-				normal_offset = parseInt( xmlinput.getAttribute("offset") );
-			}
-			else if (semantic == "TEXCOORD")
-			{
-				coords = stream_source;
-				uv_offset = parseInt( xmlinput.getAttribute("offset") );
-			}
-		}
-
-
-		var verticesArray = [];
-		var normalsArray = [];
-		var coordsArray = [];
-		var indicesArray = [];
-
-		var last_index = 0;
-		var facemap = {};
-
-		var xmlps = xmlpolygons.querySelectorAll("p");
-		var vertex_remap = [];
-
-		var num_data_vertex = 3;
-
-		//for every polygon
-		for(var i = 0; i < xmlps.length; i++)
-		{
-			var xmlp = xmlps[i];
-			if(!xmlp || !xmlp.textContent) break;
-			var data = xmlp.textContent.trim().split(" ");
-			var first_index = -1;
-			var current_index = -1;
-			var prev_index = -1;
-
-			if(use_indices && last_index >= 256*256)
-				break;
-
-			//for every pack of indices in the polygon (vertex, normal, uv, ... )
-			for(var k = 0; k < data.length; k += num_data_vertex)
-			{
-				if(use_indices && last_index >= 256*256)
-				{
-					trace("Too many vertices for indexing");
-					break;
-				}
-
-				//if (!use_indices && k >= 9) break; //only first triangle when not indexing
-
-				var ids = data[k + vertex_offset] + "/"; //indices of vertex, normal and uvs
-				if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
-				if(uv_offset != -1)	ids += data[k + uv_offset]; 
-
-				if(!triangles) //polygon triangulation
-				{
-					if(!use_indices && k > 6) //put the vertices again (6 is 3 vertices, 2 values per vertex)
-					{
-						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ first_index ];
-
-						verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
-						normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
-						coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
-
-						vertex_remap[ verticesArray.length / 3 ] = vertex_remap[ prev_index+1 ];
-						
-						verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
-						normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
-						coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
-						last_index += 2;
-						current_index = last_index-1;
-					}
-				}
-
-				prev_index = current_index;
-				if(!use_indices || !facemap.hasOwnProperty(ids)) //reuse indexed
-				{
-					var index = parseInt(data[k + vertex_offset]);
-					vertex_remap[ verticesArray.length / 3 ] = index;
-					index *= 3;
-
-					verticesArray.push( vertices[index], vertices[index+1], vertices[index+2] );
-					if(normal_offset != -1)
-					{
-						index = parseInt(data[k + normal_offset]) * 3;
-						normalsArray.push( normals[index], normals[index+1], normals[index+2] );
-					}
-					if(uv_offset != -1)
-					{
-						index = parseInt(data[k + uv_offset]) * 2;
-						coordsArray.push( coords[index], coords[index+1] );
-					}
-					
-					current_index = last_index;
-					last_index += 1;
-					if(use_indices)
-						facemap[ids] = current_index;
-				}
-				else if(use_indices)//already used vertex
-				{
-					current_index = facemap[ids];
-				}
-
-				if(k == 0)	first_index = current_index;
-				if(use_indices)
-				{
-					if(k > 6) //triangulate polygons
-					{
-						indicesArray.push( first_index );
-						indicesArray.push( prev_index );
-					}
-					indicesArray.push( current_index );
-				}
-			}//per vertex
-		}//per polygon
-
-		var mesh = {
-			vertices: new Float32Array(verticesArray),
-			_remap: new Uint16Array(vertex_remap)
-		};
-		
-		if (normalsArray.length)
-			mesh.normals = new Float32Array(normalsArray);
-		if (coordsArray.length)
-			mesh.coords = new Float32Array(coordsArray);
-		if(indicesArray.length)
-			mesh.triangles = new Uint16Array(indicesArray);
-
-		//swap coords
-		if(flip && 1)
-		{
-			var tmp = 0;
-			var array = mesh.vertices;
-			for(var i = 0, l = array.length; i < l; i += 3)
-			{
-				tmp = array[i+1]; 
-				array[i+1] = array[i+2];
-				array[i+2] = -tmp; 
-			}
-
-			array = mesh.normals;
-			for(var i = 0, l = array.length; i < l; i += 3)
-			{
-				tmp = array[i+1]; 
-				array[i+1] = array[i+2];
-				array[i+2] = -tmp; 
-			}
-		}
-
-		//extra info
-		var bounding = Parser.computeMeshBounding(mesh.vertices);
-		mesh.bounding = bounding;
-		if( isNaN(bounding.radius) )
-			return null;
-
-		return mesh;
+		return null;
 	},
-	*/
 
 	readAnimations: function(root, scene)
 	{
@@ -13324,8 +13177,11 @@ var parserDAE = {
 			if(xmlanimation.nodeType != 1 ) //no tag
 				continue;
 
-			xmlanimation = xmlanimation.querySelector("animation"); //yes... DAE has animation inside animation...
+			var anim_id = xmlanimation.getAttribute("id");
+
+			xmlanimation = xmlanimation.querySelector("animation"); //yes... DAE has <animation> inside animation...
 			if(!xmlanimation) continue;
+
 
 			//channels are like animated properties
 			var xmlchannel = xmlanimation.querySelector("channel");
@@ -13335,7 +13191,13 @@ var parserDAE = {
 			var target = xmlchannel.getAttribute("target");
 
 			//sampler, is in charge of the interpolation
-			var xmlsampler = xmlanimation.querySelector("sampler" + source);
+			//var xmlsampler = xmlanimation.querySelector("sampler" + source);
+			xmlsampler = this.findXMLNodeById(xmlanimation, "sampler", source.substr(1) );
+			if(!xmlsampler)
+			{
+				console.error("Error DAE: Sampler not found in " + source);
+				continue;
+			}
 
 			var inputs = {};
 			var sources = {};
@@ -13352,7 +13214,7 @@ var parserDAE = {
 				var semantic = xmlinput.getAttribute("semantic");
 
 				//Search for source
-				var xmlsource = xmlanimation.querySelector("source" + source_name);
+				var xmlsource = this.findXMLNodeById( xmlanimation, "source", source_name.substr(1) );
 				if(!xmlsource)
 					continue;
 
@@ -13372,7 +13234,7 @@ var parserDAE = {
 					data_array = floats;
 
 				}
-				else
+				else //only floats and matrices are supported in animation
 					continue;
 
 				var param_name = xmlparam.getAttribute("name");
@@ -13381,12 +13243,19 @@ var parserDAE = {
 				params[ param_name || "OUTPUT" ] = type;
 			}
 
+			if(!time_data)
+			{
+				console.error("Error DAE: no TIME info found in animation: " + anim_id);
+				continue;
+			}
+
 			//construct animation
 			var path = target.split("/");
 
 			var anim = {}
-			anim.nodename = path[0]; //where it goes
+			anim.nodename = this.safeString( path[0] ); //where it goes
 			anim.property = path[1];
+			var node = this._nodes_by_id[ anim.nodename ];
 
 			var element_size = 1;
 			var param_type = params["OUTPUT"];
@@ -13415,7 +13284,7 @@ var parserDAE = {
 				var value = value_data.subarray( j * element_size, (j+1) * element_size );
 				if(param_type == "float4x4")
 				{
-					this.transformMatrix( value );
+					this.transformMatrix( value, node._depth == 0 );
 					//mat4.transpose(value, value);
 				}
 				anim_data.set(value, j * sample_size + 1); //set data
@@ -13472,6 +13341,8 @@ var parserDAE = {
 			return null;
 
 		var sources = this.readSources(xmlskin, flip);
+		if(!sources)
+			return null;
 
 		//matrix
 		var bind_matrix = null;
@@ -13503,16 +13374,19 @@ var parserDAE = {
 
 			//save bone names and inv matrix
 			if(!inv_bind_source || !joints_source)
-				throw("no joints or inv_bind sources found");
+			{
+				console.error("Error DAE: no joints or inv_bind sources found");
+				return null;
+			}
 
 			for(var i in joints_source)
 			{
-				var mat = inv_bind_source.subarray(i*16,i*16+16);
-				vec3.scale( mat.subarray(4,8), mat.subarray(4,8), -1 );
-				var temp = mat4.create();
-				mat4.swapRows(temp, mat, 0, 1 );
-				mat4.transpose(temp, temp);
-				joints.push([joints_source[i], temp]);
+				//get the inverse of the bind pose
+				var inv_mat = inv_bind_source.subarray(i*16,i*16+16);
+				var nodename = joints_source[i];
+				var node = this._nodes_by_id[ nodename ];
+				this.transformMatrix(inv_mat, node._depth == 0, true );
+				joints.push([ nodename, inv_mat ]);
 			}
 		}
 
@@ -13560,19 +13434,47 @@ var parserDAE = {
 				}
 			}
 
-			//remap
+			//remap: because vertices order is now changed after parsing the mesh
 			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
 			var final_bone_indices = new Uint8Array(4 * num_vertices); //4 bones per vertex
 			for(var i = 0; i < num_vertices; ++i)
 			{
 				var p = remap[ i ] * 4;
-				final_weights.set( weights_array.subarray(p,p+4), i*4);
-				final_bone_indices.set( bone_index_array.subarray(p,p+4), i*4);
+				var w = weights_array.subarray(p,p+4);
+				var b = bone_index_array.subarray(p,p+4);
+
+				//sort by weight so relevant ones goes first
+				for(var k = 0; k < 3; ++k)
+				{
+					var max_pos = k;
+					var max_value = w[k];
+					for(var j = k+1; j < 4; ++j)
+					{
+						if(w[j] <= max_value)
+							continue;
+						max_pos = j;
+						max_value = w[j];
+					}
+					if(max_pos != k)
+					{
+						var tmp = w[k];
+						w[k] = w[max_pos];
+						w[max_pos] = tmp;
+						tmp = b[k];
+						b[k] = b[max_pos];
+						b[max_pos] = tmp;
+					}
+				}
+
+				//store
+				final_weights.set( w, i*4);
+				final_bone_indices.set( b, i*4);
 			}
 
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;
 			mesh.bones = joints;
+			delete mesh["_remap"];
 		}
 
 		return mesh;
@@ -13632,7 +13534,8 @@ var parserDAE = {
 		for(var i = 0; i < xmlsources.length; i++)
 		{
 			var xmlsource = xmlsources[i];
-			if(!xmlsource.querySelector) continue;
+			if(!xmlsource.querySelector) 
+				continue;
 
 			var float_array = xmlsource.querySelector("float_array");
 			if(float_array)
@@ -13647,7 +13550,7 @@ var parserDAE = {
 			{
 				var names = this.readContentAsStringsArray( name_array );
 				if(!names)
-					return null;
+					continue;
 				sources[ xmlsource.getAttribute("id") ] = names;
 				continue;
 			}
@@ -13697,215 +13600,45 @@ var parserDAE = {
 			words[k] = words[k].trim();
 		if(xmlnode.getAttribute("count") && parseInt(xmlnode.getAttribute("count")) != words.length)
 		{
-			console.error("Error: bone names with spaces not supported by DAE");
+			var merged_words = [];
+			var name = "";
+			for (var i in words)
+			{
+				if(!name)
+					name = words[i];
+				else
+					name += " " + words[i];
+				if(!this._nodes_by_id[ this.safeString(name) ])
+					continue;
+				merged_words.push( this.safeString(name) );
+				name = "";
+			}
+
+			var count = parseInt(xmlnode.getAttribute("count"));
+			if(merged_words.length == count)
+				return merged_words;
+
+			console.error("Error: bone names have spaces, avoid using spaces in names");
 			return null;
 		}
 		return words;
-	}
-	
-	/*
-	parse2: function(data, options)
+	},
+
+	debugMatrix: function(str, first_level )
 	{
-		options = options || {};
-
-		trace("Parsing collada");
-
-		var xmlparser = new DOMParser();
-		var root = xmlparser.parseFromString(data,"text/xml");
-		var geometry_nodes = root.querySelectorAll("library_geometries geometry");
-		if(!geometry_nodes || geometry_nodes.length == 0) return null;
-
-		//trace(mesh_node);
-		var data_info = {
-			type: "",
-			order: []
-		};
-
-		var use_indices = false;
-
-		//trace(mesh_nodes);
-
-		//for geometry_nodes
-		for(var i in geometry_nodes)
-		{
-			var sources = {};
-
-			var geometry_node = geometry_nodes[i];
-			var geometry_id = geometry_node.getAttribute("id");
-			if(!geometry_node.querySelector) continue; //in case is text
-
-			var mesh_node = geometry_node.querySelector("mesh");
-			
-			//for data source
-			var sources_xml = mesh_node.querySelectorAll("source");
-			for (var j in sources_xml)
-			{
-				var source = sources_xml[j];
-				if(!source.querySelector) continue;
-				var float_array = source.querySelector("float_array");
-				if(!float_array) continue;
-				var text = float_array.textContent;
-				text = text.replace(/\n/gi, " ");
-				text = text.trim();
-				var numbers = text.split(" ");
-				var floats = new Float32Array(parseInt(float_array.getAttribute("count")));
-				for(var k = 0; k < numbers.length; k++)
-					floats[k] = parseFloat( numbers[k] );
-
-				sources[ source.getAttribute("id") ] = floats;
-			}
-
-			var vertices_xml = mesh_node.querySelector("vertices input");
-			vertices_source = sources[ vertices_xml.getAttribute("source").substr(1) ];
-			sources[ mesh_node.querySelector("vertices").getAttribute("id") ] = vertices_source;
-
-			var polygons_xml = mesh_node.querySelector("polygons");
-			var inputs_xml = polygons_xml.querySelectorAll("input");
-			var vertex_offset = -1;
-			var normal_offset = -1;
-			var uv_offset = -1;
-
-			var vertices = null;
-			var normals = null;
-			var coords = null;
-
-
-			for(var j in inputs_xml)
-			{
-				var input = inputs_xml[j];
-				if(!input.getAttribute) continue;
-				var semantic = input.getAttribute("semantic").toUpperCase();
-				var stream_source = sources[ input.getAttribute("source").substr(1) ];
-				if (semantic == "VERTEX")
-				{
-					vertices = stream_source;
-					vertex_offset = parseInt( input.getAttribute("offset") );
-				}
-				else if (semantic == "NORMAL")
-				{
-					normals = stream_source;
-					normal_offset = parseInt( input.getAttribute("offset") );
-				}
-				else if (semantic == "TEXCOORD")
-				{
-					coords = stream_source;
-					uv_offset = parseInt( input.getAttribute("offset") );
-				}
-			}
-
-			var p_xml = polygons_xml.querySelectorAll("p");
-
-			var verticesArray = [];
-			var normalsArray = [];
-			var coordsArray = [];
-			var indicesArray = [];
-
-			var last_index = 0;
-			var facemap = {};
-
-			//for every polygon
-			for(var j in p_xml)
-			{
-				var p = p_xml[j];
-				if(!p || !p.textContent) break;
-				var data = p.textContent.split(" ");
-				var first_index = -1;
-				var current_index = -1;
-				var prev_index = -1;
-
-				if(use_indices && last_index >= 256*256)
-					break;
-
-				//for every triplet of indices in the polygon
-				for(var k = 0; k < data.length; k += 3)
-				{
-					if(use_indices && last_index >= 256*256)
-					{
-						trace("Too many vertices for indexing");
-						break;
-					}
-					
-					//if (!use_indices && k >= 9) break; //only first triangle when not indexing
-
-					var ids = data[k + vertex_offset] + "/"; //indices of vertex, normal and uvs
-					if(normal_offset != -1)	ids += data[k + normal_offset] + "/";
-					if(uv_offset != -1)	ids += data[k + uv_offset]; 
-
-					if(!use_indices && k > 6) //put the vertices again
-					{
-						verticesArray.push( verticesArray[first_index*3], verticesArray[first_index*3+1], verticesArray[first_index*3+2] );
-						normalsArray.push( normalsArray[first_index*3], normalsArray[first_index*3+1], normalsArray[first_index*3+2] );
-						coordsArray.push( coordsArray[first_index*2], coordsArray[first_index*2+1] );
-						
-						verticesArray.push( verticesArray[(prev_index+1)*3], verticesArray[(prev_index+1)*3+1], verticesArray[(prev_index+1)*3+2] );
-						normalsArray.push( normalsArray[(prev_index+1)*3], normalsArray[(prev_index+1)*3+1], normalsArray[(prev_index+1)*3+2] );
-						coordsArray.push( coordsArray[(prev_index+1)*2], coordsArray[(prev_index+1)*2+1] );
-						last_index += 2;
-						current_index = last_index-1;
-					}
-
-					prev_index = current_index;
-					if(!use_indices || !facemap.hasOwnProperty(ids))
-					{
-						var index = parseInt(data[k + vertex_offset]) * 3;
-						verticesArray.push( vertices[index], vertices[index+1], vertices[index+2] );
-						if(normal_offset != -1)
-						{
-							index = parseInt(data[k + normal_offset]) * 3;
-							normalsArray.push( normals[index], normals[index+1], normals[index+2] );
-						}
-						if(uv_offset != -1)
-						{
-							index = parseInt(data[k + uv_offset]) * 2;
-							coordsArray.push( coords[index], coords[index+1] );
-						}
-						
-						current_index = last_index;
-						last_index += 1;
-						if(use_indices)
-							facemap[ids] = current_index;
-					}
-					else if(use_indices)//already used vertex
-					{
-						current_index = facemap[ids];
-					}
-
-					if(k == 0)	first_index = current_index;
-					if(use_indices)
-					{
-						if(k > 6) //triangulate polygons
-						{
-							indicesArray.push( first_index );
-							indicesArray.push( prev_index );
-						}
-						indicesArray.push( current_index );
-					}
-				}//per vertex
-			}//per polygon
-
-			var mesh = {
-				vertices: new Float32Array(verticesArray)
-			};
-			
-			if (normalsArray.length)
-				mesh.normals = new Float32Array(normalsArray);
-			if (coordsArray.length)
-				mesh.coords = new Float32Array(coordsArray);
-			if(indicesArray.length)
-				mesh.triangles = new Uint16Array(indicesArray);
-
-			//extra info
-			var bounding = Parser.computeMeshBounding(mesh.vertices);
-			mesh.bounding = bounding;
-			if( isNaN(bounding.radius))
-				return null;
-
-			return mesh;
-		}
+		var m = new Float32Array( JSON.parse("["+str.split(" ").join(",")+"]") );
+		return this.transformMatrix(m, first_level );
 	}
-	*/
+
 };
 Parser.registerParser(parserDAE);
+
+mat4.fromDAE = function(str)
+{
+	var m = new Float32Array( JSON.parse("["+str.split(" ").join(",")+"]") );
+	mat4.transpose(m,m);
+	return m;
+}
 
 var parserDDS = { 
 	extension: 'dds',
@@ -14340,7 +14073,7 @@ Object.defineProperty( SceneTree.prototype, "root", {
 SceneTree.prototype.init = function()
 {
 	this.id = "";
-	this.materials = {}; //shared materials cache
+	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
@@ -14441,9 +14174,11 @@ SceneTree.prototype.configure = function(scene_info)
 		this.root.configure( { children: scene_info.nodes } );
 
 	//parse materials
+	/*
 	if(scene_info.materials)
 		for(var i in scene_info.materials)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
+	*/
 
 	//legacy
 	if(scene_info.components)
@@ -14512,12 +14247,14 @@ SceneTree.prototype.serialize = function()
 	o.root = this.root.serialize();
 
 	//add shared materials
+	/*
 	if(this.materials)
 	{
 		o.materials = {};
 		for(var i in this.materials)
 			o.materials[ i ] = this.materials[i].serialize();
 	}
+	*/
 
 	//serialize scene components
 	//this.serializeComponents(o);
@@ -14573,9 +14310,11 @@ SceneTree.prototype.appendScene = function(scene)
 	//clone: because addNode removes it from scene.nodes array
 	var nodes = scene.root.childNodes;
 
+	/*
 	//bring materials
 	for(var i in scene.materials)
 		this.materials[i] = scene.materials[i];
+	*/
 	
 	//add every node one by one
 	for(var i in nodes)
@@ -15210,7 +14949,7 @@ SceneNode.prototype.getMaterial = function()
 {
 	if (!this.material) return null;
 	if(this.material.constructor === String)
-		return this._in_tree ? this._in_tree.materials[this.material] : null;
+		return this._in_tree ? LS.ResourcesManager.materials[ this.material ] : null;
 	return this.material;
 }
 
@@ -15793,7 +15532,10 @@ Track.prototype.configure = function(data)
 
 Track.prototype.getSample = function(time, interpolate)
 {
-	var local_time = time % this.duration;
+	var local_time = (time % this.duration);
+	if(local_time < 0)
+		local_time = this.duration + local_time;
+
 	var data = this.data;
 	var last_time = 0;
 
@@ -15909,6 +15651,7 @@ function Context(options)
 
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+	gl.animate();
 }
 
 /**

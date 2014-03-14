@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -158,7 +174,7 @@ MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
 MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
 MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
-	var component = this.component;
+	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
 	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length &lt; 2)
@@ -198,6 +214,9 @@ MeshRenderer.prototype.configure = function(o)
 	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == &quot;string&quot; ? o.material : new Material(o.material);
+
+	if(o.morph_targets)
+		this.morph_targets = o.morph_targets;
 }
 
 /**
@@ -246,7 +265,7 @@ MeshRenderer.prototype.getResources = function(res)
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var mesh = this.getMesh();
 	if(!mesh) return null;
@@ -254,34 +273,38 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 	var node = this._root;
 	if(!this._root) return;
 
-	/*
-	if(options.step == &quot;reflection&quot; &amp;&amp; !node.flags.seen_by_reflections)
-		return null;
-	if(options.step == &quot;main&quot; &amp;&amp; node.flags.seen_by_camera == false)
-		return null;
-	if(options.step == &quot;shadow&quot; &amp;&amp; !node.flags.cast_shadows)
-		return null;
-	*/
-
-	var RI = this._render_instance;
+	var RI = this._RI;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._RI = RI = new RenderInstance(this._root, this);
 
-	//do not need to update
+	//matrix: do not need to update, already done
 	RI.matrix.set( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.mesh = mesh;
-	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
-	RI.primitive = this.primitive == null ? gl.TRIANGLES : this.primitive;
+	//material
 	RI.material = this.material || this._root.getMaterial();
 
+	//flags
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &amp;= ~RI_CULL_FACE;
+
+	//buffers from mesh and bounding
+	RI.setMesh( mesh, this.primitive );
+	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
+		RI.submesh_id = this.submesh_id;
+
+	/* moved to collider
+	if(this.lod_mesh)
+	{
+		if(typeof(this.lod_mesh) === &quot;string&quot;)
+			RI.setCollisionMesh( ResourcesManager.meshes[this.lod_mesh] );
+		else
+			RI.setCollisionMesh( this.lod_mesh );
+	}
+	*/
 
 	instances.push(RI);
 	//return RI;

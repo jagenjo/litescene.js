@@ -41,6 +41,8 @@
         <div id="api-tabview-panel">
             <ul id="api-classes" class="apis classes">
             
+                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -61,9 +63,13 @@
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
+                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
+            
+                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -71,13 +77,21 @@
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
+                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
                 <li><a href="../classes/LS.Context.html">LS.Context</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
+                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
-                <li><a href="../classes/LS.Octree.html">LS.Octree</a></li>
+                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+            
+                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
@@ -88,6 +102,8 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
             
@@ -156,6 +172,12 @@ function Transform(o)
 
 Transform.temp_matrix = mat4.create();
 Transform.icon = &quot;mini-icon-gizmo.png&quot;;
+
+Transform.attributes = {
+		position:&quot;vec3&quot;,
+		scale:&quot;vec3&quot;,
+		rotation:&quot;quat&quot;
+	};
 
 Transform.prototype.onAddedToNode = function(node)
 {
@@ -259,10 +281,10 @@ Transform.prototype.getGlobalPosition = function(p)
 	if(this._parent)
 	{
 		var tmp = vec3.create();
-		return mat4.multiplyVec3( tmp || p, this.getGlobalMatrix(), tmp );
+		return mat4.multiplyVec3( p || tmp, this.getGlobalMatrix(), tmp );
 	}
 	if(p) return vec3.copy(p,this._position);
-	return vec3.clone( this._position);
+	return vec3.clone( this._position );
 }
 
 /**
@@ -647,6 +669,30 @@ Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 }
 
 /**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuat = function(quaternion)
+{
+	quat.multiply(this._rotation, quaternion, this._rotation);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
+* rotate object in world space using a quat
+* @method rotateQuat
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuatLocal = function(quaternion)
+{
+	quat.multiply(this._rotation, this._rotation, quaternion);
+	this._dirty = true;
+	this._on_change();
+}
+
+/**
 * scale the object
 * @method scale
 * @param {number} x 
@@ -772,8 +818,8 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVector
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVector = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this._rotation );
@@ -783,22 +829,21 @@ Transform.prototype.transformVector = function(vec, dest) {
 * Applies the transformation to a vector (rotate but not translate)
 * If no destination is specified the transform is applied to vec
 * @method transformVectorGlobal
-* @param {[x,y,z]} vector
-* @param {[x,y,z]} destination (optional)
+* @param {vec3} vector
+* @param {vec3} destination (optional)
 */
 Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
 /**
-* Applies the transformation to a vector (rotate but not translate)
-* If no destination is specified the transform is applied to vec
+* Applies the transformation using a matrix
 * @method applyTransformMatrix
-* @param {[[x,y,z]]} vector
-* @param {[[x,y,z]]} destination (optional)
+* @param {mat4} matrix with the transform
+* @param {bool} is_global (optional)
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
-	if(!is_global || !this._parent)
+	if(!this._parent)
 	{
 		if(is_global)
 			mat4.multiply(this._local_matrix, t, this._local_matrix);
