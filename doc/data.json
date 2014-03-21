@@ -191,6 +191,15 @@
                 "LS": 1
             }
         },
+        "../src/render/renderOptions.js": {
+            "name": "../src/render/renderOptions.js",
+            "modules": {},
+            "classes": {
+                "LS.RenderOptions": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
         "../src/render/renderer.js": {
             "name": "../src/render/renderer.js",
             "modules": {},
@@ -469,7 +478,7 @@
             "extension_for": [],
             "namespace": "LS.Components",
             "file": "../src/components/graphComponents.js",
-            "line": 106,
+            "line": 105,
             "description": "This component allow to integrate a rendering post FX using a graph",
             "params": [
                 {
@@ -701,6 +710,20 @@
             "description": "RenderInstance contains info of one object to be rendered on the scene.",
             "is_constructor": 1
         },
+        "LS.RenderOptions": {
+            "name": "LS.RenderOptions",
+            "shortname": "RenderOptions",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/render/renderOptions.js",
+            "line": 1,
+            "description": "It is used to store info about which passes should be applied, and what actions performed\nIt could occasionally contain info about the current pass\nit should not be associated with an scene (the same RenderOptions could be used with different scenes)",
+            "is_constructor": 1
+        },
         "LS.Renderer": {
             "name": "LS.Renderer",
             "shortname": "LS.Renderer",
@@ -711,7 +734,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/render/renderer.js",
-            "line": 2,
+            "line": 3,
             "description": "The Renderer is in charge of generating one frame of the scene. Contains all the passes and intermediate functions to create the frame.",
             "is_constructor": 1
         },
@@ -815,7 +838,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 398,
+            "line": 387,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -930,7 +953,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/scene.js",
-            "line": 720,
+            "line": 714,
             "description": "The SceneNode class represents and object in the scene\nIs the base class for all objects in the scene as meshes, lights, cameras, and so",
             "params": [
                 {
@@ -1034,9 +1057,9 @@
         {
             "file": "../src/components/camera.js",
             "line": 184,
-            "description": "The frustrum size when working in ORTHOGRAPHIC",
+            "description": "The frustum size when working in ORTHOGRAPHIC",
             "itemtype": "property",
-            "name": "frustrum_size",
+            "name": "frustum_size",
             "type": "Number",
             "default": "50",
             "class": "LS.Components.Camera",
@@ -1046,7 +1069,7 @@
             "file": "../src/components/camera.js",
             "line": 223,
             "itemtype": "method",
-            "name": "updateMatrices",
+            "name": "lookAt",
             "params": [
                 {
                     "name": "eye",
@@ -1078,7 +1101,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 517,
+            "line": 516,
             "description": "Applies the camera transformation (from eye,center,up) to the node.",
             "itemtype": "method",
             "name": "updateNodeTransform",
@@ -1087,7 +1110,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 530,
+            "line": 529,
             "description": "Converts from 3D to 2D",
             "itemtype": "method",
             "name": "project",
@@ -1117,7 +1140,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 551,
+            "line": 550,
             "description": "Converts from 2D to 3D",
             "itemtype": "method",
             "name": "unproject",
@@ -1163,7 +1186,7 @@
         },
         {
             "file": "../src/components/graphComponents.js",
-            "line": 155,
+            "line": 154,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -1358,7 +1381,7 @@
         },
         {
             "file": "../src/components/skinnedMeshRenderer.js",
-            "line": 52,
+            "line": 53,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -1374,7 +1397,7 @@
         },
         {
             "file": "../src/components/skinnedMeshRenderer.js",
-            "line": 68,
+            "line": 69,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -2552,7 +2575,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 42,
+            "line": 48,
             "description": "Renders the current scene to the screen",
             "itemtype": "method",
             "name": "render",
@@ -2570,7 +2593,7 @@
                 {
                     "name": "render_options",
                     "description": "",
-                    "type": "Object"
+                    "type": "RenderOptions"
                 }
             ],
             "class": "LS.Renderer",
@@ -2578,7 +2601,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 163,
+            "line": 160,
             "description": "Set camera as the main scene camera",
             "itemtype": "method",
             "name": "enableCamera",
@@ -2587,6 +2610,11 @@
                     "name": "camera",
                     "description": "",
                     "type": "Camera"
+                },
+                {
+                    "name": "render_options",
+                    "description": "",
+                    "type": "RenderOptions"
                 }
             ],
             "class": "LS.Renderer",
@@ -3063,7 +3091,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 197,
+            "line": 186,
             "description": "copy the properties (methods and attributes) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -3084,7 +3112,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 228,
+            "line": 217,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -3109,7 +3137,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 269,
+            "line": 258,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -3129,7 +3157,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 289,
+            "line": 278,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -3149,7 +3177,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 308,
+            "line": 297,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -3169,7 +3197,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 434,
+            "line": 423,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",
@@ -3535,7 +3563,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 94,
+            "line": 88,
             "description": "Clears the scene using the init function\nand trigger a \"clear\" LEvent",
             "itemtype": "method",
             "name": "clear",
@@ -3544,7 +3572,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 115,
+            "line": 109,
             "description": "Configure the Scene using an object (the object can be obtained from the function serialize)\nInserts the nodes, configure them, and change the parameters",
             "itemtype": "method",
             "name": "configure",
@@ -3560,7 +3588,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 198,
+            "line": 192,
             "description": "Creates and object containing all the info about the scene and nodes.\nThe oposite of configure.\nIt calls the serialize method in every node",
             "itemtype": "method",
             "name": "serialize",
@@ -3573,7 +3601,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 245,
+            "line": 239,
             "description": "loads a Scene from an Ajax call and pass it to the configure method.",
             "itemtype": "method",
             "name": "loadScene",
@@ -3603,7 +3631,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 393,
+            "line": 387,
             "description": "retrieves a Node",
             "itemtype": "method",
             "name": "getNode",
@@ -3623,7 +3651,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 421,
+            "line": 415,
             "description": "retrieves a Node",
             "itemtype": "method",
             "name": "getNodeByUid",
@@ -3643,7 +3671,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 439,
+            "line": 433,
             "description": "retrieves a Node by its index",
             "itemtype": "method",
             "name": "getNodeByIndex",
@@ -3663,7 +3691,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 453,
+            "line": 447,
             "description": "retrieves a Node index",
             "itemtype": "method",
             "name": "getNodeIndex",
@@ -3683,7 +3711,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 467,
+            "line": 461,
             "description": "retrieves a Node",
             "itemtype": "method",
             "name": "getNodesByClass",
@@ -3703,7 +3731,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 487,
+            "line": 481,
             "description": "loads all the resources of all the nodes in this scene\nit sends a signal to every node to get all the resources info\nand load them in bulk using the ResourceManager",
             "itemtype": "method",
             "name": "loadResources",
@@ -3712,7 +3740,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 539,
+            "line": 533,
             "description": "start the scene (triggers and start event)",
             "itemtype": "method",
             "name": "start",
@@ -3728,7 +3756,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 555,
+            "line": 549,
             "description": "stop the scene (triggers and start event)",
             "itemtype": "method",
             "name": "stop",
@@ -3744,7 +3772,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 571,
+            "line": 565,
             "description": "renders the scene using the assigned renderer",
             "itemtype": "method",
             "name": "render",
@@ -3753,7 +3781,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 668,
+            "line": 662,
             "description": "dispatch event to all nodes in the scene",
             "itemtype": "method",
             "name": "sendEventToNodes",
@@ -3774,7 +3802,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 768,
+            "line": 762,
             "description": "changes the node id (its better to do not change the id, it can lead to unexpected results)\nremember that two nodes can't have the same id",
             "itemtype": "method",
             "name": "setId",
@@ -3794,7 +3822,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 946,
+            "line": 940,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -3807,7 +3835,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 978,
+            "line": 972,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -3823,7 +3851,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1065,
+            "line": 1059,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",

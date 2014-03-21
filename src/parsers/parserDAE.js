@@ -313,57 +313,6 @@ var parserDAE = {
 		node.light = light;
 	},
 
-	max3d_matrix_0: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
-	//max3d_matrix_other: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
-
-	transformMatrix: function(matrix, first_level, inverted)
-	{
-		mat4.transpose(matrix,matrix);
-
-		//inverted = false;
-
-		if(this.no_flip)
-			return matrix;
-
-		//WARNING: DO NOT CHANGE THIS FUNCTION, THE SKY WILL FALL
-		if(first_level){
-
-			//flip row two and tree
-			var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
-			matrix.set( matrix.subarray(8,12), 4 );
-			matrix.set( temp, 8 );
-
-			//reverse Z
-			temp = matrix.subarray(8,12);
-			vec4.scale(temp,temp,-1);
-		}
-		else 
-		{
-			var M = mat4.create();
-			var m = matrix;
-
-			//if(inverted) mat4.invert(m,m);
-
-			/* non trasposed
-			M.set([m[0],m[8],-m[4]], 0);
-			M.set([m[2],m[10],-m[6]], 4);
-			M.set([-m[1],-m[9],m[5]], 8);
-			M.set([m[3],m[11],-m[7]], 12);
-			*/
-
-			M.set([m[0],m[2],-m[1]], 0);
-			M.set([m[8],m[10],-m[9]], 4);
-			M.set([-m[4],-m[6],m[5]], 8);
-			M.set([m[12],m[14],-m[13]], 12);
-
-			m.set(M);
-
-			//if(inverted) mat4.invert(m,m);
-
-		}
-		return matrix;
-	},
-
 	readTransform: function(xmlnode, level, flip)
 	{
 		//identity
@@ -869,6 +818,7 @@ var parserDAE = {
 		return null;
 	},
 
+	//read this to more info about DAE and skinning https://collada.org/mediawiki/index.php/Skinning
 	readSkinController: function(xmlskin, flip, scene)
 	{
 		//base geometry
@@ -885,7 +835,10 @@ var parserDAE = {
 		var bind_matrix = null;
 		var xmlbindmatrix = xmlskin.querySelector("bind_shape_matrix");
 		if(xmlbindmatrix)
+		{
 			bind_matrix = this.readContentAsFloats( xmlbindmatrix );
+			this.transformMatrix(bind_matrix, true, true );			
+		}
 		else
 			bind_matrix = mat4.create(); //identity
 
@@ -958,17 +911,32 @@ var parserDAE = {
 
 			for(var i = 0; i < vcount.length; ++i)
 			{
-				var num_bones = vcount[i];
-				//sort by weight (to be sure we dont throw the highest one)
-				//TODO
-				if(num_bones > 4) num_bones = 4;
+				var num_bones = vcount[i]; //num bones influencing this vertex
 
-				for(var j = 0; j < num_bones; ++j)
+				//find 4 with more influence
+				//var v_tuplets = v.subarray(offset, offset + num_bones*2);
+
+				var offset = pos;
+				var b = bone_index_array.subarray(i*4, i*4 + 4);
+				var w = weights_array.subarray(i*4, i*4 + 4);
+
+				var sum = 0;
+				for(var j = 0; j < num_bones && j < 4; ++j)
 				{
-					bone_index_array[i * 4 + j] = v[pos];
-					weights_array[i * 4 + j] = weights_indexed_array[ v[pos+1] ];
-					pos += 2;
+					b[j] = v[offset + j*2];
+					w[j] = weights_indexed_array[ v[offset + j*2 + 1] ];
+					sum += w[j];
 				}
+
+				//normalize weights
+				if(num_bones > 4 && sum < 1.0)
+				{
+					var inv_sum = 1/sum;
+					for(var j = 0; j < 4; ++j)
+						w[j] *= inv_sum;
+				}
+
+				pos += num_bones * 2;
 			}
 
 			//remap: because vertices order is now changed after parsing the mesh
@@ -1011,6 +979,7 @@ var parserDAE = {
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;
 			mesh.bones = joints;
+			mesh.bind_matrix = bind_matrix;
 			delete mesh["_remap"];
 		}
 
@@ -1159,6 +1128,55 @@ var parserDAE = {
 			return null;
 		}
 		return words;
+	},
+
+	max3d_matrix_0: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
+	//max3d_matrix_other: new Float32Array([0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, -0, 0, 0, 0, 1]),
+
+	transformMatrix: function(matrix, first_level, inverted)
+	{
+		mat4.transpose(matrix,matrix);
+
+		if(this.no_flip)
+			return matrix;
+
+		//WARNING: DO NOT CHANGE THIS FUNCTION, THE SKY WILL FALL
+		if(first_level){
+
+			//flip row two and tree
+			var temp = new Float32Array(matrix.subarray(4,8)); //swap rows
+			matrix.set( matrix.subarray(8,12), 4 );
+			matrix.set( temp, 8 );
+
+			//reverse Z
+			temp = matrix.subarray(8,12);
+			vec4.scale(temp,temp,-1);
+		}
+		else 
+		{
+			var M = mat4.create();
+			var m = matrix;
+
+			//if(inverted) mat4.invert(m,m);
+
+			/* non trasposed
+			M.set([m[0],m[8],-m[4]], 0);
+			M.set([m[2],m[10],-m[6]], 4);
+			M.set([-m[1],-m[9],m[5]], 8);
+			M.set([m[3],m[11],-m[7]], 12);
+			*/
+
+			M.set([m[0],m[2],-m[1]], 0);
+			M.set([m[8],m[10],-m[9]], 4);
+			M.set([-m[4],-m[6],m[5]], 8);
+			M.set([m[12],m[14],-m[13]], 12);
+
+			m.set(M);
+
+			//if(inverted) mat4.invert(m,m);
+
+		}
+		return matrix;
 	},
 
 	debugMatrix: function(str, first_level )

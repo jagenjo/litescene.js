@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/nodeManipulator.js</title>
+    <title>../src/render/renderOptions.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -148,59 +148,56 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/nodeManipulator.js</h1>
+                        <h1 class="file-heading">File: ../src/render/renderOptions.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/**
-* Node manipulator, allows to rotate it
-* @class NodeManipulator
+/** RenderOptions contains info about how to render the FULL scene (not just a render pass)
+* It is used to store info about which passes should be applied, and what actions performed
+* It could occasionally contain info about the current pass
+* it should not be associated with an scene (the same RenderOptions could be used with different scenes)
+* @class RenderOptions
 * @constructor
-* @param {String} object to configure from
-*/
+**/
 
-function NodeManipulator(o)
+function RenderOptions(o)
 {
-	this.rot_speed = [1,1]; //degrees
-	this.smooth = false;
-	this.configure(o);
+	//this.renderer = null; //which renderer is in use
+
+	//info
+	this.main_camera = null; //this camera is the primary camera, some actions require to know the primary user point of view
+	this.current_camera = null; //this camera is the one being rendered at this moment
+	this.current_pass = null; //name of the current pass (&quot;color&quot;,&quot;shadow&quot;,&quot;depth&quot;,&quot;picking&quot;)
+
+
+
+	//rendering properties
+	this.ignore_viewports = false;
+	this.ignore_clear = false;
+
+	this.force_wireframe = false;	//render everything in wireframe
+	this.shadows_disabled = false; //no shadows on the render
+	this.lights_disabled = false; //flat lighting
+	this.low_quality = false;	//try to use low quality shaders
+
+	this.update_shadowmaps = true; //automatically update shadowmaps in every frame (enable if there are dynamic objects)
+	this.update_materials = true; //update info in materials in every frame
+	this.render_all_cameras = true; //render secundary cameras too
+	this.render_fx = true; //postprocessing fx
+
+	this.sort_instances_by_distance = true;
+	this.sort_instances_by_priority = true;
+	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
+
+	//this should change one day...
+	this.default_shader_id = &quot;global&quot;;
+	this.default_low_shader_id = &quot;lowglobal&quot;;
+
+	//copy
+	if(o)
+		for(var i in o)
+			this[i] = o[i];
 }
-
-NodeManipulator.icon = &quot;mini-icon-rotator.png&quot;;
-
-NodeManipulator.prototype.onAddedToNode = function(node)
-{
-	node.interactive = true;
-	LEvent.bind(node,&quot;mousemove&quot;,this.onMouse,this);
-	LEvent.bind(node,&quot;update&quot;,this.onUpdate,this);
-}
-
-NodeManipulator.prototype.onUpdate = function(e)
-{
-	if(!this._root) return;
-
-	if(!this._root.transform)
-		return;
-
-	if(this.smooth)
-	{
-		Scene.refresh();
-	}
-}
-
-NodeManipulator.prototype.onMouse = function(e, mouse_event)
-{
-	if(!this._root || !this._root.transform) return;
-	
-	//regular mouse dragging
-	if(!mouse_event.dragging)
-		return;
-
-	this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
-	this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
-}
-
-LS.registerComponent(NodeManipulator);
     </pre>
 </div>
 

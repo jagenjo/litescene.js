@@ -97,6 +97,8 @@
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
+                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -221,12 +223,6 @@ SceneTree.prototype.init = function()
 	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
 	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
 	this.textures = {};
-
-	this.settings = {
-		//auto_picking: true,	
-		enable_shadows: true,
-		enable_rts: true
-	};
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect

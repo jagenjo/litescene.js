@@ -181,18 +181,7 @@ var LS = {
 	}
 };
 
-//simple promises
-XMLHttpRequest.prototype.done = function(callback)
-{
-	LEvent.bind(this,"done", function(e,err) { callback(err); } );
-	return this;
-}
 
-XMLHttpRequest.prototype.fail = function(callback)
-{
-	LEvent.bind(this,"fail", function(e,err) { callback(err); } );
-	return this;
-}
 
 /**
 * copy the properties (methods and attributes) of origin class into target class

@@ -310,11 +310,11 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 //Fill with info about the light
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
-Material.prototype.getLightShaderMacros = function(light, node, scene, options)
+Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
 {
 	var macros = {};
 
-	var use_shadows = scene.settings.enable_shadows && light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
+	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !render_options.shadows_disabled;
 
 	//light macros
 	if(light.use_diffuse && !this.constant_diffuse)
@@ -350,7 +350,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, options)
 		macros.USE_SHADOW_MAP = "";
 		if(light.hard_shadows)
 			macros.USE_HARD_SHADOWS = "";
-		if(light._shadowMap && light._shadowMap.texture_type == gl.TEXTURE_CUBE_MAP)
+		if(light._shadowmap && light._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
 			macros.USE_SHADOW_CUBEMAP = "";
 
 		macros.SHADOWMAP_OFFSET = "";
@@ -483,13 +483,13 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 	var uniforms = {};
 	//var samplers = [];
 
-	var use_shadows = light.cast_shadows && light._shadowMap && light._lightMatrix != null && !options.shadows_disabled;
+	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !options.shadows_disabled;
 
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture && light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
 
-	var shadowmap_size = use_shadows ? (light._shadowMap.width) : 1024;
+	var shadowmap_size = use_shadows ? (light._shadowmap.width) : 1024;
 	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
 		uniforms.u_light_front = light.getFront();
 	if(light.type == Light.SPOT)
@@ -500,8 +500,8 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 	uniforms.u_light_att = [light.att_start,light.att_end];
 	uniforms.u_light_offset = light.offset;
 
-	if(light._lightMatrix)
-		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._lightMatrix, instance.matrix );
+	if(light._light_matrix)
+		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._light_matrix, instance.matrix );
 
 	//texture
 	if(light_projective_texture)
@@ -511,9 +511,9 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 	//use shadows?
 	if(use_shadows)
 	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowMap.width, light.shadow_bias ];
-		uniforms.shadowMap = light._shadowMap.bind(10); //fixed slot
-		//samplers.push(["shadowMap", light._shadowMap]);
+		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias ];
+		uniforms.shadowmap = light._shadowmap.bind(10); //fixed slot
+		//samplers.push(["shadowmap", light._shadowmap]);
 	}
 
 	//return [uniforms, samplers];

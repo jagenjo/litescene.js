@@ -1,17 +1,17 @@
 /* Basic shader manager 
 	- Allows to load all shaders from XML
 	- Allows to use a global shader
-	Dependencies: 
-		- graphicsViewport.js
 */
 
-var Shaders = {
+var ShadersManager = {
+	default_xml_url: "data/shaders.xml",
 
-	compiled_shaders: {},
-	global_shaders: {},
+	snippets: {},//to save source snippets
+	compiled_shaders: {}, //shaders already compiled and ready to use
+	global_shaders: {}, //shader codes to be compiled using some macros
 
-	default_shader: null,
-	on_compile_error: null, 
+	default_shader: null, //a default shader to rely when a shader is not found
+	on_compile_error: null, //callback 
 
 	init: function(url, ignore_cache)
 	{
@@ -28,10 +28,10 @@ var Shaders = {
 		//compile some shaders
 		this.createDefaultShaders();
 
-		//a flat shader as default
+		//if a shader is not found, the default shader is returned, in this case a flat shader
 		this.default_shader = this.get("flat");
 
-		url = url ||"data/shaders.xml";
+		url = url || this.default_xml_url;
 		this.last_shaders_url = url;
 		this.loadFromXML(url, false, ignore_cache);
 	},
@@ -49,7 +49,7 @@ var Shaders = {
 		if(!macros)
 		{
 			var shader = this.compiled_shaders[id];
-			if (shader != null)
+			if (shader)
 				return shader;
 		}
 
@@ -85,6 +85,23 @@ var Shaders = {
 		var vs_code = extracode + global.vs_code;
 		var ps_code = extracode + global.ps_code;
 
+		//expand code
+		if(global.imports)
+		{
+			var replace_import = function(v)
+			{
+				var token = v.split("\"");
+				var id = token[1];
+				var snippet = ShadersManager.snippets[id];
+				if(snippet)
+					return snippet.code;
+				return "//snippet not found: " + id + "\n";
+			}
+
+			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
+			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
+		}
+
 		var shader = this.compileShader(vs_code, ps_code, key);
 		if(shader)
 			shader.global = global;
@@ -108,7 +125,7 @@ var Shaders = {
 		}
 		catch (err)
 		{
-			console.log("Error compiling shader: " + name);
+			console.error("Error compiling shader: " + name);
 			console.log(err);
 			console.log("VS CODE\n************");
 			var lines = (this.global_extra_code + vs_code).split("\n");
@@ -143,6 +160,7 @@ var Shaders = {
 		return shader;
 	},
 
+	//loads some shaders from an XML
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
 		var nocache = ignore_cache ? "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000) : "";
@@ -153,10 +171,10 @@ var Shaders = {
 				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
-					Shaders.global_shaders = {};
-					Shaders.compiled_shaders = {};
+					ShadersManager.global_shaders = {};
+					ShadersManager.compiled_shaders = {};
 				}
-				Shaders.processShadersXML(response);
+				ShadersManager.processShadersXML(response);
 				if(on_complete)
 					on_complete();
 		  },
@@ -167,8 +185,10 @@ var Shaders = {
 		});	
 	},
 
+	// process the XML to include the shaders
 	processShadersXML: function(xml)
 	{
+		//get shaders
 		var shaders = xml.querySelectorAll('shader');
 		
 		for(var i in shaders)
@@ -199,20 +219,34 @@ var Shaders = {
 				continue;
 			}
 
-			var multipass = shader_element.attributes["multipass"];
-			if(multipass)
-				multipass = (multipass.value == "1" || multipass.value == "true");
-			else
-				multipass = false;
+			var options = {};
 
-			Shaders.registerGlobalShader(vs_code,ps_code,id,_macros, multipass);
+			var multipass = shader_element.getAttribute("multipass");
+			if(multipass)
+				options.multipass = (multipass == "1" || multipass == "true");
+			var imports = shader_element.getAttribute("imports");
+			if(imports)
+				options.imports = (imports == "1" || imports == "true");
+
+
+			ShadersManager.registerGlobalShader(vs_code,ps_code,id,_macros, options );
 		}
+
+		var snippets = xml.querySelectorAll('snippet');
+		for(var i = 0; i < snippets.length; ++i)
+		{
+			var snippet = snippets[i];
+			var id = snippet.getAttribute("id");
+			var code = snippet.textContent;
+			this.snippets[id] = {id:id, code:code};
+		}
+
 	},
 	
 	//adds source code of a shader that could be compiled if needed
 	//id: name
 	//macros: supported macros by the shader
-	registerGlobalShader: function(vs_code, ps_code, id, macros, multipass )
+	registerGlobalShader: function(vs_code, ps_code, id, macros, options )
 	{
 		var macros_found = {};
 		/*
@@ -238,14 +272,19 @@ var Shaders = {
 			ps_code: ps_code,
 			macros: macros,
 			num_macros: num_macros,
-			macros_found: macros_found,
-			multipass: multipass
+			macros_found: macros_found
 		};
+
+		if(options)
+			for(var i in options)
+				global[i] = options[i];
+
 		this.global_shaders[id] = global;
-		LEvent.trigger(Shaders,"newShader");
+		LEvent.trigger(ShadersManager,"newShader");
 		return global;
 	},
 
+	//this is global code for default shaders
 	common_vscode: "\n\
 		precision mediump float;\n\
 		attribute vec3 a_vertex;\n\
@@ -257,7 +296,7 @@ var Shaders = {
 		precision mediump float;\n\
 	",
 
-	//some default shaders for starters
+	//some shaders for starters
 	createDefaultShaders: function()
 	{
 		//flat
@@ -288,25 +327,6 @@ var Shaders = {
 			}\
 		',"texture_flat");
 
-		//object space normals
-		/*
-		this.registerGlobalShader(this.common_vscode + '\
-			uniform mat4 u_normal_model;\n\
-			varying vec3 v_normal;\n\
-			\
-			void main() {\
-				v_normal = u_normal_model * vec3(a_normal,1.0);\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
-			}\
-			', this.common_pscode + '\
-			varying vec3 v_normal;\
-			void main() {\
-				vec3 N = normalize(v_normal);\
-				gl_FragColor = vec4(N.x, N.y, N.z, 1.0);\
-			}\
-		',"normal");
-		*/
-
 		this.registerGlobalShader(this.common_vscode + '\
 			varying vec2 coord;\
 			void main() {\
@@ -321,36 +341,6 @@ var Shaders = {
 			gl_FragColor = texture2D(texture, coord) * color;\
 			}\
 		',"screen");
-
-		this.registerGlobalShader(this.common_vscode + '\
-			varying vec4 v_pos;\
-			void main() {\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
-				v_pos = gl_Position;\
-			}\
-			', this.common_pscode + '\
-			precision highp float;\
-			varying vec4 v_pos;\
-			vec3 PackDepth24(float depth)\
-			{\
-				float depthInteger = floor(depth);\
-				float depthFraction = fract(depth);\
-				float depthUpper = floor(depthInteger / 256.0);\
-				float depthLower = depthInteger - (depthUpper * 256.0);\
-				return vec3(depthUpper / 256.0, depthLower / 256.0, depthFraction);\
-			}\
-			\
-			uniform vec4 u_material_color;\
-			void main() {\
-				vec4 color = vec4(0.0);\
-				color.x = u_material_color.x; \
-				float depth = v_pos.z / v_pos.w;\
-			    color.yzw = PackDepth24(depth*256.0);\
-			  gl_FragColor = color;\
-			}\
-		',"picking_depth");
-
-
 	}
 };
 

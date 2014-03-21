@@ -70,12 +70,6 @@ SceneTree.prototype.init = function()
 	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
 	this.textures = {};
 
-	this.settings = {
-		//auto_picking: true,	
-		enable_shadows: true,
-		enable_rts: true
-	};
-
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
 	this._time = 0;

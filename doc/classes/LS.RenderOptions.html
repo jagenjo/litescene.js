@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/nodeManipulator.js</title>
+    <title>LS.RenderOptions</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -148,60 +148,122 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/nodeManipulator.js</h1>
+                        <h1>LS.RenderOptions Class</h1>
+<div class="box meta">
+    
 
-<div class="file">
-    <pre class="code prettyprint linenums">
-/**
-* Node manipulator, allows to rotate it
-* @class NodeManipulator
-* @constructor
-* @param {String} object to configure from
-*/
+    
 
-function NodeManipulator(o)
-{
-	this.rot_speed = [1,1]; //degrees
-	this.smooth = false;
-	this.configure(o);
-}
+    
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_render_renderOptions.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderOptions.js:1</code></a>
+        </div>
+    
 
-NodeManipulator.icon = &quot;mini-icon-rotator.png&quot;;
+    
 
-NodeManipulator.prototype.onAddedToNode = function(node)
-{
-	node.interactive = true;
-	LEvent.bind(node,&quot;mousemove&quot;,this.onMouse,this);
-	LEvent.bind(node,&quot;update&quot;,this.onUpdate,this);
-}
+    
+</div>
 
-NodeManipulator.prototype.onUpdate = function(e)
-{
-	if(!this._root) return;
 
-	if(!this._root.transform)
-		return;
 
-	if(this.smooth)
-	{
-		Scene.refresh();
-	}
-}
+<div class="box intro">
+    <p>It is used to store info about which passes should be applied, and what actions performed
+It could occasionally contain info about the current pass
+it should not be associated with an scene (the same RenderOptions could be used with different scenes)</p>
 
-NodeManipulator.prototype.onMouse = function(e, mouse_event)
-{
-	if(!this._root || !this._root.transform) return;
-	
-	//regular mouse dragging
-	if(!mouse_event.dragging)
-		return;
+</div>
 
-	this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
-	this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
-}
 
-LS.registerComponent(NodeManipulator);
-    </pre>
+    <div class="constructor">
+        <h2>Constructor</h2>
+        <div id="method_LS.RenderOptions" class="method item">
+    <h3 class="name"><code>LS.RenderOptions</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderOptions.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderOptions.js:1</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+    </div>
+
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+        
+        
+        
+        
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+            
+
+            
+
+            
+
+            
+        </div>
+
+        
+
+        
+
+        
+
+        
+    </div>
 </div>
 
                     </div>

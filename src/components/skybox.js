@@ -57,8 +57,8 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 		RI.priority = 100;
 
-		RI.onPreRender = function(options) { 
-			var cam_pos = options.camera.getEye();
+		RI.onPreRender = function(render_options) { 
+			var cam_pos = render_options.current_camera.getEye();
 			mat4.identity(this.matrix);
 			mat4.setTranslation( this.matrix, cam_pos );
 			if(this.node.transform)

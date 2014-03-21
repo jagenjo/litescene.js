@@ -72,7 +72,7 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	if(this._root)
 		LEvent.trigger( this._root, "knobChange", this.value);
 
-	e.stopPropagation();
+	return false;
 };
 
 LS.registerComponent(KnobComponent);

@@ -97,6 +97,8 @@
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
+                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -224,7 +226,7 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	if(this._root)
 		LEvent.trigger( this._root, &quot;knobChange&quot;, this.value);
 
-	e.stopPropagation();
+	return false;
 };
 
 LS.registerComponent(KnobComponent);

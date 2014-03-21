@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <shaders>
-
-	<snippet id="shadowmap_pixelcode">
+	<snippet id="test">
+	<![CDATA[
+		//THIS IS TEST!
+	]]>		
+	</snippet>
+	<snippet id="shadowmap_test">
 		<![CDATA[
 			#ifdef USE_SHADOW_MAP
 
@@ -10,9 +14,9 @@
 				#endif 
 
 				#ifdef USE_SHADOW_CUBEMAP
-					uniform samplerCube shadowMap;
+					uniform samplerCube shadowmap;
 				#else
-					uniform sampler2D shadowMap;
+					uniform sampler2D shadowmap;
 				#endif
 				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
 
@@ -35,7 +39,7 @@
 					
 					//is inside light frustum
 					if (clamp(sample, 0.0, 1.0) == sample) { 
-						float sampleDepth = UnpackDepth32( texture2D(shadowMap, sample) );
+						float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
 					}
 					else return 0.0; //outside of shadowmap, no shadow
@@ -46,11 +50,11 @@
 					}
 					return shadow;
 				}
-			#endif			
+			#endif
 		]]>
 	</snippet>
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -254,53 +258,10 @@
 					float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );
 					return ifallof;
 				}
-			#endif			
+			#endif	
 
-			#ifdef USE_SHADOW_MAP
-
-				#ifndef SHADOWMAP_OFFSET 
-					#define SHADOWMAP_OFFSET (1.0/1024.0)
-				#endif 
-
-				#ifdef USE_SHADOW_CUBEMAP
-					uniform samplerCube shadowMap;
-				#else
-					uniform sampler2D shadowMap;
-				#endif
-				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
-
-				float UnpackDepth24(vec3 depth)
-				{
-					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
-				}
-
-				float UnpackDepth32(vec4 depth)
-				{
-					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
-					return dot(depth.xyzw , bitShifts);
-				}
-
-				float testShadow(vec2 offset)
-				{
-					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
-					float shadow = 0.0;
-					float depth = 0.0;
-					
-					//is inside light frustum
-					if (clamp(sample, 0.0, 1.0) == sample) { 
-						float sampleDepth = UnpackDepth32( texture2D(shadowMap, sample) );
-						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
-					}
-					else return 0.0; //outside of shadowmap, no shadow
-
-					if (depth > 0.0) {
-						float bias = -1.0 * u_shadow_params.y;
-						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
-					}
-					return shadow;
-				}
-			#endif		
-
+			#import "shadowmap_test"
+			
 			vec3 computeLight(in SurfaceOutput IN)
 			{
 				vec3 final_color = vec3(0.0);
@@ -1038,9 +999,9 @@
 				#endif 
 
 				#ifdef USE_SHADOW_CUBEMAP
-					uniform samplerCube shadowMap;
+					uniform samplerCube shadowmap;
 				#else
-					uniform sampler2D shadowMap;
+					uniform sampler2D shadowmap;
 				#endif
 				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
 
@@ -1063,7 +1024,7 @@
 					
 					//is inside light frustum
 					if (clamp(sample, 0.0, 1.0) == sample) { 
-						float sampleDepth = UnpackDepth32( texture2D(shadowMap, sample) );
+						float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
 					}
 					else return 0.0; //outside of shadowmap, no shadow
@@ -1478,7 +1439,7 @@
 
 							#ifdef USE_NORMAL_TEXTURE
 								//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
-								temp_v2 = vec2(0.0,-0.025) * (1.0 - dot(N, normalize(v_normal)));
+								temp_v2 = vec2(0.0,-0.1) * (1.0 - dot(N, normalize(v_normal)));
 								#ifdef USE_NORMALMAP_FACTOR
 									temp_v2 *= u_normalmap_factor;
 								#endif
@@ -2334,7 +2295,7 @@
 			uniform vec3 u_ambient_color;
 			uniform vec3 u_diffuse_color;
 			uniform vec3 u_lightpos;
-			uniform sampler2D shadowMap;
+			uniform sampler2D shadowmap;
 			
 			float UnpackDepth24(vec3 depth)
 			{
@@ -2347,8 +2308,8 @@
 				if (v_light_coord.w > 0.0) {
 					float depth = 0.0;
 					if (clamp(sample, 0.0, 1.0) == sample) {
-						/*float sampleDepth = texture2D(shadowMap, sample).r;*/
-						float sampleDepth = UnpackDepth24( texture2D(shadowMap, sample).xyz );
+						/*float sampleDepth = texture2D(shadowmap, sample).r;*/
+						float sampleDepth = UnpackDepth24( texture2D(shadowmap, sample).xyz );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth;
 					}
 					if (depth > 0.0) {
@@ -2376,7 +2337,7 @@
 				color += vec3(0.4,0.8,1.0) * clamp(0.0,dot(-N,L),1.0) * 0.5;
 				color = color * u_diffuse_color + u_ambient_color;
 				gl_FragColor = vec4(color.x, color.y, color.z, 1.0);
-				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowMap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/
+				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowmap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/
 				/*gl_FragColor = vec4(1.0,1.0,1.0,1.0) * shadow;*/
 			}
 		]]>
@@ -2474,7 +2435,7 @@
 			uniform vec3 u_ambient_color;
 			uniform vec3 u_diffuse_color;
 			uniform vec3 u_lightpos;
-			uniform sampler2D shadowMap;
+			uniform sampler2D shadowmap;
 			
 			float UnpackDepth24(vec3 depth)
 			{
@@ -2487,8 +2448,8 @@
 				if (v_light_coord.w > 0.0) {
 					float depth = 0.0;
 					if (clamp(sample, 0.0, 1.0) == sample) {
-						/*float sampleDepth = texture2D(shadowMap, sample).r;*/
-						float sampleDepth = UnpackDepth24( texture2D(shadowMap, sample).xyz );
+						/*float sampleDepth = texture2D(shadowmap, sample).r;*/
+						float sampleDepth = UnpackDepth24( texture2D(shadowmap, sample).xyz );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth;
 					}
 					if (depth > 0.0) {
@@ -2518,7 +2479,7 @@
 				color = color * u_diffuse_color + u_ambient_color;
 				color *= tex;
 				gl_FragColor = vec4(color.x, color.y, color.z, 1.0);
-				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowMap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/ 
+				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowmap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/ 
 				/*gl_FragColor = vec4(1.0,1.0,1.0,1.0) * shadow;*/
 			}
 		]]>

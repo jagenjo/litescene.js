@@ -105,7 +105,7 @@ function Light(o)
 	this.shadow_bias = 0.005;
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
-	this.frustrum_size = 50; //ortho
+	this.frustum_size = 50; //ortho
 
 	//for caching purposes
 	this._macros = {};
@@ -148,8 +148,8 @@ Light.prototype.onCollectLights = function(e, lights)
 		return;
 
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture)
-		this.computeLightMatrices();
+	if(this.projective_texture || this.cast_shadows)
+		this.updateShadowmapCamera();
 
 	//add to lights vector
 	lights.push(this);
@@ -163,15 +163,55 @@ Light._temp_target = vec3.create();
 Light._temp_up = vec3.create();
 Light._temp_front = vec3.create();
 
+Light.prototype.updateShadowmapCamera = function()
+{
+	if(!this._shadowmap_camera)
+		this._shadowmap_camera = new Camera();
+
+	var camera = this._shadowmap_camera;
+	camera.eye = this.getPosition(Light._temp_position);
+	camera.center = this.getTarget(Light._temp_target);
+
+	var up = this.getUp(Light._temp_up);
+	var front = this.getFront(Light._temp_front);
+	if( Math.abs( vec3.dot(front,up) ) > 0.999 ) 
+		vec3.set(up,0,0,1);
+	camera.up = up;
+
+	camera.type = this.type == Light.DIRECTIONAL ? Camera.ORTHOGRAPHIC : Camera.PERSPECTIVE;
+
+	camera._frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
+	camera.near = this.near;
+	camera.far = this.far;
+	camera.fov = (this.angle_end || 45); //fov is in degrees
+
+	camera.updateMatrices();
+	this._light_matrix = camera._viewprojection_matrix;
+
+	/* ALIGN TEXEL OF SHADOWMAP IN DIRECTIONAL
+	if(this.type == Light.DIRECTIONAL && this.cast_shadows && this.enabled)
+	{
+		var shadowmap_resolution = this.shadowmap_resolution || Light.DEFAULT_SHADOWMAP_RESOLUTION;
+		var texelSize = frustum_size / shadowmap_resolution;
+		view_matrix[12] = Math.floor( view_matrix[12] / texelSize) * texelSize;
+		view_matrix[13] = Math.floor( view_matrix[13] / texelSize) * texelSize;
+	}
+	*/	
+
+	return camera;
+}
+
+Light.prototype.getShadowmapCamera = function()
+{
+	if(!this._shadowmap_camera)
+		this.updateShadowmapCamera();
+	return this._shadowmap_camera;
+}
+
 //parameters are if you want to store the result in different matrices
+/*
 Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, viewprojection_matrix)
 {
-	/*
-	var position = vec3.set(this.position, Light._temp_position );
-	var target = vec3.set(this.target, Light._temp_target);
-	var up = vec3.set(this.up, Light._temp_up);
-	*/
-
 	var position = this.getPosition(Light._temp_position);
 	var target = this.getTarget(Light._temp_target);
 	var up = this.getUp(Light._temp_up);
@@ -183,7 +223,7 @@ Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, 
 	if(!view_matrix) view_matrix = Light._temp2_matrix;
 	if(!viewprojection_matrix) viewprojection_matrix = Light._temp3_matrix;
 
-	var frustum_size = this.frustrum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
+	var frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
 	if(this.type == Light.DIRECTIONAL)
 		mat4.ortho(projection_matrix, frustum_size*-0.5, frustum_size*0.5, frustum_size*-0.5, frustum_size*0.5, this.near, this.far);
 	else
@@ -205,6 +245,7 @@ Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, 
 	if( !this._lightMatrix ) this._lightMatrix = mat4.create();
 	mat4.copy( this._lightMatrix, viewprojection_matrix );
 }
+*/
 
 Light.prototype.serialize = function()
 {

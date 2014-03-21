@@ -841,11 +841,11 @@ if(typeof(LiteGraph) != "undefined")
 		gl.disable( gl.DEPTH_TEST );
 		var mesh = Mesh.getScreenQuad();
 		var shader = LGraphTextureDepthRange._shader;
-		var camera = Renderer.active_camera;
+		var camera = Renderer._current_camera;
 
 		this._temp_texture.drawTo( function() {
 			tex.bind(0);
-			shader.uniforms({texture:0, u_distance: distance, u_range: range, u_camera_planes: [Renderer.active_camera.near,Renderer.active_camera.far] })
+			shader.uniforms({texture:0, u_distance: distance, u_range: range, u_camera_planes: [Renderer._current_camera.near,Renderer._current_camera.far] })
 				.draw(mesh);
 		});
 
@@ -947,7 +947,7 @@ if(typeof(LiteGraph) != "undefined")
 
 		//iterate
 		var start_texture = tex;
-		var aspect = this.properties.preserve_aspect ? Renderer.active_camera.aspect : 1;
+		var aspect = this.properties.preserve_aspect ? Renderer._current_camera.aspect : 1;
 		for(var i = 0; i < iterations; ++i)
 		{
 			this._temp_texture.drawTo( function() {

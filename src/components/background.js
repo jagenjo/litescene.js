@@ -59,7 +59,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	RI.enableFlag( RI_CW );
 	RI.disableFlag( RI_DEPTH_WRITE ); 
 	RI.disableFlag( RI_DEPTH_TEST ); 
-	RI.enableFlag( RI_IGNORE_FRUSTRUM );
+	RI.enableFlag( RI_IGNORE_FRUSTUM );
 	RI.enableFlag( RI_IGNORE_VIEWPROJECTION );
 
 	instances.push(RI);

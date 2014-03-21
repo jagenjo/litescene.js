@@ -14,6 +14,7 @@ function RealtimeReflector(o)
 	this.clip_offset = 0.5; //to avoid ugly edges near clipping plane
 	this.rt_name = "";
 	this.use_cubemap = false;
+	this.blur = 0;
 	this.generate_mipmaps = false;
 	this.use_mesh_info = false;
 	this.offset = vec3.create();
@@ -32,24 +33,21 @@ RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,
 
 RealtimeReflector.prototype.onAddedToNode = function(node)
 {
-	if(!this._bind_onRenderRT)
-		this._bind_onRenderRT = this.onRenderRT.bind(this);
-
-	LEvent.bind(node,"renderReflections",this._bind_onRenderRT,this);
+	LEvent.bind(node,"renderReflections", this.onRenderRT, this );
 }
 
 
 RealtimeReflector.prototype.onRemoveFromNode = function(node)
 {
-	LEvent.unbind(node,"renderReflections",this._bind_onRenderRT,this);
+	LEvent.unbind(node,"renderReflections", this.onRenderRT, this);
 }
 
 
-RealtimeReflector.prototype.onRenderRT = function(e)
+RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 {
 	if(!this._root) return;
 
-	var camera = Renderer.main_camera;
+	var camera = render_options.main_camera;
 
 	this.refresh_rate = this.refresh_rate << 0;
 
@@ -89,10 +87,19 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 	vec3.add( plane_center, plane_center, this.offset );
 
 	//camera
-	var reflected_camera = new Camera( camera.serialize() );
+	var reflected_camera = this._reflected_camera || new Camera();
+	this._reflected_camera = reflected_camera;
+	reflected_camera.configure( camera.serialize() );
+
 	var visible = this._root.flags.visible;
 	if(this.ignore_this_mesh)
 		this._root.flags.visible = false;
+
+	//add flags
+	render_options.is_rt = true;
+	render_options.is_reflection = true;
+	render_options.brightness_factor = this.brightness_factor;
+	render_options.colorclip_factor = this.colorclip_factor;
 
 	if( !this.use_cubemap ) //planar reflection
 	{
@@ -106,13 +113,28 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 		//little offset
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
-
-		Renderer.renderInstancesToRT(reflected_camera,this._rt, {clipping_plane: clipping_plane, is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor});
+		render_options.clipping_plane = clipping_plane;
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options);
 	}
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderInstancesToRT(reflected_camera,this._rt, {is_rt: true, is_reflection: true, brightness_factor: this.brightness_factor, colorclip_factor: this.colorclip_factor} );
+		Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options );
+	}
+
+	//remove flags
+	delete render_options.clipping_plane;
+	delete render_options.is_rt;
+	delete render_options.is_reflection;
+	delete render_options.brightness_factor;
+	delete render_options.colorclip_factor;
+
+	if(this.blur)
+	{
+		if( this._temp_blur_texture && !Texture.compareFormats(this._temp_blur_texture, this._rt) )
+			this._temp_blur_texture = null;	 //remove old one
+		this._temp_blur_texture = this._rt.applyBlur( this.blur, this.blur, 1, this._temp_blur_texture);
+		//ResourcesManager.registerResource(":BLUR", this._temp_blur_texture);//debug
 	}
 
 
@@ -120,6 +142,7 @@ RealtimeReflector.prototype.onRenderRT = function(e)
 	{
 		this._rt.bind();
 		gl.generateMipmap(this._rt.texture_type);
+		this._rt.unbind();
 	}
 
 	this._root.flags.visible = visible;

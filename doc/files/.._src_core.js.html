@@ -97,6 +97,8 @@
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
+                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -333,18 +335,7 @@ var LS = {
 	}
 };
 
-//simple promises
-XMLHttpRequest.prototype.done = function(callback)
-{
-	LEvent.bind(this,&quot;done&quot;, function(e,err) { callback(err); } );
-	return this;
-}
 
-XMLHttpRequest.prototype.fail = function(callback)
-{
-	LEvent.bind(this,&quot;fail&quot;, function(e,err) { callback(err); } );
-	return this;
-}
 
 /**
 * copy the properties (methods and attributes) of origin class into target class

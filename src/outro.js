@@ -1,0 +1,1 @@
+//here goes the ending of commonjs stuff

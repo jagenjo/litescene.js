@@ -1,10 +1,12 @@
+../src/intro.js
+
 ../src/utils/wbin.js
 ../src/utils/draw.js
-../src/utils/shaders.js
 ../src/utils/lscript.js
 
 ../src/core.js
 ../src/resourcesManager.js
+../src/shadersManager.js
 ../src/materials/material.js
 ../src/materials/customMaterial.js
 ../src/materials/surfaceMaterial.js
@@ -45,6 +47,7 @@
 ../src/graph/scene.js
 ../src/graph/texture.js
 
+../src/render/renderOptions.js
 ../src/render/renderInstance.js
 ../src/render/renderer.js
 
@@ -63,3 +66,5 @@
 ../src/animation.js
 
 ../src/context.js
+
+../src/outro.js

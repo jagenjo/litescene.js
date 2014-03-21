@@ -25,7 +25,7 @@ function Camera(o)
 
 	this._aspect = 1.0;
 	this._fov = 45; //persp
-	this._frustrum_size = 50; //ortho
+	this._frustum_size = 50; //ortho
 
 	this._viewport = new Float32Array([0,0,1,1]);
 
@@ -182,19 +182,19 @@ Object.defineProperty( Camera.prototype, "fov", {
 });
 
 /**
-* The frustrum size when working in ORTHOGRAPHIC
-* @property frustrum_size {number}
+* The frustum size when working in ORTHOGRAPHIC
+* @property frustum_size {number}
 * @default 50
 */
 
-Object.defineProperty( Camera.prototype, "frustrum_size", {
+Object.defineProperty( Camera.prototype, "frustum_size", {
 	get: function() {
-		return this._frustrum_size;
+		return this._frustum_size;
 	},
 	set: function(v) {
-		if(	this._frustrum_size != v)
+		if(	this._frustum_size != v)
 			this._dirty_matrices = true;
-		this._frustrum_size  = v;
+		this._frustum_size  = v;
 	}
 });
 
@@ -222,7 +222,7 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 
 /**
 * 
-* @method updateMatrices
+* @method lookAt
 * @param {vec3} eye
 * @param {vec3} center
 * @param {vec3} up
@@ -242,7 +242,7 @@ Camera.prototype.lookAt = function(eye,center,up)
 Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
-		mat4.ortho(this._projection_matrix, -this._frustrum_size*this._aspect*0.5, this._frustrum_size*this._aspect*0.5, -this._frustrum_size*0.5, this._frustrum_size*0.5, this._near, this._far);
+		mat4.ortho(this._projection_matrix, -this._frustum_size*this._aspect*0.5, this._frustum_size*this._aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
 	else if (this.type == Camera.ORTHO2D)
 		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
@@ -257,7 +257,6 @@ Camera.prototype.updateMatrices = function()
 		//mat4.scale(this._projection_matrix,this._projection_matrix, [-1,1,1]);
 	};
 	*/
-
 	//if(this._root && this._root.transform)
 
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
@@ -594,7 +593,7 @@ Camera.prototype.configure = function(o)
 	if(o.far != null) this._far = o.far;
 	if(o.fov != null) this._fov = o.fov;
 	if(o.aspect != null) this._aspect = o.aspect;
-	if(o.frustrum_size != null) this._frustrum_size = o.frustrum_size;
+	if(o.frustum_size != null) this._frustum_size = o.frustum_size;
 	if(o.viewport != null) this._viewport.set( o.viewport );
 
 	this.updateMatrices();
@@ -612,7 +611,7 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
-		frustrum_size: this._frustrum_size,
+		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
 		to_texture: this._to_texture,
 		texture_size: this._texture_size

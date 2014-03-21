@@ -97,6 +97,8 @@
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
+                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+            
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -224,13 +226,12 @@ GraphComponent.prototype.onRemovedFromNode = function(node)
 }
 
 
-GraphComponent.prototype.onEvent = function(e)
+GraphComponent.prototype.onEvent = function(event_type, event_data)
 {
-	var type = e.type;
-	if(type == &quot;beforeRenderMainPass&quot;)
-		type = &quot;render&quot;;
+	if(event_type == &quot;beforeRenderMainPass&quot;)
+		event_type = &quot;render&quot;;
 
-	if(this.on_event == type)
+	if(this.on_event == event_type)
 		this.runGraph();
 }
 
@@ -356,9 +357,9 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 	Renderer.depth_rendertarget = null;
 }
 
-FXGraphComponent.prototype.onBeforeRender = function(e,dt)
+FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
-	if(!this._graph || !Renderer.render_fx) return;
+	if(!this._graph || !render_options.render_fx) return;
 
 	var use_depth = false;
 	if(this._graph_depth_texture_node &amp;&amp; this._graph_depth_texture_node.isOutputConnected(0))
@@ -405,9 +406,9 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 }
 
 
-FXGraphComponent.prototype.onAfterRender = function(e,dt)
+FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 {
-	if(!this._graph || !this.enabled || !Renderer.render_fx) return;
+	if(!this._graph || !this.enabled || !render_options.render_fx) return;
 
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];

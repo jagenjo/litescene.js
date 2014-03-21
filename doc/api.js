@@ -28,6 +28,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.PhysicsInstance",
         "LS.Prefab",
         "LS.RenderInstance",
+        "LS.RenderOptions",
         "LS.Renderer",
         "LS.ResourcesManager",
         "LS.SceneNode",

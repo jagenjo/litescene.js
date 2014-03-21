@@ -8,6 +8,7 @@ function SkinnedMeshRenderer(o)
 	this.material = null;
 	this.primitive = null;
 	this.two_sided = false;
+	this.factor = 1;
 
 	if(o)
 		this.configure(o);
@@ -114,8 +115,8 @@ SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 {
 	var node = Scene.getNode(name);
 	if(node)
-		return node.transform.getGlobalMatrix();
-	console.log("bone not found :" + name);
+		return node.transform.getGlobalMatrixRef();
+	//console.log("bone not found :" + name);
 	return mat4.create();
 }
 
@@ -132,33 +133,47 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	var bones = [];
 	for(var i in ref_mesh.bones)
 	{
+		var m = mat4.create();
 		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
-		bones.push( mat4.multiply( mat4.create(), mat, ref_mesh.bones[i][1] ) ); //multiply by the inv bindpose matrix
+
+		var inv = ref_mesh.bones[i][1];
+		mat4.multiply( m, mat, inv );
+		mat4.multiply(m, m, ref_mesh.bind_matrix);
+
+		bones.push( m ); //multiply by the inv bindpose matrix
 	}
+
+	var factor = this.factor; //for debug
 
 	//vertices
 	var temp = vec3.create();
+	var ov_temp = vec3.create();
 	for(var i = 0, l = vertices.length / 3; i < l; ++i)
 	{
 		var ov = original_vertices.subarray(i*3, i*3+3);
+		ov_temp.set(ov);
 		var b = bone_indices.subarray(i*4, i*4+4);
 		var w = weights.subarray(i*4, i*4+4);
 
 		var v = vertices.subarray(i*3, i*3+3);
+		v[0] = v[1] = v[2] = 0.0; //reset
 
 		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
 
-		mat4.multiplyVec3(v, bmat[0], ov);
-		//vec3.scale(v,v,w[0]);
-		/*
+		mat4.multiplyVec3(v, bmat[0], ov_temp);
+
+		//*
+		vec3.scale(v,v,w[0]);
 		for(var j = 1; j < 4; ++j)
 			if(w[j] > 0.0)
 			{
-				mat4.multiplyVec3(temp, bmat[j] ,ov);
-				vec3.scale(temp,temp,w[j]);
+				mat4.multiplyVec3(temp, bmat[j], ov_temp);
+				vec3.scale(temp, temp, w[j]);
 				vec3.add(v,v,temp);
 			}
-		*/
+		//*/
+
+		if(factor != 1) vec3.lerp( v, ov, v, factor);
 	}
 
 	//upload

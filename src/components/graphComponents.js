@@ -72,13 +72,12 @@ GraphComponent.prototype.onRemovedFromNode = function(node)
 }
 
 
-GraphComponent.prototype.onEvent = function(e)
+GraphComponent.prototype.onEvent = function(event_type, event_data)
 {
-	var type = e.type;
-	if(type == "beforeRenderMainPass")
-		type = "render";
+	if(event_type == "beforeRenderMainPass")
+		event_type = "render";
 
-	if(this.on_event == type)
+	if(this.on_event == event_type)
 		this.runGraph();
 }
 
@@ -204,9 +203,9 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 	Renderer.depth_rendertarget = null;
 }
 
-FXGraphComponent.prototype.onBeforeRender = function(e,dt)
+FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
-	if(!this._graph || !Renderer.render_fx) return;
+	if(!this._graph || !render_options.render_fx) return;
 
 	var use_depth = false;
 	if(this._graph_depth_texture_node && this._graph_depth_texture_node.isOutputConnected(0))
@@ -253,9 +252,9 @@ FXGraphComponent.prototype.onBeforeRender = function(e,dt)
 }
 
 
-FXGraphComponent.prototype.onAfterRender = function(e,dt)
+FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 {
-	if(!this._graph || !this.enabled || !Renderer.render_fx) return;
+	if(!this._graph || !this.enabled || !render_options.render_fx) return;
 
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
