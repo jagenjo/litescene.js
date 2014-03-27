@@ -8,7 +8,7 @@ function SurfaceMaterial(o)
 	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.opacity = 1.0;
-	this.blending = Material.NORMAL;
+	this.blend_mode = Blend.NORMAL;
 
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -130,6 +130,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 
 SurfaceMaterial.prototype.configure = function(o) { 
 	LS.cloneObject(o, this);
+	this.computeCode();
 }
 
 LS.extendClass( Material, SurfaceMaterial );

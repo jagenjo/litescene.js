@@ -5,56 +5,94 @@
 		//THIS IS TEST!
 	]]>		
 	</snippet>
-	<snippet id="shadowmap_test">
-		<![CDATA[
-			#ifdef USE_SHADOW_MAP
 
-				#ifndef SHADOWMAP_OFFSET 
-					#define SHADOWMAP_OFFSET (1.0/1024.0)
-				#endif 
+	<snippet id="spotFalloff">
+		<![CDATA[
+			float spotFalloff(vec3 spotDir,  vec3 lightDir, float angle_phi, float angle_theta)
+			{
+				float sqlen = dot(lightDir,lightDir);
+				float atten = 1.0;
+
+				vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );
+				spotParams.w = 1.0 / (spotParams.x-spotParams.y);
+
+				vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized
+				float spotDot = dot(spotDir, -dirUnit);
+				if (spotDot <= spotParams.y)// spotDot <= cos phi/2
+					return 0.0;
+				else if (spotDot > spotParams.x) // spotDot > cos theta/2
+					return 1.0;
+
+				// vertex lies somewhere beyond the two regions
+				float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );
+				return ifallof;
+			}
+		]]>
+	</snippet>
+
+	<snippet id="testShadow">
+		<![CDATA[
+			#ifndef SHADOWMAP_OFFSET 
+				#define SHADOWMAP_OFFSET (1.0/1024.0)
+			#endif 
+
+			#ifdef USE_SHADOW_CUBEMAP
+				uniform samplerCube shadowmap;
+			#else
+				uniform sampler2D shadowmap;
+			#endif
+			uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)
+
+			float UnpackDepth24(vec3 depth)
+			{
+				return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
+			}
+
+			float UnpackDepth32(vec4 depth)
+			{
+				const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
+				return dot(depth.xyzw , bitShifts);
+			}
+
+			float testShadow(vec2 offset)
+			{
+				float shadow = 0.0;
+				float depth = 0.0;
 
 				#ifdef USE_SHADOW_CUBEMAP
-					uniform samplerCube shadowmap;
-				#else
-					uniform sampler2D shadowmap;
-				#endif
-				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
-
-				float UnpackDepth24(vec3 depth)
-				{
-					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
-				}
-
-				float UnpackDepth32(vec4 depth)
-				{
-					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
-					return dot(depth.xyzw , bitShifts);
-				}
-
-				float testShadow(vec2 offset)
-				{
-					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
-					float shadow = 0.0;
-					float depth = 0.0;
 					
+					vec3 l_vector = (v_pos - u_light_pos);
+					float dist = length(l_vector);
+					float sampleDepth = UnpackDepth32( textureCube(shadowmap, l_vector / dist + vec3(offset,0.0)) );
+					depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
+					dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z);
+					float bias = u_shadow_params.y;
+					//return clamp((dist - depth * (1.0 + bias)) * 100.0,0.0,1.0);
+					return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
+					//return sampleDepth;
+				#else
+					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
 					//is inside light frustum
 					if (clamp(sample, 0.0, 1.0) == sample) { 
 						float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
 					}
-					else return 0.0; //outside of shadowmap, no shadow
+					else 
+						return 0.0; //outside of shadowmap, no shadow
+				#endif
 
-					if (depth > 0.0) {
-						float bias = -1.0 * u_shadow_params.y;
-						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
-					}
-					return shadow;
+				if (depth > 0.0) {
+					float bias = -1.0 * u_shadow_params.y;
+					//multiply by 30000 to get a little gradient
+					shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
 				}
-			#endif
+				return shadow;
+			}
+
 		]]>
 	</snippet>
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,SHADOWMAP_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true" imports="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -237,30 +275,13 @@
 				varying vec4 v_light_coord;
 			#endif
 
-
 			#ifdef USE_SPOT_LIGHT
-				float spotFalloff(vec3 spotDir,  vec3 lightDir, float angle_phi, float angle_theta)
-				{
-					float sqlen = dot(lightDir,lightDir);
-					float atten = 1.0;
+				#import "spotFalloff"
+			#endif
 
-					vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );
-					spotParams.w = 1.0 / (spotParams.x-spotParams.y);
-
-					vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized
-					float spotDot = dot(spotDir, -dirUnit);
-					if (spotDot <= spotParams.y)// spotDot <= cos phi/2
-						return 0.0;
-					else if (spotDot > spotParams.x) // spotDot > cos theta/2
-						return 1.0;
-
-					// vertex lies somewhere beyond the two regions
-					float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );
-					return ifallof;
-				}
-			#endif	
-
-			#import "shadowmap_test"
+			#ifdef USE_SHADOW_MAP
+				#import "testShadow"
+			#endif
 			
 			vec3 computeLight(in SurfaceOutput IN)
 			{
@@ -712,7 +733,7 @@
 	</shader>
 
 
-	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
+	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,USE_TEXTURE_AVERAGE_LIGHT,NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -852,13 +873,13 @@
 		<![CDATA[
 			precision mediump float;
 
-			varying vec3 v_pos;
-			varying vec3 v_normal;
+			varying vec3 v_pos; //position in wold space
+			varying vec3 v_normal; //normal in world space
 			varying vec2 v_uvs;
 			varying vec2 v_uvs_transformed;
 			//varying vec3 v_tangent;
 			varying vec4 v_screenpos; //used for projective textures
-			varying vec3 v_local_pos;
+			varying vec3 v_local_pos; //position in local space
 
 			#ifdef USE_COLOR_STREAM
 				varying vec4 v_color;
@@ -941,6 +962,10 @@
 				uniform sampler2D light_texture;
 			#endif
 
+			#ifdef USE_TEXTURE_AVERAGE_LIGHT
+				uniform sampler2D light_average_texture;
+			#endif
+
 			#ifdef USE_SOFT_PARTICLES
 				uniform sampler2D depth_texture;
 			#endif
@@ -1003,13 +1028,15 @@
 				#else
 					uniform sampler2D shadowmap;
 				#endif
-				uniform vec2 u_shadow_params; // (1.0/(texture_size), bias)
+
+				uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)
 
 				float UnpackDepth24(vec3 depth)
 				{
 					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
 				}
 
+				//returns a normalized depth
 				float UnpackDepth32(vec4 depth)
 				{
 					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
@@ -1018,19 +1045,34 @@
 
 				float testShadow(vec2 offset)
 				{
-					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
 					float shadow = 0.0;
 					float depth = 0.0;
-					
-					//is inside light frustum
-					if (clamp(sample, 0.0, 1.0) == sample) { 
-						float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
+
+					#ifdef USE_SHADOW_CUBEMAP
+						
+						vec3 l_vector = (v_pos - u_light_pos);
+						float dist = length(l_vector);
+						float sampleDepth = UnpackDepth32( textureCube(shadowmap, l_vector / dist + vec3(offset,0.0)) );
 						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
-					}
-					else return 0.0; //outside of shadowmap, no shadow
+						dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z);
+						float bias = u_shadow_params.y;
+						//return clamp((dist - depth * (1.0 + bias)) * 100.0,0.0,1.0);
+						return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
+						//return sampleDepth;
+					#else
+						vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
+						//is inside light frustum
+						if (clamp(sample, 0.0, 1.0) == sample) { 
+							float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
+							depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
+						}
+						else 
+							return 0.0; //outside of shadowmap, no shadow
+					#endif
 
 					if (depth > 0.0) {
 						float bias = -1.0 * u_shadow_params.y;
+						//multiply by 30000 to get a little gradient
 						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
 					}
 					return shadow;
@@ -1223,6 +1265,12 @@
 					#endif
 				#endif
 
+				/* DEBUG
+				#ifdef USE_SHADOW_MAP
+					color *= textureCube(shadowmap, normalize(v_pos - u_light_pos)).xyz;
+				#endif
+				*/
+
 				#ifdef USE_ALPHA_TEST
 					if(alpha < USE_ALPHA_TEST)
 						discard;
@@ -1246,8 +1294,9 @@
 					#ifdef USE_HARD_SHADOWS
 						shadow = 1.0 - testShadow(vec2(0.,0.));
 					#else
-
-						if (v_light_coord.w > 0.0) //inside the light frustrum
+						#ifndef USE_SHADOW_CUBEMAP
+						if (v_light_coord.w > 0.0) //inside the light frustrum (only apply to frontal lights)
+						#endif
 						{
 							shadow = 2.0 * testShadow(vec2(0.0,0.0));
 							shadow += testShadow(vec2(0.0,u_shadow_params.x));
@@ -1328,6 +1377,9 @@
 				#endif
 
 				vec3 light_color = u_light_color;
+				#ifdef USE_TEXTURE_AVERAGE_LIGHT
+					light_color *= texture2D(light_average_texture,vec2(0.5), 12.0).xyz;
+				#endif
 
 				#ifdef USE_PROJECTIVE_LIGHT
 					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
@@ -1757,7 +1809,7 @@
 		</code>
 	</shader>
 
-	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE">
+	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_LINEAR_DISTANCE,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1774,7 +1826,9 @@
 			#endif
 
 			uniform mat4 u_mvp;
+			uniform mat4 u_model;
 			varying vec4 pos;
+			varying vec3 world_pos;
 
 			#ifdef USE_VERTEX_SHADER_UNIFORMS
 				USE_VERTEX_SHADER_UNIFORMS
@@ -1805,6 +1859,10 @@
 					USE_VERTEX_SHADER_CODE
 				#endif
 
+				#ifdef USE_LINEAR_DISTANCE
+					world_pos = (u_model * vec4(vertex,1.0)).xyz;
+				#endif
+
 				gl_Position = pos = u_mvp * vec4(vertex,1.0);
 			}
 		]]>
@@ -1813,7 +1871,7 @@
 		<![CDATA[
 			precision highp float;
 
-			varying vec4 pos;
+			varying vec4 pos; //screen space
 
 			#ifdef USE_ALPHA_TEST
 				#ifdef USE_COLOR_TEXTURE
@@ -1823,11 +1881,19 @@
 					uniform sampler2D opacity_texture;
 				#endif
 				
-				uniform vec4 u_material_color;
+				uniform vec4 u_material_color; //for the alpha
+
 				varying vec2 v_uvs;
 				varying vec2 v_uvs_transformed;
 			#endif
 
+			#ifdef USE_LINEAR_DISTANCE
+				varying vec3 world_pos;				
+				uniform vec3 u_camera_eye; //camera position
+			#endif
+			uniform vec2 u_camera_planes; //far near			
+
+			//packs depth normalized 
 			vec4 PackDepth32(float depth)
 			{
 				const vec4 bitSh  = vec4(   256*256*256, 256*256,   256,         1);
@@ -1862,8 +1928,17 @@
 						discard;
 				#endif
 
-				float depth = pos.z / pos.w;
-				gl_FragColor = PackDepth32(depth * 0.5 + 0.5);
+				float depth = 0.0;
+
+				#ifdef USE_LINEAR_DISTANCE				
+					depth = (length(world_pos - u_camera_eye) - u_camera_planes.x) / (u_camera_planes.y - u_camera_planes.x);
+				#else
+					depth = (pos.z / pos.w) * 0.5 + 0.5; //normalize
+				#endif
+
+				gl_FragColor = PackDepth32(depth);
+				//gl_FragColor = vec4(1.0,0.0,0.0,0.0); //debug
+
 				//gl_FragColor = vec4( PackDepth32(depth), 0.0);
 			}
 		]]>
@@ -1900,6 +1975,7 @@
 			void main() {
 				float depth = pos.z / pos.w;
 				gl_FragColor = PackDepth32(depth);
+
 				//gl_FragColor = PackDepth32(depth * 0.5 + 0.5);
 				//gl_FragColor = vec4( PackDepth32(depth), 0.0);
 			}

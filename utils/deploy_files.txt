@@ -7,7 +7,10 @@
 ../src/core.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
+../src/render/defines.js
+
 ../src/materials/material.js
+../src/materials/standardMaterial.js
 ../src/materials/customMaterial.js
 ../src/materials/surfaceMaterial.js
 

@@ -1,5 +1,6 @@
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
+
 function toArray(v) { return Array.apply( [], v ); }
 Object.defineProperty(Object.prototype, "merge", { 
     value: function(v) {
@@ -68,6 +69,10 @@ var LS = {
 	registerMaterialClass: function(material_class) { 
 		//register
 		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+
+		//extend
+		LS.extendClass( Material, material_class );
+
 		//event
 		LEvent.trigger(LS,"materialclass_registered",material_class);
 		material_class.resource_type = "Material";
@@ -192,22 +197,28 @@ var LS = {
 
 function extendClass( origin, target ) {
 	for(var i in origin) //copy class properties
+	{
+		if(target.hasOwnProperty(i))
+			continue;
 		target[i] = origin[i];
+	}
 
 	if(origin.prototype) //copy prototype properties
 		for(var i in origin.prototype) //only enumerables
 		{
-			if(!origin.prototype.hasOwnProperty(i))
+			if(!origin.prototype.hasOwnProperty(i)) 
 				continue;
 
 			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
 				continue;
 
+			//copy getters 
 			if(origin.prototype.__lookupGetter__(i))
 				target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
 			else 
 				target.prototype[i] = origin.prototype[i];
 
+			//and setters
 			if(origin.prototype.__lookupSetter__(i))
 				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
 		}
@@ -356,33 +367,6 @@ function getObjectAttributes(object)
 	return o;
 }
 LS.getObjectAttributes = getObjectAttributes;
-
-
-//used to generate resources that doesnt come from files (procedural textures, meshes, etc)
-//right now is not finished at all
-var Generators = {
-	generators: {},
-	addGenerator: function(name,generator) { this.generators[name] = generator; },
-	executeGenerator: function(data) {
-		var generator = this.generators[data.action];
-		if(!generator || typeof(generator) != "function") return null;
-		try
-		{
-			var generated = generator(data);
-			generated.generator = generator;
-			return generated;
-		}
-		catch (err)
-		{
-			trace("Error in generator: " + err);
-		}
-		return null;
-	}
-};
-
-LS.Generators = Generators;
-
-/* MATH FUNCTIONS ************************************/
 
 /**
 * Samples a curve and returns the resulting value 

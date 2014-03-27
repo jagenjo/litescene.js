@@ -120,8 +120,8 @@ function Light(o)
 }
 
 //do not change
-Light.FRONT_VECTOR = new Float32Array(0,0,-1); //const
-Light.UP_VECTOR = new Float32Array(0,1,0); //const
+Light.FRONT_VECTOR = new Float32Array([0,0,-1]); //const
+Light.UP_VECTOR = new Float32Array([0,1,0]); //const
 
 Light.OMNI = 1;
 Light.SPOT = 2;

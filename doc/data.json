@@ -180,6 +180,17 @@
                 "LS": 1
             }
         },
+        "../src/materials/standardMaterial.js": {
+            "name": "../src/materials/standardMaterial.js",
+            "modules": {},
+            "classes": {
+                "LS.StandardMaterial": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1
+            }
+        },
         "../src/render/renderInstance.js": {
             "name": "../src/render/renderInstance.js",
             "modules": {},
@@ -685,8 +696,29 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/materials/material.js",
-            "line": 4,
+            "line": 7,
             "description": "Material class contains all the info about how a mesh should be rendered, more in a highlevel format.\nMost of the info is Colors, factors and Textures but it can also specify a shader or some flags.\nMaterials could be shared among different objects.",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
+                }
+            ]
+        },
+        "LS.StandardMaterial": {
+            "name": "LS.StandardMaterial",
+            "shortname": "LS.StandardMaterial",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS",
+            "file": "../src/materials/standardMaterial.js",
+            "line": 7,
+            "description": "StandardMaterial class improves the material class",
             "is_constructor": 1,
             "params": [
                 {
@@ -838,7 +870,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 387,
+            "line": 371,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -2166,7 +2198,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 61,
+            "line": 44,
             "description": "Surface color",
             "itemtype": "property",
             "name": "color",
@@ -2177,7 +2209,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 68,
+            "line": 51,
             "description": "Opacity. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.",
             "itemtype": "property",
             "name": "opacity",
@@ -2188,73 +2220,18 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 76,
-            "description": "Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING",
+            "line": 59,
+            "description": "Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)",
             "itemtype": "property",
-            "name": "blending",
+            "name": "blend_mode",
             "type": "{String}",
-            "default": "Material.NORMAL",
+            "default": "Blend.NORMAL",
             "class": "LS.Material",
             "namespace": "LS"
         },
         {
             "file": "../src/materials/material.js",
-            "line": 84,
-            "description": "Ambient color: amount of ambient light reflected by the object",
-            "itemtype": "property",
-            "name": "ambient",
-            "type": "{vec3}",
-            "default": "[1,1,1]",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 91,
-            "description": "Diffuse color: amount of diffuse light reflected by the object",
-            "itemtype": "property",
-            "name": "diffuse",
-            "type": "{vec3}",
-            "default": "[1,1,1]",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 98,
-            "description": "Backlight factor: amount of light that can be seen through the surface.",
-            "itemtype": "property",
-            "name": "backlight_factor",
-            "type": "{number}",
-            "default": "0",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 106,
-            "description": "Emissive color: amount of emissive light emited from the surface",
-            "itemtype": "property",
-            "name": "emissive",
-            "type": "{vec3}",
-            "default": "[0,0,0]",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 113,
-            "description": "Specular factor: amount of specular light reflected",
-            "itemtype": "property",
-            "name": "specular_factor",
-            "type": "{number}",
-            "default": "0.1",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 120,
+            "line": 68,
             "description": "Specular glossiness: the glossines (exponent) of specular light",
             "itemtype": "property",
             "name": "specular_gloss",
@@ -2265,73 +2242,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 127,
-            "description": "Specular on top: if the specular spots should be on top or multiplyed by the surface color",
-            "itemtype": "property",
-            "name": "specular_ontop",
-            "type": "{boolean}",
-            "default": "false",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 134,
-            "description": "How reflectance is the surface",
-            "itemtype": "property",
-            "name": "reflection_factor",
-            "type": "{number}",
-            "default": "0",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 141,
-            "description": "Fresnel coeficient (exp) of reflectance",
-            "itemtype": "property",
-            "name": "reflection_fresnel",
-            "type": "{number}",
-            "default": "0",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 148,
-            "description": "It controls if the reflection is interpolated or blended with the surface color",
-            "itemtype": "property",
-            "name": "reflection_additive",
-            "type": "{boolean}",
-            "default": "false",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 155,
-            "description": "It controls if the reflection factor is affected by the specular factor",
-            "itemtype": "property",
-            "name": "reflection_specular",
-            "type": "{boolean}",
-            "default": "false",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 162,
-            "description": "velvet color",
-            "itemtype": "property",
-            "name": "velvet",
-            "type": "{vec3}",
-            "default": "[0,0,0]",
-            "class": "LS.Material",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/material.js",
-            "line": 526,
+            "line": 291,
             "description": "Configure the material getting the info from the object",
             "itemtype": "method",
             "name": "configure",
@@ -2347,7 +2258,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 589,
+            "line": 334,
             "description": "Serialize this material",
             "itemtype": "method",
             "name": "serialize",
@@ -2360,7 +2271,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 602,
+            "line": 347,
             "description": "Clone this material (keeping the class)",
             "itemtype": "method",
             "name": "clone",
@@ -2373,7 +2284,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 612,
+            "line": 357,
             "description": "Loads and assigns a texture to a channel",
             "itemtype": "method",
             "name": "loadAndSetTexture",
@@ -2394,7 +2305,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 644,
+            "line": 389,
             "description": "Assigns a texture to a channel",
             "itemtype": "method",
             "name": "setTexture",
@@ -2415,7 +2326,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 668,
+            "line": 413,
             "description": "Returns a texture from a channel",
             "itemtype": "method",
             "name": "setTexture",
@@ -2435,7 +2346,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 684,
+            "line": 429,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -2455,7 +2366,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 698,
+            "line": 443,
             "description": "Loads all the textures inside this material, by sending the through the ResourcesManager",
             "itemtype": "method",
             "name": "loadTextures",
@@ -2464,7 +2375,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 716,
+            "line": 455,
             "description": "Register this material in a materials pool to be shared with other nodes",
             "itemtype": "method",
             "name": "registerMaterial",
@@ -2479,8 +2390,24 @@
             "namespace": "LS"
         },
         {
+            "file": "../src/materials/standardMaterial.js",
+            "line": 222,
+            "description": "Configure the material getting the info from the object",
+            "itemtype": "method",
+            "name": "configure",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.StandardMaterial",
+            "namespace": "LS"
+        },
+        {
             "file": "../src/render/renderInstance.js",
-            "line": 115,
+            "line": 124,
             "description": "takes the flags on the node and update the render instance flags",
             "itemtype": "method",
             "name": "applyNodeFlags",
@@ -2489,7 +2416,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 132,
+            "line": 141,
             "description": "Enable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2505,7 +2432,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 143,
+            "line": 152,
             "description": "Disable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2521,7 +2448,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 154,
+            "line": 163,
             "description": "Tells if a flag is enabled",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2541,7 +2468,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 166,
+            "line": 175,
             "description": "Updates the normal matrix using the matrix",
             "itemtype": "method",
             "name": "computeNormalMatrix",
@@ -2550,7 +2477,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 178,
+            "line": 187,
             "description": "Computes the instance bounding box in world space from the one in local space",
             "itemtype": "method",
             "name": "updateAABB",
@@ -2559,7 +2486,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 228,
+            "line": 237,
             "description": "Calls render taking into account primitive and submesh id",
             "itemtype": "method",
             "name": "render",
@@ -2575,7 +2502,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 48,
+            "line": 49,
             "description": "Renders the current scene to the screen",
             "itemtype": "method",
             "name": "render",
@@ -2601,7 +2528,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 160,
+            "line": 161,
             "description": "Set camera as the main scene camera",
             "itemtype": "method",
             "name": "enableCamera",
@@ -3017,7 +2944,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 25,
+            "line": 26,
             "description": "Contains all the registered components",
             "itemtype": "property",
             "name": "Components",
@@ -3028,7 +2955,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 34,
+            "line": 35,
             "description": "Register a component so it is listed when searching for new components to attach",
             "itemtype": "method",
             "name": "registerComponent",
@@ -3044,7 +2971,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 53,
+            "line": 54,
             "description": "Contains all the registered material classes",
             "itemtype": "property",
             "name": "MaterialClasses",
@@ -3055,7 +2982,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 62,
+            "line": 63,
             "description": "Register a component so it is listed when searching for new components to attach",
             "itemtype": "method",
             "name": "registerMaterialClass",
@@ -3071,7 +2998,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 79,
+            "line": 84,
             "description": "A front-end for XMLHttpRequest so it is simpler and more cross-platform",
             "itemtype": "method",
             "name": "request",
@@ -3091,7 +3018,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 186,
+            "line": 191,
             "description": "copy the properties (methods and attributes) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -3112,7 +3039,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 217,
+            "line": 228,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -3137,7 +3064,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 258,
+            "line": 269,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -3157,7 +3084,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 278,
+            "line": 289,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -3177,7 +3104,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 297,
+            "line": 308,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -3197,7 +3124,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 423,
+            "line": 407,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",

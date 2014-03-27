@@ -11,7 +11,7 @@
 var Renderer = {
 
 	default_render_options: new RenderOptions(),
-	default_material: new Material(), //used for objects without material
+	default_material: new StandardMaterial(), //used for objects without material
 
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
@@ -21,6 +21,7 @@ var Renderer = {
 	_current_scene: null,
 	_current_render_options: null,
 	_current_camera: null,
+	_current_target: null, //texture where the image is being rendered
 
 	_visible_cameras: null,
 	_visible_lights: null,
@@ -176,7 +177,7 @@ var Renderer = {
 
 		if(!skip_viewport)
 		{
-			if(render_options.ignore_viewports)
+			if(render_options && render_options.ignore_viewports)
 			{
 				camera._aspect = width / height;
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
@@ -201,7 +202,8 @@ var Renderer = {
 
 		//set as the current camera
 		this._current_camera = camera;
-		render_options.current_camera = camera;
+		if(render_options)
+			render_options.current_camera = camera;
 	},
 
 	
@@ -211,6 +213,7 @@ var Renderer = {
 
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix, this.frustum_planes );
 		this.frustum_planes = frustum_planes;
+		var apply_frustum_culling = render_options.frustum_culling;
 
 		LEvent.trigger(scene, "beforeRenderInstances", render_options);
 		scene.sendEventToNodes("beforeRenderInstances", render_options);
@@ -260,7 +263,7 @@ var Renderer = {
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
 				continue;
-			if(instance.material.opacity <= 0)
+			if(instance.material.opacity <= 0) //remove this, do it somewhere else
 				continue;
 
 			//done here because sometimes some nodes are moved in this action
@@ -268,7 +271,7 @@ var Renderer = {
 				instance.onPreRender(render_options);
 
 			//test visibility against camera frustum
-			if( !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
 				continue;
 
 			//save visibility info
@@ -353,7 +356,7 @@ var Renderer = {
 	{
 
 		var node = instance.node;
-		var mat = instance.material;
+		var material = instance.material;
 
 		//compute matrices
 		var model = instance.matrix;
@@ -373,37 +376,33 @@ var Renderer = {
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
 
-		//alpha blending flags
-		if(mat.blending == Material.ADDITIVE_BLENDING)
+		//blend flags
+		if(material.blend_mode != Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-		}
-		else if(mat.opacity < 0.999 || (instance.flags & RI_BLEND) )
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
 		}
 		else
 			gl.disable( gl.BLEND );
 
 		//assign material samplers (maybe they are not used...)
-		var samplers = scene._samplers;
-		if(mat._samplers)
-			Array.prototype.push.apply(samplers, mat._samplers); //samplers = samplers.concat( mat._samplers );
+		var samplers = [];
+			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
+		if(material._samplers)
+			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
 			
 		for(var i = 0; i < samplers.length; i++)
 		{
 			var s = samplers[i];
-			mat._uniforms[ s[0] ] = i;
+			material._uniforms[ s[0] ] = i;
 			s[1].bind(i);
 		}
 
 		var shader_name = render_options.default_shader_id;
 		if(render_options.low_quality)
 			shader_name = render_options.default_low_shader_id;
-		if( instance.material.shader_name )
-			shader_name = instance.material.shader_name;
+		if( material.shader_name )
+			shader_name = material.shader_name;
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -415,22 +414,22 @@ var Renderer = {
 			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
 			macros.merge(scene._macros);
 			macros.merge(node_macros);
-			macros.merge(mat._macros);
+			macros.merge(material._macros);
 			macros.merge(instance.macros);
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 				macros.USE_CLIPPING_PLANE = "";
 
-			if( mat.onModifyMacros )
-				mat.onModifyMacros( macros );
+			if( material.onModifyMacros )
+				material.onModifyMacros( macros );
 
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
 			shader.uniforms( scene._uniforms );
 			shader.uniforms( node_uniforms );
-			shader.uniforms( mat._uniforms );
+			shader.uniforms( material._uniforms );
 			shader.uniforms( instance.uniforms );
 
 			//render
@@ -459,14 +458,14 @@ var Renderer = {
 				var macros = {};
 				macros.merge(scene._macros);
 				macros.merge(node_macros);
-				macros.merge(mat._macros);
+				macros.merge(material._macros);
 				macros.merge(instance.macros);
 				macros.merge(light_macros);
 				if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 					macros.USE_CLIPPING_PLANE = "";
 
-				if( mat.onModifyMacros )
-					mat.onModifyMacros( macros );
+				if( material.onModifyMacros )
+					material.onModifyMacros( macros );
 
 				shader = ShadersManager.get(shader_name, macros);
 			}
@@ -487,13 +486,13 @@ var Renderer = {
 					gl.disable( gl.DEPTH_TEST );
 			}
 
-			if(mat.depth_func)
-				gl.depthFunc( gl[mat.depth_func] );
+			if(material.depth_func)
+				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
 			shader.uniforms( scene._uniforms );
 			shader.uniforms( node_uniforms );
-			shader.uniforms( mat._uniforms );
+			shader.uniforms( material._uniforms );
 			shader.uniforms( light_uniforms );
 			shader.uniforms( instance.uniforms );
 
@@ -510,7 +509,7 @@ var Renderer = {
 	render2DInstance:  function(instance, scene, options)
 	{
 		var node = instance.node;
-		var mat = instance.material;
+		var material = instance.material;
 
 		//compute matrices
 		var model = this._temp_matrix;
@@ -547,23 +546,23 @@ var Renderer = {
 		//FLAGS
 		this.enableInstanceFlags(instance, options);
 
-		//alpha blending flags
-		if(mat.blending == Material.ADDITIVE_BLENDING)
+		//blend flags
+		if(material.blend_mode != Blend.NORMAL)
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
+		}
+		else
 		{
 			gl.enable( gl.BLEND );
 			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
 		}
-		else 
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		}
 
 		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i < mat._samplers.length; i++)
+		for(var i = 0; i < material._samplers.length; i++)
 		{
-			var s = mat._samplers[i];
-			mat._uniforms[ s[0] ] = i;
+			var s = material._samplers[i];
+			material._uniforms[ s[0] ] = i;
 			s[1].bind(i);
 		}
 
@@ -572,7 +571,7 @@ var Renderer = {
 
 		//assign uniforms
 		shader.uniforms( node_uniforms );
-		shader.uniforms( mat._uniforms );
+		shader.uniforms( material._uniforms );
 		shader.uniforms( instance.uniforms );
 
 		//render
@@ -585,7 +584,7 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		var node = instance.node;
-		var mat = instance.material;
+		var material = instance.material;
 
 		//compute matrices
 		var model = instance.matrix;
@@ -602,21 +601,26 @@ var Renderer = {
 		//FLAGS
 		this.enableInstanceFlags(instance, render_options);
 
-		if(node.flags.alpha_shadows == true && (mat.getTexture("color") || mat.getTexture("opacity")))
-		{
-			var macros = { USE_ALPHA_TEST: "0.5" };
+		var macros = {};
+		if(this._current_target && this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros["USE_LINEAR_DISTANCE"] = "";
 
-			var color = mat.getTexture("color");
+		if(node.flags.alpha_shadows == true && (material.getTexture("color") || material.getTexture("opacity")))
+		{
+			macros["USE_ALPHA_TEST"] = "0.5";
+
+
+			var color = material.getTexture("color");
 			if(color)
 			{
-				var color_uvs = mat.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
+				var color_uvs = material.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
 				macros.USE_COLOR_TEXTURE = "uvs_" + color_uvs;
 				color.bind(0);
 			}
 
-			var opacity = mat.getTexture("opacity");
+			var opacity = material.getTexture("opacity");
 			if(opacity)	{
-				var opacity_uvs = mat.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
+				var opacity_uvs = material.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
@@ -626,15 +630,14 @@ var Renderer = {
 		}
 		else
 		{
-			//shader = ShadersManager.get("depth", node._macros );
-			var macros = {};
 			macros.merge(node_macros);
-			macros.merge(mat._macros);
+			macros.merge(material._macros);
 			macros.merge(instance.macros);
 			shader = ShadersManager.get("depth", macros );
 		}
 
-		shader.uniforms( mat._uniforms );
+		shader.uniforms( scene._uniforms );
+		shader.uniforms( material._uniforms );
 		shader.uniforms(node_uniforms);
 		instance.render(shader);
 		this._rendercalls += 1;
@@ -773,7 +776,7 @@ var Renderer = {
 		scene.collectData();
 
 		var opaque_instances = [];
-		var alpha_instances = [];
+		var blend_instances = [];
 		var materials = {}; //I dont want repeated materials here
 
 		var instances = scene._instances;
@@ -808,9 +811,8 @@ var Renderer = {
 			}
 
 			//and finally, the alpha thing to determine if it is visible or not
-			var mat = instance.material;
-			if(mat.opacity < 1.0 || mat.blending == Material.ADDITIVE_BLENDING || (instance.flags & RI_BLEND) )
-				alpha_instances.push(instance);
+			if(instance.flags & RI_BLEND)
+				blend_instances.push(instance);
 			else
 				opaque_instances.push(instance);
 
@@ -838,10 +840,10 @@ var Renderer = {
 		if(render_options.sort_instances_by_distance)
 		{
 			opaque_instances.sort(this._sort_near_to_far_func);
-			alpha_instances.sort(this._sort_far_to_near_func);
+			blend_instances.sort(this._sort_far_to_near_func);
 		}
 
-		var all_instances = opaque_instances.concat(alpha_instances); //merge
+		var all_instances = opaque_instances.concat(blend_instances); //merge
 
 		if(render_options.sort_instances_by_priority)
 			all_instances.sort( this._sort_by_priority_func );
@@ -864,7 +866,7 @@ var Renderer = {
 			}
 		}
 
-		this._alpha_instances = alpha_instances;
+		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = all_instances; //sorted version
 		this._visible_lights = scene._lights; //sorted version
@@ -880,6 +882,7 @@ var Renderer = {
 	renderInstancesToRT: function(cam, texture, render_options)
 	{
 		render_options = render_options || this.default_render_options;
+		this._current_target = texture;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -888,6 +891,7 @@ var Renderer = {
 		}
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
 			this.renderToCubemap(cam.getEye(), texture.width, texture, render_options, cam.near, cam.far);
+		this._current_target = null;
 
 		function inner_draw_2d()
 		{
@@ -922,8 +926,11 @@ var Renderer = {
 
 			if(light.type == Light.OMNI)
 			{
-				//this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowMap, { step:"shadow", is_shadowmap: true }, light.near, light.far );
-				//TODO
+				render_options.current_pass = "shadow";
+				render_options.is_shadowmap = true;
+				light._shadowmap.unbind(); 
+				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowmap, render_options, light.near, light.far );
+				render_options.is_shadowmap = false;
 			}
 			else //DIRECTIONAL and SPOTLIGHT
 			{
@@ -934,8 +941,8 @@ var Renderer = {
 
 				// Render the object viewed from the light using a shader that returns the
 				// fragment depth.
-				//light._shadowmap.unbind(); //¿?
-
+				light._shadowmap.unbind(); 
+				this._current_target = light._shadowmap;
 				light._shadowmap.drawTo(function() {
 
 					gl.clearColor(0, 0, 0, 1);
@@ -954,6 +961,7 @@ var Renderer = {
 
 					render_options.is_shadowmap = false;
 				});
+				this._current_target = null;
 			}
 		}
 	},
@@ -1020,6 +1028,7 @@ var Renderer = {
 		var scene = this._current_scene;
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
+		this._current_target = texture;
 		texture.drawTo(function(texture, side) {
 			var cams = Renderer.cubemap_camera_parameters;
 			if(render_options.is_shadowmap == "shadow")
@@ -1033,7 +1042,7 @@ var Renderer = {
 			Renderer.enableCamera( cubemap_cam, render_options, true );
 			Renderer.renderInstances( render_options );
 		});
-
+		this._current_target = null;
 		return texture;
 	},
 
@@ -1058,7 +1067,7 @@ var Renderer = {
 		var small_area = true;
 		this._picking_next_color_id = 0;
 
-
+		this._current_target = this._pickingMap;
 		this._pickingMap.drawTo(function() {
 			//trace(" START Rendering ");
 
@@ -1089,6 +1098,7 @@ var Renderer = {
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 		});
+		this._current_target = null;
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		//trace(" END Rendering: ", this._picking_color );

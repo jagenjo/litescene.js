@@ -80,12 +80,13 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	mat.textures["color"] = texture;
 
 	RI.setMesh(mesh);
-	RI.material = mat;
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	RI.enableFlag( RI_CW | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM | RI_IGNORE_CLIPPING_PLANE); 
 	RI.disableFlag( RI_CAST_SHADOWS | RI_DEPTH_WRITE | RI_DEPTH_TEST ); 
+
+	RI.setMaterial(mat);
 
 	instances.push(RI);
 }

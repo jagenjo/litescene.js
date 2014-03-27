@@ -6,18 +6,18 @@
 * @constructor
 */
 
-//flags enums
+//Flags to control rendering states
 var RI_CULL_FACE =			1;		//for two sided
 var RI_CW =					1 << 1; //reverse normals
-var RI_DEPTH_TEST =			1 << 2; 
-var RI_DEPTH_WRITE = 		1 << 3; 
-var RI_ALPHA_TEST =			1 << 4; 
-var RI_BLEND = 				1 << 5; 
+var RI_DEPTH_TEST =			1 << 2; //use depth test
+var RI_DEPTH_WRITE = 		1 << 3; //write in the depth buffer
+var RI_ALPHA_TEST =			1 << 4; //do alpha test
+var RI_BLEND = 				1 << 5; //use blend function
 
 var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
 var RI_IGNORE_LIGHTS = 		1 << 9;	//render without taking into account light info
-var RI_RENDER_2D = 			1 << 10;//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
+var RI_IGNORE_FRUSTUM = 	1 << 10;//render even when outside of frustum 
+var RI_RENDER_2D = 			1 << 11;//render in screen space using the position projection (similar to billboard)
 
 var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
@@ -47,6 +47,7 @@ function RenderInstance(node, component)
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
+	this.blend_func = BlendFunctions["normal"]; //Blend.funcs["add"], ...
 
 	//transformation
 	this.matrix = mat4.create();
@@ -70,6 +71,14 @@ RenderInstance.prototype.generateKey = function(step, options)
 {
 	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
 	return this._key;
+}
+
+//set the material and apply material flags to render instance
+RenderInstance.prototype.setMaterial = function(material)
+{
+	this.material = material;
+	if(material)
+		material.applyToRenderInstance(this);
 }
 
 RenderInstance.prototype.setMesh = function(mesh, primitive)

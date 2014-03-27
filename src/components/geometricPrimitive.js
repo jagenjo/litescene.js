@@ -82,9 +82,9 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	RI.setMesh( this._mesh, this.primitive );
 	this._root.mesh = this._mesh;
 	
-	RI.material = this.material || this._root.getMaterial();
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
+	RI.setMaterial( this.material || this._root.getMaterial() );
 
 	instances.push(RI);
 }

@@ -33,6 +33,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ResourcesManager",
         "LS.SceneNode",
         "LS.SceneTree",
+        "LS.StandardMaterial",
         "LS.WBin",
         "Rotator"
     ],

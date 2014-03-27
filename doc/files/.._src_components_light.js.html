@@ -105,6 +105,8 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
@@ -274,8 +276,8 @@ function Light(o)
 }
 
 //do not change
-Light.FRONT_VECTOR = new Float32Array(0,0,-1); //const
-Light.UP_VECTOR = new Float32Array(0,1,0); //const
+Light.FRONT_VECTOR = new Float32Array([0,0,-1]); //const
+Light.UP_VECTOR = new Float32Array([0,1,0]); //const
 
 Light.OMNI = 1;
 Light.SPOT = 2;

@@ -512,7 +512,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.addOutput("","Texture");
-		this.properties = { size: 0, low_precision: false };
+		this.properties = { size: 0, low_precision: false, generate_mipmaps: false };
 	}
 
 	LGraphTextureCopy.title = "Copy";
@@ -536,14 +536,127 @@ if(typeof(LiteGraph) != "undefined")
 		var temp = this._temp_texture;
 		var type = this.properties.low_precision ? gl.UNSIGNED_BYTE : tex.type;
 		if(!temp || temp.width != width || temp.height != height || temp.type != type )
-			this._temp_texture = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
+		{
+			var minFilter = gl.LINEAR;
+			if( this.properties.generate_mipmaps && isPowerOfTwo(width) && isPowerOfTwo(height) )
+				minFilter = gl.LINEAR_MIPMAP_LINEAR;
+			this._temp_texture = new GL.Texture( width, height, { type: type, format: gl.RGBA, minFilter: minFilter, magFilter: gl.LINEAR });
+		}
 		tex.copyTo(this._temp_texture);
+
+		if(this.properties.generate_mipmaps)
+		{
+			this._temp_texture.bind(0);
+			gl.generateMipmap(this._temp_texture.texture_type);
+			this._temp_texture.unbind(0);
+		}
+
 
 		this.setOutputData(0,this._temp_texture);
 	}
 
 	LiteGraph.registerNodeType("texture/copy", LGraphTextureCopy );
 	window.LGraphTextureCopy = LGraphTextureCopy;
+
+
+	// Texture Copy *****************************************
+	function LGraphTextureAverage()
+	{
+		this.addInput("Texture","Texture");
+		this.addOutput("","Texture");
+		this.properties = { low_precision: false };
+	}
+
+	LGraphTextureAverage.title = "Average";
+	LGraphTextureAverage.desc = "Compute average of a texture and stores it as a texture";
+
+	LGraphTextureAverage.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(!tex) return;
+
+		if(!LGraphTextureAverage._shader)
+		{
+			LGraphTextureAverage._shader = new GL.Shader(LGraphTextureAverage.vertex_shader, LGraphTextureAverage.pixel_shader);
+			var samples = new Float32Array(32);
+			for(var i = 0; i < 32; ++i)	
+				samples[i] = Math.random();
+			LGraphTextureAverage._shader.uniforms({u_samples_a: samples.subarray(0,16), u_samples_b: samples.subarray(16,32) });
+		}
+
+		var temp = this._temp_texture;
+		var type = this.properties.low_precision ? gl.UNSIGNED_BYTE : tex.type;
+		if(!temp || temp.type != type )
+			this._temp_texture = new GL.Texture( 1, 1, { type: type, format: gl.RGBA, filter: gl.NEAREST });
+
+		var shader = LGraphTextureAverage._shader;
+		this._temp_texture.drawTo(function(){
+			tex.toViewport(shader,{u_texture:0});
+		});
+
+		this.setOutputData(0,this._temp_texture);
+	}
+
+	LGraphTextureAverage.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			void main() {\n\
+				gl_Position = vec4(a_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureAverage.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			uniform mat4 u_samples_a;\n\
+			uniform mat4 u_samples_b;\n\
+			uniform sampler2D u_texture;\n\
+			\n\
+			void main() {\n\
+				vec4 color = vec4(0.0);\n\
+				for(int i = 0; i < 4; ++i)\n\
+					for(int j = 0; j < 4; ++j)\n\
+					{\n\
+						color += texture2D(u_texture, vec2( u_samples_a[i][j], u_samples_b[i][j] ) );\n\
+						color += texture2D(u_texture, vec2( 1.0 - u_samples_a[i][j], u_samples_b[i][j] ) );\n\
+					}\n\
+			   gl_FragColor = color * 0.03125;\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/average", LGraphTextureAverage );
+	window.LGraphTextureAverage = LGraphTextureAverage;
+
+	// Image To Texture *****************************************
+	function LGraphImageToTexture()
+	{
+		this.addInput("Image","image");
+		this.addOutput("","Texture");
+		this.properties = {};
+	}
+
+	LGraphImageToTexture.title = "Image to Texture";
+	LGraphImageToTexture.desc = "Uploads an image to the GPU";
+	//LGraphImageToTexture.widgets_info = { size: { widget:"combo", values:[0,32,64,128,256,512,1024,2048]} };
+
+	LGraphImageToTexture.prototype.onExecute = function()
+	{
+		var img = this.getInputData(0);
+		if(!img) return;
+
+		var width = img.videoWidth || img.width;
+		var height = img.videoHeight || img.height;
+
+		var temp = this._temp_texture;
+		if(!temp || temp.width != width || temp.height != height )
+			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
+
+		this._temp_texture.uploadImage(img);
+
+		this.setOutputData(0,this._temp_texture);
+	}
+
+	LiteGraph.registerNodeType("texture/imageToTexture", LGraphImageToTexture );
+	window.LGraphImageToTexture = LGraphImageToTexture;	
 
 
 	// Texture LUT *****************************************

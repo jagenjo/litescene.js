@@ -105,6 +105,8 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
@@ -195,12 +197,12 @@ function Context(options)
 
 	this.gl = GL.create(options);
 	this.canvas = this.gl.canvas;
-	this.render_options = {};
+	this.render_options = new RenderOptions();
 
 	if(options.resources)
 		LS.ResourcesManager.path = options.resources;
 	if(options.shaders)
-		Shaders.init(options.shaders);
+		ShadersManager.init(options.shaders);
 
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;

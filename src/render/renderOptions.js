@@ -15,8 +15,6 @@ function RenderOptions(o)
 	this.current_camera = null; //this camera is the one being rendered at this moment
 	this.current_pass = null; //name of the current pass ("color","shadow","depth","picking")
 
-
-
 	//rendering properties
 	this.ignore_viewports = false;
 	this.ignore_clear = false;
@@ -34,6 +32,7 @@ function RenderOptions(o)
 	this.sort_instances_by_distance = true;
 	this.sort_instances_by_priority = true;
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
+	this.frustum_culling = true;
 
 	//this should change one day...
 	this.default_shader_id = "global";

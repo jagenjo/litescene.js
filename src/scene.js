@@ -1157,11 +1157,6 @@ LS.SceneTree = SceneTree;
 LS.SceneNode = SceneNode;
 var Scene = new SceneTree();
 
-
-LS.ResourcesManager = ResourcesManager;
-LS.Generators = Generators;
-
-
 LS.newMeshNode = function(id,mesh_name)
 {
 	var node = new SceneNode(id);

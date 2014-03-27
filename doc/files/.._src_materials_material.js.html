@@ -105,6 +105,8 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
@@ -152,6 +154,9 @@
 
 <div class="file">
     <pre class="code prettyprint linenums">
+
+
+
 //Material class **************************
 /* Warning: a material is not a component, because it can be shared by multiple nodes */
 
@@ -173,32 +178,15 @@ function Material(o)
 	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.opacity = 1.0;
-	this.ambient = new Float32Array([1.0,1.0,1.0]);
-	this.diffuse = new Float32Array([1.0,1.0,1.0]);
-	this.emissive = new Float32Array([0.0,0.0,0.0]);
-	this.backlight_factor = 0;
+	this.shader_name = &quot;global&quot;;
+	this.blend_mode = Blend.NORMAL;
+
 	this.specular_factor = 0.1;
 	this.specular_gloss = 10.0;
-	this.specular_ontop = false;
-	this.reflection_factor = 0.0;
-	this.reflection_fresnel = 1.0;
-	this.reflection_additive = false;
-	this.reflection_specular = false;
-	this.velvet = new Float32Array([0.5,0.5,0.5]);
-	this.velvet_exp = 0.0;
-	this.velvet_additive = false;
-	this.detail = [0.0,10,10];
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.extra_factor = 0.0; //used for debug and dev
-	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
-	this.blending = Material.NORMAL;
-	this.normalmap_factor = 1.0;
-	this.displacementmap_factor = 0.1;
-	this.bumpmap_factor = 1.0;
-	this.use_scene_ambient = true;
 
+	//textures
+	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
-	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
@@ -206,9 +194,6 @@ function Material(o)
 
 Material.icon = &quot;mini-icon-material.png&quot;;
 
-//Material flags
-Material.NORMAL = &quot;normal&quot;;
-Material.ADDITIVE_BLENDING = &quot;additive&quot;;
 
 //material info attributes, use this to avoid errors when settings the attributes of a material
 
@@ -228,48 +213,13 @@ Material.COLOR = &quot;color&quot;;
 Material.OPACITY = &quot;opacity&quot;;
 
 /**
-* Blending mode, it could be Material.NORMAL or Material.ADDITIVE_BLENDING
-* @property blending
+* Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)
+* @property blend_mode
 * @type {String}
-* @default Material.NORMAL
+* @default Blend.NORMAL
 */
-Material.BLENDING = &quot;blending&quot;;
+Material.BLEND_MODE = &quot;blend_mode&quot;;
 
-/**
-* Ambient color: amount of ambient light reflected by the object
-* @property ambient
-* @type {vec3}
-* @default [1,1,1]
-*/
-Material.AMBIENT = &quot;ambient&quot;;
-/**
-* Diffuse color: amount of diffuse light reflected by the object
-* @property diffuse
-* @type {vec3}
-* @default [1,1,1]
-*/
-Material.DIFFUSE = &quot;diffuse&quot;;
-/**
-* Backlight factor: amount of light that can be seen through the surface.
-* @property backlight_factor
-* @type {number}
-* @default 0
-*/
-Material.BACKLIGHT_FACTOR = &quot;backlight_factor&quot;;
-
-/**
-* Emissive color: amount of emissive light emited from the surface
-* @property emissive
-* @type {vec3}
-* @default [0,0,0]
-*/
-Material.EMISSIVE = &quot;emissive&quot;;
-/**
-* Specular factor: amount of specular light reflected
-* @property specular_factor
-* @type {number}
-* @default 0.1
-*/
 Material.SPECULAR_FACTOR = &quot;specular_factor&quot;;
 /**
 * Specular glossiness: the glossines (exponent) of specular light
@@ -278,69 +228,16 @@ Material.SPECULAR_FACTOR = &quot;specular_factor&quot;;
 * @default 10
 */
 Material.SPECULAR_GLOSS = &quot;specular_gloss&quot;;
-/**
-* Specular on top: if the specular spots should be on top or multiplyed by the surface color
-* @property specular_ontop
-* @type {boolean}
-* @default false
-*/
-Material.SPECULAR_ON_TOP = &quot;specular_ontop&quot;;
-/**
-* How reflectance is the surface 
-* @property reflection_factor
-* @type {number}
-* @default 0
-*/
-Material.REFLECTION_FACTOR = &quot;reflection_factor&quot;;
-/**
-* Fresnel coeficient (exp) of reflectance
-* @property reflection_fresnel
-* @type {number}
-* @default 0
-*/
-Material.REFLECTION_FRESNEL = &quot;reflection_fresnel&quot;;
-/**
-* It controls if the reflection is interpolated or blended with the surface color
-* @property reflection_additive
-* @type {boolean}
-* @default false
-*/
-Material.REFLECTION_ADDITIVE = &quot;reflection_additive&quot;;
-/**
-* It controls if the reflection factor is affected by the specular factor
-* @property reflection_specular
-* @type {boolean}
-* @default false
-*/
-Material.REFLECTION_SPECULAR = &quot;reflection_specular&quot;;
-/**
-* velvet color
-* @property velvet
-* @type {vec3}
-* @default [0,0,0]
-*/
-Material.VELVET = &quot;velvet&quot;;
-Material.VELVET_EXP = &quot;velvet_exp&quot;;
-Material.VELVET_ADDITIVE = &quot;velvet_additive&quot;;
 
-Material.NORMALMAP_FACTOR = &quot;normalmap_factor&quot;;
-Material.DISPLACEMENTMAP_FACTOR = &quot;displacementmap_factor&quot;;
 
 Material.OPACITY_TEXTURE = &quot;opacity&quot;;	//used for baked GI
-Material.AMBIENT_TEXTURE = &quot;ambient&quot;;	//used for baked GI
 Material.COLOR_TEXTURE = &quot;color&quot;;	//material color
+Material.AMBIENT_TEXTURE = &quot;ambient&quot;;
 Material.SPECULAR_TEXTURE = &quot;specular&quot;; //defines specular factor and glossiness per pixel
-Material.EMISSIVE_TEXTURE = &quot;emissive&quot;; //emissive pixels
-Material.DETAIL_TEXTURE = &quot;detail&quot;;		//secondary material color with texture matrix
-Material.REFLECTIVITY_TEXTURE = &quot;reflectivity&quot;; //defines which areas are reflective
-Material.ENVIRONMENT_TEXTURE = &quot;environment&quot;; //the environtment texture (2d or cubemap)
-Material.NORMAL_TEXTURE = &quot;normal&quot;;		//the normalmap
-Material.BUMP_TEXTURE = &quot;bump&quot;;		//displacement 
-Material.DISPLACEMENT_TEXTURE = &quot;displacement&quot;;		//displacement 
-Material.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;	//the irradiance texture (2d polar or cubemap)
-Material.EXTRA_TEXTURE = &quot;extra&quot;;	//used for own shader
-//Material.TEXTURE_CHANNELS = [ &quot;color&quot;,&quot;opacity&quot;, &quot;ambient&quot;, &quot;specular&quot;, &quot;emissive&quot;, &quot;detail&quot;, &quot;normal&quot;, &quot;reflectivity&quot;,&quot;environment&quot;, &quot;irradiance&quot; ];
-Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.DETAIL_TEXTURE, Material.NORMAL_TEXTURE, Material.DISPLACEMENT_TEXTURE, Material.BUMP_TEXTURE, Material.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, Material.IRRADIANCE_TEXTURE, Material.EXTRA_TEXTURE ];
+Material.EMISSIVE_TEXTURE = &quot;emissive&quot;;
+Material.ENVIRONMENT_TEXTURE = &quot;environment&quot;;
+
+Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 Material.COORDS_UV0 = &quot;0&quot;;
 Material.COORDS_UV1 = &quot;1&quot;;
@@ -357,33 +254,22 @@ Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacem
 
 Material.available_shaders = [&quot;default&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
 
-Material.REFLECTIVE_FLAG = 1;
 
-//not used yet
-Material.prototype.setDirty = function()
+Material.prototype.applyToRenderInstance = function(ri)
 {
-	this._dirty_macros = this._dirty_uniforms = true;
+	if(this.blend_mode != Blend.NORMAL)
+		ri.flags |= RI_BLEND;
+
+	if(this.blend_mode == Blend.CUSTOM &amp;&amp; this.blend_func)
+		ri.blend_func = this.blend_func;
+	else
+		ri.blend_func = BlendFunctions[ this.blend_mode ];
 }
 
 // RENDERING METHODS
 Material.prototype.fillSurfaceShaderMacros = function(scene)
 {
 	var macros = {};
-
-	/*
-	//iterate through textures in the scene (environment and irradiance)
-	for(var i in scene.textures)
-	{
-		var texture = Material.prototype.getTexture.call(scene, i); //hack
-		if(!texture) continue;
-
-		//if(i == &quot;environment&quot;)
-		//	if(this.reflection_factor &lt;= 0) continue;
-
-		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
-		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
-	}
-	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -393,65 +279,8 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 		//special cases
 
-		/*
-		if(i == &quot;environment&quot;)
-		{
-			if(this.reflection_factor &lt;= 0) 
-				continue;
-		}
-		else */
-
-		if(i == &quot;normal&quot;)
-		{
-			if(this.normalmap_factor != 0.0 &amp;&amp; (!this.normalmap_tangent || (this.normalmap_tangent &amp;&amp; gl.derivatives_supported)) )
-			{
-				macros.USE_NORMAL_TEXTURE = &quot;uvs_&quot; + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = &quot;&quot;;
-				if(this.normalmap_tangent &amp;&amp; gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = &quot;&quot;;
-			}
-			continue;
-		}
-		else if(i == &quot;displacement&quot;)
-		{
-			if(this.displacementmap_factor != 0.0 &amp;&amp; gl.derivatives_supported )
-			{
-				macros.USE_DISPLACEMENT_TEXTURE = &quot;uvs_&quot; + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = &quot;&quot;;
-			}
-			continue;
-		}
-		else if(i == &quot;bump&quot;)
-		{
-			if(this.bump_factor != 0.0 &amp;&amp; gl.derivatives_supported )
-			{
-				macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMP_FACTOR = &quot;&quot;;
-			}
-			continue;
-		}
 		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
 	}
-
-	if(this.velvet &amp;&amp; this.velvet_exp) //first light only
-		macros.USE_VELVET = &quot;&quot;;
-	if(this.emissive_material)
-		macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
-	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = &quot;&quot;;
-	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = &quot;&quot;;
-	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
-	if(this.backlight_factor &gt; 0.001)
-		macros.USE_BACKLIGHT = &quot;&quot;;
-
-	if(this.reflection_factor &gt; 0.0) 
-		macros.USE_REFLECTION = &quot;&quot;;
-
 
 	//extra macros
 	if(this.extra_macros)
@@ -489,9 +318,15 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-
 	if(light_projective_texture)
 		macros.USE_PROJECTIVE_LIGHT = &quot;&quot;;
+
+	var light_average_texture = light.average_texture;
+	if(light_average_texture &amp;&amp; light_average_texture.constructor == String)
+		light_average_texture = ResourcesManager.textures[light_average_texture];
+	if(light_average_texture)
+		macros.USE_TEXTURE_AVERAGE_LIGHT = &quot;&quot;;
+
 
 	//if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
 	//	macros.USE_IGNORE_LIGHT = &quot;&quot;;
@@ -502,10 +337,10 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	if(use_shadows &amp;&amp; node.flags.receive_shadows != false)
 	{
 		macros.USE_SHADOW_MAP = &quot;&quot;;
-		if(light.hard_shadows)
-			macros.USE_HARD_SHADOWS = &quot;&quot;;
 		if(light._shadowmap &amp;&amp; light._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
 			macros.USE_SHADOW_CUBEMAP = &quot;&quot;;
+		if(light.hard_shadows || macros.USE_SHADOW_CUBEMAP != null)
+			macros.USE_HARD_SHADOWS = &quot;&quot;;
 
 		macros.SHADOWMAP_OFFSET = &quot;&quot;;
 	}
@@ -513,74 +348,17 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	return macros;
 }
 
-/*
-Material.prototype.getSceneShaderMacros = function( scene, options )
-{
-	var macros = scene._macros;
-	//camera info
-	if(options.camera.type == Camera.ORTHOGRAPHIC)
-		macros.USE_ORTHOGRAPHIC_CAMERA = &quot;&quot;;
-
-	if(options.clipping_plane)
-		macros.USE_CLIPPING_PLANE = &quot;&quot;;
-
-	if(options.brightness_factor &amp;&amp; options.brightness_factor != 1)
-		macros.USE_BRIGHTNESS_FACTOR = &quot;&quot;;
-
-	if(options.colorclip_factor)
-		macros.USE_COLORCLIP_FACTOR = &quot;&quot;;
-}
-*/
-
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
 	var samplers = [];
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
-	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient)
-		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
-	else
-		uniforms.u_ambient_color = this.ambient;
-	uniforms.u_diffuse_color = this.diffuse;
-	uniforms.u_emissive_color = this.emissive || vec3.create();
+	uniforms.u_ambient_color = scene.ambient_color;
+	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
+
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
-	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
-	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normalmap_factor = this.normalmap_factor;
-	uniforms.u_displacementmap_factor = this.displacementmap_factor;
-	uniforms.u_bumpmap_factor = this.bumpmap_factor;
-	uniforms.u_velvet_info = new Float32Array([ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ]);
-	uniforms.u_detail_info = this.detail;
-
 	uniforms.u_texture_matrix = this.uvs_matrix;
-
-	//iterate through textures in the scene (environment and irradiance)
-	/*
-	for(var i in scene.textures)
-	{
-		var texture = Material.prototype.getTexture.call(scene, i); //hack
-		if(!texture) continue;
-
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) , texture]);
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = this._bind_textures.length - 1;//texture.bind( last_slot );
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture;
-		//last_slot += 1;
-
-		
-		//if(i == &quot;environment&quot;)
-		//	if(this.reflection_factor &lt;= 0) continue;
-
-		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
-		if(texture.type == gl.TEXTURE_2D &amp;&amp; (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
-		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
-		}
-	}
-	*/
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -593,27 +371,6 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 		//last_slot += 1;
-
-		//special cases
-		/*
-		if(i == &quot;environment&quot;)
-			if(this.reflection_factor &lt;= 0) continue;
-		else */
-
-		if(i == &quot;normal&quot;)
-			continue;
-		else if(i == &quot;displacement&quot;)
-			continue;
-		else if(i == &quot;bump&quot;)
-			continue;
-		else if(i == &quot;irradiance&quot; &amp;&amp; texture.type == gl.TEXTURE_2D)
-		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
-			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
-			//texture.min_filter = gl.GL_LINEAR;
-		}
 
 		if(texture.texture_type == gl.TEXTURE_2D &amp;&amp; (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
 		{
@@ -639,10 +396,6 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 
 	var use_shadows = light.cast_shadows &amp;&amp; light._shadowmap &amp;&amp; light._light_matrix != null &amp;&amp; !options.shadows_disabled;
 
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-
 	var shadowmap_size = use_shadows ? (light._shadowmap.width) : 1024;
 	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
 		uniforms.u_light_front = light.getFront();
@@ -657,15 +410,24 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 	if(light._light_matrix)
 		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._light_matrix, instance.matrix );
 
-	//texture
+	//projective texture
+	var light_projective_texture = light.projective_texture;
+	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
+		light_projective_texture = ResourcesManager.textures[light_projective_texture];
 	if(light_projective_texture)
-		//samplers.push([&quot;light_texture&quot;, light_projective_texture]); //fixed slot
 		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
+
+	//average texture
+	var light_average_texture = light.average_texture;
+	if(light_average_texture &amp;&amp; light_average_texture.constructor == String)
+		light_average_texture = ResourcesManager.textures[light_average_texture];
+	if(light_average_texture)
+		uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
 
 	//use shadows?
 	if(use_shadows)
 	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias ];
+		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias, light.near, light.far ];
 		uniforms.shadowmap = light._shadowmap.bind(10); //fixed slot
 		//samplers.push([&quot;shadowmap&quot;, light._shadowmap]);
 	}
@@ -674,7 +436,12 @@ Material.prototype.fillLightUniforms = function( iLight, light, instance, option
 	return uniforms;
 }
 
-
+Material.prototype.getTextureChannels = function()
+{
+	if(this.constructor.texture_channels)
+		return this.constructor.texture_channels;
+	return [];
+}
 
 
 /**
@@ -693,34 +460,16 @@ Material.prototype.configure = function(o)
 		{
 			//numbers
 			case &quot;opacity&quot;: 
-			case &quot;backlight_factor&quot;:
 			case &quot;specular_factor&quot;:
 			case &quot;specular_gloss&quot;:
-			case &quot;reflection_factor&quot;:
-			case &quot;reflection_fresnel&quot;:
-			case &quot;velvet_exp&quot;:
-			case &quot;velvet_additive&quot;:
-			case &quot;blending&quot;:
-			case &quot;normalmap_factor&quot;:
-			case &quot;displacementmap_factor&quot;:
-			case &quot;extra_factor&quot;:
+			case &quot;blend_mode&quot;:
 			//strings
 			case &quot;shader_name&quot;:
 			//bools
-			case &quot;specular_ontop&quot;:
-			case &quot;normalmap_tangent&quot;:
-			case &quot;reflection_specular&quot;:
-			case &quot;use_scene_ambient&quot;:
 				r = v; 
 				break;
 			//vectors
 			case &quot;color&quot;: 
-			case &quot;ambient&quot;:	
-			case &quot;diffuse&quot;: 
-			case &quot;emissive&quot;: 
-			case &quot;velvet&quot;:
-			case &quot;detail&quot;:
-			case &quot;extra_color&quot;:
 				r = new Float32Array(v); 
 				break;
 			case &quot;textures&quot;:
@@ -728,8 +477,6 @@ Material.prototype.configure = function(o)
 				continue;
 			case &quot;transparency&quot;: //special cases
 				this.opacity = 1 - v;
-			case &quot;extra_uniforms&quot;:
-				this.extra_uniforms = LS.cloneObject(v);
 			default:
 				continue;
 		}
@@ -858,13 +605,7 @@ Material.prototype.loadTextures = function ()
 {
 	var res = this.getResources({});
 	for(var i in res)
-		LS.ResourcesManager.load( res[i] );
-}
-
-//not implemented yet
-Material.prototype.getRenderer = function()
-{
-	return this.renderer || Renderer._default_renderer;
+		LS.ResourcesManager.load( i );
 }
 
 /**

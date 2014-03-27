@@ -11,6 +11,7 @@ var ShadersManager = {
 	global_shaders: {}, //shader codes to be compiled using some macros
 
 	default_shader: null, //a default shader to rely when a shader is not found
+	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
 	init: function(url, ignore_cache)
@@ -125,17 +126,21 @@ var ShadersManager = {
 		}
 		catch (err)
 		{
-			console.error("Error compiling shader: " + name);
-			console.log(err);
-			console.log("VS CODE\n************");
-			var lines = (this.global_extra_code + vs_code).split("\n");
-			for(var i in lines)
-				console.log(i + ": " + lines[i]);
+			if(this.dump_compile_errors)
+			{
+				console.error("Error compiling shader: " + name);
+				console.log(err);
+				console.log("VS CODE\n************");
+				var lines = (this.global_extra_code + vs_code).split("\n");
+				for(var i in lines)
+					console.log(i + ": " + lines[i]);
 
-			console.log("PS CODE\n************");
-			lines = (this.global_extra_code + ps_code).split("\n");
-			for(var i in lines)
-				console.log(i + ": " + lines[i]);
+				console.log("PS CODE\n************");
+				lines = (this.global_extra_code + ps_code).split("\n");
+				for(var i in lines)
+					console.log(i + ": " + lines[i]);
+				this.dump_compile_errors = false; //disable so the console dont get overflowed
+			}
 
 			if(this.on_compile_error)
 				this.on_compile_error(err);

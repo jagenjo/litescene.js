@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/spherize.js</title>
+    <title>LS.StandardMaterial</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -150,72 +150,266 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/spherize.js</h1>
+                        <h1>LS.StandardMaterial Class</h1>
+<div class="box meta">
+    
 
-<div class="file">
-    <pre class="code prettyprint linenums">
-/**
-* Spherize deforms a mesh, it is an example of a component that modifies the meshes being rendered
-* @class Spherize
-* @constructor
-* @param {String} object to configure from
-*/
+    
 
-function Spherize(o)
-{
-	if(!this._uid)
-		this._uid = LS.generateUId();
+    
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_materials_standardMaterial.js.html#l7"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:7</code></a>
+        </div>
+    
 
-	this.radius = 10;
-	this.center = vec3.create();
-	this.factor = 0.5;
+    
 
-	this._uniforms_code = Spherize._uniforms_code.replaceAll({&quot;@&quot;: this._uid});
-	this._code = Spherize._code.replaceAll({&quot;@&quot;: this._uid});
-}
-
-Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
-
-Spherize.icon = &quot;mini-icon-rotator.png&quot;;
-
-Spherize.prototype.onAddedToNode = function(node)
-{
-	LEvent.bind(node,&quot;computingShaderMacros&quot;,this.onMacros,this);
-	LEvent.bind(node,&quot;computingShaderUniforms&quot;,this.onUniforms,this);
-}
+    
+</div>
 
 
-Spherize.prototype.onRemoveFromNode = function(node)
-{
-	LEvent.unbindAll(node,this);
-}
 
-Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;&quot;;
-Spherize._code = &quot;vec3 vn@ = normalize(vertex-u_spherize_center@); vertex = mix(vertex, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));&quot;;
+<div class="box intro">
+    <p>StandardMaterial class improves the material class</p>
 
-Spherize.prototype.onMacros = function(e, macros)
-{
-	if(macros.USE_VERTEX_SHADER_UNIFORMS)
-		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
-	else
-		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
-
-	if(macros.USE_VERTEX_SHADER_CODE)
-		macros.USE_VERTEX_SHADER_CODE += this._code;
-	else
-		macros.USE_VERTEX_SHADER_CODE = this._code;
-}
-
-Spherize.prototype.onUniforms = function(e, uniforms)
-{
-	uniforms[&quot;u_spherize_center&quot; + this._uid ] = this.center;
-	uniforms[&quot;u_spherize_radius&quot; + this._uid ] = this.radius;
-	uniforms[&quot;u_spherize_factor&quot; + this._uid ] = this.factor;
-}
+</div>
 
 
-LS.registerComponent(Spherize);
-    </pre>
+    <div class="constructor">
+        <h2>Constructor</h2>
+        <div id="method_LS.StandardMaterial" class="method item">
+    <h3 class="name"><code>LS.StandardMaterial</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>object</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_standardMaterial.js.html#l7"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:7</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">object</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+    </div>
+
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+        
+            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
+        
+        
+        
+        
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+            
+                <div class="index-section methods">
+                    <h3>Methods</h3>
+
+                    <ul class="index-list methods">
+                        
+                            <li class="index-item method">
+                                <a href="#method_configure">configure</a>
+
+                                
+                                
+                            </li>
+                        
+                    </ul>
+                </div>
+            
+
+            
+
+            
+
+            
+        </div>
+
+        
+            <div id="methods" class="api-class-tabpanel">
+                <h2 class="off-left">Methods</h2>
+
+                
+                    <div id="method_configure" class="method item">
+    <h3 class="name"><code>configure</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>object</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_standardMaterial.js.html#l222"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:222</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Configure the material getting the info from the object</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">object</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+            </div>
+        
+
+        
+
+        
+
+        
+    </div>
 </div>
 
                     </div>

@@ -214,7 +214,7 @@ ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
-		this.updateMesh(Renderer.main_camera);
+		this.updateMesh(Renderer._current_camera);
 
 	LEvent.trigger(Scene,"change");
 }
@@ -448,7 +448,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this._root) return;
 
-	var camera = Renderer.main_camera;
+	var camera = Renderer._current_camera;
 
 	if(this.align_always)
 		this.updateMesh(camera);
@@ -458,7 +458,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture(this.texture);
-	this._material.blending = this.additive_blending ? Material.ADDITIVE_BLENDING : Material.NORMAL;
+	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	this._material.soft_particles = this.soft_particles;
 	this._material.constant_diffuse = true;
 
@@ -474,12 +474,13 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	else
 		mat4.copy( RI.matrix, ParticleEmissor._identity );
 
-	RI.material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
+	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
 	RI.applyNodeFlags();
 
+	RI.setMaterial( material );
 	RI.setMesh( this._mesh, gl.TRIANGLES );
 	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
 

@@ -291,18 +291,22 @@ var Draw = {
 		return this.renderMesh(mesh, gl.TRIANGLES);
 	},
 
-	renderPlane: function(position, size, texture)
+	renderPlane: function(position, size, texture, shader)
 	{
 		this.push();
 		this.translate(position);
 		this.scale( size[0], size[1], 1 );
 		if(texture)
-		{
 			texture.bind(0);
-			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
-		}
-		else
-			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN);
+
+		if(!shader && texture)
+			shader = this.shader_texture;
+
+		this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, shader );
+
+		if(texture)
+			texture.unbind(0);
+		
 		this.pop();
 	},	
 

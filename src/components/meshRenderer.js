@@ -130,14 +130,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	//material
-	RI.material = this.material || this._root.getMaterial();
-
 	//flags
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
+
+	//material (after flags because it modifies the flags)
+	RI.setMaterial( this.material || this._root.getMaterial() );
 
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
