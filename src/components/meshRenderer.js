@@ -131,8 +131,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	//flags
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
+
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
 
@@ -144,18 +145,18 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
-	/* moved to collider
+	//used for raycasting
 	if(this.lod_mesh)
 	{
 		if(typeof(this.lod_mesh) === "string")
-			RI.setCollisionMesh( ResourcesManager.meshes[this.lod_mesh] );
+			RI.collision_mesh = ResourcesManager.resources[ this.lod_mesh ];
 		else
-			RI.setCollisionMesh( this.lod_mesh );
+			RI.collision_mesh = this.lod_mesh;
 	}
-	*/
+	else
+		RI.collision_mesh = mesh;
 
 	instances.push(RI);
-	//return RI;
 }
 
 LS.registerComponent(MeshRenderer);

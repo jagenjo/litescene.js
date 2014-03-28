@@ -92,6 +92,76 @@
 		]]>
 	</snippet>
 
+	<snippet id="perturbNormal">
+		<![CDATA[
+			#extension GL_OES_standard_derivatives : enable 
+
+			mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)
+			{
+				// get edge vectors of the pixel triangle
+				vec3 dp1 = dFdx( p );
+				vec3 dp2 = dFdy( p );
+				vec2 duv1 = dFdx( uv );
+				vec2 duv2 = dFdy( uv );
+			 
+				// solve the linear system
+				vec3 dp2perp = cross( dp2, N );
+				vec3 dp1perp = cross( N, dp1 );
+				vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+				vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+				//B *= -1.0; //reverse y, HACK, dont know why but works
+			 
+				// construct a scale-invariant frame 
+				float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
+				return mat3( T * invmax, B * invmax, N );
+			}
+
+			vec3 perturbNormal( vec3 N, vec3 V, vec2 texcoord, vec3 normal_pixel )
+			{
+				// assume N, the interpolated vertex normal and 
+				// V, the view vector (vertex to eye)
+				//vec3 normal_pixel = texture2D(normalmap, texcoord ).xyz;
+				normal_pixel = normal_pixel * 255./127. - 128./127.;
+				mat3 TBN = cotangent_frame(N, V, texcoord);
+				return normalize(TBN * normal_pixel);
+			}	
+		]]>
+	</snippet>
+
+	<snippet id="displaceNormal">
+		<![CDATA[
+				#extension GL_OES_standard_derivatives : enable 
+
+				// Project the surface gradient (dhdx, dhdy) onto the surface (n, dpdx, dpdy)
+				vec3 CalculateSurfaceGradient(vec3 n, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
+				{
+					vec3 r1 = cross(dpdy, n);
+					vec3 r2 = cross(n, dpdx);
+				 
+					return (r1 * dhdx + r2 * dhdy) / dot(dpdx, r1);
+				}
+				 
+				// Move the normal away from the surface normal in the opposite surface gradient direction
+				vec3 perturbNormalBump(vec3 normal, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
+				{
+					return normalize(normal - CalculateSurfaceGradient(normal, dpdx, dpdy, dhdx, dhdy));
+				}
+
+				// Calculate the surface normal using screen-space partial derivatives of the height field
+				vec3 displaceNormal(vec3 position, vec3 normal, float height)
+				{
+					vec3 dpdx = dFdx(position);
+					vec3 dpdy = dFdy(position);
+				 
+					float dhdx = dFdx(height);
+					float dhdy = dFdy(height);
+				 
+					return perturbNormalBump(normal, dpdx, dpdy, dhdx, dhdy);
+				}
+		]]>
+	</snippet>
+
+
 	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
@@ -733,7 +803,7 @@
 	</shader>
 
 
-	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,USE_TEXTURE_AVERAGE_LIGHT,NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true">
+	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,USE_TEXTURE_AVERAGE_LIGHT,NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -1018,152 +1088,19 @@
 			#endif
 
 			#ifdef USE_SHADOW_MAP
-
-				#ifndef SHADOWMAP_OFFSET 
-					#define SHADOWMAP_OFFSET (1.0/1024.0)
-				#endif 
-
-				#ifdef USE_SHADOW_CUBEMAP
-					uniform samplerCube shadowmap;
-				#else
-					uniform sampler2D shadowmap;
-				#endif
-
-				uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)
-
-				float UnpackDepth24(vec3 depth)
-				{
-					return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
-				}
-
-				//returns a normalized depth
-				float UnpackDepth32(vec4 depth)
-				{
-					const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);
-					return dot(depth.xyzw , bitShifts);
-				}
-
-				float testShadow(vec2 offset)
-				{
-					float shadow = 0.0;
-					float depth = 0.0;
-
-					#ifdef USE_SHADOW_CUBEMAP
-						
-						vec3 l_vector = (v_pos - u_light_pos);
-						float dist = length(l_vector);
-						float sampleDepth = UnpackDepth32( textureCube(shadowmap, l_vector / dist + vec3(offset,0.0)) );
-						depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
-						dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z);
-						float bias = u_shadow_params.y;
-						//return clamp((dist - depth * (1.0 + bias)) * 100.0,0.0,1.0);
-						return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
-						//return sampleDepth;
-					#else
-						vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
-						//is inside light frustum
-						if (clamp(sample, 0.0, 1.0) == sample) { 
-							float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
-							depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
-						}
-						else 
-							return 0.0; //outside of shadowmap, no shadow
-					#endif
-
-					if (depth > 0.0) {
-						float bias = -1.0 * u_shadow_params.y;
-						//multiply by 30000 to get a little gradient
-						shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
-					}
-					return shadow;
-				}
+				#import "testShadow"
 			#endif
 
 			#ifdef USE_SPOT_LIGHT
-				float spotFalloff(vec3 spotDir,  vec3 lightDir, float angle_phi, float angle_theta)
-				{
-					float sqlen = dot(lightDir,lightDir);
-					float atten = 1.0;
-
-					vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );
-					spotParams.w = 1.0 / (spotParams.x-spotParams.y);
-
-					vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized
-					float spotDot = dot(spotDir, -dirUnit);
-					if (spotDot <= spotParams.y)// spotDot <= cos phi/2
-						return 0.0;
-					else if (spotDot > spotParams.x) // spotDot > cos theta/2
-						return 1.0;
-
-					// vertex lies somewhere beyond the two regions
-					float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );
-					return ifallof;
-				}
+				#import "spotFalloff"
 			#endif
 
 			#ifdef USE_TANGENT_NORMALMAP
-				#extension GL_OES_standard_derivatives : enable 
-
-				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)
-				{
-					// get edge vectors of the pixel triangle
-					vec3 dp1 = dFdx( p );
-					vec3 dp2 = dFdy( p );
-					vec2 duv1 = dFdx( uv );
-					vec2 duv2 = dFdy( uv );
-				 
-					// solve the linear system
-					vec3 dp2perp = cross( dp2, N );
-					vec3 dp1perp = cross( N, dp1 );
-					vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
-					vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-					//B *= -1.0; //reverse y, HACK, dont know why but works
-				 
-					// construct a scale-invariant frame 
-					float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
-					return mat3( T * invmax, B * invmax, N );
-				}
-
-				vec3 perturb_normal( vec3 N, vec3 V, vec2 texcoord, vec3 map )
-				{
-					// assume N, the interpolated vertex normal and 
-					// V, the view vector (vertex to eye)
-					//vec3 map = texture2D(normalmap, texcoord ).xyz;
-					map = map * 255./127. - 128./127.;
-					mat3 TBN = cotangent_frame(N, V, texcoord);
-					return normalize(TBN * map);
-				}
+				#import "perturbNormal"
 			#endif
 
 			#ifdef USE_BUMP_TEXTURE
-				#extension GL_OES_standard_derivatives : enable 
-
-				// Project the surface gradient (dhdx, dhdy) onto the surface (n, dpdx, dpdy)
-				vec3 CalculateSurfaceGradient(vec3 n, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
-				{
-					vec3 r1 = cross(dpdy, n);
-					vec3 r2 = cross(n, dpdx);
-				 
-					return (r1 * dhdx + r2 * dhdy) / dot(dpdx, r1);
-				}
-				 
-				// Move the normal away from the surface normal in the opposite surface gradient direction
-				vec3 PerturbNormal(vec3 normal, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
-				{
-					return normalize(normal - CalculateSurfaceGradient(normal, dpdx, dpdy, dhdx, dhdy));
-				}
-
-				// Calculate the surface normal using screen-space partial derivatives of the height field
-				vec3 displace_normal(vec3 position, vec3 normal, float height)
-				{
-					vec3 dpdx = dFdx(position);
-					vec3 dpdy = dFdy(position);
-				 
-					float dhdx = dFdx(height);
-					float dhdy = dFdy(height);
-				 
-					return PerturbNormal(normal, dpdx, dpdy, dhdx, dhdy);
-				}
+				#import "displaceNormal"
 			#endif
 
 			#ifdef USE_PIXEL_SHADER_FUNCTIONS
@@ -1216,7 +1153,7 @@
 					//warning: v_normal is in World space
 					vec3 normalmap_pixel = texture2D( normal_texture, USE_NORMAL_TEXTURE ).xyz;
 					#ifdef USE_TANGENT_NORMALMAP
-						N = perturb_normal(N, v_pos, USE_NORMAL_TEXTURE, normalmap_pixel );
+						N = perturbNormal(N, v_pos, USE_NORMAL_TEXTURE, normalmap_pixel );
 						//N is in world space
 					#else
 						N = (normalmap_pixel - vec3(0.5)) * 2.0;
@@ -1233,7 +1170,7 @@
 				#ifdef USE_BUMP_TEXTURE
 					prev_norm = N;
 					float pixel_height = texture2D( bump_texture, USE_BUMP_TEXTURE ).x;
-					N = displace_normal(v_pos, N, pixel_height );
+					N = displaceNormal(v_pos, N, pixel_height );
 					#ifdef USE_BUMP_FACTOR
 						N = normalize( mix(prev_norm, N, u_bumpmap_factor) );
 					#endif
@@ -2046,7 +1983,7 @@
 		</code>
 	</shader>
 
-	<shader id="normal" tags="debug,instance" macros="USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_TANGENT_NORMALMAP">
+	<shader id="normal" tags="debug,instance" macros="USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_TANGENT_NORMALMAP" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -2097,37 +2034,7 @@
 			#endif
 
 			#ifdef USE_TANGENT_NORMALMAP
-				#extension GL_OES_standard_derivatives : enable 
-
-				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)
-				{
-					// get edge vectors of the pixel triangle
-					vec3 dp1 = dFdx( p );
-					vec3 dp2 = dFdy( p );
-					vec2 duv1 = dFdx( uv );
-					vec2 duv2 = dFdy( uv );
-				 
-					// solve the linear system
-					vec3 dp2perp = cross( dp2, N );
-					vec3 dp1perp = cross( N, dp1 );
-					vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
-					vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-					B *= -1.0; //reverse y, HACK, dont know why but works
-				 
-					// construct a scale-invariant frame 
-					float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
-					return mat3( T * invmax, B * invmax, N );
-				}
-
-				vec3 perturb_normal( vec3 N, vec3 V, vec2 texcoord, vec3 map )
-				{
-					// assume N, the interpolated vertex normal and 
-					// V, the view vector (vertex to eye)
-					//vec3 map = texture2D(normalmap, texcoord ).xyz;
-					map = map * 255./127. - 128./127.;
-					mat3 TBN = cotangent_frame(N, -V, texcoord);
-					return normalize(TBN * map);
-				}
+				#import "perturbNormal"
 			#endif
 
 			void main() {
@@ -2139,7 +2046,7 @@
 					//warning: v_normal is in World space
 					vec3 normalmap_pixel = texture2D( normal_texture, v_uvs ).xyz;
 					#ifdef USE_TANGENT_NORMALMAP
-						N = perturb_normal(prev_norm, v_pos, v_uvs, normalmap_pixel );
+						N = perturbNormal(prev_norm, v_pos, v_uvs, normalmap_pixel );
 					#else
 						N = (normalmap_pixel - vec3(0.5)) * 2.0;
 						//N is in object space so we need to convert it to world space

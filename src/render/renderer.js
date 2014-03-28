@@ -263,12 +263,13 @@ var Renderer = {
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
 				continue;
-			if(instance.material.opacity <= 0) //remove this, do it somewhere else
-				continue;
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
 				instance.onPreRender(render_options);
+
+			if(instance.material.opacity <= 0) //remove this, do it somewhere else
+				continue;
 
 			//test visibility against camera frustum
 			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
@@ -1144,9 +1145,63 @@ var Renderer = {
 		return instance_info;
 	},	
 
-	projectToCanvas: function(x,y,z)
+	//similar to Physics.raycast but using only visible meshes
+	raycast: function(scene, origin, direction)
 	{
+		var instances = scene._instances;
+		var collisions = [];
 
+		var local_start = vec3.create();
+		var local_direction = vec3.create();
+
+		//for every instance
+		for(var i = 0; i < instances.length; ++i)
+		{
+			var instance = instances[i];
+
+			if(!(instance.flags & RI_RAYCAST_ENABLED))
+				continue;
+
+			if(instance.flags & RI_BLEND)
+				continue; //avoid semitransparent
+
+			//test against AABB
+			var collision_point = vec3.create();
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			mat4.multiplyVec3( local_start, inv, origin );
+			mat4.rotateVec3( local_direction, inv, direction );
+
+			//test against OOBB (a little bit more expensive)
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+				continue;
+
+			//test against mesh
+			if( instance.collision_mesh )
+			{
+				var mesh = instance.collision_mesh;
+				var octree = mesh.octree;
+				if(!octree)
+					octree = mesh.octree = new Octree( mesh );
+				var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+				if(!hit)
+					continue;
+				mat4.multiplyVec3(collision_point, model, hit.pos);
+			}
+			else
+				vec3.transformMat4(collision_point, collision_point, model);
+
+			var distance = vec3.distance( origin, collision_point );
+			collisions.push([instance, collision_point, distance]);
+		}
+
+		collisions.sort( function(a,b) { return a[2] - b[2]; } );
+		return collisions;
 	}
 };
 

@@ -66,6 +66,9 @@ var Physics = {
 		var colliders = scene._colliders;
 		var collisions = [];
 
+		var local_start = vec3.create();
+		var local_direction = vec3.create();
+
 		//for every instance
 		for(var i = 0; i < colliders.length; ++i)
 		{
@@ -80,20 +83,20 @@ var Physics = {
 
 			//ray to local
 			var inv = mat4.invert( mat4.create(), model );
-			var local_start = mat4.multiplyVec3(vec3.create(), inv, origin);
-			var local_direction = mat4.rotateVec3(vec3.create(), inv, direction);
+			mat4.multiplyVec3( local_start, inv, origin);
+			mat4.rotateVec3( local_direction, inv, direction);
 
 			//test in world space, is cheaper
 			if( instance.type == PhysicsInstance.SPHERE)
 			{
-				if(!geo.testRaySphere(local_start, local_direction, instance.center, instance.oobb[3], collision_point))
+				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point))
 					continue;
 				vec3.transformMat4(collision_point, collision_point, model);
 			}
 			else //the rest test first with the local BBox
 			{
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point) )
 					continue;
 
 				if( instance.type == PhysicsInstance.MESH)
@@ -115,6 +118,7 @@ var Physics = {
 			collisions.push([instance, collision_point, distance]);
 		}
 
+		//sort collisions by distance
 		collisions.sort( function(a,b) { return a[2] - b[2]; } );
 		return collisions;
 	}

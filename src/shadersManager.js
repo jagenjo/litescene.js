@@ -89,17 +89,22 @@ var ShadersManager = {
 		//expand code
 		if(global.imports)
 		{
+			var already_imported = {}; //avoid to import two times the same code
 			var replace_import = function(v)
 			{
 				var token = v.split("\"");
 				var id = token[1];
 				var snippet = ShadersManager.snippets[id];
+				if(already_imported[id])
+					return "//already imported: " + id + "\n";
+				already_imported[id] = true;
 				if(snippet)
 					return snippet.code;
 				return "//snippet not found: " + id + "\n";
 			}
 
 			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
+			already_imported = {}; //clear
 			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
 		}
 

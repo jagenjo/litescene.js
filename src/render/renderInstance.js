@@ -22,6 +22,8 @@ var RI_RENDER_2D = 			1 << 11;//render in screen space using the position projec
 var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
 
+var RI_RAYCAST_ENABLED = 1 << 14; //if it could be raycasted
+
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
@@ -38,6 +40,7 @@ function RenderInstance(node, component)
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
 	this.mesh = null; //shouldnt be used, but just in case
+	this.collision_mesh = null; //in case of raycast
 	this.primitive = gl.TRIANGLES;
 
 	//where does it come from
@@ -194,46 +197,6 @@ RenderInstance.prototype.updateAABB = function()
 	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
 }
 
-
-
-/*
-RenderInstance.prototype.computeBounding = function()
-{
-	if(!this.mesh ||!this.mesh.bounding) return;
-
-	var temp = vec3.create();
-	var matrix = this.matrix;
-	var bbmax = this.mesh.bounding.aabb_max;
-	var bbmin = this.mesh.bounding.aabb_min;
-
-	var center = this.oobb_center;
-	var halfsize = this.oobb_halfsize;
-
-	var aabbmax = vec3.create();
-	var aabbmin = vec3.create();
-
-	mat4.multiplyVec3( aabbmax, matrix, bbmax );
-	aabbmin.set(aabbmax);
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-
-	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
-	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
-}
-*/
-
 /**
 * Calls render taking into account primitive and submesh id
 *
@@ -245,16 +208,6 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
-
-
-	/*
-	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
-		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-	else if(this.start || this.length)
-		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-	else
-		shader.draw(this.mesh, this.primitive);
-	*/
 }
 
 

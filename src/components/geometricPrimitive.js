@@ -82,7 +82,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	RI.setMesh( this._mesh, this.primitive );
 	this._root.mesh = this._mesh;
 	
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
 	RI.setMaterial( this.material || this._root.getMaterial() );
 

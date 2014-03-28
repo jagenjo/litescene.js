@@ -2543,17 +2543,22 @@ var ShadersManager = {
 		//expand code
 		if(global.imports)
 		{
+			var already_imported = {}; //avoid to import two times the same code
 			var replace_import = function(v)
 			{
 				var token = v.split("\"");
 				var id = token[1];
 				var snippet = ShadersManager.snippets[id];
+				if(already_imported[id])
+					return "//already imported: " + id + "\n";
+				already_imported[id] = true;
 				if(snippet)
 					return snippet.code;
 				return "//snippet not found: " + id + "\n";
 			}
 
 			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
+			already_imported = {}; //clear
 			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
 		}
 
@@ -5976,6 +5981,7 @@ LightFX.prototype.onCollectInstances = function(e,instances)
 	}
 }
 
+//not finished
 LightFX.prototype.getVolumetricRenderInstance = function()
 {
 	//sphere
@@ -6027,18 +6033,20 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(!RI)
 	{
 		this._glare_render_instance = RI = new RenderInstance(this._root, this);
-		RI.setMesh( GL.Mesh.plane({size:1}), gl.TRIANGLES );
+		RI.setMesh( GL.Mesh.cube({size:100}), gl.TRIANGLES );
 		RI.priority = 1;
-		//RI.onPreRender = LightFX.onGlarePreRender;
-		//RI.pos2D = vec3.create();
+		RI.onPreRender = LightFX.onGlarePreRender;
 	}
 	
-	RI.flags = RI_2D_FLAGS;
+	RI.flags = RI_CULL_FACE;
 	if(light)
 		vec3.copy( RI.center, light.getPosition() );
 	else
 		vec3.copy( RI.center, this._root.transform.getGlobalPosition() );
 	RI.scale_2D = this.glare_size;
+
+	//debug
+	RI.matrix.set( this._root.transform._global_matrix );
 
 	var mat = this._glare_material;
 	if(!mat)
@@ -6048,17 +6056,28 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 		vec3.scale( mat.color, light.color, this.glare_visibility * light.intensity );
 		mat.textures.color = this.glare_texture;
 	}
-	RI.material = mat;
+	RI.setMaterial( mat );
+	RI.flags |= RI_BLEND;
 	
 	return RI;
 }
 
-//test, not used
 LightFX.onGlarePreRender = function(options)
 {
-	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
-	this.pos2D[2] = 0;
-	this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0]));
+	//project point to 2D
+	//mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	//this.pos2D[2] = 0; //reset Z
+	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
+	var center = this.center;
+	var eye = Renderer._current_camera.getEye();
+	var scene = Renderer._current_scene;
+	var dir = vec3.sub(vec3.create(), eye, center );
+	vec3.normalize(dir,dir);
+	var coll = Renderer.raycast(scene, center, dir );
+	if(coll.length)
+		this.material.opacity = 0.0;
+	else
+		this.material.opacity = 1.0;
 }
 
 LightFX.prototype.getResources = function (res)
@@ -6204,8 +6223,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	//flags
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
+
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
 
@@ -6217,18 +6237,18 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 
-	/* moved to collider
+	//used for raycasting
 	if(this.lod_mesh)
 	{
 		if(typeof(this.lod_mesh) === "string")
-			RI.setCollisionMesh( ResourcesManager.meshes[this.lod_mesh] );
+			RI.collision_mesh = ResourcesManager.resources[ this.lod_mesh ];
 		else
-			RI.setCollisionMesh( this.lod_mesh );
+			RI.collision_mesh = this.lod_mesh;
 	}
-	*/
+	else
+		RI.collision_mesh = mesh;
 
 	instances.push(RI);
-	//return RI;
 }
 
 LS.registerComponent(MeshRenderer);
@@ -7457,7 +7477,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	RI.setMesh( this._mesh, this.primitive );
 	this._root.mesh = this._mesh;
 	
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
 	RI.setMaterial( this.material || this._root.getMaterial() );
 
@@ -10892,6 +10912,8 @@ var RI_RENDER_2D = 			1 << 11;//render in screen space using the position projec
 var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
 
+var RI_RAYCAST_ENABLED = 1 << 14; //if it could be raycasted
+
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
@@ -10908,6 +10930,7 @@ function RenderInstance(node, component)
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
 	this.mesh = null; //shouldnt be used, but just in case
+	this.collision_mesh = null; //in case of raycast
 	this.primitive = gl.TRIANGLES;
 
 	//where does it come from
@@ -11064,46 +11087,6 @@ RenderInstance.prototype.updateAABB = function()
 	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
 }
 
-
-
-/*
-RenderInstance.prototype.computeBounding = function()
-{
-	if(!this.mesh ||!this.mesh.bounding) return;
-
-	var temp = vec3.create();
-	var matrix = this.matrix;
-	var bbmax = this.mesh.bounding.aabb_max;
-	var bbmin = this.mesh.bounding.aabb_min;
-
-	var center = this.oobb_center;
-	var halfsize = this.oobb_halfsize;
-
-	var aabbmax = vec3.create();
-	var aabbmin = vec3.create();
-
-	mat4.multiplyVec3( aabbmax, matrix, bbmax );
-	aabbmin.set(aabbmax);
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-
-	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
-	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
-}
-*/
-
 /**
 * Calls render taking into account primitive and submesh id
 *
@@ -11115,16 +11098,6 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
-
-
-	/*
-	if(this.submesh_id != null && this.submesh_id != -1 && this.mesh.info.groups && this.mesh.info.groups.length > this.submesh_id)
-		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-	else if(this.start || this.length)
-		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-	else
-		shader.draw(this.mesh, this.primitive);
-	*/
 }
 
 
@@ -11401,12 +11374,13 @@ var Renderer = {
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
 				continue;
-			if(instance.material.opacity <= 0) //remove this, do it somewhere else
-				continue;
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
 				instance.onPreRender(render_options);
+
+			if(instance.material.opacity <= 0) //remove this, do it somewhere else
+				continue;
 
 			//test visibility against camera frustum
 			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
@@ -12282,9 +12256,63 @@ var Renderer = {
 		return instance_info;
 	},	
 
-	projectToCanvas: function(x,y,z)
+	//similar to Physics.raycast but using only visible meshes
+	raycast: function(scene, origin, direction)
 	{
+		var instances = scene._instances;
+		var collisions = [];
 
+		var local_start = vec3.create();
+		var local_direction = vec3.create();
+
+		//for every instance
+		for(var i = 0; i < instances.length; ++i)
+		{
+			var instance = instances[i];
+
+			if(!(instance.flags & RI_RAYCAST_ENABLED))
+				continue;
+
+			if(instance.flags & RI_BLEND)
+				continue; //avoid semitransparent
+
+			//test against AABB
+			var collision_point = vec3.create();
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			mat4.multiplyVec3( local_start, inv, origin );
+			mat4.rotateVec3( local_direction, inv, direction );
+
+			//test against OOBB (a little bit more expensive)
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+				continue;
+
+			//test against mesh
+			if( instance.collision_mesh )
+			{
+				var mesh = instance.collision_mesh;
+				var octree = mesh.octree;
+				if(!octree)
+					octree = mesh.octree = new Octree( mesh );
+				var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+				if(!hit)
+					continue;
+				mat4.multiplyVec3(collision_point, model, hit.pos);
+			}
+			else
+				vec3.transformMat4(collision_point, collision_point, model);
+
+			var distance = vec3.distance( origin, collision_point );
+			collisions.push([instance, collision_point, distance]);
+		}
+
+		collisions.sort( function(a,b) { return a[2] - b[2]; } );
+		return collisions;
 	}
 };
 
@@ -12358,6 +12386,9 @@ var Physics = {
 		var colliders = scene._colliders;
 		var collisions = [];
 
+		var local_start = vec3.create();
+		var local_direction = vec3.create();
+
 		//for every instance
 		for(var i = 0; i < colliders.length; ++i)
 		{
@@ -12372,20 +12403,20 @@ var Physics = {
 
 			//ray to local
 			var inv = mat4.invert( mat4.create(), model );
-			var local_start = mat4.multiplyVec3(vec3.create(), inv, origin);
-			var local_direction = mat4.rotateVec3(vec3.create(), inv, direction);
+			mat4.multiplyVec3( local_start, inv, origin);
+			mat4.rotateVec3( local_direction, inv, direction);
 
 			//test in world space, is cheaper
 			if( instance.type == PhysicsInstance.SPHERE)
 			{
-				if(!geo.testRaySphere(local_start, local_direction, instance.center, instance.oobb[3], collision_point))
+				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point))
 					continue;
 				vec3.transformMat4(collision_point, collision_point, model);
 			}
 			else //the rest test first with the local BBox
 			{
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point) )
 					continue;
 
 				if( instance.type == PhysicsInstance.MESH)
@@ -12407,6 +12438,7 @@ var Physics = {
 			collisions.push([instance, collision_point, distance]);
 		}
 
+		//sort collisions by distance
 		collisions.sort( function(a,b) { return a[2] - b[2]; } );
 		return collisions;
 	}
