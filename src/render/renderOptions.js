@@ -14,6 +14,7 @@ function RenderOptions(o)
 	this.main_camera = null; //this camera is the primary camera, some actions require to know the primary user point of view
 	this.current_camera = null; //this camera is the one being rendered at this moment
 	this.current_pass = null; //name of the current pass ("color","shadow","depth","picking")
+	this.current_renderer = null; //current renderer being used
 
 	//rendering properties
 	this.ignore_viewports = false;

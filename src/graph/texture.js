@@ -650,7 +650,15 @@ if(typeof(LiteGraph) != "undefined")
 		if(!temp || temp.width != width || temp.height != height )
 			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
 
-		this._temp_texture.uploadImage(img);
+		try
+		{
+			this._temp_texture.uploadImage(img);
+		}
+		catch(err)
+		{
+			console.error("image comes from an unsafe location, cannot be uploaded to webgl");
+			return;
+		}
 
 		this.setOutputData(0,this._temp_texture);
 	}

@@ -7,6 +7,7 @@
 */
 
 //Flags to control rendering states
+//0-7: render state flags
 var RI_CULL_FACE =			1;		//for two sided
 var RI_CW =					1 << 1; //reverse normals
 var RI_DEPTH_TEST =			1 << 2; //use depth test
@@ -14,20 +15,22 @@ var RI_DEPTH_WRITE = 		1 << 3; //write in the depth buffer
 var RI_ALPHA_TEST =			1 << 4; //do alpha test
 var RI_BLEND = 				1 << 5; //use blend function
 
+//8-16: rendering pipeline flags
 var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
-var RI_IGNORE_LIGHTS = 		1 << 9;	//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 << 10;//render even when outside of frustum 
-var RI_RENDER_2D = 			1 << 11;//render in screen space using the position projection (similar to billboard)
+var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
+var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
+var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
 
-var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
-
-var RI_RAYCAST_ENABLED = 1 << 14; //if it could be raycasted
+//16-24: instance properties
+var RI_RAYCAST_ENABLED = 1 << 16; //if it could be raycasted
 
 
 //default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
-var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
+var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
+var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
 
 function RenderInstance(node, component)
 {
@@ -134,11 +137,13 @@ RenderInstance.prototype.applyNodeFlags = function()
 	var node_flags = this.node.flags;
 
 	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
-	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
 	if(node_flags.flip_normals == true) this.flags |= RI_CW;
 	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
 	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
 	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+
+	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
+	if(node_flags.receive_shadows == false) this.flags &= ~RI_RECEIVE_SHADOWS;	
 }
 
 /**

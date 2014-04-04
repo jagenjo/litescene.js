@@ -249,8 +249,12 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 {
 	var that = this;
 	var nocache = ResourcesManager.getNoCache(true);
+	if(nocache)
+		url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
+
+
 	LS.request({
-		url: url + nocache,
+		url: url,
 		dataType: 'json',
 		success: inner_success,
 		error: inner_error
@@ -543,7 +547,7 @@ SceneTree.prototype.start = function()
 	this._state = "running";
 	this._start_time = window.performance.now() * 0.001;
 	LEvent.trigger(this,"start",this);
-	this.sendEventToNodes("start");
+	this.triggerInNodes("start");
 }
 
 /**
@@ -558,7 +562,7 @@ SceneTree.prototype.stop = function()
 
 	this._state = "stopped";
 	LEvent.trigger(this,"stop",this);
-	this.sendEventToNodes("stop");
+	this.triggerInNodes("stop");
 }
 
 
@@ -654,25 +658,22 @@ SceneTree.prototype.update = function(dt)
 	this._last_dt = dt;
 
 	LEvent.trigger(this,"update", dt);
-	this.sendEventToNodes("update",dt, true);
+	this.triggerInNodes("update",dt, true);
 
 	LEvent.trigger(this,"afterUpdate", this);
 }
 
 /**
-* dispatch event to all nodes in the scene
+* triggers an event to all nodes in the scene
 *
-* @method sendEventToNodes
+* @method triggerInNodes
 * @param {String} event_type event type name
 * @param {Object} data data to send associated to the event
 */
 
-SceneTree.prototype.sendEventToNodes = function(event_type, data)
+SceneTree.prototype.triggerInNodes = function(event_type, data)
 {
-	for(var i in this._nodes)
-	{
-		LEvent.trigger( this._nodes[i], event_type, data);
-	}
+	LEvent.triggerArray( this._nodes, event_type, data);
 }
 
 

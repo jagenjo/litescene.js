@@ -113,20 +113,21 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(!RI)
 	{
 		this._glare_render_instance = RI = new RenderInstance(this._root, this);
-		RI.setMesh( GL.Mesh.cube({size:100}), gl.TRIANGLES );
+		RI.setMesh( GL.Mesh.plane({size:1}), gl.TRIANGLES );
 		RI.priority = 1;
 		RI.onPreRender = LightFX.onGlarePreRender;
 	}
 	
-	RI.flags = RI_CULL_FACE;
+	RI.flags = RI_2D_FLAGS;
 	if(light)
 		vec3.copy( RI.center, light.getPosition() );
 	else
 		vec3.copy( RI.center, this._root.transform.getGlobalPosition() );
+	RI.pos2D = vec3.create();
 	RI.scale_2D = this.glare_size;
 
 	//debug
-	RI.matrix.set( this._root.transform._global_matrix );
+	//RI.matrix.set( this._root.transform._global_matrix );
 
 	var mat = this._glare_material;
 	if(!mat)
@@ -142,22 +143,36 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	return RI;
 }
 
-LightFX.onGlarePreRender = function(options)
+LightFX.onGlarePreRender = function(render_options)
 {
+	if(render_options.current_pass != "color")
+		return; 
+
 	//project point to 2D
-	//mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
-	//this.pos2D[2] = 0; //reset Z
+	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	this.pos2D[2] = 0; //reset Z
 	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
+
 	var center = this.center;
 	var eye = Renderer._current_camera.getEye();
 	var scene = Renderer._current_scene;
 	var dir = vec3.sub(vec3.create(), eye, center );
-	vec3.normalize(dir,dir);
-	var coll = Renderer.raycast(scene, center, dir );
+	var dist = vec3.length(dir);
+	vec3.scale(dir,dir,1/dist);
+	var coll = Renderer.raycast( scene, center, dir, dist );
+
 	if(coll.length)
-		this.material.opacity = 0.0;
+	{
+		this.material.opacity -= 0.05;
+		if(this.material.opacity < 0.0)
+			this.material.opacity = 0.0;
+	}
 	else
-		this.material.opacity = 1.0;
+	{
+		this.material.opacity += 0.05;
+		if(this.material.opacity > 1.0)
+			this.material.opacity = 1;
+	}
 }
 
 LightFX.prototype.getResources = function (res)

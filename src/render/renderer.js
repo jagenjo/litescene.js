@@ -57,6 +57,7 @@ var Renderer = {
 	render: function(scene, main_camera, render_options)
 	{
 		render_options = render_options || this.default_render_options;
+		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
 
@@ -70,7 +71,7 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, "beforeRender", render_options );
-		scene.sendEventToNodes("beforeRender", render_options );
+		scene.triggerInNodes("beforeRender", render_options );
 
 		//get render instances, lights, materials and all rendering info ready
 		this.processVisibleData(scene, render_options);
@@ -81,18 +82,31 @@ var Renderer = {
 			cameras = [ main_camera ];
 		render_options.main_camera = cameras[0];
 
-		//generate shadowmap
+		//generate shadowmaps
+		/*
 		if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
-			this.renderShadowMaps(scene, render_options);
+		{
+			LEvent.trigger(scene, "generateShadowmaps", render_options );
+			for(var i in this._visible_lights) 
+			{
+				var light = this._visible_lights[i];
+				if( light.cast_shadows )
+					light.generateShadowmap( render_options );
+			}
+
+			//LEvent.triggerArray( this._visible_lights, "generateShadowmaps", render_options );
+			//this.renderShadowMaps(scene, render_options);
+		}
+		*/
 
 		LEvent.trigger(scene, "afterRenderShadows", render_options );
-		scene.sendEventToNodes("afterRenderShadows", render_options );
+		scene.triggerInNodes("afterRenderShadows", render_options );
 
 		LEvent.trigger(scene, "renderReflections", render_options );
-		scene.sendEventToNodes("renderReflections", render_options );
+		scene.triggerInNodes("renderReflections", render_options );
 
 		LEvent.trigger(scene, "beforeRenderMainPass", render_options );
-		scene.sendEventToNodes("beforeRenderMainPass", render_options );
+		scene.triggerInNodes("beforeRenderMainPass", render_options );
 
 		//for each camera
 		for(var i in cameras)
@@ -121,8 +135,7 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
-		scene.sendEventToNodes("afterRender", render_options );
-
+		scene.triggerInNodes("afterRender", render_options );
 
 	},
 
@@ -148,12 +161,12 @@ var Renderer = {
 		render_options.current_pass = "color";
 
 		LEvent.trigger(scene, "beforeRenderScene", camera);
-		scene.sendEventToNodes("beforeRenderScene", camera);
+		scene.triggerInNodes("beforeRenderScene", camera);
 
 		Renderer.renderInstances(render_options);
 
 		LEvent.trigger(scene, "afterRenderScene", camera);
-		scene.sendEventToNodes("afterRenderScene", camera);
+		scene.triggerInNodes("afterRenderScene", camera);
 
 		//gl.disable(gl.SCISSOR_TEST);
 	},
@@ -216,7 +229,7 @@ var Renderer = {
 		var apply_frustum_culling = render_options.frustum_culling;
 
 		LEvent.trigger(scene, "beforeRenderInstances", render_options);
-		scene.sendEventToNodes("beforeRenderInstances", render_options);
+		scene.triggerInNodes("beforeRenderInstances", render_options);
 
 		//compute global scene info
 		this.fillSceneShaderMacros( scene, render_options );
@@ -266,14 +279,18 @@ var Renderer = {
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
-				instance.onPreRender(render_options);
+				if( instance.onPreRender(render_options) === false)
+					continue;
 
 			if(instance.material.opacity <= 0) //remove this, do it somewhere else
 				continue;
 
 			//test visibility against camera frustum
-			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
-				continue;
+			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM))
+			{
+				if(geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+					continue;
+			}
 
 			//save visibility info
 			instance._in_camera = true;
@@ -341,7 +358,7 @@ var Renderer = {
 		gl.frontFace(gl.CCW);
 
 		LEvent.trigger(scene, "afterRenderInstances", render_options);
-		scene.sendEventToNodes("afterRenderInstances", render_options);
+		scene.triggerInNodes("afterRenderInstances", render_options);
 
 		//EVENT SCENE after_render
 		//restore state
@@ -444,14 +461,11 @@ var Renderer = {
 		{
 			var light = lights[iLight];
 
-			//generate renderkey
-			//var renderkey = instance.generateKey(options);
-
 			//compute the  shader
-			var shader = null; //this._renderkeys[renderkey];
+			var shader = null;
 			if(!shader)
 			{
-				var light_macros = instance.material.getLightShaderMacros(light, node, scene, render_options);
+				var light_macros = light.getMacros( instance, render_options );
 
 				if(iLight == 0) light_macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
@@ -472,7 +486,7 @@ var Renderer = {
 			}
 
 			//fill shader data
-			var light_uniforms = instance.material.fillLightUniforms( iLight, light, instance, render_options );
+			var light_uniforms = light.getUniforms( instance, render_options );
 
 			//secondary pass flags to make it additive
 			if(iLight > 0)
@@ -735,7 +749,7 @@ var Renderer = {
 		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
-	enableInstanceFlags: function(instance, options)
+	enableInstanceFlags: function(instance, render_options)
 	{
 		var flags = instance.flags;
 
@@ -761,7 +775,7 @@ var Renderer = {
 		var order = gl.CCW;
 		if(flags & RI_CW)
 			order = gl.CW;
-		if(options.reverse_backfacing)
+		if(render_options.reverse_backfacing)
 			order = order == gl.CW ? gl.CCW : gl.CW;
 		gl.frontFace(order);
 	},
@@ -867,6 +881,11 @@ var Renderer = {
 			}
 		}
 
+		//prepare lights
+		var lights = scene._lights;
+		for(var i in lights)
+			lights[i].prepare(render_options);
+
 		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = all_instances; //sorted version
@@ -902,68 +921,6 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
 			Renderer.renderInstances(render_options);
-		}
-	},
-
-	//Renders all the shadowmaps in the scene
-	renderShadowMaps: function(scene, render_options)
-	{
-		for(var i in this._visible_lights)
-		{
-			var light = this._visible_lights[i];
-			if(!light.cast_shadows)
-				continue;
-
-			var shadowmap_resolution = light.shadowmap_resolution;
-			if(!shadowmap_resolution)
-				shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
-
-			var tex_type = light.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-			if(light._shadowmap == null || light._shadowmap.width != shadowmap_resolution || light._shadowmap.texture_type != tex_type)
-			{
-				light._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-				ResourcesManager.textures[":shadowmap_" + light._uid ] = light._shadowmap;
-			}
-
-			if(light.type == Light.OMNI)
-			{
-				render_options.current_pass = "shadow";
-				render_options.is_shadowmap = true;
-				light._shadowmap.unbind(); 
-				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowmap, render_options, light.near, light.far );
-				render_options.is_shadowmap = false;
-			}
-			else //DIRECTIONAL and SPOTLIGHT
-			{
-				var shadow_camera = light.getShadowmapCamera();
-				this.enableCamera(shadow_camera, render_options, true);
-
-				//light.computeLightMatrices( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
-
-				// Render the object viewed from the light using a shader that returns the
-				// fragment depth.
-				light._shadowmap.unbind(); 
-				this._current_target = light._shadowmap;
-				light._shadowmap.drawTo(function() {
-
-					gl.clearColor(0, 0, 0, 1);
-					//gl.clearColor(1, 1, 1, 1);
-					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-					//save the VP of the shadowmap camera
-					//if( !light._lightMatrix ) light._lightMatrix = mat4.create();
-					//mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
-
-					render_options.current_pass = "shadow";
-					render_options.is_shadowmap = true;
-
-					//RENDER INSTANCES in the shadowmap
-					Renderer.renderInstances( render_options );
-
-					render_options.is_shadowmap = false;
-				});
-				this._current_target = null;
-			}
 		}
 	},
 
@@ -1006,16 +963,6 @@ var Renderer = {
 	],
 	*/
 
-	cubemap_camera_parameters: [
-		{dir: [1,0,0], up:[0,-1,0]}, //positive X
-		{dir: [-1,0,0], up:[0,-1,0]}, //negative X
-		{dir: [0,1,0], up:[0,0,1]}, //positive Y
-		{dir: [0,-1,0], up:[0,0,-1]}, //negative Y
-		{dir: [0,0,1], up:[0,-1,0]}, //positive Z
-		{dir: [0,0,-1], up:[0,-1,0]} //negative Z
-	],
-
-
 	//renders the current scene to a cubemap centered in the given position
 	renderToCubemap: function(position, size, texture, render_options, near, far)
 	{
@@ -1030,8 +977,9 @@ var Renderer = {
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
-		texture.drawTo(function(texture, side) {
-			var cams = Renderer.cubemap_camera_parameters;
+		texture.drawTo( function(texture, side) {
+
+			var cams = Camera.cubemap_camera_parameters;
 			if(render_options.is_shadowmap == "shadow")
 				gl.clearColor(0,0,0,0);
 			else
@@ -1043,6 +991,7 @@ var Renderer = {
 			Renderer.enableCamera( cubemap_cam, render_options, true );
 			Renderer.renderInstances( render_options );
 		});
+
 		this._current_target = null;
 		return texture;
 	},
@@ -1146,8 +1095,10 @@ var Renderer = {
 	},	
 
 	//similar to Physics.raycast but using only visible meshes
-	raycast: function(scene, origin, direction)
+	raycast: function(scene, origin, direction, max_dist)
 	{
+		max_dist = max_dist || Number.MAX_VALUE;
+
 		var instances = scene._instances;
 		var collisions = [];
 
@@ -1167,7 +1118,7 @@ var Renderer = {
 
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point) )
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
 				continue;
 
 			var model = instance.matrix;
@@ -1178,7 +1129,7 @@ var Renderer = {
 			mat4.rotateVec3( local_direction, inv, direction );
 
 			//test against OOBB (a little bit more expensive)
-			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
 				continue;
 
 			//test against mesh
@@ -1188,7 +1139,7 @@ var Renderer = {
 				var octree = mesh.octree;
 				if(!octree)
 					octree = mesh.octree = new Octree( mesh );
-				var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
 				if(!hit)
 					continue;
 				mat4.multiplyVec3(collision_point, model, hit.pos);
@@ -1197,7 +1148,8 @@ var Renderer = {
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push([instance, collision_point, distance]);
+			if(distance < max_dist)
+				collisions.push([instance, collision_point, distance]);
 		}
 
 		collisions.sort( function(a,b) { return a[2] - b[2]; } );

@@ -1597,6 +1597,7 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 var ResourcesManager = {
 
 	path: "", //url to retrieve resources relative to the index.html
+	proxy: "", //url to retrieve resources outside of this host
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the webglstudio editor)
@@ -1625,7 +1626,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -1780,7 +1781,11 @@ var ResourcesManager = {
 
 		var full_url = "";
 		if(url.substr(0,7) == "http://")
+		{
 			full_url = url;
+			if(this.proxy) //proxy external files
+				full_url = this.proxy + url.substr(7);
+		}
 		else
 		{
 			if(options.local_repository)
@@ -1795,10 +1800,12 @@ var ResourcesManager = {
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
+		if(nocache)
+			full_url += (full_url.indexOf("?") == -1 ? "?" : "&") + nocache;
 
 		//create the ajax request
 		var settings = {
-			url: full_url + nocache,
+			url: full_url,
 			success: function(response){
 				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
@@ -2666,14 +2673,23 @@ var ShadersManager = {
 
 			var vs_code = "";
 			var ps_code = "";
-			var macros = shader_element.attributes["macros"];
-			if(macros)
-				macros = macros.value.split(",");
 
-			var _macros = {};
-			for(var i in macros)
-				_macros[macros[i]] = true;
+			//read all the supported macros
+			var macros_str = "";
+			var macros_attr = shader_element.attributes["macros"];
+			if(macros_attr)
+				macros_str += macros_attr.value;
 
+			var macros_xml = shader_element.querySelector("macros");
+			if(macros_xml)
+				macros_str += macros_xml.textContent;
+
+			var macros_array = macros_str.split(",");
+			var macros = {};
+			for(var i in macros_array)
+				macros[ macros_array[i].trim() ] = true;
+
+			//read the shaders code
 			vs_code = shader_element.querySelector("code[type='vertex_shader']").textContent;
 			ps_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
 
@@ -2692,8 +2708,7 @@ var ShadersManager = {
 			if(imports)
 				options.imports = (imports == "1" || imports == "true");
 
-
-			ShadersManager.registerGlobalShader(vs_code,ps_code,id,_macros, options );
+			ShadersManager.registerGlobalShader(vs_code, ps_code, id, macros, options );
 		}
 
 		var snippets = xml.querySelectorAll('snippet');
@@ -2925,8 +2940,6 @@ Material.SPECULAR_TEXTURE = "specular"; //defines specular factor and glossiness
 Material.EMISSIVE_TEXTURE = "emissive";
 Material.ENVIRONMENT_TEXTURE = "environment";
 
-Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
-
 Material.COORDS_UV0 = "0";
 Material.COORDS_UV1 = "1";
 Material.COORDS_UV_TRANSFORMED = "transformed";
@@ -2941,6 +2954,7 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 
 Material.prototype.applyToRenderInstance = function(ri)
@@ -2981,6 +2995,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 //Fill with info about the light
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
+/*
 Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
 {
 	var macros = {};
@@ -3006,15 +3021,19 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture && light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+
 	if(light_projective_texture)
+	{
 		macros.USE_PROJECTIVE_LIGHT = "";
+		if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_PROJECTIVE_LIGHT_CUBEMAP = "";
+	}
 
 	var light_average_texture = light.average_texture;
 	if(light_average_texture && light_average_texture.constructor == String)
 		light_average_texture = ResourcesManager.textures[light_average_texture];
 	if(light_average_texture)
 		macros.USE_TEXTURE_AVERAGE_LIGHT = "";
-
 
 	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
 	//	macros.USE_IGNORE_LIGHT = "";
@@ -3035,6 +3054,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 
 	return macros;
 }
+*/
 
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
@@ -3073,64 +3093,8 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		uniforms[i] = this.extra_uniforms[i];
 
 	this._uniforms = uniforms;
-	this._samplers = samplers;
+	this._samplers = samplers; //samplers without fixed slot
 }
-
-//hard to precompute, it uses the instance.matrix to compute lightMatrix, it also binds the textures
-Material.prototype.fillLightUniforms = function( iLight, light, instance, options)
-{
-	var uniforms = {};
-	//var samplers = [];
-
-	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !options.shadows_disabled;
-
-	var shadowmap_size = use_shadows ? (light._shadowmap.width) : 1024;
-	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
-		uniforms.u_light_front = light.getFront();
-	if(light.type == Light.SPOT)
-		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
-
-	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), light.color, light.intensity );
-	uniforms.u_light_att = [light.att_start,light.att_end];
-	uniforms.u_light_offset = light.offset;
-
-	if(light._light_matrix)
-		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._light_matrix, instance.matrix );
-
-	//projective texture
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture && light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-	if(light_projective_texture)
-		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
-
-	//average texture
-	var light_average_texture = light.average_texture;
-	if(light_average_texture && light_average_texture.constructor == String)
-		light_average_texture = ResourcesManager.textures[light_average_texture];
-	if(light_average_texture)
-		uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
-
-	//use shadows?
-	if(use_shadows)
-	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias, light.near, light.far ];
-		uniforms.shadowmap = light._shadowmap.bind(10); //fixed slot
-		//samplers.push(["shadowmap", light._shadowmap]);
-	}
-
-	//return [uniforms, samplers];
-	return uniforms;
-}
-
-Material.prototype.getTextureChannels = function()
-{
-	if(this.constructor.texture_channels)
-		return this.constructor.texture_channels;
-	return [];
-}
-
 
 /**
 * Configure the material getting the info from the object
@@ -3229,6 +3193,20 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 			options.on_complete();
 	}
 }
+
+/**
+* gets all the texture channels supported by this material
+* @method getTextureChannels
+* @return {Array} array with the name of every channel
+*/
+Material.prototype.getTextureChannels = function()
+{
+	if(this.constructor.texture_channels)
+		return this.constructor.texture_channels;
+	return [];
+}
+
+
 
 /**
 * Assigns a texture to a channel
@@ -3505,7 +3483,11 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		else if(i == "displacement")
 			continue;
 		else if(i == "bump")
+		{
+			texture.bind(0);
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			continue;
+		}
 		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);
@@ -3834,6 +3816,49 @@ SurfaceMaterial.prototype.configure = function(o) {
 	LS.cloneObject(o, this);
 	this.computeCode();
 }
+
+
+SurfaceMaterial.prototype.getTextureChannels = function()
+{
+	var channels = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != "texture" && prop.type != "cubemap")
+			continue;
+		channels.push(prop.name);
+	}
+
+	return channels;
+}
+
+/**
+* Assigns a texture to a channel
+* @method setTexture
+* @param {Texture} texture
+* @param {String} channel default is COLOR
+*/
+SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != "texture" && prop.type != "cubemap")
+			continue;
+		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
+			continue;
+
+		prop.value = texture;
+		if(!channel)
+			break;
+	}
+
+	if(!texture) return;
+	if(texture.constructor == String && texture[0] != ":")
+		ResourcesManager.load(texture);
+}
+
 
 LS.extendClass( Material, SurfaceMaterial );
 LS.registerMaterialClass(SurfaceMaterial);
@@ -5043,6 +5068,17 @@ Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
 Camera.ORTHO2D = 3;
 
+// used when rendering a cubemap to set the camera view direction
+Camera.cubemap_camera_parameters = [
+	{ dir: vec3.fromValues(1,0,0), 	up: vec3.fromValues(0,-1,0) }, //positive X
+	{ dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,-1,0) }, //negative X
+	{ dir: vec3.fromValues(0,1,0), 	up: vec3.fromValues(0,0,1) }, //positive Y
+	{ dir: vec3.fromValues(0,-1,0), up: vec3.fromValues(0,0,-1) }, //negative Y
+	{ dir: vec3.fromValues(0,0,1), 	up: vec3.fromValues(0,-1,0) }, //positive Z
+	{ dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,-1,0) } //negative Z
+];
+
+
 /*
 Camera.prototype.onCameraEnabled = function(e,options)
 {
@@ -5629,21 +5665,21 @@ LS.Camera = Camera;
 function Light(o)
 {
 	/**
-	* Position of the light
+	* Position of the light in world space
 	* @property position
 	* @type {[[x,y,z]]}
 	* @default [0,0,0]
 	*/
 	this.position = vec3.create();
 	/**
-	* Position where the light is pointing at (target)
+	* Position where the light is pointing at (in world space)
 	* @property target
 	* @type {[[x,y,z]]}
 	* @default [0,0,1]
 	*/
 	this.target = vec3.fromValues(0,0,1);
 	/**
-	* Up vector
+	* Up vector (in world coordinates)
 	* @property up
 	* @type {[[x,y,z]]}
 	* @default [0,1,0]
@@ -5697,7 +5733,8 @@ function Light(o)
 	this.offset = 0;
 	this.spot_cone = true;
 
-	this.target_in_world_coords = false;
+	//use target (when attached to node)
+	this.use_target = false;
 
 	/**
 	* The color of the light
@@ -5726,6 +5763,11 @@ function Light(o)
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
 
+	//vectors in world space
+	this._front = vec3.clone( Light.FRONT_VECTOR );
+	this._right = vec3.clone( Light.RIGHT_VECTOR );
+	this._top = vec3.clone( Light.UP_VECTOR );
+
 	//for caching purposes
 	this._macros = {};
 	this._uniforms = {};
@@ -5740,6 +5782,7 @@ function Light(o)
 
 //do not change
 Light.FRONT_VECTOR = new Float32Array([0,0,-1]); //const
+Light.RIGHT_VECTOR = new Float32Array([1,0,0]); //const
 Light.UP_VECTOR = new Float32Array([0,1,0]); //const
 
 Light.OMNI = 1;
@@ -5766,10 +5809,6 @@ Light.prototype.onCollectLights = function(e, lights)
 	if(!this.enabled)
 		return;
 
-	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture || this.cast_shadows)
-		this.updateShadowmapCamera();
-
 	//add to lights vector
 	lights.push(this);
 }
@@ -5782,12 +5821,12 @@ Light._temp_target = vec3.create();
 Light._temp_up = vec3.create();
 Light._temp_front = vec3.create();
 
-Light.prototype.updateShadowmapCamera = function()
+Light.prototype.updateLightCamera = function()
 {
-	if(!this._shadowmap_camera)
-		this._shadowmap_camera = new Camera();
+	if(!this._light_camera)
+		this._light_camera = new Camera();
 
-	var camera = this._shadowmap_camera;
+	var camera = this._light_camera;
 	camera.eye = this.getPosition(Light._temp_position);
 	camera.center = this.getTarget(Light._temp_target);
 
@@ -5820,51 +5859,12 @@ Light.prototype.updateShadowmapCamera = function()
 	return camera;
 }
 
-Light.prototype.getShadowmapCamera = function()
+Light.prototype.getLightCamera = function()
 {
-	if(!this._shadowmap_camera)
-		this.updateShadowmapCamera();
-	return this._shadowmap_camera;
+	if(!this._light_camera)
+		this.updateLightCamera();
+	return this._light_camera;
 }
-
-//parameters are if you want to store the result in different matrices
-/*
-Light.prototype.computeLightMatrices = function(view_matrix, projection_matrix, viewprojection_matrix)
-{
-	var position = this.getPosition(Light._temp_position);
-	var target = this.getTarget(Light._temp_target);
-	var up = this.getUp(Light._temp_up);
-	var front = this.getFront(Light._temp_front);
-
-	if( Math.abs( vec3.dot(front,up) ) > 0.999 ) vec3.set(up,0,0,1); //avoid problems when the light comes straight from [0,1,0]
-
-	if(!projection_matrix) projection_matrix = Light._temp_matrix;
-	if(!view_matrix) view_matrix = Light._temp2_matrix;
-	if(!viewprojection_matrix) viewprojection_matrix = Light._temp3_matrix;
-
-	var frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
-	if(this.type == Light.DIRECTIONAL)
-		mat4.ortho(projection_matrix, frustum_size*-0.5, frustum_size*0.5, frustum_size*-0.5, frustum_size*0.5, this.near, this.far);
-	else
-		mat4.perspective(projection_matrix, (this.angle_end || 45) * DEG2RAD, 1, this.near, this.far);
-
-	mat4.lookAt(view_matrix, position, target, up );
-
-	//adjust subpixel shadow movements to avoid flickering
-	if(this.type == Light.DIRECTIONAL && this.cast_shadows && this.enabled)
-	{
-		var shadowmap_resolution = this.shadowmap_resolution || Light.DEFAULT_SHADOWMAP_RESOLUTION;
-		var texelSize = frustum_size / shadowmap_resolution;
-		view_matrix[12] = Math.floor( view_matrix[12] / texelSize) * texelSize;
-		view_matrix[13] = Math.floor( view_matrix[13] / texelSize) * texelSize;
-	}
-	mat4.multiply(viewprojection_matrix, projection_matrix, view_matrix);
-
-	//save it
-	if( !this._lightMatrix ) this._lightMatrix = mat4.create();
-	mat4.copy( this._lightMatrix, viewprojection_matrix );
-}
-*/
 
 Light.prototype.serialize = function()
 {
@@ -5879,6 +5879,37 @@ Light.prototype.configure = function(o)
 	LS.cloneObject(o,this);
 }
 
+Light.prototype.updateVectors = function()
+{
+	if(!this._root || !this._root.transform) 
+	{
+		//position, target and up are already valid
+		 //front
+		 vec3.subtract(this._front, this.position, this.target );
+		 vec3.normalize(this._front,this._front);
+		 //right
+		 vec3.normalize( temp_v3, this.up );
+		 vec3.cross( this._right, this._front, temp_v3 );
+		 //top
+		 vec3.cross( this._top, this._right, this._front );
+		 return;
+	}
+
+	var mat = this._root.transform.getGlobalMatrixRef();
+	//position
+	mat4.getTranslation( this.position, mat);
+	//target
+	if (!this.use_target)
+		mat4.multiplyVec3( this.target, mat, Light.FRONT_VECTOR ); //right in front of the object
+	//up
+	mat4.multiplyVec3( this.up, mat, Light.UP_VECTOR ); //right in front of the object
+
+	//vectors
+	mat4.rotateVec3( this._front, mat, Light.FRONT_VECTOR ); 
+	mat4.rotateVec3( this._right, mat, Light.RIGHT_VECTOR ); 
+	vec3.copy( this._top, this.up ); 
+}
+
 Light.prototype.getPosition = function(p)
 {
 	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
@@ -5888,9 +5919,9 @@ Light.prototype.getPosition = function(p)
 
 Light.prototype.getTarget = function(p)
 {
-	//if(this._root && this._root.transform && !this.target_in_world_coords) 
+	//if(this._root && this._root.transform && !this.use_target) 
 	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
-	if(this._root && this._root.transform && !this.target_in_world_coords) 
+	if(this._root && this._root.transform && !this.use_target) 
 		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , p || vec3.create() );
 	return vec3.clone(this.target);
 }
@@ -5909,12 +5940,223 @@ Light.prototype.getFront = function(p) {
 	return front;
 }
 
+Light.prototype.getLightRotationMatrix = function()
+{
+
+}
+
 Light.prototype.getResources = function (res)
 {
 	if(this.projective_texture)
 		res[ this.projective_texture ] = Texture;
 	return res;
 }
+
+Light.prototype.prepare = function( render_options )
+{
+	var uniforms = this._uniforms;
+	var macros = this._macros;
+	wipeObject(macros); //delete all properties (I dont like to generate garbage)
+
+	//projective texture needs the light matrix to compute projection
+	if(this.projective_texture || this.cast_shadows || this.average_texture)
+		this.updateLightCamera();
+
+	this.updateVectors();
+
+	//PREPARE MACROS
+	if(this.type == Light.DIRECTIONAL)
+		macros.USE_DIRECTIONAL_LIGHT = "";
+	else if(this.type == Light.SPOT)
+		macros.USE_SPOT_LIGHT = "";
+	if(this.spot_cone)
+		macros.USE_SPOT_CONE = "";
+	if(this.linear_attenuation)
+		macros.USE_LINEAR_ATTENUATION = "";
+	if(this.range_attenuation)
+		macros.USE_RANGE_ATTENUATION = "";
+	if(this.offset > 0.001)
+		macros.USE_LIGHT_OFFSET = "";
+
+	if(this.projective_texture)
+	{
+		var light_projective_texture = this.projective_texture.constructor === String ? ResourcesManager.textures[this.projective_texture] : this.projective_texture;
+		if(light_projective_texture)
+		{
+			macros.USE_PROJECTIVE_LIGHT = "";
+			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				macros.USE_PROJECTIVE_LIGHT_CUBEMAP = "";
+		}
+	}
+
+	if(this.average_texture)
+	{
+		var light_average_texture = this.average_texture.constructor === String ? ResourcesManager.textures[ this.average_texture ] : this.average_texture;
+		if(light_average_texture)
+			macros.USE_TEXTURE_AVERAGE_LIGHT = "";
+	}
+
+	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
+	//	macros.USE_IGNORE_LIGHT = "";
+
+	//PREPARE UNIFORMS
+	if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
+		uniforms.u_light_front = this._front;
+	if(this.type == Light.SPOT)
+		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
+
+	uniforms.u_light_pos = this.position;
+	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
+	uniforms.u_light_att = [this.att_start,this.att_end];
+	uniforms.u_light_offset = this.offset;
+
+	//generate shadowmaps
+	if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
+		this.generateShadowmap( render_options );
+	if(this._shadowmap && !this.cast_shadows)
+		this._shadowmap = null; //remove shadowmap
+
+	this._uniforms = uniforms;
+}
+
+// gets the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
+Light.prototype.getMacros = function(instance, render_options)
+{
+	var macros = this._macros;
+
+	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_options.shadows_disabled;
+
+	if(this.use_diffuse && !instance.material.constant_diffuse)
+		macros.USE_DIFFUSE_LIGHT = "";
+	else
+		delete macros["USE_DIFFUSE_LIGHT"];
+
+	if(this.use_specular && instance.material.specular_factor > 0)
+		macros.USE_SPECULAR_LIGHT = "";	
+	else
+		delete macros["USE_SPECULAR_LIGHT"];
+
+	if(use_shadows && instance.flags & RI_RECEIVE_SHADOWS)
+	{
+		macros.USE_SHADOW_MAP = "";
+		if(this._shadowmap && this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_SHADOW_CUBEMAP = "";
+		if(this.hard_shadows || macros.USE_SHADOW_CUBEMAP != null)
+			macros.USE_HARD_SHADOWS = "";
+		macros.SHADOWMAP_OFFSET = "";
+	}
+	else
+		delete macros["USE_SHADOW_MAP"];
+
+	return macros;
+}
+
+Light.prototype.getUniforms = function( instance, render_options )
+{
+	var uniforms = this._uniforms;
+	var use_shadows = this.cast_shadows && 
+					instance.flags & RI_RECEIVE_SHADOWS && 
+					this._shadowmap && this._light_matrix != null && 
+					!render_options.shadows_disabled;
+
+	//compute the light mvp
+	if(this._light_matrix)
+		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), this._light_matrix, instance.matrix );
+
+	//projective texture
+	if(this.projective_texture)
+	{
+		var light_projective_texture = this.projective_texture.constructor === String ? ResourcesManager.textures[this.projective_texture] : this.projective_texture;
+		if(light_projective_texture)
+		{
+			uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
+			//if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			//	uniforms.light_rotation_matrix = 
+		}
+	}
+	else
+		delete uniforms["light_texture"];
+
+	//average texture
+	if(this.average_texture)
+	{
+		var light_average_texture = this.average_texture.constructor === String ? ResourcesManager.textures[ this.average_texture ] : this.average_texture;
+		if(light_average_texture)
+			uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
+	}
+	else
+		delete uniforms["light_average_texture"];
+
+	//use shadows?
+	if(use_shadows)
+	{
+		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, this.far ];
+		uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
+	}
+	else
+	{
+		delete uniforms["u_shadow_params"];
+		delete uniforms["shadowmap"];
+	}
+
+	return uniforms;
+}
+
+Light.prototype.generateShadowmap = function (render_options)
+{
+	if(!this.cast_shadows)
+		return;
+
+	var renderer = render_options.current_renderer;
+
+	//create the texture
+	var shadowmap_resolution = this.shadowmap_resolution;
+	if(!shadowmap_resolution)
+		shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
+
+	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
+	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
+	{
+		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		//ResourcesManager.textures[":shadowmap_" + this._uid ] = this._shadowmap; //debug
+	}
+
+	//render the scene inside the texture
+	if(this.type == Light.OMNI) //render to cubemap
+	{
+		render_options.current_pass = "shadow";
+		render_options.is_shadowmap = true;
+		this._shadowmap.unbind(); 
+		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, this.far );
+		render_options.is_shadowmap = false;
+	}
+	else //DIRECTIONAL and SPOTLIGHT
+	{
+		var shadow_camera = this.getLightCamera();
+		renderer.enableCamera( shadow_camera, render_options, true );
+
+		// Render the object viewed from the light using a shader that returns the
+		// fragment depth.
+		this._shadowmap.unbind(); 
+		renderer._current_target = this._shadowmap;
+		this._shadowmap.drawTo(function() {
+
+			gl.clearColor(0, 0, 0, 1);
+			//gl.clearColor(1, 1, 1, 1);
+			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+			render_options.current_pass = "shadow";
+			render_options.is_shadowmap = true;
+
+			//RENDER INSTANCES in the shadowmap
+			renderer.renderInstances( render_options );
+			render_options.is_shadowmap = false;
+		});
+		renderer._current_target = null;
+	}
+}
+
+
 
 LS.registerComponent(Light);
 LS.Light = Light;
@@ -6033,20 +6275,21 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(!RI)
 	{
 		this._glare_render_instance = RI = new RenderInstance(this._root, this);
-		RI.setMesh( GL.Mesh.cube({size:100}), gl.TRIANGLES );
+		RI.setMesh( GL.Mesh.plane({size:1}), gl.TRIANGLES );
 		RI.priority = 1;
 		RI.onPreRender = LightFX.onGlarePreRender;
 	}
 	
-	RI.flags = RI_CULL_FACE;
+	RI.flags = RI_2D_FLAGS;
 	if(light)
 		vec3.copy( RI.center, light.getPosition() );
 	else
 		vec3.copy( RI.center, this._root.transform.getGlobalPosition() );
+	RI.pos2D = vec3.create();
 	RI.scale_2D = this.glare_size;
 
 	//debug
-	RI.matrix.set( this._root.transform._global_matrix );
+	//RI.matrix.set( this._root.transform._global_matrix );
 
 	var mat = this._glare_material;
 	if(!mat)
@@ -6062,22 +6305,36 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	return RI;
 }
 
-LightFX.onGlarePreRender = function(options)
+LightFX.onGlarePreRender = function(render_options)
 {
+	if(render_options.current_pass != "color")
+		return; 
+
 	//project point to 2D
-	//mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
-	//this.pos2D[2] = 0; //reset Z
+	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	this.pos2D[2] = 0; //reset Z
 	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
+
 	var center = this.center;
 	var eye = Renderer._current_camera.getEye();
 	var scene = Renderer._current_scene;
 	var dir = vec3.sub(vec3.create(), eye, center );
-	vec3.normalize(dir,dir);
-	var coll = Renderer.raycast(scene, center, dir );
+	var dist = vec3.length(dir);
+	vec3.scale(dir,dir,1/dist);
+	var coll = Renderer.raycast( scene, center, dir, dist );
+
 	if(coll.length)
-		this.material.opacity = 0.0;
+	{
+		this.material.opacity -= 0.05;
+		if(this.material.opacity < 0.0)
+			this.material.opacity = 0.0;
+	}
 	else
-		this.material.opacity = 1.0;
+	{
+		this.material.opacity += 0.05;
+		if(this.material.opacity > 1.0)
+			this.material.opacity = 1;
+	}
 }
 
 LightFX.prototype.getResources = function (res)
@@ -10301,7 +10558,15 @@ if(typeof(LiteGraph) != "undefined")
 		if(!temp || temp.width != width || temp.height != height )
 			this._temp_texture = new GL.Texture( width, height, { format: gl.RGBA, filter: gl.LINEAR });
 
-		this._temp_texture.uploadImage(img);
+		try
+		{
+			this._temp_texture.uploadImage(img);
+		}
+		catch(err)
+		{
+			console.error("image comes from an unsafe location, cannot be uploaded to webgl");
+			return;
+		}
 
 		this.setOutputData(0,this._temp_texture);
 	}
@@ -10859,6 +11124,7 @@ function RenderOptions(o)
 	this.main_camera = null; //this camera is the primary camera, some actions require to know the primary user point of view
 	this.current_camera = null; //this camera is the one being rendered at this moment
 	this.current_pass = null; //name of the current pass ("color","shadow","depth","picking")
+	this.current_renderer = null; //current renderer being used
 
 	//rendering properties
 	this.ignore_viewports = false;
@@ -10897,6 +11163,7 @@ function RenderOptions(o)
 */
 
 //Flags to control rendering states
+//0-7: render state flags
 var RI_CULL_FACE =			1;		//for two sided
 var RI_CW =					1 << 1; //reverse normals
 var RI_DEPTH_TEST =			1 << 2; //use depth test
@@ -10904,20 +11171,22 @@ var RI_DEPTH_WRITE = 		1 << 3; //write in the depth buffer
 var RI_ALPHA_TEST =			1 << 4; //do alpha test
 var RI_BLEND = 				1 << 5; //use blend function
 
+//8-16: rendering pipeline flags
 var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
-var RI_IGNORE_LIGHTS = 		1 << 9;	//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 << 10;//render even when outside of frustum 
-var RI_RENDER_2D = 			1 << 11;//render in screen space using the position projection (similar to billboard)
+var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
+var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
+var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
 
-var RI_IGNORE_VIEWPROJECTION = 1 << 12; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 << 13; //ignore the plane clipping (in reflections)
-
-var RI_RAYCAST_ENABLED = 1 << 14; //if it could be raycasted
+//16-24: instance properties
+var RI_RAYCAST_ENABLED = 1 << 16; //if it could be raycasted
 
 
 //default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
-var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
+var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
+var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
 
 function RenderInstance(node, component)
 {
@@ -11024,11 +11293,13 @@ RenderInstance.prototype.applyNodeFlags = function()
 	var node_flags = this.node.flags;
 
 	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
-	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
 	if(node_flags.flip_normals == true) this.flags |= RI_CW;
 	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
 	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
 	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+
+	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
+	if(node_flags.receive_shadows == false) this.flags &= ~RI_RECEIVE_SHADOWS;	
 }
 
 /**
@@ -11168,6 +11439,7 @@ var Renderer = {
 	render: function(scene, main_camera, render_options)
 	{
 		render_options = render_options || this.default_render_options;
+		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
 
@@ -11181,7 +11453,7 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, "beforeRender", render_options );
-		scene.sendEventToNodes("beforeRender", render_options );
+		scene.triggerInNodes("beforeRender", render_options );
 
 		//get render instances, lights, materials and all rendering info ready
 		this.processVisibleData(scene, render_options);
@@ -11192,18 +11464,31 @@ var Renderer = {
 			cameras = [ main_camera ];
 		render_options.main_camera = cameras[0];
 
-		//generate shadowmap
+		//generate shadowmaps
+		/*
 		if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
-			this.renderShadowMaps(scene, render_options);
+		{
+			LEvent.trigger(scene, "generateShadowmaps", render_options );
+			for(var i in this._visible_lights) 
+			{
+				var light = this._visible_lights[i];
+				if( light.cast_shadows )
+					light.generateShadowmap( render_options );
+			}
+
+			//LEvent.triggerArray( this._visible_lights, "generateShadowmaps", render_options );
+			//this.renderShadowMaps(scene, render_options);
+		}
+		*/
 
 		LEvent.trigger(scene, "afterRenderShadows", render_options );
-		scene.sendEventToNodes("afterRenderShadows", render_options );
+		scene.triggerInNodes("afterRenderShadows", render_options );
 
 		LEvent.trigger(scene, "renderReflections", render_options );
-		scene.sendEventToNodes("renderReflections", render_options );
+		scene.triggerInNodes("renderReflections", render_options );
 
 		LEvent.trigger(scene, "beforeRenderMainPass", render_options );
-		scene.sendEventToNodes("beforeRenderMainPass", render_options );
+		scene.triggerInNodes("beforeRenderMainPass", render_options );
 
 		//for each camera
 		for(var i in cameras)
@@ -11232,8 +11517,7 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
-		scene.sendEventToNodes("afterRender", render_options );
-
+		scene.triggerInNodes("afterRender", render_options );
 
 	},
 
@@ -11259,12 +11543,12 @@ var Renderer = {
 		render_options.current_pass = "color";
 
 		LEvent.trigger(scene, "beforeRenderScene", camera);
-		scene.sendEventToNodes("beforeRenderScene", camera);
+		scene.triggerInNodes("beforeRenderScene", camera);
 
 		Renderer.renderInstances(render_options);
 
 		LEvent.trigger(scene, "afterRenderScene", camera);
-		scene.sendEventToNodes("afterRenderScene", camera);
+		scene.triggerInNodes("afterRenderScene", camera);
 
 		//gl.disable(gl.SCISSOR_TEST);
 	},
@@ -11327,7 +11611,7 @@ var Renderer = {
 		var apply_frustum_culling = render_options.frustum_culling;
 
 		LEvent.trigger(scene, "beforeRenderInstances", render_options);
-		scene.sendEventToNodes("beforeRenderInstances", render_options);
+		scene.triggerInNodes("beforeRenderInstances", render_options);
 
 		//compute global scene info
 		this.fillSceneShaderMacros( scene, render_options );
@@ -11377,14 +11661,18 @@ var Renderer = {
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
-				instance.onPreRender(render_options);
+				if( instance.onPreRender(render_options) === false)
+					continue;
 
 			if(instance.material.opacity <= 0) //remove this, do it somewhere else
 				continue;
 
 			//test visibility against camera frustum
-			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM) && geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
-				continue;
+			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM))
+			{
+				if(geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+					continue;
+			}
 
 			//save visibility info
 			instance._in_camera = true;
@@ -11452,7 +11740,7 @@ var Renderer = {
 		gl.frontFace(gl.CCW);
 
 		LEvent.trigger(scene, "afterRenderInstances", render_options);
-		scene.sendEventToNodes("afterRenderInstances", render_options);
+		scene.triggerInNodes("afterRenderInstances", render_options);
 
 		//EVENT SCENE after_render
 		//restore state
@@ -11555,14 +11843,11 @@ var Renderer = {
 		{
 			var light = lights[iLight];
 
-			//generate renderkey
-			//var renderkey = instance.generateKey(options);
-
 			//compute the  shader
-			var shader = null; //this._renderkeys[renderkey];
+			var shader = null;
 			if(!shader)
 			{
-				var light_macros = instance.material.getLightShaderMacros(light, node, scene, render_options);
+				var light_macros = light.getMacros( instance, render_options );
 
 				if(iLight == 0) light_macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
@@ -11583,7 +11868,7 @@ var Renderer = {
 			}
 
 			//fill shader data
-			var light_uniforms = instance.material.fillLightUniforms( iLight, light, instance, render_options );
+			var light_uniforms = light.getUniforms( instance, render_options );
 
 			//secondary pass flags to make it additive
 			if(iLight > 0)
@@ -11846,7 +12131,7 @@ var Renderer = {
 		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
-	enableInstanceFlags: function(instance, options)
+	enableInstanceFlags: function(instance, render_options)
 	{
 		var flags = instance.flags;
 
@@ -11872,7 +12157,7 @@ var Renderer = {
 		var order = gl.CCW;
 		if(flags & RI_CW)
 			order = gl.CW;
-		if(options.reverse_backfacing)
+		if(render_options.reverse_backfacing)
 			order = order == gl.CW ? gl.CCW : gl.CW;
 		gl.frontFace(order);
 	},
@@ -11978,6 +12263,11 @@ var Renderer = {
 			}
 		}
 
+		//prepare lights
+		var lights = scene._lights;
+		for(var i in lights)
+			lights[i].prepare(render_options);
+
 		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = all_instances; //sorted version
@@ -12013,68 +12303,6 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
 			Renderer.renderInstances(render_options);
-		}
-	},
-
-	//Renders all the shadowmaps in the scene
-	renderShadowMaps: function(scene, render_options)
-	{
-		for(var i in this._visible_lights)
-		{
-			var light = this._visible_lights[i];
-			if(!light.cast_shadows)
-				continue;
-
-			var shadowmap_resolution = light.shadowmap_resolution;
-			if(!shadowmap_resolution)
-				shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
-
-			var tex_type = light.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-			if(light._shadowmap == null || light._shadowmap.width != shadowmap_resolution || light._shadowmap.texture_type != tex_type)
-			{
-				light._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-				ResourcesManager.textures[":shadowmap_" + light._uid ] = light._shadowmap;
-			}
-
-			if(light.type == Light.OMNI)
-			{
-				render_options.current_pass = "shadow";
-				render_options.is_shadowmap = true;
-				light._shadowmap.unbind(); 
-				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowmap, render_options, light.near, light.far );
-				render_options.is_shadowmap = false;
-			}
-			else //DIRECTIONAL and SPOTLIGHT
-			{
-				var shadow_camera = light.getShadowmapCamera();
-				this.enableCamera(shadow_camera, render_options, true);
-
-				//light.computeLightMatrices( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
-
-				// Render the object viewed from the light using a shader that returns the
-				// fragment depth.
-				light._shadowmap.unbind(); 
-				this._current_target = light._shadowmap;
-				light._shadowmap.drawTo(function() {
-
-					gl.clearColor(0, 0, 0, 1);
-					//gl.clearColor(1, 1, 1, 1);
-					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-					//save the VP of the shadowmap camera
-					//if( !light._lightMatrix ) light._lightMatrix = mat4.create();
-					//mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
-
-					render_options.current_pass = "shadow";
-					render_options.is_shadowmap = true;
-
-					//RENDER INSTANCES in the shadowmap
-					Renderer.renderInstances( render_options );
-
-					render_options.is_shadowmap = false;
-				});
-				this._current_target = null;
-			}
 		}
 	},
 
@@ -12117,16 +12345,6 @@ var Renderer = {
 	],
 	*/
 
-	cubemap_camera_parameters: [
-		{dir: [1,0,0], up:[0,-1,0]}, //positive X
-		{dir: [-1,0,0], up:[0,-1,0]}, //negative X
-		{dir: [0,1,0], up:[0,0,1]}, //positive Y
-		{dir: [0,-1,0], up:[0,0,-1]}, //negative Y
-		{dir: [0,0,1], up:[0,-1,0]}, //positive Z
-		{dir: [0,0,-1], up:[0,-1,0]} //negative Z
-	],
-
-
 	//renders the current scene to a cubemap centered in the given position
 	renderToCubemap: function(position, size, texture, render_options, near, far)
 	{
@@ -12141,8 +12359,9 @@ var Renderer = {
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
-		texture.drawTo(function(texture, side) {
-			var cams = Renderer.cubemap_camera_parameters;
+		texture.drawTo( function(texture, side) {
+
+			var cams = Camera.cubemap_camera_parameters;
 			if(render_options.is_shadowmap == "shadow")
 				gl.clearColor(0,0,0,0);
 			else
@@ -12154,6 +12373,7 @@ var Renderer = {
 			Renderer.enableCamera( cubemap_cam, render_options, true );
 			Renderer.renderInstances( render_options );
 		});
+
 		this._current_target = null;
 		return texture;
 	},
@@ -12257,8 +12477,10 @@ var Renderer = {
 	},	
 
 	//similar to Physics.raycast but using only visible meshes
-	raycast: function(scene, origin, direction)
+	raycast: function(scene, origin, direction, max_dist)
 	{
+		max_dist = max_dist || Number.MAX_VALUE;
+
 		var instances = scene._instances;
 		var collisions = [];
 
@@ -12278,7 +12500,7 @@ var Renderer = {
 
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point) )
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
 				continue;
 
 			var model = instance.matrix;
@@ -12289,7 +12511,7 @@ var Renderer = {
 			mat4.rotateVec3( local_direction, inv, direction );
 
 			//test against OOBB (a little bit more expensive)
-			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point) )
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
 				continue;
 
 			//test against mesh
@@ -12299,7 +12521,7 @@ var Renderer = {
 				var octree = mesh.octree;
 				if(!octree)
 					octree = mesh.octree = new Octree( mesh );
-				var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
 				if(!hit)
 					continue;
 				mat4.multiplyVec3(collision_point, model, hit.pos);
@@ -12308,7 +12530,8 @@ var Renderer = {
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push([instance, collision_point, distance]);
+			if(distance < max_dist)
+				collisions.push([instance, collision_point, distance]);
 		}
 
 		collisions.sort( function(a,b) { return a[2] - b[2]; } );
@@ -14624,8 +14847,12 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 {
 	var that = this;
 	var nocache = ResourcesManager.getNoCache(true);
+	if(nocache)
+		url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
+
+
 	LS.request({
-		url: url + nocache,
+		url: url,
 		dataType: 'json',
 		success: inner_success,
 		error: inner_error
@@ -14918,7 +15145,7 @@ SceneTree.prototype.start = function()
 	this._state = "running";
 	this._start_time = window.performance.now() * 0.001;
 	LEvent.trigger(this,"start",this);
-	this.sendEventToNodes("start");
+	this.triggerInNodes("start");
 }
 
 /**
@@ -14933,7 +15160,7 @@ SceneTree.prototype.stop = function()
 
 	this._state = "stopped";
 	LEvent.trigger(this,"stop",this);
-	this.sendEventToNodes("stop");
+	this.triggerInNodes("stop");
 }
 
 
@@ -15029,25 +15256,22 @@ SceneTree.prototype.update = function(dt)
 	this._last_dt = dt;
 
 	LEvent.trigger(this,"update", dt);
-	this.sendEventToNodes("update",dt, true);
+	this.triggerInNodes("update",dt, true);
 
 	LEvent.trigger(this,"afterUpdate", this);
 }
 
 /**
-* dispatch event to all nodes in the scene
+* triggers an event to all nodes in the scene
 *
-* @method sendEventToNodes
+* @method triggerInNodes
 * @param {String} event_type event type name
 * @param {Object} data data to send associated to the event
 */
 
-SceneTree.prototype.sendEventToNodes = function(event_type, data)
+SceneTree.prototype.triggerInNodes = function(event_type, data)
 {
-	for(var i in this._nodes)
-	{
-		LEvent.trigger( this._nodes[i], event_type, data);
-	}
+	LEvent.triggerArray( this._nodes, event_type, data);
 }
 
 

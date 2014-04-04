@@ -22,6 +22,7 @@
 var ResourcesManager = {
 
 	path: "", //url to retrieve resources relative to the index.html
+	proxy: "", //url to retrieve resources outside of this host
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the webglstudio editor)
@@ -50,7 +51,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -205,7 +206,11 @@ var ResourcesManager = {
 
 		var full_url = "";
 		if(url.substr(0,7) == "http://")
+		{
 			full_url = url;
+			if(this.proxy) //proxy external files
+				full_url = this.proxy + url.substr(7);
+		}
 		else
 		{
 			if(options.local_repository)
@@ -220,10 +225,12 @@ var ResourcesManager = {
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
+		if(nocache)
+			full_url += (full_url.indexOf("?") == -1 ? "?" : "&") + nocache;
 
 		//create the ajax request
 		var settings = {
-			url: full_url + nocache,
+			url: full_url,
 			success: function(response){
 				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},

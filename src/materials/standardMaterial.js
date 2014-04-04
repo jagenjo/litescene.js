@@ -193,7 +193,11 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		else if(i == "displacement")
 			continue;
 		else if(i == "bump")
+		{
+			texture.bind(0);
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			continue;
+		}
 		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);

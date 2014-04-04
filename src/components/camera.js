@@ -49,6 +49,17 @@ Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2;
 Camera.ORTHO2D = 3;
 
+// used when rendering a cubemap to set the camera view direction
+Camera.cubemap_camera_parameters = [
+	{ dir: vec3.fromValues(1,0,0), 	up: vec3.fromValues(0,-1,0) }, //positive X
+	{ dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,-1,0) }, //negative X
+	{ dir: vec3.fromValues(0,1,0), 	up: vec3.fromValues(0,0,1) }, //positive Y
+	{ dir: vec3.fromValues(0,-1,0), up: vec3.fromValues(0,0,-1) }, //negative Y
+	{ dir: vec3.fromValues(0,0,1), 	up: vec3.fromValues(0,-1,0) }, //positive Z
+	{ dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,-1,0) } //negative Z
+];
+
+
 /*
 Camera.prototype.onCameraEnabled = function(e,options)
 {

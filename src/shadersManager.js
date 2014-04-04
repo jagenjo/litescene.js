@@ -212,14 +212,23 @@ var ShadersManager = {
 
 			var vs_code = "";
 			var ps_code = "";
-			var macros = shader_element.attributes["macros"];
-			if(macros)
-				macros = macros.value.split(",");
 
-			var _macros = {};
-			for(var i in macros)
-				_macros[macros[i]] = true;
+			//read all the supported macros
+			var macros_str = "";
+			var macros_attr = shader_element.attributes["macros"];
+			if(macros_attr)
+				macros_str += macros_attr.value;
 
+			var macros_xml = shader_element.querySelector("macros");
+			if(macros_xml)
+				macros_str += macros_xml.textContent;
+
+			var macros_array = macros_str.split(",");
+			var macros = {};
+			for(var i in macros_array)
+				macros[ macros_array[i].trim() ] = true;
+
+			//read the shaders code
 			vs_code = shader_element.querySelector("code[type='vertex_shader']").textContent;
 			ps_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
 
@@ -238,8 +247,7 @@ var ShadersManager = {
 			if(imports)
 				options.imports = (imports == "1" || imports == "true");
 
-
-			ShadersManager.registerGlobalShader(vs_code,ps_code,id,_macros, options );
+			ShadersManager.registerGlobalShader(vs_code, ps_code, id, macros, options );
 		}
 
 		var snippets = xml.querySelectorAll('snippet');

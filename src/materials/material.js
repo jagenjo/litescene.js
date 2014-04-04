@@ -81,8 +81,6 @@ Material.SPECULAR_TEXTURE = "specular"; //defines specular factor and glossiness
 Material.EMISSIVE_TEXTURE = "emissive";
 Material.ENVIRONMENT_TEXTURE = "environment";
 
-Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
-
 Material.COORDS_UV0 = "0";
 Material.COORDS_UV1 = "1";
 Material.COORDS_UV_TRANSFORMED = "transformed";
@@ -97,6 +95,7 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 
 Material.prototype.applyToRenderInstance = function(ri)
@@ -137,6 +136,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 //Fill with info about the light
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
+/*
 Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
 {
 	var macros = {};
@@ -162,15 +162,19 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture && light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+
 	if(light_projective_texture)
+	{
 		macros.USE_PROJECTIVE_LIGHT = "";
+		if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_PROJECTIVE_LIGHT_CUBEMAP = "";
+	}
 
 	var light_average_texture = light.average_texture;
 	if(light_average_texture && light_average_texture.constructor == String)
 		light_average_texture = ResourcesManager.textures[light_average_texture];
 	if(light_average_texture)
 		macros.USE_TEXTURE_AVERAGE_LIGHT = "";
-
 
 	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
 	//	macros.USE_IGNORE_LIGHT = "";
@@ -191,6 +195,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 
 	return macros;
 }
+*/
 
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
@@ -229,64 +234,8 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		uniforms[i] = this.extra_uniforms[i];
 
 	this._uniforms = uniforms;
-	this._samplers = samplers;
+	this._samplers = samplers; //samplers without fixed slot
 }
-
-//hard to precompute, it uses the instance.matrix to compute lightMatrix, it also binds the textures
-Material.prototype.fillLightUniforms = function( iLight, light, instance, options)
-{
-	var uniforms = {};
-	//var samplers = [];
-
-	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !options.shadows_disabled;
-
-	var shadowmap_size = use_shadows ? (light._shadowmap.width) : 1024;
-	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
-		uniforms.u_light_front = light.getFront();
-	if(light.type == Light.SPOT)
-		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
-
-	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), light.color, light.intensity );
-	uniforms.u_light_att = [light.att_start,light.att_end];
-	uniforms.u_light_offset = light.offset;
-
-	if(light._light_matrix)
-		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._light_matrix, instance.matrix );
-
-	//projective texture
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture && light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-	if(light_projective_texture)
-		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
-
-	//average texture
-	var light_average_texture = light.average_texture;
-	if(light_average_texture && light_average_texture.constructor == String)
-		light_average_texture = ResourcesManager.textures[light_average_texture];
-	if(light_average_texture)
-		uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
-
-	//use shadows?
-	if(use_shadows)
-	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias, light.near, light.far ];
-		uniforms.shadowmap = light._shadowmap.bind(10); //fixed slot
-		//samplers.push(["shadowmap", light._shadowmap]);
-	}
-
-	//return [uniforms, samplers];
-	return uniforms;
-}
-
-Material.prototype.getTextureChannels = function()
-{
-	if(this.constructor.texture_channels)
-		return this.constructor.texture_channels;
-	return [];
-}
-
 
 /**
 * Configure the material getting the info from the object
@@ -385,6 +334,20 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 			options.on_complete();
 	}
 }
+
+/**
+* gets all the texture channels supported by this material
+* @method getTextureChannels
+* @return {Array} array with the name of every channel
+*/
+Material.prototype.getTextureChannels = function()
+{
+	if(this.constructor.texture_channels)
+		return this.constructor.texture_channels;
+	return [];
+}
+
+
 
 /**
 * Assigns a texture to a channel

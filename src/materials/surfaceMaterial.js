@@ -133,6 +133,49 @@ SurfaceMaterial.prototype.configure = function(o) {
 	this.computeCode();
 }
 
+
+SurfaceMaterial.prototype.getTextureChannels = function()
+{
+	var channels = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != "texture" && prop.type != "cubemap")
+			continue;
+		channels.push(prop.name);
+	}
+
+	return channels;
+}
+
+/**
+* Assigns a texture to a channel
+* @method setTexture
+* @param {Texture} texture
+* @param {String} channel default is COLOR
+*/
+SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != "texture" && prop.type != "cubemap")
+			continue;
+		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
+			continue;
+
+		prop.value = texture;
+		if(!channel)
+			break;
+	}
+
+	if(!texture) return;
+	if(texture.constructor == String && texture[0] != ":")
+		ResourcesManager.load(texture);
+}
+
+
 LS.extendClass( Material, SurfaceMaterial );
 LS.registerMaterialClass(SurfaceMaterial);
 LS.SurfaceMaterial = SurfaceMaterial;

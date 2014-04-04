@@ -43,10 +43,12 @@
 			#endif
 			uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)
 
+			/*
 			float UnpackDepth24(vec3 depth)
 			{
 				return dot(vec3(65536.0, 256.0, 1.0), depth) / 65025.0;
 			}
+			*/
 
 			float UnpackDepth32(vec4 depth)
 			{
@@ -128,35 +130,25 @@
 		]]>
 	</snippet>
 
-	<snippet id="displaceNormal">
+	<snippet id="bumpNormal">
 		<![CDATA[
 				#extension GL_OES_standard_derivatives : enable 
 
-				// Project the surface gradient (dhdx, dhdy) onto the surface (n, dpdx, dpdy)
-				vec3 CalculateSurfaceGradient(vec3 n, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
-				{
-					vec3 r1 = cross(dpdy, n);
-					vec3 r2 = cross(n, dpdx);
-				 
-					return (r1 * dhdx + r2 * dhdy) / dot(dpdx, r1);
-				}
-				 
-				// Move the normal away from the surface normal in the opposite surface gradient direction
-				vec3 perturbNormalBump(vec3 normal, vec3 dpdx, vec3 dpdy, float dhdx, float dhdy)
-				{
-					return normalize(normal - CalculateSurfaceGradient(normal, dpdx, dpdy, dhdx, dhdy));
-				}
-
 				// Calculate the surface normal using screen-space partial derivatives of the height field
-				vec3 displaceNormal(vec3 position, vec3 normal, float height)
+				vec3 bumpNormal(vec3 position, vec3 normal, sampler2D texture, vec2 uvs, float factor)
 				{
-					vec3 dpdx = dFdx(position);
-					vec3 dpdy = dFdy(position);
-				 
-					float dhdx = dFdx(height);
-					float dhdy = dFdy(height);
-				 
-					return perturbNormalBump(normal, dpdx, dpdy, dhdx, dhdy);
+			        vec3 dpdx = dFdx(position);
+			        vec3 dpdy = dFdy(position);
+					vec3 r1 = cross(dpdy, normal);
+					vec3 r2 = cross(normal, dpdx);
+					vec2 dtdx = dFdx(uvs) * factor;
+					vec2 dtdy = dFdy(uvs) * factor;
+
+			        float h = texture2D( texture,  uvs ).r;
+			        float hdx = texture2D( texture,  uvs + dtdx).r;
+			        float hdy = texture2D( texture,  uvs + dtdy).r;					
+
+					return normalize(normal - (r1 * (hdx - h) + r2 * (hdy - h)) / dot(dpdx, r1));						
 				}
 		]]>
 	</snippet>
@@ -803,7 +795,22 @@
 	</shader>
 
 
-	<shader id="global" tags="instance" macros="USE_COLOR_TEXTURE,USE_COLOR_CUBEMAP,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_EMISSIVE_MATERIAL,USE_SHADOW_MAP,USE_SHADOW_CUBEMAP,SHADOWMAP_OFFSET,USE_VELVET,USE_VELVET_ALPHA,USE_DETAIL_TEXTURE,USE_ALPHA_TEST,USE_POINTS,USE_NORMAL_TEXTURE,USE_NORMALMAP_FACTOR,USE_DISPLACEMENTMAP_FACTOR,USE_TANGENT_NORMALMAP,USE_BUMP_TEXTURE,USE_BUMP_FACTOR,USE_DISPLACEMENT_TEXTURE,USE_REFLECTION,USE_REFLECTIVITY_TEXTURE,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,USE_PROJECTIVE_LIGHT,USE_TEXTURE_AVERAGE_LIGHT,NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_FOG,USE_FOG_EXP,USE_FOG_EXP2,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,USE_SPECULAR_ONTOP,USE_SPECULAR_ON_ALPHA,USE_SPECULAR_IN_REFLECTION,USE_BACKLIGHT,USE_LIGHT_OFFSET,USE_SPOT_CONE,USE_SKIN_SHADER,USE_ORTHOGRAPHIC_CAMERA,USE_SOFT_PARTICLES,FIRST_PASS,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE" multipass="true" imports="true">
+	<shader id="global" tags="instance" multipass="true" imports="true">
+		<macros>
+			NO_NORMALS, NO_COORDS, USE_COORDS1_STREAM, USE_COLOR_STREAM, USE_TANGENT_STREAM,
+			USE_ALPHA_TEST, USE_POINTS,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,
+			USE_COLOR_TEXTURE, USE_COLOR_CUBEMAP, USE_OPACITY_TEXTURE, USE_SPECULAR_TEXTURE, USE_AMBIENT_TEXTURE,
+			USE_EMISSIVE_TEXTURE, USE_EMISSIVE_MATERIAL, USE_SHADOW_MAP, USE_SHADOW_CUBEMAP, SHADOWMAP_OFFSET,
+			USE_VELVET, USE_VELVET_ALPHA, USE_DETAIL_TEXTURE, USE_NORMAL_TEXTURE,
+			USE_NORMALMAP_FACTOR, USE_TANGENT_NORMALMAP,
+			USE_BUMP_TEXTURE, USE_BUMP_FACTOR, USE_DISPLACEMENT_TEXTURE, USE_DISPLACEMENTMAP_FACTOR,
+			USE_REFLECTION, USE_REFLECTIVITY_TEXTURE, USE_ENVIRONMENT_TEXTURE, USE_ENVIRONMENT_CUBEMAP, USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,
+			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,
+			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
+			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
+			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
+			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE
+		</macros>
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -1029,7 +1036,11 @@
 			#endif
 
 			#ifdef USE_PROJECTIVE_LIGHT
-				uniform sampler2D light_texture;
+				#ifdef USE_PROJECTIVE_LIGHT_CUBEMAP
+					uniform samplerCube light_texture;
+				#else
+					uniform sampler2D light_texture;
+				#endif
 			#endif
 
 			#ifdef USE_TEXTURE_AVERAGE_LIGHT
@@ -1100,7 +1111,7 @@
 			#endif
 
 			#ifdef USE_BUMP_TEXTURE
-				#import "displaceNormal"
+				#import "bumpNormal"
 			#endif
 
 			#ifdef USE_PIXEL_SHADER_FUNCTIONS
@@ -1168,12 +1179,11 @@
 				#endif
 
 				#ifdef USE_BUMP_TEXTURE
-					prev_norm = N;
-					float pixel_height = texture2D( bump_texture, USE_BUMP_TEXTURE ).x;
-					N = displaceNormal(v_pos, N, pixel_height );
+					float bump_factor = 1.0;
 					#ifdef USE_BUMP_FACTOR
-						N = normalize( mix(prev_norm, N, u_bumpmap_factor) );
+						bump_factor = u_bumpmap_factor;
 					#endif
+					N = bumpNormal(v_pos, N, bump_texture, USE_BUMP_TEXTURE, bump_factor );
 				#endif
 
 				vec2 uvs_direction = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
@@ -1319,8 +1329,12 @@
 				#endif
 
 				#ifdef USE_PROJECTIVE_LIGHT
-					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
-					light_color *= texture2D(light_texture,light_sample).xyz;
+					#ifdef USE_PROJECTIVE_LIGHT_CUBEMAP
+						light_color *= textureCube(light_texture, -L).xyz;
+					#else
+						vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
+						light_color *= texture2D(light_texture,light_sample).xyz;
+					#endif
 
 					#ifndef USE_SPOT_CONE
 						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
@@ -1330,7 +1344,7 @@
 
 				#ifdef USE_SPOT_LIGHT
 					#ifdef USE_SPOT_CONE
-						att *= spotFalloff(u_light_front, -normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
+						att *= spotFalloff(u_light_front, normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
 					#endif
 				#endif
 
