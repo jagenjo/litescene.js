@@ -4,6 +4,7 @@ function CustomMaterial(o)
 	this._dirty = true;
 
 	this.shader_name = "base";
+	this.blend_mode = Blend.NORMAL;
 
 	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
@@ -15,23 +16,12 @@ function CustomMaterial(o)
 	this._macros = {};
 
 	this.textures = {};
+	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 
 	if(o) 
 		this.configure(o);
 	this.computeCode();
 }
-
-/*
-CustomMaterial.ps_shader_definitions = "\n\
-struct SurfaceOutput {\n\
-    vec3 Albedo;\n\
-    vec3 Normal;\n\
-    vec3 Emission;\n\
-    float Specular;\n\
-    float Gloss;\n\
-    float Alpha;\n\
-};";
-*/
 
 CustomMaterial.ps_shader_definitions = "\n\
 ";

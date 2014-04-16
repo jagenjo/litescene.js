@@ -2887,6 +2887,8 @@ function Material(o)
 	this.specular_factor = 0.1;
 	this.specular_gloss = 10.0;
 
+	//this.reflection_factor = 0.0;	
+
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
@@ -2984,6 +2986,9 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
+	//if(this.reflection_factor > 0.0) 
+	//	macros.USE_REFLECTION = "";	
+
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
@@ -3068,6 +3073,9 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
+	uniforms.u_reflection = this.reflection_factor;
+
+
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
@@ -3114,6 +3122,7 @@ Material.prototype.configure = function(o)
 			case "opacity": 
 			case "specular_factor":
 			case "specular_gloss":
+			case "reflection": 
 			case "blend_mode":
 			//strings
 			case "shader_name":
@@ -3584,6 +3593,7 @@ function CustomMaterial(o)
 	this._dirty = true;
 
 	this.shader_name = "base";
+	this.blend_mode = Blend.NORMAL;
 
 	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
@@ -3595,23 +3605,12 @@ function CustomMaterial(o)
 	this._macros = {};
 
 	this.textures = {};
+	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 
 	if(o) 
 		this.configure(o);
 	this.computeCode();
 }
-
-/*
-CustomMaterial.ps_shader_definitions = "\n\
-struct SurfaceOutput {\n\
-    vec3 Albedo;\n\
-    vec3 Normal;\n\
-    vec3 Emission;\n\
-    float Specular;\n\
-    float Gloss;\n\
-    float Alpha;\n\
-};";
-*/
 
 CustomMaterial.ps_shader_definitions = "\n\
 ";
@@ -5885,7 +5884,8 @@ Light.prototype.updateVectors = function()
 	{
 		//position, target and up are already valid
 		 //front
-		 vec3.subtract(this._front, this.position, this.target );
+		 //vec3.subtract(this._front, this.position, this.target ); //positive z front
+		 vec3.subtract(this._front, this.target, this.position ); //positive z front
 		 vec3.normalize(this._front,this._front);
 		 //right
 		 vec3.normalize( temp_v3, this.up );
@@ -7507,7 +7507,7 @@ FaceTo.prototype.onAddedToNode = function(node)
 	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
 }
 
-FaceTo.prototype.updateOrientation = function(e,info)
+FaceTo.prototype.updateOrientation = function(e)
 {
 	if(!this._root) return;
 	var scene = this._root._on_scene;
@@ -7519,6 +7519,7 @@ FaceTo.prototype.updateOrientation = function(e,info)
 	*/
 
 	var eye = null;
+	var camera = Renderer._current_camera;
 	
 	if(this.target)
 	{
@@ -7528,9 +7529,11 @@ FaceTo.prototype.updateOrientation = function(e,info)
 		eye = node.transform.getPosition();
 	}
 	else
-		eye = info.camera.getEye();
+	{
+		eye = camera.getEye();
+	}
 	var pos = this._root.transform.getPosition();
-	var up = info.camera.getLocalVector([0,1,0]);
+	var up = camera.getLocalVector([0,1,0]);
 	if( this.cylindrical )
 	{
 		eye[1] = pos[1];
@@ -7912,9 +7915,9 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_antialiasing = !!o.use_antialiasing;
 
 	this._graph.configure( JSON.parse( o.graph_data ) );
-	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
-	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
-	this._graph_viewport_node = this._graph.findNodesByName("Viewport")[0];
+	this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
+	this._graph_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
+	this._graph_viewport_node = this._graph.findNodesByTitle("Viewport")[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
@@ -8002,9 +8005,9 @@ FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 	if(!this._graph || !this.enabled || !render_options.render_fx) return;
 
 	if(!this._graph_color_texture_node)
-		this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
+		this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
 	if(!this._depth_depth_texture_node)
-		this._depth_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
+		this._depth_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
 
 	if(!this._graph_color_texture_node)
 		return;
@@ -11707,7 +11710,7 @@ var Renderer = {
 			else if(render_options.is_picking)
 				this.renderPickingInstance( instance, render_options );
 			else
-				this.renderMultiPassInstance( instance, lights, scene, render_options );
+				this.renderColorPassInstance( instance, lights, scene, render_options );
 
 			if(instance.onPostRender)
 				instance.onPostRender(render_options);
@@ -11752,7 +11755,7 @@ var Renderer = {
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
-	renderMultiPassInstance: function(instance, lights, scene, render_options)
+	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
 
 		var node = instance.node;
@@ -11769,6 +11772,7 @@ var Renderer = {
 		var node_macros = node._macros;
 		var node_uniforms = node._uniforms;
 
+		//Set matrices
 		node_uniforms.u_mvp = this._mvp_matrix;
 		node_uniforms.u_model = model;
 		node_uniforms.u_normal_model = instance.normal_matrix; 
@@ -11776,7 +11780,7 @@ var Renderer = {
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
 
-		//blend flags
+		//set blend flags
 		if(material.blend_mode != Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
@@ -11790,7 +11794,6 @@ var Renderer = {
 			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
 		if(material._samplers)
 			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
-			
 		for(var i = 0; i < samplers.length; i++)
 		{
 			var s = samplers[i];
@@ -11798,6 +11801,7 @@ var Renderer = {
 			s[1].bind(i);
 		}
 
+		//find shader name
 		var shader_name = render_options.default_shader_id;
 		if(render_options.low_quality)
 			shader_name = render_options.default_low_shader_id;
@@ -11838,7 +11842,7 @@ var Renderer = {
 			return;
 		}
 
-		//Regular rendering
+		//Regular rendering (multipass)
 		for(var iLight = 0; iLight < num_lights; iLight++)
 		{
 			var light = lights[iLight];
@@ -11882,7 +11886,7 @@ var Renderer = {
 				else
 					gl.disable( gl.DEPTH_TEST );
 			}
-
+			//set depth func
 			if(material.depth_func)
 				gl.depthFunc( gl[material.depth_func] );
 
@@ -11893,12 +11897,13 @@ var Renderer = {
 			shader.uniforms( light_uniforms );
 			shader.uniforms( instance.uniforms );
 
-			//render
+			//render the instance
 			instance.render( shader );
 			this._rendercalls += 1;
 
+			//avoid multipass in simple shaders
 			if(shader.global && !shader.global.multipass)
-				break; //avoid multipass in simple shaders
+				break; 
 		}
 	},
 

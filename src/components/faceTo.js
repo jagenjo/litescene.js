@@ -27,7 +27,7 @@ FaceTo.prototype.onAddedToNode = function(node)
 	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
 }
 
-FaceTo.prototype.updateOrientation = function(e,info)
+FaceTo.prototype.updateOrientation = function(e)
 {
 	if(!this._root) return;
 	var scene = this._root._on_scene;
@@ -39,6 +39,7 @@ FaceTo.prototype.updateOrientation = function(e,info)
 	*/
 
 	var eye = null;
+	var camera = Renderer._current_camera;
 	
 	if(this.target)
 	{
@@ -48,9 +49,11 @@ FaceTo.prototype.updateOrientation = function(e,info)
 		eye = node.transform.getPosition();
 	}
 	else
-		eye = info.camera.getEye();
+	{
+		eye = camera.getEye();
+	}
 	var pos = this._root.transform.getPosition();
-	var up = info.camera.getLocalVector([0,1,0]);
+	var up = camera.getLocalVector([0,1,0]);
 	if( this.cylindrical )
 	{
 		eye[1] = pos[1];

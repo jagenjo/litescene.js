@@ -167,9 +167,9 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_antialiasing = !!o.use_antialiasing;
 
 	this._graph.configure( JSON.parse( o.graph_data ) );
-	this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
-	this._graph_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
-	this._graph_viewport_node = this._graph.findNodesByName("Viewport")[0];
+	this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
+	this._graph_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
+	this._graph_viewport_node = this._graph.findNodesByTitle("Viewport")[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
@@ -257,9 +257,9 @@ FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 	if(!this._graph || !this.enabled || !render_options.render_fx) return;
 
 	if(!this._graph_color_texture_node)
-		this._graph_color_texture_node = this._graph.findNodesByName("Color Buffer")[0];
+		this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
 	if(!this._depth_depth_texture_node)
-		this._depth_depth_texture_node = this._graph.findNodesByName("Depth Buffer")[0];
+		this._depth_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
 
 	if(!this._graph_color_texture_node)
 		return;

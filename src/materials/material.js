@@ -28,6 +28,8 @@ function Material(o)
 	this.specular_factor = 0.1;
 	this.specular_gloss = 10.0;
 
+	//this.reflection_factor = 0.0;	
+
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
@@ -125,6 +127,9 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
+	//if(this.reflection_factor > 0.0) 
+	//	macros.USE_REFLECTION = "";	
+
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
@@ -209,6 +214,9 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
+	uniforms.u_reflection = this.reflection_factor;
+
+
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
@@ -255,6 +263,7 @@ Material.prototype.configure = function(o)
 			case "opacity": 
 			case "specular_factor":
 			case "specular_gloss":
+			case "reflection": 
 			case "blend_mode":
 			//strings
 			case "shader_name":

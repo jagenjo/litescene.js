@@ -325,7 +325,7 @@ var Renderer = {
 			else if(render_options.is_picking)
 				this.renderPickingInstance( instance, render_options );
 			else
-				this.renderMultiPassInstance( instance, lights, scene, render_options );
+				this.renderColorPassInstance( instance, lights, scene, render_options );
 
 			if(instance.onPostRender)
 				instance.onPostRender(render_options);
@@ -370,7 +370,7 @@ var Renderer = {
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
-	renderMultiPassInstance: function(instance, lights, scene, render_options)
+	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
 
 		var node = instance.node;
@@ -387,6 +387,7 @@ var Renderer = {
 		var node_macros = node._macros;
 		var node_uniforms = node._uniforms;
 
+		//Set matrices
 		node_uniforms.u_mvp = this._mvp_matrix;
 		node_uniforms.u_model = model;
 		node_uniforms.u_normal_model = instance.normal_matrix; 
@@ -394,7 +395,7 @@ var Renderer = {
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
 
-		//blend flags
+		//set blend flags
 		if(material.blend_mode != Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
@@ -408,7 +409,6 @@ var Renderer = {
 			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
 		if(material._samplers)
 			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
-			
 		for(var i = 0; i < samplers.length; i++)
 		{
 			var s = samplers[i];
@@ -416,6 +416,7 @@ var Renderer = {
 			s[1].bind(i);
 		}
 
+		//find shader name
 		var shader_name = render_options.default_shader_id;
 		if(render_options.low_quality)
 			shader_name = render_options.default_low_shader_id;
@@ -456,7 +457,7 @@ var Renderer = {
 			return;
 		}
 
-		//Regular rendering
+		//Regular rendering (multipass)
 		for(var iLight = 0; iLight < num_lights; iLight++)
 		{
 			var light = lights[iLight];
@@ -500,7 +501,7 @@ var Renderer = {
 				else
 					gl.disable( gl.DEPTH_TEST );
 			}
-
+			//set depth func
 			if(material.depth_func)
 				gl.depthFunc( gl[material.depth_func] );
 
@@ -511,12 +512,13 @@ var Renderer = {
 			shader.uniforms( light_uniforms );
 			shader.uniforms( instance.uniforms );
 
-			//render
+			//render the instance
 			instance.render( shader );
 			this._rendercalls += 1;
 
+			//avoid multipass in simple shaders
 			if(shader.global && !shader.global.multipass)
-				break; //avoid multipass in simple shaders
+				break; 
 		}
 	},
 

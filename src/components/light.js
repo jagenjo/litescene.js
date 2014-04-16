@@ -230,7 +230,8 @@ Light.prototype.updateVectors = function()
 	{
 		//position, target and up are already valid
 		 //front
-		 vec3.subtract(this._front, this.position, this.target );
+		 //vec3.subtract(this._front, this.position, this.target ); //positive z front
+		 vec3.subtract(this._front, this.target, this.position ); //positive z front
 		 vec3.normalize(this._front,this._front);
 		 //right
 		 vec3.normalize( temp_v3, this.up );
