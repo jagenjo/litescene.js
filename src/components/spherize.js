@@ -35,7 +35,7 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = "uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;";
-Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex = mix(vertex, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
+Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {

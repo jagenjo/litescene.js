@@ -2289,7 +2289,7 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 }
 
 //basic formats
-LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp", function(filename, data, options, callback) {
+LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", function(filename, data, options, callback) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
 	var mimetype = 'image/png';
@@ -2297,6 +2297,8 @@ LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp", function(f
 		mimetype = "image/jpg";
 	if(extension == "webp")
 		mimetype = "image/webp";
+	if(extension == "gif")
+		mimetype = "image/gif";
 
 	var blob = new Blob([data],{type: mimetype});
 	var objectURL = URL.createObjectURL(blob);
@@ -2357,7 +2359,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 	return mesh;
 }
 
-LS.ResourcesManager.registerResourcePreProcessor("obj", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
+LS.ResourcesManager.registerResourcePreProcessor("obj,ase", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
@@ -2409,6 +2411,15 @@ Mesh.fromBinary = function( data_array )
 	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
 	mesh.info = o.info;
 	mesh.bounding = o.bounding;
+	if(o.bones)
+	{
+		mesh.bones = o.bones;
+		//restore Float32array
+		for(var i = 0; i < mesh.bones.length; ++i)
+			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
+		if(o.bind_matrix)
+			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
+	}
 	
 	return mesh;
 }
@@ -2425,6 +2436,17 @@ Mesh.prototype.toBinary = function()
 		info: this.info,
 		groups: this.groups
 	};
+
+	if(this.bones)
+	{
+		var bones = [];
+		//convert to array
+		for(var i = 0; i < this.bones.length; ++i)
+			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
+		o.bones = bones;
+		if(this.bind_matrix)
+			o.bind_matrix = this.bind_matrix;
+	}
 
 	//bounding box
 	if(!this.bounding)	
@@ -2455,7 +2477,9 @@ Mesh.prototype.toBinary = function()
 	o.index_buffers = index_buffers;
 
 	//create pack file
-	return WBin.create(o, "Mesh");
+	var bin = WBin.create(o, "Mesh");
+
+	return bin;
 }
 
 
@@ -3111,7 +3135,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 */
 Material.prototype.configure = function(o)
 {
-	//cloneObject(o, this);
+	for(var i in o)
+		this.setProperty( i, o[i] );
+
+	/*	//cloneObject(o, this);
 	for(var i in o)
 	{
 		var v = o[i];
@@ -3146,6 +3173,7 @@ Material.prototype.configure = function(o)
 
 	if(o.uvs_matrix && o.uvs_matrix.length == 9)
 		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	*/
 }
 
 /**
@@ -3168,7 +3196,7 @@ Material.prototype.serialize = function()
 */
 Material.prototype.clone = function()
 {
-	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
+	return new this.constructor( JSON.parse( JSON.stringify( this.serialize() )) );
 }
 
 /**
@@ -3204,9 +3232,89 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 }
 
 /**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperties = function()
+{
+	var o = {
+		color:"vec3",
+		opacity:"number",
+		shader_name: "string",
+		blend_mode: "number",
+		specular_factor:"number",
+		specular_gloss:"number",
+		uvs_matrix:"mat3"
+	};
+
+	var textures = this.getTextureChannels();
+	for(var i in textures)
+		o["tex_" + i] = "Texture";
+	return o;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperty = function(name)
+{
+	if(name.substr(0,4) == "tex_")
+		return this.textures[ name.substr(4) ];
+	return this[name];
+}
+
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.setProperty = function(name, value)
+{
+	if(name.substr(0,4) == "tex_")
+	{
+		this.textures[ name.substr(4) ] = value;
+		return true;
+	}
+
+	switch(name)
+	{
+		//numbers
+		case "opacity": 
+		case "specular_factor":
+		case "specular_gloss":
+		case "reflection": 
+		case "blend_mode":
+		//strings
+		case "shader_name":
+		//bools
+			this[name] = value; 
+			break;
+		//vectors
+		case "uvs_matrix":
+		case "color": 
+			if(this[name].length == value.length)
+				this[name].set( value );
+			break;
+		case "textures":
+			this.textures = cloneObject(value);
+			break;
+		case "transparency": //special cases
+			this.opacity = 1 - value;
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
 * gets all the texture channels supported by this material
 * @method getTextureChannels
-* @return {Array} array with the name of every channel
+* @return {Array} array with the name of every channel supported by this material
 */
 Material.prototype.getTextureChannels = function()
 {
@@ -3335,7 +3443,7 @@ function StandardMaterial(o)
 	this.velvet = new Float32Array([0.5,0.5,0.5]);
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
-	this.detail = [0.0,10,10];
+	this.detail = new Float32Array([0.0, 10, 10]);
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.extra_factor = 0.0; //used for debug and dev
 	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
@@ -3523,66 +3631,91 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 }
 
 /**
-* Configure the material getting the info from the object
-* @method configure
+* assign a value to a property in a safe way
+* @method setProperty
 * @param {Object} object to configure from
 */
-StandardMaterial.prototype.configure = function(o)
+StandardMaterial.prototype.setProperty = function(name, value)
 {
-	//cloneObject(o, this);
-	for(var i in o)
-	{
-		var v = o[i];
-		var r = null;
-		switch(i)
-		{
-			//numbers
-			case "opacity": 
-			case "backlight_factor":
-			case "specular_factor":
-			case "specular_gloss":
-			case "reflection_factor":
-			case "reflection_fresnel":
-			case "velvet_exp":
-			case "velvet_additive":
-			case "blend_mode":
-			case "normalmap_factor":
-			case "displacementmap_factor":
-			case "extra_factor":
-			//strings
-			case "shader_name":
-			//bools
-			case "specular_ontop":
-			case "normalmap_tangent":
-			case "reflection_specular":
-			case "use_scene_ambient":
-				r = v; 
-				break;
-			//vectors
-			case "color": 
-			case "ambient":	
-			case "diffuse": 
-			case "emissive": 
-			case "velvet":
-			case "detail":
-			case "extra_color":
-				r = new Float32Array(v); 
-				break;
-			case "textures":
-				this.textures = o.textures;
-				continue;
-			case "transparency": //special cases
-				this.opacity = 1 - v;
-			case "extra_uniforms":
-				this.extra_uniforms = LS.cloneObject(v);
-			default:
-				continue;
-		}
-		this[i] = r;
-	}
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
 
-	if(o.uvs_matrix && o.uvs_matrix.length == 9)
-		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	//regular
+	switch(name)
+	{
+		//numbers
+		case "backlight_factor":
+		case "reflection_factor":
+		case "reflection_fresnel":
+		case "velvet_exp":
+		case "velvet_additive":
+		case "normalmap_factor":
+		case "displacementmap_factor":
+		case "extra_factor":
+		//strings
+		//bools
+		case "specular_ontop":
+		case "normalmap_tangent":
+		case "reflection_specular":
+		case "use_scene_ambient":
+			this[i] = value; 
+			break;
+		//vectors
+		case "ambient":	
+		case "diffuse": 
+		case "emissive": 
+		case "velvet":
+		case "detail":
+		case "extra_color":
+			if(this[name].length == value.length)
+				this[name].set(value);
+			break;
+		case "extra_uniforms":
+			this.extra_uniforms = LS.cloneObject(value);
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+StandardMaterial.prototype.getProperties = function()
+{
+	//get from the regular material
+	var o = Material.prototype.getProperties.call(this);
+
+	//add some more
+	o.merge({
+		backlight_factor:"number",
+		reflection_factor:"number",
+		reflection_fresnel:"number",
+		velvet_exp:"number",
+
+		normalmap_factor:"number",
+		displacementmap_factor:"number",
+		extra_factor:"number",
+
+		ambient:"vec3",
+		diffuse:"vec3",
+		emissive:"vec3",
+		velvet:"vec3",
+		extra_color:"vec3",
+		detail:"vec3",
+
+		specular_ontop:"boolean",
+		normalmap_tangent:"boolean",
+		reflection_specular:"boolean",
+		use_scene_ambient:"boolean",
+		velvet_additive:"boolean"
+	});
+
+	return o;
 }
 
 LS.registerMaterialClass(StandardMaterial);
@@ -3706,7 +3839,7 @@ function SurfaceMaterial(o)
 	this._uniforms = {};
 	this._macros = {};
 
-	this.properties = [];
+	this.properties = []; //array of configurable properties
 	this.textures = {};
 	if(o) 
 		this.configure(o);
@@ -3816,6 +3949,77 @@ SurfaceMaterial.prototype.configure = function(o) {
 	this.computeCode();
 }
 
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+SurfaceMaterial.prototype.getProperties = function()
+{
+	var o = {
+		color:"vec3",
+		opacity:"number",
+		shader_name: "string",
+		blend_mode: "number",
+		code: "string"
+	};
+
+	//from this material
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		o[prop.name] = prop.type;
+	}	
+
+	return o;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+SurfaceMaterial.prototype.getProperty = function(name)
+{
+	if(this[name])
+		return this[name];
+
+	if( name.substr(0,4) == "tex_")
+		return this.textures[ name.substr(4) ];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name == name)
+			return prop.value;
+	}	
+
+	return null;
+}
+
+/**
+* assign a value to a property in a safe way
+* @method setProperty
+* @param {Object} object to configure from
+*/
+SurfaceMaterial.prototype.setProperty = function(name, value)
+{
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name != name)
+			continue;
+		prop.value = value;
+		return true;
+	}
+
+	return false;
+}
+
 
 SurfaceMaterial.prototype.getTextureChannels = function()
 {
@@ -3849,6 +4053,8 @@ SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
 			continue;
 
 		prop.value = texture;
+		if(this.textures)
+			this.textures[channel] = texture;
 		if(!channel)
 			break;
 	}
@@ -3857,6 +4063,7 @@ SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
 	if(texture.constructor == String && texture[0] != ":")
 		ResourcesManager.load(texture);
 }
+
 
 
 LS.extendClass( Material, SurfaceMaterial );
@@ -6513,14 +6720,15 @@ LS.MeshRenderer = MeshRenderer;
 
 function SkinnedMeshRenderer(o)
 {
-	this.cpu_skinning = true;
+	this.enabled = true;
+	this.cpu_skinning = false;
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
 	this.primitive = null;
 	this.two_sided = false;
-	this.factor = 1;
+	//this.factor = 1;
 
 	if(o)
 		this.configure(o);
@@ -6623,18 +6831,52 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+SkinnedMeshRenderer.mat_identity = mat4.create();
+
 SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 {
 	var node = Scene.getNode(name);
-	if(node)
-		return node.transform.getGlobalMatrixRef();
-	//console.log("bone not found :" + name);
-	return mat4.create();
+	if(!node)
+		return SkinnedMeshRenderer.mat_identity;
+	node._is_bone = true;
+	return node.transform.getGlobalMatrixRef();
 }
+
+SkinnedMeshRenderer.prototype.getBones = function(ref_mesh)
+{
+	//bone matrices
+	var bones = this._last_bones;
+
+	//reuse bone matrices
+	if(!this._last_bones || this._last_bones.length != ref_mesh.bones.length )
+	{
+		bones = this._last_bones = [];
+		for(var i = 0; i < ref_mesh.bones.length; ++i)
+			bones[i] = mat4.create();
+	}
+
+	for(var i = 0; i < ref_mesh.bones.length; ++i)
+	{
+		var m = bones[i]; //mat4.create();
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+
+		var inv = ref_mesh.bones[i][1];
+		mat4.multiply( m, mat, inv );
+		if(ref_mesh.bind_matrix)
+			mat4.multiply( m, m, ref_mesh.bind_matrix);
+
+		//bones[i].push( m ); //multiply by the inv bindpose matrix
+	}
+
+	return bones;
+}
+
+SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 {
 	var original_vertices = ref_mesh.getBuffer("vertices").data;
+
 	var weights = ref_mesh.getBuffer("weights").data;
 	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
 
@@ -6642,50 +6884,48 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	var vertices = vertices_buffer.data;
 
 	//bone matrices
-	var bones = [];
-	for(var i in ref_mesh.bones)
-	{
-		var m = mat4.create();
-		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+	var bones = this.getBones( ref_mesh );
+	if(bones.length == 0) //no bones found
+		return null;
 
-		var inv = ref_mesh.bones[i][1];
-		mat4.multiply( m, mat, inv );
-		mat4.multiply(m, m, ref_mesh.bind_matrix);
+	//var factor = this.factor; //for debug
 
-		bones.push( m ); //multiply by the inv bindpose matrix
-	}
-
-	var factor = this.factor; //for debug
-
-	//vertices
+	//apply skinning per vertex
 	var temp = vec3.create();
 	var ov_temp = vec3.create();
+	var temp_matrix = mat4.create();
 	for(var i = 0, l = vertices.length / 3; i < l; ++i)
 	{
 		var ov = original_vertices.subarray(i*3, i*3+3);
 		ov_temp.set(ov);
 		var b = bone_indices.subarray(i*4, i*4+4);
 		var w = weights.subarray(i*4, i*4+4);
-
 		var v = vertices.subarray(i*3, i*3+3);
-		v[0] = v[1] = v[2] = 0.0; //reset
 
 		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
 
-		mat4.multiplyVec3(v, bmat[0], ov_temp);
+		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
+		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
+		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
+		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
+		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
 
-		//*
+		mat4.multiplyVec3(v, temp_matrix, ov_temp);
+		//we could also multiply the normal but this is already superslow...
+
+		/* apply weights
+		v[0] = v[1] = v[2] = 0.0; //reset
+		mat4.multiplyVec3(v, bmat[0], ov_temp);
 		vec3.scale(v,v,w[0]);
 		for(var j = 1; j < 4; ++j)
 			if(w[j] > 0.0)
 			{
 				mat4.multiplyVec3(temp, bmat[j], ov_temp);
-				vec3.scale(temp, temp, w[j]);
-				vec3.add(v,v,temp);
+				vec3.scaleAndAdd(v, v, temp, w[j]);
 			}
 		//*/
 
-		if(factor != 1) vec3.lerp( v, ov, v, factor);
+		//if(factor != 1) vec3.lerp( v, ov, v, factor);
 	}
 
 	//upload
@@ -6710,7 +6950,12 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
-	if(this.cpu_skinning)
+	if(!this.enabled)
+	{
+		RI.setMesh(mesh, this.primitive);
+		delete RI.macros["USE_SKINNING"]; //just in case
+	}
+	else if(this.cpu_skinning)
 	{
 		if(!this._skinned_mesh || this._skinned_mesh._reference != mesh)
 		{
@@ -6732,9 +6977,26 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
 		RI.setMesh(this._skinned_mesh, this.primitive);
+		delete RI.macros["USE_SKINNING"]; //just in case
 	}
 	else
+	{
 		RI.setMesh(mesh, this.primitive);
+
+		//add skinning
+		RI.macros["USE_SKINNING"] = "";
+		var bones = this.getBones(mesh);
+		var size = bones.length * 16;
+		var u_bones = this._u_bones;
+		if(!u_bones || u_bones.length != size)
+			this._u_bones = u_bones = new Float32Array( size );
+		for(var i = 0; i < bones.length; i++)
+		{
+			mat4.transpose( bones[i], bones[i] );
+			u_bones.set( bones[i], i * 16 );
+		}
+		RI.uniforms["u_bones"] = u_bones;
+	}
 
 	//do not need to update
 	//RI.matrix.set( this._root.transform._global_matrix );
@@ -6749,7 +7011,9 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
-	RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
+
+	if(this.enabled)
+		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
 
 	instances.push(RI);
 	//return RI;
@@ -9308,7 +9572,7 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = "uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;";
-Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex = mix(vertex, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
+Spherize._code = "vec3 vn@ = normalize(vertex-u_spherize_center@); vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));";
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -9663,22 +9927,9 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.onExecute = function()
 	{
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
-
-		var mat = null;
-		if(node) //use material of the node
-			mat = node.getMaterial();
-		//if it has an input material
-		var slot = this.findInputSlot("Material");
-		if( slot != -1)
-			mat = this.getInputData(slot);
+		var mat = this.getMaterial();
 		if(!mat)
-			mat = new Material();
+			return;
 
 		//read inputs
 		for(var i in this.inputs)
@@ -9688,6 +9939,9 @@ if(typeof(LiteGraph) != "undefined")
 			if(v == undefined)
 				continue;
 
+			mat.setProperty(input.name, v);
+
+			/*
 			switch( input.name )
 			{
 				case "Alpha": mat.alpha = v; break;
@@ -9697,14 +9951,14 @@ if(typeof(LiteGraph) != "undefined")
 				case "Emissive": vec3.copy(mat.emissive,v); break;
 				case "UVs trans.": mat.uvs_matrix.set(v); break;
 				default:
-					if(input.name.substr(0,4) == "Tex.")
+					if(input.name.substr(0,4) == "tex_")
 					{
 						var channel = input.name.substr(4);
 						mat.setTexture(v, channel);
 					}
 					break;
 			}
-
+			*/
 		}
 
 		//write outputs
@@ -9713,7 +9967,8 @@ if(typeof(LiteGraph) != "undefined")
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
 				continue;
-
+			var v = mat.getProperty( output.name );
+			/*
 			var v;
 			switch( output.name )
 			{
@@ -9726,26 +9981,69 @@ if(typeof(LiteGraph) != "undefined")
 				case "UVs trans.": v = mat.uvs_matrix; break;
 				default: continue;
 			}
-			this.setOutputData(i, v );
+			*/
+			this.setOutputData( i, v );
 		}
 
 		//this.setOutputData(0, parseFloat( this.properties["value"] ) );
 	}
 
+	LGraphMaterial.prototype.getMaterial = function()
+	{
+		var node = this._node;
+		if(	this.properties.node_id )
+			node = Scene.getNode( this.properties.node_id );
+		if(!node)
+			node = this.graph._scenenode; //use the attached node
+
+		if(!node) 
+			return null;
+
+		var mat = null;
+
+		//if it has an input material, use that one
+		var slot = this.findInputSlot("Material");
+		if( slot != -1)
+			return this.getInputData(slot);
+
+		//otherwise return the node material
+		return node.getMaterial();
+	}
+
 	LGraphMaterial.prototype.onGetInputs = function()
 	{
+		var mat = this.getMaterial();
+		if(!mat) return;
+		var o = mat.getProperties();
+		var results = [["Material","Material"]];
+		for(var i in o)
+			results.push([i,o[i]]);
+		return results;
+
+		/*
 		var results = [["Material","Material"],["Alpha","number"],["Specular f.","number"],["Diffuse","color"],["Ambient","color"],["Emissive","color"],["UVs trans.","texmatrix"]];
 		for(var i in Material.TEXTURE_CHANNELS)
 			results.push(["Tex." + Material.TEXTURE_CHANNELS[i],"Texture"]);
 		return results;
+		*/
 	}
 
 	LGraphMaterial.prototype.onGetOutputs = function()
 	{
+		var mat = this.getMaterial();
+		if(!mat) return;
+		var o = mat.getProperties();
+		var results = [["Material","Material"]];
+		for(var i in o)
+			results.push([i,o[i]]);
+		return results;
+
+		/*
 		var results = [["Material","Material"],["Alpha","number"],["Specular f.","number"],["Diffuse","color"],["Ambient","color"],["Emissive","color"],["UVs trans.","texmatrix"]];
 		for(var i in Material.TEXTURE_CHANNELS)
 			results.push(["Tex." + Material.TEXTURE_CHANNELS[i],"Texture"]);
 		return results;
+		*/
 	}
 
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
@@ -13082,7 +13380,7 @@ var parserDAE = {
 			scene.root.animations = animations_name;
 		}
 
-		console.log(scene);
+		//console.log(scene);
 		return scene;
 	},
 
@@ -13359,10 +13657,10 @@ var parserDAE = {
 			if(xml.localName == "matrix")
 			{
 				var matrix = this.readContentAsFloats(xml);
-				console.log("Nodename: " + xmlnode.getAttribute("id"));
-				console.log(matrix);
+				//console.log("Nodename: " + xmlnode.getAttribute("id"));
+				//console.log(matrix);
 				this.transformMatrix(matrix, level == 0);
-				console.log(matrix);
+				//console.log(matrix);
 				return matrix;
 			}
 
@@ -13934,6 +14232,7 @@ var parserDAE = {
 
 			var pos = 0;
 			var remap = mesh._remap;
+			var max_bone = 0; //max bone affected
 
 			for(var i = 0; i < vcount.length; ++i)
 			{
@@ -13950,6 +14249,8 @@ var parserDAE = {
 				for(var j = 0; j < num_bones && j < 4; ++j)
 				{
 					b[j] = v[offset + j*2];
+					if(b[j] > max_bone) max_bone = b[j];
+
 					w[j] = weights_indexed_array[ v[offset + j*2 + 1] ];
 					sum += w[j];
 				}
@@ -13964,6 +14265,7 @@ var parserDAE = {
 
 				pos += num_bones * 2;
 			}
+
 
 			//remap: because vertices order is now changed after parsing the mesh
 			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
@@ -14001,6 +14303,10 @@ var parserDAE = {
 				final_weights.set( w, i*4);
 				final_bone_indices.set( b, i*4);
 			}
+
+			//console.log("Bones: ", joints.length, "Max bone: ", max_bone);
+			if(max_bone >= joints.length)
+				console.warning("Mesh uses higher bone index than bones found");
 
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;
@@ -14850,6 +15156,7 @@ SceneTree.prototype.serialize = function()
 
 SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 {
+	if(!url) return;
 	var that = this;
 	var nocache = ResourcesManager.getNoCache(true);
 	if(nocache)

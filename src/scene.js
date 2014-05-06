@@ -247,6 +247,7 @@ SceneTree.prototype.serialize = function()
 
 SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 {
+	if(!url) return;
 	var that = this;
 	var nocache = ResourcesManager.getNoCache(true);
 	if(nocache)

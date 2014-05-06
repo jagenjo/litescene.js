@@ -153,8 +153,46 @@
 		]]>
 	</snippet>
 
+	<snippet id="skinning">
+		<![CDATA[
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP" multipass="true" imports="true">
+				uniform mat4 u_bones[64];
+				attribute vec4 a_weights;
+				attribute vec4 a_bone_indices;
+
+				mat3 mat3_emu(mat4 m4) {
+				  return mat3(
+				      m4[0][0], m4[0][1], m4[0][2],
+				      m4[1][0], m4[1][1], m4[1][2],
+				      m4[2][0], m4[2][1], m4[2][2]);
+				}				
+
+				void applySkinning(inout vec4 position, inout vec3 normal)
+				{
+					/*
+					vec3 pos = (position * u_bones[ int(a_bone_indices.x) ]).xyz * a_weights.x;
+		        	pos += (position * u_bones[ int(a_bone_indices.y) ]).xyz * a_weights.y;
+		        	pos += (position * u_bones[ int(a_bone_indices.z) ]).xyz * a_weights.z;
+		        	pos += (position * u_bones[ int(a_bone_indices.w) ]).xyz * a_weights.w;
+		        	position.xyz = pos;
+		        	//*/
+
+		        	//*
+		        	//toji version seems faster
+		        	mat4 result = a_weights.x * u_bones[ int(a_bone_indices.x) ];
+		        	result = result + a_weights.y * u_bones[ int(a_bone_indices.y) ];
+		        	result = result + a_weights.z * u_bones[ int(a_bone_indices.z) ];
+		        	result = result + a_weights.w * u_bones[ int(a_bone_indices.w) ];
+		        	position.xyz = (position * result).xyz;
+		        	normal = normal * mat3_emu(result);
+		        	//*/
+		        	
+				}
+		]]>
+	</snippet>	
+
+
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -194,6 +232,8 @@
 			//varying vec3 v_tangent;
 			varying vec2 v_uvs;
 
+			uniform float u_time;			
+
 			varying vec4 v_screenpos; //used for projective textures
 			uniform vec3 u_camera_eye;
 
@@ -201,6 +241,10 @@
 				uniform mat4 u_lightMatrix;
 				varying vec4 v_light_coord;
 			#endif			
+
+			#ifdef USE_SKINNING
+				#import "skinning"
+			#endif
 
 			#ifdef USE_VERTEX_SHADER_UNIFORMS
 				USE_VERTEX_SHADER_UNIFORMS
@@ -240,6 +284,12 @@
 
 				//position
 				vec4 vertex4 = vec4(vertex,1.0);
+				vec3 normal = v_normal;
+
+				#ifdef USE_SKINNING
+					applySkinning(vertex4, normal);
+				#endif
+
 
 				gl_Position =  u_mvp * vertex4;
 				v_local_pos = vertex;
@@ -247,8 +297,8 @@
 				v_screenpos = gl_Position;
 
 				//normal
-				v_local_normal = v_normal;
-				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
+				v_local_normal = normal;
+				v_normal = (u_normal_model * vec4(normal,1.0)).xyz;
 
 				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
 					v_light_coord = (u_lightMatrix) * vertex4;
@@ -809,7 +859,7 @@
 			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
 			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
 			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
-			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE
+			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING
 		</macros>
 		<code type="vertex_shader">
 		<![CDATA[
@@ -868,6 +918,10 @@
 				varying vec4 v_light_coord;
 			#endif
 
+			#ifdef USE_SKINNING
+				#import "skinning"
+			#endif			
+
 			#ifdef USE_VERTEX_SHADER_UNIFORMS
 				USE_VERTEX_SHADER_UNIFORMS
 			#endif
@@ -878,7 +932,7 @@
 
 			void main() {
 
-				vec3 vertex = a_vertex;
+				vec4 vertex4 = vec4(a_vertex,1.0);
 
 				#ifdef NO_NORMALS
 					v_normal = vec3(0.,1.,0.);
@@ -910,13 +964,17 @@
 
 				v_uvs_transformed = (u_texture_matrix * vec3(v_uvs,1.0)).xy;
 
+				#ifdef USE_SKINNING
+					applySkinning(vertex4, v_normal);
+				#endif				
+
 				#ifdef USE_VERTEX_SHADER_CODE
 					USE_VERTEX_SHADER_CODE
 				#endif
 
 
 				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
-					v_light_coord = (u_lightMatrix) * vec4(vertex,1.0);
+					v_light_coord = (u_lightMatrix) * vertex4;
 				#endif
 
 				#ifdef USE_DISPLACEMENT_TEXTURE
@@ -928,15 +986,15 @@
 					#ifdef USE_DISPLACEMENTMAP_FACTOR
 						height *= u_displacementmap_factor;
 					#endif
-					vertex += v_normal * height;
+					vertex4.xyz += v_normal * height;
 				#endif
 
 
 				//position
-				gl_Position =  u_mvp * vec4(vertex,1.0);
+				gl_Position =  u_mvp * vertex4;
 				//gl_Position.xy = (v_uvs * 2.0 - 1.0) * gl_Position.w ; // lightmapping
-				v_local_pos = vertex;
-				v_pos = (u_model * vec4(vertex,1.0)).xyz;
+				v_local_pos = vertex4.xyz;
+				v_pos = (u_model * vertex4).xyz;
 				v_screenpos = gl_Position;
 
 				//normal
@@ -1231,7 +1289,7 @@
 
 				#ifdef USE_DETAIL_TEXTURE
 					vec3 detail_tex = texture2D(detail_texture,uvs_0 * u_detail_info.yz).xyz;
-					color += (detail_tex - vec3(0.5)) * u_detail_info.x;
+					color = color + color * (detail_tex - vec3(0.5)) * u_detail_info.x;
 				#endif
 
 				//lighting calculation
@@ -1518,7 +1576,7 @@
 		</code>
 	</shader>
 
-	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS"  multipass="true">
+	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS,USE_SKINNING"  multipass="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1537,6 +1595,10 @@
 				attribute vec4 a_color;
 				varying vec4 v_color;
 			#endif
+
+			#ifdef USE_SKINNING
+				#import "skinning"
+			#endif				
 
 			uniform vec2 u_specular;
 			uniform vec3 u_ambient_color;
@@ -1579,9 +1641,15 @@
 					vec3 N = normalize((u_normal_model * vec4(a_normal,1.0)).xyz);
 				#endif
 
+				vec4 vertex4 = vec4(a_vertex,1.0);
+
+				#ifdef USE_SKINNING
+					applySkinning(vertex4, N);
+				#endif					
+
 				//mat4 mvp = (u_viewprojection * u_model);
-				gl_Position =  u_mvp * vec4(a_vertex,1.0);
-				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;
+				gl_Position =  u_mvp * vertex4;
+				v_pos = (u_model * vertex4).xyz;
 				v_screenpos = gl_Position;
 
 				float spec_factor = u_specular.x;
@@ -1760,7 +1828,7 @@
 		</code>
 	</shader>
 
-	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_LINEAR_DISTANCE,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE">
+	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_LINEAR_DISTANCE,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1780,6 +1848,10 @@
 			uniform mat4 u_model;
 			varying vec4 pos;
 			varying vec3 world_pos;
+
+			#ifdef USE_SKINNING
+				#import "skinning"
+			#endif
 
 			#ifdef USE_VERTEX_SHADER_UNIFORMS
 				USE_VERTEX_SHADER_UNIFORMS
@@ -1803,18 +1875,23 @@
 					v_uvs_transformed = (u_texture_matrix * vec3(v_uvs,1.0)).xy;
 				#endif
 
-				vec3 vertex = a_vertex;
+				vec4 vertex4 = vec4(a_vertex,1.0);
+
 				vec3 v_normal; //not used but needed in case the deformer affects it
+
+				#ifdef USE_SKINNING
+					applySkinning(vertex4, v_normal);
+				#endif	
 
 				#ifdef USE_VERTEX_SHADER_CODE
 					USE_VERTEX_SHADER_CODE
 				#endif
 
 				#ifdef USE_LINEAR_DISTANCE
-					world_pos = (u_model * vec4(vertex,1.0)).xyz;
+					world_pos = (u_model * vertex4).xyz;
 				#endif
 
-				gl_Position = pos = u_mvp * vec4(vertex,1.0);
+				gl_Position = pos = u_mvp * vertex4;
 			}
 		]]>
 		</code>

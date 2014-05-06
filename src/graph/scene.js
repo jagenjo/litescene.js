@@ -177,22 +177,9 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.onExecute = function()
 	{
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
-
-		var mat = null;
-		if(node) //use material of the node
-			mat = node.getMaterial();
-		//if it has an input material
-		var slot = this.findInputSlot("Material");
-		if( slot != -1)
-			mat = this.getInputData(slot);
+		var mat = this.getMaterial();
 		if(!mat)
-			mat = new Material();
+			return;
 
 		//read inputs
 		for(var i in this.inputs)
@@ -202,6 +189,9 @@ if(typeof(LiteGraph) != "undefined")
 			if(v == undefined)
 				continue;
 
+			mat.setProperty(input.name, v);
+
+			/*
 			switch( input.name )
 			{
 				case "Alpha": mat.alpha = v; break;
@@ -211,14 +201,14 @@ if(typeof(LiteGraph) != "undefined")
 				case "Emissive": vec3.copy(mat.emissive,v); break;
 				case "UVs trans.": mat.uvs_matrix.set(v); break;
 				default:
-					if(input.name.substr(0,4) == "Tex.")
+					if(input.name.substr(0,4) == "tex_")
 					{
 						var channel = input.name.substr(4);
 						mat.setTexture(v, channel);
 					}
 					break;
 			}
-
+			*/
 		}
 
 		//write outputs
@@ -227,7 +217,8 @@ if(typeof(LiteGraph) != "undefined")
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
 				continue;
-
+			var v = mat.getProperty( output.name );
+			/*
 			var v;
 			switch( output.name )
 			{
@@ -240,26 +231,69 @@ if(typeof(LiteGraph) != "undefined")
 				case "UVs trans.": v = mat.uvs_matrix; break;
 				default: continue;
 			}
-			this.setOutputData(i, v );
+			*/
+			this.setOutputData( i, v );
 		}
 
 		//this.setOutputData(0, parseFloat( this.properties["value"] ) );
 	}
 
+	LGraphMaterial.prototype.getMaterial = function()
+	{
+		var node = this._node;
+		if(	this.properties.node_id )
+			node = Scene.getNode( this.properties.node_id );
+		if(!node)
+			node = this.graph._scenenode; //use the attached node
+
+		if(!node) 
+			return null;
+
+		var mat = null;
+
+		//if it has an input material, use that one
+		var slot = this.findInputSlot("Material");
+		if( slot != -1)
+			return this.getInputData(slot);
+
+		//otherwise return the node material
+		return node.getMaterial();
+	}
+
 	LGraphMaterial.prototype.onGetInputs = function()
 	{
+		var mat = this.getMaterial();
+		if(!mat) return;
+		var o = mat.getProperties();
+		var results = [["Material","Material"]];
+		for(var i in o)
+			results.push([i,o[i]]);
+		return results;
+
+		/*
 		var results = [["Material","Material"],["Alpha","number"],["Specular f.","number"],["Diffuse","color"],["Ambient","color"],["Emissive","color"],["UVs trans.","texmatrix"]];
 		for(var i in Material.TEXTURE_CHANNELS)
 			results.push(["Tex." + Material.TEXTURE_CHANNELS[i],"Texture"]);
 		return results;
+		*/
 	}
 
 	LGraphMaterial.prototype.onGetOutputs = function()
 	{
+		var mat = this.getMaterial();
+		if(!mat) return;
+		var o = mat.getProperties();
+		var results = [["Material","Material"]];
+		for(var i in o)
+			results.push([i,o[i]]);
+		return results;
+
+		/*
 		var results = [["Material","Material"],["Alpha","number"],["Specular f.","number"],["Diffuse","color"],["Ambient","color"],["Emissive","color"],["UVs trans.","texmatrix"]];
 		for(var i in Material.TEXTURE_CHANNELS)
 			results.push(["Tex." + Material.TEXTURE_CHANNELS[i],"Texture"]);
 		return results;
+		*/
 	}
 
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );

@@ -23,7 +23,7 @@ function SurfaceMaterial(o)
 	this._uniforms = {};
 	this._macros = {};
 
-	this.properties = [];
+	this.properties = []; //array of configurable properties
 	this.textures = {};
 	if(o) 
 		this.configure(o);
@@ -133,6 +133,77 @@ SurfaceMaterial.prototype.configure = function(o) {
 	this.computeCode();
 }
 
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+SurfaceMaterial.prototype.getProperties = function()
+{
+	var o = {
+		color:"vec3",
+		opacity:"number",
+		shader_name: "string",
+		blend_mode: "number",
+		code: "string"
+	};
+
+	//from this material
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		o[prop.name] = prop.type;
+	}	
+
+	return o;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+SurfaceMaterial.prototype.getProperty = function(name)
+{
+	if(this[name])
+		return this[name];
+
+	if( name.substr(0,4) == "tex_")
+		return this.textures[ name.substr(4) ];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name == name)
+			return prop.value;
+	}	
+
+	return null;
+}
+
+/**
+* assign a value to a property in a safe way
+* @method setProperty
+* @param {Object} object to configure from
+*/
+SurfaceMaterial.prototype.setProperty = function(name, value)
+{
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name != name)
+			continue;
+		prop.value = value;
+		return true;
+	}
+
+	return false;
+}
+
 
 SurfaceMaterial.prototype.getTextureChannels = function()
 {
@@ -166,6 +237,8 @@ SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
 			continue;
 
 		prop.value = texture;
+		if(this.textures)
+			this.textures[channel] = texture;
 		if(!channel)
 			break;
 	}
@@ -174,6 +247,7 @@ SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
 	if(texture.constructor == String && texture[0] != ":")
 		ResourcesManager.load(texture);
 }
+
 
 
 LS.extendClass( Material, SurfaceMaterial );

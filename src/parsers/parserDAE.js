@@ -56,7 +56,7 @@ var parserDAE = {
 			scene.root.animations = animations_name;
 		}
 
-		console.log(scene);
+		//console.log(scene);
 		return scene;
 	},
 
@@ -333,10 +333,10 @@ var parserDAE = {
 			if(xml.localName == "matrix")
 			{
 				var matrix = this.readContentAsFloats(xml);
-				console.log("Nodename: " + xmlnode.getAttribute("id"));
-				console.log(matrix);
+				//console.log("Nodename: " + xmlnode.getAttribute("id"));
+				//console.log(matrix);
 				this.transformMatrix(matrix, level == 0);
-				console.log(matrix);
+				//console.log(matrix);
 				return matrix;
 			}
 
@@ -908,6 +908,7 @@ var parserDAE = {
 
 			var pos = 0;
 			var remap = mesh._remap;
+			var max_bone = 0; //max bone affected
 
 			for(var i = 0; i < vcount.length; ++i)
 			{
@@ -924,6 +925,8 @@ var parserDAE = {
 				for(var j = 0; j < num_bones && j < 4; ++j)
 				{
 					b[j] = v[offset + j*2];
+					if(b[j] > max_bone) max_bone = b[j];
+
 					w[j] = weights_indexed_array[ v[offset + j*2 + 1] ];
 					sum += w[j];
 				}
@@ -938,6 +941,7 @@ var parserDAE = {
 
 				pos += num_bones * 2;
 			}
+
 
 			//remap: because vertices order is now changed after parsing the mesh
 			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
@@ -975,6 +979,10 @@ var parserDAE = {
 				final_weights.set( w, i*4);
 				final_bone_indices.set( b, i*4);
 			}
+
+			//console.log("Bones: ", joints.length, "Max bone: ", max_bone);
+			if(max_bone >= joints.length)
+				console.warning("Mesh uses higher bone index than bones found");
 
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;

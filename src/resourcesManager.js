@@ -714,7 +714,7 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 }
 
 //basic formats
-LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp", function(filename, data, options, callback) {
+LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", function(filename, data, options, callback) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
 	var mimetype = 'image/png';
@@ -722,6 +722,8 @@ LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp", function(f
 		mimetype = "image/jpg";
 	if(extension == "webp")
 		mimetype = "image/webp";
+	if(extension == "gif")
+		mimetype = "image/gif";
 
 	var blob = new Blob([data],{type: mimetype});
 	var objectURL = URL.createObjectURL(blob);
@@ -782,7 +784,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 	return mesh;
 }
 
-LS.ResourcesManager.registerResourcePreProcessor("obj", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
+LS.ResourcesManager.registerResourcePreProcessor("obj,ase", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
@@ -834,6 +836,15 @@ Mesh.fromBinary = function( data_array )
 	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
 	mesh.info = o.info;
 	mesh.bounding = o.bounding;
+	if(o.bones)
+	{
+		mesh.bones = o.bones;
+		//restore Float32array
+		for(var i = 0; i < mesh.bones.length; ++i)
+			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
+		if(o.bind_matrix)
+			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
+	}
 	
 	return mesh;
 }
@@ -850,6 +861,17 @@ Mesh.prototype.toBinary = function()
 		info: this.info,
 		groups: this.groups
 	};
+
+	if(this.bones)
+	{
+		var bones = [];
+		//convert to array
+		for(var i = 0; i < this.bones.length; ++i)
+			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
+		o.bones = bones;
+		if(this.bind_matrix)
+			o.bind_matrix = this.bind_matrix;
+	}
 
 	//bounding box
 	if(!this.bounding)	
@@ -880,6 +902,8 @@ Mesh.prototype.toBinary = function()
 	o.index_buffers = index_buffers;
 
 	//create pack file
-	return WBin.create(o, "Mesh");
+	var bin = WBin.create(o, "Mesh");
+
+	return bin;
 }
 

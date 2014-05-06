@@ -1,14 +1,15 @@
 
 function SkinnedMeshRenderer(o)
 {
-	this.cpu_skinning = true;
+	this.enabled = true;
+	this.cpu_skinning = false;
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
 	this.primitive = null;
 	this.two_sided = false;
-	this.factor = 1;
+	//this.factor = 1;
 
 	if(o)
 		this.configure(o);
@@ -111,18 +112,52 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+SkinnedMeshRenderer.mat_identity = mat4.create();
+
 SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 {
 	var node = Scene.getNode(name);
-	if(node)
-		return node.transform.getGlobalMatrixRef();
-	//console.log("bone not found :" + name);
-	return mat4.create();
+	if(!node)
+		return SkinnedMeshRenderer.mat_identity;
+	node._is_bone = true;
+	return node.transform.getGlobalMatrixRef();
 }
+
+SkinnedMeshRenderer.prototype.getBones = function(ref_mesh)
+{
+	//bone matrices
+	var bones = this._last_bones;
+
+	//reuse bone matrices
+	if(!this._last_bones || this._last_bones.length != ref_mesh.bones.length )
+	{
+		bones = this._last_bones = [];
+		for(var i = 0; i < ref_mesh.bones.length; ++i)
+			bones[i] = mat4.create();
+	}
+
+	for(var i = 0; i < ref_mesh.bones.length; ++i)
+	{
+		var m = bones[i]; //mat4.create();
+		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+
+		var inv = ref_mesh.bones[i][1];
+		mat4.multiply( m, mat, inv );
+		if(ref_mesh.bind_matrix)
+			mat4.multiply( m, m, ref_mesh.bind_matrix);
+
+		//bones[i].push( m ); //multiply by the inv bindpose matrix
+	}
+
+	return bones;
+}
+
+SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
 
 SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 {
 	var original_vertices = ref_mesh.getBuffer("vertices").data;
+
 	var weights = ref_mesh.getBuffer("weights").data;
 	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
 
@@ -130,50 +165,48 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	var vertices = vertices_buffer.data;
 
 	//bone matrices
-	var bones = [];
-	for(var i in ref_mesh.bones)
-	{
-		var m = mat4.create();
-		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+	var bones = this.getBones( ref_mesh );
+	if(bones.length == 0) //no bones found
+		return null;
 
-		var inv = ref_mesh.bones[i][1];
-		mat4.multiply( m, mat, inv );
-		mat4.multiply(m, m, ref_mesh.bind_matrix);
+	//var factor = this.factor; //for debug
 
-		bones.push( m ); //multiply by the inv bindpose matrix
-	}
-
-	var factor = this.factor; //for debug
-
-	//vertices
+	//apply skinning per vertex
 	var temp = vec3.create();
 	var ov_temp = vec3.create();
+	var temp_matrix = mat4.create();
 	for(var i = 0, l = vertices.length / 3; i < l; ++i)
 	{
 		var ov = original_vertices.subarray(i*3, i*3+3);
 		ov_temp.set(ov);
 		var b = bone_indices.subarray(i*4, i*4+4);
 		var w = weights.subarray(i*4, i*4+4);
-
 		var v = vertices.subarray(i*3, i*3+3);
-		v[0] = v[1] = v[2] = 0.0; //reset
 
 		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
 
-		mat4.multiplyVec3(v, bmat[0], ov_temp);
+		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
+		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
+		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
+		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
+		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
 
-		//*
+		mat4.multiplyVec3(v, temp_matrix, ov_temp);
+		//we could also multiply the normal but this is already superslow...
+
+		/* apply weights
+		v[0] = v[1] = v[2] = 0.0; //reset
+		mat4.multiplyVec3(v, bmat[0], ov_temp);
 		vec3.scale(v,v,w[0]);
 		for(var j = 1; j < 4; ++j)
 			if(w[j] > 0.0)
 			{
 				mat4.multiplyVec3(temp, bmat[j], ov_temp);
-				vec3.scale(temp, temp, w[j]);
-				vec3.add(v,v,temp);
+				vec3.scaleAndAdd(v, v, temp, w[j]);
 			}
 		//*/
 
-		if(factor != 1) vec3.lerp( v, ov, v, factor);
+		//if(factor != 1) vec3.lerp( v, ov, v, factor);
 	}
 
 	//upload
@@ -198,7 +231,12 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
-	if(this.cpu_skinning)
+	if(!this.enabled)
+	{
+		RI.setMesh(mesh, this.primitive);
+		delete RI.macros["USE_SKINNING"]; //just in case
+	}
+	else if(this.cpu_skinning)
 	{
 		if(!this._skinned_mesh || this._skinned_mesh._reference != mesh)
 		{
@@ -220,9 +258,26 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
 		RI.setMesh(this._skinned_mesh, this.primitive);
+		delete RI.macros["USE_SKINNING"]; //just in case
 	}
 	else
+	{
 		RI.setMesh(mesh, this.primitive);
+
+		//add skinning
+		RI.macros["USE_SKINNING"] = "";
+		var bones = this.getBones(mesh);
+		var size = bones.length * 16;
+		var u_bones = this._u_bones;
+		if(!u_bones || u_bones.length != size)
+			this._u_bones = u_bones = new Float32Array( size );
+		for(var i = 0; i < bones.length; i++)
+		{
+			mat4.transpose( bones[i], bones[i] );
+			u_bones.set( bones[i], i * 16 );
+		}
+		RI.uniforms["u_bones"] = u_bones;
+	}
 
 	//do not need to update
 	//RI.matrix.set( this._root.transform._global_matrix );
@@ -237,7 +292,9 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	RI.applyNodeFlags();
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
-	RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
+
+	if(this.enabled)
+		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
 
 	instances.push(RI);
 	//return RI;

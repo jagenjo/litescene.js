@@ -36,7 +36,7 @@ function StandardMaterial(o)
 	this.velvet = new Float32Array([0.5,0.5,0.5]);
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
-	this.detail = [0.0,10,10];
+	this.detail = new Float32Array([0.0, 10, 10]);
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.extra_factor = 0.0; //used for debug and dev
 	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
@@ -224,66 +224,91 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 }
 
 /**
-* Configure the material getting the info from the object
-* @method configure
+* assign a value to a property in a safe way
+* @method setProperty
 * @param {Object} object to configure from
 */
-StandardMaterial.prototype.configure = function(o)
+StandardMaterial.prototype.setProperty = function(name, value)
 {
-	//cloneObject(o, this);
-	for(var i in o)
-	{
-		var v = o[i];
-		var r = null;
-		switch(i)
-		{
-			//numbers
-			case "opacity": 
-			case "backlight_factor":
-			case "specular_factor":
-			case "specular_gloss":
-			case "reflection_factor":
-			case "reflection_fresnel":
-			case "velvet_exp":
-			case "velvet_additive":
-			case "blend_mode":
-			case "normalmap_factor":
-			case "displacementmap_factor":
-			case "extra_factor":
-			//strings
-			case "shader_name":
-			//bools
-			case "specular_ontop":
-			case "normalmap_tangent":
-			case "reflection_specular":
-			case "use_scene_ambient":
-				r = v; 
-				break;
-			//vectors
-			case "color": 
-			case "ambient":	
-			case "diffuse": 
-			case "emissive": 
-			case "velvet":
-			case "detail":
-			case "extra_color":
-				r = new Float32Array(v); 
-				break;
-			case "textures":
-				this.textures = o.textures;
-				continue;
-			case "transparency": //special cases
-				this.opacity = 1 - v;
-			case "extra_uniforms":
-				this.extra_uniforms = LS.cloneObject(v);
-			default:
-				continue;
-		}
-		this[i] = r;
-	}
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
 
-	if(o.uvs_matrix && o.uvs_matrix.length == 9)
-		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	//regular
+	switch(name)
+	{
+		//numbers
+		case "backlight_factor":
+		case "reflection_factor":
+		case "reflection_fresnel":
+		case "velvet_exp":
+		case "velvet_additive":
+		case "normalmap_factor":
+		case "displacementmap_factor":
+		case "extra_factor":
+		//strings
+		//bools
+		case "specular_ontop":
+		case "normalmap_tangent":
+		case "reflection_specular":
+		case "use_scene_ambient":
+			this[i] = value; 
+			break;
+		//vectors
+		case "ambient":	
+		case "diffuse": 
+		case "emissive": 
+		case "velvet":
+		case "detail":
+		case "extra_color":
+			if(this[name].length == value.length)
+				this[name].set(value);
+			break;
+		case "extra_uniforms":
+			this.extra_uniforms = LS.cloneObject(value);
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+StandardMaterial.prototype.getProperties = function()
+{
+	//get from the regular material
+	var o = Material.prototype.getProperties.call(this);
+
+	//add some more
+	o.merge({
+		backlight_factor:"number",
+		reflection_factor:"number",
+		reflection_fresnel:"number",
+		velvet_exp:"number",
+
+		normalmap_factor:"number",
+		displacementmap_factor:"number",
+		extra_factor:"number",
+
+		ambient:"vec3",
+		diffuse:"vec3",
+		emissive:"vec3",
+		velvet:"vec3",
+		extra_color:"vec3",
+		detail:"vec3",
+
+		specular_ontop:"boolean",
+		normalmap_tangent:"boolean",
+		reflection_specular:"boolean",
+		use_scene_ambient:"boolean",
+		velvet_additive:"boolean"
+	});
+
+	return o;
 }
 
 LS.registerMaterialClass(StandardMaterial);

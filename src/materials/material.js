@@ -252,7 +252,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 */
 Material.prototype.configure = function(o)
 {
-	//cloneObject(o, this);
+	for(var i in o)
+		this.setProperty( i, o[i] );
+
+	/*	//cloneObject(o, this);
 	for(var i in o)
 	{
 		var v = o[i];
@@ -287,6 +290,7 @@ Material.prototype.configure = function(o)
 
 	if(o.uvs_matrix && o.uvs_matrix.length == 9)
 		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	*/
 }
 
 /**
@@ -309,7 +313,7 @@ Material.prototype.serialize = function()
 */
 Material.prototype.clone = function()
 {
-	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
+	return new this.constructor( JSON.parse( JSON.stringify( this.serialize() )) );
 }
 
 /**
@@ -345,9 +349,89 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 }
 
 /**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperties = function()
+{
+	var o = {
+		color:"vec3",
+		opacity:"number",
+		shader_name: "string",
+		blend_mode: "number",
+		specular_factor:"number",
+		specular_gloss:"number",
+		uvs_matrix:"mat3"
+	};
+
+	var textures = this.getTextureChannels();
+	for(var i in textures)
+		o["tex_" + i] = "Texture";
+	return o;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperty = function(name)
+{
+	if(name.substr(0,4) == "tex_")
+		return this.textures[ name.substr(4) ];
+	return this[name];
+}
+
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.setProperty = function(name, value)
+{
+	if(name.substr(0,4) == "tex_")
+	{
+		this.textures[ name.substr(4) ] = value;
+		return true;
+	}
+
+	switch(name)
+	{
+		//numbers
+		case "opacity": 
+		case "specular_factor":
+		case "specular_gloss":
+		case "reflection": 
+		case "blend_mode":
+		//strings
+		case "shader_name":
+		//bools
+			this[name] = value; 
+			break;
+		//vectors
+		case "uvs_matrix":
+		case "color": 
+			if(this[name].length == value.length)
+				this[name].set( value );
+			break;
+		case "textures":
+			this.textures = cloneObject(value);
+			break;
+		case "transparency": //special cases
+			this.opacity = 1 - value;
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
 * gets all the texture channels supported by this material
 * @method getTextureChannels
-* @return {Array} array with the name of every channel
+* @return {Array} array with the name of every channel supported by this material
 */
 Material.prototype.getTextureChannels = function()
 {
