@@ -51,7 +51,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + getTime() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -159,6 +159,30 @@ var ResourcesManager = {
 		}
 	},	
 
+	getFullURL: function( url, options )
+	{
+		var full_url = "";
+		if(url.substr(0,7) == "http://")
+		{
+			full_url = url;
+			if(this.proxy) //proxy external files
+				full_url = this.proxy + url.substr(7);
+		}
+		else
+		{
+			if(options && options.local_repository)
+				full_url = options.local_repository + "/" + url;
+			else
+				full_url = this.path + url;
+		}
+
+		//you can ignore the resources server for some assets if you want
+		if(options && options.force_local_url)
+			full_url = url;
+
+		return full_url;
+	},
+
 	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
 	*
@@ -203,25 +227,7 @@ var ResourcesManager = {
 			LEvent.trigger(ResourcesManager,"start_loading_resources",url);
 		this.num_resources_being_loaded++;
 
-
-		var full_url = "";
-		if(url.substr(0,7) == "http://")
-		{
-			full_url = url;
-			if(this.proxy) //proxy external files
-				full_url = this.proxy + url.substr(7);
-		}
-		else
-		{
-			if(options.local_repository)
-				full_url = options.local_repository + "/" + url;
-			else
-				full_url = this.path + url;
-		}
-
-		//you can ignore the resources server for some assets if you want
-		if(options.force_local_url)
-			full_url = url;
+		var full_url = this.getFullURL(url);
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();

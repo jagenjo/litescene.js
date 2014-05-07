@@ -73,12 +73,12 @@ CustomMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 CustomMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
-	var samplers = [];
+	var samplers = {};
 	for(var i in this.textures) 
 	{
 		var texture = this.getTexture(i);
 		if(!texture) continue;
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 	}
 
 	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);

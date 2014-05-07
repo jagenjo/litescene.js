@@ -59,7 +59,7 @@ var ShadersManager = {
 		if (global == null)
 			return this.default_shader;
 
-		var key = id;
+		var key = id + ":";
 		var extracode = "";
 
 		if(global.num_macros != 0)
@@ -135,15 +135,19 @@ var ShadersManager = {
 			{
 				console.error("Error compiling shader: " + name);
 				console.log(err);
-				console.log("VS CODE\n************");
+				console.groupCollapsed("Vertex Shader Code");
+				//console.log("VS CODE\n************");
 				var lines = (this.global_extra_code + vs_code).split("\n");
 				for(var i in lines)
 					console.log(i + ": " + lines[i]);
+				console.groupEnd();
 
-				console.log("PS CODE\n************");
+				console.groupCollapsed("Fragment Shader Code");
+				//console.log("PS CODE\n************");
 				lines = (this.global_extra_code + ps_code).split("\n");
 				for(var i in lines)
 					console.log(i + ": " + lines[i]);
+				console.groupEnd();
 				this.dump_compile_errors = false; //disable so the console dont get overflowed
 			}
 
@@ -173,7 +177,7 @@ var ShadersManager = {
 	//loads some shaders from an XML
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
-		var nocache = ignore_cache ? "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000) : "";
+		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
 		LS.request({
 		  url: url + nocache,
 		  dataType: 'xml',

@@ -189,6 +189,9 @@ if(typeof(LiteGraph) != "undefined")
 			if(v == undefined)
 				continue;
 
+			if(input.name == "Material")
+				continue;
+
 			mat.setProperty(input.name, v);
 
 			/*

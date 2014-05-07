@@ -546,7 +546,7 @@ SceneTree.prototype.start = function()
 	if(this._state == "running") return;
 
 	this._state = "running";
-	this._start_time = window.performance.now() * 0.001;
+	this._start_time = getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.triggerInNodes("start");
 }
@@ -654,7 +654,7 @@ SceneTree.prototype.update = function(dt)
 {
 	LEvent.trigger(this,"beforeUpdate", this);
 
-	this._global_time = window.performance.now() * 0.001;
+	this._global_time = getTime() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 

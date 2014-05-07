@@ -30,7 +30,7 @@ Rotator.prototype.onRemoveFromNode = function(node)
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
-	var scene = this._root._on_scene;
+	var scene = this._root._in_tree;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();

@@ -149,7 +149,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
@@ -176,7 +176,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
@@ -243,6 +243,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "reflection_fresnel":
 		case "velvet_exp":
 		case "velvet_additive":
+		case "normalmap_tangent":
 		case "normalmap_factor":
 		case "displacementmap_factor":
 		case "extra_factor":
@@ -252,7 +253,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
-			this[i] = value; 
+			this[name] = value; 
 			break;
 		//vectors
 		case "ambient":	

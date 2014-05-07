@@ -67,9 +67,10 @@ function RenderInstance(node, component)
 	//info about the material
 	this.material = null;
 
-	//globals, never reseted
+	//for extra data for the shader
 	this.macros = {};
 	this.uniforms = {};
+	this.samplers = {};
 }
 
 

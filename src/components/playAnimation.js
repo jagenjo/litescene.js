@@ -1,5 +1,5 @@
 /**
-* Moves objects acording to animation
+* Reads animation tracks from an Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
 * @constructor
 * @param {String} object to configure from
@@ -15,13 +15,14 @@ function PlayAnimation(o)
 	this.play = true;
 	this.current_time = 0;
 
+	this.disabled_tracks = {};
+
 	if(o)
 		this.configure(o);
 }
 
 PlayAnimation["@animation"] = { widget: "resource" };
 PlayAnimation["@mode"] = { type:"enum", values: ["loop","pingpong","once"] };
-
 
 PlayAnimation.prototype.configure = function(o)
 {
@@ -61,7 +62,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	var take = animation.takes[ this.take ];
 	if(!take) return;
 
-	take.actionPerSample( this.current_time, this._processSample );
+	take.actionPerSample( this.current_time, this._processSample, { disabled_tracks: this.disabled_tracks } );
 	Scene.refresh();
 }
 

@@ -118,7 +118,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		{
 			var texture = LS.getTexture( prop.value );
 			if(!texture) continue;
-			samplers.push([prop.name, texture]);
+			samplers[prop.name] = texture;
 		}
 		else
 			this._uniforms[ prop.name ] = prop.value;

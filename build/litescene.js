@@ -1150,6 +1150,7 @@ Object.defineProperty(Object.prototype, "merge", {
     value: function(v) {
         for(var i in v)
 			this[i] = v[i];
+		return this;
     },
     configurable: true,
     writable: false,
@@ -1626,7 +1627,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + window.performance.now() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache && !force) ? "" : "nocache=" + getTime() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -1734,6 +1735,30 @@ var ResourcesManager = {
 		}
 	},	
 
+	getFullURL: function( url, options )
+	{
+		var full_url = "";
+		if(url.substr(0,7) == "http://")
+		{
+			full_url = url;
+			if(this.proxy) //proxy external files
+				full_url = this.proxy + url.substr(7);
+		}
+		else
+		{
+			if(options && options.local_repository)
+				full_url = options.local_repository + "/" + url;
+			else
+				full_url = this.path + url;
+		}
+
+		//you can ignore the resources server for some assets if you want
+		if(options && options.force_local_url)
+			full_url = url;
+
+		return full_url;
+	},
+
 	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
 	*
@@ -1778,25 +1803,7 @@ var ResourcesManager = {
 			LEvent.trigger(ResourcesManager,"start_loading_resources",url);
 		this.num_resources_being_loaded++;
 
-
-		var full_url = "";
-		if(url.substr(0,7) == "http://")
-		{
-			full_url = url;
-			if(this.proxy) //proxy external files
-				full_url = this.proxy + url.substr(7);
-		}
-		else
-		{
-			if(options.local_repository)
-				full_url = options.local_repository + "/" + url;
-			else
-				full_url = this.path + url;
-		}
-
-		//you can ignore the resources server for some assets if you want
-		if(options.force_local_url)
-			full_url = url;
+		var full_url = this.getFullURL(url);
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
@@ -2544,7 +2551,7 @@ var ShadersManager = {
 		if (global == null)
 			return this.default_shader;
 
-		var key = id;
+		var key = id + ":";
 		var extracode = "";
 
 		if(global.num_macros != 0)
@@ -2620,15 +2627,19 @@ var ShadersManager = {
 			{
 				console.error("Error compiling shader: " + name);
 				console.log(err);
-				console.log("VS CODE\n************");
+				console.groupCollapsed("Vertex Shader Code");
+				//console.log("VS CODE\n************");
 				var lines = (this.global_extra_code + vs_code).split("\n");
 				for(var i in lines)
 					console.log(i + ": " + lines[i]);
+				console.groupEnd();
 
-				console.log("PS CODE\n************");
+				console.groupCollapsed("Fragment Shader Code");
+				//console.log("PS CODE\n************");
 				lines = (this.global_extra_code + ps_code).split("\n");
 				for(var i in lines)
 					console.log(i + ": " + lines[i]);
+				console.groupEnd();
 				this.dump_compile_errors = false; //disable so the console dont get overflowed
 			}
 
@@ -2658,7 +2669,7 @@ var ShadersManager = {
 	//loads some shaders from an XML
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
-		var nocache = ignore_cache ? "?nocache=" + window.performance.now() + Math.floor(Math.random() * 1000) : "";
+		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
 		LS.request({
 		  url: url + nocache,
 		  dataType: 'xml',
@@ -3250,7 +3261,7 @@ Material.prototype.getProperties = function()
 
 	var textures = this.getTextureChannels();
 	for(var i in textures)
-		o["tex_" + i] = "Texture";
+		o["tex_" + textures[i]] = "Texture";
 	return o;
 }
 
@@ -3556,7 +3567,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
@@ -3583,7 +3594,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
@@ -3650,6 +3661,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "reflection_fresnel":
 		case "velvet_exp":
 		case "velvet_additive":
+		case "normalmap_tangent":
 		case "normalmap_factor":
 		case "displacementmap_factor":
 		case "extra_factor":
@@ -3659,7 +3671,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
-			this[i] = value; 
+			this[name] = value; 
 			break;
 		//vectors
 		case "ambient":	
@@ -3795,12 +3807,12 @@ CustomMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 CustomMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
-	var samplers = [];
+	var samplers = {};
 	for(var i in this.textures) 
 	{
 		var texture = this.getTexture(i);
 		if(!texture) continue;
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 	}
 
 	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
@@ -3934,7 +3946,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		{
 			var texture = LS.getTexture( prop.value );
 			if(!texture) continue;
-			samplers.push([prop.name, texture]);
+			samplers[prop.name] = texture;
 		}
 		else
 			this._uniforms[ prop.name ] = prop.value;
@@ -5089,16 +5101,18 @@ Transform.interpolate = function(a,b,factor, result)
 * @param {vec3} position
 * @param {vec3} target
 * @param {vec3} up
+* @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
-Transform.prototype.lookAt = function(pos,target,up)
+Transform.prototype.lookAt = function(pos, target, up, in_world)
 {
 	var temp = mat4.create();
-	if(this._parent)
+	if(in_world && this._parent)
 	{
 		var M = this._parent.getGlobalMatrix();
-		pos = mat4.multiplyVec3(vec3.create(), M, pos);
-		target = mat4.multiplyVec3(vec3.create(), M,target);
-		up = mat4.multiplyVec3(vec3.create(), M,up);
+		var inv = mat4.invert(M,M);
+		pos = mat4.multiplyVec3(vec3.create(), inv, pos);
+		target = mat4.multiplyVec3(vec3.create(), inv,target);
+		up = mat4.rotateVec3(vec3.create(), inv, up );
 	}
 	mat4.lookAt(temp, pos, target, up);
 	mat4.invert(temp, temp);
@@ -6728,7 +6742,18 @@ function SkinnedMeshRenderer(o)
 	this.material = null;
 	this.primitive = null;
 	this.two_sided = false;
+	this.ignore_transform = true;
 	//this.factor = 1;
+
+	//check how many floats can we put in a uniform
+	if(!SkinnedMeshRenderer.num_supported_uniforms)
+	{
+		SkinnedMeshRenderer.num_supported_uniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
+		SkinnedMeshRenderer.num_supported_textures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
+		//check if GPU skinning is supported
+		if( SkinnedMeshRenderer.num_supported_uniforms < SkinnedMeshRenderer.MAX_BONES*3 && SkinnedMeshRenderer.num_supported_textures == 0)
+			SkinnedMeshRenderer.gpu_skinning_supported = false;
+	}
 
 	if(o)
 		this.configure(o);
@@ -6737,6 +6762,8 @@ function SkinnedMeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+SkinnedMeshRenderer.MAX_BONES = 64;
+SkinnedMeshRenderer.gpu_skinning_supported = true;
 SkinnedMeshRenderer.icon = "mini-icon-teapot.png";
 
 //vars
@@ -6833,7 +6860,7 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 
 SkinnedMeshRenderer.mat_identity = mat4.create();
 
-SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
+SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 {
 	var node = Scene.getNode(name);
 	if(!node)
@@ -6842,7 +6869,7 @@ SkinnedMeshRenderer.prototype.getBoneMatrix = function(name)
 	return node.transform.getGlobalMatrixRef();
 }
 
-SkinnedMeshRenderer.prototype.getBones = function(ref_mesh)
+SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 {
 	//bone matrices
 	var bones = this._last_bones;
@@ -6858,7 +6885,7 @@ SkinnedMeshRenderer.prototype.getBones = function(ref_mesh)
 	for(var i = 0; i < ref_mesh.bones.length; ++i)
 	{
 		var m = bones[i]; //mat4.create();
-		var mat = this.getBoneMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+		var mat = this.getNodeMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
 
 		var inv = ref_mesh.bones[i][1];
 		mat4.multiply( m, mat, inv );
@@ -6884,7 +6911,7 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	var vertices = vertices_buffer.data;
 
 	//bone matrices
-	var bones = this.getBones( ref_mesh );
+	var bones = this.getBoneMatrices( ref_mesh );
 	if(bones.length == 0) //no bones found
 		return null;
 
@@ -6953,9 +6980,58 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(!this.enabled)
 	{
 		RI.setMesh(mesh, this.primitive);
-		delete RI.macros["USE_SKINNING"]; //just in case
+		//remove the flags to avoid recomputing shaders
+		delete RI.macros["USE_SKINNING"]; 
+		delete RI.macros["USE_SKINNING_TEXTURE"];
+		delete RI.samplers["u_bones"];
 	}
-	else if(this.cpu_skinning)
+	else if( SkinnedMeshRenderer.gpu_skinning_supported && !this.cpu_skinning ) 
+	{
+		RI.setMesh(mesh, this.primitive);
+
+		//add skinning
+		RI.macros["USE_SKINNING"] = "";
+		
+		//retrieve all the bones
+		var bones = this.getBoneMatrices(mesh);
+		var bones_size = bones.length * 12;
+
+		var u_bones = this._u_bones;
+		if(!u_bones || u_bones.length != bones_size)
+			this._u_bones = u_bones = new Float32Array( bones_size );
+
+		//pack the bones in one single array (also skip the last row, is always 0,0,0,1)
+		for(var i = 0; i < bones.length; i++)
+		{
+			mat4.transpose( bones[i], bones[i] );
+			u_bones.set( bones[i].subarray(0,12), i * 12, (i+1) * 12 );
+		}
+
+		//can we pass the bones as a uniform?
+		if( SkinnedMeshRenderer.num_supported_uniforms >= bones_size )
+		{
+			//upload the bones as uniform (faster but doesnt work in all GPUs)
+			RI.uniforms["u_bones"] = u_bones;
+		}
+		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
+		{
+			var texture = this._bones_texture;
+			if(!texture)
+			{
+				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { no_flip: true, format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture._data = new Float32Array( texture.width * texture.height * 4 );
+			}
+
+			texture._data.set( u_bones );
+			texture.uploadData( texture._data );
+			RI.macros["USE_SKINNING_TEXTURE"] = "";
+			RI.samplers["u_bones"] = texture;
+		}
+		else
+			console.error("impossible to get here")
+
+	}
+	else //cpu skinning (mega slow)
 	{
 		if(!this._skinned_mesh || this._skinned_mesh._reference != mesh)
 		{
@@ -6977,30 +7053,18 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		//apply cpu skinning
 		this.applySkin(mesh, this._skinned_mesh);
 		RI.setMesh(this._skinned_mesh, this.primitive);
-		delete RI.macros["USE_SKINNING"]; //just in case
-	}
-	else
-	{
-		RI.setMesh(mesh, this.primitive);
-
-		//add skinning
-		RI.macros["USE_SKINNING"] = "";
-		var bones = this.getBones(mesh);
-		var size = bones.length * 16;
-		var u_bones = this._u_bones;
-		if(!u_bones || u_bones.length != size)
-			this._u_bones = u_bones = new Float32Array( size );
-		for(var i = 0; i < bones.length; i++)
-		{
-			mat4.transpose( bones[i], bones[i] );
-			u_bones.set( bones[i], i * 16 );
-		}
-		RI.uniforms["u_bones"] = u_bones;
+		//remove the flags to avoid recomputing shaders
+		delete RI.macros["USE_SKINNING"]; 
+		delete RI.macros["USE_SKINNING_TEXTURE"];
+		delete RI.samplers["u_bones"];
 	}
 
 	//do not need to update
 	//RI.matrix.set( this._root.transform._global_matrix );
-	this._root.transform.getGlobalMatrix(RI.matrix);
+	if(this.ignore_transform)
+		mat4.identity(RI.matrix);
+	else
+		this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	if(this.submesh_id != -1 && this.submesh_id != null)
@@ -7171,12 +7235,17 @@ LS.Skybox = Skybox;
 function BackgroundRenderer(o)
 {
 	this.texture = null;
+	this.color = vec3.fromValues(1,1,1);
+	this.material_name = null;
+
 	if(o)
 		this.configure(o);
 }
 
 BackgroundRenderer.icon = "mini-icon-teapot.png";
 BackgroundRenderer["@texture"] = { widget: "texture" };
+BackgroundRenderer["@color"] = { widget: "color" };
+BackgroundRenderer["@material_name"] = { widget: "material" };
 
 BackgroundRenderer.prototype.onAddedToNode = function(node)
 {
@@ -7197,25 +7266,36 @@ BackgroundRenderer.prototype.getResources = function(res)
 
 BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 {
-	var texture = this.texture;
-	if(!texture) return;
-	if(texture.constructor === String)
-		texture = LS.ResourcesManager.textures[texture];
+	var mat = null;
+
+	if( this.material_name )
+		mat = LS.ResourcesManager.materials[ this.material_name ];
+
+	if(!mat)
+	{
+		var texture = this.texture;
+		if(!texture) 
+			return;
+		if(texture.constructor === String)
+			texture = LS.ResourcesManager.textures[texture];
+
+		if(!this._material)
+			mat = this._material = new LS.Material({use_scene_ambient:false});
+		else
+			mat = this._material;
+		mat.textures["color"] = texture;
+		mat.color.set( this.color );
+	}
 
 	var mesh = this._mesh;
 	if(!mesh)
-		mesh = this._mesh = GL.Mesh.getScreenQuad();
-
-	var mat = this._material;
-	if(!mat)
-		mat = this._material = new LS.Material({use_scene_ambient:false});
-	mat.textures["color"] = texture;
+		mesh = this._mesh = GL.Mesh.plane({size:2});
 
 	var RI = this._render_instance;
 	if(!RI)
 	{
 		this._render_instance = RI = new RenderInstance(this._root, this);
-		RI.priority = 100;
+		RI.priority = 100; //render the first one (is a background)
 	}
 
 	RI.setMesh(mesh);
@@ -7228,15 +7308,15 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	RI.enableFlag( RI_CW );
 	RI.disableFlag( RI_DEPTH_WRITE ); 
 	RI.disableFlag( RI_DEPTH_TEST ); 
+	RI.disableFlag( RI_CULL_FACE ); 
 	RI.enableFlag( RI_IGNORE_FRUSTUM );
 	RI.enableFlag( RI_IGNORE_VIEWPROJECTION );
 
 	instances.push(RI);
 }
 
-//Not working
-//LS.registerComponent(BackgroundRenderer);
-//LS.BackgroundRenderer = BackgroundRenderer;
+LS.registerComponent(BackgroundRenderer);
+LS.BackgroundRenderer = BackgroundRenderer;
 
 function Collider(o)
 {
@@ -7471,7 +7551,7 @@ Rotator.prototype.onRemoveFromNode = function(node)
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
-	var scene = this._root._on_scene;
+	var scene = this._root._in_tree;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();
@@ -7756,10 +7836,12 @@ function FaceTo(o)
 	this.height = 10;
 	this.roll = 0;
 	*/
-	this.scale = 1;
+
+	this.factor = 1;
 	this.target = null;
 	this.cylindrical = false;
-	this.reverse = false;
+
+	this.configure(o);
 }
 
 FaceTo.icon = "mini-icon-billboard.png";
@@ -7768,13 +7850,14 @@ FaceTo["@target"] = {type:'node'};
 
 FaceTo.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
+	//LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
+	LEvent.bind(node,"afterVisibility",this.updateOrientation,this);
 }
 
-FaceTo.prototype.updateOrientation = function(e)
+FaceTo.prototype.updateOrientation = function(e, render_options)
 {
 	if(!this._root) return;
-	var scene = this._root._on_scene;
+	var scene = this._root._in_tree;
 
 	/*
 	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
@@ -7783,30 +7866,41 @@ FaceTo.prototype.updateOrientation = function(e)
 	*/
 
 	var eye = null;
-	var camera = Renderer._current_camera;
-	
+	var camera = render_options.main_camera;
+	var target_position = null;
+	var up = vec3.fromValues(0,1,0);
+	var position = this._root.transform.getGlobalPosition();
+
 	if(this.target)
 	{
 		var node = scene.getNode( this.target );
-		if(!node)
+		if(!node || node == this._root ) //avoid same node
 			return;
-		eye = node.transform.getPosition();
+		target_position = node.transform.getGlobalPosition();
 	}
 	else
 	{
-		eye = camera.getEye();
+		target_position = camera.getEye();
 	}
-	var pos = this._root.transform.getPosition();
-	var up = camera.getLocalVector([0,1,0]);
+
 	if( this.cylindrical )
 	{
-		eye[1] = pos[1];
+		target_position[1] = position[1];
 		up.set([0,1,0]);
 	}
-	if(!this.reverse)
-		vec3.subtract(eye,pos,eye);
-	this._root.transform.lookAt( pos, eye, up );
-	this._root.transform.setScale( this.scale );
+
+	/*
+	if(this._root.transform._parent)
+	{
+		var mat = this._root.transform._parent.getGlobalMatrix();
+		var inv = mat4.invert( mat4.create(), mat );
+		mat4.multiplyVec3(target_position, inv, target_position);
+		//mat4.rotateVec3(up, inv, up);
+	}
+	//var up = camera.getLocalVector([0,1,0]);
+	*/
+
+	this._root.transform.lookAt( position, target_position, up, true );
 }
 
 LS.registerComponent(FaceTo);
@@ -8866,7 +8960,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 LS.registerComponent(ParticleEmissor);
 /**
-* Moves objects acording to animation
+* Reads animation tracks from an Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
 * @constructor
 * @param {String} object to configure from
@@ -8882,13 +8976,14 @@ function PlayAnimation(o)
 	this.play = true;
 	this.current_time = 0;
 
+	this.disabled_tracks = {};
+
 	if(o)
 		this.configure(o);
 }
 
 PlayAnimation["@animation"] = { widget: "resource" };
 PlayAnimation["@mode"] = { type:"enum", values: ["loop","pingpong","once"] };
-
 
 PlayAnimation.prototype.configure = function(o)
 {
@@ -8928,7 +9023,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	var take = animation.takes[ this.take ];
 	if(!take) return;
 
-	take.actionPerSample( this.current_time, this._processSample );
+	take.actionPerSample( this.current_time, this._processSample, { disabled_tracks: this.disabled_tracks } );
 	Scene.refresh();
 }
 
@@ -9937,6 +10032,9 @@ if(typeof(LiteGraph) != "undefined")
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
 			if(v == undefined)
+				continue;
+
+			if(input.name == "Material")
 				continue;
 
 			mat.setProperty(input.name, v);
@@ -11524,9 +11622,10 @@ function RenderInstance(node, component)
 	//info about the material
 	this.material = null;
 
-	//globals, never reseted
+	//for extra data for the shader
 	this.macros = {};
 	this.uniforms = {};
+	this.samplers = {};
 }
 
 
@@ -11743,6 +11842,7 @@ var Renderer = {
 		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
+		this._main_camera = main_camera;
 
 		//done at the beginning just in case it crashes
 		scene._frame += 1;
@@ -11756,7 +11856,7 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRender", render_options );
 		scene.triggerInNodes("beforeRender", render_options );
 
-		//get render instances, lights, materials and all rendering info ready
+		//get render instances, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
 		//settings for cameras
@@ -11764,6 +11864,8 @@ var Renderer = {
 		if(main_camera) // && !render_options.render_all_cameras )
 			cameras = [ main_camera ];
 		render_options.main_camera = cameras[0];
+
+		scene.triggerInNodes("afterVisibility", render_options );		
 
 		//generate shadowmaps
 		/*
@@ -12088,16 +12190,15 @@ var Renderer = {
 			gl.disable( gl.BLEND );
 
 		//assign material samplers (maybe they are not used...)
-		var samplers = [];
-			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
-		if(material._samplers)
-			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
-		for(var i = 0; i < samplers.length; i++)
-		{
-			var s = samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
+		//Array.prototype.push.apply(samplers, scene._samplers);
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( material._samplers );
+		samplers.merge( instance.samplers );
+
+		var slot = 0;
+		for(var i in samplers)
+			material._uniforms[ i ] = samplers[i].bind( slot++ );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -12205,81 +12306,6 @@ var Renderer = {
 		}
 	},
 
-	//renders using an orthographic projection
-	render2DInstance:  function(instance, scene, options)
-	{
-		var node = instance.node;
-		var material = instance.material;
-
-		//compute matrices
-		var model = this._temp_matrix;
-		mat4.identity(model);
-
-		//project from 3D to 2D
-		var pos = vec3.create();
-
-		if(instance.pos2D)
-			pos.set(instance.pos2D);
-		else
-		{
-			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
-			if(pos[2] < 0) return;
-			pos[2] = 0;
-		}
-
-		mat4.translate( model, model, pos );
-		var aspect = gl.canvas.width / gl.canvas.height;
-		var scale = vec3.fromValues(1, aspect ,1);
-		if(instance.scale_2D)
-		{
-			scale[0] *= instance.scale_2D[0];
-			scale[1] *= instance.scale_2D[1];
-		}
-		mat4.scale( model, model, scale );
-		mat4.multiply(this._mvp_matrix, this._2Dviewprojection_matrix, model );
-
-		var node_uniforms = node._uniforms;
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = this._identity_matrix;
-
-		//FLAGS
-		this.enableInstanceFlags(instance, options);
-
-		//blend flags
-		if(material.blend_mode != Blend.NORMAL)
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
-		}
-		else
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-		}
-
-		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i < material._samplers.length; i++)
-		{
-			var s = material._samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
-
-		var shader_name = "flat_texture";
-		var shader = ShadersManager.get(shader_name);
-
-		//assign uniforms
-		shader.uniforms( node_uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms( instance.uniforms );
-
-		//render
-		instance.render( shader );
-		this._rendercalls += 1;
-		return;
-	},
-
 	renderShadowPassInstance: function(instance, render_options)
 	{
 		var scene = this._current_scene;
@@ -12343,6 +12369,98 @@ var Renderer = {
 		this._rendercalls += 1;
 	},
 
+	//renders using an orthographic projection
+	render2DInstance:  function(instance, scene, options)
+	{
+		var node = instance.node;
+		var material = instance.material;
+
+		//compute matrices
+		var model = this._temp_matrix;
+		mat4.identity(model);
+
+		//project from 3D to 2D
+		var pos = vec3.create();
+
+		if(instance.pos2D)
+			pos.set(instance.pos2D);
+		else
+		{
+			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
+			if(pos[2] < 0) return;
+			pos[2] = 0;
+		}
+
+		mat4.translate( model, model, pos );
+		var aspect = gl.canvas.width / gl.canvas.height;
+		var scale = vec3.fromValues(1, aspect ,1);
+		if(instance.scale_2D)
+		{
+			scale[0] *= instance.scale_2D[0];
+			scale[1] *= instance.scale_2D[1];
+		}
+		mat4.scale( model, model, scale );
+		mat4.multiply(this._mvp_matrix, this._2Dviewprojection_matrix, model );
+
+		var node_uniforms = node._uniforms;
+		node_uniforms.u_mvp = this._mvp_matrix;
+		node_uniforms.u_model = model;
+		node_uniforms.u_normal_model = this._identity_matrix;
+
+		//FLAGS
+		this.enableInstanceFlags(instance, options);
+
+		//blend flags
+		if(material.blend_mode != Blend.NORMAL)
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
+		}
+		else
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+
+		//assign material samplers (maybe they are not used...)
+		var slot = 0;
+		for(var i in material._samplers )
+			material._uniforms[ i ] = material._samplers[i].bind( slot++ );
+
+		var shader_name = "flat_texture";
+		var shader = ShadersManager.get(shader_name);
+
+		//assign uniforms
+		shader.uniforms( node_uniforms );
+		shader.uniforms( material._uniforms );
+		shader.uniforms( instance.uniforms );
+
+		//render
+		instance.render( shader );
+		this._rendercalls += 1;
+		return;
+	},	
+
+	renderPickingInstance: function(instance, render_options)
+	{
+		var node = instance.node;
+		var model = instance.matrix;
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+		var pick_color = this.getNextPickingColor( instance );
+		/*
+		this._picking_next_color_id += 10;
+		var pick_color = new Uint32Array(1); //store four bytes number
+		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
+		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
+		//byte_pick_color[3] = 255; //Set the alpha to 1
+		this._picking_nodes[this._picking_next_color_id] = node;
+		*/
+
+		var shader = ShadersManager.get("flat");
+		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
+		instance.render(shader);
+	},
+
 	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
 	fillSceneShaderMacros: function( scene, render_options )
 	{
@@ -12385,7 +12503,7 @@ var Renderer = {
 			uniforms.u_clipping_plane = render_options.clipping_plane;
 
 		scene._uniforms = uniforms;
-		scene._samplers = [];
+		scene._samplers = {};
 
 
 		//if(scene.textures.environment)
@@ -12397,30 +12515,10 @@ var Renderer = {
 			if(!texture) continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
-			scene._samplers.push([i + type , texture]);
+			scene._samplers[i + type] = texture;
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
 		}
-	},
-
-	renderPickingInstance: function(instance, render_options)
-	{
-		var node = instance.node;
-		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( instance );
-		/*
-		this._picking_next_color_id += 10;
-		var pick_color = new Uint32Array(1); //store four bytes number
-		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
-		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
-		//byte_pick_color[3] = 255; //Set the alpha to 1
-		this._picking_nodes[this._picking_next_color_id] = node;
-		*/
-
-		var shader = ShadersManager.get("flat");
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
-		instance.render(shader);
-	},
+	},	
 
 	getNextPickingColor: function(instance, data)
 	{
@@ -12559,7 +12657,7 @@ var Renderer = {
 				{
 					material._macros = {};
 					material._uniforms = {};
-					material._samplers = [];
+					material._samplers = {};
 				}
 				material.fillSurfaceShaderMacros(scene); //update shader macros on this material
 				material.fillSurfaceUniforms(scene); //update uniforms
@@ -15455,7 +15553,7 @@ SceneTree.prototype.start = function()
 	if(this._state == "running") return;
 
 	this._state = "running";
-	this._start_time = window.performance.now() * 0.001;
+	this._start_time = getTime() * 0.001;
 	LEvent.trigger(this,"start",this);
 	this.triggerInNodes("start");
 }
@@ -15563,7 +15661,7 @@ SceneTree.prototype.update = function(dt)
 {
 	LEvent.trigger(this,"beforeUpdate", this);
 
-	this._global_time = window.performance.now() * 0.001;
+	this._global_time = getTime() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
@@ -16379,6 +16477,9 @@ Take.prototype.actionPerSample = function(time, callback, options)
 	{
 		var track = this.tracks[i];
 		var value = track.getSample(time, true);
+		if( options.disabled_tracks && options.disabled_tracks[ track.nodename ] )
+			continue;
+
 		callback(track.nodename, track.property, value, options);
 	}
 }
@@ -16386,7 +16487,14 @@ Take.prototype.actionPerSample = function(time, callback, options)
 Animation.Take = Take;
 
 
-/** Represents one track with data over time about one property **/
+/**
+* Represents one track with data over time about one property
+*
+* @class Animation.Track
+* @namespace LS
+* @constructor
+*/
+
 function Track(o)
 {
 	this.nodename = ""; //nodename

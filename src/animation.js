@@ -122,6 +122,9 @@ Take.prototype.actionPerSample = function(time, callback, options)
 	{
 		var track = this.tracks[i];
 		var value = track.getSample(time, true);
+		if( options.disabled_tracks && options.disabled_tracks[ track.nodename ] )
+			continue;
+
 		callback(track.nodename, track.property, value, options);
 	}
 }
@@ -129,7 +132,14 @@ Take.prototype.actionPerSample = function(time, callback, options)
 Animation.Take = Take;
 
 
-/** Represents one track with data over time about one property **/
+/**
+* Represents one track with data over time about one property
+*
+* @class Animation.Track
+* @namespace LS
+* @constructor
+*/
+
 function Track(o)
 {
 	this.nodename = ""; //nodename

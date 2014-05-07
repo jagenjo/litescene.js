@@ -581,16 +581,18 @@ Transform.interpolate = function(a,b,factor, result)
 * @param {vec3} position
 * @param {vec3} target
 * @param {vec3} up
+* @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
-Transform.prototype.lookAt = function(pos,target,up)
+Transform.prototype.lookAt = function(pos, target, up, in_world)
 {
 	var temp = mat4.create();
-	if(this._parent)
+	if(in_world && this._parent)
 	{
 		var M = this._parent.getGlobalMatrix();
-		pos = mat4.multiplyVec3(vec3.create(), M, pos);
-		target = mat4.multiplyVec3(vec3.create(), M,target);
-		up = mat4.multiplyVec3(vec3.create(), M,up);
+		var inv = mat4.invert(M,M);
+		pos = mat4.multiplyVec3(vec3.create(), inv, pos);
+		target = mat4.multiplyVec3(vec3.create(), inv,target);
+		up = mat4.rotateVec3(vec3.create(), inv, up );
 	}
 	mat4.lookAt(temp, pos, target, up);
 	mat4.invert(temp, temp);

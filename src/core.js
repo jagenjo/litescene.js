@@ -6,6 +6,7 @@ Object.defineProperty(Object.prototype, "merge", {
     value: function(v) {
         for(var i in v)
 			this[i] = v[i];
+		return this;
     },
     configurable: true,
     writable: false,

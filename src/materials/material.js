@@ -367,7 +367,7 @@ Material.prototype.getProperties = function()
 
 	var textures = this.getTextureChannels();
 	for(var i in textures)
-		o["tex_" + i] = "Texture";
+		o["tex_" + textures[i]] = "Texture";
 	return o;
 }
 

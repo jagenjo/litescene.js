@@ -60,6 +60,7 @@ var Renderer = {
 		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
+		this._main_camera = main_camera;
 
 		//done at the beginning just in case it crashes
 		scene._frame += 1;
@@ -73,7 +74,7 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRender", render_options );
 		scene.triggerInNodes("beforeRender", render_options );
 
-		//get render instances, lights, materials and all rendering info ready
+		//get render instances, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
 		//settings for cameras
@@ -81,6 +82,8 @@ var Renderer = {
 		if(main_camera) // && !render_options.render_all_cameras )
 			cameras = [ main_camera ];
 		render_options.main_camera = cameras[0];
+
+		scene.triggerInNodes("afterVisibility", render_options );		
 
 		//generate shadowmaps
 		/*
@@ -405,16 +408,15 @@ var Renderer = {
 			gl.disable( gl.BLEND );
 
 		//assign material samplers (maybe they are not used...)
-		var samplers = [];
-			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
-		if(material._samplers)
-			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
-		for(var i = 0; i < samplers.length; i++)
-		{
-			var s = samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
+		//Array.prototype.push.apply(samplers, scene._samplers);
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( material._samplers );
+		samplers.merge( instance.samplers );
+
+		var slot = 0;
+		for(var i in samplers)
+			material._uniforms[ i ] = samplers[i].bind( slot++ );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -522,81 +524,6 @@ var Renderer = {
 		}
 	},
 
-	//renders using an orthographic projection
-	render2DInstance:  function(instance, scene, options)
-	{
-		var node = instance.node;
-		var material = instance.material;
-
-		//compute matrices
-		var model = this._temp_matrix;
-		mat4.identity(model);
-
-		//project from 3D to 2D
-		var pos = vec3.create();
-
-		if(instance.pos2D)
-			pos.set(instance.pos2D);
-		else
-		{
-			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
-			if(pos[2] < 0) return;
-			pos[2] = 0;
-		}
-
-		mat4.translate( model, model, pos );
-		var aspect = gl.canvas.width / gl.canvas.height;
-		var scale = vec3.fromValues(1, aspect ,1);
-		if(instance.scale_2D)
-		{
-			scale[0] *= instance.scale_2D[0];
-			scale[1] *= instance.scale_2D[1];
-		}
-		mat4.scale( model, model, scale );
-		mat4.multiply(this._mvp_matrix, this._2Dviewprojection_matrix, model );
-
-		var node_uniforms = node._uniforms;
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = this._identity_matrix;
-
-		//FLAGS
-		this.enableInstanceFlags(instance, options);
-
-		//blend flags
-		if(material.blend_mode != Blend.NORMAL)
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
-		}
-		else
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-		}
-
-		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i < material._samplers.length; i++)
-		{
-			var s = material._samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
-
-		var shader_name = "flat_texture";
-		var shader = ShadersManager.get(shader_name);
-
-		//assign uniforms
-		shader.uniforms( node_uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms( instance.uniforms );
-
-		//render
-		instance.render( shader );
-		this._rendercalls += 1;
-		return;
-	},
-
 	renderShadowPassInstance: function(instance, render_options)
 	{
 		var scene = this._current_scene;
@@ -660,6 +587,98 @@ var Renderer = {
 		this._rendercalls += 1;
 	},
 
+	//renders using an orthographic projection
+	render2DInstance:  function(instance, scene, options)
+	{
+		var node = instance.node;
+		var material = instance.material;
+
+		//compute matrices
+		var model = this._temp_matrix;
+		mat4.identity(model);
+
+		//project from 3D to 2D
+		var pos = vec3.create();
+
+		if(instance.pos2D)
+			pos.set(instance.pos2D);
+		else
+		{
+			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
+			if(pos[2] < 0) return;
+			pos[2] = 0;
+		}
+
+		mat4.translate( model, model, pos );
+		var aspect = gl.canvas.width / gl.canvas.height;
+		var scale = vec3.fromValues(1, aspect ,1);
+		if(instance.scale_2D)
+		{
+			scale[0] *= instance.scale_2D[0];
+			scale[1] *= instance.scale_2D[1];
+		}
+		mat4.scale( model, model, scale );
+		mat4.multiply(this._mvp_matrix, this._2Dviewprojection_matrix, model );
+
+		var node_uniforms = node._uniforms;
+		node_uniforms.u_mvp = this._mvp_matrix;
+		node_uniforms.u_model = model;
+		node_uniforms.u_normal_model = this._identity_matrix;
+
+		//FLAGS
+		this.enableInstanceFlags(instance, options);
+
+		//blend flags
+		if(material.blend_mode != Blend.NORMAL)
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
+		}
+		else
+		{
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+
+		//assign material samplers (maybe they are not used...)
+		var slot = 0;
+		for(var i in material._samplers )
+			material._uniforms[ i ] = material._samplers[i].bind( slot++ );
+
+		var shader_name = "flat_texture";
+		var shader = ShadersManager.get(shader_name);
+
+		//assign uniforms
+		shader.uniforms( node_uniforms );
+		shader.uniforms( material._uniforms );
+		shader.uniforms( instance.uniforms );
+
+		//render
+		instance.render( shader );
+		this._rendercalls += 1;
+		return;
+	},	
+
+	renderPickingInstance: function(instance, render_options)
+	{
+		var node = instance.node;
+		var model = instance.matrix;
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+		var pick_color = this.getNextPickingColor( instance );
+		/*
+		this._picking_next_color_id += 10;
+		var pick_color = new Uint32Array(1); //store four bytes number
+		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
+		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
+		//byte_pick_color[3] = 255; //Set the alpha to 1
+		this._picking_nodes[this._picking_next_color_id] = node;
+		*/
+
+		var shader = ShadersManager.get("flat");
+		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
+		instance.render(shader);
+	},
+
 	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
 	fillSceneShaderMacros: function( scene, render_options )
 	{
@@ -702,7 +721,7 @@ var Renderer = {
 			uniforms.u_clipping_plane = render_options.clipping_plane;
 
 		scene._uniforms = uniforms;
-		scene._samplers = [];
+		scene._samplers = {};
 
 
 		//if(scene.textures.environment)
@@ -714,30 +733,10 @@ var Renderer = {
 			if(!texture) continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
-			scene._samplers.push([i + type , texture]);
+			scene._samplers[i + type] = texture;
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
 		}
-	},
-
-	renderPickingInstance: function(instance, render_options)
-	{
-		var node = instance.node;
-		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( instance );
-		/*
-		this._picking_next_color_id += 10;
-		var pick_color = new Uint32Array(1); //store four bytes number
-		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
-		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
-		//byte_pick_color[3] = 255; //Set the alpha to 1
-		this._picking_nodes[this._picking_next_color_id] = node;
-		*/
-
-		var shader = ShadersManager.get("flat");
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
-		instance.render(shader);
-	},
+	},	
 
 	getNextPickingColor: function(instance, data)
 	{
@@ -876,7 +875,7 @@ var Renderer = {
 				{
 					material._macros = {};
 					material._uniforms = {};
-					material._samplers = [];
+					material._samplers = {};
 				}
 				material.fillSurfaceShaderMacros(scene); //update shader macros on this material
 				material.fillSurfaceUniforms(scene); //update uniforms

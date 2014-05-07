@@ -12,10 +12,12 @@ function FaceTo(o)
 	this.height = 10;
 	this.roll = 0;
 	*/
-	this.scale = 1;
+
+	this.factor = 1;
 	this.target = null;
 	this.cylindrical = false;
-	this.reverse = false;
+
+	this.configure(o);
 }
 
 FaceTo.icon = "mini-icon-billboard.png";
@@ -24,13 +26,14 @@ FaceTo["@target"] = {type:'node'};
 
 FaceTo.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
+	//LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
+	LEvent.bind(node,"afterVisibility",this.updateOrientation,this);
 }
 
-FaceTo.prototype.updateOrientation = function(e)
+FaceTo.prototype.updateOrientation = function(e, render_options)
 {
 	if(!this._root) return;
-	var scene = this._root._on_scene;
+	var scene = this._root._in_tree;
 
 	/*
 	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
@@ -39,30 +42,41 @@ FaceTo.prototype.updateOrientation = function(e)
 	*/
 
 	var eye = null;
-	var camera = Renderer._current_camera;
-	
+	var camera = render_options.main_camera;
+	var target_position = null;
+	var up = vec3.fromValues(0,1,0);
+	var position = this._root.transform.getGlobalPosition();
+
 	if(this.target)
 	{
 		var node = scene.getNode( this.target );
-		if(!node)
+		if(!node || node == this._root ) //avoid same node
 			return;
-		eye = node.transform.getPosition();
+		target_position = node.transform.getGlobalPosition();
 	}
 	else
 	{
-		eye = camera.getEye();
+		target_position = camera.getEye();
 	}
-	var pos = this._root.transform.getPosition();
-	var up = camera.getLocalVector([0,1,0]);
+
 	if( this.cylindrical )
 	{
-		eye[1] = pos[1];
+		target_position[1] = position[1];
 		up.set([0,1,0]);
 	}
-	if(!this.reverse)
-		vec3.subtract(eye,pos,eye);
-	this._root.transform.lookAt( pos, eye, up );
-	this._root.transform.setScale( this.scale );
+
+	/*
+	if(this._root.transform._parent)
+	{
+		var mat = this._root.transform._parent.getGlobalMatrix();
+		var inv = mat4.invert( mat4.create(), mat );
+		mat4.multiplyVec3(target_position, inv, target_position);
+		//mat4.rotateVec3(up, inv, up);
+	}
+	//var up = camera.getLocalVector([0,1,0]);
+	*/
+
+	this._root.transform.lookAt( position, target_position, up, true );
 }
 
 LS.registerComponent(FaceTo);
