@@ -217,7 +217,7 @@
 	</snippet>	
 
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE" multipass="true" imports="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURF,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -400,6 +400,10 @@
 				uniform sampler2D light_texture;
 			#endif
 
+			#ifdef USE_ENVIRONMENT_TEXTURE
+				uniform sampler2D environment_texture;
+			#endif			
+
 			#ifdef USE_ENVIRONMENT_CUBEMAP
 				uniform samplerCube environment_cubemap;
 			#endif			
@@ -419,6 +423,11 @@
 			#ifdef USE_SHADOW_MAP
 				#import "testShadow"
 			#endif
+
+			vec2 polarToCartesian(in vec3 V)
+			{
+				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
+			}					
 			
 			vec3 computeLight(in SurfaceOutput IN)
 			{
@@ -563,16 +572,11 @@
 
 						#ifdef USE_ENVIRONMENT_CUBEMAP
 							reflection_color = textureCube(environment_cubemap,-R, 0.0).xyz;
+						#else //USE_ENVIRONMENT_TEXTURE
+							reflection_color = texture2D(environment_texture, polarToCartesian(-R) ).xyz;
 						#endif
-						/*
-						#ifdef USE_ENVIRONMENT_TEXTURE
-							temp_v2 = vec2(0.0);
-							vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
-							env_uv.x = 1.0 - env_uv.x;
-							reflection_color = texture2D(environment_texture, env_uv).xyz;
-						#endif
-						*/
-					#endif //environtment
+
+					#endif //environment
 
 					//apply reflection
 					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
@@ -800,6 +804,11 @@
 			#ifdef USE_PIXEL_SHADER_FUNCTIONS
 				USE_PIXEL_SHADER_FUNCTIONS
 			#endif
+
+			vec2 polarToCartesian(in vec3 V)
+			{
+				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
+			}				
 			
 			void main() {
 				float temp = 0.0;
@@ -821,6 +830,7 @@
 				#endif
 
 				vec3 N = normalize(v_normal);
+				vec3 localPosN = normalize(v_local_pos);
 
 				//* COMPUTE TEXTURE COORDINATES ***************************
 				vec2 uvs_0 = v_uvs;
@@ -833,9 +843,10 @@
 				//uvs_screen.y = 1.0 - uvs_screen.y;
 				//uvs_screen.x = 1.0 - uvs_screen.x;
 
-				vec2 uvs_direction = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
-				vec2 uvs_polar = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
+				vec2 uvs_polar = polarToCartesian(N);
 				vec2 uvs_polar_reflected = uvs_polar; //computed later when we know the Reflected vector
+				vec2 uvs_polar_vertex = polarToCartesian(localPosN);
+
 
 				#ifdef USE_ALPHA_TEST
 					if(alpha < USE_ALPHA_TEST)
@@ -852,7 +863,7 @@
 				#endif
 
 				vec3 R = reflect(E,N);
-				uvs_polar_reflected = vec2( 1.0 - (atan(R.z,R.x) / 6.28318531 + 0.5), 0.5 - asin(R.y) / 1.57079633 * 0.5);
+				uvs_polar_reflected = polarToCartesian(-R);
 
 				//* INCLUDED CODE ***************************
 				#ifdef USE_PIXEL_SHADER_CODE
@@ -1200,6 +1211,11 @@
 			#ifdef USE_PIXEL_SHADER_FUNCTIONS
 				USE_PIXEL_SHADER_FUNCTIONS
 			#endif
+
+			vec2 polarToCartesian(in vec3 V)
+			{
+				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
+			}
 			
 			void main() {
 				float temp = 0.0;
@@ -1269,10 +1285,11 @@
 					N = bumpNormal(v_pos, N, bump_texture, USE_BUMP_TEXTURE, bump_factor );
 				#endif
 
-				vec2 uvs_direction = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
-				vec2 uvs_polar = vec2( 1.0 - atan(N.z,N.x) / 6.28318531 + 0.5, asin(N.y) / 1.57079633 * 0.5 + 0.5);
+				vec3 localPosN = normalize(v_local_pos); //use_polar_vertex
+
+				vec2 uvs_polar = polarToCartesian(N);
 				vec2 uvs_polar_reflected = uvs_polar; //computed later when we know the Reflected vector
-				//uvs_polar_reflected = vec2( 1.0 - (atan(R.z,R.x) / 6.28318531 + 0.5), 0.5 - asin(R.y) / 1.57079633 * 0.5);
+				vec2 uvs_polar_vertex = polarToCartesian(localPosN);
 
 				//********************************************************
 
@@ -1362,7 +1379,7 @@
 				#endif
 
 				vec3 R = reflect(E,N);
-				uvs_polar_reflected = vec2( 1.0 - (atan(R.z,R.x) / 6.28318531 + 0.5), 0.5 - asin(R.y) / 1.57079633 * 0.5);
+				uvs_polar_reflected = polarToCartesian(-R);
 
 				float NdotL = 1.0;
 				#ifdef USE_DIFFUSE_LIGHT
@@ -1520,8 +1537,7 @@
 						#endif
 						#ifdef USE_ENVIRONMENT_TEXTURE
 							temp_v2 = vec2(0.0);
-							vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
-							env_uv.x = 1.0 - env_uv.x;
+							vec2 env_uv = uvs_polar_reflected;
 
 							#ifdef USE_NORMAL_TEXTURE
 								//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
@@ -1663,14 +1679,17 @@
 				#ifdef NO_NORMALS
 					vec3 N = vec3(0.,1.,0.);
 				#else
-					vec3 N = normalize((u_normal_model * vec4(a_normal,1.0)).xyz);
+					vec3 N = a_normal;
 				#endif
 
 				vec4 vertex4 = vec4(a_vertex,1.0);
 
 				#ifdef USE_SKINNING
 					applySkinning(vertex4, N);
-				#endif					
+				#endif
+
+				N = normalize((u_normal_model * vec4(N,1.0)).xyz);
+
 
 				//mat4 mvp = (u_viewprojection * u_model);
 				gl_Position =  u_mvp * vertex4;
@@ -1706,7 +1725,7 @@
 				#endif
 
 				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
-					L = u_light_front;
+					L = -u_light_front;
 				#endif
 
 				vec3 R = reflect(E,N);
@@ -1715,7 +1734,7 @@
 					NdotL = dot(N,L);
 				#endif
 				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
-				spec_factor *= pow( max(0.01, dot(R,-L) ), spec_gloss);
+				spec_factor *= pow( clamp(dot(R,-L),0.001,1.0), spec_gloss);
 
 				#ifdef FIRST_PASS
 				vec3 light = u_ambient_color;
@@ -1998,7 +2017,7 @@
 		</code>
 	</shader>
 
-	<shader id="depth_linear" tags="">
+	<shader id="depth_linear" tags="POSTFX">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -2080,7 +2099,8 @@
 
 			void main() {
 				v_uvs = a_coord;
-				gl_Position = u_mvp * vec4(a_vertex,1.0);
+				vec4 vertex4 = vec4(a_vertex,1.0);
+				gl_Position = u_mvp * vertex4;
 			}
 		]]>
 		</code>
@@ -2344,7 +2364,9 @@
 			uniform mat4 u_mvp;
 
 			void main() {
-				gl_Position = u_mvp * vec4(a_vertex,1.0);
+				vec4 vertex4 = vec4(a_vertex,1.0);
+				//skinning?
+				gl_Position = u_mvp * vertex4;
 			}
 		]]>
 		</code>

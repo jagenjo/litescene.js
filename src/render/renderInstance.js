@@ -71,6 +71,11 @@ function RenderInstance(node, component)
 	this.macros = {};
 	this.uniforms = {};
 	this.samplers = {};
+
+	//for internal use
+	this._final_macros = {};
+	this._final_uniforms = {};
+	this._final_samplers = {};
 }
 
 

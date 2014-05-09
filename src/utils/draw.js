@@ -414,7 +414,9 @@ var Draw = {
 	renderMesh: function(mesh, primitive, shader)
 	{
 		if(!this.ready) throw ("Draw.js not initialized, call Draw.init()");
-		shader = shader || this.shader;
+		if(!shader)
+			shader = mesh.vertexBuffers["colors"] ? this.shader_color : this.shader;
+
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
 		shader.uniforms({

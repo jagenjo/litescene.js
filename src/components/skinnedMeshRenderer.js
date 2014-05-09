@@ -71,6 +71,10 @@ SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
 */
 SkinnedMeshRenderer.prototype.configure = function(o)
 {
+	this.enabled = !!(o.enabled);
+	this.cpu_skinning = !!(o.cpu_skinning);
+	this.ignore_transform = !!(o.ignore_transform);
+
 	this.mesh = o.mesh;
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
@@ -88,6 +92,9 @@ SkinnedMeshRenderer.prototype.configure = function(o)
 SkinnedMeshRenderer.prototype.serialize = function()
 {
 	var o = { 
+		enabled: this.enabled,
+		cpu_skinning: this.cpu_skinning,
+		ignore_transform: this.ignore_transform,
 		mesh: this.mesh,
 		lod_mesh: this.lod_mesh
 	};
@@ -125,13 +132,11 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
-SkinnedMeshRenderer.mat_identity = mat4.create();
-
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 {
 	var node = Scene.getNode(name);
 	if(!node)
-		return SkinnedMeshRenderer.mat_identity;
+		return null;
 	node._is_bone = true;
 	return node.transform.getGlobalMatrixRef();
 }
@@ -153,79 +158,21 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	{
 		var m = bones[i]; //mat4.create();
 		var mat = this.getNodeMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
-
-		var inv = ref_mesh.bones[i][1];
-		mat4.multiply( m, mat, inv );
-		if(ref_mesh.bind_matrix)
-			mat4.multiply( m, m, ref_mesh.bind_matrix);
+		if(!mat)
+			mat4.identity( m );
+		else
+		{
+			var inv = ref_mesh.bones[i][1];
+			mat4.multiply( m, mat, inv );
+			if(ref_mesh.bind_matrix)
+				mat4.multiply( m, m, ref_mesh.bind_matrix);
+		}
 
 		//bones[i].push( m ); //multiply by the inv bindpose matrix
 	}
 
 	return bones;
 }
-
-SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
-
-SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
-{
-	var original_vertices = ref_mesh.getBuffer("vertices").data;
-
-	var weights = ref_mesh.getBuffer("weights").data;
-	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
-
-	var vertices_buffer = skin_mesh.getBuffer("vertices");
-	var vertices = vertices_buffer.data;
-
-	//bone matrices
-	var bones = this.getBoneMatrices( ref_mesh );
-	if(bones.length == 0) //no bones found
-		return null;
-
-	//var factor = this.factor; //for debug
-
-	//apply skinning per vertex
-	var temp = vec3.create();
-	var ov_temp = vec3.create();
-	var temp_matrix = mat4.create();
-	for(var i = 0, l = vertices.length / 3; i < l; ++i)
-	{
-		var ov = original_vertices.subarray(i*3, i*3+3);
-		ov_temp.set(ov);
-		var b = bone_indices.subarray(i*4, i*4+4);
-		var w = weights.subarray(i*4, i*4+4);
-		var v = vertices.subarray(i*3, i*3+3);
-
-		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
-
-		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
-		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
-		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
-		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
-		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
-
-		mat4.multiplyVec3(v, temp_matrix, ov_temp);
-		//we could also multiply the normal but this is already superslow...
-
-		/* apply weights
-		v[0] = v[1] = v[2] = 0.0; //reset
-		mat4.multiplyVec3(v, bmat[0], ov_temp);
-		vec3.scale(v,v,w[0]);
-		for(var j = 1; j < 4; ++j)
-			if(w[j] > 0.0)
-			{
-				mat4.multiplyVec3(temp, bmat[j], ov_temp);
-				vec3.scaleAndAdd(v, v, temp, w[j]);
-			}
-		//*/
-
-		//if(factor != 1) vec3.lerp( v, ov, v, factor);
-	}
-
-	//upload
-	vertices_buffer.compile(gl.STREAM_DRAW);
-}
-
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
@@ -279,20 +226,22 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
+			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
 		{
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { no_flip: true, format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
-			texture.uploadData( texture._data );
+			texture.uploadData( texture._data, { no_flip: true } );
 			RI.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
+			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
 		else
 			console.error("impossible to get here")
@@ -305,6 +254,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			this._skinned_mesh = new GL.Mesh();
 			this._skinned_mesh._reference = mesh;
 			var vertex_buffer = mesh.getBuffer("vertices");
+			var normal_buffer = mesh.getBuffer("normals");
 
 			//clone 
 			for (var i in mesh.vertexBuffers)
@@ -314,6 +264,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 			//new ones clonning old ones
 			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
+			if(normal_buffer)
+				this._skinned_mesh.addVertexBuffer("normals","a_normal", 3, new Float32Array( normal_buffer.data ), gl.STREAM_DRAW );
 		}
 
 
@@ -348,6 +300,88 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	instances.push(RI);
 	//return RI;
+}
+
+
+SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
+
+SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
+{
+	var original_vertices = ref_mesh.getBuffer("vertices").data;
+	var original_normals = null;
+	if(ref_mesh.getBuffer("normals"))
+		original_normals = ref_mesh.getBuffer("normals").data;
+
+	var weights = ref_mesh.getBuffer("weights").data;
+	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
+
+	var vertices_buffer = skin_mesh.getBuffer("vertices");
+	var vertices = vertices_buffer.data;
+
+	var normals_buffer = null;
+	var normals = null;
+
+	if(original_normals)
+	{
+		normals_buffer = skin_mesh.getBuffer("normals");
+		normals = normals_buffer.data;
+	}
+
+	//bone matrices
+	var bones = this.getBoneMatrices( ref_mesh );
+	if(bones.length == 0) //no bones found
+		return null;
+
+	//var factor = this.factor; //for debug
+
+	//apply skinning per vertex
+	var temp = vec3.create();
+	var ov_temp = vec3.create();
+	var temp_matrix = mat4.create();
+	for(var i = 0, l = vertices.length / 3; i < l; ++i)
+	{
+		var ov = original_vertices.subarray(i*3, i*3+3);
+
+		var b = bone_indices.subarray(i*4, i*4+4);
+		var w = weights.subarray(i*4, i*4+4);
+		var v = vertices.subarray(i*3, i*3+3);
+
+		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
+
+		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
+		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
+		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
+		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
+		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
+
+		mat4.multiplyVec3(v, temp_matrix, original_vertices.subarray(i*3, i*3+3) );
+		if(normals)
+		{
+			var n = normals.subarray(i*3, i*3+3);
+			mat4.rotateVec3(n, temp_matrix, original_normals.subarray(i*3, i*3+3) );
+		}
+		
+		//we could also multiply the normal but this is already superslow...
+
+		/* apply weights
+		v[0] = v[1] = v[2] = 0.0; //reset
+		mat4.multiplyVec3(v, bmat[0], ov_temp);
+		vec3.scale(v,v,w[0]);
+		for(var j = 1; j < 4; ++j)
+			if(w[j] > 0.0)
+			{
+				mat4.multiplyVec3(temp, bmat[j], ov_temp);
+				vec3.scaleAndAdd(v, v, temp, w[j]);
+			}
+		//*/
+
+		//if(factor != 1) vec3.lerp( v, ov, v, factor);
+	}
+
+	//upload
+	vertices_buffer.compile(gl.STREAM_DRAW);
+	if(normals_buffer)
+		normals_buffer.compile(gl.STREAM_DRAW);
 }
 
 LS.registerComponent(SkinnedMeshRenderer);

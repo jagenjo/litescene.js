@@ -8,6 +8,7 @@
 
 function RealtimeReflector(o)
 {
+	this.enabled = true;
 	this.texture_size = 512;
 	this.brightness_factor = 1.0;
 	this.colorclip_factor = 0.0;
@@ -45,7 +46,7 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 
 RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 {
-	if(!this._root) return;
+	if(!this.enabled || !this._root) return;
 
 	var camera = render_options.main_camera;
 

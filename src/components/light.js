@@ -464,7 +464,7 @@ Light.prototype.generateShadowmap = function (render_options)
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
 		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-		//ResourcesManager.textures[":shadowmap_" + this._uid ] = this._shadowmap; //debug
+		ResourcesManager.textures[":shadowmap_" + this._uid ] = this._shadowmap; //debug
 	}
 
 	//render the scene inside the texture

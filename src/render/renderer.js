@@ -387,13 +387,17 @@ var Renderer = {
 			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
 
-		//Set matrices
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
+
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
@@ -407,16 +411,16 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
-		//assign material samplers (maybe they are not used...)
-		//Array.prototype.push.apply(samplers, scene._samplers);
+		//pack material samplers 
 		var samplers = {};
 		samplers.merge( scene._samplers );
-		samplers.merge( material._samplers );
-		samplers.merge( instance.samplers );
+		samplers.merge( instance_final_samplers );
 
+		//enable samplers and store where [TODO: maybe they are not used..., improve here]
+		var sampler_uniforms = {};
 		var slot = 0;
 		for(var i in samplers)
-			material._uniforms[ i ] = samplers[i].bind( slot++ );
+			sampler_uniforms[ i ] = samplers[i].bind( slot++ );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -434,9 +438,8 @@ var Renderer = {
 		{
 			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
 			macros.merge(scene._macros);
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
+			macros.merge(instance_final_macros); //contains node, material and instance macros
+
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
@@ -448,10 +451,9 @@ var Renderer = {
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
+			shader.uniforms( sampler_uniforms );
 			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( instance_final_uniforms );
 
 			//render
 			instance.render( shader );
@@ -475,10 +477,9 @@ var Renderer = {
 
 				var macros = {};
 				macros.merge(scene._macros);
-				macros.merge(node_macros);
-				macros.merge(material._macros);
-				macros.merge(instance.macros);
+				macros.merge(instance_final_macros); //contains node, material and instance macros
 				macros.merge(light_macros);
+
 				if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 					macros.USE_CLIPPING_PLANE = "";
 
@@ -508,11 +509,10 @@ var Renderer = {
 				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
-			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( light_uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( sampler_uniforms ); //where is every texture binded
+			shader.uniforms( scene._uniforms );  //used mostly for environment textures
+			shader.uniforms( instance_final_uniforms ); //contains node, material and instance uniforms
+			shader.uniforms( light_uniforms ); //should this go before instance_final? to prioritize
 
 			//render the instance
 			instance.render( shader );
@@ -535,25 +535,30 @@ var Renderer = {
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
 
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS
 		this.enableInstanceFlags(instance, render_options);
 
 		var macros = {};
+		macros.merge( instance_final_macros );
+
 		if(this._current_target && this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
 			macros["USE_LINEAR_DISTANCE"] = "";
 
-		if(node.flags.alpha_shadows == true && (material.getTexture("color") || material.getTexture("opacity")))
+		/*
+		if(node.flags.alpha_shadows == true )
 		{
 			macros["USE_ALPHA_TEST"] = "0.5";
-
-
 			var color = material.getTexture("color");
 			if(color)
 			{
@@ -568,21 +573,35 @@ var Renderer = {
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
-			macros.merge(node_macros);
+
 			shader = ShadersManager.get("depth", macros);
 			shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
 		else
 		{
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
 			shader = ShadersManager.get("depth", macros );
 		}
+		*/
 
+		if(node.flags.alpha_shadows == true )
+			macros["USE_ALPHA_TEST"] = "0.5";
+
+		var shader = ShadersManager.get("depth", macros );
+
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( instance_final_samplers );
+
+		var slot = 1;
+		var sampler_uniforms = {};
+		for(var i in samplers)
+			if(shader.samplers[i]) //only enable a texture if the shader uses it
+				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+
+		shader.uniforms( sampler_uniforms );
 		shader.uniforms( scene._uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms(node_uniforms);
+		shader.uniforms( instance._final_uniforms );
+
 		instance.render(shader);
 		this._rendercalls += 1;
 	},
@@ -674,8 +693,19 @@ var Renderer = {
 		this._picking_nodes[this._picking_next_color_id] = node;
 		*/
 
-		var shader = ShadersManager.get("flat");
+		var macros = {};
+		macros.merge(instance._final_macros);
+
+		var shader = ShadersManager.get("flat", macros);
 		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
+
+		//hardcoded, ugly
+		/*
+		if( macros["USE_SKINNING"] && instance.uniforms["u_bones"] )
+			if( macros["USE_SKINNING_TEXTURE"] )
+				shader.uniforms({ u_bones: });
+		*/
+
 		instance.render(shader);
 	},
 
@@ -881,6 +911,33 @@ var Renderer = {
 				material.fillSurfaceUniforms(scene); //update uniforms
 			}
 		}
+
+		//pack all macros, uniforms, and samplers relative to this instance in single containers
+		for(var i in instances)
+		{
+			var instance = instances[i];
+			var node = instance.node;
+			var material = instance.material;
+
+			var macros = instance._final_macros;
+			wipeObject(macros);
+			macros.merge(node._macros);
+			macros.merge(material._macros);
+			macros.merge(instance.macros);
+
+			var uniforms = instance._final_uniforms;
+			wipeObject(uniforms);
+			uniforms.merge( node._uniforms );
+			uniforms.merge( material._uniforms );
+			uniforms.merge( instance.uniforms );
+
+			var samplers = instance._final_samplers;
+			wipeObject(samplers);
+			//samplers.merge( node._samplers );
+			samplers.merge( material._samplers );
+			samplers.merge( instance.samplers );			
+		}
+
 
 		//prepare lights
 		var lights = scene._lights;

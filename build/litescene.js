@@ -846,7 +846,9 @@ var Draw = {
 	renderMesh: function(mesh, primitive, shader)
 	{
 		if(!this.ready) throw ("Draw.js not initialized, call Draw.init()");
-		shader = shader || this.shader;
+		if(!shader)
+			shader = mesh.vertexBuffers["colors"] ? this.shader_color : this.shader;
+
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
 		shader.uniforms({
@@ -2284,9 +2286,9 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 
 		//from TGAs...
 		if(img.pixels) //not a real image, just an object with width,height and a buffer with all the pixels
-			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
+			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
-			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
+			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
 		texture.img = img;
 	}
 
@@ -2983,11 +2985,12 @@ Material.COORDS_UV_TRANSFORMED = "transformed";
 Material.COORDS_SCREEN = "screen";
 Material.COORDS_POLAR = "polar";
 Material.COORDS_POLAR_REFLECTED = "polar_reflected";
+Material.COORDS_POLAR_VERTEX = "polar_vertex";
 Material.COORDS_WORLDXZ = "worldxz";
 Material.COORDS_WORLDXY = "worldxy";
 Material.COORDS_WORLDYZ = "worldyz";
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
@@ -3099,7 +3102,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = scene.ambient_color;
@@ -3117,7 +3120,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
@@ -6339,7 +6342,7 @@ Light.prototype.generateShadowmap = function (render_options)
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
 		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-		//ResourcesManager.textures[":shadowmap_" + this._uid ] = this._shadowmap; //debug
+		ResourcesManager.textures[":shadowmap_" + this._uid ] = this._shadowmap; //debug
 	}
 
 	//render the scene inside the texture
@@ -6804,6 +6807,10 @@ SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
 */
 SkinnedMeshRenderer.prototype.configure = function(o)
 {
+	this.enabled = !!(o.enabled);
+	this.cpu_skinning = !!(o.cpu_skinning);
+	this.ignore_transform = !!(o.ignore_transform);
+
 	this.mesh = o.mesh;
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
@@ -6821,6 +6828,9 @@ SkinnedMeshRenderer.prototype.configure = function(o)
 SkinnedMeshRenderer.prototype.serialize = function()
 {
 	var o = { 
+		enabled: this.enabled,
+		cpu_skinning: this.cpu_skinning,
+		ignore_transform: this.ignore_transform,
 		mesh: this.mesh,
 		lod_mesh: this.lod_mesh
 	};
@@ -6858,13 +6868,11 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
-SkinnedMeshRenderer.mat_identity = mat4.create();
-
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 {
 	var node = Scene.getNode(name);
 	if(!node)
-		return SkinnedMeshRenderer.mat_identity;
+		return null;
 	node._is_bone = true;
 	return node.transform.getGlobalMatrixRef();
 }
@@ -6886,79 +6894,21 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	{
 		var m = bones[i]; //mat4.create();
 		var mat = this.getNodeMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
-
-		var inv = ref_mesh.bones[i][1];
-		mat4.multiply( m, mat, inv );
-		if(ref_mesh.bind_matrix)
-			mat4.multiply( m, m, ref_mesh.bind_matrix);
+		if(!mat)
+			mat4.identity( m );
+		else
+		{
+			var inv = ref_mesh.bones[i][1];
+			mat4.multiply( m, mat, inv );
+			if(ref_mesh.bind_matrix)
+				mat4.multiply( m, m, ref_mesh.bind_matrix);
+		}
 
 		//bones[i].push( m ); //multiply by the inv bindpose matrix
 	}
 
 	return bones;
 }
-
-SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
-
-SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
-{
-	var original_vertices = ref_mesh.getBuffer("vertices").data;
-
-	var weights = ref_mesh.getBuffer("weights").data;
-	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
-
-	var vertices_buffer = skin_mesh.getBuffer("vertices");
-	var vertices = vertices_buffer.data;
-
-	//bone matrices
-	var bones = this.getBoneMatrices( ref_mesh );
-	if(bones.length == 0) //no bones found
-		return null;
-
-	//var factor = this.factor; //for debug
-
-	//apply skinning per vertex
-	var temp = vec3.create();
-	var ov_temp = vec3.create();
-	var temp_matrix = mat4.create();
-	for(var i = 0, l = vertices.length / 3; i < l; ++i)
-	{
-		var ov = original_vertices.subarray(i*3, i*3+3);
-		ov_temp.set(ov);
-		var b = bone_indices.subarray(i*4, i*4+4);
-		var w = weights.subarray(i*4, i*4+4);
-		var v = vertices.subarray(i*3, i*3+3);
-
-		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
-
-		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
-		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
-		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
-		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
-		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
-
-		mat4.multiplyVec3(v, temp_matrix, ov_temp);
-		//we could also multiply the normal but this is already superslow...
-
-		/* apply weights
-		v[0] = v[1] = v[2] = 0.0; //reset
-		mat4.multiplyVec3(v, bmat[0], ov_temp);
-		vec3.scale(v,v,w[0]);
-		for(var j = 1; j < 4; ++j)
-			if(w[j] > 0.0)
-			{
-				mat4.multiplyVec3(temp, bmat[j], ov_temp);
-				vec3.scaleAndAdd(v, v, temp, w[j]);
-			}
-		//*/
-
-		//if(factor != 1) vec3.lerp( v, ov, v, factor);
-	}
-
-	//upload
-	vertices_buffer.compile(gl.STREAM_DRAW);
-}
-
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
@@ -7012,20 +6962,22 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
+			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
 		{
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { no_flip: true, format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
-			texture.uploadData( texture._data );
+			texture.uploadData( texture._data, { no_flip: true } );
 			RI.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
+			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
 		else
 			console.error("impossible to get here")
@@ -7038,6 +6990,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			this._skinned_mesh = new GL.Mesh();
 			this._skinned_mesh._reference = mesh;
 			var vertex_buffer = mesh.getBuffer("vertices");
+			var normal_buffer = mesh.getBuffer("normals");
 
 			//clone 
 			for (var i in mesh.vertexBuffers)
@@ -7047,6 +7000,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 			//new ones clonning old ones
 			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
+			if(normal_buffer)
+				this._skinned_mesh.addVertexBuffer("normals","a_normal", 3, new Float32Array( normal_buffer.data ), gl.STREAM_DRAW );
 		}
 
 
@@ -7081,6 +7036,88 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	instances.push(RI);
 	//return RI;
+}
+
+
+SkinnedMeshRenderer.zero_matrix = new Float32Array(16);
+
+SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
+{
+	var original_vertices = ref_mesh.getBuffer("vertices").data;
+	var original_normals = null;
+	if(ref_mesh.getBuffer("normals"))
+		original_normals = ref_mesh.getBuffer("normals").data;
+
+	var weights = ref_mesh.getBuffer("weights").data;
+	var bone_indices = ref_mesh.getBuffer("bone_indices").data;
+
+	var vertices_buffer = skin_mesh.getBuffer("vertices");
+	var vertices = vertices_buffer.data;
+
+	var normals_buffer = null;
+	var normals = null;
+
+	if(original_normals)
+	{
+		normals_buffer = skin_mesh.getBuffer("normals");
+		normals = normals_buffer.data;
+	}
+
+	//bone matrices
+	var bones = this.getBoneMatrices( ref_mesh );
+	if(bones.length == 0) //no bones found
+		return null;
+
+	//var factor = this.factor; //for debug
+
+	//apply skinning per vertex
+	var temp = vec3.create();
+	var ov_temp = vec3.create();
+	var temp_matrix = mat4.create();
+	for(var i = 0, l = vertices.length / 3; i < l; ++i)
+	{
+		var ov = original_vertices.subarray(i*3, i*3+3);
+
+		var b = bone_indices.subarray(i*4, i*4+4);
+		var w = weights.subarray(i*4, i*4+4);
+		var v = vertices.subarray(i*3, i*3+3);
+
+		var bmat = [ bones[ b[0] ], bones[ b[1] ], bones[ b[2] ], bones[ b[3] ] ];
+
+		temp_matrix.set( SkinnedMeshRenderer.zero_matrix );
+		mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[0], w[0] );
+		if(w[1] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[1], w[1] );
+		if(w[2] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[2], w[2] );
+		if(w[3] > 0.0) mat4.scaleAndAdd( temp_matrix, temp_matrix, bmat[3], w[3] );
+
+		mat4.multiplyVec3(v, temp_matrix, original_vertices.subarray(i*3, i*3+3) );
+		if(normals)
+		{
+			var n = normals.subarray(i*3, i*3+3);
+			mat4.rotateVec3(n, temp_matrix, original_normals.subarray(i*3, i*3+3) );
+		}
+		
+		//we could also multiply the normal but this is already superslow...
+
+		/* apply weights
+		v[0] = v[1] = v[2] = 0.0; //reset
+		mat4.multiplyVec3(v, bmat[0], ov_temp);
+		vec3.scale(v,v,w[0]);
+		for(var j = 1; j < 4; ++j)
+			if(w[j] > 0.0)
+			{
+				mat4.multiplyVec3(temp, bmat[j], ov_temp);
+				vec3.scaleAndAdd(v, v, temp, w[j]);
+			}
+		//*/
+
+		//if(factor != 1) vec3.lerp( v, ov, v, factor);
+	}
+
+	//upload
+	vertices_buffer.compile(gl.STREAM_DRAW);
+	if(normals_buffer)
+		normals_buffer.compile(gl.STREAM_DRAW);
 }
 
 LS.registerComponent(SkinnedMeshRenderer);
@@ -7216,6 +7253,16 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
 	mat.textures["color"] = texture;
+
+	if(texture && texture.texture_type == gl.TEXTURE_2D)
+	{
+		mat.textures["color_uvs"] = "polar_vertex";
+		texture.bind(0);
+		texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+		texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+	}
+	else
+		delete mat.textures["color_uvs"];
 
 	RI.setMesh(mesh);
 
@@ -9059,6 +9106,7 @@ LS.registerComponent(PlayAnimation);
 
 function RealtimeReflector(o)
 {
+	this.enabled = true;
 	this.texture_size = 512;
 	this.brightness_factor = 1.0;
 	this.colorclip_factor = 0.0;
@@ -9096,7 +9144,7 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 
 RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 {
-	if(!this._root) return;
+	if(!this.enabled || !this._root) return;
 
 	var camera = render_options.main_camera;
 
@@ -11626,6 +11674,11 @@ function RenderInstance(node, component)
 	this.macros = {};
 	this.uniforms = {};
 	this.samplers = {};
+
+	//for internal use
+	this._final_macros = {};
+	this._final_uniforms = {};
+	this._final_samplers = {};
 }
 
 
@@ -12169,13 +12222,17 @@ var Renderer = {
 			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
 
-		//Set matrices
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
+
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
@@ -12189,16 +12246,16 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
-		//assign material samplers (maybe they are not used...)
-		//Array.prototype.push.apply(samplers, scene._samplers);
+		//pack material samplers 
 		var samplers = {};
 		samplers.merge( scene._samplers );
-		samplers.merge( material._samplers );
-		samplers.merge( instance.samplers );
+		samplers.merge( instance_final_samplers );
 
+		//enable samplers and store where [TODO: maybe they are not used..., improve here]
+		var sampler_uniforms = {};
 		var slot = 0;
 		for(var i in samplers)
-			material._uniforms[ i ] = samplers[i].bind( slot++ );
+			sampler_uniforms[ i ] = samplers[i].bind( slot++ );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -12216,9 +12273,8 @@ var Renderer = {
 		{
 			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
 			macros.merge(scene._macros);
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
+			macros.merge(instance_final_macros); //contains node, material and instance macros
+
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = "";
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
@@ -12230,10 +12286,9 @@ var Renderer = {
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
+			shader.uniforms( sampler_uniforms );
 			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( instance_final_uniforms );
 
 			//render
 			instance.render( shader );
@@ -12257,10 +12312,9 @@ var Renderer = {
 
 				var macros = {};
 				macros.merge(scene._macros);
-				macros.merge(node_macros);
-				macros.merge(material._macros);
-				macros.merge(instance.macros);
+				macros.merge(instance_final_macros); //contains node, material and instance macros
 				macros.merge(light_macros);
+
 				if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 					macros.USE_CLIPPING_PLANE = "";
 
@@ -12290,11 +12344,10 @@ var Renderer = {
 				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
-			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( light_uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( sampler_uniforms ); //where is every texture binded
+			shader.uniforms( scene._uniforms );  //used mostly for environment textures
+			shader.uniforms( instance_final_uniforms ); //contains node, material and instance uniforms
+			shader.uniforms( light_uniforms ); //should this go before instance_final? to prioritize
 
 			//render the instance
 			instance.render( shader );
@@ -12317,25 +12370,30 @@ var Renderer = {
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
 
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS
 		this.enableInstanceFlags(instance, render_options);
 
 		var macros = {};
+		macros.merge( instance_final_macros );
+
 		if(this._current_target && this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
 			macros["USE_LINEAR_DISTANCE"] = "";
 
-		if(node.flags.alpha_shadows == true && (material.getTexture("color") || material.getTexture("opacity")))
+		/*
+		if(node.flags.alpha_shadows == true )
 		{
 			macros["USE_ALPHA_TEST"] = "0.5";
-
-
 			var color = material.getTexture("color");
 			if(color)
 			{
@@ -12350,21 +12408,35 @@ var Renderer = {
 				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
 				opacity.bind(1);
 			}
-			macros.merge(node_macros);
+
 			shader = ShadersManager.get("depth", macros);
 			shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
 		else
 		{
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
 			shader = ShadersManager.get("depth", macros );
 		}
+		*/
 
+		if(node.flags.alpha_shadows == true )
+			macros["USE_ALPHA_TEST"] = "0.5";
+
+		var shader = ShadersManager.get("depth", macros );
+
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( instance_final_samplers );
+
+		var slot = 1;
+		var sampler_uniforms = {};
+		for(var i in samplers)
+			if(shader.samplers[i]) //only enable a texture if the shader uses it
+				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+
+		shader.uniforms( sampler_uniforms );
 		shader.uniforms( scene._uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms(node_uniforms);
+		shader.uniforms( instance._final_uniforms );
+
 		instance.render(shader);
 		this._rendercalls += 1;
 	},
@@ -12456,8 +12528,19 @@ var Renderer = {
 		this._picking_nodes[this._picking_next_color_id] = node;
 		*/
 
-		var shader = ShadersManager.get("flat");
+		var macros = {};
+		macros.merge(instance._final_macros);
+
+		var shader = ShadersManager.get("flat", macros);
 		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
+
+		//hardcoded, ugly
+		/*
+		if( macros["USE_SKINNING"] && instance.uniforms["u_bones"] )
+			if( macros["USE_SKINNING_TEXTURE"] )
+				shader.uniforms({ u_bones: });
+		*/
+
 		instance.render(shader);
 	},
 
@@ -12663,6 +12746,33 @@ var Renderer = {
 				material.fillSurfaceUniforms(scene); //update uniforms
 			}
 		}
+
+		//pack all macros, uniforms, and samplers relative to this instance in single containers
+		for(var i in instances)
+		{
+			var instance = instances[i];
+			var node = instance.node;
+			var material = instance.material;
+
+			var macros = instance._final_macros;
+			wipeObject(macros);
+			macros.merge(node._macros);
+			macros.merge(material._macros);
+			macros.merge(instance.macros);
+
+			var uniforms = instance._final_uniforms;
+			wipeObject(uniforms);
+			uniforms.merge( node._uniforms );
+			uniforms.merge( material._uniforms );
+			uniforms.merge( instance.uniforms );
+
+			var samplers = instance._final_samplers;
+			wipeObject(samplers);
+			//samplers.merge( node._samplers );
+			samplers.merge( material._samplers );
+			samplers.merge( instance.samplers );			
+		}
+
 
 		//prepare lights
 		var lights = scene._lights;

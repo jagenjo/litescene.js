@@ -89,11 +89,12 @@ Material.COORDS_UV_TRANSFORMED = "transformed";
 Material.COORDS_SCREEN = "screen";
 Material.COORDS_POLAR = "polar";
 Material.COORDS_POLAR_REFLECTED = "polar_reflected";
+Material.COORDS_POLAR_VERTEX = "polar_vertex";
 Material.COORDS_WORLDXZ = "worldxz";
 Material.COORDS_WORLDXY = "worldxy";
 Material.COORDS_WORLDYZ = "worldyz";
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
@@ -205,7 +206,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = scene.ambient_color;
@@ -223,7 +224,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , texture]);
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
