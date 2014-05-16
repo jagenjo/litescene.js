@@ -59,6 +59,12 @@ Camera.cubemap_camera_parameters = [
 	{ dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,-1,0) } //negative Z
 ];
 
+Camera.prototype.getResources = function (res)
+{
+	//nothing to do, cameras dont use assets
+	return res;
+}
+
 
 /*
 Camera.prototype.onCameraEnabled = function(e,options)

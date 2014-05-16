@@ -94,6 +94,14 @@ ParticleEmissor.prototype.getResources = function(res)
 	if(this.texture) res[ this.texture ] = Texture;
 }
 
+ParticleEmissor.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.emissor_mesh == old_name)
+		this.emissor_mesh = new_name;
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
 ParticleEmissor.prototype.createParticle = function(p)
 {
 	p = p || {};

@@ -30,6 +30,12 @@ Skybox.prototype.getResources = function(res)
 	return res;
 }
 
+Skybox.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
 Skybox.prototype.onCollectInstances = function(e, instances)
 {
 	if(!this._root) return;

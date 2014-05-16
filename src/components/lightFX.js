@@ -182,5 +182,11 @@ LightFX.prototype.getResources = function (res)
 	return res;
 }
 
+LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.glare_texture == old_name)
+		this.glare_texture = new_name;
+}
+
 LS.registerComponent(LightFX);
 LS.LightFX = LightFX;

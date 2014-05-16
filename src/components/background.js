@@ -31,6 +31,12 @@ BackgroundRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+BackgroundRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
 BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var mat = null;

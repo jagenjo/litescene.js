@@ -44,9 +44,11 @@ function Context(options)
 	this.render_options = new RenderOptions();
 
 	if(options.resources)
-		LS.ResourcesManager.path = options.resources;
+		LS.ResourcesManager.setPath( options.resources );
 	if(options.shaders)
-		ShadersManager.init(options.shaders);
+		ShadersManager.init( options.shaders );
+	if(options.proxy)
+		LS.ResourcesManager.setProxy( options.proxy );
 
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;

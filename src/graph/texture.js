@@ -914,6 +914,80 @@ if(typeof(LiteGraph) != "undefined")
 	LiteGraph.registerNodeType("texture/mix", LGraphTextureMix );
 	window.LGraphTextureMix = LGraphTextureMix;
 
+	// Texture Edges detection *****************************************
+	function LGraphTextureEdges()
+	{
+		this.addInput("Tex.","Texture");
+
+		this.addOutput("Edges","Texture");
+		this.properties = { invert: true, low_precision: false };
+
+		if(!LGraphTextureEdges._shader)
+			LGraphTextureEdges._shader = new GL.Shader( LGraphTextureEdges.vertex_shader, LGraphTextureEdges.pixel_shader );
+	}
+
+	LGraphTextureEdges.title = "Edges";
+	LGraphTextureEdges.desc = "Detects edges";
+
+	LGraphTextureEdges.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(!tex) return;
+
+		var type = tex.type;
+		if(this.properties.low_precision)
+			type = gl.UNSIGNED_BYTE;
+
+		if(!this._temp_texture || this._temp_texture.width != tex.width || this._temp_texture.height != tex.height || this._temp_texture.type != type)
+			this._temp_texture = new GL.Texture( tex.width, tex.height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
+
+		gl.disable( gl.BLEND );
+		gl.disable( gl.DEPTH_TEST );
+
+		var mesh = Mesh.getScreenQuad();
+		var shader = LGraphTextureEdges._shader;
+		var invert = this.properties.invert;
+
+		this._temp_texture.drawTo( function() {
+			tex.bind(0);
+			shader.uniforms({u_texture:0, u_isize:[1/tex.width,1/tex.height], u_invert: invert ? 1 : 0}).draw(mesh);
+		});
+
+		this.setOutputData(0, this._temp_texture);
+	}
+
+	LGraphTextureEdges.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			void main() {\n\
+				v_coord = a_coord; gl_Position = vec4(v_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureEdges.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 v_coord;\n\
+			uniform sampler2D u_texture;\n\
+			uniform vec2 u_isize;\n\
+			uniform int u_invert;\n\
+			\n\
+			void main() {\n\
+				vec4 center = texture2D(u_texture, v_coord);\n\
+				vec4 up = texture2D(u_texture, v_coord + u_isize * vec2(0.0,1.0) );\n\
+				vec4 down = texture2D(u_texture, v_coord + u_isize * vec2(0.0,-1.0) );\n\
+				vec4 left = texture2D(u_texture, v_coord + u_isize * vec2(1.0,0.0) );\n\
+				vec4 right = texture2D(u_texture, v_coord + u_isize * vec2(-1.0,0.0) );\n\
+				vec4 diff = abs(center - up) + abs(center - down) + abs(center - left) + abs(center - right);\n\
+				if(u_invert == 1)\n\
+					diff = vec4(1.0) - diff;\n\
+			   gl_FragColor = diff;\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/edges", LGraphTextureEdges );
+	window.LGraphTextureEdges = LGraphTextureEdges;
+
 	// Texture Depth *****************************************
 	function LGraphTextureDepthRange()
 	{

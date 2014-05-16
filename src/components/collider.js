@@ -41,6 +41,12 @@ Collider.prototype.getResources = function(res)
 	return res;
 }
 
+Collider.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
+}
+
 Collider.prototype.onGetColliders = function(e, colliders)
 {
 	var PI = this._PI;

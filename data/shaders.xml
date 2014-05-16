@@ -571,9 +571,9 @@
 					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
 
 						#ifdef USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap,-R, 0.0).xyz;
+							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
 						#else //USE_ENVIRONMENT_TEXTURE
-							reflection_color = texture2D(environment_texture, polarToCartesian(-R) ).xyz;
+							reflection_color = texture2D(environment_texture, USE_ENVIRONMENT_TEXTURE ).xyz;
 						#endif
 
 					#endif //environment
@@ -582,21 +582,6 @@
 					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
 				}
 				#endif //firstpass
-
-				/*
-				//apply ENVIRONMENT
-				#ifdef FIRST_PASS
-				#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
-					vec3 reflection_color = vec3(0.0);
-					#ifdef USE_ENVIRONMENT_CUBEMAP
-						reflection_color = textureCube(environment_cubemap,-R).xyz;
-					#endif
-
-					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
-
-				#endif //environtment
-				#endif //firstpass
-				*/
 
 				return final_color;
 			}
@@ -840,8 +825,7 @@
 				vec2 uvs_worldxz = v_pos.xz * 0.1;
 				vec2 uvs_worldyz = v_pos.yz * 0.1;
 				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-				//uvs_screen.y = 1.0 - uvs_screen.y;
-				//uvs_screen.x = 1.0 - uvs_screen.x;
+				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
 
 				vec2 uvs_polar = polarToCartesian(N);
 				vec2 uvs_polar_reflected = uvs_polar; //computed later when we know the Reflected vector
@@ -1254,9 +1238,7 @@
 				vec2 uvs_worldxz = v_pos.xz * 0.1;
 				vec2 uvs_worldyz = v_pos.yz * 0.1;
 				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-				//uvs_screen.y = 1.0 - uvs_screen.y;
-				//uvs_screen.x = 1.0 - uvs_screen.x;
-
+				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
 
 				vec3 prev_norm = N;
 				#ifdef USE_NORMAL_TEXTURE
@@ -1537,7 +1519,7 @@
 						#endif
 						#ifdef USE_ENVIRONMENT_TEXTURE
 							temp_v2 = vec2(0.0);
-							vec2 env_uv = uvs_polar_reflected;
+							vec2 env_uv = USE_ENVIRONMENT_TEXTURE ;
 
 							#ifdef USE_NORMAL_TEXTURE
 								//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
@@ -1827,7 +1809,7 @@
 				#endif
 
 				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-				uvs_screen.x = 1.0 - uvs_screen.x;
+				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
 
 				vec3 final_color = u_material_color.xyz;
 				float alpha = u_material_color.a;
@@ -1987,7 +1969,7 @@
 					vec2 uvs_worldxz = uvs_0;//v_pos.xz * 0.1;
 					vec2 uvs_worldyz = uvs_0;//v_pos.yz * 0.1;
 					vec2 uvs_screen = uvs_0;//(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-					uvs_screen.x = 1.0 - uvs_screen.x;
+					vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
 
 					float alpha = u_material_color.w;
 					#ifdef USE_COLOR_TEXTURE

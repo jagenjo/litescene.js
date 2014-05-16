@@ -298,6 +298,13 @@ Light.prototype.getResources = function (res)
 	return res;
 }
 
+Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.projective_texture == old_name)
+		this.projective_texture = new_name;
+}
+
+
 Light.prototype.prepare = function( render_options )
 {
 	var uniforms = this._uniforms;

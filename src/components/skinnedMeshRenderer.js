@@ -71,7 +71,8 @@ SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
 */
 SkinnedMeshRenderer.prototype.configure = function(o)
 {
-	this.enabled = !!(o.enabled);
+	if(o.enabled != null)
+		this.enabled = !!(o.enabled);
 	this.cpu_skinning = !!(o.cpu_skinning);
 	this.ignore_transform = !!(o.ignore_transform);
 
@@ -130,6 +131,14 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	if(typeof(this.lod_mesh) == "string")
 		res[this.lod_mesh] = Mesh;
 	return res;
+}
+
+SkinnedMeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
+	if(this.lod_mesh == old_name)
+		this.lod_mesh = new_name;
 }
 
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)

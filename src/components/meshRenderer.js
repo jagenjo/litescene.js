@@ -112,6 +112,14 @@ MeshRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
+	if(this.lod_mesh == old_name)
+		this.lod_mesh = new_name;
+}
+
 //MeshRenderer.prototype.getRenderInstance = function(options)
 MeshRenderer.prototype.onCollectInstances = function(e, instances)
 {

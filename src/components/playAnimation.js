@@ -87,4 +87,10 @@ PlayAnimation.prototype.getResources = function(res)
 		res[ this.animation ] = LS.Animation;
 }
 
+PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.animation == old_name)
+		this.animation = new_name;
+}
+
 LS.registerComponent(PlayAnimation);

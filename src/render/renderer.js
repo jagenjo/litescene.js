@@ -763,8 +763,13 @@ var Renderer = {
 			if(!texture) continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
+			if(texture.texture_type == gl.TEXTURE_2D)
+			{
+				texture.bind(0);
+				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
+			}
 			scene._samplers[i + type] = texture;
-			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
+			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
 	},	
 

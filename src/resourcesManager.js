@@ -159,6 +159,41 @@ var ResourcesManager = {
 		}
 	},	
 
+	/**
+	* Set the base path where all the resources will be fetched (unless they have absolute URL)
+	* By default it will use the website home address
+	*
+	* @method setPath
+	* @param {String} url
+	*/
+	setPath: function( url )
+	{
+		this.path = url;
+	},
+
+	/**
+	* Set a proxy url where all non-local resources will be requested, allows to fetch assets to other servers.
+	* request will be in this form: proxy_url + "/" + url_with_protocol: ->   http://myproxy.com/google.com/images/...
+	*
+	* @method setProxy
+	* @param {String} proxy_url
+	*/
+	setProxy: function( proxy_url )
+	{
+		if( proxy_url.indexOf("@") != -1 )
+			this.proxy = "http://" + proxy_url.replace("@", window.location.host );
+		else
+			this.proxy = proxy_url;
+	},
+
+	/**
+	* transform a url to a full url taking into account proxy and local_repository
+	*
+	* @method getFullURL
+	* @param {String} url
+	* @param {Object} options
+	* @return {String} full url
+	*/
 	getFullURL: function( url, options )
 	{
 		var full_url = "";

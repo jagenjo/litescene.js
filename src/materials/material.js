@@ -86,15 +86,16 @@ Material.ENVIRONMENT_TEXTURE = "environment";
 Material.COORDS_UV0 = "0";
 Material.COORDS_UV1 = "1";
 Material.COORDS_UV_TRANSFORMED = "transformed";
-Material.COORDS_SCREEN = "screen";
-Material.COORDS_POLAR = "polar";
-Material.COORDS_POLAR_REFLECTED = "polar_reflected";
-Material.COORDS_POLAR_VERTEX = "polar_vertex";
+Material.COORDS_SCREEN = "screen";					//project to screen space
+Material.COORDS_FLIPPED_SCREEN = "flipped_screen";	//used for realtime reflections
+Material.COORDS_POLAR = "polar";					//use view vector as polar coordinates
+Material.COORDS_POLAR_REFLECTED = "polar_reflected";//use reflected view vector as polar coordinates
+Material.COORDS_POLAR_VERTEX = "polar_vertex";		//use normalized vertex as polar coordinates
 Material.COORDS_WORLDXZ = "worldxz";
 Material.COORDS_WORLDXY = "worldxy";
 Material.COORDS_WORLDYZ = "worldyz";
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
@@ -495,6 +496,19 @@ Material.prototype.getResources = function (res)
 		if(typeof(this.textures[i]) == "string" && i.substr(-4) != "_uvs") //ends in this string
 			res[ this.textures[i] ] = Texture;
 	return res;
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	for(var i in this.textures)
+		if(this.textures[i] == old_name)
+			this.textures[i] = new_name;
 }
 
 /**

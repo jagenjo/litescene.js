@@ -1737,6 +1737,41 @@ var ResourcesManager = {
 		}
 	},	
 
+	/**
+	* Set the base path where all the resources will be fetched (unless they have absolute URL)
+	* By default it will use the website home address
+	*
+	* @method setPath
+	* @param {String} url
+	*/
+	setPath: function( url )
+	{
+		this.path = url;
+	},
+
+	/**
+	* Set a proxy url where all non-local resources will be requested, allows to fetch assets to other servers.
+	* request will be in this form: proxy_url + "/" + url_with_protocol: ->   http://myproxy.com/google.com/images/...
+	*
+	* @method setProxy
+	* @param {String} proxy_url
+	*/
+	setProxy: function( proxy_url )
+	{
+		if( proxy_url.indexOf("@") != -1 )
+			this.proxy = "http://" + proxy_url.replace("@", window.location.host );
+		else
+			this.proxy = proxy_url;
+	},
+
+	/**
+	* transform a url to a full url taking into account proxy and local_repository
+	*
+	* @method getFullURL
+	* @param {String} url
+	* @param {Object} options
+	* @return {String} full url
+	*/
 	getFullURL: function( url, options )
 	{
 		var full_url = "";
@@ -2982,15 +3017,16 @@ Material.ENVIRONMENT_TEXTURE = "environment";
 Material.COORDS_UV0 = "0";
 Material.COORDS_UV1 = "1";
 Material.COORDS_UV_TRANSFORMED = "transformed";
-Material.COORDS_SCREEN = "screen";
-Material.COORDS_POLAR = "polar";
-Material.COORDS_POLAR_REFLECTED = "polar_reflected";
-Material.COORDS_POLAR_VERTEX = "polar_vertex";
+Material.COORDS_SCREEN = "screen";					//project to screen space
+Material.COORDS_FLIPPED_SCREEN = "flipped_screen";	//used for realtime reflections
+Material.COORDS_POLAR = "polar";					//use view vector as polar coordinates
+Material.COORDS_POLAR_REFLECTED = "polar_reflected";//use reflected view vector as polar coordinates
+Material.COORDS_POLAR_VERTEX = "polar_vertex";		//use normalized vertex as polar coordinates
 Material.COORDS_WORLDXZ = "worldxz";
 Material.COORDS_WORLDXY = "worldxy";
 Material.COORDS_WORLDYZ = "worldyz";
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
@@ -3391,6 +3427,19 @@ Material.prototype.getResources = function (res)
 		if(typeof(this.textures[i]) == "string" && i.substr(-4) != "_uvs") //ends in this string
 			res[ this.textures[i] ] = Texture;
 	return res;
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	for(var i in this.textures)
+		if(this.textures[i] == old_name)
+			this.textures[i] = new_name;
 }
 
 /**
@@ -3988,6 +4037,27 @@ SurfaceMaterial.prototype.getProperties = function()
 
 	return o;
 }
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	//global
+	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
+
+	//specific
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if( prop.value == old_name)
+			prop.value = new_name;
+	}
+}
+
 
 /**
 * gets all the properties and its types
@@ -5301,6 +5371,12 @@ Camera.cubemap_camera_parameters = [
 	{ dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,-1,0) } //negative Z
 ];
 
+Camera.prototype.getResources = function (res)
+{
+	//nothing to do, cameras dont use assets
+	return res;
+}
+
 
 /*
 Camera.prototype.onCameraEnabled = function(e,options)
@@ -6176,6 +6252,13 @@ Light.prototype.getResources = function (res)
 	return res;
 }
 
+Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.projective_texture == old_name)
+		this.projective_texture = new_name;
+}
+
+
 Light.prototype.prepare = function( render_options )
 {
 	var uniforms = this._uniforms;
@@ -6568,6 +6651,12 @@ LightFX.prototype.getResources = function (res)
 	return res;
 }
 
+LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.glare_texture == old_name)
+		this.glare_texture = new_name;
+}
+
 LS.registerComponent(LightFX);
 LS.LightFX = LightFX;
 
@@ -6683,6 +6772,14 @@ MeshRenderer.prototype.getResources = function(res)
 	if(typeof(this.lod_mesh) == "string")
 		res[this.lod_mesh] = Mesh;
 	return res;
+}
+
+MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
+	if(this.lod_mesh == old_name)
+		this.lod_mesh = new_name;
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
@@ -6807,7 +6904,8 @@ SkinnedMeshRenderer.prototype.onRemovedFromNode = function(node)
 */
 SkinnedMeshRenderer.prototype.configure = function(o)
 {
-	this.enabled = !!(o.enabled);
+	if(o.enabled != null)
+		this.enabled = !!(o.enabled);
 	this.cpu_skinning = !!(o.cpu_skinning);
 	this.ignore_transform = !!(o.ignore_transform);
 
@@ -6866,6 +6964,14 @@ SkinnedMeshRenderer.prototype.getResources = function(res)
 	if(typeof(this.lod_mesh) == "string")
 		res[this.lod_mesh] = Mesh;
 	return res;
+}
+
+SkinnedMeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
+	if(this.lod_mesh == old_name)
+		this.lod_mesh = new_name;
 }
 
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
@@ -7205,6 +7311,12 @@ Skybox.prototype.getResources = function(res)
 	return res;
 }
 
+Skybox.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
 Skybox.prototype.onCollectInstances = function(e, instances)
 {
 	if(!this._root) return;
@@ -7311,6 +7423,12 @@ BackgroundRenderer.prototype.getResources = function(res)
 	return res;
 }
 
+BackgroundRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
 BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 {
 	var mat = null;
@@ -7405,6 +7523,12 @@ Collider.prototype.getResources = function(res)
 	if(typeof(this.mesh) == "string")
 		res[this.mesh] = Mesh;
 	return res;
+}
+
+Collider.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.mesh == old_name)
+		this.mesh = new_name;
 }
 
 Collider.prototype.onGetColliders = function(e, colliders)
@@ -8375,7 +8499,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 		//height = v[3];
 	}
 
-	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
+	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
@@ -8609,6 +8733,14 @@ ParticleEmissor.prototype.getResources = function(res)
 {
 	if(this.emissor_mesh) res[ this.emissor_mesh ] = Mesh;
 	if(this.texture) res[ this.texture ] = Texture;
+}
+
+ParticleEmissor.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.emissor_mesh == old_name)
+		this.emissor_mesh = new_name;
+	if(this.texture == old_name)
+		this.texture = new_name;
 }
 
 ParticleEmissor.prototype.createParticle = function(p)
@@ -9095,6 +9227,12 @@ PlayAnimation.prototype.getResources = function(res)
 		res[ this.animation ] = LS.Animation;
 }
 
+PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.animation == old_name)
+		this.animation = new_name;
+}
+
 LS.registerComponent(PlayAnimation);
 /**
 * Realtime Reflective surface
@@ -9253,7 +9391,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	
 	var mat = this._root.getMaterial();
 	if(mat)
-		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
+		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_FLIPPED_SCREEN);
 }
 
 LS.registerComponent(RealtimeReflector);
@@ -9389,6 +9527,12 @@ TerrainRenderer.prototype.getResources = function(res)
 {
 	if(this.heightmap)
 		res[ this.heightmap ] = Texture;
+}
+
+TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.heightmap == old_name)
+		this.heightmap = new_name;
 }
 
 TerrainRenderer["@subdivisions"] = { widget: "number", min:1,max:255,step:1 };
@@ -11269,6 +11413,80 @@ if(typeof(LiteGraph) != "undefined")
 	LiteGraph.registerNodeType("texture/mix", LGraphTextureMix );
 	window.LGraphTextureMix = LGraphTextureMix;
 
+	// Texture Edges detection *****************************************
+	function LGraphTextureEdges()
+	{
+		this.addInput("Tex.","Texture");
+
+		this.addOutput("Edges","Texture");
+		this.properties = { invert: true, low_precision: false };
+
+		if(!LGraphTextureEdges._shader)
+			LGraphTextureEdges._shader = new GL.Shader( LGraphTextureEdges.vertex_shader, LGraphTextureEdges.pixel_shader );
+	}
+
+	LGraphTextureEdges.title = "Edges";
+	LGraphTextureEdges.desc = "Detects edges";
+
+	LGraphTextureEdges.prototype.onExecute = function()
+	{
+		var tex = this.getInputData(0);
+		if(!tex) return;
+
+		var type = tex.type;
+		if(this.properties.low_precision)
+			type = gl.UNSIGNED_BYTE;
+
+		if(!this._temp_texture || this._temp_texture.width != tex.width || this._temp_texture.height != tex.height || this._temp_texture.type != type)
+			this._temp_texture = new GL.Texture( tex.width, tex.height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
+
+		gl.disable( gl.BLEND );
+		gl.disable( gl.DEPTH_TEST );
+
+		var mesh = Mesh.getScreenQuad();
+		var shader = LGraphTextureEdges._shader;
+		var invert = this.properties.invert;
+
+		this._temp_texture.drawTo( function() {
+			tex.bind(0);
+			shader.uniforms({u_texture:0, u_isize:[1/tex.width,1/tex.height], u_invert: invert ? 1 : 0}).draw(mesh);
+		});
+
+		this.setOutputData(0, this._temp_texture);
+	}
+
+	LGraphTextureEdges.vertex_shader = "precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			void main() {\n\
+				v_coord = a_coord; gl_Position = vec4(v_coord * 2.0 - 1.0, 0.0, 1.0);\n\
+			}\n\
+			";
+
+	LGraphTextureEdges.pixel_shader = "precision highp float;\n\
+			precision highp float;\n\
+			varying vec2 v_coord;\n\
+			uniform sampler2D u_texture;\n\
+			uniform vec2 u_isize;\n\
+			uniform int u_invert;\n\
+			\n\
+			void main() {\n\
+				vec4 center = texture2D(u_texture, v_coord);\n\
+				vec4 up = texture2D(u_texture, v_coord + u_isize * vec2(0.0,1.0) );\n\
+				vec4 down = texture2D(u_texture, v_coord + u_isize * vec2(0.0,-1.0) );\n\
+				vec4 left = texture2D(u_texture, v_coord + u_isize * vec2(1.0,0.0) );\n\
+				vec4 right = texture2D(u_texture, v_coord + u_isize * vec2(-1.0,0.0) );\n\
+				vec4 diff = abs(center - up) + abs(center - down) + abs(center - left) + abs(center - right);\n\
+				if(u_invert == 1)\n\
+					diff = vec4(1.0) - diff;\n\
+			   gl_FragColor = diff;\n\
+			}\n\
+			";
+
+	LiteGraph.registerNodeType("texture/edges", LGraphTextureEdges );
+	window.LGraphTextureEdges = LGraphTextureEdges;
+
 	// Texture Depth *****************************************
 	function LGraphTextureDepthRange()
 	{
@@ -12598,8 +12816,13 @@ var Renderer = {
 			if(!texture) continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
+			if(texture.texture_type == gl.TEXTURE_2D)
+			{
+				texture.bind(0);
+				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
+			}
 			scene._samplers[i + type] = texture;
-			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "";
+			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
 	},	
 
@@ -16729,9 +16952,11 @@ function Context(options)
 	this.render_options = new RenderOptions();
 
 	if(options.resources)
-		LS.ResourcesManager.path = options.resources;
+		LS.ResourcesManager.setPath( options.resources );
 	if(options.shaders)
-		ShadersManager.init(options.shaders);
+		ShadersManager.init( options.shaders );
+	if(options.proxy)
+		LS.ResourcesManager.setProxy( options.proxy );
 
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;

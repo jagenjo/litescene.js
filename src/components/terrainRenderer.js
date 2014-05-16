@@ -56,6 +56,12 @@ TerrainRenderer.prototype.getResources = function(res)
 		res[ this.heightmap ] = Texture;
 }
 
+TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.heightmap == old_name)
+		this.heightmap = new_name;
+}
+
 TerrainRenderer["@subdivisions"] = { widget: "number", min:1,max:255,step:1 };
 TerrainRenderer["@heightmap"] = { widget: "texture" };
 TerrainRenderer["@action"] = { widget: "button", callback: function() { this.options.component.updateMesh(); }};
