@@ -97,7 +97,7 @@ SurfaceMaterial.prototype.onModifyMacros = function(macros)
 			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 	}
 
-	macros.USE_SURF = this.surf_code;
+	macros.USE_SURFACE_SHADER = this.surf_code;
 }
 
 SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)

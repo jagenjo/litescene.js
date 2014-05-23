@@ -2,6 +2,7 @@ YUI.add("yuidoc-meta", function(Y) {
    Y.YUIDoc = { meta: {
     "classes": [
         "LS.Animation",
+        "LS.Animation.Track",
         "LS.ComponentContainer",
         "LS.Components.Camera",
         "LS.Components.CameraController",

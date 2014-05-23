@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -178,6 +180,7 @@
 var ResourcesManager = {
 
 	path: &quot;&quot;, //url to retrieve resources relative to the index.html
+	proxy: &quot;&quot;, //url to retrieve resources outside of this host
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the webglstudio editor)
@@ -206,7 +209,7 @@ var ResourcesManager = {
 	* @return {String} a string to attach to a url so the file wont be cached
 	*/
 
-	getNoCache: function(force) { return (!this.ignore_cache &amp;&amp; !force) ? &quot;&quot; : &quot;?nocache=&quot; + window.performance.now() + Math.floor(Math.random() * 1000); },
+	getNoCache: function(force) { return (!this.ignore_cache &amp;&amp; !force) ? &quot;&quot; : &quot;nocache=&quot; + getTime() + Math.floor(Math.random() * 1000); },
 
 	/**
 	* Resets all the resources cached, so it frees the memory
@@ -315,6 +318,65 @@ var ResourcesManager = {
 	},	
 
 	/**
+	* Set the base path where all the resources will be fetched (unless they have absolute URL)
+	* By default it will use the website home address
+	*
+	* @method setPath
+	* @param {String} url
+	*/
+	setPath: function( url )
+	{
+		this.path = url;
+	},
+
+	/**
+	* Set a proxy url where all non-local resources will be requested, allows to fetch assets to other servers.
+	* request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&gt;   http://myproxy.com/google.com/images/...
+	*
+	* @method setProxy
+	* @param {String} proxy_url
+	*/
+	setProxy: function( proxy_url )
+	{
+		if( proxy_url.indexOf(&quot;@&quot;) != -1 )
+			this.proxy = &quot;http://&quot; + proxy_url.replace(&quot;@&quot;, window.location.host );
+		else
+			this.proxy = proxy_url;
+	},
+
+	/**
+	* transform a url to a full url taking into account proxy and local_repository
+	*
+	* @method getFullURL
+	* @param {String} url
+	* @param {Object} options
+	* @return {String} full url
+	*/
+	getFullURL: function( url, options )
+	{
+		var full_url = &quot;&quot;;
+		if(url.substr(0,7) == &quot;http://&quot;)
+		{
+			full_url = url;
+			if(this.proxy) //proxy external files
+				full_url = this.proxy + url.substr(7);
+		}
+		else
+		{
+			if(options &amp;&amp; options.local_repository)
+				full_url = options.local_repository + &quot;/&quot; + url;
+			else
+				full_url = this.path + url;
+		}
+
+		//you can ignore the resources server for some assets if you want
+		if(options &amp;&amp; options.force_local_url)
+			full_url = url;
+
+		return full_url;
+	},
+
+	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
 	*
 	* @method load
@@ -358,28 +420,16 @@ var ResourcesManager = {
 			LEvent.trigger(ResourcesManager,&quot;start_loading_resources&quot;,url);
 		this.num_resources_being_loaded++;
 
-
-		var full_url = &quot;&quot;;
-		if(url.substr(0,7) == &quot;http://&quot;)
-			full_url = url;
-		else
-		{
-			if(options.local_repository)
-				full_url = options.local_repository + &quot;/&quot; + url;
-			else
-				full_url = this.path + url;
-		}
-
-		//you can ignore the resources server for some assets if you want
-		if(options.force_local_url)
-			full_url = url;
+		var full_url = this.getFullURL(url);
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
+		if(nocache)
+			full_url += (full_url.indexOf(&quot;?&quot;) == -1 ? &quot;?&quot; : &quot;&amp;&quot;) + nocache;
 
 		//create the ajax request
 		var settings = {
-			url: full_url + nocache,
+			url: full_url,
 			success: function(response){
 				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
@@ -851,9 +901,9 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 
 		//from TGAs...
 		if(img.pixels) //not a real image, just an object with width,height and a buffer with all the pixels
-			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), flipY: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
+			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
-			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter, flipY: img.flipY });
+			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
 		texture.img = img;
 	}
 
@@ -863,7 +913,7 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 }
 
 //basic formats
-LS.ResourcesManager.registerResourcePreProcessor(&quot;jpg,jpeg,png,webp&quot;, function(filename, data, options, callback) {
+LS.ResourcesManager.registerResourcePreProcessor(&quot;jpg,jpeg,png,webp,gif&quot;, function(filename, data, options, callback) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
 	var mimetype = &#x27;image/png&#x27;;
@@ -871,6 +921,8 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;jpg,jpeg,png,webp&quot;, 
 		mimetype = &quot;image/jpg&quot;;
 	if(extension == &quot;webp&quot;)
 		mimetype = &quot;image/webp&quot;;
+	if(extension == &quot;gif&quot;)
+		mimetype = &quot;image/gif&quot;;
 
 	var blob = new Blob([data],{type: mimetype});
 	var objectURL = URL.createObjectURL(blob);
@@ -931,7 +983,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 	return mesh;
 }
 
-LS.ResourcesManager.registerResourcePreProcessor(&quot;obj&quot;, LS.ResourcesManager.processASCIIMesh, &quot;text&quot;,&quot;Mesh&quot;);
+LS.ResourcesManager.registerResourcePreProcessor(&quot;obj,ase&quot;, LS.ResourcesManager.processASCIIMesh, &quot;text&quot;,&quot;Mesh&quot;);
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
@@ -983,6 +1035,15 @@ Mesh.fromBinary = function( data_array )
 	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
 	mesh.info = o.info;
 	mesh.bounding = o.bounding;
+	if(o.bones)
+	{
+		mesh.bones = o.bones;
+		//restore Float32array
+		for(var i = 0; i &lt; mesh.bones.length; ++i)
+			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
+		if(o.bind_matrix)
+			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
+	}
 	
 	return mesh;
 }
@@ -999,6 +1060,17 @@ Mesh.prototype.toBinary = function()
 		info: this.info,
 		groups: this.groups
 	};
+
+	if(this.bones)
+	{
+		var bones = [];
+		//convert to array
+		for(var i = 0; i &lt; this.bones.length; ++i)
+			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
+		o.bones = bones;
+		if(this.bind_matrix)
+			o.bind_matrix = this.bind_matrix;
+	}
 
 	//bounding box
 	if(!this.bounding)	
@@ -1029,7 +1101,9 @@ Mesh.prototype.toBinary = function()
 	o.index_buffers = index_buffers;
 
 	//create pack file
-	return WBin.create(o, &quot;Mesh&quot;);
+	var bin = WBin.create(o, &quot;Mesh&quot;);
+
+	return bin;
 }
 
 

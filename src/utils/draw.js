@@ -183,8 +183,10 @@ var Draw = {
 
 		if(points.constructor == Float32Array)
 			vertices = points;
-		else
+		else if(points[0].length) //array of arrays
 			vertices = this.linearize(points);
+		else
+			vertices = new Float32Array(points);
 
 		if(colors)
 			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
@@ -570,7 +572,7 @@ var Draw = {
 	{
 		if(arguments.length == 3)
 			mat4.scale(this.model_matrix,this.model_matrix,[x,y,z]);
-		else
+		else //one argument: x-> vec3
 			mat4.scale(this.model_matrix,this.model_matrix,x);
 	},
 
@@ -578,7 +580,7 @@ var Draw = {
 	{
 		if(arguments.length == 3)
 			mat4.translate(this.model_matrix,this.model_matrix,[x,y,z]);
-		else
+		else  //one argument: x -> vec3
 			mat4.translate(this.model_matrix,this.model_matrix,x);
 	},
 
@@ -586,7 +588,7 @@ var Draw = {
 	{
 		if(arguments.length == 4)
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, [x,y,z]);
-		else
+		else //two arguments: x -> vec3
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, x);
 	},
 

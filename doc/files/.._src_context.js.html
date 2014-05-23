@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -200,9 +202,11 @@ function Context(options)
 	this.render_options = new RenderOptions();
 
 	if(options.resources)
-		LS.ResourcesManager.path = options.resources;
+		LS.ResourcesManager.setPath( options.resources );
 	if(options.shaders)
-		ShadersManager.init(options.shaders);
+		ShadersManager.init( options.shaders );
+	if(options.proxy)
+		LS.ResourcesManager.setProxy( options.proxy );
 
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;

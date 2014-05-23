@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/meshRenderer.js</title>
+    <title>../src/materials/surfaceMaterial.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -152,181 +152,286 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/meshRenderer.js</h1>
+                        <h1 class="file-heading">File: ../src/materials/surfaceMaterial.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-
-function MeshRenderer(o)
+function SurfaceMaterial(o)
 {
-	this.mesh = null;
-	this.lod_mesh = null;
-	this.submesh_id = -1;
-	this.material = null;
-	this.primitive = null;
-	this.two_sided = false;
+	this._uid = LS.generateUId();
+	this._dirty = true;
 
-	if(o)
+	this.shader_name = &quot;surface&quot;;
+
+	//this.shader_name = null; //default shader
+	this.color = new Float32Array([1.0,1.0,1.0]);
+	this.opacity = 1.0;
+	this.blend_mode = Blend.NORMAL;
+
+	this.vs_code = &quot;&quot;;
+	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
+	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
+	o.Normal = IN.worldNormal;\n\
+	o.Emission = vec3(0.0);\n\
+	o.Specular = 1.0;\n\
+	o.Gloss = 40.0;\n\
+	o.Reflectivity = 0.0;\n\
+	o.Alpha = IN.color.a;\n}\n&quot;;
+
+	this._uniforms = {};
+	this._macros = {};
+
+	this.properties = []; //array of configurable properties
+	this.textures = {};
+	if(o) 
 		this.configure(o);
 
-	if(!MeshRenderer._identity) //used to avoir garbage
-		MeshRenderer._identity = mat4.create();
+	this.flags = 0;
+
+	this.computeCode();
 }
 
-MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
+SurfaceMaterial.icon = &quot;mini-icon-material.png&quot;;
 
-//vars
-MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
-MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
-	var component = this.instance;
-	var mesh = component.getMesh();
-	if(!mesh) return null;
-	if(!mesh || !mesh.info || !mesh.info.groups || mesh.info.groups.length &lt; 2)
-		return null;
-
-	var t = {&quot;all&quot;:null};
-	for(var i = 0; i &lt; mesh.info.groups.length; ++i)
-		t[mesh.info.groups[i].name] = i;
-	return t;
-}};
-
-MeshRenderer.prototype.onAddedToNode = function(node)
+SurfaceMaterial.prototype.onCodeChange = function()
 {
-	if(!node.meshrenderer)
-		node.meshrenderer = this;
-	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	this.computeCode();
 }
 
-MeshRenderer.prototype.onRemovedFromNode = function(node)
+SurfaceMaterial.prototype.computeCode = function()
 {
-	if(node.meshrenderer)
-		delete node[&quot;meshrenderer&quot;];
-	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	var uniforms_code = &quot;&quot;;
+	for(var i in this.properties)
+	{
+		var code = &quot;uniform &quot;;
+		var prop = this.properties[i];
+		switch(prop.type)
+		{
+			case &#x27;number&#x27;: code += &quot;float &quot;; break;
+			case &#x27;vec2&#x27;: code += &quot;vec2 &quot;; break;
+			case &#x27;vec3&#x27;: code += &quot;vec3 &quot;; break;
+			case &#x27;vec4&#x27;:
+			case &#x27;color&#x27;:
+			 	code += &quot;vec4 &quot;; break;
+			case &#x27;texture&#x27;: code += &quot;sampler2D &quot;; break;
+			case &#x27;cubemap&#x27;: code += &quot;samplerCube &quot;; break;
+			default: continue;
+		}
+		code += prop.name + &quot;;&quot;;
+		uniforms_code += code;
+	}
+
+	var lines = this.code.split(&quot;\n&quot;);
+	for(var i in lines)
+		lines[i] = lines[i].split(&quot;//&quot;)[0]; //remove comments
+
+	this.surf_code = uniforms_code + lines.join(&quot;&quot;);
+}
+
+// RENDERING METHODS
+SurfaceMaterial.prototype.onModifyMacros = function(macros)
+{
+	if(this._ps_uniforms_code)
+	{
+		if(macros.USE_PIXEL_SHADER_UNIFORMS)
+			macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
+		else
+			macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
+	}
+
+	if(this._ps_functions_code)
+	{
+		if(macros.USE_PIXEL_SHADER_FUNCTIONS)
+			macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
+		else
+			macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
+	}
+
+	if(this._ps_code)
+	{
+		if(macros.USE_PIXEL_SHADER_CODE)
+			macros.USE_PIXEL_SHADER_CODE += this._ps_code;
+		else
+			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
+	}
+
+	macros.USE_SURFACE_SHADER = this.surf_code;
+}
+
+SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+{
+	var macros = {};
+	this._macros = macros;
+}
+
+
+SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+{
+	var samplers = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot;)
+		{
+			var texture = LS.getTexture( prop.value );
+			if(!texture) continue;
+			samplers[prop.name] = texture;
+		}
+		else
+			this._uniforms[ prop.name ] = prop.value;
+	}
+
+	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._samplers = samplers;
+}
+
+SurfaceMaterial.prototype.configure = function(o) { 
+	LS.cloneObject(o, this);
+	this.computeCode();
 }
 
 /**
-* Configure from a serialized object
-* @method configure
-* @param {Object} object with the serialized info
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
 */
-MeshRenderer.prototype.configure = function(o)
+SurfaceMaterial.prototype.getProperties = function()
 {
-	this.mesh = o.mesh;
-	this.lod_mesh = o.lod_mesh;
-	this.submesh_id = o.submesh_id;
-	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided;
-	if(o.material)
-		this.material = typeof(o.material) == &quot;string&quot; ? o.material : new Material(o.material);
-
-	if(o.morph_targets)
-		this.morph_targets = o.morph_targets;
-}
-
-/**
-* Serialize the object 
-* @method serialize
-* @return {Object} object with the serialized info
-*/
-MeshRenderer.prototype.serialize = function()
-{
-	var o = { 
-		mesh: this.mesh,
-		lod_mesh: this.lod_mesh
+	var o = {
+		color:&quot;vec3&quot;,
+		opacity:&quot;number&quot;,
+		shader_name: &quot;string&quot;,
+		blend_mode: &quot;number&quot;,
+		code: &quot;string&quot;
 	};
 
-	if(this.material)
-		o.material = typeof(this.material) == &quot;string&quot; ? this.material : this.material.serialize();
+	//from this material
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		o[prop.name] = prop.type;
+	}	
 
-	if(this.primitive != null)
-		o.primitive = this.primitive;
-	if(this.submesh_id)
-		o.submesh_id = this.submesh_id;
-	if(this.two_sided)
-		o.two_sided = this.two_sided;
 	return o;
 }
 
-MeshRenderer.prototype.getMesh = function() {
-	if(typeof(this.mesh) === &quot;string&quot;)
-		return ResourcesManager.meshes[this.mesh];
-	return this.mesh;
-}
-
-MeshRenderer.prototype.getLODMesh = function() {
-	if(typeof(this.lod_mesh) === &quot;string&quot;)
-		return ResourcesManager.meshes[this.lod_mesh];
-	return this.low_mesh;
-}
-
-MeshRenderer.prototype.getResources = function(res)
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
-	if(typeof(this.mesh) == &quot;string&quot;)
-		res[this.mesh] = Mesh;
-	if(typeof(this.lod_mesh) == &quot;string&quot;)
-		res[this.lod_mesh] = Mesh;
-	return res;
-}
+	//global
+	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
 
-MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-	if(this.mesh == old_name)
-		this.mesh = new_name;
-	if(this.lod_mesh == old_name)
-		this.lod_mesh = new_name;
-}
-
-//MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances)
-{
-	var mesh = this.getMesh();
-	if(!mesh) return null;
-
-	var node = this._root;
-	if(!this._root) return;
-
-	var RI = this._RI;
-	if(!RI)
-		this._RI = RI = new RenderInstance(this._root, this);
-
-	//matrix: do not need to update, already done
-	RI.matrix.set( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
-	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
-
-	//flags
-	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
-	RI.applyNodeFlags();
-
-	if(this.two_sided)
-		RI.flags &amp;= ~RI_CULL_FACE;
-
-	//material (after flags because it modifies the flags)
-	RI.setMaterial( this.material || this._root.getMaterial() );
-
-	//buffers from mesh and bounding
-	RI.setMesh( mesh, this.primitive );
-	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
-
-	//used for raycasting
-	if(this.lod_mesh)
+	//specific
+	for(var i in this.properties)
 	{
-		if(typeof(this.lod_mesh) === &quot;string&quot;)
-			RI.collision_mesh = ResourcesManager.resources[ this.lod_mesh ];
-		else
-			RI.collision_mesh = this.lod_mesh;
+		var prop = this.properties[i];
+		if( prop.value == old_name)
+			prop.value = new_name;
 	}
-	else
-		RI.collision_mesh = mesh;
-
-	instances.push(RI);
 }
 
-LS.registerComponent(MeshRenderer);
-LS.MeshRenderer = MeshRenderer;
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+SurfaceMaterial.prototype.getProperty = function(name)
+{
+	if(this[name])
+		return this[name];
+
+	if( name.substr(0,4) == &quot;tex_&quot;)
+		return this.textures[ name.substr(4) ];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name == name)
+			return prop.value;
+	}	
+
+	return null;
+}
+
+/**
+* assign a value to a property in a safe way
+* @method setProperty
+* @param {Object} object to configure from
+*/
+SurfaceMaterial.prototype.setProperty = function(name, value)
+{
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name != name)
+			continue;
+		prop.value = value;
+		return true;
+	}
+
+	return false;
+}
+
+
+SurfaceMaterial.prototype.getTextureChannels = function()
+{
+	var channels = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot;)
+			continue;
+		channels.push(prop.name);
+	}
+
+	return channels;
+}
+
+/**
+* Assigns a texture to a channel
+* @method setTexture
+* @param {Texture} texture
+* @param {String} channel default is COLOR
+*/
+SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot;)
+			continue;
+		if(channel &amp;&amp; prop.name != channel) //assign to the channel or if there is no channel just to the first one
+			continue;
+
+		prop.value = texture;
+		if(this.textures)
+			this.textures[channel] = texture;
+		if(!channel)
+			break;
+	}
+
+	if(!texture) return;
+	if(texture.constructor == String &amp;&amp; texture[0] != &quot;:&quot;)
+		ResourcesManager.load(texture);
+}
+
+
+
+LS.extendClass( Material, SurfaceMaterial );
+LS.registerMaterialClass(SurfaceMaterial);
+LS.SurfaceMaterial = SurfaceMaterial;
     </pre>
 </div>
 

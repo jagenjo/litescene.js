@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -177,9 +179,10 @@ GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
+GeometricPrimitive.CIRCLE = 5;
 
 GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
-GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER,  &quot;Sphere&quot;:GeometricPrimitive.SPHERE }};
+GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER,  &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Circle&quot;:GeometricPrimitive.CIRCLE }};
 GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -212,6 +215,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 		case GeometricPrimitive.SPHERE:
 			this._mesh = GL.Mesh.sphere({size: this.size, &quot;long&quot;:subdivisions, lat: subdivisions, normals:true,coords:true});
 			break;
+		case GeometricPrimitive.CIRCLE:
+			this._mesh = GL.Mesh.circle({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true});
+			break;
 	}
 	this._key = key;
 }
@@ -238,7 +244,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	RI.setMesh( this._mesh, this.primitive );
 	this._root.mesh = this._mesh;
 	
-	RI.flags = RI_DEFAULT_FLAGS;
+	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
 	RI.setMaterial( this.material || this._root.getMaterial() );
 

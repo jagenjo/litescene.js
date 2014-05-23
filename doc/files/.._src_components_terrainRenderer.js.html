@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -210,6 +212,12 @@ TerrainRenderer.prototype.getResources = function(res)
 {
 	if(this.heightmap)
 		res[ this.heightmap ] = Texture;
+}
+
+TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.heightmap == old_name)
+		this.heightmap = new_name;
 }
 
 TerrainRenderer[&quot;@subdivisions&quot;] = { widget: &quot;number&quot;, min:1,max:255,step:1 };

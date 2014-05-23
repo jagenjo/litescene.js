@@ -21,9 +21,10 @@ GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
+GeometricPrimitive.CIRCLE = 5;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
-GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
+GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE, "Circle":GeometricPrimitive.CIRCLE }};
 GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -55,6 +56,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.SPHERE:
 			this._mesh = GL.Mesh.sphere({size: this.size, "long":subdivisions, lat: subdivisions, normals:true,coords:true});
+			break;
+		case GeometricPrimitive.CIRCLE:
+			this._mesh = GL.Mesh.circle({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true});
 			break;
 	}
 	this._key = key;

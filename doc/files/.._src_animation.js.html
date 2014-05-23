@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -278,6 +280,9 @@ Take.prototype.actionPerSample = function(time, callback, options)
 	{
 		var track = this.tracks[i];
 		var value = track.getSample(time, true);
+		if( options.disabled_tracks &amp;&amp; options.disabled_tracks[ track.nodename ] )
+			continue;
+
 		callback(track.nodename, track.property, value, options);
 	}
 }
@@ -285,7 +290,14 @@ Take.prototype.actionPerSample = function(time, callback, options)
 Animation.Take = Take;
 
 
-/** Represents one track with data over time about one property **/
+/**
+* Represents one track with data over time about one property
+*
+* @class Animation.Track
+* @namespace LS
+* @constructor
+*/
+
 function Track(o)
 {
 	this.nodename = &quot;&quot;; //nodename

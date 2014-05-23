@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -170,6 +172,7 @@ function RenderOptions(o)
 	this.main_camera = null; //this camera is the primary camera, some actions require to know the primary user point of view
 	this.current_camera = null; //this camera is the one being rendered at this moment
 	this.current_pass = null; //name of the current pass (&quot;color&quot;,&quot;shadow&quot;,&quot;depth&quot;,&quot;picking&quot;)
+	this.current_renderer = null; //current renderer being used
 
 	//rendering properties
 	this.ignore_viewports = false;

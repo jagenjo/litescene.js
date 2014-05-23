@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -333,13 +335,6 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_sendEventToNodes">sendEventToNodes</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_serialize">serialize</a>
 
                                 
@@ -355,6 +350,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_stop">stop</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_triggerInNodes">triggerInNodes</a>
 
                                 
                                 
@@ -568,7 +570,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l387"><code>..&#x2F;src&#x2F;scene.js:387</code></a>
+        <a href="../files/.._src_scene.js.html#l392"><code>..&#x2F;src&#x2F;scene.js:392</code></a>
         
         </p>
 
@@ -675,7 +677,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l433"><code>..&#x2F;src&#x2F;scene.js:433</code></a>
+        <a href="../files/.._src_scene.js.html#l438"><code>..&#x2F;src&#x2F;scene.js:438</code></a>
         
         </p>
 
@@ -782,7 +784,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l415"><code>..&#x2F;src&#x2F;scene.js:415</code></a>
+        <a href="../files/.._src_scene.js.html#l420"><code>..&#x2F;src&#x2F;scene.js:420</code></a>
         
         </p>
 
@@ -889,7 +891,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l447"><code>..&#x2F;src&#x2F;scene.js:447</code></a>
+        <a href="../files/.._src_scene.js.html#l452"><code>..&#x2F;src&#x2F;scene.js:452</code></a>
         
         </p>
 
@@ -995,7 +997,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l461"><code>..&#x2F;src&#x2F;scene.js:461</code></a>
+        <a href="../files/.._src_scene.js.html#l466"><code>..&#x2F;src&#x2F;scene.js:466</code></a>
         
         </p>
 
@@ -1162,7 +1164,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l481"><code>..&#x2F;src&#x2F;scene.js:481</code></a>
+        <a href="../files/.._src_scene.js.html#l486"><code>..&#x2F;src&#x2F;scene.js:486</code></a>
         
         </p>
 
@@ -1354,7 +1356,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l565"><code>..&#x2F;src&#x2F;scene.js:565</code></a>
+        <a href="../files/.._src_scene.js.html#l570"><code>..&#x2F;src&#x2F;scene.js:570</code></a>
         
         </p>
 
@@ -1369,117 +1371,6 @@ and load them in bulk using the ResourceManager</p>
 
     </div>
 
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_sendEventToNodes" class="method item">
-    <h3 class="name"><code>sendEventToNodes</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>event_type</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>data</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l662"><code>..&#x2F;src&#x2F;scene.js:662</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>dispatch event to all nodes in the scene</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">event_type</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>event type name</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">data</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>data to send associated to the event</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
     
 
     
@@ -1605,7 +1496,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l533"><code>..&#x2F;src&#x2F;scene.js:533</code></a>
+        <a href="../files/.._src_scene.js.html#l538"><code>..&#x2F;src&#x2F;scene.js:538</code></a>
         
         </p>
 
@@ -1694,7 +1585,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l549"><code>..&#x2F;src&#x2F;scene.js:549</code></a>
+        <a href="../files/.._src_scene.js.html#l554"><code>..&#x2F;src&#x2F;scene.js:554</code></a>
         
         </p>
 
@@ -1725,6 +1616,117 @@ It calls the serialize method in every node</p>
 
                     <div class="param-description">
                         <p>delta time</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_triggerInNodes" class="method item">
+    <h3 class="name"><code>triggerInNodes</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>event_type</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>data</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l667"><code>..&#x2F;src&#x2F;scene.js:667</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>triggers an event to all nodes in the scene</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">event_type</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>event type name</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">data</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>data to send associated to the event</p>
 
                     </div>
 

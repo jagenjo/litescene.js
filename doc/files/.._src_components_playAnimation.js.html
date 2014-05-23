@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -155,7 +157,7 @@
 <div class="file">
     <pre class="code prettyprint linenums">
 /**
-* Moves objects acording to animation
+* Reads animation tracks from an Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
 * @constructor
 * @param {String} object to configure from
@@ -171,13 +173,14 @@ function PlayAnimation(o)
 	this.play = true;
 	this.current_time = 0;
 
+	this.disabled_tracks = {};
+
 	if(o)
 		this.configure(o);
 }
 
 PlayAnimation[&quot;@animation&quot;] = { widget: &quot;resource&quot; };
 PlayAnimation[&quot;@mode&quot;] = { type:&quot;enum&quot;, values: [&quot;loop&quot;,&quot;pingpong&quot;,&quot;once&quot;] };
-
 
 PlayAnimation.prototype.configure = function(o)
 {
@@ -217,7 +220,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	var take = animation.takes[ this.take ];
 	if(!take) return;
 
-	take.actionPerSample( this.current_time, this._processSample );
+	take.actionPerSample( this.current_time, this._processSample, { disabled_tracks: this.disabled_tracks } );
 	Scene.refresh();
 }
 
@@ -240,6 +243,12 @@ PlayAnimation.prototype.getResources = function(res)
 {
 	if(this.animation)
 		res[ this.animation ] = LS.Animation;
+}
+
+PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.animation == old_name)
+		this.animation = new_name;
 }
 
 LS.registerComponent(PlayAnimation);

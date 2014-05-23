@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -164,6 +166,7 @@
 
 function RealtimeReflector(o)
 {
+	this.enabled = true;
 	this.texture_size = 512;
 	this.brightness_factor = 1.0;
 	this.colorclip_factor = 0.0;
@@ -201,7 +204,7 @@ RealtimeReflector.prototype.onRemoveFromNode = function(node)
 
 RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 {
-	if(!this._root) return;
+	if(!this.enabled || !this._root) return;
 
 	var camera = render_options.main_camera;
 
@@ -310,7 +313,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	
 	var mat = this._root.getMaterial();
 	if(mat)
-		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_SCREEN);
+		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_FLIPPED_SCREEN);
 }
 
 LS.registerComponent(RealtimeReflector);

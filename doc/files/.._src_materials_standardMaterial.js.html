@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -192,7 +194,7 @@ function StandardMaterial(o)
 	this.velvet = new Float32Array([0.5,0.5,0.5]);
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
-	this.detail = [0.0,10,10];
+	this.detail = new Float32Array([0.0, 10, 10]);
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.extra_factor = 0.0; //used for debug and dev
 	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
@@ -305,7 +307,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
@@ -332,7 +334,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) , texture]);
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;)] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
@@ -349,7 +351,11 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		else if(i == &quot;displacement&quot;)
 			continue;
 		else if(i == &quot;bump&quot;)
+		{
+			texture.bind(0);
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			continue;
+		}
 		else if(i == &quot;irradiance&quot; &amp;&amp; texture.type == gl.TEXTURE_2D)
 		{
 			texture.bind(0);
@@ -376,66 +382,92 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 }
 
 /**
-* Configure the material getting the info from the object
-* @method configure
+* assign a value to a property in a safe way
+* @method setProperty
 * @param {Object} object to configure from
 */
-StandardMaterial.prototype.configure = function(o)
+StandardMaterial.prototype.setProperty = function(name, value)
 {
-	//cloneObject(o, this);
-	for(var i in o)
-	{
-		var v = o[i];
-		var r = null;
-		switch(i)
-		{
-			//numbers
-			case &quot;opacity&quot;: 
-			case &quot;backlight_factor&quot;:
-			case &quot;specular_factor&quot;:
-			case &quot;specular_gloss&quot;:
-			case &quot;reflection_factor&quot;:
-			case &quot;reflection_fresnel&quot;:
-			case &quot;velvet_exp&quot;:
-			case &quot;velvet_additive&quot;:
-			case &quot;blend_mode&quot;:
-			case &quot;normalmap_factor&quot;:
-			case &quot;displacementmap_factor&quot;:
-			case &quot;extra_factor&quot;:
-			//strings
-			case &quot;shader_name&quot;:
-			//bools
-			case &quot;specular_ontop&quot;:
-			case &quot;normalmap_tangent&quot;:
-			case &quot;reflection_specular&quot;:
-			case &quot;use_scene_ambient&quot;:
-				r = v; 
-				break;
-			//vectors
-			case &quot;color&quot;: 
-			case &quot;ambient&quot;:	
-			case &quot;diffuse&quot;: 
-			case &quot;emissive&quot;: 
-			case &quot;velvet&quot;:
-			case &quot;detail&quot;:
-			case &quot;extra_color&quot;:
-				r = new Float32Array(v); 
-				break;
-			case &quot;textures&quot;:
-				this.textures = o.textures;
-				continue;
-			case &quot;transparency&quot;: //special cases
-				this.opacity = 1 - v;
-			case &quot;extra_uniforms&quot;:
-				this.extra_uniforms = LS.cloneObject(v);
-			default:
-				continue;
-		}
-		this[i] = r;
-	}
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
 
-	if(o.uvs_matrix &amp;&amp; o.uvs_matrix.length == 9)
-		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	//regular
+	switch(name)
+	{
+		//numbers
+		case &quot;backlight_factor&quot;:
+		case &quot;reflection_factor&quot;:
+		case &quot;reflection_fresnel&quot;:
+		case &quot;velvet_exp&quot;:
+		case &quot;velvet_additive&quot;:
+		case &quot;normalmap_tangent&quot;:
+		case &quot;normalmap_factor&quot;:
+		case &quot;displacementmap_factor&quot;:
+		case &quot;extra_factor&quot;:
+		//strings
+		//bools
+		case &quot;specular_ontop&quot;:
+		case &quot;normalmap_tangent&quot;:
+		case &quot;reflection_specular&quot;:
+		case &quot;use_scene_ambient&quot;:
+			this[name] = value; 
+			break;
+		//vectors
+		case &quot;ambient&quot;:	
+		case &quot;diffuse&quot;: 
+		case &quot;emissive&quot;: 
+		case &quot;velvet&quot;:
+		case &quot;detail&quot;:
+		case &quot;extra_color&quot;:
+			if(this[name].length == value.length)
+				this[name].set(value);
+			break;
+		case &quot;extra_uniforms&quot;:
+			this.extra_uniforms = LS.cloneObject(value);
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+StandardMaterial.prototype.getProperties = function()
+{
+	//get from the regular material
+	var o = Material.prototype.getProperties.call(this);
+
+	//add some more
+	o.merge({
+		backlight_factor:&quot;number&quot;,
+		reflection_factor:&quot;number&quot;,
+		reflection_fresnel:&quot;number&quot;,
+		velvet_exp:&quot;number&quot;,
+
+		normalmap_factor:&quot;number&quot;,
+		displacementmap_factor:&quot;number&quot;,
+		extra_factor:&quot;number&quot;,
+
+		ambient:&quot;vec3&quot;,
+		diffuse:&quot;vec3&quot;,
+		emissive:&quot;vec3&quot;,
+		velvet:&quot;vec3&quot;,
+		extra_color:&quot;vec3&quot;,
+		detail:&quot;vec3&quot;,
+
+		specular_ontop:&quot;boolean&quot;,
+		normalmap_tangent:&quot;boolean&quot;,
+		reflection_specular:&quot;boolean&quot;,
+		use_scene_ambient:&quot;boolean&quot;,
+		velvet_additive:&quot;boolean&quot;
+	});
+
+	return o;
 }
 
 LS.registerMaterialClass(StandardMaterial);

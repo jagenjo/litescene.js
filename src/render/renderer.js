@@ -279,6 +279,8 @@ var Renderer = {
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
 				continue;
+			if(node_flags.selectable == false && render_options.is_picking)
+				continue;
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)

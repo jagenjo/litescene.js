@@ -638,8 +638,8 @@ Transform.prototype.getRight = function(dest) {
 }
 
 /**
-* Applies the local transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* Multiplies a point by the local matrix (not global)
+* If no destination is specified a new vector is created
 * @method transformPoint
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -650,9 +650,10 @@ Transform.prototype.transformPoint = function(vec, dest) {
 	return mat4.multiplyVec3( dest, this._local_matrix, vec );
 }
 
+
 /**
-* Applies the global transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
 * @method transformPointGlobal
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -660,7 +661,30 @@ Transform.prototype.transformPoint = function(vec, dest) {
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
 	if(this._dirty) this.updateMatrix();
-	return mat4.multiplyVec3( dest, this.getGlobalMatrix(), vec );
+	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
+}
+
+/**
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
+* @method localToGlobal
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
+
+/**
+* convert from global coordinates to local coordinates
+* If no destination is specified a new vector is created
+* @method transformPoint
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.globalToLocal = function(vec, dest) {
+	dest = dest || vec3.create();
+	if(this._dirty) this.updateMatrix();
+	var inv = mat4.invert( mat4.create(), this.getGlobalMatrixRef() );
+	return mat4.multiplyVec3( dest, inv, vec );
 }
 
 
@@ -686,11 +710,21 @@ Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
+Transform.prototype.localVectorToGlobal = Transform.prototype.transformVectorGlobal;
+
+Transform.prototype.globalVectorToLocal = function(vec, dest) {
+	var Q = this.getGlobalRotation();
+	quat.invert(Q,Q);
+	return vec3.transformQuat(dest || vec3.create(), vec, Q );
+}
+
+
+
 /**
 * Applies the transformation using a matrix
 * @method applyTransformMatrix
 * @param {mat4} matrix with the transform
-* @param {bool} is_global (optional)
+* @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
 	if(!this._parent)

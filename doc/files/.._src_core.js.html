@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -162,6 +164,7 @@ Object.defineProperty(Object.prototype, &quot;merge&quot;, {
     value: function(v) {
         for(var i in v)
 			this[i] = v[i];
+		return this;
     },
     configurable: true,
     writable: false,

@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -213,8 +215,10 @@ var Renderer = {
 	render: function(scene, main_camera, render_options)
 	{
 		render_options = render_options || this.default_render_options;
+		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
+		this._main_camera = main_camera;
 
 		//done at the beginning just in case it crashes
 		scene._frame += 1;
@@ -226,9 +230,9 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, &quot;beforeRender&quot;, render_options );
-		scene.sendEventToNodes(&quot;beforeRender&quot;, render_options );
+		scene.triggerInNodes(&quot;beforeRender&quot;, render_options );
 
-		//get render instances, lights, materials and all rendering info ready
+		//get render instances, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
 		//settings for cameras
@@ -237,18 +241,33 @@ var Renderer = {
 			cameras = [ main_camera ];
 		render_options.main_camera = cameras[0];
 
-		//generate shadowmap
+		scene.triggerInNodes(&quot;afterVisibility&quot;, render_options );		
+
+		//generate shadowmaps
+		/*
 		if( render_options.update_shadowmaps &amp;&amp; !render_options.shadows_disabled &amp;&amp; !render_options.lights_disabled &amp;&amp; !render_options.low_quality )
-			this.renderShadowMaps(scene, render_options);
+		{
+			LEvent.trigger(scene, &quot;generateShadowmaps&quot;, render_options );
+			for(var i in this._visible_lights) 
+			{
+				var light = this._visible_lights[i];
+				if( light.cast_shadows )
+					light.generateShadowmap( render_options );
+			}
+
+			//LEvent.triggerArray( this._visible_lights, &quot;generateShadowmaps&quot;, render_options );
+			//this.renderShadowMaps(scene, render_options);
+		}
+		*/
 
 		LEvent.trigger(scene, &quot;afterRenderShadows&quot;, render_options );
-		scene.sendEventToNodes(&quot;afterRenderShadows&quot;, render_options );
+		scene.triggerInNodes(&quot;afterRenderShadows&quot;, render_options );
 
 		LEvent.trigger(scene, &quot;renderReflections&quot;, render_options );
-		scene.sendEventToNodes(&quot;renderReflections&quot;, render_options );
+		scene.triggerInNodes(&quot;renderReflections&quot;, render_options );
 
 		LEvent.trigger(scene, &quot;beforeRenderMainPass&quot;, render_options );
-		scene.sendEventToNodes(&quot;beforeRenderMainPass&quot;, render_options );
+		scene.triggerInNodes(&quot;beforeRenderMainPass&quot;, render_options );
 
 		//for each camera
 		for(var i in cameras)
@@ -277,8 +296,7 @@ var Renderer = {
 
 		//events
 		LEvent.trigger(scene, &quot;afterRender&quot;, render_options );
-		scene.sendEventToNodes(&quot;afterRender&quot;, render_options );
-
+		scene.triggerInNodes(&quot;afterRender&quot;, render_options );
 
 	},
 
@@ -304,12 +322,12 @@ var Renderer = {
 		render_options.current_pass = &quot;color&quot;;
 
 		LEvent.trigger(scene, &quot;beforeRenderScene&quot;, camera);
-		scene.sendEventToNodes(&quot;beforeRenderScene&quot;, camera);
+		scene.triggerInNodes(&quot;beforeRenderScene&quot;, camera);
 
 		Renderer.renderInstances(render_options);
 
 		LEvent.trigger(scene, &quot;afterRenderScene&quot;, camera);
-		scene.sendEventToNodes(&quot;afterRenderScene&quot;, camera);
+		scene.triggerInNodes(&quot;afterRenderScene&quot;, camera);
 
 		//gl.disable(gl.SCISSOR_TEST);
 	},
@@ -372,7 +390,7 @@ var Renderer = {
 		var apply_frustum_culling = render_options.frustum_culling;
 
 		LEvent.trigger(scene, &quot;beforeRenderInstances&quot;, render_options);
-		scene.sendEventToNodes(&quot;beforeRenderInstances&quot;, render_options);
+		scene.triggerInNodes(&quot;beforeRenderInstances&quot;, render_options);
 
 		//compute global scene info
 		this.fillSceneShaderMacros( scene, render_options );
@@ -419,16 +437,23 @@ var Renderer = {
 				continue;
 			if(node_flags.seen_by_picking == false &amp;&amp; render_options.is_picking)
 				continue;
-			if(instance.material.opacity &lt;= 0) //remove this, do it somewhere else
+			if(node_flags.selectable == false &amp;&amp; render_options.is_picking)
 				continue;
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
-				instance.onPreRender(render_options);
+				if( instance.onPreRender(render_options) === false)
+					continue;
+
+			if(instance.material.opacity &lt;= 0) //remove this, do it somewhere else
+				continue;
 
 			//test visibility against camera frustum
-			if(apply_frustum_culling &amp;&amp; !(instance.flags &amp; RI_IGNORE_FRUSTUM) &amp;&amp; geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
-				continue;
+			if(apply_frustum_culling &amp;&amp; !(instance.flags &amp; RI_IGNORE_FRUSTUM))
+			{
+				if(geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE)
+					continue;
+			}
 
 			//save visibility info
 			instance._in_camera = true;
@@ -463,7 +488,7 @@ var Renderer = {
 			else if(render_options.is_picking)
 				this.renderPickingInstance( instance, render_options );
 			else
-				this.renderMultiPassInstance( instance, lights, scene, render_options );
+				this.renderColorPassInstance( instance, lights, scene, render_options );
 
 			if(instance.onPostRender)
 				instance.onPostRender(render_options);
@@ -496,7 +521,7 @@ var Renderer = {
 		gl.frontFace(gl.CCW);
 
 		LEvent.trigger(scene, &quot;afterRenderInstances&quot;, render_options);
-		scene.sendEventToNodes(&quot;afterRenderInstances&quot;, render_options);
+		scene.triggerInNodes(&quot;afterRenderInstances&quot;, render_options);
 
 		//EVENT SCENE after_render
 		//restore state
@@ -508,7 +533,7 @@ var Renderer = {
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
-	renderMultiPassInstance: function(instance, lights, scene, render_options)
+	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
 
 		var node = instance.node;
@@ -522,17 +547,22 @@ var Renderer = {
 			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
 
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
+
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_options);
 
-		//blend flags
+		//set blend flags
 		if(material.blend_mode != Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
@@ -541,19 +571,18 @@ var Renderer = {
 		else
 			gl.disable( gl.BLEND );
 
-		//assign material samplers (maybe they are not used...)
-		var samplers = [];
-			Array.prototype.push.apply(samplers, scene._samplers); //samplers = samplers.concat( mat._samplers );
-		if(material._samplers)
-			Array.prototype.push.apply(samplers, material._samplers); //samplers = samplers.concat( mat._samplers );
-			
-		for(var i = 0; i &lt; samplers.length; i++)
-		{
-			var s = samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
+		//pack material samplers 
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( instance_final_samplers );
 
+		//enable samplers and store where [TODO: maybe they are not used..., improve here]
+		var sampler_uniforms = {};
+		var slot = 0;
+		for(var i in samplers)
+			sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+
+		//find shader name
 		var shader_name = render_options.default_shader_id;
 		if(render_options.low_quality)
 			shader_name = render_options.default_low_shader_id;
@@ -569,9 +598,8 @@ var Renderer = {
 		{
 			var macros = { FIRST_PASS:&quot;&quot;, USE_AMBIENT_ONLY:&quot;&quot; };
 			macros.merge(scene._macros);
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
+			macros.merge(instance_final_macros); //contains node, material and instance macros
+
 			if( ignore_lights )
 				macros.USE_IGNORE_LIGHT = &quot;&quot;;
 			if(render_options.clipping_plane &amp;&amp; !(instance.flags &amp; RI_IGNORE_CLIPPING_PLANE) )
@@ -583,10 +611,9 @@ var Renderer = {
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
+			shader.uniforms( sampler_uniforms );
 			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( instance_final_uniforms );
 
 			//render
 			instance.render( shader );
@@ -594,29 +621,25 @@ var Renderer = {
 			return;
 		}
 
-		//Regular rendering
+		//Regular rendering (multipass)
 		for(var iLight = 0; iLight &lt; num_lights; iLight++)
 		{
 			var light = lights[iLight];
 
-			//generate renderkey
-			//var renderkey = instance.generateKey(options);
-
 			//compute the  shader
-			var shader = null; //this._renderkeys[renderkey];
+			var shader = null;
 			if(!shader)
 			{
-				var light_macros = instance.material.getLightShaderMacros(light, node, scene, render_options);
+				var light_macros = light.getMacros( instance, render_options );
 
 				if(iLight == 0) light_macros.FIRST_PASS = &quot;&quot;;
 				if(iLight == (num_lights-1)) light_macros.LAST_PASS = &quot;&quot;;
 
 				var macros = {};
 				macros.merge(scene._macros);
-				macros.merge(node_macros);
-				macros.merge(material._macros);
-				macros.merge(instance.macros);
+				macros.merge(instance_final_macros); //contains node, material and instance macros
 				macros.merge(light_macros);
+
 				if(render_options.clipping_plane &amp;&amp; !(instance.flags &amp; RI_IGNORE_CLIPPING_PLANE) )
 					macros.USE_CLIPPING_PLANE = &quot;&quot;;
 
@@ -627,7 +650,7 @@ var Renderer = {
 			}
 
 			//fill shader data
-			var light_uniforms = instance.material.fillLightUniforms( iLight, light, instance, render_options );
+			var light_uniforms = light.getUniforms( instance, render_options );
 
 			//secondary pass flags to make it additive
 			if(iLight &gt; 0)
@@ -641,24 +664,106 @@ var Renderer = {
 				else
 					gl.disable( gl.DEPTH_TEST );
 			}
-
+			//set depth func
 			if(material.depth_func)
 				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
-			shader.uniforms( scene._uniforms );
-			shader.uniforms( node_uniforms );
-			shader.uniforms( material._uniforms );
-			shader.uniforms( light_uniforms );
-			shader.uniforms( instance.uniforms );
+			shader.uniforms( sampler_uniforms ); //where is every texture binded
+			shader.uniforms( scene._uniforms );  //used mostly for environment textures
+			shader.uniforms( instance_final_uniforms ); //contains node, material and instance uniforms
+			shader.uniforms( light_uniforms ); //should this go before instance_final? to prioritize
 
-			//render
+			//render the instance
 			instance.render( shader );
 			this._rendercalls += 1;
 
+			//avoid multipass in simple shaders
 			if(shader.global &amp;&amp; !shader.global.multipass)
-				break; //avoid multipass in simple shaders
+				break; 
 		}
+	},
+
+	renderShadowPassInstance: function(instance, render_options)
+	{
+		var scene = this._current_scene;
+		var node = instance.node;
+		var material = instance.material;
+
+		//compute matrices
+		var model = instance.matrix;
+		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+
+		//node matrix info
+		var instance_final_macros = instance._final_macros;
+		var instance_final_uniforms = instance._final_uniforms;
+		var instance_final_samplers = instance._final_samplers;
+
+		//maybe this two should be somewhere else
+		instance_final_uniforms.u_model = model; 
+		instance_final_uniforms.u_normal_model = instance.normal_matrix; 
+
+		//update matrices (because they depend on the camera) 
+		instance_final_uniforms.u_mvp = this._mvp_matrix;
+
+		//FLAGS
+		this.enableInstanceFlags(instance, render_options);
+
+		var macros = {};
+		macros.merge( instance_final_macros );
+
+		if(this._current_target &amp;&amp; this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros[&quot;USE_LINEAR_DISTANCE&quot;] = &quot;&quot;;
+
+		/*
+		if(node.flags.alpha_shadows == true )
+		{
+			macros[&quot;USE_ALPHA_TEST&quot;] = &quot;0.5&quot;;
+			var color = material.getTexture(&quot;color&quot;);
+			if(color)
+			{
+				var color_uvs = material.textures[&quot;color_uvs&quot;] || Material.DEFAULT_UVS[&quot;color&quot;] || &quot;0&quot;;
+				macros.USE_COLOR_TEXTURE = &quot;uvs_&quot; + color_uvs;
+				color.bind(0);
+			}
+
+			var opacity = material.getTexture(&quot;opacity&quot;);
+			if(opacity)	{
+				var opacity_uvs = material.textures[&quot;opacity_uvs&quot;] || Material.DEFAULT_UVS[&quot;opacity&quot;] || &quot;0&quot;;
+				macros.USE_OPACITY_TEXTURE = &quot;uvs_&quot; + opacity_uvs;
+				opacity.bind(1);
+			}
+
+			shader = ShadersManager.get(&quot;depth&quot;, macros);
+			shader.uniforms({ texture: 0, opacity_texture: 1 });
+		}
+		else
+		{
+			shader = ShadersManager.get(&quot;depth&quot;, macros );
+		}
+		*/
+
+		if(node.flags.alpha_shadows == true )
+			macros[&quot;USE_ALPHA_TEST&quot;] = &quot;0.5&quot;;
+
+		var shader = ShadersManager.get(&quot;depth&quot;, macros );
+
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( instance_final_samplers );
+
+		var slot = 1;
+		var sampler_uniforms = {};
+		for(var i in samplers)
+			if(shader.samplers[i]) //only enable a texture if the shader uses it
+				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+
+		shader.uniforms( sampler_uniforms );
+		shader.uniforms( scene._uniforms );
+		shader.uniforms( instance._final_uniforms );
+
+		instance.render(shader);
+		this._rendercalls += 1;
 	},
 
 	//renders using an orthographic projection
@@ -715,12 +820,9 @@ var Renderer = {
 		}
 
 		//assign material samplers (maybe they are not used...)
-		for(var i = 0; i &lt; material._samplers.length; i++)
-		{
-			var s = material._samplers[i];
-			material._uniforms[ s[0] ] = i;
-			s[1].bind(i);
-		}
+		var slot = 0;
+		for(var i in material._samplers )
+			material._uniforms[ i ] = material._samplers[i].bind( slot++ );
 
 		var shader_name = &quot;flat_texture&quot;;
 		var shader = ShadersManager.get(shader_name);
@@ -734,69 +836,37 @@ var Renderer = {
 		instance.render( shader );
 		this._rendercalls += 1;
 		return;
-	},
+	},	
 
-	renderShadowPassInstance: function(instance, render_options)
+	renderPickingInstance: function(instance, render_options)
 	{
-		var scene = this._current_scene;
 		var node = instance.node;
-		var material = instance.material;
-
-		//compute matrices
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-
-		//node matrix info
-		var node_macros = node._macros;
-		var node_uniforms = node._uniforms;
-
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = instance.normal_matrix; 
-
-		//FLAGS
-		this.enableInstanceFlags(instance, render_options);
+		var pick_color = this.getNextPickingColor( instance );
+		/*
+		this._picking_next_color_id += 10;
+		var pick_color = new Uint32Array(1); //store four bytes number
+		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
+		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
+		//byte_pick_color[3] = 255; //Set the alpha to 1
+		this._picking_nodes[this._picking_next_color_id] = node;
+		*/
 
 		var macros = {};
-		if(this._current_target &amp;&amp; this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
-			macros[&quot;USE_LINEAR_DISTANCE&quot;] = &quot;&quot;;
+		macros.merge(instance._final_macros);
 
-		if(node.flags.alpha_shadows == true &amp;&amp; (material.getTexture(&quot;color&quot;) || material.getTexture(&quot;opacity&quot;)))
-		{
-			macros[&quot;USE_ALPHA_TEST&quot;] = &quot;0.5&quot;;
+		var shader = ShadersManager.get(&quot;flat&quot;, macros);
+		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
+		//hardcoded, ugly
+		/*
+		if( macros[&quot;USE_SKINNING&quot;] &amp;&amp; instance.uniforms[&quot;u_bones&quot;] )
+			if( macros[&quot;USE_SKINNING_TEXTURE&quot;] )
+				shader.uniforms({ u_bones: });
+		*/
 
-			var color = material.getTexture(&quot;color&quot;);
-			if(color)
-			{
-				var color_uvs = material.textures[&quot;color_uvs&quot;] || Material.DEFAULT_UVS[&quot;color&quot;] || &quot;0&quot;;
-				macros.USE_COLOR_TEXTURE = &quot;uvs_&quot; + color_uvs;
-				color.bind(0);
-			}
-
-			var opacity = material.getTexture(&quot;opacity&quot;);
-			if(opacity)	{
-				var opacity_uvs = material.textures[&quot;opacity_uvs&quot;] || Material.DEFAULT_UVS[&quot;opacity&quot;] || &quot;0&quot;;
-				macros.USE_OPACITY_TEXTURE = &quot;uvs_&quot; + opacity_uvs;
-				opacity.bind(1);
-			}
-			macros.merge(node_macros);
-			shader = ShadersManager.get(&quot;depth&quot;, macros);
-			shader.uniforms({ texture: 0, opacity_texture: 1 });
-		}
-		else
-		{
-			macros.merge(node_macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
-			shader = ShadersManager.get(&quot;depth&quot;, macros );
-		}
-
-		shader.uniforms( scene._uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms(node_uniforms);
 		instance.render(shader);
-		this._rendercalls += 1;
 	},
 
 	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
@@ -841,7 +911,7 @@ var Renderer = {
 			uniforms.u_clipping_plane = render_options.clipping_plane;
 
 		scene._uniforms = uniforms;
-		scene._samplers = [];
+		scene._samplers = {};
 
 
 		//if(scene.textures.environment)
@@ -853,30 +923,15 @@ var Renderer = {
 			if(!texture) continue;
 			if(i != &quot;environment&quot; &amp;&amp; i != &quot;irradiance&quot;) continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;);
-			scene._samplers.push([i + type , texture]);
-			scene._macros[ &quot;USE_&quot; + (i + type).toUpperCase() ] = &quot;&quot;;
+			if(texture.texture_type == gl.TEXTURE_2D)
+			{
+				texture.bind(0);
+				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
+			}
+			scene._samplers[i + type] = texture;
+			scene._macros[ &quot;USE_&quot; + (i + type).toUpperCase() ] = &quot;uvs_polar_reflected&quot;;
 		}
-	},
-
-	renderPickingInstance: function(instance, render_options)
-	{
-		var node = instance.node;
-		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( instance );
-		/*
-		this._picking_next_color_id += 10;
-		var pick_color = new Uint32Array(1); //store four bytes number
-		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
-		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
-		//byte_pick_color[3] = 255; //Set the alpha to 1
-		this._picking_nodes[this._picking_next_color_id] = node;
-		*/
-
-		var shader = ShadersManager.get(&quot;flat&quot;);
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
-		instance.render(shader);
-	},
+	},	
 
 	getNextPickingColor: function(instance, data)
 	{
@@ -890,7 +945,7 @@ var Renderer = {
 		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
-	enableInstanceFlags: function(instance, options)
+	enableInstanceFlags: function(instance, render_options)
 	{
 		var flags = instance.flags;
 
@@ -916,7 +971,7 @@ var Renderer = {
 		var order = gl.CCW;
 		if(flags &amp; RI_CW)
 			order = gl.CW;
-		if(options.reverse_backfacing)
+		if(render_options.reverse_backfacing)
 			order = order == gl.CW ? gl.CCW : gl.CW;
 		gl.frontFace(order);
 	},
@@ -1015,12 +1070,44 @@ var Renderer = {
 				{
 					material._macros = {};
 					material._uniforms = {};
-					material._samplers = [];
+					material._samplers = {};
 				}
 				material.fillSurfaceShaderMacros(scene); //update shader macros on this material
 				material.fillSurfaceUniforms(scene); //update uniforms
 			}
 		}
+
+		//pack all macros, uniforms, and samplers relative to this instance in single containers
+		for(var i in instances)
+		{
+			var instance = instances[i];
+			var node = instance.node;
+			var material = instance.material;
+
+			var macros = instance._final_macros;
+			wipeObject(macros);
+			macros.merge(node._macros);
+			macros.merge(material._macros);
+			macros.merge(instance.macros);
+
+			var uniforms = instance._final_uniforms;
+			wipeObject(uniforms);
+			uniforms.merge( node._uniforms );
+			uniforms.merge( material._uniforms );
+			uniforms.merge( instance.uniforms );
+
+			var samplers = instance._final_samplers;
+			wipeObject(samplers);
+			//samplers.merge( node._samplers );
+			samplers.merge( material._samplers );
+			samplers.merge( instance.samplers );			
+		}
+
+
+		//prepare lights
+		var lights = scene._lights;
+		for(var i in lights)
+			lights[i].prepare(render_options);
 
 		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
@@ -1057,68 +1144,6 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
 			Renderer.renderInstances(render_options);
-		}
-	},
-
-	//Renders all the shadowmaps in the scene
-	renderShadowMaps: function(scene, render_options)
-	{
-		for(var i in this._visible_lights)
-		{
-			var light = this._visible_lights[i];
-			if(!light.cast_shadows)
-				continue;
-
-			var shadowmap_resolution = light.shadowmap_resolution;
-			if(!shadowmap_resolution)
-				shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
-
-			var tex_type = light.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-			if(light._shadowmap == null || light._shadowmap.width != shadowmap_resolution || light._shadowmap.texture_type != tex_type)
-			{
-				light._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-				ResourcesManager.textures[&quot;:shadowmap_&quot; + light._uid ] = light._shadowmap;
-			}
-
-			if(light.type == Light.OMNI)
-			{
-				render_options.current_pass = &quot;shadow&quot;;
-				render_options.is_shadowmap = true;
-				light._shadowmap.unbind(); 
-				this.renderToCubemap( light.getPosition(), shadowmap_resolution, light._shadowmap, render_options, light.near, light.far );
-				render_options.is_shadowmap = false;
-			}
-			else //DIRECTIONAL and SPOTLIGHT
-			{
-				var shadow_camera = light.getShadowmapCamera();
-				this.enableCamera(shadow_camera, render_options, true);
-
-				//light.computeLightMatrices( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
-
-				// Render the object viewed from the light using a shader that returns the
-				// fragment depth.
-				light._shadowmap.unbind(); 
-				this._current_target = light._shadowmap;
-				light._shadowmap.drawTo(function() {
-
-					gl.clearColor(0, 0, 0, 1);
-					//gl.clearColor(1, 1, 1, 1);
-					gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-					//save the VP of the shadowmap camera
-					//if( !light._lightMatrix ) light._lightMatrix = mat4.create();
-					//mat4.copy( Renderer._viewprojection_matrix, light._lightMatrix );
-
-					render_options.current_pass = &quot;shadow&quot;;
-					render_options.is_shadowmap = true;
-
-					//RENDER INSTANCES in the shadowmap
-					Renderer.renderInstances( render_options );
-
-					render_options.is_shadowmap = false;
-				});
-				this._current_target = null;
-			}
 		}
 	},
 
@@ -1161,16 +1186,6 @@ var Renderer = {
 	],
 	*/
 
-	cubemap_camera_parameters: [
-		{dir: [1,0,0], up:[0,-1,0]}, //positive X
-		{dir: [-1,0,0], up:[0,-1,0]}, //negative X
-		{dir: [0,1,0], up:[0,0,1]}, //positive Y
-		{dir: [0,-1,0], up:[0,0,-1]}, //negative Y
-		{dir: [0,0,1], up:[0,-1,0]}, //positive Z
-		{dir: [0,0,-1], up:[0,-1,0]} //negative Z
-	],
-
-
 	//renders the current scene to a cubemap centered in the given position
 	renderToCubemap: function(position, size, texture, render_options, near, far)
 	{
@@ -1185,8 +1200,9 @@ var Renderer = {
 
 		texture = texture || new Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
-		texture.drawTo(function(texture, side) {
-			var cams = Renderer.cubemap_camera_parameters;
+		texture.drawTo( function(texture, side) {
+
+			var cams = Camera.cubemap_camera_parameters;
 			if(render_options.is_shadowmap == &quot;shadow&quot;)
 				gl.clearColor(0,0,0,0);
 			else
@@ -1198,6 +1214,7 @@ var Renderer = {
 			Renderer.enableCamera( cubemap_cam, render_options, true );
 			Renderer.renderInstances( render_options );
 		});
+
 		this._current_target = null;
 		return texture;
 	},
@@ -1300,9 +1317,66 @@ var Renderer = {
 		return instance_info;
 	},	
 
-	projectToCanvas: function(x,y,z)
+	//similar to Physics.raycast but using only visible meshes
+	raycast: function(scene, origin, direction, max_dist)
 	{
+		max_dist = max_dist || Number.MAX_VALUE;
 
+		var instances = scene._instances;
+		var collisions = [];
+
+		var local_start = vec3.create();
+		var local_direction = vec3.create();
+
+		//for every instance
+		for(var i = 0; i &lt; instances.length; ++i)
+		{
+			var instance = instances[i];
+
+			if(!(instance.flags &amp; RI_RAYCAST_ENABLED))
+				continue;
+
+			if(instance.flags &amp; RI_BLEND)
+				continue; //avoid semitransparent
+
+			//test against AABB
+			var collision_point = vec3.create();
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			mat4.multiplyVec3( local_start, inv, origin );
+			mat4.rotateVec3( local_direction, inv, direction );
+
+			//test against OOBB (a little bit more expensive)
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
+				continue;
+
+			//test against mesh
+			if( instance.collision_mesh )
+			{
+				var mesh = instance.collision_mesh;
+				var octree = mesh.octree;
+				if(!octree)
+					octree = mesh.octree = new Octree( mesh );
+				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
+				if(!hit)
+					continue;
+				mat4.multiplyVec3(collision_point, model, hit.pos);
+			}
+			else
+				vec3.transformMat4(collision_point, collision_point, model);
+
+			var distance = vec3.distance( origin, collision_point );
+			if(distance &lt; max_dist)
+				collisions.push([instance, collision_point, distance]);
+		}
+
+		collisions.sort( function(a,b) { return a[2] - b[2]; } );
+		return collisions;
 	}
 };
 

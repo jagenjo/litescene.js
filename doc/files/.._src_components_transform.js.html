@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -737,16 +739,18 @@ Transform.interpolate = function(a,b,factor, result)
 * @param {vec3} position
 * @param {vec3} target
 * @param {vec3} up
+* @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
-Transform.prototype.lookAt = function(pos,target,up)
+Transform.prototype.lookAt = function(pos, target, up, in_world)
 {
 	var temp = mat4.create();
-	if(this._parent)
+	if(in_world &amp;&amp; this._parent)
 	{
 		var M = this._parent.getGlobalMatrix();
-		pos = mat4.multiplyVec3(vec3.create(), M, pos);
-		target = mat4.multiplyVec3(vec3.create(), M,target);
-		up = mat4.multiplyVec3(vec3.create(), M,up);
+		var inv = mat4.invert(M,M);
+		pos = mat4.multiplyVec3(vec3.create(), inv, pos);
+		target = mat4.multiplyVec3(vec3.create(), inv,target);
+		up = mat4.rotateVec3(vec3.create(), inv, up );
 	}
 	mat4.lookAt(temp, pos, target, up);
 	mat4.invert(temp, temp);
@@ -792,8 +796,8 @@ Transform.prototype.getRight = function(dest) {
 }
 
 /**
-* Applies the local transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* Multiplies a point by the local matrix (not global)
+* If no destination is specified a new vector is created
 * @method transformPoint
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -804,9 +808,10 @@ Transform.prototype.transformPoint = function(vec, dest) {
 	return mat4.multiplyVec3( dest, this._local_matrix, vec );
 }
 
+
 /**
-* Applies the global transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
 * @method transformPointGlobal
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -814,7 +819,30 @@ Transform.prototype.transformPoint = function(vec, dest) {
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
 	if(this._dirty) this.updateMatrix();
-	return mat4.multiplyVec3( dest, this.getGlobalMatrix(), vec );
+	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
+}
+
+/**
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
+* @method localToGlobal
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
+
+/**
+* convert from global coordinates to local coordinates
+* If no destination is specified a new vector is created
+* @method transformPoint
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.globalToLocal = function(vec, dest) {
+	dest = dest || vec3.create();
+	if(this._dirty) this.updateMatrix();
+	var inv = mat4.invert( mat4.create(), this.getGlobalMatrixRef() );
+	return mat4.multiplyVec3( dest, inv, vec );
 }
 
 
@@ -840,11 +868,21 @@ Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
+Transform.prototype.localVectorToGlobal = Transform.prototype.transformVectorGlobal;
+
+Transform.prototype.globalVectorToLocal = function(vec, dest) {
+	var Q = this.getGlobalRotation();
+	quat.invert(Q,Q);
+	return vec3.transformQuat(dest || vec3.create(), vec, Q );
+}
+
+
+
 /**
 * Applies the transformation using a matrix
 * @method applyTransformMatrix
 * @param {mat4} matrix with the transform
-* @param {bool} is_global (optional)
+* @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
 	if(!this._parent)

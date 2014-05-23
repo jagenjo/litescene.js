@@ -615,8 +615,10 @@ var Draw = {
 
 		if(points.constructor == Float32Array)
 			vertices = points;
-		else
+		else if(points[0].length) //array of arrays
 			vertices = this.linearize(points);
+		else
+			vertices = new Float32Array(points);
 
 		if(colors)
 			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
@@ -1002,7 +1004,7 @@ var Draw = {
 	{
 		if(arguments.length == 3)
 			mat4.scale(this.model_matrix,this.model_matrix,[x,y,z]);
-		else
+		else //one argument: x-> vec3
 			mat4.scale(this.model_matrix,this.model_matrix,x);
 	},
 
@@ -1010,7 +1012,7 @@ var Draw = {
 	{
 		if(arguments.length == 3)
 			mat4.translate(this.model_matrix,this.model_matrix,[x,y,z]);
-		else
+		else  //one argument: x -> vec3
 			mat4.translate(this.model_matrix,this.model_matrix,x);
 	},
 
@@ -1018,7 +1020,7 @@ var Draw = {
 	{
 		if(arguments.length == 4)
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, [x,y,z]);
-		else
+		else //two arguments: x -> vec3
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, x);
 	},
 
@@ -3977,7 +3979,7 @@ SurfaceMaterial.prototype.onModifyMacros = function(macros)
 			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 	}
 
-	macros.USE_SURF = this.surf_code;
+	macros.USE_SURFACE_SHADER = this.surf_code;
 }
 
 SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
@@ -5231,8 +5233,8 @@ Transform.prototype.getRight = function(dest) {
 }
 
 /**
-* Applies the local transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* Multiplies a point by the local matrix (not global)
+* If no destination is specified a new vector is created
 * @method transformPoint
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -5243,9 +5245,10 @@ Transform.prototype.transformPoint = function(vec, dest) {
 	return mat4.multiplyVec3( dest, this._local_matrix, vec );
 }
 
+
 /**
-* Applies the global transformation to a point (multiply it by the matrix)
-* If no destination is specified the transform is applied to vec
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
 * @method transformPointGlobal
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -5253,7 +5256,30 @@ Transform.prototype.transformPoint = function(vec, dest) {
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
 	if(this._dirty) this.updateMatrix();
-	return mat4.multiplyVec3( dest, this.getGlobalMatrix(), vec );
+	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
+}
+
+/**
+* convert from local coordinates to global coordinates
+* If no destination is specified a new vector is created
+* @method localToGlobal
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
+
+/**
+* convert from global coordinates to local coordinates
+* If no destination is specified a new vector is created
+* @method transformPoint
+* @param {vec3} point
+* @param {vec3} destination (optional)
+*/
+Transform.prototype.globalToLocal = function(vec, dest) {
+	dest = dest || vec3.create();
+	if(this._dirty) this.updateMatrix();
+	var inv = mat4.invert( mat4.create(), this.getGlobalMatrixRef() );
+	return mat4.multiplyVec3( dest, inv, vec );
 }
 
 
@@ -5279,11 +5305,21 @@ Transform.prototype.transformVectorGlobal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
+Transform.prototype.localVectorToGlobal = Transform.prototype.transformVectorGlobal;
+
+Transform.prototype.globalVectorToLocal = function(vec, dest) {
+	var Q = this.getGlobalRotation();
+	quat.invert(Q,Q);
+	return vec3.transformQuat(dest || vec3.create(), vec, Q );
+}
+
+
+
 /**
 * Applies the transformation using a matrix
 * @method applyTransformMatrix
 * @param {mat4} matrix with the transform
-* @param {bool} is_global (optional)
+* @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
 Transform.prototype.applyTransformMatrix = function(t, is_global) {
 	if(!this._parent)
@@ -5358,8 +5394,8 @@ function Camera(o)
 Camera.icon = "mini-icon-camera.png";
 
 Camera.PERSPECTIVE = 1;
-Camera.ORTHOGRAPHIC = 2;
-Camera.ORTHO2D = 3;
+Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
+Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
 
 // used when rendering a cubemap to set the camera view direction
 Camera.cubemap_camera_parameters = [
@@ -5593,6 +5629,12 @@ Camera.prototype.updateMatrices = function()
 	this._dirty_matrices = false;
 }
 
+/**
+* returns the inverse of the viewmatrix
+* @method getModelMatrix
+* @param {mat4} m optional output container
+* @return {mat4} matrix
+*/
 Camera.prototype.getModelMatrix = function(m)
 {
 	m = m || mat4.create();
@@ -5601,6 +5643,12 @@ Camera.prototype.getModelMatrix = function(m)
 	return mat4.copy( m, this._model_matrix );
 }
 
+/**
+* returns the viewmatrix
+* @method getViewMatrix
+* @param {mat4} m optional output container
+* @return {mat4} matrix
+*/
 Camera.prototype.getViewMatrix = function(m)
 {
 	m = m || mat4.create();
@@ -5609,6 +5657,12 @@ Camera.prototype.getViewMatrix = function(m)
 	return mat4.copy( m, this._view_matrix );
 }
 
+/**
+* returns the projection matrix
+* @method getProjectionMatrix
+* @param {mat4} m optional output container
+* @return {mat4} matrix
+*/
 Camera.prototype.getProjectionMatrix = function(m)
 {
 	m = m || mat4.create();
@@ -5617,6 +5671,12 @@ Camera.prototype.getProjectionMatrix = function(m)
 	return mat4.copy( m, this._projection_matrix );
 }
 
+/**
+* returns the view projection matrix
+* @method getViewProjectionMatrix
+* @param {mat4} m optional output container
+* @return {mat4} matrix
+*/
 Camera.prototype.getViewProjectionMatrix = function(m)
 {
 	m = m || mat4.create();
@@ -5625,6 +5685,11 @@ Camera.prototype.getViewProjectionMatrix = function(m)
 	return mat4.copy( m, this._viewprojection_matrix );
 }
 
+/**
+* apply a transform to all the vectors (eye,center,up) using a matrix
+* @method updateVectors
+* @param {mat4} model matrix
+*/
 Camera.prototype.updateVectors = function(model)
 {
 	var front = vec3.subtract(vec3.create(), this._center, this._eye);
@@ -5635,6 +5700,13 @@ Camera.prototype.updateVectors = function(model)
 	this.updateMatrices();
 }
 
+/**
+* transform a local coordinate to global coordinates
+* @method getLocalPoint
+* @param {vec3} v vector
+* @param {vec3} dest
+* @return {vec3} v in global coordinates
+*/
 Camera.prototype.getLocalPoint = function(v, dest)
 {
 	dest = dest || vec3.create();
@@ -5646,6 +5718,14 @@ Camera.prototype.getLocalPoint = function(v, dest)
 		mat4.multiply( temp, temp, this._root.transform.getGlobalMatrixRef() );
 	return mat4.multiplyVec3(dest, temp, v );
 }
+
+/**
+* rotate a local coordinate to global coordinates (skipping translation)
+* @method getLocalVector
+* @param {vec3} v vector
+* @param {vec3} dest
+* @return {vec3} v in global coordinates
+*/
 
 Camera.prototype.getLocalVector = function(v, dest)
 {
@@ -5659,6 +5739,11 @@ Camera.prototype.getLocalVector = function(v, dest)
 	return mat4.rotateVec3(dest, temp, v );
 }
 
+/**
+* returns the eye (position of the camera)
+* @method getEye
+* @return {vec3} position in global coordinates
+*/
 Camera.prototype.getEye = function()
 {
 	var eye = vec3.clone( this._eye );
@@ -5667,6 +5752,11 @@ Camera.prototype.getEye = function()
 	return eye;
 }
 
+/**
+* returns the front vector of the camera
+* @method getFront
+* @return {vec3} position in global coordinates
+*/
 Camera.prototype.getFront = function()
 {
 	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
@@ -5675,7 +5765,11 @@ Camera.prototype.getFront = function()
 	return vec3.normalize(front, front);
 }
 
-
+/**
+* returns the up vector of the camera
+* @method getUp
+* @return {vec3} position in global coordinates
+*/
 Camera.prototype.getUp = function()
 {
 	var up = vec3.clone( this._up );
@@ -5684,6 +5778,11 @@ Camera.prototype.getUp = function()
 	return up;
 }
 
+/**
+* returns the top vector of the camera (different from up, this one is perpendicular to front and right)
+* @method getTop
+* @return {vec3} position in global coordinates
+*/
 Camera.prototype.getTop = function()
 {
 	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
@@ -5696,7 +5795,26 @@ Camera.prototype.getTop = function()
 	return top;
 }
 
+/**
+* returns the right vector of the camera 
+* @method getRight
+* @return {vec3} position in global coordinates
+*/
+Camera.prototype.getRight = function()
+{
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
+	var right = vec3.cross( vec3.create(), this._up, front );
+	vec3.normalize(right,right);
+	if(this._root && this._root.transform && this._root._parent)
+		return mat4.rotateVec3( right, this._root.transform.getGlobalMatrixRef(), right );
+	return right;
+}
 
+/**
+* returns the center of the camera (position where the camera is pointing)
+* @method getCenter
+* @return {vec3} position in global coordinates
+*/
 Camera.prototype.getCenter = function()
 {
 	var center = vec3.clone( this._center );
@@ -5751,6 +5869,11 @@ Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
 	this._dirty_matrices = true;
 }
 
+/**
+* moves the camera by adding the delta vector to center and eye
+* @method move
+* @param {vec3} delta
+*/
 Camera.prototype.move = function(v)
 {
 	vec3.add(this._center, this._center, v);
@@ -5758,7 +5881,13 @@ Camera.prototype.move = function(v)
 	this._dirty_matrices = true;
 }
 
-
+/**
+* rotate the camera around its center
+* @method rotate
+* @param {number} angle_in_deg
+* @param {vec3} axis
+* @param {boolean} in_local_space allows to specify if the axis is in local space or global space
+*/
 Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
 {
 	if(in_local_space)
@@ -5866,12 +5995,29 @@ Camera.prototype.updateNodeTransform = function()
 
 Camera.prototype.project = function( vec, viewport, result )
 {
-	viewport = viewport ||  gl.getParameter(gl.VIEWPORT);
+	viewport = viewport || gl.getViewport();// gl.getParameter(gl.VIEWPORT);
 	if( this._dirty_matrices )
 		this.updateMatrices();
+
+	/*
+	var M = mat4.transpose( mat4.create(), this._viewprojection_matrix );
+	var result = mat4.multiplyVec3(result || vec3.create(), M, vec );
+	
+	var winX = viewport[0] + Math.round( viewport[2] * (result[0] + 1) / 2.0);
+	var winY = viewport[1] + Math.round( viewport[3] * (result[1] + 1) / 2.0);
+	var winZ = (result[2] + 1) / 2.0;
+	vec3.set(result, winX, winY, winZ );
+	return result;
+	*/
+
 	var result = mat4.multiplyVec3(result || vec3.create(), this._viewprojection_matrix, vec );
-	result[0] /= result[2];
-	result[1] /= result[2];
+
+	if(result[2] != 0.0)
+	{
+		result[0] /= result[2];
+		result[1] /= result[2];
+	}
+	
 	vec3.set(result, (result[0]+1) * (viewport[2]*0.5) + viewport[0], (result[1]+1) * (viewport[3]*0.5) + viewport[1], result[2] );
 	return result;
 }
@@ -5887,7 +6033,7 @@ Camera.prototype.project = function( vec, viewport, result )
 
 Camera.prototype.unproject = function( vec, viewport, result )
 {
-	viewport = viewport ||  gl.getParameter(gl.VIEWPORT);
+	viewport = viewport || gl.getViewport(); // gl.getParameter(gl.VIEWPORT);
 	if( this._dirty_matrices )
 		this.updateMatrices();
 	return gl.unproject(result || vec3.create(), vec, this._view_matrix, this._projection_matrix, viewport );
@@ -8205,9 +8351,10 @@ GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
+GeometricPrimitive.CIRCLE = 5;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
-GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE }};
+GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE, "Circle":GeometricPrimitive.CIRCLE }};
 GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -8239,6 +8386,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.SPHERE:
 			this._mesh = GL.Mesh.sphere({size: this.size, "long":subdivisions, lat: subdivisions, normals:true,coords:true});
+			break;
+		case GeometricPrimitive.CIRCLE:
+			this._mesh = GL.Mesh.circle({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true});
 			break;
 	}
 	this._key = key;
@@ -12331,6 +12481,8 @@ var Renderer = {
 			if(node_flags.seen_by_camera == false && !render_options.is_shadowmap && !render_options.is_picking && !render_options.is_reflection)
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
+				continue;
+			if(node_flags.selectable == false && render_options.is_picking)
 				continue;
 
 			//done here because sometimes some nodes are moved in this action

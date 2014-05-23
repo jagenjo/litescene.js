@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -403,10 +405,15 @@ SceneTree.prototype.serialize = function()
 
 SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 {
+	if(!url) return;
 	var that = this;
 	var nocache = ResourcesManager.getNoCache(true);
+	if(nocache)
+		url += (url.indexOf(&quot;?&quot;) == -1 ? &quot;?&quot; : &quot;&amp;&quot;) + nocache;
+
+
 	LS.request({
-		url: url + nocache,
+		url: url,
 		dataType: &#x27;json&#x27;,
 		success: inner_success,
 		error: inner_error
@@ -697,9 +704,9 @@ SceneTree.prototype.start = function()
 	if(this._state == &quot;running&quot;) return;
 
 	this._state = &quot;running&quot;;
-	this._start_time = window.performance.now() * 0.001;
+	this._start_time = getTime() * 0.001;
 	LEvent.trigger(this,&quot;start&quot;,this);
-	this.sendEventToNodes(&quot;start&quot;);
+	this.triggerInNodes(&quot;start&quot;);
 }
 
 /**
@@ -714,7 +721,7 @@ SceneTree.prototype.stop = function()
 
 	this._state = &quot;stopped&quot;;
 	LEvent.trigger(this,&quot;stop&quot;,this);
-	this.sendEventToNodes(&quot;stop&quot;);
+	this.triggerInNodes(&quot;stop&quot;);
 }
 
 
@@ -805,30 +812,27 @@ SceneTree.prototype.update = function(dt)
 {
 	LEvent.trigger(this,&quot;beforeUpdate&quot;, this);
 
-	this._global_time = window.performance.now() * 0.001;
+	this._global_time = getTime() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
 	LEvent.trigger(this,&quot;update&quot;, dt);
-	this.sendEventToNodes(&quot;update&quot;,dt, true);
+	this.triggerInNodes(&quot;update&quot;,dt, true);
 
 	LEvent.trigger(this,&quot;afterUpdate&quot;, this);
 }
 
 /**
-* dispatch event to all nodes in the scene
+* triggers an event to all nodes in the scene
 *
-* @method sendEventToNodes
+* @method triggerInNodes
 * @param {String} event_type event type name
 * @param {Object} data data to send associated to the event
 */
 
-SceneTree.prototype.sendEventToNodes = function(event_type, data)
+SceneTree.prototype.triggerInNodes = function(event_type, data)
 {
-	for(var i in this._nodes)
-	{
-		LEvent.trigger( this._nodes[i], event_type, data);
-	}
+	LEvent.triggerArray( this._nodes, event_type, data);
 }
 
 

@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -323,9 +325,9 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_antialiasing = !!o.use_antialiasing;
 
 	this._graph.configure( JSON.parse( o.graph_data ) );
-	this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];
-	this._graph_depth_texture_node = this._graph.findNodesByName(&quot;Depth Buffer&quot;)[0];
-	this._graph_viewport_node = this._graph.findNodesByName(&quot;Viewport&quot;)[0];
+	this._graph_color_texture_node = this._graph.findNodesByTitle(&quot;Color Buffer&quot;)[0];
+	this._graph_depth_texture_node = this._graph.findNodesByTitle(&quot;Depth Buffer&quot;)[0];
+	this._graph_viewport_node = this._graph.findNodesByTitle(&quot;Viewport&quot;)[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
@@ -378,7 +380,7 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 		//height = v[3];
 	}
 
-	var type = this.use_high_precision ? FXGraphComponent.high_precision_format : gl.UNSIGNED_BYTE;
+	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
@@ -413,9 +415,9 @@ FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 	if(!this._graph || !this.enabled || !render_options.render_fx) return;
 
 	if(!this._graph_color_texture_node)
-		this._graph_color_texture_node = this._graph.findNodesByName(&quot;Color Buffer&quot;)[0];
+		this._graph_color_texture_node = this._graph.findNodesByTitle(&quot;Color Buffer&quot;)[0];
 	if(!this._depth_depth_texture_node)
-		this._depth_depth_texture_node = this._graph.findNodesByName(&quot;Depth Buffer&quot;)[0];
+		this._depth_depth_texture_node = this._graph.findNodesByTitle(&quot;Depth Buffer&quot;)[0];
 
 	if(!this._graph_color_texture_node)
 		return;

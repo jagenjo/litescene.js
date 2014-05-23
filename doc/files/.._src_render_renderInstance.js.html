@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -163,6 +165,7 @@
 */
 
 //Flags to control rendering states
+//0-7: render state flags
 var RI_CULL_FACE =			1;		//for two sided
 var RI_CW =					1 &lt;&lt; 1; //reverse normals
 var RI_DEPTH_TEST =			1 &lt;&lt; 2; //use depth test
@@ -170,18 +173,22 @@ var RI_DEPTH_WRITE = 		1 &lt;&lt; 3; //write in the depth buffer
 var RI_ALPHA_TEST =			1 &lt;&lt; 4; //do alpha test
 var RI_BLEND = 				1 &lt;&lt; 5; //use blend function
 
+//8-16: rendering pipeline flags
 var RI_CAST_SHADOWS = 		1 &lt;&lt; 8;	//render in shadowmaps
-var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 9;	//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 10;//render even when outside of frustum 
-var RI_RENDER_2D = 			1 &lt;&lt; 11;//render in screen space using the position projection (similar to billboard)
+var RI_RECEIVE_SHADOWS =	1 &lt;&lt; 9;	//receive shadowmaps
+var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 10;//render without taking into account light info
+var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum 
+var RI_RENDER_2D = 			1 &lt;&lt; 12;//render in screen space using the position projection (similar to billboard)
+var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 13; //do not multiply by viewprojection, use model as mvp
+var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 14; //ignore the plane clipping (in reflections)
 
-var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 12; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 13; //ignore the plane clipping (in reflections)
+//16-24: instance properties
+var RI_RAYCAST_ENABLED = 1 &lt;&lt; 16; //if it could be raycasted
 
 
 //default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS;
-var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS;
+var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
+var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
 
 function RenderInstance(node, component)
 {
@@ -194,6 +201,7 @@ function RenderInstance(node, component)
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
 	this.mesh = null; //shouldnt be used, but just in case
+	this.collision_mesh = null; //in case of raycast
 	this.primitive = gl.TRIANGLES;
 
 	//where does it come from
@@ -217,9 +225,15 @@ function RenderInstance(node, component)
 	//info about the material
 	this.material = null;
 
-	//globals, never reseted
+	//for extra data for the shader
 	this.macros = {};
 	this.uniforms = {};
+	this.samplers = {};
+
+	//for internal use
+	this._final_macros = {};
+	this._final_uniforms = {};
+	this._final_samplers = {};
 }
 
 
@@ -287,11 +301,13 @@ RenderInstance.prototype.applyNodeFlags = function()
 	var node_flags = this.node.flags;
 
 	if(node_flags.two_sided == true) this.flags &amp;= ~RI_CULL_FACE;
-	if(node_flags.cast_shadows == false) this.flags &amp;= ~RI_CAST_SHADOWS;
 	if(node_flags.flip_normals == true) this.flags |= RI_CW;
 	if(node_flags.depth_test == false) this.flags &amp;= ~RI_DEPTH_TEST;
 	if(node_flags.depth_write == false) this.flags &amp;= ~RI_DEPTH_WRITE;
 	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+
+	if(node_flags.cast_shadows == false) this.flags &amp;= ~RI_CAST_SHADOWS;
+	if(node_flags.receive_shadows == false) this.flags &amp;= ~RI_RECEIVE_SHADOWS;	
 }
 
 /**
@@ -350,46 +366,6 @@ RenderInstance.prototype.updateAABB = function()
 	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
 }
 
-
-
-/*
-RenderInstance.prototype.computeBounding = function()
-{
-	if(!this.mesh ||!this.mesh.bounding) return;
-
-	var temp = vec3.create();
-	var matrix = this.matrix;
-	var bbmax = this.mesh.bounding.aabb_max;
-	var bbmin = this.mesh.bounding.aabb_min;
-
-	var center = this.oobb_center;
-	var halfsize = this.oobb_halfsize;
-
-	var aabbmax = vec3.create();
-	var aabbmin = vec3.create();
-
-	mat4.multiplyVec3( aabbmax, matrix, bbmax );
-	aabbmin.set(aabbmax);
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmax[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmax[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmax[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-	mat4.multiplyVec3( temp, matrix, [bbmin[0],bbmin[1],bbmin[2]] );
-	vec3.max( aabbmax, temp, aabbmax ); vec3.min( aabbmin, temp, aabbmin );
-
-	this.aabb_center.set([ (aabbmax[0]+aabbmin[0])*0.5, (aabbmax[1]+aabbmin[1])*0.5, (aabbmax[2]+aabbmin[2])*0.5 ]);
-	vec3.sub(this.aabb_halfsize, aabbmax, this.aabb_center);
-}
-*/
-
 /**
 * Calls render taking into account primitive and submesh id
 *
@@ -401,16 +377,6 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
-
-
-	/*
-	if(this.submesh_id != null &amp;&amp; this.submesh_id != -1 &amp;&amp; this.mesh.info.groups &amp;&amp; this.mesh.info.groups.length &gt; this.submesh_id)
-		shader.drawRange(this.mesh, this.primitive, this.mesh.info.groups[this.submesh_id].start, this.mesh.info.groups[this.submesh_id].length);
-	else if(this.start || this.length)
-		shader.drawRange(this.mesh, this.primitive, this.start || 0, this.length);
-	else
-		shader.draw(this.mesh, this.primitive);
-	*/
 }
 
 

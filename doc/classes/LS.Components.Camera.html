@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -292,6 +294,90 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
+                                <a href="#method_getCenter">getCenter</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getEye">getEye</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getFront">getFront</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getLocalPoint">getLocalPoint</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getLocalVector">getLocalVector</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getModelMatrix">getModelMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getProjectionMatrix">getProjectionMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getRight">getRight</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getTop">getTop</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getUp">getUp</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getViewMatrix">getViewMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getViewProjectionMatrix">getViewProjectionMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_lookAt">lookAt</a>
 
                                 
@@ -299,7 +385,21 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_move">move</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_project">project</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_rotate">rotate</a>
 
                                 
                                 
@@ -321,6 +421,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_updateNodeTransform">updateNodeTransform</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_updateVectors">updateVectors</a>
 
                                 
                                 
@@ -413,6 +520,1128 @@
                 <h2 class="off-left">Methods</h2>
 
                 
+                    <div id="method_getCenter" class="method item">
+    <h3 class="name"><code>getCenter</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l465"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:465</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the center of the camera (position where the camera is pointing)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getEye" class="method item">
+    <h3 class="name"><code>getEye</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l394"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:394</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the eye (position of the camera)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getFront" class="method item">
+    <h3 class="name"><code>getFront</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l407"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:407</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the front vector of the camera</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getLocalPoint" class="method item">
+    <h3 class="name"><code>getLocalPoint</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>v</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>dest</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l355"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:355</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>transform a local coordinate to global coordinates</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">v</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>vector</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">dest</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>v in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getLocalVector" class="method item">
+    <h3 class="name"><code>getLocalVector</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>v</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>dest</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l374"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:374</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>rotate a local coordinate to global coordinates (skipping translation)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">v</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>vector</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">dest</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>v in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getModelMatrix" class="method item">
+    <h3 class="name"><code>getModelMatrix</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>m</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l284"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:284</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the inverse of the viewmatrix</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">m</code>
+                        <span class="type">Mat4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>optional output container</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>matrix</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getProjectionMatrix" class="method item">
+    <h3 class="name"><code>getProjectionMatrix</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>m</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l312"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:312</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the projection matrix</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">m</code>
+                        <span class="type">Mat4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>optional output container</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>matrix</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getRight" class="method item">
+    <h3 class="name"><code>getRight</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l450"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:450</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the right vector of the camera</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getTop" class="method item">
+    <h3 class="name"><code>getTop</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l433"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:433</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the top vector of the camera (different from up, this one is perpendicular to front and right)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getUp" class="method item">
+    <h3 class="name"><code>getUp</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l420"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:420</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the up vector of the camera</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec3</span>:
+                    
+                    <p>position in global coordinates</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getViewMatrix" class="method item">
+    <h3 class="name"><code>getViewMatrix</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>m</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l298"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:298</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the viewmatrix</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">m</code>
+                        <span class="type">Mat4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>optional output container</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>matrix</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getViewProjectionMatrix" class="method item">
+    <h3 class="name"><code>getViewProjectionMatrix</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>m</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l326"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:326</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the view projection matrix</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">m</code>
+                        <span class="type">Mat4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>optional output container</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>matrix</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_lookAt" class="method item">
     <h3 class="name"><code>lookAt</code></h3>
 
@@ -467,7 +1696,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l223"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:223</code></a>
+        <a href="../files/.._src_components_camera.js.html#l240"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:240</code></a>
         
         </p>
 
@@ -520,6 +1749,94 @@
                 <li class="param">
                     
                         <code class="param-name">up</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_move" class="method item">
+    <h3 class="name"><code>move</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>delta</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l524"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:524</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>moves the camera by adding the delta vector to center and eye</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">delta</code>
                         <span class="type">Vec3</span>
                     
 
@@ -600,7 +1917,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l529"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:529</code></a>
+        <a href="../files/.._src_components_camera.js.html#l639"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:639</code></a>
         
         </p>
 
@@ -693,6 +2010,137 @@
 </div>
 
                 
+                    <div id="method_rotate" class="method item">
+    <h3 class="name"><code>rotate</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>angle_in_deg</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>axis</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>in_local_space</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l536"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:536</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>rotate the camera around its center</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">angle_in_deg</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">axis</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">in_local_space</code>
+                        <span class="type">Boolean</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>allows to specify if the axis is in local space or global space</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_unproject" class="method item">
     <h3 class="name"><code>unproject</code></h3>
 
@@ -751,7 +2199,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l550"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:550</code></a>
+        <a href="../files/.._src_components_camera.js.html#l677"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:677</code></a>
         
         </p>
 
@@ -876,7 +2324,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l238"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:238</code></a>
+        <a href="../files/.._src_components_camera.js.html#l255"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:255</code></a>
         
         </p>
 
@@ -931,7 +2379,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l516"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:516</code></a>
+        <a href="../files/.._src_components_camera.js.html#l626"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:626</code></a>
         
         </p>
 
@@ -946,6 +2394,95 @@
 
     </div>
 
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_updateVectors" class="method item">
+    <h3 class="name"><code>updateVectors</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>model</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l340"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:340</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>apply a transform to all the vectors (eye,center,up) using a matrix</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">model</code>
+                        <span class="type">Mat4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>matrix</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -985,7 +2522,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l153"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:153</code></a>
+        <a href="../files/.._src_components_camera.js.html#l170"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:170</code></a>
         
         </p>
 
@@ -1032,7 +2569,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l91"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:91</code></a>
+        <a href="../files/.._src_components_camera.js.html#l108"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:108</code></a>
         
         </p>
 
@@ -1079,7 +2616,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l76"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:76</code></a>
+        <a href="../files/.._src_components_camera.js.html#l93"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:93</code></a>
         
         </p>
 
@@ -1126,7 +2663,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l137"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:137</code></a>
+        <a href="../files/.._src_components_camera.js.html#l154"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:154</code></a>
         
         </p>
 
@@ -1173,7 +2710,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l168"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:168</code></a>
+        <a href="../files/.._src_components_camera.js.html#l185"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:185</code></a>
         
         </p>
 
@@ -1220,7 +2757,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l184"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:184</code></a>
+        <a href="../files/.._src_components_camera.js.html#l201"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:201</code></a>
         
         </p>
 
@@ -1267,7 +2804,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l121"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:121</code></a>
+        <a href="../files/.._src_components_camera.js.html#l138"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:138</code></a>
         
         </p>
 
@@ -1314,7 +2851,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l60"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:60</code></a>
+        <a href="../files/.._src_components_camera.js.html#l77"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:77</code></a>
         
         </p>
 
@@ -1361,7 +2898,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l106"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:106</code></a>
+        <a href="../files/.._src_components_camera.js.html#l123"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:123</code></a>
         
         </p>
 

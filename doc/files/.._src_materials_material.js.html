@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -184,6 +186,8 @@ function Material(o)
 	this.specular_factor = 0.1;
 	this.specular_gloss = 10.0;
 
+	//this.reflection_factor = 0.0;	
+
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
@@ -237,22 +241,23 @@ Material.SPECULAR_TEXTURE = &quot;specular&quot;; //defines specular factor and 
 Material.EMISSIVE_TEXTURE = &quot;emissive&quot;;
 Material.ENVIRONMENT_TEXTURE = &quot;environment&quot;;
 
-Material.TEXTURE_CHANNELS = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
-
 Material.COORDS_UV0 = &quot;0&quot;;
 Material.COORDS_UV1 = &quot;1&quot;;
 Material.COORDS_UV_TRANSFORMED = &quot;transformed&quot;;
-Material.COORDS_SCREEN = &quot;screen&quot;;
-Material.COORDS_POLAR = &quot;polar&quot;;
-Material.COORDS_POLAR_REFLECTED = &quot;polar_reflected&quot;;
+Material.COORDS_SCREEN = &quot;screen&quot;;					//project to screen space
+Material.COORDS_FLIPPED_SCREEN = &quot;flipped_screen&quot;;	//used for realtime reflections
+Material.COORDS_POLAR = &quot;polar&quot;;					//use view vector as polar coordinates
+Material.COORDS_POLAR_REFLECTED = &quot;polar_reflected&quot;;//use reflected view vector as polar coordinates
+Material.COORDS_POLAR_VERTEX = &quot;polar_vertex&quot;;		//use normalized vertex as polar coordinates
 Material.COORDS_WORLDXZ = &quot;worldxz&quot;;
 Material.COORDS_WORLDXY = &quot;worldxy&quot;;
 Material.COORDS_WORLDYZ = &quot;worldyz&quot;;
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
 
 Material.available_shaders = [&quot;default&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
+Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 
 Material.prototype.applyToRenderInstance = function(ri)
@@ -282,6 +287,9 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
 	}
 
+	//if(this.reflection_factor &gt; 0.0) 
+	//	macros.USE_REFLECTION = &quot;&quot;;	
+
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
@@ -293,6 +301,7 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 //Fill with info about the light
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
+/*
 Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
 {
 	var macros = {};
@@ -318,15 +327,19 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 	var light_projective_texture = light.projective_texture;
 	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
 		light_projective_texture = ResourcesManager.textures[light_projective_texture];
+
 	if(light_projective_texture)
+	{
 		macros.USE_PROJECTIVE_LIGHT = &quot;&quot;;
+		if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			macros.USE_PROJECTIVE_LIGHT_CUBEMAP = &quot;&quot;;
+	}
 
 	var light_average_texture = light.average_texture;
 	if(light_average_texture &amp;&amp; light_average_texture.constructor == String)
 		light_average_texture = ResourcesManager.textures[light_average_texture];
 	if(light_average_texture)
 		macros.USE_TEXTURE_AVERAGE_LIGHT = &quot;&quot;;
-
 
 	//if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
 	//	macros.USE_IGNORE_LIGHT = &quot;&quot;;
@@ -347,11 +360,12 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 
 	return macros;
 }
+*/
 
 Material.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = [];
+	var samplers = {};
 
 	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
 	uniforms.u_ambient_color = scene.ambient_color;
@@ -360,13 +374,16 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
+	uniforms.u_reflection = this.reflection_factor;
+
+
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
 		var texture = this.getTexture(i);
 		if(!texture) continue;
 
-		samplers.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) , texture]);
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture;
 		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ,texture]);
 		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
 		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
@@ -385,64 +402,8 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 		uniforms[i] = this.extra_uniforms[i];
 
 	this._uniforms = uniforms;
-	this._samplers = samplers;
+	this._samplers = samplers; //samplers without fixed slot
 }
-
-//hard to precompute, it uses the instance.matrix to compute lightMatrix, it also binds the textures
-Material.prototype.fillLightUniforms = function( iLight, light, instance, options)
-{
-	var uniforms = {};
-	//var samplers = [];
-
-	var use_shadows = light.cast_shadows &amp;&amp; light._shadowmap &amp;&amp; light._light_matrix != null &amp;&amp; !options.shadows_disabled;
-
-	var shadowmap_size = use_shadows ? (light._shadowmap.width) : 1024;
-	if(light.type == Light.DIRECTIONAL || light.type == Light.SPOT)
-		uniforms.u_light_front = light.getFront();
-	if(light.type == Light.SPOT)
-		uniforms.u_light_angle = [ light.angle * DEG2RAD, light.angle_end * DEG2RAD, Math.cos( light.angle * DEG2RAD * 0.5 ), Math.cos( light.angle_end * DEG2RAD * 0.5 ) ];
-
-	uniforms.u_light_pos = light.getPosition();
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), light.color, light.intensity );
-	uniforms.u_light_att = [light.att_start,light.att_end];
-	uniforms.u_light_offset = light.offset;
-
-	if(light._light_matrix)
-		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), light._light_matrix, instance.matrix );
-
-	//projective texture
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture &amp;&amp; light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-	if(light_projective_texture)
-		uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
-
-	//average texture
-	var light_average_texture = light.average_texture;
-	if(light_average_texture &amp;&amp; light_average_texture.constructor == String)
-		light_average_texture = ResourcesManager.textures[light_average_texture];
-	if(light_average_texture)
-		uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
-
-	//use shadows?
-	if(use_shadows)
-	{
-		uniforms.u_shadow_params = [ 1.0 / light._shadowmap.width, light.shadow_bias, light.near, light.far ];
-		uniforms.shadowmap = light._shadowmap.bind(10); //fixed slot
-		//samplers.push([&quot;shadowmap&quot;, light._shadowmap]);
-	}
-
-	//return [uniforms, samplers];
-	return uniforms;
-}
-
-Material.prototype.getTextureChannels = function()
-{
-	if(this.constructor.texture_channels)
-		return this.constructor.texture_channels;
-	return [];
-}
-
 
 /**
 * Configure the material getting the info from the object
@@ -451,7 +412,10 @@ Material.prototype.getTextureChannels = function()
 */
 Material.prototype.configure = function(o)
 {
-	//cloneObject(o, this);
+	for(var i in o)
+		this.setProperty( i, o[i] );
+
+	/*	//cloneObject(o, this);
 	for(var i in o)
 	{
 		var v = o[i];
@@ -462,6 +426,7 @@ Material.prototype.configure = function(o)
 			case &quot;opacity&quot;: 
 			case &quot;specular_factor&quot;:
 			case &quot;specular_gloss&quot;:
+			case &quot;reflection&quot;: 
 			case &quot;blend_mode&quot;:
 			//strings
 			case &quot;shader_name&quot;:
@@ -485,6 +450,7 @@ Material.prototype.configure = function(o)
 
 	if(o.uvs_matrix &amp;&amp; o.uvs_matrix.length == 9)
 		this.uvs_matrix = new Float32Array(o.uvs_matrix);
+	*/
 }
 
 /**
@@ -507,7 +473,7 @@ Material.prototype.serialize = function()
 */
 Material.prototype.clone = function()
 {
-	return new this.constructor( JSON.stringify( JSON.parse(this.serialize())) );
+	return new this.constructor( JSON.parse( JSON.stringify( this.serialize() )) );
 }
 
 /**
@@ -541,6 +507,100 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 			options.on_complete();
 	}
 }
+
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperties = function()
+{
+	var o = {
+		color:&quot;vec3&quot;,
+		opacity:&quot;number&quot;,
+		shader_name: &quot;string&quot;,
+		blend_mode: &quot;number&quot;,
+		specular_factor:&quot;number&quot;,
+		specular_gloss:&quot;number&quot;,
+		uvs_matrix:&quot;mat3&quot;
+	};
+
+	var textures = this.getTextureChannels();
+	for(var i in textures)
+		o[&quot;tex_&quot; + textures[i]] = &quot;Texture&quot;;
+	return o;
+}
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.getProperty = function(name)
+{
+	if(name.substr(0,4) == &quot;tex_&quot;)
+		return this.textures[ name.substr(4) ];
+	return this[name];
+}
+
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+Material.prototype.setProperty = function(name, value)
+{
+	if(name.substr(0,4) == &quot;tex_&quot;)
+	{
+		this.textures[ name.substr(4) ] = value;
+		return true;
+	}
+
+	switch(name)
+	{
+		//numbers
+		case &quot;opacity&quot;: 
+		case &quot;specular_factor&quot;:
+		case &quot;specular_gloss&quot;:
+		case &quot;reflection&quot;: 
+		case &quot;blend_mode&quot;:
+		//strings
+		case &quot;shader_name&quot;:
+		//bools
+			this[name] = value; 
+			break;
+		//vectors
+		case &quot;uvs_matrix&quot;:
+		case &quot;color&quot;: 
+			if(this[name].length == value.length)
+				this[name].set( value );
+			break;
+		case &quot;textures&quot;:
+			this.textures = cloneObject(value);
+			break;
+		case &quot;transparency&quot;: //special cases
+			this.opacity = 1 - value;
+			break;
+		default:
+			return false;
+	}
+	return true;
+}
+
+/**
+* gets all the texture channels supported by this material
+* @method getTextureChannels
+* @return {Array} array with the name of every channel supported by this material
+*/
+Material.prototype.getTextureChannels = function()
+{
+	if(this.constructor.texture_channels)
+		return this.constructor.texture_channels;
+	return [];
+}
+
+
 
 /**
 * Assigns a texture to a channel
@@ -594,6 +654,19 @@ Material.prototype.getResources = function (res)
 		if(typeof(this.textures[i]) == &quot;string&quot; &amp;&amp; i.substr(-4) != &quot;_uvs&quot;) //ends in this string
 			res[ this.textures[i] ] = Texture;
 	return res;
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	for(var i in this.textures)
+		if(this.textures[i] == old_name)
+			this.textures[i] = new_name;
 }
 
 /**

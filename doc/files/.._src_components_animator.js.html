@@ -43,6 +43,8 @@
             
                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
             
+                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -186,7 +188,7 @@ Rotator.prototype.onRemoveFromNode = function(node)
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
-	var scene = this._root._on_scene;
+	var scene = this._root._in_tree;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();
