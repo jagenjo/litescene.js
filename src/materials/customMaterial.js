@@ -33,6 +33,11 @@ CustomMaterial.prototype.onCodeChange = function()
 	this.computeCode();
 }
 
+CustomMaterial.prototype.getCode = function()
+{
+	return this.code;
+}
+
 CustomMaterial.prototype.computeCode = function()
 {
 
@@ -89,6 +94,5 @@ CustomMaterial.prototype.configure = function(o) { LS.cloneObject(o, this); },
 CustomMaterial.prototype.serialize = function() { return LS.cloneObject(this); },
 
 
-LS.extendClass( Material, CustomMaterial );
 LS.registerMaterialClass(CustomMaterial);
 LS.CustomMaterial = CustomMaterial;

@@ -667,6 +667,37 @@ Light.prototype.generateShadowmap = function (render_options)
 	}
 }
 
+//Mostly used for gizmos
+Light.prototype.getTransformMatrix = function( element )
+{
+	if( this._root &amp;&amp; this._root.transform )
+		return null; //use the node transform
+
+	var p = null;
+	if (element == &quot;target&quot;)
+		p = this.target;
+	else
+		p = this.position;
+
+	var T = mat4.create();
+	mat4.setTranslation( T, p );
+	return T;
+}
+
+Light.prototype.applyTransformMatrix = function( matrix, center, element )
+{
+	if( this._root &amp;&amp; this._root.transform )
+		return false; //ignore transform
+
+	var p = null;
+	if (element == &quot;target&quot;)
+		p = this.target;
+	else
+		p = this.position;
+
+	mat4.multiplyVec3( p, matrix, p );
+	return true;
+}
 
 
 LS.registerComponent(Light);

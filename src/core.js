@@ -71,8 +71,8 @@ var LS = {
 		//register
 		this.MaterialClasses[ getClassName(material_class) ] = material_class;
 
-		//extend
-		LS.extendClass( Material, material_class );
+		//add extra material methods
+		LS.extendClass( material_class, Material );
 
 		//event
 		LEvent.trigger(LS,"materialclass_registered",material_class);
@@ -192,11 +192,11 @@ var LS = {
 /**
 * copy the properties (methods and attributes) of origin class into target class
 * @method extendClass
-* @param {Class} origin
 * @param {Class} target
+* @param {Class} origin
 */
 
-function extendClass( origin, target ) {
+LS.extendClass = function extendClass( target, origin ) {
 	for(var i in origin) //copy class properties
 	{
 		if(target.hasOwnProperty(i))
@@ -224,7 +224,6 @@ function extendClass( origin, target ) {
 				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
 		}
 }
-LS.extendClass = extendClass;
 
 /**
 * Clones an object (no matter where the object came from)

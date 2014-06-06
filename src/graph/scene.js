@@ -76,6 +76,7 @@ if(typeof(LiteGraph) != "undefined")
 	function LGraphSceneNode()
 	{
 		this.properties = {node_id:""};
+		this.size = [90,20];
 
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
@@ -453,6 +454,12 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 
 		this.setOutputData(0, this.properties.value);
+	}
+
+	LGraphGlobal.prototype.onDrawBackground = function()
+	{
+		var name = this.properties.name;
+		this.outputs[0].label = name;
 	}
 
 	LiteGraph.registerNodeType("scene/global", LGraphGlobal );

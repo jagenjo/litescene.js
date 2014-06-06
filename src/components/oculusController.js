@@ -142,9 +142,10 @@ OculusController.prototype.onAfterRender = function(e,dt)
 		this._color_texture.toViewport();
 }
 
-
+/* not finished
 LS.registerComponent(OculusController);
 window.OculusController = OculusController;
+*/
 
 
 

@@ -27,6 +27,11 @@ ScriptComponent.prototype.getContext = function()
 	return null;
 }
 
+ScriptComponent.prototype.getCode = function()
+{
+	return this.code;
+}
+
 ScriptComponent.prototype.processCode = function()
 {
 	this._script.code = this.code;
@@ -66,10 +71,20 @@ ScriptComponent.prototype.onUpdate = function(e,dt)
 	//	this._component.update(dt);
 }
 
+ScriptComponent.prototype.runStep = function(method, args)
+{
+	this._script.callMethod(method,args);
+}
+
 ScriptComponent.prototype.onError = function(err)
 {
 	console.log("app stopping due to error in script");
 	Scene.stop();
+}
+
+ScriptComponent.prototype.onCodeChange = function(code)
+{
+	this.processCode();
 }
 
 

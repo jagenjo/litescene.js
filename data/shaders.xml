@@ -447,11 +447,17 @@
 				#import "testShadow"
 			#endif
 
+			//***** Global input and output variables
+			Input IN;
+			SurfaceOutput o;
+
+			//***** Useful functions
 			vec2 polarToCartesian(in vec3 V)
 			{
 				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
 			}					
 			
+			//***** compute Light
 			vec3 computeLight(in SurfaceOutput IN)
 			{
 				vec3 final_color = vec3(0.0);
@@ -609,7 +615,10 @@
 
 				return final_color;
 			}
-			
+
+			//to use normalmaps
+			#import "perturbNormal"
+
 			#ifdef USE_PIXEL_SHADER_UNIFORMS
 				USE_PIXEL_SHADER_UNIFORMS
 			#endif
@@ -633,7 +642,6 @@
 						discard;
 				#endif
 				
-				Input IN;
 				IN.vertex = v_local_pos;
 				IN.normal = v_local_normal;
 				IN.color = u_material_color;
@@ -652,7 +660,6 @@
 				IN.worldNormal = normalize(v_normal);
 				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
 
-				SurfaceOutput o;
 				o.Albedo = IN.color.xyz;
 				o.Normal = IN.worldNormal;
 				o.Emission = vec3(0.0);

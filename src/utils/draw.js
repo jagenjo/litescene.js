@@ -96,6 +96,76 @@ var Draw = {
 			}\
 		');
 
+		this.shader_image = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			uniform mat4 u_mvp;\n\
+			uniform float u_point_size;\n\
+			void main() {\n\
+				gl_PointSize = u_point_size;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			uniform vec4 u_color;\n\
+			uniform sampler2D u_texture;\n\
+			void main() {\n\
+			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
+			  if(tex.a < 0.1)\n\
+				discard;\n\
+			  gl_FragColor = u_color * tex;\n\
+			}\
+		');
+
+		this.shader_points_color_size = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec4 a_color;\n\
+			attribute float a_extra;\n\
+			uniform mat4 u_mvp;\n\
+			uniform float u_point_size;\n\
+			uniform vec4 u_color;\n\
+			varying vec4 v_color;\n\
+			void main() {\n\
+				v_color = u_color * a_color;\n\
+				gl_PointSize = u_point_size * a_extra;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			varying vec4 v_color;\n\
+			void main() {\n\
+			  gl_FragColor = v_color;\n\
+			}\
+		');
+
+		this.shader_points_color_texture_size = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec4 a_color;\n\
+			attribute float a_extra;\n\
+			uniform mat4 u_mvp;\n\
+			uniform float u_point_size;\n\
+			varying vec4 v_color;\n\
+			void main() {\n\
+				v_color = a_color;\n\
+				gl_PointSize = u_point_size * a_extra;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			uniform vec4 u_color;\n\
+			varying vec4 v_color;\n\
+			uniform sampler2D u_texture;\n\
+			void main() {\n\
+			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
+			  if(tex.a < 0.1)\n\
+				discard;\n\
+			  vec4 color = u_color * v_color * tex;\n\
+			  gl_FragColor = color;\n\
+			}\
+		');
+
 		var vertices = [[-1,1,0],[1,1,0],[1,-1,0],[-1,-1,0]];
 		var coords = [[0,1],[1,1],[1,0],[0,0]];
 		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
@@ -176,7 +246,7 @@ var Draw = {
 		return this.renderMesh(mesh, gl.LINES, colors ? this.shader_color : this.shader );
 	},
 
-	renderPoints: function(points, colors)
+	renderPoints: function(points, colors, shader)
 	{
 		if(!points || !points.length) return;
 		var vertices = null;
@@ -192,7 +262,36 @@ var Draw = {
 			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
 
 		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
-		return this.renderMesh(mesh, gl.POINTS, colors ? this.shader_color : this.shader );
+		if(!shader)
+			shader = colors ? this.shader_color : this.shader;
+
+		return this.renderMesh(mesh, gl.POINTS, shader );
+	},
+
+	//paints points with color, size, and texture binded in 0
+	renderPointsWithSize: function(points, colors, sizes, texture, shader)
+	{
+		if(!points || !points.length) return;
+		var vertices = null;
+
+		if(points.constructor == Float32Array)
+			vertices = points;
+		else if(points[0].length) //array of arrays
+			vertices = this.linearize(points);
+		else
+			vertices = new Float32Array(points);
+
+		if(!colors)
+			throw("colors required in Draw.renderPointsWithSize");
+		colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
+		if(!sizes)
+			throw("sizes required in Draw.renderPointsWithSize");
+		sizes = sizes.constructor == Float32Array ? sizes : this.linearize(sizes);
+
+		var mesh = GL.Mesh.load({vertices: vertices, colors: colors, extra: sizes});
+		shader = shader || (texture ? this.shader_points_color_texture_size : this.shader_points_color_size);
+		
+		return this.renderMesh(mesh, gl.POINTS, shader );
 	},
 
 	renderRectangle: function(width, height, in_z)
@@ -373,7 +472,7 @@ var Draw = {
 		return this.renderMesh(mesh, gl.TRIANGLE_STRIP);
 	},
 
-	renderImage: function(position, image, size)
+	renderImage: function(position, image, size, fixed_size )
 	{
 		size = size || 10;
 		var texture = null;
@@ -404,13 +503,22 @@ var Draw = {
 
 		if(!texture) return;
 
-		this.push();
-		//this.lookAt(position, this.camera_position,[0,1,0]);
-		this.billboard(position);
-		this.scale(size,size,size);
-		texture.bind(0);
-		this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
-		this.pop();
+		if(fixed_size)
+		{
+			this.setPointSize( size );
+			texture.bind(0);
+			this.renderPoints( position, null, this.shader_image );
+		}
+		else
+		{
+			this.push();
+			//this.lookAt(position, this.camera_position,[0,1,0]);
+			this.billboard(position);
+			this.scale(size,size,size);
+			texture.bind(0);
+			this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, this.shader_texture );
+			this.pop();
+		}
 	},
 
 	renderMesh: function(mesh, primitive, shader)

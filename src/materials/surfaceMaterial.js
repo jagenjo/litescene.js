@@ -40,6 +40,11 @@ SurfaceMaterial.prototype.onCodeChange = function()
 	this.computeCode();
 }
 
+SurfaceMaterial.prototype.getCode = function()
+{
+	return this.code;
+}
+
 SurfaceMaterial.prototype.computeCode = function()
 {
 	var uniforms_code = "";
@@ -271,6 +276,5 @@ SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
 
 
 
-LS.extendClass( Material, SurfaceMaterial );
 LS.registerMaterialClass(SurfaceMaterial);
 LS.SurfaceMaterial = SurfaceMaterial;

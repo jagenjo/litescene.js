@@ -497,7 +497,7 @@
             "extension_for": [],
             "namespace": "LS.Components",
             "file": "../src/components/graphComponents.js",
-            "line": 105,
+            "line": 115,
             "description": "This component allow to integrate a rendering post FX using a graph",
             "params": [
                 {
@@ -892,7 +892,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 372,
+            "line": 371,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -1460,7 +1460,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 677,
+            "line": 681,
             "description": "Converts from 2D to 3D",
             "itemtype": "method",
             "name": "unproject",
@@ -1506,7 +1506,7 @@
         },
         {
             "file": "../src/components/graphComponents.js",
-            "line": 154,
+            "line": 164,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -2347,7 +2347,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 612,
+            "line": 614,
             "description": "returns the [0,0,1] vector in world space",
             "itemtype": "method",
             "name": "getFront",
@@ -2360,7 +2360,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 621,
+            "line": 623,
             "description": "returns the [0,1,0] vector in world space",
             "itemtype": "method",
             "name": "getTop",
@@ -2373,7 +2373,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 630,
+            "line": 632,
             "description": "returns the [1,0,0] vector in world space",
             "itemtype": "method",
             "name": "getRight",
@@ -2386,7 +2386,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 640,
+            "line": 642,
             "description": "Multiplies a point by the local matrix (not global)\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -2407,7 +2407,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 654,
+            "line": 656,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPointGlobal",
@@ -2428,7 +2428,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 667,
+            "line": 669,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "localToGlobal",
@@ -2449,7 +2449,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 676,
+            "line": 678,
             "description": "convert from global coordinates to local coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -2470,7 +2470,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 691,
+            "line": 693,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVector",
@@ -2491,7 +2491,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 702,
+            "line": 704,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVectorGlobal",
@@ -2512,7 +2512,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 723,
+            "line": 725,
             "description": "Applies the transformation using a matrix",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -2521,6 +2521,11 @@
                     "name": "matrix",
                     "description": "with the transform",
                     "type": "Mat4"
+                },
+                {
+                    "name": "center",
+                    "description": "different pivot [optional] if omited 0,0,0 will be used",
+                    "type": "Vec3"
                 },
                 {
                     "name": "is_global",
@@ -2827,7 +2832,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 136,
+            "line": 141,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -2840,7 +2845,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 161,
+            "line": 166,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -2860,7 +2865,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 182,
+            "line": 187,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -2873,7 +2878,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 205,
+            "line": 210,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -2889,7 +2894,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 244,
+            "line": 249,
             "description": "Assigns a texture to a channel",
             "itemtype": "method",
             "name": "setTexture",
@@ -3031,7 +3036,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 177,
+            "line": 178,
             "description": "Set camera as the main scene camera",
             "itemtype": "method",
             "name": "enableCamera",
@@ -3521,12 +3526,12 @@
             "name": "extendClass",
             "params": [
                 {
-                    "name": "origin",
+                    "name": "target",
                     "description": "",
                     "type": "Class"
                 },
                 {
-                    "name": "target",
+                    "name": "origin",
                     "description": "",
                     "type": "Class"
                 }
@@ -3536,7 +3541,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 229,
+            "line": 228,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -3561,7 +3566,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 270,
+            "line": 269,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -3581,7 +3586,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 290,
+            "line": 289,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -3601,7 +3606,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 309,
+            "line": 308,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -3621,7 +3626,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 408,
+            "line": 407,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",
@@ -4031,7 +4036,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 44,
+            "line": 42,
             "description": "This initializes the content of the scene.\nCall it to clear the scene content",
             "itemtype": "method",
             "name": "init",
@@ -4044,7 +4049,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 88,
+            "line": 86,
             "description": "Clears the scene using the init function\nand trigger a \"clear\" LEvent",
             "itemtype": "method",
             "name": "clear",
@@ -4053,7 +4058,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 109,
+            "line": 107,
             "description": "Configure the Scene using an object (the object can be obtained from the function serialize)\nInserts the nodes, configure them, and change the parameters",
             "itemtype": "method",
             "name": "configure",
@@ -4069,7 +4074,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 192,
+            "line": 190,
             "description": "Creates and object containing all the info about the scene and nodes.\nThe oposite of configure.\nIt calls the serialize method in every node",
             "itemtype": "method",
             "name": "serialize",
@@ -4082,7 +4087,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 239,
+            "line": 237,
             "description": "loads a Scene from an Ajax call and pass it to the configure method.",
             "itemtype": "method",
             "name": "loadScene",

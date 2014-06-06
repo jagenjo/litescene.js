@@ -206,11 +206,21 @@ GraphComponent.prototype.configure = function(o)
 			console.err(&quot;Error parsing Graph data&quot;);
 		}
 	}
+
+	if(o.on_event)
+		this.on_event = o.on_event;
+	if(o.force_redraw)
+		this.force_redraw = o.force_redraw;
 }
 
 GraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, force_redraw: this.force_redraw , graph_data: JSON.stringify( this._graph.serialize() ) };
+	return { 
+		enabled: this.enabled, 
+		force_redraw: this.force_redraw , 
+		graph_data: JSON.stringify( this._graph.serialize() ),
+		on_event: this.on_event
+	};
 }
 
 GraphComponent.prototype.onAddedToNode = function(node)

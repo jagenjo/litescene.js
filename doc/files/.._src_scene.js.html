@@ -185,8 +185,6 @@ function SceneTree()
 SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
-//LS.extendClass(ComponentContainer, SceneTree); //container methods
-
 Object.defineProperty( SceneTree.prototype, &quot;root&quot;, {
 	enumerable: true,
 	get: function() {
@@ -424,12 +422,14 @@ SceneTree.prototype.loadScene = function(url, on_complete, on_error)
 		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
+		LEvent.trigger(that,&quot;scene_loaded&quot;);
 	}
 
 	function inner_all_loaded()
 	{
 		if(on_complete)
-			on_complete();
+			on_complete(that, url);
+		LEvent.trigger(that,&quot;complete_scene_loaded&quot;);
 	}
 
 	function inner_error(err)
@@ -916,8 +916,8 @@ function SceneNode(id)
 }
 
 //get methods from other classes
-LS.extendClass(ComponentContainer, SceneNode); //container methods
-LS.extendClass(CompositePattern, SceneNode); //container methods
+LS.extendClass(SceneNode, ComponentContainer); //container methods
+LS.extendClass(SceneNode, CompositePattern); //container methods
 
 /**
 * changes the node id (its better to do not change the id, it can lead to unexpected results)

@@ -551,7 +551,7 @@ Transform.prototype.fromMatrix = function(m)
 	if(m != this._local_matrix)
 		mat4.copy(this._local_matrix, m);
 	this._dirty = false;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -755,12 +755,14 @@ Transform.prototype.lookAt = function(pos, target, up, in_world)
 	mat4.lookAt(temp, pos, target, up);
 	mat4.invert(temp, temp);
 	this.fromMatrix(temp);
+	this.updateGlobalMatrix();
 }
 
 //Events
-Transform.prototype._on_change = function()
+Transform.prototype._on_change = function(only_events)
 {
-	this._dirty = true;
+	if(!only_events)
+		this._dirty = true;
 	LEvent.trigger(this, &quot;changed&quot;, this);
 	if(this._root)
 		LEvent.trigger(this._root, &quot;transformChanged&quot;, this);
@@ -882,26 +884,41 @@ Transform.prototype.globalVectorToLocal = function(vec, dest) {
 * Applies the transformation using a matrix
 * @method applyTransformMatrix
 * @param {mat4} matrix with the transform
+* @param {vec3} center different pivot [optional] if omited 0,0,0 will be used
 * @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
-Transform.prototype.applyTransformMatrix = function(t, is_global) {
+Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
+{
+	var M = matrix;
+
+	if(center)
+	{
+		var T = mat4.setTranslation( mat4.create(), center);
+		var inv_center = vec3.scale( vec3.create(), center, -1 );
+		var iT = mat4.setTranslation( mat4.create(), inv_center);
+
+		M = mat4.create();
+		mat4.multiply( M, T, matrix );
+		mat4.multiply( M, M, iT );
+	}
+
 	if(!this._parent)
 	{
 		if(is_global)
-			mat4.multiply(this._local_matrix, t, this._local_matrix);
+			mat4.multiply(this._local_matrix, M, this._local_matrix);
 		else
-			mat4.multiply(this._local_matrix, this._local_matrix, t);
+			mat4.multiply(this._local_matrix, this._local_matrix, M);
 		this.fromMatrix(this._local_matrix);
 		mat4.copy(this._global_matrix, this._local_matrix); //no parent? then is the global too
 		return;
 	}
 
-	var g = this.getGlobalMatrix();
-	var pg = this._parent._global_matrix;
+	var GM = this.getGlobalMatrix();
+	var PGM = this._parent._global_matrix;
 	var temp = mat4.create();
-	mat4.multiply( this._global_matrix, t, g );
+	mat4.multiply( this._global_matrix, M, GM );
 
-	mat4.invert(temp,pg);
+	mat4.invert(temp,PGM);
 	mat4.multiply(this._local_matrix, temp, this._global_matrix );
 	this.fromMatrix(this._local_matrix);
 }

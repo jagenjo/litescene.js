@@ -810,25 +810,29 @@ Camera.prototype.project = function( vec, viewport, result )
 		this.updateMatrices();
 
 	/*
-	var M = mat4.transpose( mat4.create(), this._viewprojection_matrix );
-	var result = mat4.multiplyVec3(result || vec3.create(), M, vec );
+	//var M = mat4.transpose( mat4.create(), this._viewprojection_matrix );
+	var result = mat4.multiplyVec3(result || vec3.create(), this._viewprojection_matrix, vec );
 	
 	var winX = viewport[0] + Math.round( viewport[2] * (result[0] + 1) / 2.0);
 	var winY = viewport[1] + Math.round( viewport[3] * (result[1] + 1) / 2.0);
 	var winZ = (result[2] + 1) / 2.0;
 	vec3.set(result, winX, winY, winZ );
 	return result;
-	*/
+	//*/
 
+	var result = mat4.projectVec3(result || vec3.create(), this._viewprojection_matrix, vec );
+
+	/*
 	var result = mat4.multiplyVec3(result || vec3.create(), this._viewprojection_matrix, vec );
-
 	if(result[2] != 0.0)
 	{
 		result[0] /= result[2];
 		result[1] /= result[2];
 	}
-	
 	vec3.set(result, (result[0]+1) * (viewport[2]*0.5) + viewport[0], (result[1]+1) * (viewport[3]*0.5) + viewport[1], result[2] );
+	*/
+	
+	vec3.set(result, (result[0]+1.0) * (viewport[2]*0.5) + viewport[0], (result[1]+1.0) * (viewport[3]*0.5) + viewport[1], (result[2]+1.0)/2.0 );
 	return result;
 }
 
@@ -904,6 +908,38 @@ Camera.prototype.serialize = function()
 
 	//clone
 	return o;
+}
+
+//Mostly used for gizmos
+Camera.prototype.getTransformMatrix = function( element )
+{
+	if( this._root &amp;&amp; this._root.transform )
+		return null; //use the node transform
+
+	var p = null;
+	if (element == &quot;center&quot;)
+		p = this._center;
+	else
+		p = this._eye;
+
+	var T = mat4.create();
+	mat4.setTranslation( T, p );
+	return T;
+}
+
+Camera.prototype.applyTransformMatrix = function( matrix, center, element )
+{
+	if( this._root &amp;&amp; this._root.transform )
+		return false; //ignore transform
+
+	var p = null;
+	if (element == &quot;center&quot;)
+		p = this._center;
+	else
+		p = this._eye;
+
+	mat4.multiplyVec3( p, matrix, p );
+	return true;
 }
 
 LS.registerComponent(Camera);

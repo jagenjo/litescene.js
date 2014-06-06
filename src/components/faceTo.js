@@ -26,11 +26,10 @@ FaceTo["@target"] = {type:'node'};
 
 FaceTo.prototype.onAddedToNode = function(node)
 {
-	//LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
-	LEvent.bind(node,"afterVisibility",this.updateOrientation,this);
+	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
 }
 
-FaceTo.prototype.updateOrientation = function(e, render_options)
+FaceTo.prototype.updateOrientation = function(e)
 {
 	if(!this._root) return;
 	var scene = this._root._in_tree;
@@ -42,7 +41,6 @@ FaceTo.prototype.updateOrientation = function(e, render_options)
 	*/
 
 	var eye = null;
-	var camera = render_options.main_camera;
 	var target_position = null;
 	var up = vec3.fromValues(0,1,0);
 	var position = this._root.transform.getGlobalPosition();
@@ -56,7 +54,9 @@ FaceTo.prototype.updateOrientation = function(e, render_options)
 	}
 	else
 	{
-		target_position = camera.getEye();
+		var camera = Renderer._main_camera;
+		if(camera)
+			target_position = camera.getEye();
 	}
 
 	if( this.cylindrical )
