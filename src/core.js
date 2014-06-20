@@ -23,6 +23,7 @@ Object.defineProperty(Object.prototype, "merge", {
 var LS = {
 	_last_uid: 0,
 	generateUId: function () { return this._last_uid++; },
+	catch_errors: false, //used to try/catch all possible callbacks 
 
 	/**
 	* Contains all the registered components
@@ -120,6 +121,7 @@ var LS = {
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
         xhr.open(request.data ? 'POST' : 'GET', request.url, true);
+		xhr.withCredentials = true;
         if(dataType)
             xhr.responseType = dataType;
         if (request.mimeType)
@@ -160,9 +162,26 @@ var LS = {
 						request.error(err);
 				}
 			}
-			if(request.success)
-				request.success.call(this, response);
-			LEvent.trigger(xhr,"done",response);
+
+			if(LS.catch_errors)
+			{
+				try
+				{
+					if(request.success)
+						request.success.call(this, response);
+					LEvent.trigger(xhr,"done",response);
+				}
+				catch (err)
+				{
+					LEvent.trigger(LS,"code_error",err);
+				}
+			}
+			else
+			{
+				if(request.success)
+					request.success.call(this, response);
+				LEvent.trigger(xhr,"done",response);
+			}
 		};
         xhr.onerror = function(err) {
 			if(request.error)
@@ -176,15 +195,57 @@ var LS = {
 		//return $.ajax(request);
 	},
 
-	get: function(url, data)
+	/**
+	* retrieve a file from url (you can bind LEvents to done and fail)
+	* @method get
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	get: function(url, data, callback)
 	{
-		return LS.request({url:url, data:data});
+		if(typeof(data) == "function")
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.request({url:url, data:data, success: callback});
 	},
 
-	getJSON: function(url, data)
+	/**
+	* retrieve a JSON file from url (you can bind LEvents to done and fail)
+	* @method getJSON
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	getJSON: function(url, data, callback)
 	{
-		return LS.request({url:url, data:data, dataType:"json"});
+		if(typeof(data) == "function")
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.request({url:url, data:data, dataType:"json", success: callback});
+	},
+
+	/**
+	* retrieve a text file from url (you can bind LEvents to done and fail)
+	* @method getText
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	getText: function(url, data, callback)
+	{
+		if(typeof(data) == "function")
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.request({url:url, dataType:"txt", success: callback});
 	}
+
 };
 
 

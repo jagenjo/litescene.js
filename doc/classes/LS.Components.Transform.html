@@ -368,6 +368,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getGlobalRotationMatrix">getGlobalRotationMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getGlobalScale">getGlobalScale</a>
 
                                 
@@ -689,7 +696,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l725"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:725</code></a>
+        <a href="../files/.._src_components_transform.js.html#l771"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:771</code></a>
         
         </p>
 
@@ -1043,7 +1050,13 @@
             
                 <li class="arg">
                     
-                        <code>src,</code>
+                        <code>matrix</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>is_global</code>
                     
                 </li>
             
@@ -1076,7 +1089,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l362"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:362</code></a>
+        <a href="../files/.._src_components_transform.js.html#l399"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:399</code></a>
         
         </p>
 
@@ -1099,7 +1112,7 @@
             
                 <li class="param">
                     
-                        <code class="param-name">src,</code>
+                        <code class="param-name">matrix</code>
                         <span class="type">Mat4</span>
                     
 
@@ -1107,6 +1120,22 @@
 
                     <div class="param-description">
                         <p>the matrix in array format</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">is_global</code>
+                        <span class="type">Bool</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>tells if the matrix is in global space [optional]</p>
 
                     </div>
 
@@ -1159,7 +1188,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l614"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:614</code></a>
+        <a href="../files/.._src_components_transform.js.html#l660"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:660</code></a>
         
         </p>
 
@@ -1230,7 +1259,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l253"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:253</code></a>
+        <a href="../files/.._src_components_transform.js.html#l346"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:346</code></a>
         
         </p>
 
@@ -1303,7 +1332,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l311"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:311</code></a>
+        <a href="../files/.._src_components_transform.js.html#l231"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:231</code></a>
         
         </p>
 
@@ -1449,7 +1478,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l271"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:271</code></a>
+        <a href="../files/.._src_components_transform.js.html#l303"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:303</code></a>
         
         </p>
 
@@ -1522,7 +1551,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l291"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:291</code></a>
+        <a href="../files/.._src_components_transform.js.html#l324"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:324</code></a>
         
         </p>
 
@@ -1549,6 +1578,79 @@
                         <span class="type">Mat4</span>:
                     
                     <p>Matrix rotation</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getGlobalRotationMatrix" class="method item">
+    <h3 class="name"><code>getGlobalRotationMatrix</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Mat4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l280"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:280</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the global rotation in quaternion array (a copy)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Mat4</span>:
+                    
+                    <p>the rotation</p>
 
                 
             </div>
@@ -1595,7 +1697,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l180"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:180</code></a>
+        <a href="../files/.._src_components_transform.js.html#l158"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:158</code></a>
         
         </p>
 
@@ -1668,7 +1770,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l227"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:227</code></a>
+        <a href="../files/.._src_components_transform.js.html#l205"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:205</code></a>
         
         </p>
 
@@ -1741,7 +1843,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l239"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:239</code></a>
+        <a href="../files/.._src_components_transform.js.html#l217"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:217</code></a>
         
         </p>
 
@@ -1814,7 +1916,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l332"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:332</code></a>
+        <a href="../files/.._src_components_transform.js.html#l369"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:369</code></a>
         
         </p>
 
@@ -1887,7 +1989,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l321"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:321</code></a>
+        <a href="../files/.._src_components_transform.js.html#l358"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:358</code></a>
         
         </p>
 
@@ -1960,7 +2062,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l344"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:344</code></a>
+        <a href="../files/.._src_components_transform.js.html#l381"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:381</code></a>
         
         </p>
 
@@ -2006,7 +2108,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
+            <span class="type">Vec3</span>
         </span>
     
 
@@ -2057,7 +2159,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">[x,y,z]</span>:
+                        <span class="type">Vec3</span>:
                     
                     <p>the position</p>
 
@@ -2106,7 +2208,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l632"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:632</code></a>
+        <a href="../files/.._src_components_transform.js.html#l678"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:678</code></a>
         
         </p>
 
@@ -2223,7 +2325,80 @@
 
     
         <span class="returns-inline">
-            <span class="type">[x,y,z,w]</span>
+            <span class="type">Quat</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_transform.js.html#l259"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:259</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the global rotation in quaternion array (a copy)</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Quat</span>:
+                    
+                    <p>the rotation</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getScale" class="method item">
+    <h3 class="name"><code>getScale</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec3</span>
         </span>
     
 
@@ -2261,79 +2436,6 @@
     </div>
 
     <div class="description">
-        <p>Returns the global rotation in quaternion array (a copy)</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">[x,y,z,w]</span>:
-                    
-                    <p>the rotation</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getScale" class="method item">
-    <h3 class="name"><code>getScale</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">[x,y,z]</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_transform.js.html#l170"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:170</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
         <p>Returns the scale (its a copy)</p>
 
     </div>
@@ -2347,7 +2449,7 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">[x,y,z]</span>:
+                        <span class="type">Vec3</span>:
                     
                     <p>the scale</p>
 
@@ -2396,7 +2498,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l623"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:623</code></a>
+        <a href="../files/.._src_components_transform.js.html#l669"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:669</code></a>
         
         </p>
 
@@ -2546,7 +2648,7 @@
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l560"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:560</code></a>
+        <a href="../files/.._src_components_transform.js.html#l606"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:606</code></a>
         
         </p>
 
@@ -2688,7 +2790,7 @@ interpolate the transform between two transforms and stores the result in anothe
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l669"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:669</code></a>
+        <a href="../files/.._src_components_transform.js.html#l715"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:715</code></a>
         
         </p>
 
@@ -2811,7 +2913,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l578"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:578</code></a>
+        <a href="../files/.._src_components_transform.js.html#l624"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:624</code></a>
         
         </p>
 
@@ -2951,7 +3053,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l491"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:491</code></a>
+        <a href="../files/.._src_components_transform.js.html#l537"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:537</code></a>
         
         </p>
 
@@ -3060,7 +3162,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l505"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:505</code></a>
+        <a href="../files/.._src_components_transform.js.html#l551"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:551</code></a>
         
         </p>
 
@@ -3163,7 +3265,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l519"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:519</code></a>
+        <a href="../files/.._src_components_transform.js.html#l565"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:565</code></a>
         
         </p>
 
@@ -3251,7 +3353,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l531"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:531</code></a>
+        <a href="../files/.._src_components_transform.js.html#l577"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:577</code></a>
         
         </p>
 
@@ -3351,7 +3453,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l543"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:543</code></a>
+        <a href="../files/.._src_components_transform.js.html#l589"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:589</code></a>
         
         </p>
 
@@ -3627,7 +3729,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l411"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:411</code></a>
+        <a href="../files/.._src_components_transform.js.html#l457"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:457</code></a>
         
         </p>
 
@@ -3745,7 +3847,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l428"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:428</code></a>
+        <a href="../files/.._src_components_transform.js.html#l474"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:474</code></a>
         
         </p>
 
@@ -3834,7 +3936,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l399"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:399</code></a>
+        <a href="../files/.._src_components_transform.js.html#l445"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:445</code></a>
         
         </p>
 
@@ -3935,7 +4037,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l440"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:440</code></a>
+        <a href="../files/.._src_components_transform.js.html#l486"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:486</code></a>
         
         </p>
 
@@ -4059,7 +4161,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l678"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:678</code></a>
+        <a href="../files/.._src_components_transform.js.html#l724"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:724</code></a>
         
         </p>
 
@@ -4170,7 +4272,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l642"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:642</code></a>
+        <a href="../files/.._src_components_transform.js.html#l688"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:688</code></a>
         
         </p>
 
@@ -4281,7 +4383,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l656"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:656</code></a>
+        <a href="../files/.._src_components_transform.js.html#l702"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:702</code></a>
         
         </p>
 
@@ -4392,7 +4494,7 @@ If no destination is specified a new vector is created</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l693"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:693</code></a>
+        <a href="../files/.._src_components_transform.js.html#l739"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:739</code></a>
         
         </p>
 
@@ -4503,7 +4605,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l704"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:704</code></a>
+        <a href="../files/.._src_components_transform.js.html#l750"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:750</code></a>
         
         </p>
 
@@ -4620,7 +4722,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l457"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:457</code></a>
+        <a href="../files/.._src_components_transform.js.html#l503"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:503</code></a>
         
         </p>
 
@@ -4750,7 +4852,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l474"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:474</code></a>
+        <a href="../files/.._src_components_transform.js.html#l520"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:520</code></a>
         
         </p>
 
@@ -4868,7 +4970,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l212"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:212</code></a>
+        <a href="../files/.._src_components_transform.js.html#l190"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:190</code></a>
         
         </p>
 
@@ -4947,7 +5049,7 @@ If no destination is specified the transform is applied to vec</p>
             
         
         
-        <a href="../files/.._src_components_transform.js.html#l201"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:201</code></a>
+        <a href="../files/.._src_components_transform.js.html#l179"><code>..&#x2F;src&#x2F;components&#x2F;transform.js:179</code></a>
         
         </p>
 

@@ -20,7 +20,7 @@ MeshRenderer.icon = "mini-icon-teapot.png";
 //vars
 MeshRenderer["@mesh"] = { widget: "mesh" };
 MeshRenderer["@lod_mesh"] = { widget: "mesh" };
-MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();
@@ -148,8 +148,12 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//material (after flags because it modifies the flags)
 	RI.setMaterial( this.material || this._root.getMaterial() );
 
+	//if(!mesh.indexBuffers["wireframe"])
+	//	mesh.computeWireframe();
+
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
+
 	if(this.submesh_id != -1 && this.submesh_id != null)
 		RI.submesh_id = this.submesh_id;
 

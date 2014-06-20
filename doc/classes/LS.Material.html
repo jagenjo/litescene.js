@@ -317,6 +317,20 @@ Materials could be shared among different objects.</p>
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getProperties">getProperties</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getProperty">getProperty</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getProperty">getProperty</a>
 
                                 
@@ -366,6 +380,13 @@ Materials could be shared among different objects.</p>
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_onResourceRenamed">onResourceRenamed</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_registerMaterial">registerMaterial</a>
 
                                 
@@ -374,6 +395,20 @@ Materials could be shared among different objects.</p>
                         
                             <li class="index-item method">
                                 <a href="#method_serialize">serialize</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_setProperty">setProperty</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_setTexture">setTexture</a>
 
                                 
                                 
@@ -680,8 +715,8 @@ Materials could be shared among different objects.</p>
 </div>
 
                 
-                    <div id="method_getProperty" class="method item">
-    <h3 class="name"><code>getProperty</code></h3>
+                    <div id="method_getProperties" class="method item">
+    <h3 class="name"><code>getProperties</code></h3>
 
     
         <span class="paren">()</span>
@@ -716,7 +751,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l376"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:376</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l143"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:143</code></a>
         
         </p>
 
@@ -790,6 +825,152 @@ Materials could be shared among different objects.</p>
         
         
         <a href="../files/.._src_materials_material.js.html#l389"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:389</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>gets all the properties and its types</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>object with name:type</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getProperty" class="method item">
+    <h3 class="name"><code>getProperty</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_graphMaterial.js.html#l189"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:189</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>gets all the properties and its types</p>
+
+    </div>
+
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>object with name:type</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getProperty" class="method item">
+    <h3 class="name"><code>getProperty</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_material.js.html#l376"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:376</code></a>
         
         </p>
 
@@ -1214,6 +1395,111 @@ Materials could be shared among different objects.</p>
             
         
         
+        <a href="../files/.._src_materials_graphMaterial.js.html#l168"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:168</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Event used to inform if one resource has changed its name</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">resources</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>object where all the resources are stored</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Texture</span>:
+                    
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_onResourceRenamed" class="method item">
+    <h3 class="name"><code>onResourceRenamed</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>resources</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
         <a href="../files/.._src_materials_material.js.html#l501"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:501</code></a>
         
         </p>
@@ -1435,6 +1721,200 @@ Materials could be shared among different objects.</p>
 </div>
 
                 
+                    <div id="method_setProperty" class="method item">
+    <h3 class="name"><code>setProperty</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>object</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_graphMaterial.js.html#l212"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:212</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>assign a value to a property in a safe way</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">object</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_setTexture" class="method item">
+    <h3 class="name"><code>setTexture</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>channel</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_materials_material.js.html#l471"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:471</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns a texture from a channel</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">channel</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>default is COLOR</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Texture</span>:
+                    
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_setTexture" class="method item">
     <h3 class="name"><code>setTexture</code></h3>
 
@@ -1554,6 +2034,12 @@ Materials could be shared among different objects.</p>
             
                 <li class="arg">
                     
+                        <code>texture</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
                         <code>channel</code>
                     
                 </li>
@@ -1562,10 +2048,6 @@ Materials could be shared among different objects.</p>
         </div>
     
 
-    
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
     
 
     
@@ -1591,7 +2073,7 @@ Materials could be shared among different objects.</p>
             
         
         
-        <a href="../files/.._src_materials_material.js.html#l471"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:471</code></a>
+        <a href="../files/.._src_materials_graphMaterial.js.html#l251"><code>..&#x2F;src&#x2F;materials&#x2F;graphMaterial.js:251</code></a>
         
         </p>
 
@@ -1602,7 +2084,7 @@ Materials could be shared among different objects.</p>
     </div>
 
     <div class="description">
-        <p>Returns a texture from a channel</p>
+        <p>Assigns a texture to a channel</p>
 
     </div>
 
@@ -1611,6 +2093,21 @@ Materials could be shared among different objects.</p>
             <h4>Parameters:</h4>
 
             <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">texture</code>
+                        <span class="type">Texture</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
             
                 <li class="param">
                     
@@ -1632,18 +2129,6 @@ Materials could be shared among different objects.</p>
         </div>
     
 
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Texture</span>:
-                    
-                
-            </div>
-        </div>
     
 
     

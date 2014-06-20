@@ -20,7 +20,7 @@ var Draw = {
 		this.point_size = 2;
 
 		this.stack = new Float32Array(16 * 32); //stack max size
-		this.model_matrix = new Float32Array(this.stack.buffer,0,16*4);
+		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
 		mat4.identity( this.model_matrix );
 
 		//matrices
@@ -31,6 +31,11 @@ var Draw = {
 		this.viewprojection_matrix = mat4.create();
 
 		this.camera_stack = []; //not used yet
+
+		//Meshes
+		var vertices = [[-1,1,0],[1,1,0],[1,-1,0],[-1,-1,0]];
+		var coords = [[0,1],[1,1],[1,0],[0,0]];
+		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
 
 		//create shaders
 		this.shader = new Shader('\
@@ -166,13 +171,73 @@ var Draw = {
 			}\
 		');
 
-		var vertices = [[-1,1,0],[1,1,0],[1,-1,0],[-1,-1,0]];
-		var coords = [[0,1],[1,1],[1,0],[0,0]];
-		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
+		//create shaders
+		this.shader_phong = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec3 a_normal;\n\
+			varying vec3 v_pos;\n\
+			varying vec3 v_normal;\n\
+			uniform mat4 u_model;\n\
+			uniform mat4 u_mvp;\n\
+			void main() {\n\
+				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;\n\
+				v_normal = (u_model * vec4(a_vertex + a_normal,1.0)).xyz - v_pos;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			uniform vec3 u_ambient_color;\n\
+			uniform vec3 u_light_color;\n\
+			uniform vec3 u_light_dir;\n\
+			uniform vec4 u_color;\n\
+			varying vec3 v_pos;\n\
+			varying vec3 v_normal;\n\
+			void main() {\n\
+				vec3 N = normalize(v_normal);\n\
+				float NdotL = max(0.0, dot(N,u_light_dir));\n\
+				gl_FragColor = u_color * vec4(u_ambient_color + u_light_color * NdotL, 1.0);\n\
+			}\
+		');
 
-		//this.createTextAtlas();
+		//create shaders
+		this.shader_depth = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			varying vec4 v_pos;\n\
+			uniform mat4 u_model;\n\
+			uniform mat4 u_mvp;\n\
+			void main() {\n\
+				v_pos = u_model * vec4(a_vertex,1.0);\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			varying vec4 v_pos;\n\
+			\n\
+			vec4 PackDepth32(float depth)\n\
+			{\n\
+				const vec4 bitSh  = vec4(   256*256*256, 256*256,   256,         1);\n\
+				const vec4 bitMsk = vec4(   0,      1.0/256.0,    1.0/256.0,    1.0/256.0);\n\
+				vec4 comp;\n\
+				comp	= depth * bitSh;\n\
+				comp	= fract(comp);\n\
+				comp	-= comp.xxyz * bitMsk;\n\
+				return comp;\n\
+			}\n\
+			void main() {\n\
+				float depth = (v_pos.z / v_pos.w) * 0.5 + 0.5;\n\
+				gl_FragColor = PackDepth32(depth);\n\
+			}\
+		');
 
 		this.ready = true;
+	},
+
+	reset: function()
+	{
+		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
+		mat4.identity( this.model_matrix );
 	},
 
 	setColor: function(color)
@@ -294,7 +359,7 @@ var Draw = {
 		return this.renderMesh(mesh, gl.POINTS, shader );
 	},
 
-	renderRectangle: function(width, height, in_z)
+	createRectangleMesh: function(width, height, in_z)
 	{
 		var vertices = new Float32Array(4 * 3);
 		if(in_z)
@@ -302,32 +367,58 @@ var Draw = {
 		else
 			vertices.set([-width*0.5,height*0.5,0, width*0.5,height*0.5,0, width*0.5,-height*0.5,0, -width*0.5,-height*0.5,0]);
 
-		var mesh = GL.Mesh.load({vertices: vertices});
+		return GL.Mesh.load({vertices: vertices});
+	},
+
+	renderRectangle: function(width, height, in_z)
+	{
+		var mesh = this.createRectangleMesh(width, height, in_z);
 		return this.renderMesh(mesh, gl.LINE_LOOP);
 	},
 
-	renderCircle: function(radius, segments, in_z)
+	createCircleMesh: function(radius, segments, in_z)
 	{
+		segments = segments || 32;
 		var axis = [0,1,0];
 		var num_segments = segments || 100;
 		var R = quat.create();
 		var temp = vec3.create();
 		var vertices = new Float32Array(num_segments * 3);
 
+		var offset =  2 * Math.PI / num_segments;
+
 		for(var i = 0; i < num_segments; i++)
 		{
-			quat.setAxisAngle(R, axis, 2 * Math.PI * (i/num_segments));
-			vec3.transformQuat(temp, [0,0,radius], R );
-			if(!in_z)
-				vec3.set(temp, temp[0],temp[2],temp[1]);
+			temp[0] = Math.sin(offset * i) * radius;
+			if(in_z)
+			{
+				temp[1] = 0;
+				temp[2] = Math.cos(offset * i) * radius;
+			}
+			else
+			{
+				temp[2] = 0;
+				temp[1] = Math.cos(offset * i) * radius;
+			}
+
 			vertices.set(temp, i*3);
 		}
 
-		var mesh = GL.Mesh.load({vertices: vertices});
-		return this.renderMesh(mesh, gl.LINE_LOOP);
+		return GL.Mesh.load({vertices: vertices});
 	},
 
-	renderWireSphere: function(radius, segments)
+	renderCircle: function(radius, segments, in_z, filled)
+	{
+		var mesh = this.createCircleMesh(radius, segments, in_z);
+		return this.renderMesh(mesh, filled ? gl.TRIANGLE_FAN : gl.LINE_LOOP);
+	},
+
+	renderSolidCircle: function(radius, segments, in_z)
+	{
+		return this.renderCircle(radius, segments, in_z, true);
+	},
+
+	createSphereMesh: function(radius, segments)
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -354,23 +445,16 @@ var Draw = {
 			temp.set([ 0, Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius ]);
 			vertices.set(temp, i*18 + 15);
 		}
+		return GL.Mesh.load({vertices: vertices});
+	},
 
-		/*
-		for(var i = 0; i < segments; i++)
-		{
-			quat.setAxisAngle(R,axis, 2 * Math.PI * (i/segments));
-			vec3.transformQuat(temp, [0,0,radius], R);
-			vertices.set(temp, i*3);
-			vertices.set([temp[0],temp[2],temp[1]], i*3+segments*3);
-			vertices.set([temp[1],temp[0],temp[2]], i*3+segments*3*2);
-		}
-		*/
-
-		var mesh = GL.Mesh.load({vertices: vertices});
+	renderWireSphere: function(radius, segments)
+	{
+		var mesh = this.createSphereMesh();
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
-	renderWireBox: function(sizex,sizey,sizez)
+	createWireBoxMesh: function(sizex,sizey,sizez)
 	{
 		sizex = sizex*0.5;
 		sizey = sizey*0.5;
@@ -378,18 +462,38 @@ var Draw = {
 		var vertices = new Float32Array([-sizex,sizey,sizez , -sizex,sizey,-sizez, sizex,sizey,-sizez, sizex,sizey,sizez,
 						-sizex,-sizey,sizez, -sizex,-sizey,-sizez, sizex,-sizey,-sizez, sizex,-sizey,sizez]);
 		var triangles = new Uint16Array([0,1, 0,4, 0,3, 1,2, 1,5, 2,3, 2,6, 3,7, 4,5, 4,7, 6,7, 5,6   ]);
-		var mesh = GL.Mesh.load({vertices: vertices, lines:triangles });
+		return GL.Mesh.load({vertices: vertices, lines:triangles });
+	},
+
+	renderWireBox: function(sizex,sizey,sizez)
+	{
+		var mesh = this.createWireBoxMesh(sizex,sizey,sizez);
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
-	renderSolidBox: function(sizex,sizey,sizez)
+	createSolidBoxMesh: function(sizex,sizey,sizez)
 	{
 		sizex = sizex*0.5;
 		sizey = sizey*0.5;
 		sizez = sizez*0.5;
 		var vertices = [[-sizex,sizey,-sizez],[-sizex,-sizey,+sizez],[-sizex,sizey,sizez],[-sizex,sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,-sizey,+sizez],[sizex,-sizey,-sizez],[-sizex,sizey,sizez],[sizex,-sizey,sizez],[sizex,sizey,sizez],[-sizex,sizey,sizez],[-sizex,-sizey,sizez],[sizex,-sizey,sizez],[-sizex,sizey,-sizez],[sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,sizey,-sizez],[-sizex,sizey,-sizez],[-sizex,sizey,sizez],[sizex,sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,sizez]];
-		var mesh = GL.Mesh.load({vertices: vertices });
+		return GL.Mesh.load({vertices: vertices });
+	},
+
+	renderSolidBox: function(sizex,sizey,sizez)
+	{
+		var mesh = this.createSolidBoxMesh(sizex,sizey,sizez);
 		return this.renderMesh(mesh, gl.TRIANGLES);
+	},
+
+	renderWireCube: function(size)
+	{
+		return this.renderWireBox(size,size,size);
+	},
+
+	renderSolidCube: function(size)
+	{
+		return this.renderSolidCube(size,size,size);
 	},
 
 	renderPlane: function(position, size, texture, shader)
@@ -411,7 +515,7 @@ var Draw = {
 		this.pop();
 	},	
 
-	renderGrid: function(dist,num)
+	createGridMesh: function(dist,num)
 	{
 		dist = dist || 20;
 		num = num || 10;
@@ -425,11 +529,16 @@ var Draw = {
 			vertices.set( [-dist*num,0,i*dist],pos+9);
 			pos += 3*4;
 		}
-		var mesh = GL.Mesh.load({vertices: vertices});
+		return GL.Mesh.load({vertices: vertices});
+	},
+
+	renderGrid: function(dist,num)
+	{
+		var mesh = this.createGridMesh(dist,num);
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
-	renderCone: function(radius, height, segments, in_z)
+	createConeMesh: function(radius, height, segments, in_z)
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -447,11 +556,16 @@ var Draw = {
 			vertices.set(temp, i*3+3);
 		}
 
-		var mesh = GL.Mesh.load({vertices: vertices});
+		return GL.Mesh.load({vertices: vertices});
+	},
+
+	renderCone: function(radius, height, segments, in_z)
+	{
+		var mesh = this.createConeMesh();
 		return this.renderMesh(mesh, gl.TRIANGLE_FAN);
 	},
 
-	renderCylinder: function(radius, height, segments, in_z)
+	createCylinderMesh: function(radius, height, segments, in_z)
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -468,7 +582,12 @@ var Draw = {
 			vertices.set(temp, i*3*2);
 		}
 
-		var mesh = GL.Mesh.load({vertices: vertices});
+		return GL.Mesh.load({vertices: vertices});
+	},
+
+	renderCylinder: function(radius, height, segments, in_z)
+	{
+		var mesh = this.createCylinderMesh(radius, height, segments, in_z);
 		return this.renderMesh(mesh, gl.TRIANGLE_STRIP);
 	},
 
@@ -530,6 +649,7 @@ var Draw = {
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
 		shader.uniforms({
+				u_model: this.model_matrix,
 				u_mvp: this.mvp_matrix,
 				u_color: this.color,
 				u_point_size: this.point_size,
@@ -647,7 +767,7 @@ var Draw = {
 			throw("matrices stack overflow");
 
 		var old = this.model_matrix;
-		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset + 16*4,16*4);
+		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset + 16*4,16);
 		mat4.copy(this.model_matrix, old);
 	},
 
@@ -655,7 +775,7 @@ var Draw = {
 	{
 		if(this.model_matrix.byteOffset == 0)
 			throw("too many pops");
-		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16*4);
+		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16);
 	},
 
 
@@ -721,5 +841,17 @@ var Draw = {
 	{
 		dest = dest || vec3.create();
 		return mat4.multiplyVec3(dest, this.mvp_matrix, position);
+	},
+
+	getPhongShader: function( ambient_color, light_color, light_dir )
+	{
+		this.shader_phong.uniforms({ u_ambient_color: ambient_color, u_light_color: light_color, u_light_dir: light_dir });
+		return this.shader_phong;
+	},
+
+	getDepthShader: function()
+	{
+		return this.shader_depth;
 	}
+
 };

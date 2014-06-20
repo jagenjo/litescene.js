@@ -50,6 +50,8 @@ function Context(options)
 	if(options.proxy)
 		LS.ResourcesManager.setProxy( options.proxy );
 
+	Renderer.init();
+
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;
 

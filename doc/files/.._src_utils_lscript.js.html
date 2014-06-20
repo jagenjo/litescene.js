@@ -172,6 +172,10 @@ function LScript()
 	this.catch_exceptions = true;
 }
 
+LScript.onerror = null; //global used to catch errors in scripts
+
+LScript.show_errors_in_console = true;
+
 LScript.prototype.compile = function( arg_vars )
 {
 	var argv_names = [];
@@ -187,7 +191,13 @@ LScript.prototype.compile = function( arg_vars )
 	argv_names = argv_names.join(&quot;,&quot;);
 
 	var code = this.code;
-
+	var extra_code = &quot;&quot;;
+	for(var i in this.valid_callbacks)
+		extra_code += &quot;	if(typeof(&quot;+this.valid_callbacks[i]+&quot;) != &#x27;undefined&#x27;) this.&quot;+ this.valid_callbacks[i] + &quot; = &quot;+this.valid_callbacks[i]+&quot;;\n&quot;;
+	code += extra_code;
+	this._last_executed_code = code;
+	
+	/*
 	var classname = &quot;_LScript&quot;
 	var argv = &quot;component, node&quot;;
 	code = &quot;var _myclass = function &quot;+classname+&quot;(&quot;+argv_names+&quot;) {\n&quot; + this.extracode + &quot;\n&quot; + code + &quot;\n&quot;;
@@ -206,14 +216,26 @@ LScript.prototype.compile = function( arg_vars )
 		this._class = eval(code);
 		this._context = LScript.applyToConstructor( this._class, argv_values );
 	}
+
+	*/
+	try
+	{
+		this._class = new Function(argv_names, code);
+		this._context = LScript.applyToConstructor( this._class, argv_values );
+	}
 	catch (err)
 	{
 		this._class = null;
 		this._context = null;
-		console.error(&quot;Error in script\n&quot; + err);
-		console.error(this._last_executed_code );
+		if(LScript.show_errors_in_console)
+		{
+			console.error(&quot;Error in script\n&quot; + err);
+			console.error(this._last_executed_code );
+		}
 		if(this.onerror)
-			this.onerror(err);
+			this.onerror(err, this._last_executed_code);
+		if(LScript.onerror)
+			LScript.onerror(err, this._last_executed_code, this);
 		return false;
 	}
 	return true;
@@ -229,13 +251,20 @@ LScript.prototype.hasMethod = function(name)
 
 LScript.prototype.callMethod = function(name, argv)
 {
-	if(!this._context || !this._context[name]) return;
+	if(!this._context || !this._context[name]) 
+		return;
 
 	if(!this.catch_exceptions)
+	{
+		if(!argv || argv.constructor !== Array)
+			return this._context[name].call(this._context, argv);
 		return this._context[name].apply(this._context, argv);
+	}
 
 	try
 	{
+		if(!argv || argv.constructor !== Array)
+			return this._context[name].call(this._context, argv);
 		return this._context[name].apply(this._context, argv);
 	}
 	catch(err)

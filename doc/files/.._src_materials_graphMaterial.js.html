@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/render/renderInstance.js</title>
+    <title>../src/materials/graphMaterial.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -152,251 +152,322 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/render/renderInstance.js</h1>
+                        <h1 class="file-heading">File: ../src/materials/graphMaterial.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/**
-* RenderInstance contains info of one object to be rendered on the scene.
-*
-* @class RenderInstance
-* @namespace LS
-* @constructor
-*/
-
-//Flags to control rendering states
-//0-7: render state flags
-var RI_CULL_FACE =			1;		//for two sided
-var RI_CW =					1 &lt;&lt; 1; //reverse normals
-var RI_DEPTH_TEST =			1 &lt;&lt; 2; //use depth test
-var RI_DEPTH_WRITE = 		1 &lt;&lt; 3; //write in the depth buffer
-var RI_ALPHA_TEST =			1 &lt;&lt; 4; //do alpha test
-var RI_BLEND = 				1 &lt;&lt; 5; //use blend function
-
-//8-16: rendering pipeline flags
-var RI_CAST_SHADOWS = 		1 &lt;&lt; 8;	//render in shadowmaps
-var RI_RECEIVE_SHADOWS =	1 &lt;&lt; 9;	//receive shadowmaps
-var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum 
-var RI_RENDER_2D = 			1 &lt;&lt; 12;//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 13; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 14; //ignore the plane clipping (in reflections)
-
-//16-24: instance properties
-var RI_RAYCAST_ENABLED = 1 &lt;&lt; 16; //if it could be raycasted
-
-
-//default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
-var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
-
-function RenderInstance(node, component)
+function GraphMaterial(o)
 {
-	this._key = &quot;&quot;; //not used yet
-	this._uid = LS.generateUId(); //unique identifier for this RI
+	this._uid = LS.generateUId();
+	this._dirty = true;
 
-	//info about the mesh
-	this.vertex_buffers = null;
-	this.index_buffer = null;
-	this.wireframe_index_buffer = null;
-	this.range = new Int32Array([0,-1]); //start, offset
-	this.mesh = null; //shouldnt be used, but just in case
-	this.collision_mesh = null; //in case of raycast
-	this.primitive = gl.TRIANGLES;
+	this.shader_name = &quot;surface&quot;;
 
-	//where does it come from
-	this.node = node;
-	this.component = component;
-	this.priority = 10; //instances are rendered from higher to lower priority
+	this.graph = new LGraph();
 
-	//rendering flags
-	this.flags = RI_DEFAULT_FLAGS;
-	this.blend_func = BlendFunctions[&quot;normal&quot;]; //Blend.funcs[&quot;add&quot;], ...
+	//this.shader_name = null; //default shader
+	this.color = new Float32Array([1.0,1.0,1.0]);
+	this.opacity = 1.0;
+	this.blend_mode = Blend.NORMAL;
 
-	//transformation
-	this.matrix = mat4.create();
-	this.normal_matrix = mat4.create();
-	this.center = vec3.create();
+	this.vs_code = &quot;&quot;;
+	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
+	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
+	o.Normal = IN.worldNormal;\n\
+	o.Emission = vec3(0.0);\n\
+	o.Specular = 1.0;\n\
+	o.Gloss = 40.0;\n\
+	o.Reflectivity = 0.0;\n\
+	o.Alpha = IN.color.a;\n}\n&quot;;
 
-	//for visibility computation
-	this.oobb = BBox.create(); //object space bounding box
-	this.aabb = BBox.create(); //axis aligned bounding box
+	this._uniforms = {};
+	this._macros = {};
 
-	//info about the material
-	this.material = null;
+	this.properties = []; //array of configurable properties
+	this.textures = {};
+	if(o) 
+		this.configure(o);
 
-	//for extra data for the shader
-	this.macros = {};
-	this.uniforms = {};
-	this.samplers = {};
+	this.flags = 0;
 
-	//for internal use
-	this._final_macros = {};
-	this._final_uniforms = {};
-	this._final_samplers = {};
+	this.computeCode();
 }
 
+GraphMaterial.icon = &quot;mini-icon-material.png&quot;;
 
-RenderInstance.prototype.generateKey = function(step, options)
+GraphMaterial.prototype.onCodeChange = function()
 {
-	this._key = step + &quot;|&quot; + this.node._uid + &quot;|&quot; + this.material._uid + &quot;|&quot;;
-	return this._key;
+	this.computeCode();
 }
 
-//set the material and apply material flags to render instance
-RenderInstance.prototype.setMaterial = function(material)
+GraphMaterial.prototype.getCode = function()
 {
-	this.material = material;
-	if(material)
-		material.applyToRenderInstance(this);
+	return this.code;
 }
 
-RenderInstance.prototype.setMesh = function(mesh, primitive)
+GraphMaterial.prototype.computeCode = function()
 {
-	if( !primitive &amp;&amp; primitive != 0)
-		primitive = gl.TRIANGLES;
-
-	this.mesh = mesh;
-	this.primitive = primitive;
-	this.vertex_buffers = mesh.vertexBuffers;
-
-	switch(primitive)
+	var uniforms_code = &quot;&quot;;
+	for(var i in this.properties)
 	{
-		case gl.TRIANGLES: 
-			this.index_buffer = mesh.indexBuffers[&quot;triangles&quot;]; //works for indexed and non-indexed
-			break;
-		case gl.LINES: 
-			/*
-			if(!mesh.indexBuffers[&quot;lines&quot;])
-				mesh.computeWireframe();
-			*/
-			this.index_buffer = mesh.indexBuffers[&quot;lines&quot;];
-			break;
-		case 10:  //wireframe
-			this.primitive = gl.LINES;
-			if(!mesh.indexBuffers[&quot;wireframe&quot;])
-				mesh.computeWireframe();
-			this.index_buffer = mesh.indexBuffers[&quot;wireframe&quot;];
-			break;
+		var code = &quot;uniform &quot;;
+		var prop = this.properties[i];
+		switch(prop.type)
+		{
+			case &#x27;number&#x27;: code += &quot;float &quot;; break;
+			case &#x27;vec2&#x27;: code += &quot;vec2 &quot;; break;
+			case &#x27;vec3&#x27;: code += &quot;vec3 &quot;; break;
+			case &#x27;vec4&#x27;:
+			case &#x27;color&#x27;:
+			 	code += &quot;vec4 &quot;; break;
+			case &#x27;texture&#x27;: code += &quot;sampler2D &quot;; break;
+			case &#x27;cubemap&#x27;: code += &quot;samplerCube &quot;; break;
+			default: continue;
+		}
+		code += prop.name + &quot;;&quot;;
+		uniforms_code += code;
+	}
 
-		case gl.POINTS: 
-		default:
-			this.index_buffer = null;
+	var lines = this.code.split(&quot;\n&quot;);
+	for(var i in lines)
+		lines[i] = lines[i].split(&quot;//&quot;)[0]; //remove comments
+
+	this.surf_code = uniforms_code + lines.join(&quot;&quot;);
+}
+
+// RENDERING METHODS
+GraphMaterial.prototype.onModifyMacros = function(macros)
+{
+	if(this._ps_uniforms_code)
+	{
+		if(macros.USE_PIXEL_SHADER_UNIFORMS)
+			macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
+		else
+			macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
+	}
+
+	if(this._ps_functions_code)
+	{
+		if(macros.USE_PIXEL_SHADER_FUNCTIONS)
+			macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
+		else
+			macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
+	}
+
+	if(this._ps_code)
+	{
+		if(macros.USE_PIXEL_SHADER_CODE)
+			macros.USE_PIXEL_SHADER_CODE += this._ps_code;
+		else
+			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
+	}
+
+	macros.USE_SURFACE_SHADER = this.surf_code;
+}
+
+GraphMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+{
+	var macros = {};
+	this._macros = macros;
+}
+
+
+GraphMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+{
+	var samplers = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot;)
+		{
+			var texture = LS.getTexture( prop.value );
+			if(!texture) continue;
+			samplers[prop.name] = texture;
+		}
+		else
+			this._uniforms[ prop.name ] = prop.value;
+	}
+
+	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._samplers = samplers;
+}
+
+GraphMaterial.prototype.configure = function(o) { 
+	LS.cloneObject(o, this);
+	this.computeCode();
+}
+
+/**
+* gets all the properties and its types
+* @method getProperties
+* @return {Object} object with name:type
+*/
+GraphMaterial.prototype.getProperties = function()
+{
+	var o = {
+		color:&quot;vec3&quot;,
+		opacity:&quot;number&quot;,
+		shader_name: &quot;string&quot;,
+		blend_mode: &quot;number&quot;,
+		code: &quot;string&quot;
+	};
+
+	//from this material
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		o[prop.name] = prop.type;
+	}	
+
+	return o;
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+GraphMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	//global
+	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
+
+	//specific
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if( prop.value == old_name)
+			prop.value = new_name;
+	}
+}
+
+
+/**
+* gets all the properties and its types
+* @method getProperty
+* @return {Object} object with name:type
+*/
+GraphMaterial.prototype.getProperty = function(name)
+{
+	if(this[name])
+		return this[name];
+
+	if( name.substr(0,4) == &quot;tex_&quot;)
+		return this.textures[ name.substr(4) ];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name == name)
+			return prop.value;
+	}	
+
+	return null;
+}
+
+/**
+* assign a value to a property in a safe way
+* @method setProperty
+* @param {Object} object to configure from
+*/
+GraphMaterial.prototype.setProperty = function(name, value)
+{
+	//redirect to base material
+	if( Material.prototype.setProperty.call(this,name,value) )
+		return true;
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.name != name)
+			continue;
+		prop.value = value;
+		return true;
+	}
+
+	return false;
+}
+
+
+GraphMaterial.prototype.getTextureChannels = function()
+{
+	var channels = [];
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot;)
+			continue;
+		channels.push(prop.name);
+	}
+
+	return channels;
+}
+
+/**
+* Assigns a texture to a channel
+* @method setTexture
+* @param {Texture} texture
+* @param {String} channel default is COLOR
+*/
+GraphMaterial.prototype.setTexture = function(texture, channel, uvs) {
+
+	for(var i in this.properties)
+	{
+		var prop = this.properties[i];
+		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot;)
+			continue;
+		if(channel &amp;&amp; prop.name != channel) //assign to the channel or if there is no channel just to the first one
+			continue;
+
+		prop.value = texture;
+		if(this.textures)
+			this.textures[channel] = texture;
+		if(!channel)
 			break;
 	}
 
-	if(mesh.bounding)
-	{
-		this.oobb.set( mesh.bounding ); //copy
-		this.flags &amp;= ~RI_IGNORE_FRUSTUM; //test against frustum
-	}
-	else
-		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
+	if(!texture) return;
+	if(texture.constructor == String &amp;&amp; texture[0] != &quot;:&quot;)
+		ResourcesManager.load(texture);
 }
 
-RenderInstance.prototype.setRange = function(start, offset)
-{
-	this.range[0] = start;
-	this.range[1] = offset;
-}
 
-/**
-* takes the flags on the node and update the render instance flags
-*
-* @method applyNodeFlags
+
+LS.registerMaterialClass(GraphMaterial);
+LS.GraphMaterial = GraphMaterial;
+
+
+/*
+
+			struct Input {
+				vec4 color;
+				vec3 vertex;
+				vec3 normal;
+				vec2 uv;
+				vec2 uv1;
+
+				vec3 camPos;
+				vec3 viewDir;
+				vec3 worldPos;
+				vec3 worldNormal;
+				vec4 screenPos;
+			};
+
+			struct SurfaceOutput {
+				vec3 Albedo;
+				vec3 Normal;
+				vec3 Emission;
+				float Specular;
+				float Gloss;
+				float Alpha;
+				float Reflectivity;
+			};
+
+
 */
-RenderInstance.prototype.applyNodeFlags = function()
-{
-	var node_flags = this.node.flags;
-
-	if(node_flags.two_sided == true) this.flags &amp;= ~RI_CULL_FACE;
-	if(node_flags.flip_normals == true) this.flags |= RI_CW;
-	if(node_flags.depth_test == false) this.flags &amp;= ~RI_DEPTH_TEST;
-	if(node_flags.depth_write == false) this.flags &amp;= ~RI_DEPTH_WRITE;
-	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
-
-	if(node_flags.cast_shadows == false) this.flags &amp;= ~RI_CAST_SHADOWS;
-	if(node_flags.receive_shadows == false) this.flags &amp;= ~RI_RECEIVE_SHADOWS;	
-}
-
-/**
-* Enable flag in the flag bit field
-*
-* @method enableFlag
-* @param {number} flag id
-*/
-RenderInstance.prototype.enableFlag = function(flag)
-{
-	this.flags |= flag;
-}
-
-/**
-* Disable flag in the flag bit field
-*
-* @method enableFlag
-* @param {number} flag id
-*/
-RenderInstance.prototype.disableFlag = function(flag)
-{
-	this.flags &amp;= ~flag;
-}
-
-/**
-* Tells if a flag is enabled
-*
-* @method enableFlag
-* @param {number} flag id
-* @return {boolean} flag value
-*/
-RenderInstance.prototype.isFlag = function(flag)
-{
-	return (this.flags &amp; flag);
-}
-
-/**
-* Updates the normal matrix using the matrix
-*
-* @method computeNormalMatrix
-*/
-RenderInstance.prototype.computeNormalMatrix = function()
-{
-	var m = mat4.invert(this.normal_matrix, this.matrix);
-	if(m)
-		mat4.transpose(this.normal_matrix, m);
-}
-
-/**
-* Computes the instance bounding box in world space from the one in local space
-*
-* @method updateAABB
-*/
-RenderInstance.prototype.updateAABB = function()
-{
-	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
-}
-
-/**
-* Calls render taking into account primitive and submesh id
-*
-* @method render
-* @param {Shader} shader
-*/
-RenderInstance.prototype.render = function(shader)
-{
-	shader.drawBuffers( this.vertex_buffers,
-	  this.index_buffer,
-	  this.primitive, this.range[0], this.range[1] );
-}
-
-
-/* moved to PhysicsInstance
-RenderInstance.prototype.setCollisionMesh = function(mesh)
-{
-	this.flags |= RI_USE_MESH_AS_COLLIDER;
-	this.collision_mesh = mesh;
-}
-*/
-
     </pre>
 </div>
 

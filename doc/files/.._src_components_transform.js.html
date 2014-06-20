@@ -269,7 +269,7 @@ Transform.prototype.reset = Transform.prototype.identity;
 /**
 * Returns the local position (its a copy)
 * @method getPosition
-* @return {[[x,y,z]]} the position
+* @return {vec3} the position
 */
 Transform.prototype.getPosition = function(p)
 {
@@ -304,31 +304,9 @@ Transform.prototype.getRotation = function()
 }
 
 /**
-* Returns the global rotation in quaternion array (a copy)
-* @method getRotation
-* @return {[[x,y,z,w]]} the rotation
-*/
-Transform.prototype.getGlobalRotation = function()
-{
-	if( this._parent )
-	{
-		var aux = this._parent;
-		var R = quat.clone(this._rotation);
-		while(aux)
-		{
-			quat.multiply(R, aux._rotation, R);
-			aux = aux._parent;
-		}
-		return R;
-	}
-	return quat.clone(this._rotation);
-}
-
-
-/**
 * Returns the scale (its a copy)
 * @method getScale
-* @return {[[x,y,z]]} the scale
+* @return {vec3} the scale
 */
 Transform.prototype.getScale = function()
 {
@@ -426,11 +404,66 @@ Transform.prototype.getGlobalMatrix = function (m, fast)
 	return m;
 }
 
+
+Transform.prototype.getHierarchy = function()
+{
+	var r = [ this ];
+	var aux = this;
+	while(aux = aux._parent)
+		r.unshift(aux);	
+	return r;
+}
+
+/**
+* Returns the global rotation in quaternion array (a copy)
+* @method getRotation
+* @return {quat} the rotation
+*/
+Transform.prototype.getGlobalRotation = function()
+{
+	if( this._parent )
+	{
+		var aux = this._parent;
+		var R = quat.clone(this._rotation);
+		while(aux)
+		{
+			quat.multiply(R, aux._rotation, R);
+			aux = aux._parent;
+		}
+		return R;
+	}
+	return quat.clone(this._rotation);
+}
+
+/**
+* Returns the global rotation in quaternion array (a copy)
+* @method getGlobalRotationMatrix
+* @return {mat4} the rotation
+*/
+Transform.prototype.getGlobalRotationMatrix = function()
+{
+	var R = mat4.create();
+	if( this._parent )
+	{
+		var r = mat4.create();
+		var aux = this;
+		while(aux)
+		{
+			mat4.fromQuat(r, aux._rotation);
+			mat4.multiply(R,R,r);
+			aux = aux._parent;
+		}
+		return R;
+	}
+	return mat4.fromQuat( R, this._rotation );
+}
+
 /**
 * Returns a quaternion with all parents rotations
 * @method getGlobalRotation
 * @return {quat} Quaternion
 */
+/*
 Transform.prototype.getGlobalRotation = function (q)
 {
 	q = q || quat.create();
@@ -445,12 +478,13 @@ Transform.prototype.getGlobalRotation = function (q)
 	}
 	return q;
 }
-
+*/
 /**
 * Returns a Matrix with all parents rotations
 * @method getGlobalRotationMatrix
 * @return {mat4} Matrix rotation
 */
+/*
 Transform.prototype.getGlobalRotationMatrix = function (m)
 {
 	var q = quat.clone(this._rotation);
@@ -465,6 +499,7 @@ Transform.prototype.getGlobalRotationMatrix = function (m)
 	m = m || mat4.create();
 	return mat4.fromQuat(m,q);
 }
+*/
 
 /**
 * Returns a copy of the global matrix of this transform (it updates the matrix automatically)
@@ -473,6 +508,8 @@ Transform.prototype.getGlobalRotationMatrix = function (m)
 */
 Transform.prototype.getGlobalMatrixRef = function ()
 {
+	if(this._dirty)
+		this.updateMatrix();
 	return this._global_matrix;
 }
 
@@ -484,7 +521,7 @@ Transform.prototype.getGlobalMatrixRef = function ()
 Transform.prototype.getMatrixWithoutScale = function ()
 {
 	var pos = this.getGlobalPosition();
-	return mat4.fromRotationTranslation(mat4.create(), this.getGlobalRotation(), pos) 
+	return mat4.fromRotationTranslation(mat4.create(), this.getGlobalRotation(), pos);
 }
 
 /**
@@ -520,10 +557,19 @@ Transform.prototype.getNormalMatrix = function (m)
 /**
 * Configure the transform from a local Matrix (do not tested carefully)
 * @method fromMatrix
-* @param {mat4} src, the matrix in array format
+* @param {mat4} matrix the matrix in array format
+* @param {bool} is_global tells if the matrix is in global space [optional]
 */
-Transform.prototype.fromMatrix = function(m)
+Transform.prototype.fromMatrix = function(m, is_global)
 {
+	if(is_global &amp;&amp; this._parent)
+	{
+		mat4.copy(this._global_matrix, m); //assign to global
+		var M_parent = this._parent.getGlobalMatrix(); //get parent transform
+		mat4.invert(M_parent,M_parent); //invert
+		m = mat4.multiply( this._local_matrix, M_parent, m ); //transform from global to local
+	}
+
 	//pos
 	var M = mat4.clone(m);
 	mat4.multiplyVec3(this._position, M, [0,0,0]);

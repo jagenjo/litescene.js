@@ -196,6 +196,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		{
 			texture.bind(0);
 			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
+			//texture.setParameter( gl.TEXTURE_MAG_FILTER, gl.LINEAR );
 			continue;
 		}
 		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)

@@ -1107,18 +1107,19 @@ SceneNode.prototype.serialize = function()
 	return o;
 }
 
-SceneNode.prototype._onChildAdded = function(node, recompute_transform)
+SceneNode.prototype._onChildAdded = function(child_node, recompute_transform)
 {
 	if(recompute_transform && this.transform)
 	{
-		var M = node.transform.getGlobalMatrix(); //get son transform
+		var M = child_node.transform.getGlobalMatrix(); //get son transform
 		var M_parent = this.transform.getGlobalMatrix(); //parent transform
 		mat4.invert(M_parent,M_parent);
-		node.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
+		child_node.transform.fromMatrix( mat4.multiply(M_parent,M_parent,M) );
+		child_node.transform.getGlobalMatrix(); //refresh
 	}
 	//link transform
 	if(this.transform)
-		node.transform._parent = this.transform;
+		child_node.transform._parent = this.transform;
 }
 
 SceneNode.prototype._onChangeParent = function(future_parent, recompute_transform)

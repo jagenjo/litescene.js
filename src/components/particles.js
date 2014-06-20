@@ -462,7 +462,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		this.updateMesh(camera);
 
 	if(!this._material)
-		this._material = new Material({ opacity: this.opacity - 0.01, shader:"lowglobalshader" });
+		this._material = new Material({ shader_name:"lowglobal" });
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture(this.texture);

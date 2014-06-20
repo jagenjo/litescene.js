@@ -169,6 +169,13 @@
             "fors": {},
             "namespaces": {}
         },
+        "../src/materials/graphMaterial.js": {
+            "name": "../src/materials/graphMaterial.js",
+            "modules": {},
+            "classes": {},
+            "fors": {},
+            "namespaces": {}
+        },
         "../src/materials/material.js": {
             "name": "../src/materials/material.js",
             "modules": {},
@@ -892,7 +899,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 371,
+            "line": 432,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -1819,7 +1826,7 @@
             "name": "getPosition",
             "return": {
                 "description": "the position",
-                "type": "[[x,y,z]]"
+                "type": "Vec3"
             },
             "class": "LS.Components.Transform",
             "namespace": "LS.Components"
@@ -1853,32 +1860,19 @@
         {
             "file": "../src/components/transform.js",
             "line": 148,
-            "description": "Returns the global rotation in quaternion array (a copy)",
-            "itemtype": "method",
-            "name": "getRotation",
-            "return": {
-                "description": "the rotation",
-                "type": "[[x,y,z,w]]"
-            },
-            "class": "LS.Components.Transform",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/transform.js",
-            "line": 170,
             "description": "Returns the scale (its a copy)",
             "itemtype": "method",
             "name": "getScale",
             "return": {
                 "description": "the scale",
-                "type": "[[x,y,z]]"
+                "type": "Vec3"
             },
             "class": "LS.Components.Transform",
             "namespace": "LS.Components"
         },
         {
             "file": "../src/components/transform.js",
-            "line": 180,
+            "line": 158,
             "description": "Returns the scale in global (its a copy)",
             "itemtype": "method",
             "name": "getGlobalScale",
@@ -1891,7 +1885,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 201,
+            "line": 179,
             "description": "update the Matrix to match the position,scale and rotation",
             "itemtype": "method",
             "name": "updateMatrix",
@@ -1900,7 +1894,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 212,
+            "line": 190,
             "description": "updates the global matrix using the parents transformation",
             "itemtype": "method",
             "name": "updateGlobalMatrix",
@@ -1916,7 +1910,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 227,
+            "line": 205,
             "description": "Returns a copy of the local matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getLocalMatrix",
@@ -1929,7 +1923,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 239,
+            "line": 217,
             "description": "Returns the original world matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getLocalMatrixRef",
@@ -1942,7 +1936,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 253,
+            "line": 231,
             "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getGlobalMatrix",
@@ -1955,7 +1949,33 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 271,
+            "line": 259,
+            "description": "Returns the global rotation in quaternion array (a copy)",
+            "itemtype": "method",
+            "name": "getRotation",
+            "return": {
+                "description": "the rotation",
+                "type": "Quat"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 280,
+            "description": "Returns the global rotation in quaternion array (a copy)",
+            "itemtype": "method",
+            "name": "getGlobalRotationMatrix",
+            "return": {
+                "description": "the rotation",
+                "type": "Mat4"
+            },
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 303,
             "description": "Returns a quaternion with all parents rotations",
             "itemtype": "method",
             "name": "getGlobalRotation",
@@ -1968,7 +1988,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 291,
+            "line": 324,
             "description": "Returns a Matrix with all parents rotations",
             "itemtype": "method",
             "name": "getGlobalRotationMatrix",
@@ -1981,7 +2001,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 311,
+            "line": 346,
             "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getGlobalMatrix",
@@ -1994,7 +2014,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 321,
+            "line": 358,
             "description": "Returns the world matrix of this transform without the scale",
             "itemtype": "method",
             "name": "getMatrixWithoutScale",
@@ -2007,7 +2027,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 332,
+            "line": 369,
             "description": "Returns the world matrix of this transform without the scale",
             "itemtype": "method",
             "name": "getMatrixWithoutRotation",
@@ -2020,7 +2040,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 344,
+            "line": 381,
             "description": "Returns the matrix for the normals in the shader",
             "itemtype": "method",
             "name": "getNormalMatrix",
@@ -2033,15 +2053,20 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 362,
+            "line": 399,
             "description": "Configure the transform from a local Matrix (do not tested carefully)",
             "itemtype": "method",
             "name": "fromMatrix",
             "params": [
                 {
-                    "name": "src,",
+                    "name": "matrix",
                     "description": "the matrix in array format",
                     "type": "Mat4"
+                },
+                {
+                    "name": "is_global",
+                    "description": "tells if the matrix is in global space [optional]",
+                    "type": "Bool"
                 }
             ],
             "class": "LS.Components.Transform",
@@ -2049,7 +2074,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 399,
+            "line": 445,
             "description": "Configure the transform rotation from a vec3 Euler angles (heading,attitude,bank)",
             "itemtype": "method",
             "name": "setRotationFromEuler",
@@ -2065,7 +2090,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 411,
+            "line": 457,
             "description": "sets the position",
             "itemtype": "method",
             "name": "setPosition",
@@ -2091,7 +2116,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 428,
+            "line": 474,
             "description": "sets the rotation",
             "itemtype": "method",
             "name": "setRotation",
@@ -2107,7 +2132,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 440,
+            "line": 486,
             "description": "sets the scale",
             "itemtype": "method",
             "name": "setScale",
@@ -2133,7 +2158,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 457,
+            "line": 503,
             "description": "translates object (addts to the position)",
             "itemtype": "method",
             "name": "translate",
@@ -2159,7 +2184,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 474,
+            "line": 520,
             "description": "translates object in local coordinates (using the rotation and the scale)",
             "itemtype": "method",
             "name": "translateLocal",
@@ -2185,7 +2210,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 491,
+            "line": 537,
             "description": "rotate object in world space",
             "itemtype": "method",
             "name": "rotate",
@@ -2206,7 +2231,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 505,
+            "line": 551,
             "description": "rotate object in object space",
             "itemtype": "method",
             "name": "rotateLocal",
@@ -2227,7 +2252,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 519,
+            "line": 565,
             "description": "rotate object in world space using a quat",
             "itemtype": "method",
             "name": "rotateQuat",
@@ -2243,7 +2268,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 531,
+            "line": 577,
             "description": "rotate object in world space using a quat",
             "itemtype": "method",
             "name": "rotateQuat",
@@ -2259,7 +2284,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 543,
+            "line": 589,
             "description": "scale the object",
             "itemtype": "method",
             "name": "scale",
@@ -2285,7 +2310,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 560,
+            "line": 606,
             "description": "This method is static (call it from Transform.interpolate)\ninterpolate the transform between two transforms and stores the result in another Transform",
             "itemtype": "method",
             "name": "interpolate",
@@ -2316,7 +2341,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 578,
+            "line": 624,
             "description": "Orients the transform to look from one position to another (overwrites scale)",
             "itemtype": "method",
             "name": "lookAt",
@@ -2347,7 +2372,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 614,
+            "line": 660,
             "description": "returns the [0,0,1] vector in world space",
             "itemtype": "method",
             "name": "getFront",
@@ -2360,7 +2385,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 623,
+            "line": 669,
             "description": "returns the [0,1,0] vector in world space",
             "itemtype": "method",
             "name": "getTop",
@@ -2373,7 +2398,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 632,
+            "line": 678,
             "description": "returns the [1,0,0] vector in world space",
             "itemtype": "method",
             "name": "getRight",
@@ -2386,7 +2411,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 642,
+            "line": 688,
             "description": "Multiplies a point by the local matrix (not global)\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -2407,7 +2432,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 656,
+            "line": 702,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPointGlobal",
@@ -2428,7 +2453,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 669,
+            "line": 715,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "localToGlobal",
@@ -2449,7 +2474,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 678,
+            "line": 724,
             "description": "convert from global coordinates to local coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -2470,7 +2495,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 693,
+            "line": 739,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVector",
@@ -2491,7 +2516,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 704,
+            "line": 750,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVectorGlobal",
@@ -2512,7 +2537,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 725,
+            "line": 771,
             "description": "Applies the transformation using a matrix",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -2534,6 +2559,89 @@
                 }
             ],
             "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/graphMaterial.js",
+            "line": 143,
+            "description": "gets all the properties and its types",
+            "itemtype": "method",
+            "name": "getProperties",
+            "return": {
+                "description": "object with name:type",
+                "type": "Object"
+            },
+            "class": "LS.Material",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/graphMaterial.js",
+            "line": 168,
+            "description": "Event used to inform if one resource has changed its name",
+            "itemtype": "method",
+            "name": "onResourceRenamed",
+            "params": [
+                {
+                    "name": "resources",
+                    "description": "object where all the resources are stored",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Texture"
+            },
+            "class": "LS.Material",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/graphMaterial.js",
+            "line": 189,
+            "description": "gets all the properties and its types",
+            "itemtype": "method",
+            "name": "getProperty",
+            "return": {
+                "description": "object with name:type",
+                "type": "Object"
+            },
+            "class": "LS.Material",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/graphMaterial.js",
+            "line": 212,
+            "description": "assign a value to a property in a safe way",
+            "itemtype": "method",
+            "name": "setProperty",
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ],
+            "class": "LS.Material",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/materials/graphMaterial.js",
+            "line": 251,
+            "description": "Assigns a texture to a channel",
+            "itemtype": "method",
+            "name": "setTexture",
+            "params": [
+                {
+                    "name": "texture",
+                    "description": "",
+                    "type": "Texture"
+                },
+                {
+                    "name": "channel",
+                    "description": "default is COLOR",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Material",
             "namespace": "LS.Components"
         },
         {
@@ -2803,7 +2911,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 226,
+            "line": 227,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -2819,7 +2927,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 277,
+            "line": 278,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -2915,7 +3023,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 136,
+            "line": 145,
             "description": "takes the flags on the node and update the render instance flags",
             "itemtype": "method",
             "name": "applyNodeFlags",
@@ -2924,7 +3032,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 155,
+            "line": 164,
             "description": "Enable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2940,7 +3048,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 166,
+            "line": 175,
             "description": "Disable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2956,7 +3064,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 177,
+            "line": 186,
             "description": "Tells if a flag is enabled",
             "itemtype": "method",
             "name": "enableFlag",
@@ -2976,7 +3084,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 189,
+            "line": 198,
             "description": "Updates the normal matrix using the matrix",
             "itemtype": "method",
             "name": "computeNormalMatrix",
@@ -2985,7 +3093,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 201,
+            "line": 210,
             "description": "Computes the instance bounding box in world space from the one in local space",
             "itemtype": "method",
             "name": "updateAABB",
@@ -2994,7 +3102,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 211,
+            "line": 220,
             "description": "Calls render taking into account primitive and submesh id",
             "itemtype": "method",
             "name": "render",
@@ -3010,7 +3118,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 49,
+            "line": 58,
             "description": "Renders the current scene to the screen",
             "itemtype": "method",
             "name": "render",
@@ -3036,7 +3144,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 178,
+            "line": 187,
             "description": "Set camera as the main scene camera",
             "itemtype": "method",
             "name": "enableCamera",
@@ -3425,7 +3533,7 @@
         },
         {
             "file": "../src/context.js",
-            "line": 70,
+            "line": 72,
             "description": "Loads an scene and triggers start",
             "itemtype": "method",
             "name": "loadScene",
@@ -3446,7 +3554,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 27,
+            "line": 28,
             "description": "Contains all the registered components",
             "itemtype": "property",
             "name": "Components",
@@ -3457,7 +3565,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 36,
+            "line": 37,
             "description": "Register a component so it is listed when searching for new components to attach",
             "itemtype": "method",
             "name": "registerComponent",
@@ -3473,7 +3581,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 55,
+            "line": 56,
             "description": "Contains all the registered material classes",
             "itemtype": "property",
             "name": "MaterialClasses",
@@ -3484,7 +3592,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 64,
+            "line": 65,
             "description": "Register a component so it is listed when searching for new components to attach",
             "itemtype": "method",
             "name": "registerMaterialClass",
@@ -3500,7 +3608,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 85,
+            "line": 86,
             "description": "A front-end for XMLHttpRequest so it is simpler and more cross-platform",
             "itemtype": "method",
             "name": "request",
@@ -3520,7 +3628,85 @@
         },
         {
             "file": "../src/core.js",
-            "line": 192,
+            "line": 198,
+            "description": "retrieve a file from url (you can bind LEvents to done and fail)",
+            "itemtype": "method",
+            "name": "get",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "params",
+                    "description": "form params",
+                    "type": "Object"
+                },
+                {
+                    "name": "callback",
+                    "description": "",
+                    "type": "Function"
+                }
+            ],
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 215,
+            "description": "retrieve a JSON file from url (you can bind LEvents to done and fail)",
+            "itemtype": "method",
+            "name": "getJSON",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "params",
+                    "description": "form params",
+                    "type": "Object"
+                },
+                {
+                    "name": "callback",
+                    "description": "",
+                    "type": "Function"
+                }
+            ],
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 232,
+            "description": "retrieve a text file from url (you can bind LEvents to done and fail)",
+            "itemtype": "method",
+            "name": "getText",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "params",
+                    "description": "form params",
+                    "type": "Object"
+                },
+                {
+                    "name": "callback",
+                    "description": "",
+                    "type": "Function"
+                }
+            ],
+            "class": "LS.LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 253,
             "description": "copy the properties (methods and attributes) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -3541,7 +3727,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 228,
+            "line": 289,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -3566,7 +3752,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 269,
+            "line": 330,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -3586,7 +3772,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 289,
+            "line": 350,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -3606,7 +3792,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 308,
+            "line": 369,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -3626,7 +3812,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 407,
+            "line": 468,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",

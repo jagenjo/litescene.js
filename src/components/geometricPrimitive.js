@@ -25,7 +25,7 @@ GeometricPrimitive.CIRCLE = 5;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE, "Circle":GeometricPrimitive.CIRCLE }};
-GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
 {

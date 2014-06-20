@@ -39,6 +39,8 @@
 ../src/components/graphComponents.js
 ../src/components/knobComponent.js
 ../src/components/particles.js
+../src/components/pointCloud.js
+../src/components/lineCloud.js
 ../src/components/playAnimation.js
 ../src/components/realtimeReflector.js
 ../src/components/scriptComponent.js

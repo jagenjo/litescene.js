@@ -70,6 +70,9 @@ if(typeof(LiteGraph) != "undefined")
 	//used to compute the appropiate output texture
 	LGraphTexture.getTargetTexture = function( origin, target, mode )
 	{
+		if(!origin)
+			throw("LGraphTexture.getTargetTexture expects a reference texture");
+
 		var tex_type = null;
 
 		switch(mode)
@@ -78,7 +81,7 @@ if(typeof(LiteGraph) != "undefined")
 			case LGraphTexture.HIGH: tex_type = gl.HIGH_PRECISION_FORMAT; break;
 			case LGraphTexture.REUSE: return origin; break;
 			case LGraphTexture.COPY: 
-			default: tex_type = origin.type; break;
+			default: tex_type = origin ? origin.type : gl.UNSIGNED_BYTE; break;
 		}
 
 		if(!target || target.width != origin.width || target.height != origin.height || target.type != tex_type )
@@ -268,7 +271,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!tex && !this._tex )
 			this._tex = new GL.Texture( width, height, { type: this.precision === LGraphTexture.LOW ? gl.UNSIGNED_BYTE : gl.HIGH_PRECISION_FORMAT, format: gl.RGBA, filter: gl.LINEAR });
 		else
-			this._tex = LGraphTexture.getTargetTexture( tex, this._tex, this.properties.precision );
+			this._tex = LGraphTexture.getTargetTexture( tex || this._tex, this._tex, this.properties.precision );
 
 		/*
 		if(this.properties.low_precision)
@@ -580,12 +583,15 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.addInput("Texture","Texture");
 		this.addOutput("","Texture");
-		this.properties = { size: 0, low_precision: false, generate_mipmaps: false };
+		this.properties = { size: 0, generate_mipmaps: false, precision: LGraphTexture.DEFAULT };
 	}
 
 	LGraphTextureCopy.title = "Copy";
 	LGraphTextureCopy.desc = "Copy Texture";
-	LGraphTextureCopy.widgets_info = { size: { widget:"combo", values:[0,32,64,128,256,512,1024,2048]} };
+	LGraphTextureCopy.widgets_info = { 
+		size: { widget:"combo", values:[0,32,64,128,256,512,1024,2048]},
+		precision: { widget:"combo", values: LGraphTexture.MODE_VALUES }
+	};
 
 	LGraphTextureCopy.prototype.onExecute = function()
 	{
@@ -602,7 +608,13 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		var temp = this._temp_texture;
-		var type = this.properties.low_precision ? gl.UNSIGNED_BYTE : tex.type;
+
+		var type = tex.type;
+		if(this.properties.precision === LGraphTexture.LOW)
+			type = gl.UNSIGNED_BYTE;
+		else if(this.properties.precision === LGraphTexture.HIGH)
+			type = gl.HIGH_PRECISION_FORMAT;
+
 		if(!temp || temp.width != width || temp.height != height || temp.type != type )
 		{
 			var minFilter = gl.LINEAR;
@@ -1744,16 +1756,18 @@ if(typeof(LiteGraph) != "undefined")
 			uniform float u_intensity;\n\
 			void main() {\n\
 			   vec4 sum = vec4(0.0);\n\
+			   vec4 center = texture2D(u_texture, v_coord);\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * -4.0) * 0.05/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * -3.0) * 0.09/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * -2.0) * 0.12/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * -1.0) * 0.15/0.98;\n\
-			   sum += texture2D(u_texture, v_coord) * 0.16/0.98;\n\
+			   sum += center * 0.16/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * 4.0) * 0.05/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * 3.0) * 0.09/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * 2.0) * 0.12/0.98;\n\
 			   sum += texture2D(u_texture, v_coord + u_offset * 1.0) * 0.15/0.98;\n\
 			   gl_FragColor = u_intensity * sum;\n\
+			   /*gl_FragColor.a = center.a*/;\n\
 			}\n\
 			";
 

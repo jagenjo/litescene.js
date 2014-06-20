@@ -284,6 +284,8 @@
 
 			varying vec4 v_screenpos; //used for projective textures
 			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
 
 			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
 				uniform mat4 u_lightMatrix;
@@ -316,10 +318,9 @@
 					v_color = a_color;
 				#endif
 
+				v_uvs = a_coord;
 				#ifdef NO_COORDS
-					v_uvs = vec2(0.5);
-				#else
-					v_uvs = a_coord;
+					v_uvs = vec2(0.0);
 				#endif
 
 				#ifdef USE_COORDS1_STREAM
@@ -352,7 +353,7 @@
 					v_light_coord = (u_lightMatrix) * vertex4;
 				#endif				
 
-				gl_PointSize = max(1000.0,1000.0 / length(u_camera_eye - v_pos));
+				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
 			}
 		]]>
 		</code>
@@ -378,6 +379,7 @@
 			
 			uniform vec3 u_camera_eye;
 			uniform vec2 u_camera_planes; //far near
+			uniform vec2 u_camera_perspective;
 			uniform vec4 u_clipping_plane;
 			uniform float u_time;
 
@@ -727,6 +729,8 @@
 
 			varying vec4 v_screenpos; //used for projective textures
 			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
 
 			#ifdef USE_VERTEX_SHADER_UNIFORMS
 				USE_VERTEX_SHADER_UNIFORMS
@@ -777,7 +781,7 @@
 				//normal
 				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
 
-				gl_PointSize = max(1000.0,1000.0 / length(u_camera_eye - v_pos));
+				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
 			}
 		]]>
 		</code>
@@ -963,6 +967,8 @@
 
 			varying vec4 v_screenpos; //used for projective textures
 			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
 
 			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
 				uniform mat4 u_lightMatrix;
@@ -1051,7 +1057,7 @@
 				//normal
 				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
 
-				gl_PointSize = 1000.0 / length(u_camera_eye - v_pos); 
+				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
 			}
 		]]>
 		</code>
@@ -1195,6 +1201,7 @@
 
 			uniform vec3 u_camera_eye;
 			uniform vec2 u_camera_planes; //far near
+			uniform float u_pointSize;
 
 			uniform vec3 u_fog_info;
 			uniform vec3 u_fog_color;
@@ -1630,7 +1637,7 @@
 		</code>
 	</shader>
 
-	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS,USE_SKINNING,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
+	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,USE_POINTS,USE_POINT_CLOUD,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS,USE_SKINNING,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1650,6 +1657,10 @@
 				varying vec4 v_color;
 			#endif
 
+			#ifdef USE_POINT_CLOUD
+				attribute vec2 a_extra2;
+			#endif
+
 			#ifdef USE_SKINNING
 				#import "skinning"
 			#endif				
@@ -1664,6 +1675,9 @@
 			uniform mat4 u_viewprojection;
 			uniform mat4 u_normal_model;
 			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
+
 
 			uniform vec3 u_light_pos;
 			uniform vec3 u_light_front;
@@ -1790,9 +1804,12 @@
 
 				v_light = light;
 
-				#ifdef USE_POINTS
-					gl_PointSize = 1000.0 / length(u_camera_eye - v_pos); 
+				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
+
+				#ifdef USE_POINT_CLOUD
+					gl_PointSize = (u_pointSize * a_extra2.x / length(u_camera_eye - v_pos)) * u_camera_perspective.y;
 				#endif
+
 			}
 		]]>
 		</code>
@@ -1838,6 +1855,13 @@
 					if( dot(v_pos, u_clipping_plane.xyz) < u_clipping_plane.w)
 						discard;
 				#endif
+				
+				vec2 uvs = v_uvs;
+				#ifdef USE_POINT_CLOUD
+					uvs = gl_PointCoord.st;
+					uvs.y = 1.0 - uvs.y;
+				#endif
+
 
 				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
 				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
@@ -1850,11 +1874,11 @@
 				#endif
 
 				#ifdef USE_OPACITY_TEXTURE
-					alpha *= texture2D(opacity_texture,v_uvs).x;
+					alpha *= texture2D(opacity_texture,uvs).x;
 				#endif
 
 				#ifdef USE_COLOR_TEXTURE
-					vec4 diffuse_tex = texture2D(color_texture,v_uvs);
+					vec4 diffuse_tex = texture2D(color_texture,uvs);
 					final_color *= diffuse_tex.xyz;
 					#ifndef USE_OPACITY_TEXTURE
 						alpha *= diffuse_tex.a;
@@ -1885,7 +1909,7 @@
 		</code>
 	</shader>
 
-	<shader id="depth" tags="" macros="NO_COORDS,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_LINEAR_DISTANCE,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE" imports="true">
+	<shader id="depth" tags="" macros="NO_COORDS,USE_ORTHOGRAPHIC_CAMERA,USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_ALPHA_TEST,USE_LINEAR_DISTANCE,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -1903,8 +1927,12 @@
 
 			uniform mat4 u_mvp;
 			uniform mat4 u_model;
+			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
 			varying vec4 pos;
 			varying vec3 world_pos;
+
 
 			#ifdef USE_SKINNING
 				#import "skinning"
@@ -1944,11 +1972,15 @@
 					USE_VERTEX_SHADER_CODE
 				#endif
 
-				#ifdef USE_LINEAR_DISTANCE
-					world_pos = (u_model * vertex4).xyz;
-				#endif
+				world_pos = (u_model * vertex4).xyz;
 
 				gl_Position = pos = u_mvp * vertex4;
+
+				#ifdef USE_ORTHOGRAPHIC_CAMERA
+					gl_PointSize = u_pointSize; 
+				#else
+					gl_PointSize = (u_pointSize / length(u_camera_eye - world_pos)) * u_camera_perspective.y; 
+				#endif
 			}
 		]]>
 		</code>
@@ -2367,19 +2399,31 @@
 		</code>
 	</shader>
 
-	<shader id="flat" tags="instance">
+	<shader id="flat" tags="instance" macros="USE_ORTHOGRAPHIC_CAMERA">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
 
 			attribute vec3 a_vertex;
 			attribute vec2 a_coord;
+			uniform mat4 u_model;
 			uniform mat4 u_mvp;
+			uniform vec3 u_camera_eye;
+			uniform vec2 u_camera_perspective;
+			uniform float u_pointSize;
 
 			void main() {
 				vec4 vertex4 = vec4(a_vertex,1.0);
 				//skinning?
+				//TODO
+
 				gl_Position = u_mvp * vertex4;
+				vec3 v_pos = (u_model * vertex4).xyz;
+				#ifdef USE_ORTHOGRAPHIC_CAMERA
+					gl_PointSize = u_pointSize; 
+				#else
+					gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
+				#endif			
 			}
 		]]>
 		</code>

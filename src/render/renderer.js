@@ -16,6 +16,8 @@ var Renderer = {
 	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
 	depth_rendertarget: null, //depth texture to store depth
 
+	default_point_size: 5,
+
 	_full_viewport: vec4.create(), //contains info about the full viewport available to render (depends if using FBOs)
 
 	_current_scene: null,
@@ -39,6 +41,13 @@ var Renderer = {
 	_mvp_matrix: mat4.create(),
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
+
+	//called from...
+	init: function()
+	{
+		Draw.init();
+		Draw.onRequestFrame = function() { Scene.refresh(); }
+	},
 
 	reset: function()
 	{
@@ -155,18 +164,18 @@ var Renderer = {
 
 		this.enableCamera( camera, render_options ); //set as active camera and set viewport
 
-		//clear
+		//Clear (although not necessary if preserveBuffer is disabled)
 		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
 		if(render_options.ignore_clear != true && !camera._ignore_clear)
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 		//render scene
-		//RenderPipeline.renderInstances(render_options);
 		render_options.current_pass = "color";
 
 		LEvent.trigger(scene, "beforeRenderScene", camera);
 		scene.triggerInNodes("beforeRenderScene", camera);
 
+		//here we render all the instances
 		Renderer.renderInstances(render_options);
 
 		LEvent.trigger(scene, "afterRenderScene", camera);
@@ -221,6 +230,11 @@ var Renderer = {
 		this._current_camera = camera;
 		if(render_options)
 			render_options.current_camera = camera;
+
+		//Draw allows to render debug info easily
+		Draw.reset(); //clear 
+		Draw.setCameraPosition( camera.getEye() );
+		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
 	},
 
 	
@@ -254,14 +268,16 @@ var Renderer = {
 		}
 
 		//reset state of everything!
-		gl.enable( gl.DEPTH_TEST );
-		gl.depthFunc( gl.LESS );
-		gl.disable( gl.BLEND );
-		gl.lineWidth(1);
+		this.resetGLState();
 
 		//this.updateVisibleInstances(scene,options);
 		var lights = this._visible_lights;
 		var render_instances = this._visible_instances;
+
+		LEvent.trigger(scene, "renderInstances", render_options);
+
+		//reset again!
+		this.resetGLState();
 
 		//compute visibility pass
 		for(var i in render_instances)
@@ -357,22 +373,26 @@ var Renderer = {
 		}
 
 		//restore state
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthFunc(gl.LESS);
-		gl.depthMask(true);
-		gl.disable(gl.BLEND);
-		gl.frontFace(gl.CCW);
+		this.resetGLState();
 
 		LEvent.trigger(scene, "afterRenderInstances", render_options);
 		scene.triggerInNodes("afterRenderInstances", render_options);
 
-		//EVENT SCENE after_render
-		//restore state
-		gl.enable(gl.DEPTH_TEST);
-		gl.depthFunc(gl.LESS);
+		//and finally again
+		this.resetGLState();
+	},
+
+	//to set gl state in a known and constant state in every render
+	resetGLState: function()
+	{
+		gl.enable( gl.CULL_FACE );
+		gl.enable( gl.DEPTH_TEST );
+		gl.disable( gl.BLEND );
+		gl.depthFunc( gl.LESS );
 		gl.depthMask(true);
-		gl.disable(gl.BLEND);
 		gl.frontFace(gl.CCW);
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		gl.lineWidth(1);
 	},
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
@@ -553,6 +573,7 @@ var Renderer = {
 		this.enableInstanceFlags(instance, render_options);
 
 		var macros = {};
+		macros.merge( scene._macros );
 		macros.merge( instance_final_macros );
 
 		if(this._current_target && this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
@@ -683,6 +704,7 @@ var Renderer = {
 
 	renderPickingInstance: function(instance, render_options)
 	{
+		var scene = this._current_scene;
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
@@ -697,10 +719,12 @@ var Renderer = {
 		*/
 
 		var macros = {};
+		macros.merge(scene._macros);
 		macros.merge(instance._final_macros);
 
 		var shader = ShadersManager.get("flat", macros);
-		shader.uniforms({u_mvp: this._mvp_matrix, u_material_color: pick_color });
+		shader.uniforms(scene._uniforms);
+		shader.uniforms({u_model: model, u_pointSize: this.default_point_size, u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
 		//hardcoded, ugly
 		/*
@@ -717,12 +741,12 @@ var Renderer = {
 	{
 		var macros = {};
 
+		if(render_options.current_camera.type == Camera.ORTHOGRAPHIC)
+			macros.USE_ORTHOGRAPHIC_CAMERA = "";
+
 		//camera info
 		if(render_options == "color")
 		{
-			if(render_options.current_camera.type == Camera.ORTHOGRAPHIC)
-				macros.USE_ORTHOGRAPHIC_CAMERA = "";
-
 			if(render_options.brightness_factor && render_options.brightness_factor != 1)
 				macros.USE_BRIGHTNESS_FACTOR = "";
 
@@ -741,7 +765,9 @@ var Renderer = {
 		//global uniforms
 		var uniforms = {
 			u_camera_eye: camera.getEye(),
+			u_pointSize: this.default_point_size,
 			u_camera_planes: [camera.near, camera.far],
+			u_camera_perspective: camera.type == Camera.PERSPECTIVE ? [camera.fov * DEG2RAD, 512 / Math.tan( camera.fov * DEG2RAD ) ] : [ camera._frustum_size, 512 / camera._frustum_size ],
 			//u_viewprojection: this._viewprojection_matrix,
 			u_time: scene._time || getTime() * 0.001,
 			u_brightness_factor: render_options.brightness_factor != null ? render_options.brightness_factor : 1,
@@ -853,7 +879,7 @@ var Renderer = {
 			instance._dist = vec3.dist( instance.center, camera_eye );
 
 			//change conditionaly
-			if(render_options.force_wireframe) 
+			if(render_options.force_wireframe && instance.primitive != gl.LINES ) 
 			{
 				instance.primitive = gl.LINES;
 				if(instance.mesh)

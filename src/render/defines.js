@@ -14,7 +14,7 @@ if(typeof(GL) == "undefined")
 BlendFunctions = {
 	"normal": 	[GL.ONE, GL.ZERO],
 	"alpha": 	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],	
-	"add": 		[GL.SRC_ALPHA, GL.DST_ALPHA],
+	"add": 		[GL.SRC_ALPHA, GL.ONE],
 	"multiply": [GL.DST_COLOR, GL.ONE_MINUS_SRC_ALPHA],
 	"screen": 	[GL.SRC_ALPHA, GL.ONE],
 	"custom": 	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]

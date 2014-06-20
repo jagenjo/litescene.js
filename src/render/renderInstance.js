@@ -108,10 +108,19 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 			this.index_buffer = mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
 			break;
 		case gl.LINES: 
+			/*
 			if(!mesh.indexBuffers["lines"])
 				mesh.computeWireframe();
+			*/
 			this.index_buffer = mesh.indexBuffers["lines"];
 			break;
+		case 10:  //wireframe
+			this.primitive = gl.LINES;
+			if(!mesh.indexBuffers["wireframe"])
+				mesh.computeWireframe();
+			this.index_buffer = mesh.indexBuffers["wireframe"];
+			break;
+
 		case gl.POINTS: 
 		default:
 			this.index_buffer = null;

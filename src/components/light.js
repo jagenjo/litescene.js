@@ -147,6 +147,7 @@ Light.prototype.onAddedToNode = function(node)
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
+	delete ResourcesManager.textures[":shadowmap_" + this._uid ];
 }
 
 Light.prototype.onCollectLights = function(e, lights)
