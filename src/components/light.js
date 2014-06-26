@@ -69,7 +69,7 @@ function Light(o)
 	*/
 	this.angle_end = 60; //spot cone end
 
-	this.use_diffuse = true;
+	this.constant_diffuse = false;
 	this.use_specular = true;
 	this.linear_attenuation = false;
 	this.range_attenuation = false;
@@ -380,7 +380,7 @@ Light.prototype.getMacros = function(instance, render_options)
 
 	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_options.shadows_disabled;
 
-	if(this.use_diffuse && !instance.material.constant_diffuse)
+	if(!this.constant_diffuse && !instance.material.constant_diffuse)
 		macros.USE_DIFFUSE_LIGHT = "";
 	else
 		delete macros["USE_DIFFUSE_LIGHT"];

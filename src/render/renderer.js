@@ -708,7 +708,7 @@ var Renderer = {
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( instance );
+		var pick_color = this.getNextPickingColor( node );
 		/*
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -802,7 +802,8 @@ var Renderer = {
 		}
 	},	
 
-	getNextPickingColor: function(instance, data)
+	//you tell what info you want to retrieve associated with this color
+	getNextPickingColor: function(info)
 	{
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -810,7 +811,7 @@ var Renderer = {
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 
-		this._picking_nodes[ this._picking_next_color_id ] = [instance, data];
+		this._picking_nodes[ this._picking_next_color_id ] = info;
 		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
@@ -854,6 +855,14 @@ var Renderer = {
 
 		//update containers in scene
 		scene.collectData();
+
+		if(!render_options.main_camera)
+		{
+			if( scene._cameras.length )
+				render_options.main_camera = scene._cameras[0];
+			else
+				render_options.main_camera = new Camera();
+		}
 
 		var opaque_instances = [];
 		var blend_instances = [];
@@ -1159,13 +1168,12 @@ var Renderer = {
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
-		var instance_info = this._picking_nodes[id];
+		var info = this._picking_nodes[id];
 		this._picking_nodes = {};
 
-		if(!instance_info) return null;
+		if(!info) return null;
 
-		var instance = instance_info[0];
-		return instance.node;
+		return info.node;
 	},
 
 	//used to get special info about the instance below the mouse

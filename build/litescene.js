@@ -882,7 +882,7 @@ var Draw = {
 
 	renderWireSphere: function(radius, segments)
 	{
-		var mesh = this.createSphereMesh();
+		var mesh = this.createSphereMesh(radius, segments);
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
@@ -993,7 +993,7 @@ var Draw = {
 
 	renderCone: function(radius, height, segments, in_z)
 	{
-		var mesh = this.createConeMesh();
+		var mesh = this.createConeMesh(radius, height, segments, in_z);
 		return this.renderMesh(mesh, gl.TRIANGLE_FAN);
 	},
 
@@ -4581,6 +4581,9 @@ ComponentContainer.prototype.serializeComponents = function(o)
 */
 ComponentContainer.prototype.addComponent = function(component)
 {
+	if(!component)
+		return console.error("addComponent cannot receive null");
+
 	//link component with container
 	component._root = this;
 	if(component.onAddedToNode)
@@ -4602,6 +4605,9 @@ ComponentContainer.prototype.addComponent = function(component)
 */
 ComponentContainer.prototype.removeComponent = function(component)
 {
+	if(!component)
+		return console.error("removeComponent cannot receive null");
+
 	//unlink component with container
 	component._root = null;
 	if(component.onRemovedFromNode)
@@ -6606,7 +6612,7 @@ function Light(o)
 	*/
 	this.angle_end = 60; //spot cone end
 
-	this.use_diffuse = true;
+	this.constant_diffuse = false;
 	this.use_specular = true;
 	this.linear_attenuation = false;
 	this.range_attenuation = false;
@@ -6917,7 +6923,7 @@ Light.prototype.getMacros = function(instance, render_options)
 
 	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_options.shadows_disabled;
 
-	if(this.use_diffuse && !instance.material.constant_diffuse)
+	if(!this.constant_diffuse && !instance.material.constant_diffuse)
 		macros.USE_DIFFUSE_LIGHT = "";
 	else
 		delete macros["USE_DIFFUSE_LIGHT"];
@@ -13576,6 +13582,7 @@ function RenderOptions(o)
 	this.update_materials = true; //update info in materials in every frame
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
+	this.in_player = true; //is in the player (not in the editor)
 
 	this.sort_instances_by_distance = true;
 	this.sort_instances_by_priority = true;
@@ -14542,7 +14549,7 @@ var Renderer = {
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( instance );
+		var pick_color = this.getNextPickingColor( node );
 		/*
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -14636,7 +14643,8 @@ var Renderer = {
 		}
 	},	
 
-	getNextPickingColor: function(instance, data)
+	//you tell what info you want to retrieve associated with this color
+	getNextPickingColor: function(info)
 	{
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -14644,7 +14652,7 @@ var Renderer = {
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 
-		this._picking_nodes[ this._picking_next_color_id ] = [instance, data];
+		this._picking_nodes[ this._picking_next_color_id ] = info;
 		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
 	},
 
@@ -14688,6 +14696,14 @@ var Renderer = {
 
 		//update containers in scene
 		scene.collectData();
+
+		if(!render_options.main_camera)
+		{
+			if( scene._cameras.length )
+				render_options.main_camera = scene._cameras[0];
+			else
+				render_options.main_camera = new Camera();
+		}
 
 		var opaque_instances = [];
 		var blend_instances = [];
@@ -14993,13 +15009,12 @@ var Renderer = {
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
 
-		var instance_info = this._picking_nodes[id];
+		var info = this._picking_nodes[id];
 		this._picking_nodes = {};
 
-		if(!instance_info) return null;
+		if(!info) return null;
 
-		var instance = instance_info[0];
-		return instance.node;
+		return info.node;
 	},
 
 	//used to get special info about the instance below the mouse

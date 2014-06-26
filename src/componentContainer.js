@@ -85,6 +85,9 @@ ComponentContainer.prototype.serializeComponents = function(o)
 */
 ComponentContainer.prototype.addComponent = function(component)
 {
+	if(!component)
+		return console.error("addComponent cannot receive null");
+
 	//link component with container
 	component._root = this;
 	if(component.onAddedToNode)
@@ -106,6 +109,9 @@ ComponentContainer.prototype.addComponent = function(component)
 */
 ComponentContainer.prototype.removeComponent = function(component)
 {
+	if(!component)
+		return console.error("removeComponent cannot receive null");
+
 	//unlink component with container
 	component._root = null;
 	if(component.onRemovedFromNode)

@@ -450,7 +450,7 @@ var Draw = {
 
 	renderWireSphere: function(radius, segments)
 	{
-		var mesh = this.createSphereMesh();
+		var mesh = this.createSphereMesh(radius, segments);
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
@@ -561,7 +561,7 @@ var Draw = {
 
 	renderCone: function(radius, height, segments, in_z)
 	{
-		var mesh = this.createConeMesh();
+		var mesh = this.createConeMesh(radius, height, segments, in_z);
 		return this.renderMesh(mesh, gl.TRIANGLE_FAN);
 	},
 

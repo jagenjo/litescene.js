@@ -29,6 +29,7 @@ function RenderOptions(o)
 	this.update_materials = true; //update info in materials in every frame
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
+	this.in_player = true; //is in the player (not in the editor)
 
 	this.sort_instances_by_distance = true;
 	this.sort_instances_by_priority = true;
