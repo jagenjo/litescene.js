@@ -19,7 +19,7 @@ var RI_BLEND = 				1 << 5; //use blend function
 var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
 var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
 var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
 var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
@@ -228,6 +228,14 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.overlapsSphere = function(center, radius)
+{
+	//we dont know if the bbox of the instance is valid
+	if(this.flags & RI_IGNORE_FRUSTUM)
+		return true;
+	return geo.testSphereBBox( center, radius, this.aabb );
 }
 
 

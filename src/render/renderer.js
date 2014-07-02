@@ -318,6 +318,7 @@ var Renderer = {
 			instance._in_camera = true;
 		}
 
+		var close_lights = [];
 
 		//for each render instance
 		for(var i in render_instances)
@@ -327,9 +328,6 @@ var Renderer = {
 
 			if(!instance._in_camera)
 				continue;
-
-			//Compute lights affecting this RI
-			//TODO
 
 			if(instance.flags & RI_RENDER_2D)
 			{
@@ -347,7 +345,29 @@ var Renderer = {
 			else if(render_options.is_picking)
 				this.renderPickingInstance( instance, render_options );
 			else
-				this.renderColorPassInstance( instance, lights, scene, render_options );
+			{
+				//Compute lights affecting this RI (by proximity, only takes into account 
+				if(1)
+				{
+					close_lights.length = 0;
+					for(var l = 0; l < lights.length; l++)
+					{
+						var light = lights[l];
+						var light_intensity = light.computeLightIntensity();
+						if(light_intensity < 0.0001)
+							continue;
+						var light_radius = light.computeLightRadius();
+						var light_pos = light.position;
+						if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
+							close_lights.push(light);
+					}
+				}
+				else //use all the lights
+					close_lights = lights;
+
+				//render multipass
+				this.renderColorPassInstance( instance, close_lights, scene, render_options );
+			}
 
 			if(instance.onPostRender)
 				instance.onPostRender(render_options);

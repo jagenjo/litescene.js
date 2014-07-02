@@ -18,10 +18,11 @@ ScriptComponent.icon = "mini-icon-script.png";
 
 ScriptComponent["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","stop"];
+ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
 ScriptComponent.translate_events = {
 	"render": "renderInstances", "renderInstances": "render",
-	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender"};
+	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
+	"finish": "stop", "stop":"finish"};
 
 ScriptComponent.prototype.getContext = function()
 {
@@ -69,14 +70,6 @@ ScriptComponent.prototype.hookEvents = function()
 
 ScriptComponent.prototype.onAddedToNode = function(node)
 {
-	/*
-	this._onStart_bind = this.onStart.bind(this);
-	this._onUpdate_bind = this.onUpdate.bind(this);
-	LEvent.bind(Scene,"start", this._onStart_bind );
-	LEvent.bind(Scene,"update", this._onUpdate_bind );
-	*/
-
-	//if(this._script) this._script.compile({component:this, node: node});
 	this.processCode();
 }
 
@@ -90,12 +83,6 @@ ScriptComponent.prototype.onRemovedFromNode = function(node)
 		var event_name = ScriptComponent.translate_events[name] || name;
 		LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
 	}
-
-
-	/*
-	LEvent.unbind(Scene,"start", this.on_start );
-	LEvent.unbind(Scene,"update", this._onUpdate_bind );
-	*/
 }
 
 ScriptComponent.prototype.onScriptEvent = function(event_type, params)

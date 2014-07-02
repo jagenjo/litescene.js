@@ -184,9 +184,11 @@ Light.prototype.updateLightCamera = function()
 
 	camera.type = this.type == Light.DIRECTIONAL ? Camera.ORTHOGRAPHIC : Camera.PERSPECTIVE;
 
+	var closest_far = this.computeShadowmapFar();
+
 	camera._frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
 	camera.near = this.near;
-	camera.far = this.far;
+	camera.far = closest_far;
 	camera.fov = (this.angle_end || 45); //fov is in degrees
 
 	camera.updateMatrices();
@@ -260,7 +262,8 @@ Light.prototype.updateVectors = function()
 Light.prototype.getPosition = function(p)
 {
 	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
-	if(this._root && this._root.transform) return this._root.transform.getGlobalPosition();
+	if(this._root && this._root.transform) 
+		return this._root.transform.getGlobalPosition();
 	return vec3.clone(this.position);
 }
 
@@ -444,7 +447,8 @@ Light.prototype.getUniforms = function( instance, render_options )
 	//use shadows?
 	if(use_shadows)
 	{
-		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, this.far ];
+		var closest_far = this.computeShadowmapFar();
+		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ];
 		uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
 	}
 	else
@@ -456,9 +460,50 @@ Light.prototype.getUniforms = function( instance, render_options )
 	return uniforms;
 }
 
+//optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach
+Light.prototype.computeShadowmapFar = function()
+{
+	var closest_far = this.far;
+
+	if( this.type == Light.OMNI )
+	{
+		//Math.SQRT2 because in a 45º triangle the hypotenuse is sqrt(1+1) * side
+		if( this.range_attenuation && (this.att_end * Math.SQRT2) < closest_far)
+			closest_far = this.att_end * Math.SQRT2;
+	}
+	else 
+	{
+		if( this.range_attenuation && this.att_end < closest_far)
+			closest_far = this.att_end;
+	}
+
+	return closest_far;
+}
+
+Light.prototype.computeLightIntensity = function()
+{
+	var max = Math.max( this.color[0], this.color[1], this.color[2] );
+	return Math.max(0,max * this.intensity);
+}
+
+Light.prototype.computeLightRadius = function()
+{
+	if(!this.range_attenuation)
+		return -1;
+
+	if( this.type == Light.OMNI )
+		return this.att_end * Math.SQRT2;
+
+	return this.att_end;
+}
+
 Light.prototype.generateShadowmap = function (render_options)
 {
 	if(!this.cast_shadows)
+		return;
+
+	var light_intensity = this.computeLightIntensity();
+	if( light_intensity < 0.0001 )
 		return;
 
 	var renderer = render_options.current_renderer;
@@ -478,10 +523,12 @@ Light.prototype.generateShadowmap = function (render_options)
 	//render the scene inside the texture
 	if(this.type == Light.OMNI) //render to cubemap
 	{
+		var closest_far = this.computeShadowmapFar();
+
 		render_options.current_pass = "shadow";
 		render_options.is_shadowmap = true;
 		this._shadowmap.unbind(); 
-		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, this.far );
+		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, closest_far );
 		render_options.is_shadowmap = false;
 	}
 	else //DIRECTIONAL and SPOTLIGHT

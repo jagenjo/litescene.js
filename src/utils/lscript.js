@@ -35,31 +35,13 @@ LScript.prototype.compile = function( arg_vars )
 	var code = this.code;
 	var extra_code = "";
 	for(var i in this.valid_callbacks)
-		extra_code += "	if(typeof("+this.valid_callbacks[i]+") != 'undefined') this."+ this.valid_callbacks[i] + " = "+this.valid_callbacks[i]+";\n";
+	{
+		var callback_name = this.valid_callbacks[i];
+		extra_code += "	if(typeof("+callback_name+") != 'undefined' && "+callback_name+" != window[\""+callback_name+"\"] ) this."+callback_name + " = "+callback_name+";\n";
+	}
 	code += extra_code;
 	this._last_executed_code = code;
 	
-	/*
-	var classname = "_LScript"
-	var argv = "component, node";
-	code = "var _myclass = function "+classname+"("+argv_names+") {\n" + this.extracode + "\n" + code + "\n";
-
-	var extra_code = "";
-	for(var i in this.valid_callbacks)
-		extra_code += "	if(typeof("+this.valid_callbacks[i]+") != 'undefined') this."+ this.valid_callbacks[i] + " = "+this.valid_callbacks[i]+";\n";
-
-	extra_code += "\n}\n; _myclass;";
-
-	code += extra_code;
-	this._last_executed_code = code;
-
-	try
-	{
-		this._class = eval(code);
-		this._context = LScript.applyToConstructor( this._class, argv_values );
-	}
-
-	*/
 	try
 	{
 		this._class = new Function(argv_names, code);

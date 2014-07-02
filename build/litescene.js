@@ -14,7 +14,7 @@ First we store a file header, then info about every lump, then a big binary chun
 The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
 
 Header: (64 bytes total)
-	* FOURCC: 4 bytes with WBIN
+	* FOURCC: 4 bytes with "WBIN"
 	* Version: 4 bytes for Float32, represents WBin version used to store
 	* Flags: 2 bytes to store flags (first byte reserved, second is free to use)
 	* Num. lumps: 2 bytes number with the total amount of lumps in this wbin
@@ -22,8 +22,8 @@ Header: (64 bytes total)
 	* extra space for future improvements
 
 Lump header: (64 bytes total)
-	* start: 4 bytes, where the lump start in the binary area
-	* length: 4 bytes, size of the lump
+	* start: 4 bytes (Uint32), where the lump start in the binary area
+	* length: 4 bytes (Uint32), size of the lump
 	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
 	* name: 54 bytes name for the lump
 
@@ -1324,31 +1324,13 @@ LScript.prototype.compile = function( arg_vars )
 	var code = this.code;
 	var extra_code = "";
 	for(var i in this.valid_callbacks)
-		extra_code += "	if(typeof("+this.valid_callbacks[i]+") != 'undefined') this."+ this.valid_callbacks[i] + " = "+this.valid_callbacks[i]+";\n";
+	{
+		var callback_name = this.valid_callbacks[i];
+		extra_code += "	if(typeof("+callback_name+") != 'undefined' && "+callback_name+" != window[\""+callback_name+"\"] ) this."+callback_name + " = "+callback_name+";\n";
+	}
 	code += extra_code;
 	this._last_executed_code = code;
 	
-	/*
-	var classname = "_LScript"
-	var argv = "component, node";
-	code = "var _myclass = function "+classname+"("+argv_names+") {\n" + this.extracode + "\n" + code + "\n";
-
-	var extra_code = "";
-	for(var i in this.valid_callbacks)
-		extra_code += "	if(typeof("+this.valid_callbacks[i]+") != 'undefined') this."+ this.valid_callbacks[i] + " = "+this.valid_callbacks[i]+";\n";
-
-	extra_code += "\n}\n; _myclass;";
-
-	code += extra_code;
-	this._last_executed_code = code;
-
-	try
-	{
-		this._class = eval(code);
-		this._context = LScript.applyToConstructor( this._class, argv_values );
-	}
-
-	*/
 	try
 	{
 		this._class = new Function(argv_names, code);
@@ -6727,9 +6709,11 @@ Light.prototype.updateLightCamera = function()
 
 	camera.type = this.type == Light.DIRECTIONAL ? Camera.ORTHOGRAPHIC : Camera.PERSPECTIVE;
 
+	var closest_far = this.computeShadowmapFar();
+
 	camera._frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
 	camera.near = this.near;
-	camera.far = this.far;
+	camera.far = closest_far;
 	camera.fov = (this.angle_end || 45); //fov is in degrees
 
 	camera.updateMatrices();
@@ -6803,7 +6787,8 @@ Light.prototype.updateVectors = function()
 Light.prototype.getPosition = function(p)
 {
 	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
-	if(this._root && this._root.transform) return this._root.transform.getGlobalPosition();
+	if(this._root && this._root.transform) 
+		return this._root.transform.getGlobalPosition();
 	return vec3.clone(this.position);
 }
 
@@ -6987,7 +6972,8 @@ Light.prototype.getUniforms = function( instance, render_options )
 	//use shadows?
 	if(use_shadows)
 	{
-		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, this.far ];
+		var closest_far = this.computeShadowmapFar();
+		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ];
 		uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
 	}
 	else
@@ -6999,9 +6985,50 @@ Light.prototype.getUniforms = function( instance, render_options )
 	return uniforms;
 }
 
+//optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach
+Light.prototype.computeShadowmapFar = function()
+{
+	var closest_far = this.far;
+
+	if( this.type == Light.OMNI )
+	{
+		//Math.SQRT2 because in a 45º triangle the hypotenuse is sqrt(1+1) * side
+		if( this.range_attenuation && (this.att_end * Math.SQRT2) < closest_far)
+			closest_far = this.att_end * Math.SQRT2;
+	}
+	else 
+	{
+		if( this.range_attenuation && this.att_end < closest_far)
+			closest_far = this.att_end;
+	}
+
+	return closest_far;
+}
+
+Light.prototype.computeLightIntensity = function()
+{
+	var max = Math.max( this.color[0], this.color[1], this.color[2] );
+	return Math.max(0,max * this.intensity);
+}
+
+Light.prototype.computeLightRadius = function()
+{
+	if(!this.range_attenuation)
+		return -1;
+
+	if( this.type == Light.OMNI )
+		return this.att_end * Math.SQRT2;
+
+	return this.att_end;
+}
+
 Light.prototype.generateShadowmap = function (render_options)
 {
 	if(!this.cast_shadows)
+		return;
+
+	var light_intensity = this.computeLightIntensity();
+	if( light_intensity < 0.0001 )
 		return;
 
 	var renderer = render_options.current_renderer;
@@ -7021,10 +7048,12 @@ Light.prototype.generateShadowmap = function (render_options)
 	//render the scene inside the texture
 	if(this.type == Light.OMNI) //render to cubemap
 	{
+		var closest_far = this.computeShadowmapFar();
+
 		render_options.current_pass = "shadow";
 		render_options.is_shadowmap = true;
 		this._shadowmap.unbind(); 
-		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, this.far );
+		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, closest_far );
 		render_options.is_shadowmap = false;
 	}
 	else //DIRECTIONAL and SPOTLIGHT
@@ -10534,10 +10563,11 @@ ScriptComponent.icon = "mini-icon-script.png";
 
 ScriptComponent["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","stop"];
+ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
 ScriptComponent.translate_events = {
 	"render": "renderInstances", "renderInstances": "render",
-	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender"};
+	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
+	"finish": "stop", "stop":"finish"};
 
 ScriptComponent.prototype.getContext = function()
 {
@@ -10585,14 +10615,6 @@ ScriptComponent.prototype.hookEvents = function()
 
 ScriptComponent.prototype.onAddedToNode = function(node)
 {
-	/*
-	this._onStart_bind = this.onStart.bind(this);
-	this._onUpdate_bind = this.onUpdate.bind(this);
-	LEvent.bind(Scene,"start", this._onStart_bind );
-	LEvent.bind(Scene,"update", this._onUpdate_bind );
-	*/
-
-	//if(this._script) this._script.compile({component:this, node: node});
 	this.processCode();
 }
 
@@ -10606,12 +10628,6 @@ ScriptComponent.prototype.onRemovedFromNode = function(node)
 		var event_name = ScriptComponent.translate_events[name] || name;
 		LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
 	}
-
-
-	/*
-	LEvent.unbind(Scene,"start", this.on_start );
-	LEvent.unbind(Scene,"update", this._onUpdate_bind );
-	*/
 }
 
 ScriptComponent.prototype.onScriptEvent = function(event_type, params)
@@ -13619,7 +13635,7 @@ var RI_BLEND = 				1 << 5; //use blend function
 var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
 var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
 var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum 
+var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
 var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
@@ -13828,6 +13844,14 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.overlapsSphere = function(center, radius)
+{
+	//we dont know if the bbox of the instance is valid
+	if(this.flags & RI_IGNORE_FRUSTUM)
+		return true;
+	return geo.testSphereBBox( center, radius, this.aabb );
 }
 
 
@@ -14159,6 +14183,7 @@ var Renderer = {
 			instance._in_camera = true;
 		}
 
+		var close_lights = [];
 
 		//for each render instance
 		for(var i in render_instances)
@@ -14168,9 +14193,6 @@ var Renderer = {
 
 			if(!instance._in_camera)
 				continue;
-
-			//Compute lights affecting this RI
-			//TODO
 
 			if(instance.flags & RI_RENDER_2D)
 			{
@@ -14188,7 +14210,29 @@ var Renderer = {
 			else if(render_options.is_picking)
 				this.renderPickingInstance( instance, render_options );
 			else
-				this.renderColorPassInstance( instance, lights, scene, render_options );
+			{
+				//Compute lights affecting this RI (by proximity, only takes into account 
+				if(1)
+				{
+					close_lights.length = 0;
+					for(var l = 0; l < lights.length; l++)
+					{
+						var light = lights[l];
+						var light_intensity = light.computeLightIntensity();
+						if(light_intensity < 0.0001)
+							continue;
+						var light_radius = light.computeLightRadius();
+						var light_pos = light.position;
+						if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
+							close_lights.push(light);
+					}
+				}
+				else //use all the lights
+					close_lights = lights;
+
+				//render multipass
+				this.renderColorPassInstance( instance, close_lights, scene, render_options );
+			}
 
 			if(instance.onPostRender)
 				instance.onPostRender(render_options);
