@@ -14380,10 +14380,11 @@ var Renderer = {
 			{
 				var light_macros = light.getMacros( instance, render_options );
 
-				if(iLight == 0) light_macros.FIRST_PASS = "";
-				if(iLight == (num_lights-1)) light_macros.LAST_PASS = "";
-
 				var macros = {};
+
+				if(iLight == 0) macros.FIRST_PASS = "";
+				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
+
 				macros.merge(scene._macros);
 				macros.merge(instance_final_macros); //contains node, material and instance macros
 				macros.merge(light_macros);
