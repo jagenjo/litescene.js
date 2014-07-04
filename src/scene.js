@@ -235,15 +235,15 @@ SceneTree.prototype.serialize = function()
 }
 
 /**
-* loads a Scene from an Ajax call and pass it to the configure method.
+* loads a scene from a JSON description
 *
-* @method loadScene
+* @method load
 * @param {String} url where the JSON object containing the scene is stored
 * @param {Function}[on_complete=null] the callback to call when the loading is complete
 * @param {Function}[on_error=null] the callback to call if there is a  loading error
 */
 
-SceneTree.prototype.loadScene = function(url, on_complete, on_error)
+SceneTree.prototype.load = function(url, on_complete, on_error)
 {
 	if(!url) return;
 	var that = this;
@@ -895,7 +895,7 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 	}
 
 	var that = this;
-	var loaded = ResourcesManager.loadMesh(mesh_filename, options, function(mesh){
+	var loaded = ResourcesManager.load(mesh_filename, options, function(mesh){
 		that.setMesh(mesh.filename);
 		that.loading -= 1;
 		if(that.loading == 0)

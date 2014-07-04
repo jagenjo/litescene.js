@@ -16,7 +16,7 @@ NodeManipulator.icon = "mini-icon-rotator.png";
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	node.interactive = true;
+	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onMouse,this);
 	LEvent.bind(node,"update",this.onUpdate,this);
 }

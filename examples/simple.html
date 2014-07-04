@@ -50,13 +50,10 @@
 			gl.onmouseup = this.onmouseup;
 			gl.onmousemove = this.onmousemove;
 
-			//screen plane
-			this.screen_plane = new GL.Mesh.plane({ coords: true });
-
-			Shaders.init("../data/shaders.xml");
+			ShadersManager.init("../data/shaders.xml");
 			Scene.init();
 			Scene.ambient_color = [0.5,0.5,0.5];
-			ResourcesManager.path = "assets/";
+			LS.ResourcesManager.path = "assets/";
 
 			Scene.background_color = [0.1,0.1,0.1,1];
 			Scene.ambient_color = [0.2,0.2,0.2];
@@ -120,7 +117,7 @@
 
 		onmousedown: function(e)
 		{
-			APP.click_time = new Date().getTime();
+			APP.click_time = getTime();
 
 			var node = Renderer.getNodeAtCanvasPosition(Scene, Scene.getCamera(), e.mousex, e.mousey );
 			if(node && node.interactive)

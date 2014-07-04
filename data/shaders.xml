@@ -65,13 +65,13 @@
 					
 					vec3 l_vector = (v_pos - u_light_pos);
 					float dist = length(l_vector);
-					float sampleDepth = UnpackDepth32( textureCube(shadowmap, l_vector / dist + vec3(offset,0.0)) );
+					vec4 depth_color = textureCube(shadowmap, l_vector / dist + vec3(offset,0.0));
+					//if ( abs(depth_color.x) + abs(depth_color.y) + abs(depth_color.z) + abs(depth_color.w) < 0.0001 ) return 0.0;
+					float sampleDepth = UnpackDepth32( depth_color );
 					depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
-					dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z);
+					dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z); //normalize
 					float bias = u_shadow_params.y;
-					//return clamp((dist - depth * (1.0 + bias)) * 100.0,0.0,1.0);
 					return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
-					//return sampleDepth;
 				#else
 					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
 					//is inside light frustum
@@ -1491,8 +1491,10 @@
 				#ifdef USE_EMISSIVE_TEXTURE
 					temp_v3 *= texture2D(emissive_texture,USE_EMISSIVE_TEXTURE).xyz;
 				#endif
-				#ifndef USE_EMISSIVE_MATERIAL
-					light += temp_v3;
+				#ifndef USE_EMISSIVE_MATERIAL //no idea why
+					#ifdef FIRST_PASS
+						light += temp_v3;
+					#endif
 				#endif
 
 				#ifdef USE_IGNORE_LIGHT
@@ -1608,8 +1610,11 @@
 					#else
 						float fog = 1. - clamp((u_fog_info.y - cam_dist) / (u_fog_info.y - u_fog_info.x),0.,1.);
 					#endif
-
-					final_color = mix(final_color, u_fog_color, fog);
+					#ifdef FIRST_PASS
+						final_color = mix(final_color, u_fog_color, fog);
+					#else
+						final_color = mix(final_color, vec3(0.0), fog);
+					#endif
 				#endif
 
 				#ifdef USE_BRIGHTNESS_FACTOR
@@ -2049,6 +2054,7 @@
 
 				#ifdef USE_LINEAR_DISTANCE				
 					depth = (length(world_pos - u_camera_eye) - u_camera_planes.x) / (u_camera_planes.y - u_camera_planes.x);
+					//depth = length(world_pos - u_camera_eye);
 				#else
 					depth = (pos.z / pos.w) * 0.5 + 0.5; //normalize
 				#endif

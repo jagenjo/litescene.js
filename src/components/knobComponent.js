@@ -48,7 +48,7 @@ KnobComponent.prototype.serialize = function()
 
 KnobComponent.prototype.onAddedToNode = function(node)
 {
-	node.interactive = true;
+	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onmousemove,this);
 	this.updateKnob();
 }

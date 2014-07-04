@@ -24,39 +24,36 @@ FogFX["@type"] = { type:"enum", values: {"linear": FogFX.LINEAR, "exponential": 
 
 FogFX.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.bind(Scene,"fillMacros",this.fillMacros,this);
+	//LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
+	LEvent.bind(Scene,"fillSceneMacros",this.fillSceneMacros,this);
+	LEvent.bind(Scene,"fillSceneUniforms",this.fillSceneUniforms,this);
 }
 
 FogFX.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.unbind(Scene,"fillMacros",this.fillMacros,this);
+	//LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
+	LEvent.unbind(Scene,"fillSceneMacros",this.fillSceneMacros, this);
+	LEvent.unbind(Scene,"fillSceneUniforms",this.fillSceneUniforms, this);
 }
 
-FogFX.prototype.fillUniforms = function(e, pass)
+FogFX.prototype.fillSceneMacros = function(e, macros )
 {
 	if(!this.enabled) return;
 
-	pass.uniforms.u_fog_info = [this.start, this.end, this.density ];
-
-	if(pass.light == pass.lights[0])
-		pass.uniforms.u_fog_color = this.color;
-	else
-		pass.uniforms.u_fog_color = [0,0,0];
-}
-
-FogFX.prototype.fillMacros = function(e, pass)
-{
-	if(!this.enabled) return;
-
-	var macros = pass.macros;
 	macros.USE_FOG = ""
 	switch(this.type)
 	{
 		case FogFX.EXP:	macros.USE_FOG_EXP = ""; break;
 		case FogFX.EXP2: macros.USE_FOG_EXP2 = ""; break;
 	}
+}
+
+FogFX.prototype.fillSceneUniforms = function(e, uniforms )
+{
+	if(!this.enabled) return;
+
+	uniforms.u_fog_info = [ this.start, this.end, this.density ];
+	uniforms.u_fog_color = this.color;
 }
 
 LS.registerComponent(FogFX);

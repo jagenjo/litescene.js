@@ -393,6 +393,9 @@ var ResourcesManager = {
 
 	registerResource: function(filename,resource)
 	{
+		//not sure about this
+		resource.filename = filename;
+
 		//get which kind of resource
 		if(!resource.object_type)
 			resource.object_type = LS.getObjectClassName(resource);
@@ -484,6 +487,8 @@ var ResourcesManager = {
 		this.resources[newname] = res;
 		delete this.resources[ old ];
 
+		this.sendResourceRenamedEvent(old, newname, res);
+
 		//ugly: too hardcoded
 		if( this.meshes[old] ) {
 			delete this.meshes[ old ];
@@ -570,6 +575,29 @@ var ResourcesManager = {
 	getTexture: function(name) {
 		if(name != null) return this.textures[name];
 		return null;
+	},
+
+	//tells to all the components, nodes, materials, etc, that one resource has changed its name
+	sendResourceRenamedEvent: function(old_name, new_name, resource)
+	{
+		for(var i = 0; i < Scene._nodes.length; i++)
+		{
+			//nodes
+			var node = Scene._nodes[i];
+
+			//components
+			for(var j = 0; j < node._components.length; j++)
+			{
+				var component = node._components[j];
+				if(component.onResourceRenamed)
+					component.onResourceRenamed( old_name, new_name, resource )
+			}
+	
+			//materials
+			var material = node.getMaterial();
+			if(material && material.onResourceRenamed)
+				material.onResourceRenamed(old_name, new_name, resource)
+		}
 	},
 
 	//*************************************

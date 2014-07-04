@@ -2284,6 +2284,9 @@ var ResourcesManager = {
 
 	registerResource: function(filename,resource)
 	{
+		//not sure about this
+		resource.filename = filename;
+
 		//get which kind of resource
 		if(!resource.object_type)
 			resource.object_type = LS.getObjectClassName(resource);
@@ -2375,6 +2378,8 @@ var ResourcesManager = {
 		this.resources[newname] = res;
 		delete this.resources[ old ];
 
+		this.sendResourceRenamedEvent(old, newname, res);
+
 		//ugly: too hardcoded
 		if( this.meshes[old] ) {
 			delete this.meshes[ old ];
@@ -2461,6 +2466,29 @@ var ResourcesManager = {
 	getTexture: function(name) {
 		if(name != null) return this.textures[name];
 		return null;
+	},
+
+	//tells to all the components, nodes, materials, etc, that one resource has changed its name
+	sendResourceRenamedEvent: function(old_name, new_name, resource)
+	{
+		for(var i = 0; i < Scene._nodes.length; i++)
+		{
+			//nodes
+			var node = Scene._nodes[i];
+
+			//components
+			for(var j = 0; j < node._components.length; j++)
+			{
+				var component = node._components[j];
+				if(component.onResourceRenamed)
+					component.onResourceRenamed( old_name, new_name, resource )
+			}
+	
+			//materials
+			var material = node.getMaterial();
+			if(material && material.onResourceRenamed)
+				material.onResourceRenamed(old_name, new_name, resource)
+		}
 	},
 
 	//*************************************
@@ -4556,7 +4584,7 @@ ComponentContainer.prototype.serializeComponents = function(o)
 }
 
 /**
-* Adds a component to this node.
+* Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
 * @param {Object} component
 * @return {Object} component added
@@ -4665,6 +4693,21 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 	if(!this._components) return null;
 	return this._components[index];
 }
+
+/**
+* Returns the component with that uid
+* @method getComponentByUid
+* @param {Object} component or null
+*/
+ComponentContainer.prototype.getComponentByUid = function(uid)
+{
+	if(!this._components) return null;
+	for(var i = 0; i < this._components.length; i++)
+		if(this._components[i]._uid == uid)
+			return this._components[i];
+	return null;
+}
+
 
 /**
 * executes the method with a given name in all the components
@@ -8617,7 +8660,7 @@ NodeManipulator.icon = "mini-icon-rotator.png";
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	node.interactive = true;
+	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onMouse,this);
 	LEvent.bind(node,"update",this.onUpdate,this);
 }
@@ -8756,39 +8799,36 @@ FogFX["@type"] = { type:"enum", values: {"linear": FogFX.LINEAR, "exponential": 
 
 FogFX.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.bind(Scene,"fillMacros",this.fillMacros,this);
+	//LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
+	LEvent.bind(Scene,"fillSceneMacros",this.fillSceneMacros,this);
+	LEvent.bind(Scene,"fillSceneUniforms",this.fillSceneUniforms,this);
 }
 
 FogFX.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.unbind(Scene,"fillMacros",this.fillMacros,this);
+	//LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
+	LEvent.unbind(Scene,"fillSceneMacros",this.fillSceneMacros, this);
+	LEvent.unbind(Scene,"fillSceneUniforms",this.fillSceneUniforms, this);
 }
 
-FogFX.prototype.fillUniforms = function(e, pass)
+FogFX.prototype.fillSceneMacros = function(e, macros )
 {
 	if(!this.enabled) return;
 
-	pass.uniforms.u_fog_info = [this.start, this.end, this.density ];
-
-	if(pass.light == pass.lights[0])
-		pass.uniforms.u_fog_color = this.color;
-	else
-		pass.uniforms.u_fog_color = [0,0,0];
-}
-
-FogFX.prototype.fillMacros = function(e, pass)
-{
-	if(!this.enabled) return;
-
-	var macros = pass.macros;
 	macros.USE_FOG = ""
 	switch(this.type)
 	{
 		case FogFX.EXP:	macros.USE_FOG_EXP = ""; break;
 		case FogFX.EXP2: macros.USE_FOG_EXP2 = ""; break;
 	}
+}
+
+FogFX.prototype.fillSceneUniforms = function(e, uniforms )
+{
+	if(!this.enabled) return;
+
+	uniforms.u_fog_info = [ this.start, this.end, this.density ];
+	uniforms.u_fog_color = this.color;
 }
 
 LS.registerComponent(FogFX);
@@ -9280,7 +9320,7 @@ KnobComponent.prototype.serialize = function()
 
 KnobComponent.prototype.onAddedToNode = function(node)
 {
-	node.interactive = true;
+	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onmousemove,this);
 	this.updateKnob();
 }
@@ -13997,13 +14037,13 @@ var Renderer = {
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
 			if(render_options.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this.renderFrame.bind(this, this.color_rendertarget, current_camera) );
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this._renderToTexture.bind(this, this.color_rendertarget, current_camera) );
 			else if(render_options.render_fx && this.color_rendertarget) //render color to RT
-				this.color_rendertarget.drawTo(this.renderFrame.bind(this, this.color_rendertarget, current_camera));
+				this.color_rendertarget.drawTo(this._renderToTexture.bind(this, this.color_rendertarget, current_camera));
 			else //Screen render
 			{
 				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
-				this.renderFrame(null,current_camera); //main render
+				this.renderFrame(current_camera); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
 			LEvent.trigger(current_camera, "afterRenderPass", render_options );
@@ -14013,21 +14053,32 @@ var Renderer = {
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
 		scene.triggerInNodes("afterRender", render_options );
-
 	},
 
-	//renders the view from one camera to the current viewport (could be a texture)
-	renderFrame: function (tex, camera)
+	//intermediate function to swap order of parameters
+	_renderToTexture: function( texture, camera)
+	{
+		this.renderFrame( camera, texture );
+	},
+
+	/**
+	* renders the view from one camera to the current viewport (could be a texture)
+	*
+	* @method renderFrame
+	* @param {Camera} the camera 
+	* @param {Texture} output_texture optional, if you want to render to a texture (otherwise is rendered to the viewport)
+	*/
+	renderFrame: function ( camera, output_texture, skip_viewport )
 	{
 		var render_options = this._current_render_options;
 		var scene = this._current_scene;
 
 		//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 		//gl.enable(gl.SCISSOR_TEST);
-		if(tex)
-			Renderer._full_viewport.set([0,0,tex.width, tex.height]);
+		if(output_texture)
+			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
 
-		this.enableCamera( camera, render_options ); //set as active camera and set viewport
+		this.enableCamera( camera, render_options, skip_viewport ); //set as active camera and set viewport
 
 		//Clear (although not necessary if preserveBuffer is disabled)
 		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
@@ -14380,7 +14431,7 @@ var Renderer = {
 			{
 				var light_macros = light.getMacros( instance, render_options );
 
-				var macros = {};
+				var macros = {}; //wipeObject(macros);
 
 				if(iLight == 0) macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
@@ -14640,6 +14691,8 @@ var Renderer = {
 				macros.USE_COLORCLIP_FACTOR = "";
 		}
 
+		LEvent.trigger(scene, "fillSceneMacros", macros );
+
 		scene._macros = macros;
 	},
 
@@ -14686,6 +14739,8 @@ var Renderer = {
 			scene._samplers[i + type] = texture;
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
+
+		LEvent.trigger(scene, "fillSceneUniforms", scene._uniforms );
 	},	
 
 	//you tell what info you want to retrieve associated with this color
@@ -14967,8 +15022,8 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var cams = Camera.cubemap_camera_parameters;
-			if(render_options.is_shadowmap == "shadow")
-				gl.clearColor(0,0,0,0);
+			if(render_options.is_shadowmap)
+				gl.clearColor(0,0,0,1);
 			else
 				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 
@@ -15044,6 +15099,22 @@ var Renderer = {
 
 	getNodeAtCanvasPosition: function(scene, camera, x,y)
 	{
+		var instance = this.getInstanceAtCanvasPosition(scene, camera, x,y);
+		if(!instance)
+			return null;
+
+		if(instance.constructor == SceneNode)
+			return instance;
+
+		if(instance._root && instance._root.constructor == SceneNode)
+			return instance._root;
+
+		if(instance.node)
+			return instance.node;
+
+		return null;
+
+		/*
 		camera = camera || scene.getCamera();
 
 		this._picking_nodes = {};
@@ -15060,6 +15131,7 @@ var Renderer = {
 		if(!info) return null;
 
 		return info.node;
+		*/
 	},
 
 	//used to get special info about the instance below the mouse
@@ -17445,15 +17517,15 @@ SceneTree.prototype.serialize = function()
 }
 
 /**
-* loads a Scene from an Ajax call and pass it to the configure method.
+* loads a scene from a JSON description
 *
-* @method loadScene
+* @method load
 * @param {String} url where the JSON object containing the scene is stored
 * @param {Function}[on_complete=null] the callback to call when the loading is complete
 * @param {Function}[on_error=null] the callback to call if there is a  loading error
 */
 
-SceneTree.prototype.loadScene = function(url, on_complete, on_error)
+SceneTree.prototype.load = function(url, on_complete, on_error)
 {
 	if(!url) return;
 	var that = this;
@@ -18105,7 +18177,7 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 	}
 
 	var that = this;
-	var loaded = ResourcesManager.loadMesh(mesh_filename, options, function(mesh){
+	var loaded = ResourcesManager.load(mesh_filename, options, function(mesh){
 		that.setMesh(mesh.filename);
 		that.loading -= 1;
 		if(that.loading == 0)
@@ -18805,17 +18877,21 @@ function Context(options)
 {
 	options = options || {};
 
+	var container = options.container;
+
 	if(options.container_id)
+		container = document.getElementById(options.container_id);
+
+	if(container)
 	{
-		var container = document.getElementById(options.container_id);
-		if(container)
-		{
-			var canvas = document.createElement("canvas");
-			canvas.width = container.offsetWidth;
-			canvas.height = container.offsetHeight;
-			container.appendChild(canvas);
-			options.canvas = canvas;
-		}
+		//create canvas
+		var canvas = document.createElement("canvas");
+		canvas.width = container.offsetWidth;
+		canvas.height = container.offsetHeight;
+		if(!canvas.width) canvas.width = options.width || 1;
+		if(!canvas.height) canvas.height = options.height || 1;
+		container.appendChild(canvas);
+		options.canvas = canvas;
 	}
 
 	this.gl = GL.create(options);
@@ -18831,9 +18907,12 @@ function Context(options)
 
 	Renderer.init();
 
+	//this will repaint every frame and send events when the mouse clicks objects
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;
+	this.state = "playing";
 
+	//bind all the events 
 	this.gl.ondraw = Context.prototype._ondraw.bind(this);
 	this.gl.onupdate = Context.prototype._onupdate.bind(this);
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
@@ -18843,8 +18922,11 @@ function Context(options)
 	this.gl.onkeydown = Context.prototype._onkey.bind(this);
 	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
+	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+
+	//launch render loop
 	gl.animate();
 }
 
@@ -18856,7 +18938,7 @@ function Context(options)
 */
 Context.prototype.loadScene = function(url, on_complete)
 {
-	Scene.loadScene(url, inner_start);
+	Scene.load(url, inner_start);
 
 	function inner_start()
 	{
@@ -18866,8 +18948,21 @@ Context.prototype.loadScene = function(url, on_complete)
 	}
 }
 
+Context.prototype.pause = function()
+{
+	this.state = "paused";
+}
+
+Context.prototype.play = function()
+{
+	this.state = "playing";
+}
+
 Context.prototype._ondraw = function()
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onPreDraw)
 		this.onPreDraw();
 
@@ -18880,6 +18975,9 @@ Context.prototype._ondraw = function()
 
 Context.prototype._onupdate = function(dt)
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
 
@@ -18893,6 +18991,8 @@ Context.prototype._onupdate = function(dt)
 Context.prototype._onmouse = function(e)
 {
 	//trace(e);
+	if(this.state != "playing")
+		return;
 
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
@@ -18904,7 +19004,7 @@ Context.prototype._onmouse = function(e)
 	var levent = null; //levent dispatched
 
 	//send event to clicked node
-	if(this._clicked_node && this._clicked_node.interactive)
+	if(this._clicked_node && this._clicked_node.flags.interactive)
 	{
 		e.scene_node = this._clicked_node;
 		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
@@ -18927,6 +19027,9 @@ Context.prototype._onmouse = function(e)
 
 Context.prototype._onkey = function(e)
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onKey)
 	{
 		var r = this.onKey(e);

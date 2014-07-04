@@ -26,17 +26,21 @@ function Context(options)
 {
 	options = options || {};
 
+	var container = options.container;
+
 	if(options.container_id)
+		container = document.getElementById(options.container_id);
+
+	if(container)
 	{
-		var container = document.getElementById(options.container_id);
-		if(container)
-		{
-			var canvas = document.createElement("canvas");
-			canvas.width = container.offsetWidth;
-			canvas.height = container.offsetHeight;
-			container.appendChild(canvas);
-			options.canvas = canvas;
-		}
+		//create canvas
+		var canvas = document.createElement("canvas");
+		canvas.width = container.offsetWidth;
+		canvas.height = container.offsetHeight;
+		if(!canvas.width) canvas.width = options.width || 1;
+		if(!canvas.height) canvas.height = options.height || 1;
+		container.appendChild(canvas);
+		options.canvas = canvas;
 	}
 
 	this.gl = GL.create(options);
@@ -52,9 +56,12 @@ function Context(options)
 
 	Renderer.init();
 
+	//this will repaint every frame and send events when the mouse clicks objects
 	this.force_redraw = options.redraw || false;
 	this.interactive = true;
+	this.state = "playing";
 
+	//bind all the events 
 	this.gl.ondraw = Context.prototype._ondraw.bind(this);
 	this.gl.onupdate = Context.prototype._onupdate.bind(this);
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
@@ -64,8 +71,11 @@ function Context(options)
 	this.gl.onkeydown = Context.prototype._onkey.bind(this);
 	this.gl.onkeyup = Context.prototype._onkey.bind(this);
 
+	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+
+	//launch render loop
 	gl.animate();
 }
 
@@ -77,7 +87,7 @@ function Context(options)
 */
 Context.prototype.loadScene = function(url, on_complete)
 {
-	Scene.loadScene(url, inner_start);
+	Scene.load(url, inner_start);
 
 	function inner_start()
 	{
@@ -87,8 +97,21 @@ Context.prototype.loadScene = function(url, on_complete)
 	}
 }
 
+Context.prototype.pause = function()
+{
+	this.state = "paused";
+}
+
+Context.prototype.play = function()
+{
+	this.state = "playing";
+}
+
 Context.prototype._ondraw = function()
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onPreDraw)
 		this.onPreDraw();
 
@@ -101,6 +124,9 @@ Context.prototype._ondraw = function()
 
 Context.prototype._onupdate = function(dt)
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
 
@@ -114,6 +140,8 @@ Context.prototype._onupdate = function(dt)
 Context.prototype._onmouse = function(e)
 {
 	//trace(e);
+	if(this.state != "playing")
+		return;
 
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
@@ -125,7 +153,7 @@ Context.prototype._onmouse = function(e)
 	var levent = null; //levent dispatched
 
 	//send event to clicked node
-	if(this._clicked_node && this._clicked_node.interactive)
+	if(this._clicked_node && this._clicked_node.flags.interactive)
 	{
 		e.scene_node = this._clicked_node;
 		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
@@ -148,6 +176,9 @@ Context.prototype._onmouse = function(e)
 
 Context.prototype._onkey = function(e)
 {
+	if(this.state != "playing")
+		return;
+
 	if(this.onKey)
 	{
 		var r = this.onKey(e);

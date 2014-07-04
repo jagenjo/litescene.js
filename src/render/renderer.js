@@ -132,13 +132,13 @@ var Renderer = {
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
 			if(render_options.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this.renderFrame.bind(this, this.color_rendertarget, current_camera) );
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this._renderToTexture.bind(this, this.color_rendertarget, current_camera) );
 			else if(render_options.render_fx && this.color_rendertarget) //render color to RT
-				this.color_rendertarget.drawTo(this.renderFrame.bind(this, this.color_rendertarget, current_camera));
+				this.color_rendertarget.drawTo(this._renderToTexture.bind(this, this.color_rendertarget, current_camera));
 			else //Screen render
 			{
 				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
-				this.renderFrame(null,current_camera); //main render
+				this.renderFrame(current_camera); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
 			LEvent.trigger(current_camera, "afterRenderPass", render_options );
@@ -148,21 +148,32 @@ var Renderer = {
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
 		scene.triggerInNodes("afterRender", render_options );
-
 	},
 
-	//renders the view from one camera to the current viewport (could be a texture)
-	renderFrame: function (tex, camera)
+	//intermediate function to swap order of parameters
+	_renderToTexture: function( texture, camera)
+	{
+		this.renderFrame( camera, texture );
+	},
+
+	/**
+	* renders the view from one camera to the current viewport (could be a texture)
+	*
+	* @method renderFrame
+	* @param {Camera} the camera 
+	* @param {Texture} output_texture optional, if you want to render to a texture (otherwise is rendered to the viewport)
+	*/
+	renderFrame: function ( camera, output_texture, skip_viewport )
 	{
 		var render_options = this._current_render_options;
 		var scene = this._current_scene;
 
 		//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 		//gl.enable(gl.SCISSOR_TEST);
-		if(tex)
-			Renderer._full_viewport.set([0,0,tex.width, tex.height]);
+		if(output_texture)
+			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
 
-		this.enableCamera( camera, render_options ); //set as active camera and set viewport
+		this.enableCamera( camera, render_options, skip_viewport ); //set as active camera and set viewport
 
 		//Clear (although not necessary if preserveBuffer is disabled)
 		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
@@ -515,7 +526,7 @@ var Renderer = {
 			{
 				var light_macros = light.getMacros( instance, render_options );
 
-				var macros = {};
+				var macros = {}; //wipeObject(macros);
 
 				if(iLight == 0) macros.FIRST_PASS = "";
 				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
@@ -775,6 +786,8 @@ var Renderer = {
 				macros.USE_COLORCLIP_FACTOR = "";
 		}
 
+		LEvent.trigger(scene, "fillSceneMacros", macros );
+
 		scene._macros = macros;
 	},
 
@@ -821,6 +834,8 @@ var Renderer = {
 			scene._samplers[i + type] = texture;
 			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
+
+		LEvent.trigger(scene, "fillSceneUniforms", scene._uniforms );
 	},	
 
 	//you tell what info you want to retrieve associated with this color
@@ -1102,8 +1117,8 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var cams = Camera.cubemap_camera_parameters;
-			if(render_options.is_shadowmap == "shadow")
-				gl.clearColor(0,0,0,0);
+			if(render_options.is_shadowmap)
+				gl.clearColor(0,0,0,1);
 			else
 				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 
@@ -1179,6 +1194,22 @@ var Renderer = {
 
 	getNodeAtCanvasPosition: function(scene, camera, x,y)
 	{
+		var instance = this.getInstanceAtCanvasPosition(scene, camera, x,y);
+		if(!instance)
+			return null;
+
+		if(instance.constructor == SceneNode)
+			return instance;
+
+		if(instance._root && instance._root.constructor == SceneNode)
+			return instance._root;
+
+		if(instance.node)
+			return instance.node;
+
+		return null;
+
+		/*
 		camera = camera || scene.getCamera();
 
 		this._picking_nodes = {};
@@ -1195,6 +1226,7 @@ var Renderer = {
 		if(!info) return null;
 
 		return info.node;
+		*/
 	},
 
 	//used to get special info about the instance below the mouse

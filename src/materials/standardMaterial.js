@@ -123,8 +123,10 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 	if(this.velvet && this.velvet_exp) //first light only
 		macros.USE_VELVET = "";
-	if(this.emissive_material)
+	
+	if(this.emissive_material) //dont know whats this
 		macros.USE_EMISSIVE_MATERIAL = "";
+	
 	if(this.specular_ontop)
 		macros.USE_SPECULAR_ONTOP = "";
 	if(this.specular_on_alpha)

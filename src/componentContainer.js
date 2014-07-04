@@ -78,7 +78,7 @@ ComponentContainer.prototype.serializeComponents = function(o)
 }
 
 /**
-* Adds a component to this node.
+* Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
 * @param {Object} component
 * @return {Object} component added
@@ -187,6 +187,21 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 	if(!this._components) return null;
 	return this._components[index];
 }
+
+/**
+* Returns the component with that uid
+* @method getComponentByUid
+* @param {Object} component or null
+*/
+ComponentContainer.prototype.getComponentByUid = function(uid)
+{
+	if(!this._components) return null;
+	for(var i = 0; i < this._components.length; i++)
+		if(this._components[i]._uid == uid)
+			return this._components[i];
+	return null;
+}
+
 
 /**
 * executes the method with a given name in all the components
