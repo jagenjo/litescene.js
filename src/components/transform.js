@@ -74,6 +74,7 @@ Transform.prototype.configure = function(o)
 	}
 
 	this._dirty = true;
+	this.updateGlobalMatrix();
 	this._on_change();
 }
 

@@ -1118,7 +1118,7 @@ var Renderer = {
 
 			var cams = Camera.cubemap_camera_parameters;
 			if(render_options.is_shadowmap)
-				gl.clearColor(0,0,0,1);
+				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 

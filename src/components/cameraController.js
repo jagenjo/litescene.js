@@ -115,19 +115,10 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			else
 			{
 				cam.orbit(-mouse_event.deltax * this.rot_speed,[0,1,0], this.orbit_center);
-				//if(e.shiftKey)
-				//{
-					cam.updateMatrices();
-					var right = cam.getLocalVector([1,0,0]);
-					cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
-				/*
-				}
-				else
-				{
-					cam.orbitDistanceFactor(1 + mouse_event.deltay * 0.01, this.orbit_center);
-					cam.updateMatrices();
-				}
-				*/
+				cam.updateMatrices();
+				var right = cam.getLocalVector([1,0,0]);
+				cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
+
 			}
 		}
 	}

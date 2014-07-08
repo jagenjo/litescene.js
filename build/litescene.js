@@ -3934,8 +3934,10 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 	if(this.velvet && this.velvet_exp) //first light only
 		macros.USE_VELVET = "";
-	if(this.emissive_material)
+	
+	if(this.emissive_material) //dont know whats this
 		macros.USE_EMISSIVE_MATERIAL = "";
+	
 	if(this.specular_ontop)
 		macros.USE_SPECULAR_ONTOP = "";
 	if(this.specular_on_alpha)
@@ -5038,6 +5040,7 @@ Transform.prototype.configure = function(o)
 	}
 
 	this._dirty = true;
+	this.updateGlobalMatrix();
 	this._on_change();
 }
 
@@ -7110,7 +7113,7 @@ Light.prototype.generateShadowmap = function (render_options)
 		renderer._current_target = this._shadowmap;
 		this._shadowmap.drawTo(function() {
 
-			gl.clearColor(0, 0, 0, 1);
+			gl.clearColor(0, 0, 0, 0);
 			//gl.clearColor(1, 1, 1, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -15023,7 +15026,7 @@ var Renderer = {
 
 			var cams = Camera.cubemap_camera_parameters;
 			if(render_options.is_shadowmap)
-				gl.clearColor(0,0,0,1);
+				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
 

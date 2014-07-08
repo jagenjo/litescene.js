@@ -85,8 +85,9 @@
 
 				if (depth > 0.0) {
 					float bias = -1.0 * u_shadow_params.y;
-					//multiply by 30000 to get a little gradient
-					shadow = clamp(30000.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
+					//multiply by 30 to get a little gradient
+					//shadow = clamp(30.0 * (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5 - depth), 0.0, 1.0);
+					shadow = (bias + v_light_coord.z / v_light_coord.w * 0.5 + 0.5) > depth ? 1.0 : 0.0;
 				}
 				return shadow;
 			}
