@@ -123,23 +123,25 @@ Transform.prototype.getPosition = function(p)
 /**
 * Returns the global position (its a copy)
 * @method getGlobalPosition
-* @return {[[x,y,z]]} the position
+* @param {vec3} out [optional] where to store the position, otherwise one vec3 is created and returned
+* @return {vec3} the position
 */
 Transform.prototype.getGlobalPosition = function(p)
 {
 	if(this._parent)
 	{
-		var tmp = vec3.create();
+		var tmp = vec3.create(); //created for 0,0,0
 		return mat4.multiplyVec3( p || tmp, this.getGlobalMatrix(), tmp );
 	}
-	if(p) return vec3.copy(p,this._position);
+	if(p) 
+		return vec3.copy(p,this._position);
 	return vec3.clone( this._position );
 }
 
 /**
 * Returns the rotation in quaternion array (a copy)
 * @method getRotation
-* @return {[[x,y,z,w]]} the rotation
+* @return {quat} the rotation
 */
 Transform.prototype.getRotation = function()
 {
@@ -159,7 +161,7 @@ Transform.prototype.getScale = function()
 /**
 * Returns the scale in global (its a copy)
 * @method getGlobalScale
-* @return {[[x,y,z]]} the scale
+* @return {vec3} the scale
 */
 Transform.prototype.getGlobalScale = function()
 {

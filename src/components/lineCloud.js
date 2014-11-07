@@ -140,10 +140,10 @@ LineCloud.prototype.updateMesh = function ()
 
 	//upload geometry
 	this._mesh.vertexBuffers["vertices"].data = vertices;
-	this._mesh.vertexBuffers["vertices"].compile();
+	this._mesh.vertexBuffers["vertices"].upload();
 
 	this._mesh.vertexBuffers["colors"].data = colors;
-	this._mesh.vertexBuffers["colors"].compile();
+	this._mesh.vertexBuffers["colors"].upload();
 }
 
 LineCloud._identity = mat4.create();

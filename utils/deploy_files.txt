@@ -50,7 +50,6 @@
 ../src/components/oculusController.js
 
 ../src/graph/scene.js
-../src/graph/texture.js
 
 ../src/render/renderOptions.js
 ../src/render/renderInstance.js

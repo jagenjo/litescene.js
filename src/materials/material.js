@@ -302,7 +302,7 @@ Material.prototype.configure = function(o)
 */
 Material.prototype.serialize = function()
 {
-	 var o = cloneObject(this);
+	 var o = LS.cloneObject(this);
 	 o.material_class = getObjectClassName(this);
 	 return o;
 }

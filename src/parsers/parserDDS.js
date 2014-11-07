@@ -9,11 +9,11 @@ var parserDDS = {
 		var texture = new GL.Texture(0,0, options);
 		if(!window.DDS)
 			throw("dds.js script must be included, not found");
-		DDS.loadDDSTextureFromMemoryEx(gl,ext, data, texture.handler, true);
+		DDS.loadDDSTextureFromMemoryEx(gl,ext, data, texture, true);
 		//console.log( DDS.getDDSTextureFromMemoryEx(data) );
-		texture.texture_type = texture.handler.texture_type;
-		texture.width = texture.handler.width;
-		texture.height = texture.handler.height;
+		//texture.texture_type = texture.handler.texture_type;
+		//texture.width = texture.handler.width;
+		//texture.height = texture.handler.height;
 		//texture.bind();
 		return texture;
 	}

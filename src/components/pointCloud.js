@@ -189,13 +189,13 @@ PointCloud.prototype.updateMesh = function (camera)
 
 	//upload geometry
 	this._mesh.vertexBuffers["vertices"].data = vertices;
-	this._mesh.vertexBuffers["vertices"].compile();
+	this._mesh.vertexBuffers["vertices"].upload();
 
 	this._mesh.vertexBuffers["colors"].data = colors;
-	this._mesh.vertexBuffers["colors"].compile();
+	this._mesh.vertexBuffers["colors"].upload();
 
 	this._mesh.vertexBuffers["extra2"].data = extra2;
-	this._mesh.vertexBuffers["extra2"].compile();
+	this._mesh.vertexBuffers["extra2"].upload();
 }
 
 PointCloud._identity = mat4.create();

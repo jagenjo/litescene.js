@@ -1,5 +1,9 @@
 /* Requires LiteGraph.js ******************************/
 
+//on include, link to resources manager
+LGraphTexture.textures_container = LS.ResourcesManager.textures;
+LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent

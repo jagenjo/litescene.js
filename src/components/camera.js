@@ -14,8 +14,8 @@ function Camera(o)
 
 	this._type = Camera.PERSPECTIVE;
 
-	this._eye = vec3.fromValues(0,100, 100); //change to position
-	this._center = vec3.fromValues(0,0,0);	//change to target
+	this._eye = vec3.fromValues(0,100, 100); //TODO: change to position
+	this._center = vec3.fromValues(0,0,0);	//TODO: change to target
 	this._up = vec3.fromValues(0,1,0);
 	
 	this._near = 1;
@@ -399,9 +399,30 @@ Camera.prototype.getLocalVector = function(v, dest)
 Camera.prototype.getEye = function()
 {
 	var eye = vec3.clone( this._eye );
-	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
+	if(this._root && this._root.transform)
+	{
+		return this._root.transform.getGlobalPosition(eye);
+		//return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
+	}
 	return eye;
+}
+
+
+/**
+* returns the center of the camera (position where the camera is pointing)
+* @method getCenter
+* @return {vec3} position in global coordinates
+*/
+Camera.prototype.getCenter = function()
+{
+	if(this._root && this._root.transform)
+	{
+		var center = vec3.fromValues(0,0,-1);
+		return mat4.multiplyVec3(center, this._root.transform.getGlobalMatrixRef(), center );
+	}
+
+	var center = vec3.clone( this._center );
+	return center;
 }
 
 /**
@@ -411,9 +432,13 @@ Camera.prototype.getEye = function()
 */
 Camera.prototype.getFront = function()
 {
-	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
-	if(this._root && this._root.transform && this._root._parent)
+	if(this._root && this._root.transform)
+	{
+		var front = vec3.fromValues(0,0,-1);
 		return mat4.rotateVec3(front, this._root.transform.getGlobalMatrixRef(), front );
+	}
+
+	var front = vec3.sub( vec3.create(), this._center, this._eye ); 
 	return vec3.normalize(front, front);
 }
 
@@ -425,8 +450,11 @@ Camera.prototype.getFront = function()
 Camera.prototype.getUp = function()
 {
 	var up = vec3.clone( this._up );
-	if(this._root && this._root.transform && this._root._parent)
+
+	if(this._root && this._root.transform)
+	{
 		return mat4.rotateVec3( up, this._root.transform.getGlobalMatrixRef(), up );
+	}
 	return up;
 }
 
@@ -462,18 +490,6 @@ Camera.prototype.getRight = function()
 	return right;
 }
 
-/**
-* returns the center of the camera (position where the camera is pointing)
-* @method getCenter
-* @return {vec3} position in global coordinates
-*/
-Camera.prototype.getCenter = function()
-{
-	var center = vec3.clone( this._center );
-	if(this._root && this._root.transform && this._root._parent)
-		return mat4.multiplyVec3(center, this._root.transform.getGlobalMatrixRef(), center );
-	return center;
-}
 
 Camera.prototype.setEye = function(v)
 {

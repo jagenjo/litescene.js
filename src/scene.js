@@ -305,7 +305,15 @@ SceneTree.prototype.appendScene = function(scene)
 
 SceneTree.prototype.getCamera = function()
 {
-	return this._root.camera;
+	var camera = this._root.camera;
+	if(camera) 
+		return camera;
+
+	if(this._cameras && this._cameras.length)
+		return this._cameras[0];
+
+	this.collectData(); //slow
+	return this._cameras[0];
 }
 
 SceneTree.prototype.getLight = function()

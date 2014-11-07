@@ -569,11 +569,11 @@
 					#endif
 
 					#ifdef USE_BACKLIGHT
-						if(NdotL > 0.0 != gl_FrontFacing)
-							NdotL *= u_backlight_factor;
+						//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
+						if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
 					#else
-						if(NdotL > 0.0 != gl_FrontFacing)
-							NdotL = 0.0;
+						//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
+						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
 					#endif
 
 					NdotL = abs(NdotL);
@@ -1476,11 +1476,11 @@
 					#endif
 
 					#ifdef USE_BACKLIGHT
-						if(NdotL > 0.0 != gl_FrontFacing)
-							NdotL *= u_backlight_factor;
+						//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
+						if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
 					#else
-						if(NdotL > 0.0 != gl_FrontFacing)
-							NdotL = 0.0;
+						//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
+						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
 					#endif
 
 					NdotL = abs(NdotL);

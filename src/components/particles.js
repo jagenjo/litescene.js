@@ -434,19 +434,19 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 	//upload geometry
 	this._mesh.vertexBuffers["vertices"].data = this._vertices;
-	this._mesh.vertexBuffers["vertices"].compile();
+	this._mesh.vertexBuffers["vertices"].upload();
 
 	this._mesh.vertexBuffers["colors"].data = this._colors;
-	this._mesh.vertexBuffers["colors"].compile();
+	this._mesh.vertexBuffers["colors"].upload();
 
 	if(recompute_coords)
 	{
 		this._mesh.vertexBuffers["coords"].data = this._coords;
-		this._mesh.vertexBuffers["coords"].compile();
+		this._mesh.vertexBuffers["coords"].upload();
 	}
 
 	//this._mesh.vertices = this._vertices;
-	//this._mesh.compile();
+	//this._mesh.upload();
 }
 
 ParticleEmissor._identity = mat4.create();

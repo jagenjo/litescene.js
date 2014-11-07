@@ -272,9 +272,9 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 				this._skinned_mesh.indexBuffers[i] = mesh.indexBuffers[i];
 
 			//new ones clonning old ones
-			this._skinned_mesh.addVertexBuffer("vertices","a_vertex", 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
+			this._skinned_mesh.createVertexBuffer("vertices","a_vertex", 3, new Float32Array( vertex_buffer.data ), gl.STREAM_DRAW );
 			if(normal_buffer)
-				this._skinned_mesh.addVertexBuffer("normals","a_normal", 3, new Float32Array( normal_buffer.data ), gl.STREAM_DRAW );
+				this._skinned_mesh.createVertexBuffer("normals","a_normal", 3, new Float32Array( normal_buffer.data ), gl.STREAM_DRAW );
 		}
 
 
@@ -388,9 +388,9 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	}
 
 	//upload
-	vertices_buffer.compile(gl.STREAM_DRAW);
+	vertices_buffer.upload(gl.STREAM_DRAW);
 	if(normals_buffer)
-		normals_buffer.compile(gl.STREAM_DRAW);
+		normals_buffer.upload(gl.STREAM_DRAW);
 }
 
 LS.registerComponent(SkinnedMeshRenderer);

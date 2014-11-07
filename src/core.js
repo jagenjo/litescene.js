@@ -321,7 +321,17 @@ function cloneObject(object, target)
 				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 		}
 		else //slow but safe
-			o[i] = JSON.parse( JSON.stringify(v) );
+		{
+			try
+			{
+				//prevent circular recursions
+				o[i] = JSON.parse( JSON.stringify(v) );
+			}
+			catch (err)
+			{
+				console.error(err);
+			}
+		}
 	}
 	return o;
 }
