@@ -3248,7 +3248,7 @@ var ShadersManager = {
 
 //used for hashing keys
 String.prototype.hashCode = function(){
-    var hash = 0, i, c;
+    var hash = 0, i, c, l;
     if (this.length == 0) return hash;
     for (i = 0, l = this.length; i < l; ++i) {
         c  = this.charCodeAt(i);
@@ -4272,6 +4272,31 @@ function SurfaceMaterial(o)
 }
 
 SurfaceMaterial.icon = "mini-icon-material.png";
+SurfaceMaterial.coding_help = "\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+";
 
 SurfaceMaterial.prototype.onCodeChange = function()
 {
@@ -8923,9 +8948,10 @@ GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
+GeometricPrimitive.HEMISPHERE = 6;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
-GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE, "Circle":GeometricPrimitive.CIRCLE }};
+GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER,  "Sphere":GeometricPrimitive.SPHERE, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -8960,6 +8986,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.CIRCLE:
 			this._mesh = GL.Mesh.circle({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true});
+			break;
+		case GeometricPrimitive.HEMISPHERE:
+			this._mesh = GL.Mesh.sphere({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true, hemi: true});
 			break;
 	}
 	this._key = key;
@@ -8999,8 +9028,11 @@ LS.registerComponent(GeometricPrimitive);
 /* Requires LiteGraph.js ******************************/
 
 //on include, link to resources manager
-LGraphTexture.textures_container = LS.ResourcesManager.textures;
-LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+if(typeof(LGraphTexture) != "undefined")
+{
+	LGraphTexture.textures_container = LS.ResourcesManager.textures;
+	LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+}
 
 /**
 * This component allow to integrate a behaviour graph on any object
@@ -10635,6 +10667,23 @@ ScriptComponent.translate_events = {
 	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
 	"finish": "stop", "stop":"finish"};
 
+ScriptComponent.coding_help = "\n\
+Global vars:\n\
+ + node : represent the node where this component is attached.\n\
+ + component : represent the component.\n\
+ + this : represents the script context\n\
+\n\
+Exported functions:\n\
+ + start: when the Scene starts\n\
+ + update: when updating\n\
+ + trigger : if this node is triggered\n\
+ + render : before rendering the node\n\
+ + afterRender : after rendering the node\n\
+ + finish : when the scene stops\n\
+\n\
+Remember, all basic vars attached to this will be exported as global.\n\
+";
+
 ScriptComponent.prototype.getContext = function()
 {
 	if(this._script)
@@ -11079,7 +11128,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 			RI.flags = flags;
 
 		RI.setMesh(mesh);
-		RI.material = material;
+		RI.setMaterial( material );
 
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
 		mat4.translate( RI.matrix, global, tmp );

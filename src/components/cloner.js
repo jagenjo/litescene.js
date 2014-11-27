@@ -144,7 +144,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 			RI.flags = flags;
 
 		RI.setMesh(mesh);
-		RI.material = material;
+		RI.setMaterial( material );
 
 		tmp.set([x * offset[0] - hsize[0],y * offset[1] - hsize[1], z * offset[2] - hsize[2]]);
 		mat4.translate( RI.matrix, global, tmp );

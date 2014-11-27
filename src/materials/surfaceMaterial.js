@@ -34,6 +34,31 @@ function SurfaceMaterial(o)
 }
 
 SurfaceMaterial.icon = "mini-icon-material.png";
+SurfaceMaterial.coding_help = "\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+";
 
 SurfaceMaterial.prototype.onCodeChange = function()
 {
