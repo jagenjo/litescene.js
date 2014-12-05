@@ -73,11 +73,14 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//special cases
+		var texture_info = this.getTextureInfo(i);
+		if(!texture_info) continue;
+		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
 
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
+		
 		/*
 		if(i == "environment")
 		{
@@ -175,13 +178,23 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
+		var sampler = this.getTextureInfo(i);
+		if(!sampler)
+			continue;
 
-		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = texture;
-		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		var texture = sampler.texture;
+		if(!texture)
+			continue;
+
+		if(texture.constructor === String)
+			texture = ResourcesManager.textures[texture];
+		else if (texture.constructor != Texture)
+			continue;		
+		if(!texture)  //loading or non-existant
+			continue;
+
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = sampler;
+		var texture_uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
 		//last_slot += 1;
 
 		//special cases

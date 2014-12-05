@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -479,7 +481,17 @@ function cloneObject(object, target)
 				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 		}
 		else //slow but safe
-			o[i] = JSON.parse( JSON.stringify(v) );
+		{
+			try
+			{
+				//prevent circular recursions
+				o[i] = JSON.parse( JSON.stringify(v) );
+			}
+			catch (err)
+			{
+				console.error(err);
+			}
+		}
 	}
 	return o;
 }

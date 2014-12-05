@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -231,11 +233,14 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
-		//special cases
+		var texture_info = this.getTextureInfo(i);
+		if(!texture_info) continue;
+		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
+		
 		/*
 		if(i == &quot;environment&quot;)
 		{
@@ -281,8 +286,10 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 
 	if(this.velvet &amp;&amp; this.velvet_exp) //first light only
 		macros.USE_VELVET = &quot;&quot;;
-	if(this.emissive_material)
+	
+	if(this.emissive_material) //dont know whats this
 		macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
+	
 	if(this.specular_ontop)
 		macros.USE_SPECULAR_ONTOP = &quot;&quot;;
 	if(this.specular_on_alpha)
@@ -331,13 +338,23 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
+		var sampler = this.getTextureInfo(i);
+		if(!sampler)
+			continue;
 
-		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;)] = texture;
-		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ,texture]);
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = texture.bind( last_slot );
-		var texture_uvs = this.textures[i + &quot;_uvs&quot;] || Material.DEFAULT_UVS[i] || &quot;0&quot;;
+		var texture = sampler.texture;
+		if(!texture)
+			continue;
+
+		if(texture.constructor === String)
+			texture = ResourcesManager.textures[texture];
+		else if (texture.constructor != Texture)
+			continue;		
+		if(!texture)  //loading or non-existant
+			continue;
+
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;)] = sampler;
+		var texture_uvs = sampler.uvs || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 		//last_slot += 1;
 
 		//special cases

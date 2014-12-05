@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -236,13 +238,16 @@ ComponentContainer.prototype.serializeComponents = function(o)
 }
 
 /**
-* Adds a component to this node.
+* Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
 * @param {Object} component
 * @return {Object} component added
 */
 ComponentContainer.prototype.addComponent = function(component)
 {
+	if(!component)
+		return console.error(&quot;addComponent cannot receive null&quot;);
+
 	//link component with container
 	component._root = this;
 	if(component.onAddedToNode)
@@ -264,6 +269,9 @@ ComponentContainer.prototype.addComponent = function(component)
 */
 ComponentContainer.prototype.removeComponent = function(component)
 {
+	if(!component)
+		return console.error(&quot;removeComponent cannot receive null&quot;);
+
 	//unlink component with container
 	component._root = null;
 	if(component.onRemovedFromNode)
@@ -339,6 +347,21 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 	if(!this._components) return null;
 	return this._components[index];
 }
+
+/**
+* Returns the component with that uid
+* @method getComponentByUid
+* @param {Object} component or null
+*/
+ComponentContainer.prototype.getComponentByUid = function(uid)
+{
+	if(!this._components) return null;
+	for(var i = 0; i &lt; this._components.length; i++)
+		if(this._components[i]._uid == uid)
+			return this._components[i];
+	return null;
+}
+
 
 /**
 * executes the method with a given name in all the components

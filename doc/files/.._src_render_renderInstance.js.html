@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -177,7 +179,7 @@ var RI_BLEND = 				1 &lt;&lt; 5; //use blend function
 var RI_CAST_SHADOWS = 		1 &lt;&lt; 8;	//render in shadowmaps
 var RI_RECEIVE_SHADOWS =	1 &lt;&lt; 9;	//receive shadowmaps
 var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum 
+var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
 var RI_RENDER_2D = 			1 &lt;&lt; 12;//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 13; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 14; //ignore the plane clipping (in reflections)
@@ -376,7 +378,7 @@ RenderInstance.prototype.updateAABB = function()
 }
 
 /**
-* Calls render taking into account primitive and submesh id
+* Calls render taking into account primitive and range
 *
 * @method render
 * @param {Shader} shader
@@ -386,6 +388,14 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.overlapsSphere = function(center, radius)
+{
+	//we dont know if the bbox of the instance is valid
+	if(this.flags &amp; RI_IGNORE_FRUSTUM)
+		return true;
+	return geo.testSphereBBox( center, radius, this.aabb );
 }
 
 

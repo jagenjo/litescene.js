@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.PhysicsInstance</title>
+    <title>LS.Components.CameraFX</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -154,7 +154,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.PhysicsInstance Class</h1>
+                        <h1>LS.Components.CameraFX Class</h1>
 <div class="box meta">
     
 
@@ -162,7 +162,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_physics.js.html#l3"><code>..&#x2F;src&#x2F;physics.js:3</code></a>
+            Defined in: <a href="../files/.._src_components_cameraFX.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;cameraFX.js:1</code></a>
         </div>
     
 
@@ -174,67 +174,10 @@
 
 
 <div class="box intro">
-    <p>PhysicsInstance contains info of one object to test physics against</p>
+    <p>This component allow to create basic FX</p>
 
 </div>
 
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-        <div id="method_LS.PhysicsInstance" class="method item">
-    <h3 class="name"><code>LS.PhysicsInstance</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_physics.js.html#l3"><code>..&#x2F;src&#x2F;physics.js:3</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-    </div>
 
 
 <div id="classdocs" class="tabview">
@@ -260,7 +203,7 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_updateAABB">updateAABB</a>
+                                <a href="#method_configure">configure</a>
 
                                 
                                 
@@ -282,11 +225,21 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_updateAABB" class="method item">
-    <h3 class="name"><code>updateAABB</code></h3>
+                    <div id="method_configure" class="method item">
+    <h3 class="name"><code>configure</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>o</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -314,7 +267,7 @@
             
         
         
-        <a href="../files/.._src_physics.js.html#l37"><code>..&#x2F;src&#x2F;physics.js:37</code></a>
+        <a href="../files/.._src_components_cameraFX.js.html#l86"><code>..&#x2F;src&#x2F;components&#x2F;cameraFX.js:86</code></a>
         
         </p>
 
@@ -325,10 +278,34 @@
     </div>
 
     <div class="description">
-        <p>Computes the instance bounding box in world space from the one in local space</p>
+        <p>Returns the first component of this container that is of the same class</p>
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">o</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>object with the configuration info from a previous serialization</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     

@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -314,14 +316,14 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_loadResources">loadResources</a>
+                                <a href="#method_load">load</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_loadScene">loadScene</a>
+                                <a href="#method_loadResources">loadResources</a>
 
                                 
                                 
@@ -570,7 +572,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l392"><code>..&#x2F;src&#x2F;scene.js:392</code></a>
+        <a href="../files/.._src_scene.js.html#l400"><code>..&#x2F;src&#x2F;scene.js:400</code></a>
         
         </p>
 
@@ -677,7 +679,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l438"><code>..&#x2F;src&#x2F;scene.js:438</code></a>
+        <a href="../files/.._src_scene.js.html#l446"><code>..&#x2F;src&#x2F;scene.js:446</code></a>
         
         </p>
 
@@ -784,7 +786,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l420"><code>..&#x2F;src&#x2F;scene.js:420</code></a>
+        <a href="../files/.._src_scene.js.html#l428"><code>..&#x2F;src&#x2F;scene.js:428</code></a>
         
         </p>
 
@@ -891,7 +893,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l452"><code>..&#x2F;src&#x2F;scene.js:452</code></a>
+        <a href="../files/.._src_scene.js.html#l460"><code>..&#x2F;src&#x2F;scene.js:460</code></a>
         
         </p>
 
@@ -997,7 +999,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l466"><code>..&#x2F;src&#x2F;scene.js:466</code></a>
+        <a href="../files/.._src_scene.js.html#l474"><code>..&#x2F;src&#x2F;scene.js:474</code></a>
         
         </p>
 
@@ -1132,65 +1134,8 @@ Call it to clear the scene content</p>
 </div>
 
                 
-                    <div id="method_loadResources" class="method item">
-    <h3 class="name"><code>loadResources</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l486"><code>..&#x2F;src&#x2F;scene.js:486</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>loads all the resources of all the nodes in this scene
-it sends a signal to every node to get all the resources info
-and load them in bulk using the ResourceManager</p>
-
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_loadScene" class="method item">
-    <h3 class="name"><code>loadScene</code></h3>
+                    <div id="method_load" class="method item">
+    <h3 class="name"><code>load</code></h3>
 
     
         <div class="args">
@@ -1254,7 +1199,7 @@ and load them in bulk using the ResourceManager</p>
     </div>
 
     <div class="description">
-        <p>loads a Scene from an Ajax call and pass it to the configure method.</p>
+        <p>loads a scene from a JSON description</p>
 
     </div>
 
@@ -1324,6 +1269,63 @@ and load them in bulk using the ResourceManager</p>
 </div>
 
                 
+                    <div id="method_loadResources" class="method item">
+    <h3 class="name"><code>loadResources</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l494"><code>..&#x2F;src&#x2F;scene.js:494</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>loads all the resources of all the nodes in this scene
+it sends a signal to every node to get all the resources info
+and load them in bulk using the ResourceManager</p>
+
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_render" class="method item">
     <h3 class="name"><code>render</code></h3>
 
@@ -1356,7 +1358,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l570"><code>..&#x2F;src&#x2F;scene.js:570</code></a>
+        <a href="../files/.._src_scene.js.html#l578"><code>..&#x2F;src&#x2F;scene.js:578</code></a>
         
         </p>
 
@@ -1496,7 +1498,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l538"><code>..&#x2F;src&#x2F;scene.js:538</code></a>
+        <a href="../files/.._src_scene.js.html#l546"><code>..&#x2F;src&#x2F;scene.js:546</code></a>
         
         </p>
 
@@ -1585,7 +1587,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l554"><code>..&#x2F;src&#x2F;scene.js:554</code></a>
+        <a href="../files/.._src_scene.js.html#l562"><code>..&#x2F;src&#x2F;scene.js:562</code></a>
         
         </p>
 
@@ -1680,7 +1682,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l667"><code>..&#x2F;src&#x2F;scene.js:667</code></a>
+        <a href="../files/.._src_scene.js.html#l675"><code>..&#x2F;src&#x2F;scene.js:675</code></a>
         
         </p>
 

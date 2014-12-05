@@ -155,7 +155,10 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	
 	var mat = this._root.getMaterial();
 	if(mat)
-		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_FLIPPED_SCREEN);
+	{
+		var sampler = mat.setTexture(Material.ENVIRONMENT_TEXTURE, this.rt_name ? this.rt_name : this._rt);
+		sampler.uvs = Material.COORDS_FLIPPED_SCREEN;
+	}
 }
 
 LS.registerComponent(RealtimeReflector);

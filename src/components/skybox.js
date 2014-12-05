@@ -83,17 +83,17 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material = new LS.Material({use_scene_ambient:false});
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
-	mat.textures["color"] = texture;
+	var sampler = mat.setTexture( Material.COLOR, texture);
 
 	if(texture && texture.texture_type == gl.TEXTURE_2D)
 	{
-		mat.textures["color_uvs"] = "polar_vertex";
+		sampler.uvs = "polar_vertex";
 		texture.bind(0);
 		texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
 		texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 	}
 	else
-		delete mat.textures["color_uvs"];
+		sampler.uvs = "0";
 
 	RI.setMesh(mesh);
 

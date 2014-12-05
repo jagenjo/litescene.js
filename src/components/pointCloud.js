@@ -231,7 +231,7 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 		material.opacity = this.global_opacity - 0.01;
 	this._last_premultiply = this.premultiplied_alpha;
 
-	material.setTexture( this.texture );
+	material.setTexture( Material.COLOR, this.texture );
 	material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	material.constant_diffuse = true;
 	material.extra_uniforms = { u_pointSize: this.size };

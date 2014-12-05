@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -180,9 +182,10 @@ GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
 GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
+GeometricPrimitive.HEMISPHERE = 6;
 
 GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
-GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER,  &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Circle&quot;:GeometricPrimitive.CIRCLE }};
+GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER,  &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -217,6 +220,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.CIRCLE:
 			this._mesh = GL.Mesh.circle({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true});
+			break;
+		case GeometricPrimitive.HEMISPHERE:
+			this._mesh = GL.Mesh.sphere({size: this.size, slices:subdivisions, xz: this.align_z, normals:true, coords:true, hemi: true});
 			break;
 	}
 	this._key = key;

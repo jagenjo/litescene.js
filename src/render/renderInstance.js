@@ -218,7 +218,7 @@ RenderInstance.prototype.updateAABB = function()
 }
 
 /**
-* Calls render taking into account primitive and submesh id
+* Calls render taking into account primitive and range
 *
 * @method render
 * @param {Shader} shader

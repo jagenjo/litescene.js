@@ -6,6 +6,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ComponentContainer",
         "LS.Components.Camera",
         "LS.Components.CameraController",
+        "LS.Components.CameraFX",
         "LS.Components.FXGraphComponent",
         "LS.Components.FaceTo",
         "LS.Components.FollowNode",

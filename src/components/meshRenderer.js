@@ -154,8 +154,15 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
 
-	if(this.submesh_id != -1 && this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 && this.submesh_id != null && mesh.info && mesh.info.groups)
+	{
+		var group = mesh.info.groups[this.submesh_id];
+		if(group)
+			RI.setRange( group.start, group.length );
+	}
+	else
+		RI.setRange(0,-1);
+
 
 	//used for raycasting
 	if(this.lod_mesh)

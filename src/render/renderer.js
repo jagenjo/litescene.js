@@ -13,8 +13,7 @@ var Renderer = {
 	default_render_options: new RenderOptions(),
 	default_material: new StandardMaterial(), //used for objects without material
 
-	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
-	depth_rendertarget: null, //depth texture to store depth
+	assigned_render_frame_callbacks: [],
 
 	default_point_size: 5,
 
@@ -51,8 +50,19 @@ var Renderer = {
 
 	reset: function()
 	{
-		this.color_rendertarget = null;
-		this.depth_rendertarget = null;
+	},
+
+	/**
+	* Overwrites the default rendering to screen function, allowing to render to one or several textures
+	* The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
+	* Callback must return the texture output or null
+	* Warning: this must be set before every frame, becaue this are cleared after rendering the frame
+	* @method assignRenderFrameCallback
+	* @param {Function} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
+	*/
+	assignRenderFrameCallback: function(callback)
+	{
+		this.assigned_render_frame_callbacks.push( callback );
 	},
 
 	/**
@@ -86,6 +96,10 @@ var Renderer = {
 		//get render instances, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
+		//shadowmaps are generated during processVisibleData but maybe some are missing
+		LEvent.trigger(scene, "renderShadows", render_options );
+		scene.triggerInNodes("renderShadows", render_options );
+
 		//settings for cameras
 		var cameras = this._visible_cameras;
 		if(main_camera) // && !render_options.render_all_cameras )
@@ -94,26 +108,7 @@ var Renderer = {
 
 		scene.triggerInNodes("afterVisibility", render_options );		
 
-		//generate shadowmaps
-		/*
-		if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
-		{
-			LEvent.trigger(scene, "generateShadowmaps", render_options );
-			for(var i in this._visible_lights) 
-			{
-				var light = this._visible_lights[i];
-				if( light.cast_shadows )
-					light.generateShadowmap( render_options );
-			}
-
-			//LEvent.triggerArray( this._visible_lights, "generateShadowmaps", render_options );
-			//this.renderShadowMaps(scene, render_options);
-		}
-		*/
-
-		LEvent.trigger(scene, "afterRenderShadows", render_options );
-		scene.triggerInNodes("afterRenderShadows", render_options );
-
+		//in case some realtime reflections are needed, this is the moment
 		LEvent.trigger(scene, "renderReflections", render_options );
 		scene.triggerInNodes("renderReflections", render_options );
 
@@ -124,26 +119,43 @@ var Renderer = {
 		for(var i in cameras)
 		{
 			var current_camera = cameras[i];
-			LEvent.trigger(current_camera, "beforeRenderPass", render_options );
-			LEvent.trigger(scene, "beforeRenderPass", render_options );
+			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
+			LEvent.trigger(scene, "beforeRenderFrame", render_options );
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
+			//use render frame callbacks chain (used for postFX or strange renderers)
+			if(render_options.render_fx && this.assigned_render_frame_callbacks.length)
+			{
+				var callbacks = this.assigned_render_frame_callbacks;
+				var output = null;
+				for(var j = 0; j < callbacks.length; j++)
+					output = callbacks[j]( current_camera, render_options, output );
+			}
+			else
+				this.renderFrame(current_camera); //main render
+
+			/*
 			if(render_options.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this._renderToTexture.bind(this, this.color_rendertarget, current_camera) );
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera) );
 			else if(render_options.render_fx && this.color_rendertarget) //render color to RT
-				this.color_rendertarget.drawTo(this._renderToTexture.bind(this, this.color_rendertarget, current_camera));
+				this.color_rendertarget.drawTo(this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera));
 			else //Screen render
 			{
 				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 				this.renderFrame(current_camera); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
-			LEvent.trigger(current_camera, "afterRenderPass", render_options );
-			LEvent.trigger(scene, "afterRenderPass", render_options );
+			*/
+			LEvent.trigger(current_camera, "afterRenderFrame", render_options );
+			LEvent.trigger(scene, "afterRenderFrame", render_options );
 		}
+
+		//clear render frame callbacks
+		this.assigned_render_frame_callbacks.length = 0; //clear
+
 
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
@@ -151,7 +163,7 @@ var Renderer = {
 	},
 
 	//intermediate function to swap order of parameters
-	_renderToTexture: function( texture, camera)
+	renderFrameToTexture: function( texture, camera )
 	{
 		this.renderFrame( camera, texture );
 	},
@@ -170,6 +182,7 @@ var Renderer = {
 
 		//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 		//gl.enable(gl.SCISSOR_TEST);
+		//get info about the viewport from the output texture
 		if(output_texture)
 			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
 
@@ -426,6 +439,51 @@ var Renderer = {
 		gl.lineWidth(1);
 	},
 
+	bindSamplers: function(samplers, shader)
+	{
+		var sampler_uniforms = {};
+		var slot = 0;
+		for(var i in samplers)
+		{
+			var sampler = samplers[i];
+			if(!sampler) //weird case
+				throw("Samplers should always be valid values"); //assert
+
+			if(shader && !shader[i])
+				continue;
+
+			//REFACTOR THIS
+			var tex = null;
+			if(sampler.constructor === String || sampler.constructor === Texture) //old way
+				tex = sampler;
+			else if(sampler.texture)
+				tex = sampler.texture;
+			else
+				continue;
+
+			if(tex.constructor === String)
+				tex = ResourcesManager.textures[ tex ];
+			if(!tex)
+				continue;
+
+			//bind
+			sampler_uniforms[ i ] = tex.bind( slot++ );
+
+			//texture properties
+			if(sampler.minFilter)
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+			if(sampler.magFilter)
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
+			if(sampler.wrap)
+			{
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
+			}
+		}
+
+		return sampler_uniforms;
+	},
+
 	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
@@ -471,10 +529,7 @@ var Renderer = {
 		samplers.merge( instance_final_samplers );
 
 		//enable samplers and store where [TODO: maybe they are not used..., improve here]
-		var sampler_uniforms = {};
-		var slot = 0;
-		for(var i in samplers)
-			sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+		var sampler_uniforms = this.bindSamplers( samplers );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -648,11 +703,14 @@ var Renderer = {
 		samplers.merge( scene._samplers );
 		samplers.merge( instance_final_samplers );
 
+
+		var sampler_uniforms = this.bindSamplers( samplers, shader );
+		/*
 		var slot = 1;
-		var sampler_uniforms = {};
 		for(var i in samplers)
 			if(shader.samplers[i]) //only enable a texture if the shader uses it
 				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+		*/
 
 		shader.uniforms( sampler_uniforms );
 		shader.uniforms( scene._uniforms );
@@ -820,7 +878,7 @@ var Renderer = {
 		//if(scene.textures.environment)
 		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
 
-		for(var i in scene.textures) 
+		for(var i in scene.textures)
 		{
 			var texture = LS.getTexture( scene.textures[i] );
 			if(!texture) continue;
@@ -1018,7 +1076,7 @@ var Renderer = {
 		}
 
 
-		//prepare lights
+		//prepare lights (collect data and generate shadowmaps)
 		var lights = scene._lights;
 		for(var i in lights)
 			lights[i].prepare(render_options);

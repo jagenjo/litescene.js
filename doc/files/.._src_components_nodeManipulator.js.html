@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -174,7 +176,7 @@ NodeManipulator.icon = &quot;mini-icon-rotator.png&quot;;
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	node.interactive = true;
+	node.flags.interactive = true;
 	LEvent.bind(node,&quot;mousemove&quot;,this.onMouse,this);
 	LEvent.bind(node,&quot;update&quot;,this.onUpdate,this);
 }

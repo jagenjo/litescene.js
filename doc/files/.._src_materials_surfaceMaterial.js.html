@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -192,6 +194,31 @@ function SurfaceMaterial(o)
 }
 
 SurfaceMaterial.icon = &quot;mini-icon-material.png&quot;;
+SurfaceMaterial.coding_help = &quot;\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+&quot;;
 
 SurfaceMaterial.prototype.onCodeChange = function()
 {
@@ -280,7 +307,8 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot;)
 		{
 			var texture = LS.getTexture( prop.value );
-			if(!texture) continue;
+			if(!texture) 
+				continue;
 			samplers[prop.name] = texture;
 		}
 		else
@@ -353,7 +381,11 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return this[name];
 
 	if( name.substr(0,4) == &quot;tex_&quot;)
-		return this.textures[ name.substr(4) ];
+	{
+		var tex = this.textures[ name.substr(4) ];
+		if(!tex) return null;
+		return tex.texture;
+	}
 
 	for(var i in this.properties)
 	{
@@ -407,24 +439,35 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 /**
 * Assigns a texture to a channel
 * @method setTexture
+* @param {String} channel 
 * @param {Texture} texture
-* @param {String} channel default is COLOR
 */
-SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
+	if(!channel)
+		throw(&quot;Material.prototype.setTexture channel must be specified&quot;);
+
+	uvs = uvs || Material.DEFAULT_UVS[channel];
+	filter = filter || gl.LINEAR;
+	wrap = wrap || gl.REPEAT;
 
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
 		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot;)
 			continue;
+
 		if(channel &amp;&amp; prop.name != channel) //assign to the channel or if there is no channel just to the first one
 			continue;
 
 		prop.value = texture;
-		if(this.textures)
-			this.textures[channel] = texture;
-		if(!channel)
-			break;
+		var sampler = this.textures[channel];
+		if(!sampler)
+			sampler = this.textures[channel] = { texture: texture, uvs: &quot;0&quot;, wrap: 0, minFilter: 0, magFilter: 0 }; //sampler
+
+		if(sampler_options)
+			for(var i in sampler_options)
+				sampler[i] = sampler_options[i];
+		break;
 	}
 
 	if(!texture) return;

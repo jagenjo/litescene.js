@@ -142,14 +142,21 @@
 			        vec3 dpdy = dFdy(position);
 					vec3 r1 = cross(dpdy, normal);
 					vec3 r2 = cross(normal, dpdx);
+
 					vec2 dtdx = dFdx(uvs) * factor;
 					vec2 dtdy = dFdy(uvs) * factor;
 
 			        float h = texture2D( texture,  uvs ).r;
-			        float hdx = texture2D( texture,  uvs + dtdx).r;
-			        float hdy = texture2D( texture,  uvs + dtdy).r;					
+			        float hdx = texture2D( texture,  uvs + dtdx ).r;
+			        float hdy = texture2D( texture,  uvs + dtdy ).r;					
 
-					return normalize(normal - (r1 * (hdx - h) + r2 * (hdy - h)) / dot(dpdx, r1));						
+					return normalize(normal + (r1 * (hdx - h) - r2 * (hdy - h)) / dot(dpdx, r1));
+					/*
+			        float h = texture2D( texture,  uvs ).r;
+			        float hdx = dFdx( h ) * factor;
+			        float hdy = dFdy( h ) * factor;
+					return normalize(normal + (r1 * (hdx - h) - r2 * (hdy - h)) / dot(dpdx, r1));
+					*/
 				}
 		]]>
 	</snippet>

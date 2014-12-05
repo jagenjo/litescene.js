@@ -3403,12 +3403,16 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//special cases
+		var texture_info = this.getTextureInfo(i);
+		if(!texture_info)
+			continue;
+		var uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
 
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
+
+		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + uvs;
 	}
 
 	//if(this.reflection_factor > 0.0) 
@@ -3500,25 +3504,17 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 
 	uniforms.u_reflection = this.reflection_factor;
 
-
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
+		var texture_info = this.getTextureInfo(i);
+		if(!texture_info) continue;
 
-		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture;
-		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//last_slot += 1;
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
 
-		if(texture.texture_type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
-		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
-		}
+		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture_info;
 	}
 
 	//add extra uniforms
@@ -3606,10 +3602,9 @@ Material.prototype.clone = function()
 * @param {Texture || url} texture_or_filename
 * @param {String} channel
 */
-Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, options)
+Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, options)
 {
 	options = options || {};
-	channel = channel || Material.COLOR_TEXTURE;
 	var that = this;
 	//if(!this.material) this.material = new Material();
 
@@ -3617,16 +3612,16 @@ Material.prototype.loadAndSetTexture = function(texture_or_filename, channel, op
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
 			ResourcesManager.load(texture_or_filename,options, function(texture) {
-				that.setTexture(texture, channel);
+				that.setTexture(channel, texture);
 				if(options.on_complete)
 					options.on_complete();
 			});
 		else
-			this.setTexture(texture_or_filename, channel);
+			this.setTexture(channel, texture_or_filename);
 	}
 	else //otherwise just assign whatever
 	{
-		this.setTexture(texture_or_filename, channel);
+		this.setTexture(channel, texture_or_filename);
 		if(options.on_complete)
 			options.on_complete();
 	}
@@ -3651,7 +3646,7 @@ Material.prototype.getProperties = function()
 
 	var textures = this.getTextureChannels();
 	for(var i in textures)
-		o["tex_" + textures[i]] = "Texture";
+		o["tex_" + textures[i]] = "Sampler";
 	return o;
 }
 
@@ -3701,7 +3696,15 @@ Material.prototype.setProperty = function(name, value)
 				this[name].set( value );
 			break;
 		case "textures":
-			this.textures = cloneObject(value);
+			//legacy
+			for(var i in value)
+			{
+				var tex = value[i];
+				if(typeof(tex) == "string")
+					tex = { texture: tex, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 };
+				this.textures[i] = tex;
+			}
+			//this.textures = cloneObject(value);
 			break;
 		case "transparency": //special cases
 			this.opacity = 1 - value;
@@ -3727,43 +3730,116 @@ Material.prototype.getTextureChannels = function()
 
 
 /**
-* Assigns a texture to a channel
+* Assigns a texture to a channel and its sampling parameters
 * @method setTexture
+* @param {String} channel for a list of supported channels by this material call getTextureChannels()
 * @param {Texture} texture
-* @param {String} channel default is COLOR
+* @param {Object} sampler_options
 */
-Material.prototype.setTexture = function(texture, channel, uvs) {
-	channel = channel || Material.COLOR_TEXTURE;
-	if(texture)
-	{
-		this.textures[channel] = texture;
-		if(uvs)	this.textures[channel + "_uvs"] = uvs;
-	}
-	else
+Material.prototype.setTexture = function( channel, texture, sampler_options ) {
+	if(!channel)
+		throw("Material.prototype.setTexture channel must be specified");
+
+	if(!texture)
 	{
 		delete this.textures[channel];
-		delete this.textures[channel + "_uvs"];
+		return;
 	}
 
-	if(!texture) return;
-	if(texture.constructor == String && texture[0] != ":")
-		ResourcesManager.load(texture);
+	var sampler = this.textures[channel];
+	if(!sampler)
+		this.textures[channel] = sampler = { texture: texture, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
+	else
+		sampler.texture = texture;
+
+	if(sampler_options)
+		for(var i in sampler_options)
+			sampler[i] = sampler_options[i];
+
+	if(texture.constructor === String && texture[0] != ":")
+		LS.ResourcesManager.load(texture);
+
+	return sampler;
 }
 
 /**
-* Returns a texture from a channel
-* @method setTexture
+* Set a property of the sampling (wrap, uvs, filter)
+* @method setTextureProperty
+* @param {String} channel for a list of supported channels by this material call getTextureChannels()
+* @param {String} property could be "uvs", "filter", "wrap"
+* @param {*} value the value, for uvs check Material.TEXTURE_COORDINATES, filter is gl.NEAREST or gl.LINEAR and wrap gl.CLAMP_TO_EDGE, gl.MIRROR or gl.REPEAT
+*/
+Material.prototype.setTextureProperty = function( channel, property, value )
+{
+	var sampler = this.textures[channel];
+
+	if(!sampler)
+	{
+		if(property == "texture")
+			this.textures[channel] = sampler = { texture: value, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
+		return;
+	}
+
+	sampler[ property ] = value;
+}
+
+/**
+* Returns the texture in a channel
+* @method getTexture
 * @param {String} channel default is COLOR
 * @return {Texture}
 */
 Material.prototype.getTexture = function(channel) {
+	channel = channel || Material.COLOR_TEXTURE;
+
 	var v = this.textures[channel];
-	if(!v) return null;
-	if(v.constructor == String)
-		return ResourcesManager.textures[v];
-	else if(v.constructor == Texture)
-		return v;
+	if(!v) 
+		return null;
+	var tex = v.texture;
+	if(tex.constructor === String)
+		return LS.ResourcesManager.textures[tex];
+	else if(tex.constructor == Texture)
+		return tex;
 	return null;
+}
+
+/**
+* Returns the texture info of one texture channel (filter, wrap, uvs)
+* @method getTextureInfo
+* @param {String} channel get available channels using getTextureChannels
+* @return {Texture}
+*/
+Material.prototype.getTextureInfo = function(channel) {
+	return this.textures[ channel ];
+}
+
+Material.getTextureFromSampler = function(sampler)
+{
+	var texture = sampler.constructor === String ? sampler : sampler.texture;
+	if(!texture) //weird case
+		return null;
+
+	//fetch
+	if(texture.constructor === String)
+		texture = LS.ResourcesManager.textures[ texture ];
+	
+	if (!texture || texture.constructor != Texture)
+		return null;
+	return texture;
+}
+
+/**
+* Assigns a texture and its info to one texture channel (filter, wrap, uvs)
+* @method setTextureInfo
+* @param {String} channel default is COLOR
+* @param {Object} info { texture, uvs, wrap, filter }
+* @return {Texture}
+*/
+Material.prototype.setTextureInfo = function(channel, info) {
+	if(!info)
+		delete this.textures[ channel ];
+	else
+		this.textures[ channel ] = v;
 }
 
 /**
@@ -3775,8 +3851,13 @@ Material.prototype.getTexture = function(channel) {
 Material.prototype.getResources = function (res)
 {
 	for(var i in this.textures)
-		if(typeof(this.textures[i]) == "string" && i.substr(-4) != "_uvs") //ends in this string
-			res[ this.textures[i] ] = Texture;
+	{
+		var tex_info = this.textures[i];
+		if(!tex_info) 
+			continue;
+		if(typeof(tex_info.texture) == "string")
+			res[ tex_info.texture ] = Texture;
+	}
 	return res;
 }
 
@@ -3789,8 +3870,13 @@ Material.prototype.getResources = function (res)
 Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 	for(var i in this.textures)
-		if(this.textures[i] == old_name)
-			this.textures[i] = new_name;
+	{
+		var tex_info = this.textures[i];
+		if(!tex_info)
+			continue;
+		if(tex_info.texture == old_name)
+			tex_info.texture = new_name;
+	}
 }
 
 /**
@@ -3894,11 +3980,14 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
-		//special cases
+		var texture_info = this.getTextureInfo(i);
+		if(!texture_info) continue;
+		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
 
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
+		
 		/*
 		if(i == "environment")
 		{
@@ -3996,13 +4085,23 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture = this.getTexture(i);
-		if(!texture) continue;
+		var sampler = this.getTextureInfo(i);
+		if(!sampler)
+			continue;
 
-		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = texture;
-		//this._bind_textures.push([i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ,texture]);
-		//uniforms[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture.bind( last_slot );
-		var texture_uvs = this.textures[i + "_uvs"] || Material.DEFAULT_UVS[i] || "0";
+		var texture = sampler.texture;
+		if(!texture)
+			continue;
+
+		if(texture.constructor === String)
+			texture = ResourcesManager.textures[texture];
+		else if (texture.constructor != Texture)
+			continue;		
+		if(!texture)  //loading or non-existant
+			continue;
+
+		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = sampler;
+		var texture_uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
 		//last_slot += 1;
 
 		//special cases
@@ -4385,7 +4484,8 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		if(prop.type == "texture" || prop.type == "cubemap")
 		{
 			var texture = LS.getTexture( prop.value );
-			if(!texture) continue;
+			if(!texture) 
+				continue;
 			samplers[prop.name] = texture;
 		}
 		else
@@ -4458,7 +4558,11 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return this[name];
 
 	if( name.substr(0,4) == "tex_")
-		return this.textures[ name.substr(4) ];
+	{
+		var tex = this.textures[ name.substr(4) ];
+		if(!tex) return null;
+		return tex.texture;
+	}
 
 	for(var i in this.properties)
 	{
@@ -4512,24 +4616,35 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 /**
 * Assigns a texture to a channel
 * @method setTexture
+* @param {String} channel 
 * @param {Texture} texture
-* @param {String} channel default is COLOR
 */
-SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
+	if(!channel)
+		throw("Material.prototype.setTexture channel must be specified");
+
+	uvs = uvs || Material.DEFAULT_UVS[channel];
+	filter = filter || gl.LINEAR;
+	wrap = wrap || gl.REPEAT;
 
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap")
 			continue;
+
 		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
 			continue;
 
 		prop.value = texture;
-		if(this.textures)
-			this.textures[channel] = texture;
-		if(!channel)
-			break;
+		var sampler = this.textures[channel];
+		if(!sampler)
+			sampler = this.textures[channel] = { texture: texture, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 }; //sampler
+
+		if(sampler_options)
+			for(var i in sampler_options)
+				sampler[i] = sampler_options[i];
+		break;
 	}
 
 	if(!texture) return;
@@ -6622,6 +6737,260 @@ Camera.prototype.applyTransformMatrix = function( matrix, center, element )
 
 LS.registerComponent(Camera);
 LS.Camera = Camera;
+/**
+* This component allow to create basic FX
+* @class CameraFX
+* @param {Object} o object with the serialized info
+*/
+function CameraFX(o)
+{
+	this.enabled = true;
+	this.use_viewport_size = true;
+	this.use_high_precision = false;
+	this.use_antialiasing = false;
+
+	this.fx = [];
+
+	if(o)
+		this.configure(o);
+
+	//debug
+	//this.addFX("threshold");
+}
+
+CameraFX.icon = "mini-icon-camera.png";
+CameraFX.buffer_size = [1024,512];
+
+CameraFX.available_fx = {
+	"brightness/contrast": {
+		name: "Brightness & Contrast",
+		uniforms: {
+			brightness: { name: "u_brightness", type: "float", value: 1, min: 0, max: 2, step: 0.01 },
+			contrast: { name: "u_contrast", type: "float", value: 1, min: 0, max: 2, step: 0.01 }
+		},
+		code:"color.xyz = (color.xyz * u_brightness@ - vec3(0.5)) * u_contrast@ + vec3(0.5);"
+	},
+	"invert": {
+		name: "Invert color",
+		code:"color.xyz = vec3(1.0) - color.xyz;"
+	},
+	"threshold": {
+		name: "Threshold",
+		uniforms: {
+			threshold: { name: "u_threshold", type: "float", value: 0.5, min: 0, max: 2, step: 0.01 },
+			threshold_width: { name: "u_threshold_width", type: "float", value: 0.01, min: 0, max: 1, step: 0.001 }
+		},
+		code:"color.xyz = vec3( smoothstep( u_threshold@ - u_threshold_width@ * 0.5, u_threshold@ + u_threshold_width@ * 0.5,  length(color.xyz) ));"
+	},
+	"colorize": {
+		name: "Colorize",
+		uniforms: {
+			colorize: { name: "u_colorize", type: "color3", value: [1,1,1] },
+			vibrance: { name: "u_vibrance", type: "float", value: 0.0, min: 0, max: 2, step: 0.01 }
+		},
+		code:"color.xyz = color.xyz * (u_colorize@ + vec3(u_vibrance@ * 0.1)) * (1.0 + u_vibrance@);"
+	},
+	"halftone": {
+		name: "Halftone",
+		uniforms: {
+			halftone_angle: { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
+			halftone_size: { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
+		},
+		functions: ["pattern"],
+		code:"color.x = ( (color.x * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );" + 
+			"color.y = ( (color.y * 10.0 - 5.0) + pattern( u_halftone_angle@ + 0.167, u_halftone_size@ ) );" + 
+			"color.z = ( (color.z * 10.0 - 5.0) + pattern( u_halftone_angle@ + 0.333, u_halftone_size@ ) );"
+	},
+	"halftone B/N": {
+		name: "HalftoneBN",
+		uniforms: {
+			halftone_angle: { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
+			halftone_size: { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
+		},
+		functions: ["pattern"],
+		code:"color.xyz = vec3( (length(color.xyz) * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );"
+	}
+};
+
+CameraFX.available_functions = {
+	pattern: "float pattern(float angle, float size) {\n\
+				float s = sin(angle * 3.1415), c = cos(angle * 3.1415);\n\
+				vec2 tex = v_coord * u_viewport.xy;\n\
+				vec2 point = vec2( c * tex.x - s * tex.y , s * tex.x + c * tex.y ) * size;\n\
+				return (sin(point.x) * sin(point.y)) * 4.0;\n\
+			}\n\
+		"
+}
+
+/**
+* Returns the first component of this container that is of the same class
+* @method configure
+* @param {Object} o object with the configuration info from a previous serialization
+*/
+CameraFX.prototype.configure = function(o)
+{
+	this.enabled = !!o.enabled;
+	this.use_viewport_size = !!o.use_viewport_size;
+	this.use_high_precision = !!o.use_high_precision;
+	this.use_antialiasing = !!o.use_antialiasing;
+
+}
+
+CameraFX.prototype.serialize = function()
+{
+	return { 
+		enabled: this.enabled,
+		use_antialiasing: this.use_antialiasing,
+		use_high_precision: this.use_high_precision,
+		use_viewport_size: this.use_viewport_size
+	};
+}
+
+CameraFX.prototype.getResources = function(res)
+{
+	//TODO
+	return res;
+}
+
+CameraFX.prototype.addFX = function(name)
+{
+	this.fx.push({ name: name });
+}
+
+CameraFX.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+}
+
+CameraFX.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+}
+
+CameraFX.prototype.onBeforeRender = function(e, render_options)
+{
+	if(this.enabled)
+		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+}
+
+CameraFX.prototype.onRenderFrame = function(current_camera, render_options, previous_output )
+{
+	var width = CameraFX.buffer_size[0];
+	var height = CameraFX.buffer_size[1];
+	if( this.use_viewport_size )
+	{
+		width = gl.canvas.width;
+		height = gl.canvas.height;
+	}
+
+	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+
+	//scene already drawn
+	if(!previous_output)
+	{
+		if( !this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type )
+		{
+			this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
+		}
+		var that = this;
+		this.color_texture.drawTo( inner_render_frame );
+	}
+
+	//render frame
+	function inner_render_frame(texture)
+	{
+			Renderer.renderFrame( current_camera, that.color_rendertarget );
+	}
+
+	var frame = previous_output || this.color_texture;
+
+	//shadercode
+	var key = "";
+	var update_shader = true;
+	for(var i = 0; i < this.fx.length; i++)
+		key += this.fx[i] + "|";
+	if(key == this._last_shader_key)
+		update_shader = false;
+	this._last_shader_key = key;
+
+	var code = "";
+	var included_functions = {};
+	var uniforms_code = "";
+	var uniforms = { u_viewport: vec2.fromValues(frame.width,frame.height) };
+
+	var fx_id = 0;
+	for(var i = 0; i < this.fx.length; i++)
+	{
+		var fx = this.fx[i];
+		fx_id = i;
+		var fx_info = CameraFX.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+		if(update_shader)
+		{
+			if(fx_info.functions)
+				for(var z in fx_info.functions)
+					included_functions[ fx_info.functions[z] ] = true;
+			code += fx_info.code.split("@").join( fx_id ) + ";\n";
+		}
+		if(fx_info.uniforms)
+			for(var j in fx_info.uniforms)
+			{
+				var uniform = fx_info.uniforms[j];
+				var varname = uniform.name + fx_id;
+				if(update_shader)
+				{
+					uniforms_code += "uniform " + uniform.type + " " + varname + ";\n";
+				}
+				uniforms[ varname ] = fx[j] !== undefined ? fx[j] : uniform.value;
+			}
+	}
+
+
+	var shader = null;
+	if(update_shader)
+	{
+		var functions_code = "";
+		for(var i in included_functions)
+		{
+			var func = CameraFX.available_functions[ i ];
+			if(!func)
+			{
+				console.error("CameraFX: Function not found: " + i);
+				continue;
+			}
+			functions_code += func + "\n";
+		}
+
+		var fullcode = "precision highp float;\n\
+			#define color3 vec3\n\
+			#define color4 vec4\n\
+			uniform sampler2D u_texture;\n\
+			varying vec2 v_coord;\n\
+			uniform vec2 u_viewport;\n\
+			" + uniforms_code + "\n\
+			" + functions_code + "\n\
+			void main() {\n\
+				vec4 color = texture2D(u_texture, v_coord);\n\
+				float temp = 0.0;\n\
+				" + code + "\n\
+				gl_FragColor = color;\n\
+			}\n\
+			";
+
+		this._last_shader = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, fullcode );
+	}
+
+	shader = this._last_shader;
+
+	//apply FX HERE
+	frame.toViewport(shader, uniforms);
+	return null;
+}
+
+
+LS.registerComponent(CameraFX);
+window.CameraFX = CameraFX;
 //***** LIGHT ***************************
 
 /**
@@ -7565,8 +7934,15 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
 
-	if(this.submesh_id != -1 && this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 && this.submesh_id != null && mesh.info && mesh.info.groups)
+	{
+		var group = mesh.info.groups[this.submesh_id];
+		if(group)
+			RI.setRange( group.start, group.length );
+	}
+	else
+		RI.setRange(0,-1);
+
 
 	//used for raycasting
 	if(this.lod_mesh)
@@ -8117,17 +8493,17 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material = new LS.Material({use_scene_ambient:false});
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
-	mat.textures["color"] = texture;
+	var sampler = mat.setTexture( Material.COLOR, texture);
 
 	if(texture && texture.texture_type == gl.TEXTURE_2D)
 	{
-		mat.textures["color_uvs"] = "polar_vertex";
+		sampler.uvs = "polar_vertex";
 		texture.bind(0);
 		texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
 		texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
 	}
 	else
-		delete mat.textures["color_uvs"];
+		sampler.uvs = "0";
 
 	RI.setMesh(mesh);
 
@@ -9045,6 +9421,10 @@ function GraphComponent(o)
 	this.force_redraw = true;
 
 	this.on_event = "update";
+
+	if(typeof(LGraphTexture) == "undefined")
+		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
+
 	this._graph = new LGraph();
 
 	if(o)
@@ -9157,6 +9537,10 @@ function FXGraphComponent(o)
 	this.use_viewport_size = false;
 	this.use_high_precision = false;
 	this.use_antialiasing = false;
+
+	if(typeof(LGraphTexture) == "undefined")
+		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
+
 	this._graph = new LGraph();
 	if(o)
 	{
@@ -9235,25 +9619,19 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,"beforeRenderPass", this.onBeforeRender, this );
-	LEvent.bind(Scene,"afterRenderPass", this.onAfterRender, this );
+	LEvent.bind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+	LEvent.bind(Scene,"afterRenderFrame", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRenderPass", this.onBeforeRender, this );
-	LEvent.unbind(Scene,"afterRenderPass", this.onAfterRender, this );
-	Renderer.color_rendertarget = null;
-	Renderer.depth_rendertarget = null;
+	LEvent.unbind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+	LEvent.unbind(Scene,"afterRenderFrame", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
 	if(!this._graph || !render_options.render_fx) return;
-
-	var use_depth = false;
-	if(this._graph_depth_texture_node && this._graph_depth_texture_node.isOutputConnected(0))
-		use_depth = true;
 
 	var width = FXGraphComponent.buffer_size[0];
 	var height = FXGraphComponent.buffer_size[1];
@@ -9261,9 +9639,6 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 	{
 		width = gl.canvas.width;
 		height = gl.canvas.height;
-		//var v = gl.getParameter(gl.VIEWPORT);
-		//width = v[2];
-		//height = v[3];
 	}
 
 	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
@@ -9274,25 +9649,29 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 		ResourcesManager.textures[":color_buffer"] = this.color_texture;
 	}
 
-	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && use_depth)
+	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
 	{
 		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 		ResourcesManager.textures[":depth_buffer"] = this.depth_texture;
 	}		
 
 	if(this.enabled)
+		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+}
+
+FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_options, previous_output)
+{
+	var that = this;
+
+	Texture.drawToColorAndDepth( this.color_texture, this.depth_texture, inner_render_frame );
+
+	//render frame
+	function inner_render_frame(texture)
 	{
-		Renderer.color_rendertarget = this.color_texture;
-		if(use_depth)
-			Renderer.depth_rendertarget = this.depth_texture;
-		else
-			Renderer.depth_rendertarget = null;
+			Renderer.renderFrame( current_camera, that.color_rendertarget );
 	}
-	else
-	{
-		Renderer.color_rendertarget = null;
-		Renderer.depth_rendertarget = null;
-	}
+
+	return this.color_rendertarget;
 }
 
 
@@ -10138,7 +10517,7 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 		material.opacity = this.global_opacity - 0.01;
 	this._last_premultiply = this.premultiplied_alpha;
 
-	material.setTexture( this.texture );
+	material.setTexture( Material.COLOR, this.texture );
 	material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	material.constant_diffuse = true;
 	material.extra_uniforms = { u_pointSize: this.size };
@@ -10637,7 +11016,10 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	
 	var mat = this._root.getMaterial();
 	if(mat)
-		mat.setTexture(this.rt_name ? this.rt_name : this._rt, Material.ENVIRONMENT_TEXTURE, Material.COORDS_FLIPPED_SCREEN);
+	{
+		var sampler = mat.setTexture(Material.ENVIRONMENT_TEXTURE, this.rt_name ? this.rt_name : this._rt);
+		sampler.uvs = Material.COORDS_FLIPPED_SCREEN;
+	}
 }
 
 LS.registerComponent(RealtimeReflector);
@@ -12094,7 +12476,7 @@ RenderInstance.prototype.updateAABB = function()
 }
 
 /**
-* Calls render taking into account primitive and submesh id
+* Calls render taking into account primitive and range
 *
 * @method render
 * @param {Shader} shader
@@ -12138,8 +12520,7 @@ var Renderer = {
 	default_render_options: new RenderOptions(),
 	default_material: new StandardMaterial(), //used for objects without material
 
-	color_rendertarget: null, //null means screen, otherwise if texture it will render to that texture
-	depth_rendertarget: null, //depth texture to store depth
+	assigned_render_frame_callbacks: [],
 
 	default_point_size: 5,
 
@@ -12176,8 +12557,19 @@ var Renderer = {
 
 	reset: function()
 	{
-		this.color_rendertarget = null;
-		this.depth_rendertarget = null;
+	},
+
+	/**
+	* Overwrites the default rendering to screen function, allowing to render to one or several textures
+	* The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
+	* Callback must return the texture output or null
+	* Warning: this must be set before every frame, becaue this are cleared after rendering the frame
+	* @method assignRenderFrameCallback
+	* @param {Function} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
+	*/
+	assignRenderFrameCallback: function(callback)
+	{
+		this.assigned_render_frame_callbacks.push( callback );
 	},
 
 	/**
@@ -12211,6 +12603,10 @@ var Renderer = {
 		//get render instances, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
+		//shadowmaps are generated during processVisibleData but maybe some are missing
+		LEvent.trigger(scene, "renderShadows", render_options );
+		scene.triggerInNodes("renderShadows", render_options );
+
 		//settings for cameras
 		var cameras = this._visible_cameras;
 		if(main_camera) // && !render_options.render_all_cameras )
@@ -12219,26 +12615,7 @@ var Renderer = {
 
 		scene.triggerInNodes("afterVisibility", render_options );		
 
-		//generate shadowmaps
-		/*
-		if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
-		{
-			LEvent.trigger(scene, "generateShadowmaps", render_options );
-			for(var i in this._visible_lights) 
-			{
-				var light = this._visible_lights[i];
-				if( light.cast_shadows )
-					light.generateShadowmap( render_options );
-			}
-
-			//LEvent.triggerArray( this._visible_lights, "generateShadowmaps", render_options );
-			//this.renderShadowMaps(scene, render_options);
-		}
-		*/
-
-		LEvent.trigger(scene, "afterRenderShadows", render_options );
-		scene.triggerInNodes("afterRenderShadows", render_options );
-
+		//in case some realtime reflections are needed, this is the moment
 		LEvent.trigger(scene, "renderReflections", render_options );
 		scene.triggerInNodes("renderReflections", render_options );
 
@@ -12249,26 +12626,43 @@ var Renderer = {
 		for(var i in cameras)
 		{
 			var current_camera = cameras[i];
-			LEvent.trigger(current_camera, "beforeRenderPass", render_options );
-			LEvent.trigger(scene, "beforeRenderPass", render_options );
+			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
+			LEvent.trigger(scene, "beforeRenderFrame", render_options );
 
 			//Render scene to screen, buffer, to Color&Depth buffer 
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
+			//use render frame callbacks chain (used for postFX or strange renderers)
+			if(render_options.render_fx && this.assigned_render_frame_callbacks.length)
+			{
+				var callbacks = this.assigned_render_frame_callbacks;
+				var output = null;
+				for(var j = 0; j < callbacks.length; j++)
+					output = callbacks[j]( current_camera, render_options, output );
+			}
+			else
+				this.renderFrame(current_camera); //main render
+
+			/*
 			if(render_options.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this._renderToTexture.bind(this, this.color_rendertarget, current_camera) );
+				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera) );
 			else if(render_options.render_fx && this.color_rendertarget) //render color to RT
-				this.color_rendertarget.drawTo(this._renderToTexture.bind(this, this.color_rendertarget, current_camera));
+				this.color_rendertarget.drawTo(this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera));
 			else //Screen render
 			{
 				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 				this.renderFrame(current_camera); //main render
 				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
 			}
-			LEvent.trigger(current_camera, "afterRenderPass", render_options );
-			LEvent.trigger(scene, "afterRenderPass", render_options );
+			*/
+			LEvent.trigger(current_camera, "afterRenderFrame", render_options );
+			LEvent.trigger(scene, "afterRenderFrame", render_options );
 		}
+
+		//clear render frame callbacks
+		this.assigned_render_frame_callbacks.length = 0; //clear
+
 
 		//events
 		LEvent.trigger(scene, "afterRender", render_options );
@@ -12276,7 +12670,7 @@ var Renderer = {
 	},
 
 	//intermediate function to swap order of parameters
-	_renderToTexture: function( texture, camera)
+	renderFrameToTexture: function( texture, camera )
 	{
 		this.renderFrame( camera, texture );
 	},
@@ -12295,6 +12689,7 @@ var Renderer = {
 
 		//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
 		//gl.enable(gl.SCISSOR_TEST);
+		//get info about the viewport from the output texture
 		if(output_texture)
 			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
 
@@ -12551,6 +12946,51 @@ var Renderer = {
 		gl.lineWidth(1);
 	},
 
+	bindSamplers: function(samplers, shader)
+	{
+		var sampler_uniforms = {};
+		var slot = 0;
+		for(var i in samplers)
+		{
+			var sampler = samplers[i];
+			if(!sampler) //weird case
+				throw("Samplers should always be valid values"); //assert
+
+			if(shader && !shader[i])
+				continue;
+
+			//REFACTOR THIS
+			var tex = null;
+			if(sampler.constructor === String || sampler.constructor === Texture) //old way
+				tex = sampler;
+			else if(sampler.texture)
+				tex = sampler.texture;
+			else
+				continue;
+
+			if(tex.constructor === String)
+				tex = ResourcesManager.textures[ tex ];
+			if(!tex)
+				continue;
+
+			//bind
+			sampler_uniforms[ i ] = tex.bind( slot++ );
+
+			//texture properties
+			if(sampler.minFilter)
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+			if(sampler.magFilter)
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
+			if(sampler.wrap)
+			{
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
+				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
+			}
+		}
+
+		return sampler_uniforms;
+	},
+
 	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
@@ -12596,10 +13036,7 @@ var Renderer = {
 		samplers.merge( instance_final_samplers );
 
 		//enable samplers and store where [TODO: maybe they are not used..., improve here]
-		var sampler_uniforms = {};
-		var slot = 0;
-		for(var i in samplers)
-			sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+		var sampler_uniforms = this.bindSamplers( samplers );
 
 		//find shader name
 		var shader_name = render_options.default_shader_id;
@@ -12773,11 +13210,14 @@ var Renderer = {
 		samplers.merge( scene._samplers );
 		samplers.merge( instance_final_samplers );
 
+
+		var sampler_uniforms = this.bindSamplers( samplers, shader );
+		/*
 		var slot = 1;
-		var sampler_uniforms = {};
 		for(var i in samplers)
 			if(shader.samplers[i]) //only enable a texture if the shader uses it
 				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
+		*/
 
 		shader.uniforms( sampler_uniforms );
 		shader.uniforms( scene._uniforms );
@@ -12945,7 +13385,7 @@ var Renderer = {
 		//if(scene.textures.environment)
 		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
 
-		for(var i in scene.textures) 
+		for(var i in scene.textures)
 		{
 			var texture = LS.getTexture( scene.textures[i] );
 			if(!texture) continue;
@@ -13143,7 +13583,7 @@ var Renderer = {
 		}
 
 
-		//prepare lights
+		//prepare lights (collect data and generate shadowmaps)
 		var lights = scene._lights;
 		for(var i in lights)
 			lights[i].prepare(render_options);
@@ -15301,6 +15741,20 @@ var parserOBJ = {
 						if(nor < 0) nor = normals.length/3 + nor - negative_offset;
 						*/
 
+						if(i > 3 && skip_indices) //polys
+						{
+							//first
+							var pl = positionsArray.length;
+							positionsArray.push( positionsArray[pl - (i-3)*9], positionsArray[pl - (i-3)*9 + 1], positionsArray[pl - (i-3)*9 + 2]);
+							positionsArray.push( positionsArray[pl - 3], positionsArray[pl - 2], positionsArray[pl - 1]);
+							pl = texcoordsArray.length;
+							texcoordsArray.push( texcoordsArray[pl - (i-3)*6], texcoordsArray[pl - (i-3)*6 + 1]);
+							texcoordsArray.push( texcoordsArray[pl - 2], texcoordsArray[pl - 1]);
+							pl = normalsArray.length;
+							normalsArray.push( normalsArray[pl - (i-3)*9], normalsArray[pl - (i-3)*9 + 1], normalsArray[pl - (i-3)*9 + 2]);
+							normalsArray.push( normalsArray[pl - 3], normalsArray[pl - 2], normalsArray[pl - 1]);
+						}
+
 						x = 0.0;
 						y = 0.0;
 						z = 0.0;
@@ -15370,16 +15824,17 @@ var parserOBJ = {
 
 				if(tokens.length > 1)
 				{
+					var group_pos = (indicesArray.length ? indicesArray.length : positionsArray.length / 3);
 					if(group != null)
 					{
-						group.length = indicesArray.length - group.start;
+						group.length = group_pos - group.start;
 						if(group.length > 0)
 							groups.push(group);
 					}
 
 					group = {
 						name: tokens[1],
-						start: indicesArray.length,
+						start: group_pos,
 						length: -1,
 						material: ""
 					};

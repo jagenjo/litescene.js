@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -158,6 +160,13 @@
     <pre class="code prettyprint linenums">
 /* Requires LiteGraph.js ******************************/
 
+//on include, link to resources manager
+if(typeof(LGraphTexture) != &quot;undefined&quot;)
+{
+	LGraphTexture.textures_container = LS.ResourcesManager.textures;
+	LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+}
+
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent
@@ -169,6 +178,10 @@ function GraphComponent(o)
 	this.force_redraw = true;
 
 	this.on_event = &quot;update&quot;;
+
+	if(typeof(LGraphTexture) == &quot;undefined&quot;)
+		return console.error(&quot;Cannot use GraphComponent if LiteGraph is not installed&quot;);
+
 	this._graph = new LGraph();
 
 	if(o)
@@ -281,6 +294,10 @@ function FXGraphComponent(o)
 	this.use_viewport_size = false;
 	this.use_high_precision = false;
 	this.use_antialiasing = false;
+
+	if(typeof(LGraphTexture) == &quot;undefined&quot;)
+		return console.error(&quot;Cannot use GraphComponent if LiteGraph is not installed&quot;);
+
 	this._graph = new LGraph();
 	if(o)
 	{
@@ -359,25 +376,19 @@ FXGraphComponent.prototype.getResources = function(res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,&quot;beforeRenderPass&quot;, this.onBeforeRender, this );
-	LEvent.bind(Scene,&quot;afterRenderPass&quot;, this.onAfterRender, this );
+	LEvent.bind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
+	LEvent.bind(Scene,&quot;afterRenderFrame&quot;, this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,&quot;beforeRenderPass&quot;, this.onBeforeRender, this );
-	LEvent.unbind(Scene,&quot;afterRenderPass&quot;, this.onAfterRender, this );
-	Renderer.color_rendertarget = null;
-	Renderer.depth_rendertarget = null;
+	LEvent.unbind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
+	LEvent.unbind(Scene,&quot;afterRenderFrame&quot;, this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
 	if(!this._graph || !render_options.render_fx) return;
-
-	var use_depth = false;
-	if(this._graph_depth_texture_node &amp;&amp; this._graph_depth_texture_node.isOutputConnected(0))
-		use_depth = true;
 
 	var width = FXGraphComponent.buffer_size[0];
 	var height = FXGraphComponent.buffer_size[1];
@@ -385,9 +396,6 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 	{
 		width = gl.canvas.width;
 		height = gl.canvas.height;
-		//var v = gl.getParameter(gl.VIEWPORT);
-		//width = v[2];
-		//height = v[3];
 	}
 
 	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
@@ -398,25 +406,29 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 		ResourcesManager.textures[&quot;:color_buffer&quot;] = this.color_texture;
 	}
 
-	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) &amp;&amp; use_depth)
+	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
 	{
 		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 		ResourcesManager.textures[&quot;:depth_buffer&quot;] = this.depth_texture;
 	}		
 
 	if(this.enabled)
+		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+}
+
+FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_options, previous_output)
+{
+	var that = this;
+
+	Texture.drawToColorAndDepth( this.color_texture, this.depth_texture, inner_render_frame );
+
+	//render frame
+	function inner_render_frame(texture)
 	{
-		Renderer.color_rendertarget = this.color_texture;
-		if(use_depth)
-			Renderer.depth_rendertarget = this.depth_texture;
-		else
-			Renderer.depth_rendertarget = null;
+			Renderer.renderFrame( current_camera, that.color_rendertarget );
 	}
-	else
-	{
-		Renderer.color_rendertarget = null;
-		Renderer.depth_rendertarget = null;
-	}
+
+	return this.color_rendertarget;
 }
 
 

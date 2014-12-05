@@ -123,6 +123,20 @@ var parserOBJ = {
 						if(nor < 0) nor = normals.length/3 + nor - negative_offset;
 						*/
 
+						if(i > 3 && skip_indices) //polys
+						{
+							//first
+							var pl = positionsArray.length;
+							positionsArray.push( positionsArray[pl - (i-3)*9], positionsArray[pl - (i-3)*9 + 1], positionsArray[pl - (i-3)*9 + 2]);
+							positionsArray.push( positionsArray[pl - 3], positionsArray[pl - 2], positionsArray[pl - 1]);
+							pl = texcoordsArray.length;
+							texcoordsArray.push( texcoordsArray[pl - (i-3)*6], texcoordsArray[pl - (i-3)*6 + 1]);
+							texcoordsArray.push( texcoordsArray[pl - 2], texcoordsArray[pl - 1]);
+							pl = normalsArray.length;
+							normalsArray.push( normalsArray[pl - (i-3)*9], normalsArray[pl - (i-3)*9 + 1], normalsArray[pl - (i-3)*9 + 2]);
+							normalsArray.push( normalsArray[pl - 3], normalsArray[pl - 2], normalsArray[pl - 1]);
+						}
+
 						x = 0.0;
 						y = 0.0;
 						z = 0.0;
@@ -192,16 +206,17 @@ var parserOBJ = {
 
 				if(tokens.length > 1)
 				{
+					var group_pos = (indicesArray.length ? indicesArray.length : positionsArray.length / 3);
 					if(group != null)
 					{
-						group.length = indicesArray.length - group.start;
+						group.length = group_pos - group.start;
 						if(group.length > 0)
 							groups.push(group);
 					}
 
 					group = {
 						name: tokens[1],
-						start: indicesArray.length,
+						start: group_pos,
 						length: -1,
 						material: ""
 					};

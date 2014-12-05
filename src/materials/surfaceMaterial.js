@@ -147,7 +147,8 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 		if(prop.type == "texture" || prop.type == "cubemap")
 		{
 			var texture = LS.getTexture( prop.value );
-			if(!texture) continue;
+			if(!texture) 
+				continue;
 			samplers[prop.name] = texture;
 		}
 		else
@@ -220,7 +221,11 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return this[name];
 
 	if( name.substr(0,4) == "tex_")
-		return this.textures[ name.substr(4) ];
+	{
+		var tex = this.textures[ name.substr(4) ];
+		if(!tex) return null;
+		return tex.texture;
+	}
 
 	for(var i in this.properties)
 	{
@@ -274,24 +279,35 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 /**
 * Assigns a texture to a channel
 * @method setTexture
+* @param {String} channel 
 * @param {Texture} texture
-* @param {String} channel default is COLOR
 */
-SurfaceMaterial.prototype.setTexture = function(texture, channel, uvs) {
+SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
+	if(!channel)
+		throw("Material.prototype.setTexture channel must be specified");
+
+	uvs = uvs || Material.DEFAULT_UVS[channel];
+	filter = filter || gl.LINEAR;
+	wrap = wrap || gl.REPEAT;
 
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap")
 			continue;
+
 		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
 			continue;
 
 		prop.value = texture;
-		if(this.textures)
-			this.textures[channel] = texture;
-		if(!channel)
-			break;
+		var sampler = this.textures[channel];
+		if(!sampler)
+			sampler = this.textures[channel] = { texture: texture, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 }; //sampler
+
+		if(sampler_options)
+			for(var i in sampler_options)
+				sampler[i] = sampler_options[i];
+		break;
 	}
 
 	if(!texture) return;

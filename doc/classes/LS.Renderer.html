@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -258,6 +260,13 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
+                                <a href="#method_assignRenderFrameCallback">assignRenderFrameCallback</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_enableCamera">enableCamera</a>
 
                                 
@@ -266,6 +275,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_render">render</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_renderFrame">renderFrame</a>
 
                                 
                                 
@@ -285,6 +301,98 @@
         
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
+
+                
+                    <div id="method_assignRenderFrameCallback" class="method item">
+    <h3 class="name"><code>assignRenderFrameCallback</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>callback</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderer.js.html#l55"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:55</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Overwrites the default rendering to screen function, allowing to render to one or several textures
+The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
+Callback must return the texture output or null
+Warning: this must be set before every frame, becaue this are cleared after rendering the frame</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
 
                 
                     <div id="method_enableCamera" class="method item">
@@ -335,7 +443,7 @@
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l187"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:187</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l211"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:211</code></a>
         
         </p>
 
@@ -450,7 +558,7 @@
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l58"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:58</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l68"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:68</code></a>
         
         </p>
 
@@ -511,6 +619,117 @@
 
                     <div class="param-description">
                          
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_renderFrame" class="method item">
+    <h3 class="name"><code>renderFrame</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>the</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>output_texture</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderer.js.html#l171"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:171</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>renders the view from one camera to the current viewport (could be a texture)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">the</code>
+                        <span class="type">Camera</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>camera</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">output_texture</code>
+                        <span class="type">Texture</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>optional, if you want to render to a texture (otherwise is rendered to the viewport)</p>
+
                     </div>
 
                     

@@ -51,6 +51,8 @@
             
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
+                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
                 <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
@@ -164,7 +166,7 @@ First we store a file header, then info about every lump, then a big binary chun
 The lump headers contain info to the position of the data in the lump binary chunk (positions are relative to the binary chung starting position)
 
 Header: (64 bytes total)
-	* FOURCC: 4 bytes with WBIN
+	* FOURCC: 4 bytes with &quot;WBIN&quot;
 	* Version: 4 bytes for Float32, represents WBin version used to store
 	* Flags: 2 bytes to store flags (first byte reserved, second is free to use)
 	* Num. lumps: 2 bytes number with the total amount of lumps in this wbin
@@ -172,8 +174,8 @@ Header: (64 bytes total)
 	* extra space for future improvements
 
 Lump header: (64 bytes total)
-	* start: 4 bytes, where the lump start in the binary area
-	* length: 4 bytes, size of the lump
+	* start: 4 bytes (Uint32), where the lump start in the binary area
+	* length: 4 bytes (Uint32), size of the lump
 	* code: 2 bytes to represent data type using code table (Uint8Array, Float32Array, ...)
 	* name: 54 bytes name for the lump
 
