@@ -1,11 +1,13 @@
+(function(){
+
 /**
-* KnobComponent allows to rotate a mesh like a knob
-* @class KnobComponent
+* Knob allows to rotate a mesh like a knob
+* @class Knob
 * @constructor
 * @param {String} object to configure from
 */
 
-function KnobComponent(o)
+function Knob(o)
 {
 	this.value = 0;
 	this.delta = 0.01;
@@ -21,7 +23,7 @@ function KnobComponent(o)
 		this.configure(o);
 }
 
-KnobComponent.icon = "mini-icon-knob.png";
+Knob.icon = "mini-icon-knob.png";
 
 /**
 * Configure the component getting the info from the object
@@ -29,7 +31,7 @@ KnobComponent.icon = "mini-icon-knob.png";
 * @param {Object} object to configure from
 */
 
-KnobComponent.prototype.configure = function(o)
+Knob.prototype.configure = function(o)
 {
 	cloneObject(o, this);
 }
@@ -40,27 +42,27 @@ KnobComponent.prototype.configure = function(o)
 * @return {Object} object with the serialization info
 */
 
-KnobComponent.prototype.serialize = function()
+Knob.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
 	 return o;
 }
 
-KnobComponent.prototype.onAddedToNode = function(node)
+Knob.prototype.onAddedToNode = function(node)
 {
 	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onmousemove,this);
 	this.updateKnob();
 }
 
-KnobComponent.prototype.updateKnob = function() {
+Knob.prototype.updateKnob = function() {
 	if(!this._root) return;
 	var f = this.value / (this.max_value - this.min_value)
 	quat.setAxisAngle(this._root.transform._rotation,this.axis, (this.min_angle + (this.max_angle - this.min_angle) * f )* DEG2RAD);
 	this._root.transform._dirty = true;
 }
 
-KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
+Knob.prototype.onmousemove = function(e, mouse_event) { 
 	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value > this.max_value) this.value = this.max_value;
@@ -75,4 +77,6 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	return false;
 };
 
-LS.registerComponent(KnobComponent);
+LS.registerComponent(Knob);
+
+})();

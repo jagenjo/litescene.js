@@ -38,13 +38,14 @@
 ../src/components/followNode.js
 ../src/components/geometricPrimitive.js
 ../src/components/graphComponents.js
-../src/components/knobComponent.js
+../src/components/knob.js
 ../src/components/particles.js
+../src/components/label.js
 ../src/components/pointCloud.js
 ../src/components/lineCloud.js
 ../src/components/playAnimation.js
 ../src/components/realtimeReflector.js
-../src/components/scriptComponent.js
+../src/components/script.js
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
 ../src/components/spherize.js

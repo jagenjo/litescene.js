@@ -4706,11 +4706,11 @@ ComponentContainer.prototype.configureComponents = function(info)
 				this.transform.configure(comp_info[1]);
 				continue;
 			}
-			if(!window[comp_class]){
-				trace("Unknown component found: " + comp_class);
+			if(!LS.Components[comp_class]){
+				console.error("Unknown component found: " + comp_class);
 				continue;
 			}
-			var comp = new window[comp_class]( comp_info[1] );
+			var comp = new LS.Components[comp_class]( comp_info[1] );
 			this.addComponent(comp);
 		}
 	}
@@ -8461,6 +8461,8 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	if(texture.constructor === String)
 		texture = LS.ResourcesManager.textures[texture];
 
+	if(!texture) return;
+
 	var mesh = this._mesh;
 	if(!mesh)
 		mesh = this._mesh = GL.Mesh.cube({size: 10});
@@ -9707,14 +9709,16 @@ window.FXGraphComponent = FXGraphComponent;
 
 
 
+(function(){
+
 /**
-* KnobComponent allows to rotate a mesh like a knob
-* @class KnobComponent
+* Knob allows to rotate a mesh like a knob
+* @class Knob
 * @constructor
 * @param {String} object to configure from
 */
 
-function KnobComponent(o)
+function Knob(o)
 {
 	this.value = 0;
 	this.delta = 0.01;
@@ -9730,7 +9734,7 @@ function KnobComponent(o)
 		this.configure(o);
 }
 
-KnobComponent.icon = "mini-icon-knob.png";
+Knob.icon = "mini-icon-knob.png";
 
 /**
 * Configure the component getting the info from the object
@@ -9738,7 +9742,7 @@ KnobComponent.icon = "mini-icon-knob.png";
 * @param {Object} object to configure from
 */
 
-KnobComponent.prototype.configure = function(o)
+Knob.prototype.configure = function(o)
 {
 	cloneObject(o, this);
 }
@@ -9749,27 +9753,27 @@ KnobComponent.prototype.configure = function(o)
 * @return {Object} object with the serialization info
 */
 
-KnobComponent.prototype.serialize = function()
+Knob.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
 	 return o;
 }
 
-KnobComponent.prototype.onAddedToNode = function(node)
+Knob.prototype.onAddedToNode = function(node)
 {
 	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onmousemove,this);
 	this.updateKnob();
 }
 
-KnobComponent.prototype.updateKnob = function() {
+Knob.prototype.updateKnob = function() {
 	if(!this._root) return;
 	var f = this.value / (this.max_value - this.min_value)
 	quat.setAxisAngle(this._root.transform._rotation,this.axis, (this.min_angle + (this.max_angle - this.min_angle) * f )* DEG2RAD);
 	this._root.transform._dirty = true;
 }
 
-KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
+Knob.prototype.onmousemove = function(e, mouse_event) { 
 	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value > this.max_value) this.value = this.max_value;
@@ -9784,7 +9788,9 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	return false;
 };
 
-LS.registerComponent(KnobComponent);
+LS.registerComponent(Knob);
+
+})();
 function ParticleEmissor(o)
 {
 	this.max_particles = 1024;
@@ -10252,7 +10258,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		this._material = new Material({ shader_name:"lowglobal" });
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
-	this._material.setTexture(this.texture);
+	this._material.setTexture(Material.COLOR, this.texture);
 	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	this._material.soft_particles = this.soft_particles;
 	this._material.constant_diffuse = true;
@@ -10284,6 +10290,94 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 
 LS.registerComponent(ParticleEmissor);
+(function(){
+
+function Label(o)
+{
+	this.text = "";
+	this.className = "";
+	this._world_pos = vec3.create();
+	this._screen_pos = vec3.create();
+	this.configure(o);
+}
+
+Label.icon = "mini-icon-text.png";
+Label.CSS_classname = "LS3D_label";
+
+Label.prototype.onAddedToNode = function(node)
+{
+	//events
+	LEvent.bind(Scene,"beforeRender",this.render,this);
+
+	//create html
+	var elem = document.createElement("div");
+	elem.innerHTML = this.text;
+	var style = elem.style;
+	style.className = this.constructor.CSS_classname;
+	style.position = "absolute";
+	style.top = 0;
+	style.left = 0;
+	style.fontSize = "20px";
+	style.padding = "10px";
+	style.color = "white";
+	style.pointerEvents = "none";
+	style.backgroundColor = "rgba(0,0,0,0.5)";
+	style.borderRadius = "2px";
+
+	if(gl && gl.canvas && gl.canvas.parentNode)
+		gl.canvas.parentNode.appendChild( elem );
+
+	this._element = elem;
+}
+
+Label.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(Scene,"beforeRender",this.render, this);
+
+	if(this._element)
+	{
+		if(this._element.parentNode)
+			this._element.parentNode.removeChild( this._element );
+		this._element = null;
+	}
+}
+
+
+Label.prototype.render = function(e, render_options)
+{
+	if(!this._element)
+		return;
+
+	var node = this._root;
+
+
+	if(this._element.innerHTML != this.text)
+		this._element.innerHTML = this.text;
+
+	this._element.style.display = node.flags.visible === false ? "none" : "block";
+	if(!this.text)
+	{
+		this._element.style.display = "none";
+		return;
+	}
+
+	var classname = this.constructor.CSS_classname + " " + this.className;
+	if(this._element.className != classname)
+		this._element.className = classname;
+
+	var camera = render_options.main_camera;
+	node.transform.getGlobalPosition(this._world_pos);
+	camera.project(this._world_pos, null, this._screen_pos );
+
+	this._element.style.left = this._screen_pos[0].toFixed(0) + "px";
+	this._element.style.top = (gl.canvas.height - (this._screen_pos[1]|0) - 10) + "px";
+}
+
+
+
+LS.registerComponent(Label);
+
+})();
 /* pointCloud.js */
 
 function PointCloud(o)
@@ -11023,7 +11117,9 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 }
 
 LS.registerComponent(RealtimeReflector);
-function ScriptComponent(o)
+(function(){
+
+function Script(o)
 {
 	this.enabled = true;
 	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
@@ -11031,7 +11127,7 @@ function ScriptComponent(o)
 
 	this._script = new LScript();
 	this._script.onerror = this.onError.bind(this);
-	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+	this._script.valid_callbacks = this.constructor.valid_callbacks;
 	this._last_error = null;
 
 	this.configure(o);
@@ -11039,17 +11135,17 @@ function ScriptComponent(o)
 		this.processCode();
 }
 
-ScriptComponent.icon = "mini-icon-script.png";
+Script.icon = "mini-icon-script.png";
 
-ScriptComponent["@code"] = {type:'script'};
+Script["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
-ScriptComponent.translate_events = {
+Script.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
+Script.translate_events = {
 	"render": "renderInstances", "renderInstances": "render",
 	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
 	"finish": "stop", "stop":"finish"};
 
-ScriptComponent.coding_help = "\n\
+Script.coding_help = "\n\
 Global vars:\n\
  + node : represent the node where this component is attached.\n\
  + component : represent the component.\n\
@@ -11066,19 +11162,19 @@ Exported functions:\n\
 Remember, all basic vars attached to this will be exported as global.\n\
 ";
 
-ScriptComponent.prototype.getContext = function()
+Script.prototype.getContext = function()
 {
 	if(this._script)
 			return this._script._context;
 	return null;
 }
 
-ScriptComponent.prototype.getCode = function()
+Script.prototype.getCode = function()
 {
 	return this.code;
 }
 
-ScriptComponent.prototype.processCode = function(skip_events)
+Script.prototype.processCode = function(skip_events)
 {
 	this._script.code = this.code;
 	if(this._root)
@@ -11091,14 +11187,14 @@ ScriptComponent.prototype.processCode = function(skip_events)
 	return true;
 }
 
-ScriptComponent.prototype.hookEvents = function()
+Script.prototype.hookEvents = function()
 {
-	var hookable = ScriptComponent.valid_callbacks;
+	var hookable = Script.valid_callbacks;
 
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = ScriptComponent.translate_events[name] || name;
+		var event_name = Script.translate_events[name] || name;
 
 		if( this._script._context[name] && this._script._context[name].constructor === Function )
 		{
@@ -11110,28 +11206,28 @@ ScriptComponent.prototype.hookEvents = function()
 	}
 }
 
-ScriptComponent.prototype.onAddedToNode = function(node)
+Script.prototype.onAddedToNode = function(node)
 {
 	this.processCode();
 }
 
-ScriptComponent.prototype.onRemovedFromNode = function(node)
+Script.prototype.onRemovedFromNode = function(node)
 {
 	//unbind evends
-	var hookable = ScriptComponent.valid_callbacks;
+	var hookable = Script.valid_callbacks;
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = ScriptComponent.translate_events[name] || name;
+		var event_name = Script.translate_events[name] || name;
 		LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
 	}
 }
 
-ScriptComponent.prototype.onScriptEvent = function(event_type, params)
+Script.prototype.onScriptEvent = function(event_type, params)
 {
 	//this.processCode(true); //¿?
 
-	var method_name = ScriptComponent.translate_events[ event_type ] || event_type;
+	var method_name = Script.translate_events[ event_type ] || event_type;
 
 	this._script.callMethod( method_name, params );
 
@@ -11140,7 +11236,7 @@ ScriptComponent.prototype.onScriptEvent = function(event_type, params)
 }
 
 /*
-ScriptComponent.prototype.on_update = function(e,dt)
+Script.prototype.on_update = function(e,dt)
 {
 	this._script.callMethod("update",[dt]);
 
@@ -11148,33 +11244,35 @@ ScriptComponent.prototype.on_update = function(e,dt)
 	//	this._component.update(dt);
 }
 
-ScriptComponent.prototype.on_trigger = function(e,dt)
+Script.prototype.on_trigger = function(e,dt)
 {
 	this._script.callMethod("trigger",[e]);
 }
 */
 
-ScriptComponent.prototype.runStep = function(method, args)
+Script.prototype.runStep = function(method, args)
 {
 	this._script.callMethod(method,args);
 }
 
-ScriptComponent.prototype.onError = function(err)
+Script.prototype.onError = function(err)
 {
 	LEvent.trigger(this,"code_error",err);
 	LEvent.trigger(Scene,"code_error",[this,err]);
-	LEvent.trigger(ScriptComponent,"code_error",[this,err]);
+	LEvent.trigger(Script,"code_error",[this,err]);
 	console.log("app stopping due to error in script");
 	Scene.stop();
 }
 
-ScriptComponent.prototype.onCodeChange = function(code)
+Script.prototype.onCodeChange = function(code)
 {
 	this.processCode();
 }
 
 
-LS.registerComponent(ScriptComponent);
+LS.registerComponent(Script);
+
+})();
 function TerrainRenderer(o)
 {
 	this.height = 2;

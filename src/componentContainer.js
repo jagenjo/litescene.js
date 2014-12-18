@@ -48,11 +48,11 @@ ComponentContainer.prototype.configureComponents = function(info)
 				this.transform.configure(comp_info[1]);
 				continue;
 			}
-			if(!window[comp_class]){
-				trace("Unknown component found: " + comp_class);
+			if(!LS.Components[comp_class]){
+				console.error("Unknown component found: " + comp_class);
 				continue;
 			}
-			var comp = new window[comp_class]( comp_info[1] );
+			var comp = new LS.Components[comp_class]( comp_info[1] );
 			this.addComponent(comp);
 		}
 	}

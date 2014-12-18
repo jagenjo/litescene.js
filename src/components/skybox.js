@@ -51,6 +51,8 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	if(texture.constructor === String)
 		texture = LS.ResourcesManager.textures[texture];
 
+	if(!texture) return;
+
 	var mesh = this._mesh;
 	if(!mesh)
 		mesh = this._mesh = GL.Mesh.cube({size: 10});

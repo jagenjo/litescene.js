@@ -1,4 +1,6 @@
-function ScriptComponent(o)
+(function(){
+
+function Script(o)
 {
 	this.enabled = true;
 	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
@@ -6,7 +8,7 @@ function ScriptComponent(o)
 
 	this._script = new LScript();
 	this._script.onerror = this.onError.bind(this);
-	this._script.valid_callbacks = ScriptComponent.valid_callbacks;
+	this._script.valid_callbacks = this.constructor.valid_callbacks;
 	this._last_error = null;
 
 	this.configure(o);
@@ -14,17 +16,17 @@ function ScriptComponent(o)
 		this.processCode();
 }
 
-ScriptComponent.icon = "mini-icon-script.png";
+Script.icon = "mini-icon-script.png";
 
-ScriptComponent["@code"] = {type:'script'};
+Script["@code"] = {type:'script'};
 
-ScriptComponent.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
-ScriptComponent.translate_events = {
+Script.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
+Script.translate_events = {
 	"render": "renderInstances", "renderInstances": "render",
 	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
 	"finish": "stop", "stop":"finish"};
 
-ScriptComponent.coding_help = "\n\
+Script.coding_help = "\n\
 Global vars:\n\
  + node : represent the node where this component is attached.\n\
  + component : represent the component.\n\
@@ -41,19 +43,19 @@ Exported functions:\n\
 Remember, all basic vars attached to this will be exported as global.\n\
 ";
 
-ScriptComponent.prototype.getContext = function()
+Script.prototype.getContext = function()
 {
 	if(this._script)
 			return this._script._context;
 	return null;
 }
 
-ScriptComponent.prototype.getCode = function()
+Script.prototype.getCode = function()
 {
 	return this.code;
 }
 
-ScriptComponent.prototype.processCode = function(skip_events)
+Script.prototype.processCode = function(skip_events)
 {
 	this._script.code = this.code;
 	if(this._root)
@@ -66,14 +68,14 @@ ScriptComponent.prototype.processCode = function(skip_events)
 	return true;
 }
 
-ScriptComponent.prototype.hookEvents = function()
+Script.prototype.hookEvents = function()
 {
-	var hookable = ScriptComponent.valid_callbacks;
+	var hookable = Script.valid_callbacks;
 
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = ScriptComponent.translate_events[name] || name;
+		var event_name = Script.translate_events[name] || name;
 
 		if( this._script._context[name] && this._script._context[name].constructor === Function )
 		{
@@ -85,28 +87,28 @@ ScriptComponent.prototype.hookEvents = function()
 	}
 }
 
-ScriptComponent.prototype.onAddedToNode = function(node)
+Script.prototype.onAddedToNode = function(node)
 {
 	this.processCode();
 }
 
-ScriptComponent.prototype.onRemovedFromNode = function(node)
+Script.prototype.onRemovedFromNode = function(node)
 {
 	//unbind evends
-	var hookable = ScriptComponent.valid_callbacks;
+	var hookable = Script.valid_callbacks;
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = ScriptComponent.translate_events[name] || name;
+		var event_name = Script.translate_events[name] || name;
 		LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
 	}
 }
 
-ScriptComponent.prototype.onScriptEvent = function(event_type, params)
+Script.prototype.onScriptEvent = function(event_type, params)
 {
 	//this.processCode(true); //¿?
 
-	var method_name = ScriptComponent.translate_events[ event_type ] || event_type;
+	var method_name = Script.translate_events[ event_type ] || event_type;
 
 	this._script.callMethod( method_name, params );
 
@@ -115,7 +117,7 @@ ScriptComponent.prototype.onScriptEvent = function(event_type, params)
 }
 
 /*
-ScriptComponent.prototype.on_update = function(e,dt)
+Script.prototype.on_update = function(e,dt)
 {
 	this._script.callMethod("update",[dt]);
 
@@ -123,30 +125,32 @@ ScriptComponent.prototype.on_update = function(e,dt)
 	//	this._component.update(dt);
 }
 
-ScriptComponent.prototype.on_trigger = function(e,dt)
+Script.prototype.on_trigger = function(e,dt)
 {
 	this._script.callMethod("trigger",[e]);
 }
 */
 
-ScriptComponent.prototype.runStep = function(method, args)
+Script.prototype.runStep = function(method, args)
 {
 	this._script.callMethod(method,args);
 }
 
-ScriptComponent.prototype.onError = function(err)
+Script.prototype.onError = function(err)
 {
 	LEvent.trigger(this,"code_error",err);
 	LEvent.trigger(Scene,"code_error",[this,err]);
-	LEvent.trigger(ScriptComponent,"code_error",[this,err]);
+	LEvent.trigger(Script,"code_error",[this,err]);
 	console.log("app stopping due to error in script");
 	Scene.stop();
 }
 
-ScriptComponent.prototype.onCodeChange = function(code)
+Script.prototype.onCodeChange = function(code)
 {
 	this.processCode();
 }
 
 
-LS.registerComponent(ScriptComponent);
+LS.registerComponent(Script);
+
+})();

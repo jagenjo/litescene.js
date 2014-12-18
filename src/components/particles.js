@@ -465,7 +465,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		this._material = new Material({ shader_name:"lowglobal" });
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
-	this._material.setTexture(this.texture);
+	this._material.setTexture(Material.COLOR, this.texture);
 	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	this._material.soft_particles = this.soft_particles;
 	this._material.constant_diffuse = true;
