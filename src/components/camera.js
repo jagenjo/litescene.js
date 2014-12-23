@@ -661,37 +661,49 @@ Camera.prototype.updateNodeTransform = function()
 * @return {vec3} the coordinates in 2D
 */
 
-Camera.prototype.project = function( vec, viewport, result )
+Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 {
+	result = result || vec3.create();
 	viewport = viewport || gl.getViewport();// gl.getParameter(gl.VIEWPORT);
 	if( this._dirty_matrices )
 		this.updateMatrices();
 
-	/*
-	//var M = mat4.transpose( mat4.create(), this._viewprojection_matrix );
-	var result = mat4.multiplyVec3(result || vec3.create(), this._viewprojection_matrix, vec );
-	
-	var winX = viewport[0] + Math.round( viewport[2] * (result[0] + 1) / 2.0);
-	var winY = viewport[1] + Math.round( viewport[3] * (result[1] + 1) / 2.0);
-	var winZ = (result[2] + 1) / 2.0;
-	vec3.set(result, winX, winY, winZ );
+	//from https://github.com/hughsk/from-3d-to-2d/blob/master/index.js
+	var m = this._viewprojection_matrix;
+
+	vec3.project( result, vec, this._viewprojection_matrix, viewport );
+	if(!skip_reverse)
+		result[1] = viewport[3] - result[1];
 	return result;
-	//*/
-
-	var result = mat4.projectVec3(result || vec3.create(), this._viewprojection_matrix, vec );
 
 	/*
-	var result = mat4.multiplyVec3(result || vec3.create(), this._viewprojection_matrix, vec );
-	if(result[2] != 0.0)
-	{
-		result[0] /= result[2];
-		result[1] /= result[2];
-	}
-	vec3.set(result, (result[0]+1) * (viewport[2]*0.5) + viewport[0], (result[1]+1) * (viewport[3]*0.5) + viewport[1], result[2] );
+	var ix = vec[0];
+	var iy = vec[1];
+	var iz = vec[2];
+
+	var ox = m[0] * ix + m[4] * iy + m[8] * iz + m[12];
+	var oy = m[1] * ix + m[5] * iy + m[9] * iz + m[13];
+	var oz = m[2] * ix + m[6] * iy + m[10] * iz + m[14];
+	var ow = m[3] * ix + m[7] * iy + m[11] * iz + m[15];
+
+	var projx = (ox / ow + 1) / 2;
+	var projy = (oy / ow + 1) / 2;
+	var projz = (oz / ow + 1) / 2;
+
+	result[0] = projx * viewport[2] + viewport[0];
+	if(reverse)
+		result[1] = (1.0 - projy) * viewport[3] + viewport[1];
+	else
+		result[1] = projy * viewport[3] + viewport[1];
+	result[2] = projz;
+	return result;
 	*/
-	
+
+	/*
+	var result = mat4.projectVec3(result || vec3.create(), this._viewprojection_matrix, vec );
 	vec3.set(result, (result[0]+1.0) * (viewport[2]*0.5) + viewport[0], (result[1]+1.0) * (viewport[3]*0.5) + viewport[1], (result[2]+1.0)/2.0 );
 	return result;
+	*/
 }
 
 /**
