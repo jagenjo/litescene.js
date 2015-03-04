@@ -12,7 +12,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.FollowNode",
         "LS.Components.GeometricPrimitive",
         "LS.Components.GraphComponent",
-        "LS.Components.KnobComponent",
+        "LS.Components.Knob",
         "LS.Components.Light",
         "LS.Components.LightFX",
         "LS.Components.NodeManipulator",

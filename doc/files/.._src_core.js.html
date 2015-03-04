@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -181,8 +181,21 @@ Object.defineProperty(Object.prototype, &quot;merge&quot;, {
 */
 
 var LS = {
-	_last_uid: 0,
-	generateUId: function () { return this._last_uid++; },
+	_last_uid: 1,
+
+
+	/**
+	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
+	* @method generateUId
+	* @return {string} uuid
+	*/
+	generateUId: function () {
+		var str = (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + &quot;-&quot;; //user agent
+		str += (GL.getTime()|0 % 0x1000000).toString(16) + &quot;-&quot;; //date
+		str += Math.floor((1 + Math.random()) * 0x1000000).toString(16) + &quot;-&quot;; //rand
+		str += (this._last_uid++).toString(16); //sequence
+		return str; 
+	},
 	catch_errors: false, //used to try/catch all possible callbacks 
 
 	/**
@@ -254,7 +267,7 @@ var LS = {
 	request: function(request)
 	{
 		if(typeof(request) === &quot;string&quot;)
-			throw(&quot;LS.request expects object, not string. Use LS.get or LS.getJSON&quot;);
+			throw(&quot;LS.request expects object, not string. Use LS.requestText or LS.requestJSON&quot;);
 		var dataType = request.dataType || &quot;text&quot;;
 		if(dataType == &quot;json&quot;) //parse it locally
 			dataType = &quot;text&quot;;
@@ -357,19 +370,19 @@ var LS = {
 
 	/**
 	* retrieve a file from url (you can bind LEvents to done and fail)
-	* @method get
+	* @method requestFile
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	get: function(url, data, callback)
+	requestFile: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == &quot;function&quot;)
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, data:data, success: callback});
+		return LS.request({url:url, data:data, success: callback, error: callback_error });
 	},
 
 	/**
@@ -379,14 +392,14 @@ var LS = {
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	getJSON: function(url, data, callback)
+	requestJSON: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == &quot;function&quot;)
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, data:data, dataType:&quot;json&quot;, success: callback});
+		return LS.request({url:url, data:data, dataType:&quot;json&quot;, success: callback, error: callback_error });
 	},
 
 	/**
@@ -396,16 +409,52 @@ var LS = {
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	getText: function(url, data, callback)
+	requestText: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == &quot;function&quot;)
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, dataType:&quot;txt&quot;, success: callback});
-	}
+		return LS.request({url:url, dataType:&quot;txt&quot;, success: callback, success: callback, error: callback_error});
+	},
 
+	/**
+	* retrieve a text file from url (you can bind LEvents to done and fail)
+	* @method getText
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	setTimeout: function(callback, time)
+	{
+		if(!LS.catch_errors)
+			return setTimeout( callback,time );
+
+		try
+		{
+			return setTimeout( callback,time );
+		}
+		catch (err)
+		{
+			LEvent.trigger(LS,&quot;code_error&quot;,err);
+		}
+	},
+
+	setInterval: function(callback, time)
+	{
+		if(!LS.catch_errors)
+			return setInterval( callback,time );
+
+		try
+		{
+			return setInterval( callback,time );
+		}
+		catch (err)
+		{
+			LEvent.trigger(LS,&quot;code_error&quot;,err);
+		}
+	}
 };
 
 
@@ -657,7 +706,41 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 	return result;
 }
 
+//work in progress to create a new kind of property called parameter which comes with extra info
+//valid options are { type: &quot;number&quot;|&quot;string&quot;|&quot;vec2&quot;|&quot;vec3&quot;|&quot;color&quot;|&quot;Texture&quot;...  , min, max, step }
+if( !Object.prototype.hasOwnProperty(&quot;defineParameter&quot;) )
+{
+	Object.defineProperty( Object.prototype, &quot;defineParameter&quot;, {
+		value: function( name, value, options ) {
+			if(options &amp;&amp; typeof(options) == &quot;string&quot;)
+				options = { type: options };
 
+			var root = this;
+			if(typeof(this) != &quot;function&quot;)
+			{
+				this[name] = value;
+				root = this.constructor;
+			}
+			Object.defineProperty( root, &quot;@&quot; + name, {
+				value: options || {},
+				enumerable: false
+			});
+		},
+		enumerable: false
+	});
+
+	Object.defineProperty( Object.prototype, &quot;getParameter&quot;, {
+		value: function( name ) {
+			var v = &quot;@&quot; + name;
+			if(this.hasOwnProperty(v))
+				return this[v];
+			if(this.constructor &amp;&amp; this.constructor.hasOwnProperty(v))
+				return this.constructor[v];
+			return null;
+		},
+		enumerable: false
+	});
+}
 
 
     </pre>

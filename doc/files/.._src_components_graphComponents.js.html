@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -252,6 +252,10 @@ GraphComponent.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node,&quot;update&quot;, this.onEvent, this );
 }
 
+GraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
+{
+	this._graph.sendEventToAllNodes(&quot;onResourceRenamed&quot;,[old_name, new_name, res]);
+}
 
 GraphComponent.prototype.onEvent = function(event_type, event_data)
 {
@@ -371,6 +375,11 @@ FXGraphComponent.prototype.getResources = function(res)
 			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
+}
+
+FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
+{
+	this._graph.sendEventToAllNodes(&quot;onResourceRenamed&quot;,[old_name, new_name, res]);
 }
 
 FXGraphComponent.prototype.onAddedToNode = function(node)

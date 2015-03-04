@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/knobComponent.js</title>
+    <title>../src/components/knob.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -154,18 +154,20 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/knobComponent.js</h1>
+                        <h1 class="file-heading">File: ../src/components/knob.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
+(function(){
+
 /**
-* KnobComponent allows to rotate a mesh like a knob
-* @class KnobComponent
+* Knob allows to rotate a mesh like a knob
+* @class Knob
 * @constructor
 * @param {String} object to configure from
 */
 
-function KnobComponent(o)
+function Knob(o)
 {
 	this.value = 0;
 	this.delta = 0.01;
@@ -181,7 +183,7 @@ function KnobComponent(o)
 		this.configure(o);
 }
 
-KnobComponent.icon = &quot;mini-icon-knob.png&quot;;
+Knob.icon = &quot;mini-icon-knob.png&quot;;
 
 /**
 * Configure the component getting the info from the object
@@ -189,7 +191,7 @@ KnobComponent.icon = &quot;mini-icon-knob.png&quot;;
 * @param {Object} object to configure from
 */
 
-KnobComponent.prototype.configure = function(o)
+Knob.prototype.configure = function(o)
 {
 	cloneObject(o, this);
 }
@@ -200,27 +202,27 @@ KnobComponent.prototype.configure = function(o)
 * @return {Object} object with the serialization info
 */
 
-KnobComponent.prototype.serialize = function()
+Knob.prototype.serialize = function()
 {
 	 var o = cloneObject(this);
 	 return o;
 }
 
-KnobComponent.prototype.onAddedToNode = function(node)
+Knob.prototype.onAddedToNode = function(node)
 {
 	node.flags.interactive = true;
 	LEvent.bind(node,&quot;mousemove&quot;,this.onmousemove,this);
 	this.updateKnob();
 }
 
-KnobComponent.prototype.updateKnob = function() {
+Knob.prototype.updateKnob = function() {
 	if(!this._root) return;
 	var f = this.value / (this.max_value - this.min_value)
 	quat.setAxisAngle(this._root.transform._rotation,this.axis, (this.min_angle + (this.max_angle - this.min_angle) * f )* DEG2RAD);
 	this._root.transform._dirty = true;
 }
 
-KnobComponent.prototype.onmousemove = function(e, mouse_event) { 
+Knob.prototype.onmousemove = function(e, mouse_event) { 
 	this.value -= mouse_event.deltay * this.delta;
 
 	if(this.value &gt; this.max_value) this.value = this.max_value;
@@ -235,7 +237,9 @@ KnobComponent.prototype.onmousemove = function(e, mouse_event) {
 	return false;
 };
 
-LS.registerComponent(KnobComponent);
+LS.registerComponent(Knob);
+
+})();
     </pre>
 </div>
 

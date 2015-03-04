@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -162,7 +162,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_core.js.html#l442"><code>..&#x2F;src&#x2F;core.js:442</code></a>
+            Defined in: <a href="../files/.._src_core.js.html#l491"><code>..&#x2F;src&#x2F;core.js:491</code></a>
         </div>
     
 
@@ -219,7 +219,7 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_get">get</a>
+                                <a href="#method_generateUId">generateUId</a>
 
                                 
                                 
@@ -261,6 +261,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getText">getText</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_registerComponent">registerComponent</a>
 
                                 
@@ -276,6 +283,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_request">request</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_requestFile">requestFile</a>
 
                                 
                                 
@@ -378,7 +392,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l289"><code>..&#x2F;src&#x2F;core.js:289</code></a>
+        <a href="../files/.._src_core.js.html#l338"><code>..&#x2F;src&#x2F;core.js:338</code></a>
         
         </p>
 
@@ -506,7 +520,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l253"><code>..&#x2F;src&#x2F;core.js:253</code></a>
+        <a href="../files/.._src_core.js.html#l302"><code>..&#x2F;src&#x2F;core.js:302</code></a>
         
         </p>
 
@@ -567,35 +581,17 @@
 </div>
 
                 
-                    <div id="method_get" class="method item">
-    <h3 class="name"><code>get</code></h3>
+                    <div id="method_generateUId" class="method item">
+    <h3 class="name"><code>generateUId</code></h3>
 
     
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>url</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>params</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>callback</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
+        <span class="paren">()</span>
     
 
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
     
 
     
@@ -621,7 +617,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l198"><code>..&#x2F;src&#x2F;core.js:198</code></a>
+        <a href="../files/.._src_core.js.html#l27"><code>..&#x2F;src&#x2F;core.js:27</code></a>
         
         </p>
 
@@ -632,66 +628,26 @@
     </div>
 
     <div class="description">
-        <p>retrieve a file from url (you can bind LEvents to done and fail)</p>
+        <p>Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.</p>
 
     </div>
 
     
-        <div class="params">
-            <h4>Parameters:</h4>
 
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">url</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">params</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>form params</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">callback</code>
-                        <span class="type">Function</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
     
+        <div class="returns">
+            <h4>Returns:</h4>
 
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>uuid</p>
+
+                
+            </div>
+        </div>
     
 
     
@@ -744,7 +700,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l360"><code>..&#x2F;src&#x2F;core.js:360</code></a>
+        <a href="../files/.._src_core.js.html#l409"><code>..&#x2F;src&#x2F;core.js:409</code></a>
         
         </p>
 
@@ -859,7 +815,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l215"><code>..&#x2F;src&#x2F;core.js:215</code></a>
+        <a href="../files/.._src_core.js.html#l228"><code>..&#x2F;src&#x2F;core.js:228</code></a>
         
         </p>
 
@@ -982,7 +938,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l379"><code>..&#x2F;src&#x2F;core.js:379</code></a>
+        <a href="../files/.._src_core.js.html#l428"><code>..&#x2F;src&#x2F;core.js:428</code></a>
         
         </p>
 
@@ -1088,7 +1044,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l340"><code>..&#x2F;src&#x2F;core.js:340</code></a>
+        <a href="../files/.._src_core.js.html#l389"><code>..&#x2F;src&#x2F;core.js:389</code></a>
         
         </p>
 
@@ -1203,7 +1159,138 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l232"><code>..&#x2F;src&#x2F;core.js:232</code></a>
+        <a href="../files/.._src_core.js.html#l262"><code>..&#x2F;src&#x2F;core.js:262</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieve a text file from url (you can bind LEvents to done and fail)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">params</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>form params</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_getText" class="method item">
+    <h3 class="name"><code>getText</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>params</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>callback</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l245"><code>..&#x2F;src&#x2F;core.js:245</code></a>
         
         </p>
 
@@ -1322,7 +1409,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l37"><code>..&#x2F;src&#x2F;core.js:37</code></a>
+        <a href="../files/.._src_core.js.html#l50"><code>..&#x2F;src&#x2F;core.js:50</code></a>
         
         </p>
 
@@ -1411,7 +1498,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l65"><code>..&#x2F;src&#x2F;core.js:65</code></a>
+        <a href="../files/.._src_core.js.html#l78"><code>..&#x2F;src&#x2F;core.js:78</code></a>
         
         </p>
 
@@ -1504,7 +1591,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l86"><code>..&#x2F;src&#x2F;core.js:86</code></a>
+        <a href="../files/.._src_core.js.html#l99"><code>..&#x2F;src&#x2F;core.js:99</code></a>
         
         </p>
 
@@ -1560,6 +1647,137 @@
                 
             </div>
         </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_requestFile" class="method item">
+    <h3 class="name"><code>requestFile</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>params</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>callback</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_core.js.html#l211"><code>..&#x2F;src&#x2F;core.js:211</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieve a file from url (you can bind LEvents to done and fail)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">params</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>form params</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
     
 
     
@@ -1636,7 +1854,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l478"><code>..&#x2F;src&#x2F;core.js:478</code></a>
+        <a href="../files/.._src_core.js.html#l527"><code>..&#x2F;src&#x2F;core.js:527</code></a>
         
         </p>
 
@@ -1788,7 +2006,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l28"><code>..&#x2F;src&#x2F;core.js:28</code></a>
+        <a href="../files/.._src_core.js.html#l41"><code>..&#x2F;src&#x2F;core.js:41</code></a>
         
         </p>
 
@@ -1835,7 +2053,7 @@
             
         
         
-        <a href="../files/.._src_core.js.html#l56"><code>..&#x2F;src&#x2F;core.js:56</code></a>
+        <a href="../files/.._src_core.js.html#l69"><code>..&#x2F;src&#x2F;core.js:69</code></a>
         
         </p>
 

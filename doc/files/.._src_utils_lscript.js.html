@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -193,6 +193,8 @@ LScript.prototype.compile = function( arg_vars )
 	argv_names = argv_names.join(&quot;,&quot;);
 
 	var code = this.code;
+	code = LScript.expandCode( code );
+
 	var extra_code = &quot;&quot;;
 	for(var i in this.valid_callbacks)
 	{
@@ -266,6 +268,41 @@ LScript.applyToConstructor = function(constructor, argArray) {
     return new factoryFunction();
 }
 
+LScript.expandCode = function(code)
+{
+
+	//allow support to multiline strings
+	if( code.indexOf(&quot;&#x27;&#x27;&#x27;&quot;) != -1 )
+	{
+		var lines = code.split(&quot;&#x27;&#x27;&#x27;&quot;);
+		code = &quot;&quot;;
+		for(var i = 0; i &lt; lines.length; i++)
+		{
+			if(i % 2 == 0)
+			{
+				code += lines[i];
+				continue;
+			}
+
+			code += &#x27;&quot;&#x27; + lines[i].split(&quot;\n&quot;).join(&quot;\\n\\\n&quot;) + &#x27;&quot;&#x27;;
+		}
+	}
+
+	/* using regex, not working
+	if( code.indexOf(&quot;&#x27;&#x27;&#x27;&quot;) != -1 )
+	{
+		var exp = new RegExp(&quot;\&#x27;\&#x27;\&#x27;(.|\n)*\&#x27;\&#x27;\&#x27;&quot;, &quot;mg&quot;);
+		code = code.replace( exp, addSlashes );
+	}
+
+	function addSlashes(a){ 
+		var str = a.split(&quot;\n&quot;).join(&quot;\\n\\\n&quot;);
+		return &#x27;&quot;&#x27; + str.substr(3, str.length - 6 ) + &#x27;&quot;&#x27;; //remove &#x27;&#x27;&#x27;
+	}
+	*/
+
+	return code;
+}
 
 
     </pre>

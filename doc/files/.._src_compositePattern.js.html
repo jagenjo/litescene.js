@@ -63,7 +63,7 @@
             
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
-                <li><a href="../classes/LS.Components.KnobComponent.html">LS.Components.KnobComponent</a></li>
+                <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
             
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
@@ -375,6 +375,16 @@ Object.defineProperty( CompositePattern.prototype, &quot;parentNode&quot;, {
 	},
 	set: function(v) {
 		//TODO
+	}
+});
+
+Object.defineProperty( CompositePattern.prototype, &quot;scene&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._in_tree;
+	},
+	set: function(v) {
+		throw(&quot;Scene cannot be set, you must use addChild in parent&quot;);
 	}
 });
 
