@@ -338,6 +338,21 @@ Camera.prototype.getViewProjectionMatrix = function(m)
 }
 
 /**
+* returns the model view projection matrix computed from a passed model
+* @method getModelViewProjectionMatrix
+* @param {mat4} model model matrix
+* @param {mat4} out optional output container
+* @return {mat4} matrix
+*/
+Camera.prototype.getModelViewProjectionMatrix = function(model, out)
+{
+	out = out || mat4.create();
+	if(this._dirty_matrices)
+		this.updateMatrices();
+	return mat4.multiply( out, this._viewprojection_matrix, model );
+}
+
+/**
 * apply a transform to all the vectors (eye,center,up) using a matrix
 * @method updateVectors
 * @param {mat4} model matrix

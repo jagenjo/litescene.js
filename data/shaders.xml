@@ -112,7 +112,6 @@
 				vec3 dp1perp = cross( N, dp1 );
 				vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
 				vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
-				//B *= -1.0; //reverse y, HACK, dont know why but works
 			 
 				// construct a scale-invariant frame 
 				float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );
@@ -1273,6 +1272,16 @@
 
 				vec3 N = normalize(v_normal);
 
+				//eye vector
+				vec3 E = (u_camera_eye - v_pos);
+				float cam_dist = length(E);
+
+				#ifdef USE_ORTHOGRAPHIC_CAMERA
+					E = normalize(u_camera_eye); //wrong, should be center - eye
+				#else
+					E /= cam_dist;
+				#endif
+
 				//* COMPUTE TEXTURE COORDINATES ***************************
 				vec2 uvs_0 = v_uvs;
 				vec2 uvs_1 = uvs_0;
@@ -1291,7 +1300,8 @@
 					//warning: v_normal is in World space
 					vec3 normalmap_pixel = texture2D( normal_texture, USE_NORMAL_TEXTURE ).xyz;
 					#ifdef USE_TANGENT_NORMALMAP
-						N = perturbNormal(N, v_pos, USE_NORMAL_TEXTURE, normalmap_pixel );
+						normalmap_pixel.xy = vec2(1.0) - normalmap_pixel.xy; //fixes in woman
+						N = perturbNormal(N, E, USE_NORMAL_TEXTURE, normalmap_pixel );
 						//N is in world space
 					#else
 						N = (normalmap_pixel - vec3(0.5)) * 2.0;
@@ -1387,15 +1397,6 @@
 					#endif	
 				#else
 					float shadow = 1.0;
-				#endif
-
-				vec3 E = (u_camera_eye - v_pos);
-				float cam_dist = length(E);
-
-				#ifdef USE_ORTHOGRAPHIC_CAMERA
-					E = normalize(u_camera_eye); //wrong, should be center - eye
-				#else
-					E /= cam_dist;
 				#endif
 
 				vec3 L = (u_light_pos - v_pos);
@@ -2218,6 +2219,7 @@
 			varying vec3 v_normal;
 
 			uniform mat4 u_normal_model;
+			uniform vec3 u_camera_eye;
 
 			#ifdef USE_NORMALMAP_FACTOR
 				uniform float u_normalmap_factor;
@@ -2235,13 +2237,14 @@
 			void main() {
 
 				vec3 N = v_normal;
-				vec3 prev_norm =  normalize(N);
+				vec3 prev_norm = normalize(N);
 
 				#ifdef USE_NORMAL_TEXTURE
+					vec3 E = normalize(v_pos - u_camera_eye);
 					//warning: v_normal is in World space
 					vec3 normalmap_pixel = texture2D( normal_texture, v_uvs ).xyz;
 					#ifdef USE_TANGENT_NORMALMAP
-						N = perturbNormal(prev_norm, v_pos, v_uvs, normalmap_pixel );
+						N = perturbNormal(prev_norm, E, v_uvs, normalmap_pixel );
 					#else
 						N = (normalmap_pixel - vec3(0.5)) * 2.0;
 						//N is in object space so we need to convert it to world space

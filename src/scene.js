@@ -7,7 +7,7 @@
 
 function SceneTree()
 {
-	this._uid = LS.generateUId();
+	this.uid = LS.generateUId();
 
 	this._root = new LS.SceneNode("root");
 	this._root.removeAllComponents();
@@ -70,6 +70,7 @@ SceneTree.prototype.init = function()
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
+
 	this._time = 0;
 	this._global_time = 0; //in seconds
 	this._start_time = 0; //in seconds
@@ -118,8 +119,11 @@ SceneTree.prototype.configure = function(scene_info)
 	//this._components = [];
 	//this.camera = this.light = null; //legacy
 
+	if(scene_info.uid)
+		this.uid = scene_info.uid;
+
 	if(scene_info.object_type != "SceneTree")
-		trace("Warning: object set to scene doesnt look like a propper one.");
+		console.warn("Warning: object set to scene doesnt look like a propper one.");
 
 	if(scene_info.local_repository)
 		this.local_repository = scene_info.local_repository;
@@ -200,6 +204,7 @@ SceneTree.prototype.serialize = function()
 {
 	var o = {};
 
+	o.uid = this.uid;
 	o.object_type = getObjectClassName(this);
 
 	//legacy
@@ -276,7 +281,7 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 
 	function inner_error(err)
 	{
-		trace("Error loading scene: " + url + " -> " + err);
+		console.warn("Error loading scene: " + url + " -> " + err);
 		if(on_error)
 			on_error(url);
 	}
@@ -408,6 +413,15 @@ SceneTree.prototype.getNodes = function()
 SceneTree.prototype.getNode = function(id)
 {
 	return this._nodes_by_id[id];
+}
+
+SceneTree.prototype.getNodeByUId = function(uid)
+{
+	var n = this._nodes;
+	for(var i = 0, l = n.length; i < l; i += 1)
+		if(n[i].uid == uid)
+			return n[i];
+	return null;
 }
 
 //for those who are more traditional
@@ -714,6 +728,7 @@ SceneTree.prototype.refresh = function()
 	this._must_redraw = true;
 }
 
+
 SceneTree.prototype.getTime = function()
 {
 	return this._time;
@@ -734,7 +749,7 @@ function SceneNode(id)
 {
 	//Generic
 	this.id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
-	this._uid = LS.generateUId();
+	this.uid = LS.generateUId();
 
 	//this.className = "";
 	//this.mesh = "";
@@ -961,6 +976,7 @@ SceneNode.prototype.clone = function()
 	var newnode = new SceneNode( new_name );
 	var info = this.serialize();
 	info.id = null;
+	info.uid = LS.generateUId();
 	newnode.configure( info );
 
 	/*
@@ -987,6 +1003,7 @@ SceneNode.prototype.clone = function()
 SceneNode.prototype.configure = function(info)
 {
 	if (info.id) this.setId(info.id);
+	if (info.uid) this.uid = info.uid;
 	if (info.className)	this.className = info.className;
 
 	//useful parsing
@@ -1077,6 +1094,7 @@ SceneNode.prototype.serialize = function()
 	var o = {};
 
 	if(this.id) o.id = this.id;
+	if(this.uid) o.uid = this.uid;
 	if(this.className) o.className = this.className;
 
 	//modules

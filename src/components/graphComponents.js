@@ -92,6 +92,10 @@ GraphComponent.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node,"update", this.onEvent, this );
 }
 
+GraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
+{
+	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, res]);
+}
 
 GraphComponent.prototype.onEvent = function(event_type, event_data)
 {
@@ -211,6 +215,11 @@ FXGraphComponent.prototype.getResources = function(res)
 			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
+}
+
+FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
+{
+	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, res]);
 }
 
 FXGraphComponent.prototype.onAddedToNode = function(node)

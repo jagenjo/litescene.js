@@ -33,6 +33,7 @@ var ResourcesManager = {
 	textures: {}, //loadead textures
 	materials: {}, //shared materials
 
+	resources_not_found: {}, //resources that will be skipped because they werent found
 	resources_being_loaded: {}, //resources waiting to be loaded
 	resources_being_processes: {}, //used to avoid loading stuff that is being processes
 	num_resources_being_loaded: 0,
@@ -244,8 +245,11 @@ var ResourcesManager = {
 		if(!extension) //unknown file type
 			return false;
 
+		if(this.resources_not_found[url])
+			return;
+
 		//if it is already being loaded, then add the callback and wait
-		if(this.resources_being_loaded[url] != null)
+		if(this.resources_being_loaded[url])
 		{
 			this.resources_being_loaded[url].push( {options: options, callback: on_complete} );
 			return;
@@ -511,6 +515,17 @@ var ResourcesManager = {
 		return this.num_resources_being_loaded > 0;
 	},	
 
+	/**
+	* forces to try to reload again resources not found
+	*
+	* @method isLoading
+	* @return {Boolean}
+	*/
+	clearNotFoundResources: function()
+	{
+		this.resources_not_found = {};
+	},
+
 	processScene: function(filename, data, options)
 	{
 		var scene_data = Parser.parse(filename, data, options);
@@ -620,7 +635,7 @@ var ResourcesManager = {
 			ResourcesManager.num_resources_being_loaded--;
 			if( ResourcesManager.num_resources_being_loaded == 0)
 			{
-				LEvent.trigger( ResourcesManager, "end_loading_resources");
+				LEvent.trigger( ResourcesManager, "end_loading_resources", true);
 			}
 		}
 	},
@@ -629,10 +644,11 @@ var ResourcesManager = {
 	{
 		console.log("Error loading " + url);
 		delete ResourcesManager.resources_being_loaded[url];
+		ResourcesManager.resources_not_found[url] = true;
 		LEvent.trigger( ResourcesManager, "resource_not_found", url);
 		ResourcesManager.num_resources_being_loaded--;
 		if( ResourcesManager.num_resources_being_loaded == 0 )
-			LEvent.trigger( ResourcesManager, "end_loading_resources");
+			LEvent.trigger( ResourcesManager, "end_loading_resources", false);
 			//$(ResourcesManager).trigger("end_loading_resources");
 	},
 

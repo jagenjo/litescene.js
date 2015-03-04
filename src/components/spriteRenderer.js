@@ -1,6 +1,9 @@
 
 function SpriteRenderer(o)
 {
+	this.texture = "";
+	this.size = vec2.create();
+
 	if(o)
 		this.configure(o);
 }

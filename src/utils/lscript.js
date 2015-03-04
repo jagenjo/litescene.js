@@ -33,6 +33,8 @@ LScript.prototype.compile = function( arg_vars )
 	argv_names = argv_names.join(",");
 
 	var code = this.code;
+	code = LScript.expandCode( code );
+
 	var extra_code = "";
 	for(var i in this.valid_callbacks)
 	{
@@ -106,4 +108,39 @@ LScript.applyToConstructor = function(constructor, argArray) {
     return new factoryFunction();
 }
 
+LScript.expandCode = function(code)
+{
+
+	//allow support to multiline strings
+	if( code.indexOf("'''") != -1 )
+	{
+		var lines = code.split("'''");
+		code = "";
+		for(var i = 0; i < lines.length; i++)
+		{
+			if(i % 2 == 0)
+			{
+				code += lines[i];
+				continue;
+			}
+
+			code += '"' + lines[i].split("\n").join("\\n\\\n") + '"';
+		}
+	}
+
+	/* using regex, not working
+	if( code.indexOf("'''") != -1 )
+	{
+		var exp = new RegExp("\'\'\'(.|\n)*\'\'\'", "mg");
+		code = code.replace( exp, addSlashes );
+	}
+
+	function addSlashes(a){ 
+		var str = a.split("\n").join("\\n\\\n");
+		return '"' + str.substr(3, str.length - 6 ) + '"'; //remove '''
+	}
+	*/
+
+	return code;
+}
 

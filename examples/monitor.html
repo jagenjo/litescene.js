@@ -163,7 +163,7 @@ var APP = {
 			node.material = new LS.StandardMaterial({specular_factor: 0.5, textures: { color: big ? "knob2.png" : "knob.png" }} );
 			node.flags.cast_shadows = !!big;
 			node.loadAndSetMesh( big ? "bigknob.obj" : "knob.obj");
-			node.addComponent( new KnobComponent({value: 0.5}) );
+			node.addComponent( new LS.Components.Knob({value: 0.5}) );
 			return node;
 		}
 	},

@@ -218,6 +218,16 @@ Object.defineProperty( CompositePattern.prototype, "parentNode", {
 	}
 });
 
+Object.defineProperty( CompositePattern.prototype, "scene", {
+	enumerable: true,
+	get: function() {
+		return this._in_tree;
+	},
+	set: function(v) {
+		throw("Scene cannot be set, you must use addChild in parent");
+	}
+});
+
 /**
 * get all nodes below this in the hierarchy (children and children of children)
 *

@@ -53,7 +53,7 @@ function Light(o)
 	* @default 1000
 	*/
 
-	this.far = 1000;
+	this.far = 500;
 	/**
 	* Angle for the spot light inner apperture
 	* @property angle
@@ -72,7 +72,7 @@ function Light(o)
 	this.constant_diffuse = false;
 	this.use_specular = true;
 	this.linear_attenuation = false;
-	this.range_attenuation = false;
+	this.range_attenuation = true;
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;

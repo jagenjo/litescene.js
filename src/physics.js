@@ -48,7 +48,7 @@ PhysicsInstance.prototype.setMesh = function(mesh)
 {
 	this.mesh = mesh;
 	this.type = PhysicsInstance.MESH;	
-	BBox.setCenterHalfsize( this.oobb, mesh.bounding.aabb_center, mesh.bounding.aabb_halfsize );
+	BBox.setCenterHalfsize( this.oobb, BBox.getCenter( mesh.bounding ), BBox.getHalfsize( mesh.bounding ) );
 }
 
 

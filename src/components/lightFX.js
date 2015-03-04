@@ -9,6 +9,7 @@
 function LightFX(o)
 {
 	this.enabled = true;
+	this.test_visibility = true;
 
 	this.volume_visibility = 0;
 	this.volume_radius = 1;
@@ -125,6 +126,7 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 		vec3.copy( RI.center, this._root.transform.getGlobalPosition() );
 	RI.pos2D = vec3.create();
 	RI.scale_2D = this.glare_size;
+	RI.test_visibility = this.test_visibility;
 
 	//debug
 	//RI.matrix.set( this._root.transform._global_matrix );
@@ -135,7 +137,7 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	if(light)
 	{
 		vec3.scale( mat.color, light.color, this.glare_visibility * light.intensity );
-		mat.textures.color = this.glare_texture;
+		mat.setTexture("color", this.glare_texture);
 	}
 	RI.setMaterial( mat );
 	RI.flags |= RI_BLEND;
@@ -143,13 +145,16 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 	return RI;
 }
 
+//render on RenderInstance
 LightFX.onGlarePreRender = function(render_options)
 {
 	if(render_options.current_pass != "color")
 		return; 
 
-	//project point to 2D
+	//project point to 2D in normalized space
 	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	this.pos2D[0] = this.pos2D[0] * 2 - 1;
+	this.pos2D[1] = this.pos2D[1] * 2 - 1;
 	this.pos2D[2] = 0; //reset Z
 	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
 
@@ -159,7 +164,12 @@ LightFX.onGlarePreRender = function(render_options)
 	var dir = vec3.sub(vec3.create(), eye, center );
 	var dist = vec3.length(dir);
 	vec3.scale(dir,dir,1/dist);
-	var coll = Renderer.raycast( scene, center, dir, dist );
+
+
+	var coll = 0;
+	
+	if(this.test_visibility)
+		coll = Renderer.raycast( scene, center, dir, dist );
 
 	if(coll.length)
 	{

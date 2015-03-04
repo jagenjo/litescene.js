@@ -265,6 +265,8 @@ var Renderer = {
 	renderInstances: function(render_options)
 	{
 		var scene = this._current_scene;
+		if(!scene)
+			return console.warn("Renderer.renderInstances: no scene found");
 
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix, this.frustum_planes );
 		this.frustum_planes = frustum_planes;
@@ -371,23 +373,20 @@ var Renderer = {
 			else
 			{
 				//Compute lights affecting this RI (by proximity, only takes into account 
-				if(1)
+				close_lights.length = 0;
+				for(var l = 0; l < lights.length; l++)
 				{
-					close_lights.length = 0;
-					for(var l = 0; l < lights.length; l++)
-					{
-						var light = lights[l];
-						var light_intensity = light.computeLightIntensity();
-						if(light_intensity < 0.0001)
-							continue;
-						var light_radius = light.computeLightRadius();
-						var light_pos = light.position;
-						if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
-							close_lights.push(light);
-					}
+					var light = lights[l];
+					var light_intensity = light.computeLightIntensity();
+					if(light_intensity < 0.0001)
+						continue;
+					var light_radius = light.computeLightRadius();
+					var light_pos = light.position;
+					if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
+						close_lights.push(light);
 				}
-				else //use all the lights
-					close_lights = lights;
+				//else //use all the lights
+				//	close_lights = lights;
 
 				//render multipass
 				this.renderColorPassInstance( instance, close_lights, scene, render_options );
@@ -449,8 +448,7 @@ var Renderer = {
 			if(!sampler) //weird case
 				throw("Samplers should always be valid values"); //assert
 
-			if(shader && !shader[i])
-				continue;
+			//if(shader && !shader[i]) continue; ¿?
 
 			//REFACTOR THIS
 			var tex = null;
@@ -702,8 +700,6 @@ var Renderer = {
 		var samplers = {};
 		samplers.merge( scene._samplers );
 		samplers.merge( instance_final_samplers );
-
-
 		var sampler_uniforms = this.bindSamplers( samplers, shader );
 		/*
 		var slot = 1;
@@ -774,14 +770,22 @@ var Renderer = {
 		}
 
 		//assign material samplers (maybe they are not used...)
+		/*
 		var slot = 0;
 		for(var i in material._samplers )
 			material._uniforms[ i ] = material._samplers[i].bind( slot++ );
+		*/
 
 		var shader_name = "flat_texture";
 		var shader = ShadersManager.get(shader_name);
 
+		var samplers = {};
+		samplers.merge( scene._samplers );
+		samplers.merge( instance._final_samplers );
+		var sampler_uniforms = this.bindSamplers( samplers, shader );
+
 		//assign uniforms
+		shader.uniforms( sampler_uniforms );
 		shader.uniforms( node_uniforms );
 		shader.uniforms( material._uniforms );
 		shader.uniforms( instance.uniforms );

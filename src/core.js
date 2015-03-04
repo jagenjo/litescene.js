@@ -21,8 +21,21 @@ Object.defineProperty(Object.prototype, "merge", {
 */
 
 var LS = {
-	_last_uid: 0,
-	generateUId: function () { return this._last_uid++; },
+	_last_uid: 1,
+
+
+	/**
+	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
+	* @method generateUId
+	* @return {string} uuid
+	*/
+	generateUId: function () {
+		var str = (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + "-"; //user agent
+		str += (GL.getTime()|0 % 0x1000000).toString(16) + "-"; //date
+		str += Math.floor((1 + Math.random()) * 0x1000000).toString(16) + "-"; //rand
+		str += (this._last_uid++).toString(16); //sequence
+		return str; 
+	},
 	catch_errors: false, //used to try/catch all possible callbacks 
 
 	/**
@@ -94,7 +107,7 @@ var LS = {
 	request: function(request)
 	{
 		if(typeof(request) === "string")
-			throw("LS.request expects object, not string. Use LS.get or LS.getJSON");
+			throw("LS.request expects object, not string. Use LS.requestText or LS.requestJSON");
 		var dataType = request.dataType || "text";
 		if(dataType == "json") //parse it locally
 			dataType = "text";
@@ -197,19 +210,19 @@ var LS = {
 
 	/**
 	* retrieve a file from url (you can bind LEvents to done and fail)
-	* @method get
+	* @method requestFile
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	get: function(url, data, callback)
+	requestFile: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == "function")
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, data:data, success: callback});
+		return LS.request({url:url, data:data, success: callback, error: callback_error });
 	},
 
 	/**
@@ -219,14 +232,14 @@ var LS = {
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	getJSON: function(url, data, callback)
+	requestJSON: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == "function")
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, data:data, dataType:"json", success: callback});
+		return LS.request({url:url, data:data, dataType:"json", success: callback, error: callback_error });
 	},
 
 	/**
@@ -236,16 +249,52 @@ var LS = {
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	getText: function(url, data, callback)
+	requestText: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == "function")
 		{
 			data = null;
 			callback = data;
 		}
-		return LS.request({url:url, dataType:"txt", success: callback});
-	}
+		return LS.request({url:url, dataType:"txt", success: callback, success: callback, error: callback_error});
+	},
 
+	/**
+	* retrieve a text file from url (you can bind LEvents to done and fail)
+	* @method getText
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	setTimeout: function(callback, time)
+	{
+		if(!LS.catch_errors)
+			return setTimeout( callback,time );
+
+		try
+		{
+			return setTimeout( callback,time );
+		}
+		catch (err)
+		{
+			LEvent.trigger(LS,"code_error",err);
+		}
+	},
+
+	setInterval: function(callback, time)
+	{
+		if(!LS.catch_errors)
+			return setInterval( callback,time );
+
+		try
+		{
+			return setInterval( callback,time );
+		}
+		catch (err)
+		{
+			LEvent.trigger(LS,"code_error",err);
+		}
+	}
 };
 
 
@@ -497,5 +546,39 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 	return result;
 }
 
+//work in progress to create a new kind of property called parameter which comes with extra info
+//valid options are { type: "number"|"string"|"vec2"|"vec3"|"color"|"Texture"...  , min, max, step }
+if( !Object.prototype.hasOwnProperty("defineParameter") )
+{
+	Object.defineProperty( Object.prototype, "defineParameter", {
+		value: function( name, value, options ) {
+			if(options && typeof(options) == "string")
+				options = { type: options };
 
+			var root = this;
+			if(typeof(this) != "function")
+			{
+				this[name] = value;
+				root = this.constructor;
+			}
+			Object.defineProperty( root, "@" + name, {
+				value: options || {},
+				enumerable: false
+			});
+		},
+		enumerable: false
+	});
+
+	Object.defineProperty( Object.prototype, "getParameter", {
+		value: function( name ) {
+			var v = "@" + name;
+			if(this.hasOwnProperty(v))
+				return this[v];
+			if(this.constructor && this.constructor.hasOwnProperty(v))
+				return this.constructor[v];
+			return null;
+		},
+		enumerable: false
+	});
+}
 

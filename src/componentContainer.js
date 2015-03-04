@@ -43,7 +43,7 @@ ComponentContainer.prototype.configureComponents = function(info)
 		{
 			var comp_info = info.components[i];
 			var comp_class = comp_info[0];
-			if(comp_class == "Transform" && i == 0) //special case
+			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
 			{
 				this.transform.configure(comp_info[1]);
 				continue;
@@ -72,8 +72,15 @@ ComponentContainer.prototype.serializeComponents = function(o)
 	for(var i in this._components)
 	{
 		var comp = this._components[i];
-		if( !comp.serialize ) continue;
-		o.components.push([getObjectClassName(comp), comp.serialize()]);
+		if( !comp.serialize )
+			continue;
+		var obj = comp.serialize();
+
+		//enforce uid storage
+		if(comp.hasOwnProperty("uid") && !obj.uid)
+			obj.uid = comp.uid;
+
+		o.components.push([getObjectClassName(comp), obj]);
 	}
 }
 
@@ -97,8 +104,8 @@ ComponentContainer.prototype.addComponent = function(component)
 	if(!this._components) this._components = [];
 	if(this._components.indexOf(component) != -1) throw("inserting the same component twice");
 	this._components.push(component);
-	if(!component._uid)
-			component._uid = LS.generateUId();
+	if( !component.hasOwnProperty("uid") )
+		Object.defineProperty( component, "uid", { value: LS.generateUId(), enumerable: false});
 	return component;
 }
 
@@ -144,7 +151,8 @@ ComponentContainer.prototype.removeAllComponents = function()
 */
 ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
 {
-	if(!this._components) return;
+	if(!this._components)
+		return null;
 	for(var i in this._components)
 		if( this._components[i].constructor == component_class )
 		return true;
@@ -159,9 +167,25 @@ ComponentContainer.prototype.hasComponent = function(component_class) //class, n
 */
 ComponentContainer.prototype.getComponent = function(component_class) //class, not string with the name of the class
 {
-	if(!this._components) return;
+	if(!this._components)
+		return null;
 	for(var i in this._components)
 		if( this._components[i].constructor == component_class )
+		return this._components[i];
+	return null;
+}
+
+/**
+* Returns the component with the given uid
+* @method getComponentByUId
+* @param {string} uid the uid to search 
+*/
+ComponentContainer.prototype.getComponentByUId = function(uid)
+{
+	if(!this._components)
+		return null;
+	for(var i in this._components)
+		if( this._components[i].uid == uid )
 		return this._components[i];
 	return null;
 }
@@ -173,7 +197,8 @@ ComponentContainer.prototype.getComponent = function(component_class) //class, n
 */
 ComponentContainer.prototype.getIndexOfComponent = function(component)
 {
-	if(!this._components) return -1;
+	if(!this._components)
+		return -1;
 	return this._components.indexOf(component);
 }
 
@@ -184,7 +209,8 @@ ComponentContainer.prototype.getIndexOfComponent = function(component)
 */
 ComponentContainer.prototype.getComponentByIndex = function(index)
 {
-	if(!this._components) return null;
+	if(!this._components)
+		return null;
 	return this._components[index];
 }
 
@@ -197,7 +223,7 @@ ComponentContainer.prototype.getComponentByUid = function(uid)
 {
 	if(!this._components) return null;
 	for(var i = 0; i < this._components.length; i++)
-		if(this._components[i]._uid == uid)
+		if(this._components[i].uid == uid)
 			return this._components[i];
 	return null;
 }

@@ -12,8 +12,19 @@ function Script(o)
 	this._last_error = null;
 
 	this.configure(o);
+
 	if(this.code)
-		this.processCode();
+	{
+		try
+		{
+			//just in case the script saved had an error, do not block the flow
+			this.processCode();
+		}
+		catch (err)
+		{
+			console.error(err);
+		}
+	}
 }
 
 Script.icon = "mini-icon-script.png";
@@ -72,12 +83,16 @@ Script.prototype.hookEvents = function()
 {
 	var hookable = Script.valid_callbacks;
 
+	var context = this.getContext();
+	if(!context)
+		return;
+
 	for(var i in hookable)
 	{
 		var name = hookable[i];
 		var event_name = Script.translate_events[name] || name;
 
-		if( this._script._context[name] && this._script._context[name].constructor === Function )
+		if( context[name] && context[name].constructor === Function )
 		{
 			if( !LEvent.isBind( Scene, event_name, this.onScriptEvent, this )  )
 				LEvent.bind( Scene, event_name, this.onScriptEvent, this );
@@ -89,7 +104,15 @@ Script.prototype.hookEvents = function()
 
 Script.prototype.onAddedToNode = function(node)
 {
-	this.processCode();
+	try
+	{
+		//just in case the script saved had an error, do not block the flow
+		this.processCode();
+	}
+	catch (err)
+	{
+		console.error(err);
+	}
 }
 
 Script.prototype.onRemovedFromNode = function(node)

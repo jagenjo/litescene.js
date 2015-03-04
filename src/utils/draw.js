@@ -236,6 +236,9 @@ var Draw = {
 
 	reset: function()
 	{
+		if(!this.ready)
+			this.init();
+
 		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
 		mat4.identity( this.model_matrix );
 	},
