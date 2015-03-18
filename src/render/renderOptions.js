@@ -45,3 +45,5 @@ function RenderOptions(o)
 		for(var i in o)
 			this[i] = o[i];
 }
+
+LS.RenderOptions = RenderOptions;

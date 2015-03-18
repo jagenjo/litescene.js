@@ -325,7 +325,7 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	var grid_frames = this.texture_grid_size<<2;
 	var animated_texture = this.animated_texture;
 	var loop_animation = this.loop_animation;
-	var time = Scene._global_time * this.animation_fps;
+	var time = this._root.scene.getTime() * this.animation_fps;
 
 	//used for precompute curves to speed up (sampled at 60 frames per second)
 	var recompute_colors = true;

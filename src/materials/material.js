@@ -16,7 +16,7 @@
 
 function Material(o)
 {
-	this._uid = LS.generateUId();
+	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
@@ -98,7 +98,7 @@ Material.COORDS_WORLDYZ = "worldyz";
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
-Material.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 
@@ -311,7 +311,10 @@ Material.prototype.serialize = function()
 */
 Material.prototype.clone = function()
 {
-	return new this.constructor( JSON.parse( JSON.stringify( this.serialize() )) );
+	var data = this.serialize();
+	if(data.uid)
+		delete data.uid;
+	return new this.constructor( JSON.parse( JSON.stringify( data )) );
 }
 
 /**

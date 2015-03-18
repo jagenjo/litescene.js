@@ -246,449 +246,6 @@
 		]]>
 	</snippet>
 
-	<snippet id="computeLight">
-		<![CDATA[
-		//***** compute Light
-			vec3 computeLight(in SurfaceOutput IN)
-			{
-				vec3 final_color = vec3(0.0);
-				vec3 N = IN.Normal;
-				float spec_light = 0.0;
-
-				//lighting calculation
-				float shadow = 1.0;
-				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
-					#ifdef USE_HARD_SHADOWS
-						shadow = 1.0 - testShadow(vec2(0.,0.));
-					#else
-						if (v_light_coord.w > 0.0) //inside the light frustrum
-						{
-							shadow = 2.0 * testShadow(vec2(0.0,0.0));
-							shadow += testShadow(vec2(0.0,u_shadow_params.x));
-							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(-u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,u_shadow_params.x));
-							shadow = 1.0 - shadow * 0.1;
-						}
-					#endif	
-				#endif
-
-				vec3 E = (u_camera_eye - v_pos);
-				float cam_dist = length(E);
-
-				#ifdef USE_ORTHOGRAPHIC_CAMERA
-					E = normalize(u_camera_eye); //wrong, should be center - eye
-				#else
-					E /= cam_dist;
-				#endif
-
-				vec3 L = (u_light_pos - v_pos);
-				float light_dist = length(L);
-				L /= light_dist;
-
-				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
-					L = -u_light_front;
-				#endif
-
-				vec3 R = reflect(E,N);
-
-				float NdotL = 1.0;
-				#ifdef USE_DIFFUSE_LIGHT
-					NdotL = dot(N,L);
-				#endif
-				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
-				spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
-
-				vec3 light = vec3(0.0);
-
-				//ambient light
-				vec3 ambient = vec3(0.0);
-				#ifdef FIRST_PASS
-					ambient = u_ambient_light;
-					#ifdef USE_IRRADIANCE_CUBEMAP
-						ambient *= textureCube( irradiance_cubemap, N).xyz;
-					#else
-					/*
-						#ifdef USE_IRRADIANCE_TEXTURE
-							ambient *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
-						#endif
-					*/
-					#endif
-				#endif
-				light += ambient;
-
-				float att = 1.0;
-				#ifdef USE_LINEAR_ATTENUATION
-					att = 100.0 / light_dist;
-				#endif
-
-				#ifdef USE_RANGE_ATTENUATION
-					if(light_dist >= u_light_att.y)
-						att = 0.0;
-					else if(light_dist >= u_light_att.x)
-						att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
-				#endif
-
-				vec3 light_color = u_light_color;
-
-				#ifdef USE_PROJECTIVE_LIGHT
-					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
-					light_color *= texture2D(light_texture,light_sample).xyz;
-
-					#ifndef USE_SPOT_CONE
-						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
-							att = 0.0;
-					#endif
-				#endif
-
-				#ifdef USE_SPOT_LIGHT
-					#ifdef USE_SPOT_CONE
-						att *= spotFalloff(u_light_front, -normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
-					#endif
-				#endif
-
-				#ifndef USE_AMBIENT_ONLY
-					#ifdef USE_LIGHT_OFFSET
-						NdotL += u_light_offset;
-					#endif
-
-					#ifdef USE_BACKLIGHT
-						//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
-						if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
-					#else
-						//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
-						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
-					#endif
-
-					NdotL = abs(NdotL);
-					light += light_color * (att * ( NdotL + spec_light ) * shadow); 
-				#endif
-
-				//emissive
-				light += IN.Emission;
-
-				#ifdef USE_IGNORE_LIGHT
-					light = vec3(1.0);
-				#endif
-
-				//FINAL COLOR ************************* 
-				final_color = IN.Albedo * light;
-
-				final_color = max(final_color, vec3(0.0)); //(clamped from 0)
-
-
-				//REFLECTION
-				vec3 reflection_color = u_background_color;
-
-				#ifdef FIRST_PASS
-				if(IN.Reflectivity > 0.0)
-				{
-					//compute reflection color from environment
-					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
-
-						#ifdef USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
-						#else //USE_ENVIRONMENT_TEXTURE
-							vec2 uvs_polar_reflected = polarToCartesian(-R);
-							reflection_color = texture2D(environment_texture, uvs_polar_reflected ).xyz;
-						#endif
-
-					#endif //environment
-
-					//apply reflection
-					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
-				}
-				#endif //firstpass
-
-				return final_color;
-			}
-		]]>
-	</snippet>
-
-	<skeleton>
-		<code type="vertex_shader">
-		<![CDATA[
-			precision mediump float;
-
-			//COMMON INPUT STREAMS
-			attribute vec3 a_vertex;
-
-			#ifndef NO_NORMALS
-				attribute vec3 a_normal;
-			#endif
-
-			#ifndef NO_COORDS
-				attribute vec2 a_coord;
-			#endif
-
-			#ifdef USE_COORDS1_STREAM
-				attribute vec2 a_coord1;
-				varying vec2 v_uvs1;
-			#endif
-
-			#ifdef USE_COLOR_STREAM
-				attribute vec4 a_color;
-				varying vec4 v_color;
-			#endif
-
-			#ifdef USE_TANGENT_STREAM
-				//attribute vec3 a_tangent;
-			#endif
-
-			#anchor "extra_streams"
-
-			uniform mat4 u_mvp;
-			uniform mat4 u_model;
-			uniform mat4 u_normal_model;
-			uniform mat4 u_viewprojection;
-
-			//output streams
-			varying vec3 v_pos;
-			varying vec3 v_local_pos;
-			varying vec3 v_normal;
-			varying vec3 v_local_normal;
-			//varying vec3 v_tangent;
-			varying vec2 v_uvs;
-
-			uniform float u_time;			
-
-			varying vec4 v_screenpos; //used for projective textures
-			uniform vec3 u_camera_eye;
-			uniform vec2 u_camera_perspective;
-			uniform float u_pointSize;
-
-			#anchor "extra_uniforms"
-
-			#anchor "extra_functions"
-
-			void main() {
-
-				vec3 vertex = a_vertex;
-
-				#ifdef NO_NORMALS
-					v_normal = vec3(0.,1.,0.);
-				#else
-					v_normal = a_normal;
-				#endif
-
-				#ifdef USE_COLOR_STREAM
-					v_color = a_color;
-				#endif
-
-				v_uvs = a_coord;
-				#ifdef NO_COORDS
-					v_uvs = vec2(0.0);
-				#endif
-
-				#ifdef USE_COORDS1_STREAM
-					v_uvs1 = a_coord1;
-				#endif
-
-				//position
-				vec4 vertex4 = vec4(vertex,1.0);
-				vec3 normal = v_normal;
-
-				#anchor "process_vertex"
-
-				gl_Position =  u_mvp * vertex4;
-				v_local_pos = vertex;
-				v_pos = (u_model * vertex4).xyz;
-				v_screenpos = gl_Position;
-
-				//normal
-				v_local_normal = normal;
-				v_normal = (u_normal_model * vec4(normal,1.0)).xyz;
-
-
-				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
-			}
-		]]>
-		</code>
-		<code type="pixel_shader">
-		<![CDATA[
-			precision mediump float;
-
-			varying vec3 v_pos;
-			varying vec3 v_normal;
-			varying vec2 v_uvs;
-			//varying vec3 v_tangent;
-			varying vec4 v_screenpos; //used for projective textures
-			varying vec3 v_local_pos;
-			varying vec3 v_local_normal;
-
-			#ifdef USE_COLOR_STREAM
-				varying vec4 v_color;
-			#endif
-
-			#ifdef USE_COORDS1_STREAM
-				varying vec2 v_uvs1;
-			#endif
-			
-			uniform vec3 u_camera_eye;
-			uniform vec2 u_camera_planes; //far near
-			uniform vec2 u_camera_perspective;
-			uniform vec4 u_clipping_plane;
-			uniform float u_time;
-
-			uniform vec4 u_material_color; //color and alpha
-
-			struct Input {
-				vec4 color;
-				vec3 vertex;
-				vec3 normal;
-				vec2 uv;
-				vec2 uv1;
-
-				vec3 camPos;
-				vec3 viewDir;
-				vec3 worldPos;
-				vec3 worldNormal;
-				vec4 screenPos;
-			};
-
-			struct SurfaceOutput {
-				vec3 Albedo;
-				vec3 Normal;
-				vec3 Emission;
-				float Specular;
-				float Gloss;
-				float Alpha;
-				float Reflectivity;
-			};
-
-			uniform vec3 u_ambient_light;
-			uniform vec3 u_background_color;
-			uniform vec3 u_light_pos;
-			uniform vec3 u_light_front;
-			uniform vec3 u_light_color;
-			uniform vec4 u_light_angle; //cone start,end,phi,theta
-			uniform vec2 u_light_att; //start,end
-
-			#ifdef USE_LIGHT_OFFSET
-				uniform float u_light_offset;
-			#endif			
-
-			#ifdef USE_PROJECTIVE_LIGHT
-				uniform sampler2D light_texture;
-			#endif
-
-			#ifdef USE_ENVIRONMENT_TEXTURE
-				uniform sampler2D environment_texture;
-			#endif			
-
-			#ifdef USE_ENVIRONMENT_CUBEMAP
-				uniform samplerCube environment_cubemap;
-			#endif			
-
-			#ifdef USE_IRRADIANCE_CUBEMAP
-				uniform samplerCube irradiance_cubemap;
-			#endif			
-
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
-				varying vec4 v_light_coord;
-			#endif
-
-			#ifdef USE_SPOT_LIGHT
-				#import "spotFalloff"
-			#endif
-
-			#ifdef USE_SHADOW_MAP
-				#import "testShadow"
-			#endif
-
-			//***** Global input and output variables
-			Input IN;
-			SurfaceOutput o;
-
-			//***** Useful functions
-			vec2 polarToCartesian(in vec3 V)
-			{
-				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
-			}					
-			
-			#import "computeLight"
-
-			//to use normalmaps
-			#import "perturbNormal"
-
-
-			#ifdef USE_SURFACE_SHADER
-				USE_SURFACE_SHADER
-			#else
-				void surf(in Input IN, inout SurfaceOutput o)
-				{
-				}
-			#endif
-
-			#ifdef USE_POST_LIGHT
-				USE_POST_LIGHT
-			#else
-				void postLight(inout vec3 color)
-				{
-				}
-			#endif
-
-			void main() {
-
-				//discard by clipping plane
-				#ifdef USE_CLIPPING_PLANE
-					if( dot(v_pos, u_clipping_plane.xyz) < u_clipping_plane.w)
-						discard;
-				#endif
-				
-				//fill the structs
-				IN.vertex = v_local_pos;
-				IN.normal = v_local_normal;
-				IN.color = vec3(1.0);
-				#ifdef USE_COLOR_STREAM
-					IN.color = v_color;
-				#endif
-				IN.uv = v_uvs;
-				#ifdef USE_COORD1_STREAM
-					IN.uv1 = v_uvs1;
-				#endif
-
-				IN.camPos = u_camera_eye;
-				IN.viewDir = normalize(u_camera_eye - v_pos);
-				IN.worldPos = v_pos;
-				IN.worldNormal = normalize(v_normal);
-				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-
-				//surface properties
-				o.Albedo = IN.color.xyz;
-				o.Normal = IN.worldNormal;
-				o.Emission = vec3(0.0);
-				o.Specular = 0.0;
-				o.Gloss = 0.0;
-				o.Alpha = IN.color.a;
-				o.Reflectivity = 0.0;
-
-				//compute surface properties
-				surf(IN,o);
-
-				//discard
-				#ifdef USE_ALPHA_TEST
-					if(o.Alpha < USE_ALPHA_TEST)
-						discard;
-				#endif
-
-				//compute light equation
-				vec3 final_color = computeLight(o);
-
-				//compute post light process
-				postLight(final_color);
-
-				//generate lighting
-				gl_FragColor = vec4( final_color, o.Alpha );
-			}
-		]]>
-		</code>
-	</skeleton>
-
 
 	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE" multipass="true" imports="true">
 		<code type="vertex_shader">
@@ -909,7 +466,164 @@
 				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
 			}					
 			
-			#import "computeLight"
+			//***** compute Light
+			vec3 computeLight(in SurfaceOutput IN)
+			{
+				vec3 final_color = vec3(0.0);
+				vec3 N = IN.Normal;
+				float spec_light = 0.0;
+
+				//lighting calculation
+				float shadow = 1.0;
+				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
+					#ifdef USE_HARD_SHADOWS
+						shadow = 1.0 - testShadow(vec2(0.,0.));
+					#else
+						if (v_light_coord.w > 0.0) //inside the light frustrum
+						{
+							shadow = 2.0 * testShadow(vec2(0.0,0.0));
+							shadow += testShadow(vec2(0.0,u_shadow_params.x));
+							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
+							shadow += testShadow(vec2(-u_shadow_params.x,0.0));
+							shadow += testShadow(vec2(u_shadow_params.x,0.0));
+							shadow += testShadow(vec2(-u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec2(u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec2(-u_shadow_params.x,u_shadow_params.x));
+							shadow += testShadow(vec2(u_shadow_params.x,u_shadow_params.x));
+							shadow = 1.0 - shadow * 0.1;
+						}
+					#endif	
+				#endif
+
+				vec3 E = (u_camera_eye - v_pos);
+				float cam_dist = length(E);
+
+				#ifdef USE_ORTHOGRAPHIC_CAMERA
+					E = normalize(u_camera_eye); //wrong, should be center - eye
+				#else
+					E /= cam_dist;
+				#endif
+
+				vec3 L = (u_light_pos - v_pos);
+				float light_dist = length(L);
+				L /= light_dist;
+
+				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
+					L = -u_light_front;
+				#endif
+
+				vec3 R = reflect(E,N);
+
+				float NdotL = 1.0;
+				#ifdef USE_DIFFUSE_LIGHT
+					NdotL = dot(N,L);
+				#endif
+				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
+				spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
+
+				vec3 light = vec3(0.0);
+
+				//ambient light
+				vec3 ambient = vec3(0.0);
+				#ifdef FIRST_PASS
+					ambient = u_ambient_light;
+					#ifdef USE_IRRADIANCE_CUBEMAP
+						ambient *= textureCube( irradiance_cubemap, N).xyz;
+					#else
+					/*
+						#ifdef USE_IRRADIANCE_TEXTURE
+							ambient *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
+						#endif
+					*/
+					#endif
+				#endif
+				light += ambient;
+
+				float att = 1.0;
+				#ifdef USE_LINEAR_ATTENUATION
+					att = 100.0 / light_dist;
+				#endif
+
+				#ifdef USE_RANGE_ATTENUATION
+					if(light_dist >= u_light_att.y)
+						att = 0.0;
+					else if(light_dist >= u_light_att.x)
+						att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
+				#endif
+
+				vec3 light_color = u_light_color;
+
+				#ifdef USE_PROJECTIVE_LIGHT
+					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
+					light_color *= texture2D(light_texture,light_sample).xyz;
+
+					#ifndef USE_SPOT_CONE
+						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
+							att = 0.0;
+					#endif
+				#endif
+
+				#ifdef USE_SPOT_LIGHT
+					#ifdef USE_SPOT_CONE
+						att *= spotFalloff(u_light_front, -normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
+					#endif
+				#endif
+
+				#ifndef USE_AMBIENT_ONLY
+					#ifdef USE_LIGHT_OFFSET
+						NdotL += u_light_offset;
+					#endif
+
+					#ifdef USE_BACKLIGHT
+						//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
+						if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
+					#else
+						//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
+						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
+					#endif
+
+					NdotL = abs(NdotL);
+					light += light_color * (att * ( NdotL + spec_light ) * shadow); 
+				#endif
+
+				//emissive
+				light += IN.Emission;
+
+				#ifdef USE_IGNORE_LIGHT
+					light = vec3(1.0);
+				#endif
+
+				//FINAL COLOR ************************* 
+				final_color = IN.Albedo * light;
+
+				final_color = max(final_color, vec3(0.0)); //(clamped from 0)
+
+
+				//REFLECTION
+				vec3 reflection_color = u_background_color;
+
+				#ifdef FIRST_PASS
+				if(IN.Reflectivity > 0.0)
+				{
+					//compute reflection color from environment
+					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+
+						#ifdef USE_ENVIRONMENT_CUBEMAP
+							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
+						#else //USE_ENVIRONMENT_TEXTURE
+							vec2 uvs_polar_reflected = polarToCartesian(-R);
+							reflection_color = texture2D(environment_texture, uvs_polar_reflected ).xyz;
+						#endif
+
+					#endif //environment
+
+					//apply reflection
+					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
+				}
+				#endif //firstpass
+
+				return final_color;
+			}
 
 			//to use normalmaps
 			#import "perturbNormal"
@@ -1493,7 +1207,6 @@
 			uniform vec2 u_light_att; //start,end
 
 			uniform vec3 u_camera_eye;
-			uniform vec3 u_camera_front;
 			uniform vec2 u_camera_planes; //far near
 			uniform float u_pointSize;
 
@@ -1564,8 +1277,7 @@
 				float cam_dist = length(E);
 
 				#ifdef USE_ORTHOGRAPHIC_CAMERA
-					//E /= cam_dist;
-					E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes ¿?
+					E = normalize(u_camera_eye); //wrong, should be center - eye
 				#else
 					E /= cam_dist;
 				#endif
@@ -1977,7 +1689,6 @@
 			uniform mat4 u_viewprojection;
 			uniform mat4 u_normal_model;
 			uniform vec3 u_camera_eye;
-			uniform vec3 u_camera_front;
 			uniform vec2 u_camera_perspective;
 			uniform float u_pointSize;
 

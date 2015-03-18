@@ -13,7 +13,7 @@ var Renderer = {
 	default_render_options: new RenderOptions(),
 	default_material: new StandardMaterial(), //used for objects without material
 
-	assigned_render_frame_callbacks: [],
+	assigned_render_frame_containers: [],
 
 	default_point_size: 5,
 
@@ -57,12 +57,12 @@ var Renderer = {
 	* The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
 	* Callback must return the texture output or null
 	* Warning: this must be set before every frame, becaue this are cleared after rendering the frame
-	* @method assignRenderFrameCallback
-	* @param {Function} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
+	* @method assignRenderFrameContainer
+	* @param {RenderFrameContainer} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
 	*/
-	assignRenderFrameCallback: function(callback)
+	assignRenderFrameContainer: function( render_frame_container )
 	{
-		this.assigned_render_frame_callbacks.push( callback );
+		this.assigned_render_frame_containers.push( render_frame_container );
 	},
 
 	/**
@@ -100,7 +100,7 @@ var Renderer = {
 		LEvent.trigger(scene, "renderShadows", render_options );
 		scene.triggerInNodes("renderShadows", render_options );
 
-		//settings for cameras
+		//settings for cameras (if there is a main_camera asigned, render only that one
 		var cameras = this._visible_cameras;
 		if(main_camera) // && !render_options.render_all_cameras )
 			cameras = [ main_camera ];
@@ -122,39 +122,27 @@ var Renderer = {
 			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
 			LEvent.trigger(scene, "beforeRenderFrame", render_options );
 
-			//Render scene to screen, buffer, to Color&Depth buffer 
+			//Render scene to screen, to texture, to Color&Depth texture ...
 			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
 			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
 			//use render frame callbacks chain (used for postFX or strange renderers)
-			if(render_options.render_fx && this.assigned_render_frame_callbacks.length)
+			if(render_options.render_fx && this.assigned_render_frame_containers.length)
 			{
-				var callbacks = this.assigned_render_frame_callbacks;
+				var containers = this.assigned_render_frame_containers;
 				var output = null;
-				for(var j = 0; j < callbacks.length; j++)
-					output = callbacks[j]( current_camera, render_options, output );
+				for(var j = 0; j < containers.length; j++)
+					output = containers[j].onRender( current_camera, render_options, output );
 			}
 			else
-				this.renderFrame(current_camera); //main render
+				this.renderFrame( current_camera ); //main render
 
-			/*
-			if(render_options.render_fx && this.color_rendertarget && this.depth_rendertarget) //render color & depth to RT
-				Texture.drawToColorAndDepth(this.color_rendertarget, this.depth_rendertarget, this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera) );
-			else if(render_options.render_fx && this.color_rendertarget) //render color to RT
-				this.color_rendertarget.drawTo(this.renderFrameToTexture.bind(this, this.color_rendertarget, current_camera));
-			else //Screen render
-			{
-				gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
-				this.renderFrame(current_camera); //main render
-				//gl.viewport(0,0,gl.canvas.width,gl.canvas.height);
-			}
-			*/
 			LEvent.trigger(current_camera, "afterRenderFrame", render_options );
 			LEvent.trigger(scene, "afterRenderFrame", render_options );
 		}
 
 		//clear render frame callbacks
-		this.assigned_render_frame_callbacks.length = 0; //clear
+		this.assigned_render_frame_containers.length = 0; //clear
 
 
 		//events
@@ -180,18 +168,22 @@ var Renderer = {
 		var render_options = this._current_render_options;
 		var scene = this._current_scene;
 
-		//gl.scissor( this.active_viewport[0], this.active_viewport[1], this.active_viewport[2], this.active_viewport[3] );
-		//gl.enable(gl.SCISSOR_TEST);
 		//get info about the viewport from the output texture
 		if(output_texture)
 			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
 
 		this.enableCamera( camera, render_options, skip_viewport ); //set as active camera and set viewport
 
-		//Clear (although not necessary if preserveBuffer is disabled)
+		//scissors test for the gl.clear, otherwise the clear affects the full viewport
+		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
+		gl.enable(gl.SCISSOR_TEST);
+
+		//clear (only necessary if working with textures but...)
 		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
-		if(render_options.ignore_clear != true && !camera._ignore_clear)
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		if(render_options.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
+			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
+
+		gl.disable(gl.SCISSOR_TEST);
 
 		//render scene
 		render_options.current_pass = "color";
@@ -204,8 +196,6 @@ var Renderer = {
 
 		LEvent.trigger(scene, "afterRenderScene", camera);
 		scene.triggerInNodes("afterRenderScene", camera);
-
-		//gl.disable(gl.SCISSOR_TEST);
 	},
 
 	/**
@@ -330,7 +320,7 @@ var Renderer = {
 				if( instance.onPreRender(render_options) === false)
 					continue;
 
-			if(instance.material.opacity <= 0) //remove this, do it somewhere else
+			if(instance.material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
 
 			//test visibility against camera frustum
@@ -861,6 +851,7 @@ var Renderer = {
 		//global uniforms
 		var uniforms = {
 			u_camera_eye: camera.getEye(),
+			u_camera_front: camera.getFront(),
 			u_pointSize: this.default_point_size,
 			u_camera_planes: [camera.near, camera.far],
 			u_camera_perspective: camera.type == Camera.PERSPECTIVE ? [camera.fov * DEG2RAD, 512 / Math.tan( camera.fov * DEG2RAD ) ] : [ camera._frustum_size, 512 / camera._frustum_size ],
@@ -991,9 +982,9 @@ var Renderer = {
 				instance.primitive = gl.LINES;
 				if(instance.mesh)
 				{
-					if(!instance.mesh.indexBuffers["lines"])
+					if(!instance.mesh.indexBuffers["wireframe"])
 						instance.mesh.computeWireframe();
-					instance.index_buffer = instance.mesh.indexBuffers["lines"];
+					instance.index_buffer = instance.mesh.indexBuffers["wireframe"];
 				}
 			}
 
@@ -1080,10 +1071,7 @@ var Renderer = {
 		}
 
 
-		//prepare lights (collect data and generate shadowmaps)
 		var lights = scene._lights;
-		for(var i in lights)
-			lights[i].prepare(render_options);
 
 		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
@@ -1091,6 +1079,10 @@ var Renderer = {
 		this._visible_lights = scene._lights; //sorted version
 		this._visible_cameras = scene._cameras; //sorted version
 		this._visible_materials = materials;
+
+		//prepare lights (collect data and generate shadowmaps)
+		for(var i in lights)
+			lights[i].prepare(render_options);
 	},
 
 	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },

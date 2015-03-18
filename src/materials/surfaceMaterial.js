@@ -1,6 +1,6 @@
 function SurfaceMaterial(o)
 {
-	this._uid = LS.generateUId();
+	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
 	this.shader_name = "surface";

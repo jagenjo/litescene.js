@@ -14,10 +14,12 @@ function Transform(o)
 
 	this._must_update_matrix = false; //matrix must be redone?
 
-	//Testing using overservers
+	//Testing using observers (DO NOT WORK IN FIREFOX)
 	if(Object.observe)
 	{
-		var inner_transform_change = (function(c) { this._must_update_matrix = true; }).bind(this);
+		var inner_transform_change = (function(c) { 
+			this._must_update_matrix = true;
+		}).bind(this);
 		Object.observe( this._position, inner_transform_change );
 		Object.observe( this._rotation, inner_transform_change );
 		Object.observe( this._scale, inner_transform_change );
@@ -48,13 +50,21 @@ Transform.prototype.onRemovedFromNode = function(node)
 		delete node["transform"];
 }
 
+Transform.prototype.mustUpdate = function()
+{
+	this._must_update_matrix = true;
+}
+
 /**
 * The position relative to its parent in vec3 format
 * @property position {vec3}
 */
 Object.defineProperty( Transform.prototype, 'position', {
 	get: function() { return this._position; },
-	set: function(v) { this._position.set(v); this._must_update_matrix = true; },
+	set: function(v) { 
+		this._position.set(v); 
+		this._must_update_matrix = true; 
+	},
 	enumerable: true
 });
 
@@ -64,7 +74,10 @@ Object.defineProperty( Transform.prototype, 'position', {
 */
 Object.defineProperty( Transform.prototype, 'rotation', {
 	get: function() { return this._rotation; },
-	set: function(v) { this._rotation.set(v); this._must_update_matrix = true; },
+	set: function(v) { 
+		this._rotation.set(v);
+		this._must_update_matrix = true;
+	},
 	enumerable: true //avoid problems
 });
 
@@ -79,7 +92,8 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 			this._scale[0] = this._scale[1] = this._scale[2] = v;
 		else
 			this._scale.set(v);
-		this._must_update_matrix = true; },
+		this._must_update_matrix = true;
+	},
 	enumerable: true
 });
 

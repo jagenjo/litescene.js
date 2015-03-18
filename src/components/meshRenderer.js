@@ -171,6 +171,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 			RI.collision_mesh = ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
+		RI.setLODMesh( RI.collision_mesh );
 	}
 	else
 		RI.collision_mesh = mesh;

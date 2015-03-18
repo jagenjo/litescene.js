@@ -42,9 +42,15 @@ function RenderInstance(node, component)
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
-	this.mesh = null; //shouldnt be used, but just in case
-	this.collision_mesh = null; //in case of raycast
 	this.primitive = gl.TRIANGLES;
+
+	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
+	this.collision_mesh = null; //in case of raycast
+
+	//used in case the object has a secondary mesh
+	this.lod_mesh = null;
+	this.lod_vertex_buffers = null;
+	this.lod_index_buffer = null;
 
 	//where does it come from
 	this.node = node;
@@ -73,6 +79,7 @@ function RenderInstance(node, component)
 	this.samplers = {};
 
 	//for internal use
+	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_macros = {};
 	this._final_uniforms = {};
 	this._final_samplers = {};
@@ -86,6 +93,13 @@ RenderInstance.prototype.generateKey = function(step, options)
 }
 
 //set the material and apply material flags to render instance
+RenderInstance.prototype.setMatrix = function(matrix)
+{
+	this.matrix.set( matrix );
+}
+
+
+//set the material and apply material flags to render instance
 RenderInstance.prototype.setMaterial = function(material)
 {
 	this.material = material;
@@ -93,6 +107,7 @@ RenderInstance.prototype.setMaterial = function(material)
 		material.applyToRenderInstance(this);
 }
 
+//sets the buffers to render, the primitive, and the bounding
 RenderInstance.prototype.setMesh = function(mesh, primitive)
 {
 	if( !primitive && primitive != 0)
@@ -136,6 +151,44 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
 }
 
+//assigns a secondary mesh in case the object is too small on the screen
+RenderInstance.prototype.setLODMesh = function(lod_mesh)
+{
+	if(!lod_mesh)
+	{
+		this.lod_mesh = null;
+		this.lod_vertex_buffers = null;
+		this.lod_index_buffer = null;
+		return;
+	}
+
+	this.lod_mesh = lod_mesh;
+	this.lod_vertex_buffers = lod_mesh.vertexBuffers;
+
+	switch(this.primitive)
+	{
+		case gl.TRIANGLES: 
+			this.lod_index_buffer = lod_mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
+			break;
+		case gl.LINES: 
+			/*
+			if(!mesh.indexBuffers["lines"])
+				mesh.computeWireframe();
+			*/
+			this.lod_index_buffer = lod_mesh.indexBuffers["lines"];
+			break;
+		case 10:  //wireframe
+			if(!lod_mesh.indexBuffers["wireframe"])
+				lod_mesh.computeWireframe();
+			this.lod_index_buffer = lod_mesh.indexBuffers["wireframe"];
+			break;
+		case gl.POINTS: 
+		default:
+			this.lod_index_buffer = null;
+			break;
+	}
+}
+
 RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
@@ -152,13 +205,25 @@ RenderInstance.prototype.applyNodeFlags = function()
 	var node_flags = this.node.flags;
 
 	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
+	else this.flags |= RI_CULL_FACE;
+
 	if(node_flags.flip_normals == true) this.flags |= RI_CW;
+	else this.flags &= ~RI_CW;
+
 	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
+	else this.flags |= RI_DEPTH_TEST;
+
 	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
+	else this.flags |= RI_DEPTH_WRITE;
+
 	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+	else this.flags &= ~RI_ALPHA_TEST;
 
 	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
+	else this.flags |= RI_CAST_SHADOWS;
+
 	if(node_flags.receive_shadows == false) this.flags &= ~RI_RECEIVE_SHADOWS;	
+	else this.flags |= RI_RECEIVE_SHADOWS;	
 }
 
 /**
@@ -225,6 +290,19 @@ RenderInstance.prototype.updateAABB = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
+	if(this.lod_mesh)
+	{
+		//very bad LOD function...
+		var f = this.oobb[12] / Math.max(0.1, this._dist);
+		if( f < 0.1 )
+		{
+			shader.drawBuffers( this.lod_vertex_buffers,
+			  this.lod_index_buffer,
+			  this.primitive);
+			return;
+		}
+	}
+
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
@@ -246,3 +324,5 @@ RenderInstance.prototype.setCollisionMesh = function(mesh)
 	this.collision_mesh = mesh;
 }
 */
+
+LS.RenderInstance = RenderInstance;

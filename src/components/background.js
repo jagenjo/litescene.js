@@ -1,6 +1,7 @@
 
 function BackgroundRenderer(o)
 {
+	this.enabled = true;
 	this.texture = null;
 	this.color = vec3.fromValues(1,1,1);
 	this.material_name = null;
@@ -39,6 +40,9 @@ BackgroundRenderer.prototype.onResourceRenamed = function (old_name, new_name, r
 
 BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	var mat = null;
 
 	if( this.material_name )
@@ -56,7 +60,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 			mat = this._material = new LS.Material({use_scene_ambient:false});
 		else
 			mat = this._material;
-		mat.textures["color"] = texture;
+		mat.setTexture("color", texture);
 		mat.color.set( this.color );
 	}
 
@@ -71,8 +75,8 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 		RI.priority = 100; //render the first one (is a background)
 	}
 
-	RI.setMesh(mesh);
-	RI.material = mat;
+	RI.setMesh( mesh );
+	RI.setMaterial( mat );
 
 	RI.flags = RI_DEFAULT_FLAGS;
 	RI.applyNodeFlags();

@@ -131,7 +131,14 @@ CameraFX.prototype.onRemovedFromNode = function(node)
 CameraFX.prototype.onBeforeRender = function(e, render_options)
 {
 	if(this.enabled)
-		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+	{
+		if(!this._renderFrameContainer)
+		{
+			this._renderFrameContainer = new LS.RenderFrameContainer();
+			this._renderFrameContainer.onRender = this.onRenderFrame.bind(this);
+		}
+		Renderer.assignRenderFrameContainer( this._renderFrameContainer );
+	}
 }
 
 CameraFX.prototype.onRenderFrame = function(current_camera, render_options, previous_output )

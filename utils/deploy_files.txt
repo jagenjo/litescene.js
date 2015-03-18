@@ -55,6 +55,7 @@
 
 ../src/render/renderOptions.js
 ../src/render/renderInstance.js
+../src/render/renderFrameContainer.js
 ../src/render/renderer.js
 
 ../src/physics.js

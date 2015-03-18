@@ -14,6 +14,13 @@ CompositePattern.prototype.compositeCtor = function()
 {
 }
 
+/* use .scene instead
+CompositePattern.prototype.getScene = function()
+{
+	this._in_tree;
+}
+*/
+
 /**
 * Adds one child to this instance
 * @method addChild
@@ -167,10 +174,17 @@ CompositePattern.prototype.configureChildren = function(o)
 
 	for(var i in o.children)
 	{
+		var c = o.children[i];
+
 		//create instance
-		var node = new this.constructor(o.children[i].id); //id is hardcoded...
+		var node = new this.constructor(c.id); //id is hardcoded...
+		//this is important because otherwise the event fired by addChild wont have uid info which is crucial in some cases
+		if(c.uid) 
+			node.uid = c.uid;
+		//add before configure, so every child has a scene tree
 		this.addChild(node);
-		node.configure(o.children[i]);
+		//we configure afterwards otherwise children wouldnt have a scene tree to bind anything
+		node.configure(c);
 	}
 }
 

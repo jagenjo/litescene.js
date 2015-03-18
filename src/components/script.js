@@ -8,10 +8,11 @@ function Script(o)
 
 	this._script = new LScript();
 	this._script.onerror = this.onError.bind(this);
-	this._script.valid_callbacks = this.constructor.valid_callbacks;
+	this._script.exported_callbacks = this.constructor.exported_callbacks;
 	this._last_error = null;
 
-	this.configure(o);
+	if(o)
+		this.configure(o);
 
 	if(this.code)
 	{
@@ -31,11 +32,14 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.valid_callbacks = ["start","update","trigger","render","afterRender","finish"];
+Script.exported_callbacks = ["start","update","trigger","render","afterRender","finish","collectRenderInstances"];
 Script.translate_events = {
-	"render": "renderInstances", "renderInstances": "render",
-	"afterRender":"afterRenderInstances", "afterRenderInstances": "afterRender",
-	"finish": "stop", "stop":"finish"};
+	"render": "renderInstances", 
+	"renderInstances": "render",
+	"afterRender":"afterRenderInstances", 
+	"afterRenderInstances": "afterRender",
+	"finish": "stop", 
+	"stop":"finish"};
 
 Script.coding_help = "\n\
 Global vars:\n\
@@ -48,6 +52,7 @@ Exported functions:\n\
  + update: when updating\n\
  + trigger : if this node is triggered\n\
  + render : before rendering the node\n\
+ + getRenderInstances: when collecting instances\n\
  + afterRender : after rendering the node\n\
  + finish : when the scene stops\n\
 \n\
@@ -79,9 +84,37 @@ Script.prototype.processCode = function(skip_events)
 	return true;
 }
 
+Script.prototype.setAttribute = function(name, value)
+{
+	var ctx = this.getContext();
+
+	if( ctx && ctx[name] !== undefined )
+	{
+		if(ctx[name].set)
+			ctx[name](value);
+		else
+			ctx[name] = value;
+	}
+	else if(this[name])
+		this[name] = value;
+}
+
+
+Script.prototype.getAttributes = function()
+{
+	var ctx = this.getContext();
+
+	if(!ctx)
+		return {enabled:"boolean"};
+
+	var attrs = LS.getObjectAttributes( ctx );
+	attrs.enabled = "boolean";
+	return attrs;
+}
+
 Script.prototype.hookEvents = function()
 {
-	var hookable = Script.valid_callbacks;
+	var hookable = Script.exported_callbacks;
 
 	var context = this.getContext();
 	if(!context)
@@ -118,7 +151,7 @@ Script.prototype.onAddedToNode = function(node)
 Script.prototype.onRemovedFromNode = function(node)
 {
 	//unbind evends
-	var hookable = Script.valid_callbacks;
+	var hookable = Script.exported_callbacks;
 	for(var i in hookable)
 	{
 		var name = hookable[i];

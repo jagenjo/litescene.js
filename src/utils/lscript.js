@@ -9,7 +9,7 @@
 function LScript()
 {
 	this.code = "function update(dt) {\n\n}";
-	this.valid_callbacks = ["start","update"];
+	this.exported_callbacks = ["start","update"]; //detects if there is a function with this name and exports it as a property
 	this.extracode = "";
 	this.catch_exceptions = true;
 }
@@ -36,9 +36,9 @@ LScript.prototype.compile = function( arg_vars )
 	code = LScript.expandCode( code );
 
 	var extra_code = "";
-	for(var i in this.valid_callbacks)
+	for(var i in this.exported_callbacks)
 	{
-		var callback_name = this.valid_callbacks[i];
+		var callback_name = this.exported_callbacks[i];
 		extra_code += "	if(typeof("+callback_name+") != 'undefined' && "+callback_name+" != window[\""+callback_name+"\"] ) this."+callback_name + " = "+callback_name+";\n";
 	}
 	code += extra_code;
@@ -74,24 +74,24 @@ LScript.prototype.hasMethod = function(name)
 	return true;
 }
 
-
-LScript.prototype.callMethod = function(name, argv)
+//argv must be an array with parameters, unless skip_expand is true
+LScript.prototype.callMethod = function(name, argv, expand_parameters)
 {
 	if(!this._context || !this._context[name]) 
 		return;
 
 	if(!this.catch_exceptions)
 	{
-		if(!argv || argv.constructor !== Array)
-			return this._context[name].call(this._context, argv);
-		return this._context[name].apply(this._context, argv);
+		if(argv && argv.constructor === Array && expand_parameters)
+			return this._context[name].apply(this._context, argv);
+		return this._context[name].call(this._context, argv);
 	}
 
 	try
 	{
-		if(!argv || argv.constructor !== Array)
-			return this._context[name].call(this._context, argv);
-		return this._context[name].apply(this._context, argv);
+		if(argv && argv.constructor === Array && expand_parameters)
+			return this._context[name].apply(this._context, argv);
+		return this._context[name].call(this._context, argv);
 	}
 	catch(err)
 	{

@@ -2,13 +2,14 @@
 var trace = window.console ? console.log.bind(console) : function() {};
 
 function toArray(v) { return Array.apply( [], v ); }
+
 Object.defineProperty(Object.prototype, "merge", { 
     value: function(v) {
         for(var i in v)
 			this[i] = v[i];
 		return this;
     },
-    configurable: true,
+    configurable: false,
     writable: false,
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
@@ -21,22 +22,32 @@ Object.defineProperty(Object.prototype, "merge", {
 */
 
 var LS = {
-	_last_uid: 1,
 
+	//vars used for uuid genereration
+	_last_uid: 1,
+	_uid_prefix: "@", //WARNING: must be one character long
 
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
 	* @return {string} uuid
 	*/
-	generateUId: function () {
-		var str = (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + "-"; //user agent
+	generateUId: function ( prefix ) {
+		prefix = prefix || "";
+		var str = this._uid_prefix + prefix + (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + "-"; //user agent
 		str += (GL.getTime()|0 % 0x1000000).toString(16) + "-"; //date
 		str += Math.floor((1 + Math.random()) * 0x1000000).toString(16) + "-"; //rand
 		str += (this._last_uid++).toString(16); //sequence
 		return str; 
 	},
-	catch_errors: false, //used to try/catch all possible callbacks 
+
+	validateId: function(v)
+	{
+		var exp = /^[a-z\s0-9-_]+$/i; //letters digits and dashes
+		return v.match(exp);
+	},
+
+	catch_errors: false, //used to try/catch all possible callbacks (used mostly during development inside an editor)
 
 	/**
 	* Contains all the registered components
@@ -59,11 +70,24 @@ var LS = {
 			//register
 			this.Components[ getClassName(arguments[i]) ] = arguments[i]; 
 			//default methods
-			if(!comp.prototype.serialize) comp.prototype.serialize = LS._serialize;
-			if(!comp.prototype.configure) comp.prototype.configure = LS._configure;
+			if(!comp.prototype.serialize) comp.prototype.serialize = LS._default_serialize;
+			if(!comp.prototype.configure) comp.prototype.configure = LS._default_configure;
 			//event
 			LEvent.trigger(LS,"component_registered",arguments[i]); 
 		}
+	},
+
+	/**
+	* Tells you if one class is a registered component class
+	*
+	* @method isClassComponent
+	* @param {ComponentClass} comp component class to evaluate
+	* @return {boolean} true if the component class is registered
+	*/
+	isClassComponent: function( comp_class )
+	{
+		var name = this.getClassName( comp_class );
+		return !!this.Components[name];
 	},
 
 	/**
@@ -76,7 +100,7 @@ var LS = {
 	MaterialClasses: {},
 
 	/**
-	* Register a component so it is listed when searching for new components to attach
+	* Register a Material class so it is listed when searching for new materials to attach
 	*
 	* @method registerMaterialClass
 	* @param {ComponentClass} comp component class to register
@@ -93,8 +117,18 @@ var LS = {
 		material_class.resource_type = "Material";
 	},	
 
-	_configure: function(o) { LS.cloneObject(o, this); },
-	_serialize: function() { return LS.cloneObject(this); },
+	//default methods inserted in components that doesnt have a configure or serialize method
+	_default_configure: function(o) { 
+		if(o.uid) //special case, uid must never be enumerable
+			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
+		LS.cloneObject(o, this); 
+	},
+	_default_serialize: function() { 
+		var o = LS.cloneObject(this);
+		if(this.uid) //special case, not enumerable
+			o.uid = this.uid;
+		return o;
+	},
 
 	/**
 	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
@@ -204,8 +238,6 @@ var LS = {
         xhr.send(request.data);
 
 		return xhr;
-
-		//return $.ajax(request);
 	},
 
 	/**
@@ -227,7 +259,7 @@ var LS = {
 
 	/**
 	* retrieve a JSON file from url (you can bind LEvents to done and fail)
-	* @method getJSON
+	* @method requestJSON
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
@@ -244,7 +276,7 @@ var LS = {
 
 	/**
 	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method getText
+	* @method requestText
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
@@ -260,11 +292,11 @@ var LS = {
 	},
 
 	/**
-	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method getText
-	* @param {string} url
-	* @param {object} params form params
+	* Is a wrapper for setTimeout that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
+	* @method setTimeout
 	* @param {function} callback
+	* @param {number} time in ms
+	* @param {number} timer_id
 	*/
 	setTimeout: function(callback, time)
 	{
@@ -281,6 +313,13 @@ var LS = {
 		}
 	},
 
+	/**
+	* Is a wrapper for setInterval that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
+	* @method setInterval
+	* @param {function} callback
+	* @param {number} time in ms
+	* @param {number} timer_id
+	*/
 	setInterval: function(callback, time)
 	{
 		if(!LS.catch_errors)
@@ -295,12 +334,14 @@ var LS = {
 			LEvent.trigger(LS,"code_error",err);
 		}
 	}
+
+	//get form paths
 };
 
 
 
 /**
-* copy the properties (methods and attributes) of origin class into target class
+* copy the properties (methods and properties) of origin class into target class
 * @method extendClass
 * @param {Class} target
 * @param {Class} origin
@@ -393,15 +434,18 @@ LS.cloneObject = cloneObject;
 * @return {String} returns the string with the name
 */
 function getObjectClassName(obj) {
-    if (obj && obj.constructor && obj.constructor.toString) {
-        var arr = obj.constructor.toString().match(
-            /function\s*(\w+)/);
+    if (!obj)
+		return;
 
-        if (arr && arr.length == 2) {
-            return arr[1];
-        }
-    }
-    return undefined;
+	if(obj.constructor.name)
+		return obj.constructor.name;
+
+	var arr = obj.constructor.toString().match(
+		/function\s*(\w+)/);
+
+	if (arr && arr.length == 2) {
+		return arr[1];
+	}
 }
 LS.getObjectClassName = getObjectClassName;
 
@@ -413,15 +457,21 @@ LS.getObjectClassName = getObjectClassName;
 * @return {String} returns the string with the name
 */
 function getClassName(obj) {
-    if (obj && obj.toString) {
+    if (!obj)
+		return;
+
+	//from function info, but not standard
+	if(obj.name)
+		return obj.name;
+
+	//from sourcecode
+	if(obj.toString) {
         var arr = obj.toString().match(
             /function\s*(\w+)/);
-
         if (arr && arr.length == 2) {
             return arr[1];
         }
     }
-    return undefined;
 }
 LS.getClassName = getClassName;
 
@@ -444,7 +494,7 @@ function getObjectAttributes(object)
 	for(var i in object)
 	{
 		//ignore some
-		if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+		if(i[0] == "_" || i[0] == "@" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
 			continue;
 
 		if(class_object != Object)
@@ -487,6 +537,21 @@ function getObjectAttributes(object)
 	return o;
 }
 LS.getObjectAttributes = getObjectAttributes;
+
+
+function setObjectAttribute(obj, name, value)
+{
+	if(obj.setAttribute)
+		return obj.setAttribute(name, value);
+
+	var prev = obj[ name ];
+	if(prev && prev.set)
+		prev.set( value ); //for typed-arrays
+	else
+		obj[ name ] = value; //clone¿?
+}
+
+LS.setObjectAttribute = setObjectAttribute;
 
 /**
 * Samples a curve and returns the resulting value 

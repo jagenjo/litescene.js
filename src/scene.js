@@ -7,7 +7,7 @@
 
 function SceneTree()
 {
-	this.uid = LS.generateUId();
+	this.uid = LS.generateUId("TREE-");
 
 	this._root = new LS.SceneNode("root");
 	this._root.removeAllComponents();
@@ -15,6 +15,8 @@ function SceneTree()
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
 	this._nodes_by_id = {"root":this._root};
+	this._nodes_by_uid = {};
+	this._nodes_by_uid[ this._root.uid ] = this._root;
 
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
@@ -54,7 +56,10 @@ SceneTree.prototype.init = function()
 
 	this._root.removeAllComponents();
 	this._nodes = [ this._root ];
-	this._nodes_by_id = {"root":this._root};
+	this._nodes_by_id = { "root": this._root };
+	this._nodes_by_uid = {};
+	this._nodes_by_uid[ this._root.uid ] = this._root;
+
 	this.rt_cameras = [];
 
 	//this._components = []; //remove all components
@@ -77,7 +82,8 @@ SceneTree.prototype.init = function()
 	this._last_dt = 1/60; //in seconds
 	this._must_redraw = true;
 
-	if(this.selected_node) delete this.selected_node;
+	if(this.selected_node) 
+		delete this.selected_node;
 
 	this.extra = {};
 
@@ -234,7 +240,7 @@ SceneTree.prototype.serialize = function()
 	//serialize scene components
 	//this.serializeComponents(o);
 
-	LEvent.trigger(this,"serializing",o);
+	LEvent.trigger(this,"serialize",o);
 
 	return o;
 }
@@ -269,14 +275,14 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
-		LEvent.trigger(that,"scene_loaded");
+		LEvent.trigger(that,"load");
 	}
 
 	function inner_all_loaded()
 	{
 		if(on_complete)
 			on_complete(that, url);
-		LEvent.trigger(that,"complete_scene_loaded");
+		LEvent.trigger(that,"full_load");
 	}
 
 	function inner_error(err)
@@ -326,15 +332,6 @@ SceneTree.prototype.getLight = function()
 	return this._root.light;
 }
 
-/*
-SceneTree.prototype.removeNode = function(node)
-{
-	if(!node._in_tree || node._in_tree != this)
-		return;
-	node.parentNode.removeChild(node);
-}
-*/
-
 SceneTree.prototype.onNodeAdded = function(e,node)
 {
 	//remove from old scene
@@ -349,7 +346,12 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 		this._nodes_by_id[node.id] = node;
 	}
 
-	//store
+	//store by uid
+	if(!node.uid)
+		node.uid = LS.generateUId("NODE-");
+	this._nodes_by_uid[ node.uid ] = node;
+
+	//store nodes linearly
 	this._nodes.push(node);
 
 	//LEvent.trigger(node,"onAddedToScene", this);
@@ -366,6 +368,8 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 	this._nodes.splice(pos,1);
 	if(node.id)
 		delete this._nodes_by_id[ node.id ];
+	if(node.uid)
+		delete this._nodes_by_uid[ node.uid ];
 
 	node.processActionInComponents("onRemovedFromNode",this); //send to components
 	node.processActionInComponents("onRemovedFromScene",this); //send to components
@@ -381,53 +385,69 @@ SceneTree.prototype.getNodes = function()
 	return this._nodes;
 }
 
-/*
-SceneTree.prototype.getNodes = function()
-{
-	var r = [];
-	getnodes(this.root, r);
-
-	function getnodes(node, result)
-	{
-		for(var i in node._children)
-		{
-			var n = node._children[i];
-			result.push(n);
-			if(n._children && n._children.length)
-				getnodes(n,result);
-		}
-	}
-
-	return r;
-}
-*/
-
 /**
-* retrieves a Node
+* retrieves a Node based on the id (if the id starts with the uid prefix, then it searches by uid)
 *
 * @method getNode
 * @param {String} id node id
 * @return {Object} the node or null if it didnt find it
 */
-
 SceneTree.prototype.getNode = function(id)
 {
+	if(!id)
+		return null;
+	if(id.charAt(0) == LS._uid_prefix)
+		return this._nodes_by_uid[id];
 	return this._nodes_by_id[id];
 }
 
+/**
+* retrieves a Node based on a given id. It is fast because they are stored in an object
+*
+* @method getNodeById
+* @param {String} id id of the node
+* @return {Object} the node or null if it didnt find it
+*/
+SceneTree.prototype.getNodeById = function(id)
+{
+	return this._nodes_by_id[ id ];
+}
+
+
+/**
+* retrieves a Node based on a given uid. It is fast because they are stored in an object
+*
+* @method getNodeByUId
+* @param {String} uid uid of the node
+* @return {Object} the node or null if it didnt find it
+*/
 SceneTree.prototype.getNodeByUId = function(uid)
 {
-	var n = this._nodes;
-	for(var i = 0, l = n.length; i < l; i += 1)
-		if(n[i].uid == uid)
-			return n[i];
-	return null;
+	return this._nodes_by_uid[ uid ];
+}
+
+/**
+* retrieves a Node by its index
+*
+* @method getNodeByIndex
+* @param {Number} node index
+* @return {Object} returns the node at the 'index' position in the nodes array
+*/
+SceneTree.prototype.getNodeByIndex = function(index)
+{
+	return this._nodes[index];
 }
 
 //for those who are more traditional
 SceneTree.prototype.getElementById = SceneTree.prototype.getNode;
 
-
+/**
+* retrieves a node array filtered by the filter function
+*
+* @method filterNodes
+* @param {function} filter a callback function that receives every node and must return true or false
+* @return {Array} array containing the nodes that passes the filter
+*/
 SceneTree.prototype.filterNodes = function( filter )
 {
 	var r = [];
@@ -437,6 +457,23 @@ SceneTree.prototype.filterNodes = function( filter )
 	return r;
 }
 
+/**
+* searches the component with this uid, it iterates through all the nodes and components (slow)
+*
+* @method findComponentByUId
+* @param {String} uid uid of the node
+* @return {Object} component or null
+*/
+SceneTree.prototype.findComponentByUId = function(uid)
+{
+	for(var i in this._nodes)
+	{
+		var compo = this._nodes.getComponentByUId(uid);
+		if(compo)
+			return compo;
+	}
+	return null;
+}
 
 
 /**
@@ -457,19 +494,6 @@ SceneTree.prototype.getNodeByUid = function(uid)
 }
 */
 
-/**
-* retrieves a Node by its index
-*
-* @method getNodeByIndex
-* @param {Number} node index
-* @return {Object} returns the node at the 'index' position in the nodes array
-*/
-/*
-SceneTree.prototype.getNodeByIndex = function(index)
-{
-	return this.nodes[index];
-}
-*/
 
 /**
 * retrieves a Node index
@@ -645,6 +669,12 @@ SceneTree.prototype.collectData = function()
 		instances = instances.concat( node._instances );
 	}
 
+	//we also collect from the scene itself just in case (TODO: REMOVE THIS)
+	LEvent.trigger(this,"collectRenderInstances", instances );
+	LEvent.trigger(this,"collectPhysicInstances", colliders );
+	LEvent.trigger(this,"collectLights", lights );
+	LEvent.trigger(this,"collectCameras", cameras );
+
 	//for each render instance collected
 	for(var j in instances)
 	{
@@ -749,7 +779,7 @@ function SceneNode(id)
 {
 	//Generic
 	this.id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
-	this.uid = LS.generateUId();
+	this.uid = LS.generateUId("NODE-");
 
 	//this.className = "";
 	//this.mesh = "";
@@ -794,7 +824,11 @@ LS.extendClass(SceneNode, CompositePattern); //container methods
 
 SceneNode.prototype.setId = function(new_id)
 {
-	if(this.id == new_id) return true; //no changes
+	if(this.id == new_id) 
+		return true; //no changes
+
+	if(!LS.validateId(new_id))
+		return false;
 
 	var scene = this._in_tree;
 	if(!scene)
@@ -811,13 +845,14 @@ SceneNode.prototype.setId = function(new_id)
 
 	if(this.id)
 		delete scene._nodes_by_id[this.id];
+	//uid doesnt change, so we keep it
 
 	this.id = new_id;
 	if(this.id)
 		scene._nodes_by_id[ this.id ] = this;
 
-	LEvent.trigger(this,"idChanged", new_id);
-	LEvent.trigger(Scene,"nodeIdChanged", this);
+	LEvent.trigger(this,"idChanged", new_id); //TODO: CHANGE NAME
+	LEvent.trigger(Scene,"nodeIdChanged", this); //TODO: CHANGE NAME
 	return true;
 }
 
@@ -975,9 +1010,31 @@ SceneNode.prototype.clone = function()
 	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
 	var newnode = new SceneNode( new_name );
 	var info = this.serialize();
+
+	//remove all uids from nodes and components
+	inner_clean_uids(info);
+
 	info.id = null;
-	info.uid = LS.generateUId();
+	info.uid = LS.generateUId("NODE-");
 	newnode.configure( info );
+
+	function inner_clean_uids(root)
+	{
+		if(root.uid)
+			delete root.uid;
+		if(root.components)
+		{
+			for(var i in root.components)
+			{
+				var comp =  root.components[i];
+				if(comp[1].uid)
+					delete comp[1].uid;
+			}
+			for(var i in root.children)
+				inner_clean_uids(root.children[i]);
+		}
+	}
+
 
 	/*
 	//clone children (none of them is added to the SceneTree)

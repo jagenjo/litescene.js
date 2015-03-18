@@ -3,8 +3,9 @@
 //on include, link to resources manager
 if(typeof(LGraphTexture) != "undefined")
 {
-	LGraphTexture.textures_container = LS.ResourcesManager.textures;
-	LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+	//link LGraph textures system with LiteScene
+	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
+	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
 }
 
 /**
@@ -23,12 +24,15 @@ function GraphComponent(o)
 		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
 
 	this._graph = new LGraph();
+	this._graph._scene = Scene;
+	this._graph.getScene = function() { return this._scene; }
 
 	if(o)
 		this.configure(o);
 	else //default
 	{
 		var graphnode = LiteGraph.createNode("scene/node");
+		//graphnode.properties.node_id = ¿? not added yet
 		this._graph.add(graphnode);
 	}
 	
@@ -143,6 +147,9 @@ function FXGraphComponent(o)
 		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
 
 	this._graph = new LGraph();
+	this._graph._scene = Scene;
+	this._graph.getScene = function() { return this._scene; }
+
 	if(o)
 	{
 		this.configure(o);
@@ -252,17 +259,24 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
 		this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
-		ResourcesManager.textures[":color_buffer"] = this.color_texture;
+		ResourcesManager.textures[":color_" + this.uid] = this.color_texture;
 	}
 
 	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
 	{
 		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
-		ResourcesManager.textures[":depth_buffer"] = this.depth_texture;
+		ResourcesManager.textures[":depth_" + this.uid] = this.depth_texture;
 	}		
 
 	if(this.enabled)
-		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+	{
+		if(!this._renderFrameContainer)
+		{
+			this._renderFrameContainer = new LS.RenderFrameContainer();
+			this._renderFrameContainer.onRender = this.onRenderFrame.bind(this);
+		}
+		Renderer.assignRenderFrameContainer( this._renderFrameContainer );
+	}
 }
 
 FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_options, previous_output)
@@ -271,10 +285,10 @@ FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_optio
 
 	Texture.drawToColorAndDepth( this.color_texture, this.depth_texture, inner_render_frame );
 
-	//render frame
+	//render to texture callback
 	function inner_render_frame(texture)
 	{
-			Renderer.renderFrame( current_camera, that.color_rendertarget );
+		Renderer.renderFrame( current_camera, that.color_rendertarget );
 	}
 
 	return this.color_rendertarget;
@@ -293,9 +307,9 @@ FXGraphComponent.prototype.onAfterRender = function(e,render_options)
 	if(!this._graph_color_texture_node)
 		return;
 
-	this._graph_color_texture_node.properties.name = ":color_buffer";
+	this._graph_color_texture_node.properties.name = ":color_" + this.uid;
 	if(this._graph_depth_texture_node)
-		this._graph_depth_texture_node.properties.name = ":depth_buffer";
+		this._graph_depth_texture_node.properties.name = ":depth_" + this.uid;
 	if(this._graph_viewport_node) //force antialiasing
 		this._graph_viewport_node.properties.antialiasing = this.use_antialiasing;
 

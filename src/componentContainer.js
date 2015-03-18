@@ -85,6 +85,16 @@ ComponentContainer.prototype.serializeComponents = function(o)
 }
 
 /**
+* returns an array with all the components
+* @method getComponents
+* @return {Array} all the components
+*/
+ComponentContainer.prototype.getComponents = function()
+{
+	return this._components;
+}
+
+/**
 * Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
 * @param {Object} component
@@ -101,11 +111,13 @@ ComponentContainer.prototype.addComponent = function(component)
 		component.onAddedToNode(this);
 
 	//link node with component
-	if(!this._components) this._components = [];
-	if(this._components.indexOf(component) != -1) throw("inserting the same component twice");
+	if(!this._components) 
+		Object.defineProperty( this, "_components", { value: [], enumerable: false });
+	if(this._components.indexOf(component) != -1)
+		throw("inserting the same component twice");
 	this._components.push(component);
 	if( !component.hasOwnProperty("uid") )
-		Object.defineProperty( component, "uid", { value: LS.generateUId(), enumerable: false});
+		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false});
 	return component;
 }
 
@@ -152,7 +164,18 @@ ComponentContainer.prototype.removeAllComponents = function()
 ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
 {
 	if(!this._components)
-		return null;
+		return false;
+
+	//string
+	if( component_class.constructor === String)
+	{
+		for(var i in this._components)
+			if( this._components[i].constructor.name == component_class )
+			return true;
+		return false;
+	}
+
+	//class
 	for(var i in this._components)
 		if( this._components[i].constructor == component_class )
 		return true;
@@ -165,10 +188,21 @@ ComponentContainer.prototype.hasComponent = function(component_class) //class, n
 * @method getComponent
 * @param {Object} component_class the class to search a component from (not the name of the class)
 */
-ComponentContainer.prototype.getComponent = function(component_class) //class, not string with the name of the class
+ComponentContainer.prototype.getComponent = function(component_class)
 {
 	if(!this._components)
 		return null;
+
+	//string
+	if( component_class.constructor === String)
+	{
+		for(var i in this._components)
+			if( this._components[i].constructor.name == component_class )
+			return this._components[i];
+		return null;
+	}
+
+	//class
 	for(var i in this._components)
 		if( this._components[i].constructor == component_class )
 		return this._components[i];
@@ -213,21 +247,6 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 		return null;
 	return this._components[index];
 }
-
-/**
-* Returns the component with that uid
-* @method getComponentByUid
-* @param {Object} component or null
-*/
-ComponentContainer.prototype.getComponentByUid = function(uid)
-{
-	if(!this._components) return null;
-	for(var i = 0; i < this._components.length; i++)
-		if(this._components[i].uid == uid)
-			return this._components[i];
-	return null;
-}
-
 
 /**
 * executes the method with a given name in all the components

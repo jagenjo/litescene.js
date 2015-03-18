@@ -89,15 +89,14 @@ var ShadersManager = {
 		//expand code
 		if(global.imports)
 		{
-			var already_imported = {}; //avoid to import two times the same code to avoid collisions
-
+			var already_imported = {}; //avoid to import two times the same code
 			var replace_import = function(v)
 			{
 				var token = v.split("\"");
 				var id = token[1];
-				if( already_imported[ id ] )
-					return "//already imported: " + id + "\n";
 				var snippet = ShadersManager.snippets[id];
+				if(already_imported[id])
+					return "//already imported: " + id + "\n";
 				already_imported[id] = true;
 				if(snippet)
 					return snippet.code;
@@ -261,7 +260,7 @@ var ShadersManager = {
 			var snippet = snippets[i];
 			var id = snippet.getAttribute("id");
 			var code = snippet.textContent;
-			this.registerSnippet( id, code );
+			this.snippets[id] = {id:id, code:code};
 		}
 
 	},
@@ -305,16 +304,6 @@ var ShadersManager = {
 		this.global_shaders[id] = global;
 		LEvent.trigger(ShadersManager,"newShader");
 		return global;
-	},
-
-	registerSnippet: function(id, code)
-	{
-		this.snippets[ id ] = { id: id, code: code };
-	},
-
-	getSnippet: function(id)
-	{
-		return this.snippets[ id ];
 	},
 
 	//this is global code for default shaders
@@ -376,26 +365,6 @@ var ShadersManager = {
 		',"screen");
 	}
 };
-
-LS.SM = LS.ShadersManager = ShadersManager;
-
-
-//TODO
-function ShaderQuery()
-{
-	this.name = "global";
-	this.extra_streams = {};
-	this.extra_uniforms = {};
-	this.hooks = {};
-}
-
-ShaderQuery.prototype.resolve = function()
-{
-}
-
-
-
-
 
 //used for hashing keys
 String.prototype.hashCode = function(){

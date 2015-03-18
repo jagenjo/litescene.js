@@ -30,7 +30,7 @@ function RealtimeReflector(o)
 
 RealtimeReflector.icon = "mini-icon-reflector.png";
 
-RealtimeReflector["@texture_size"] = { type:"enum", values:[64,128,256,512,1024,2048] };
+RealtimeReflector["@texture_size"] = { type:"enum", values:["viewport",64,128,256,512,1024,2048] };
 
 RealtimeReflector.prototype.onAddedToNode = function(node)
 {
@@ -55,15 +55,25 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	if( (Scene._frame == 0 || (Scene._frame % this.refresh_rate) != 0) && this._rt)
 		return;
 
-	//texture
-	if( !isPowerOfTwo(this.texture_size) )
-		this.texture_size = 256;
+	var texture_size = parseInt( this.texture_size );
+	var texture_width = texture_size;
+	var texture_height = texture_size;
+
+	if( isNaN( texture_size ) && this.texture_size == "viewport")
+	{
+		texture_size = 512; //used in cubemaps
+		texture_width = gl.canvas.width;
+		texture_height = gl.canvas.height;
+	}
+
+	if(this.use_cubemap)
+		texture_width = texture_height = texture_size;
 
 	var texture_type = this.use_cubemap ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
-	if(!this._rt || this._rt.width != this.texture_size || this._rt.type != type || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
+	if(!this._rt || this._rt.width != texture_width || this._rt.height != texture_height || this._rt.type != type || this._rt.texture_type != texture_type || this._rt.mipmaps != this.generate_mipmaps)
 	{
-		this._rt = new Texture(this.texture_size,this.texture_size, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+		this._rt = new Texture(texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
 		this._rt.mipmaps = this.generate_mipmaps;
 	}
 
@@ -94,7 +104,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 
 	var visible = this._root.flags.visible;
 	if(this.ignore_this_mesh)
-		this._root.flags.visible = false;
+		this._root.flags.seen_by_reflections = false;
 
 	//add flags
 	render_options.is_rt = true;
@@ -139,7 +149,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	}
 
 
-	if(this.generate_mipmaps)
+	if(this.generate_mipmaps && isPowerOfTwo(texture_width) && isPowerOfTwo(texture_height) )
 	{
 		this._rt.bind();
 		gl.generateMipmap(this._rt.texture_type);
