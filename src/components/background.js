@@ -92,5 +92,4 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent(BackgroundRenderer);
-LS.BackgroundRenderer = BackgroundRenderer;
+LS.registerComponent( BackgroundRenderer );

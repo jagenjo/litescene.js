@@ -80,7 +80,7 @@ ComponentContainer.prototype.serializeComponents = function(o)
 		if(comp.hasOwnProperty("uid") && !obj.uid)
 			obj.uid = comp.uid;
 
-		o.components.push([getObjectClassName(comp), obj]);
+		o.components.push([LS.getObjectClassName(comp), obj]);
 	}
 }
 

@@ -152,7 +152,7 @@ LightFX.onGlarePreRender = function(render_options)
 		return; 
 
 	//project point to 2D in normalized space
-	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	mat4.projectVec3( this.pos2D, LS.Renderer._viewprojection_matrix, this.center );
 	this.pos2D[0] = this.pos2D[0] * 2 - 1;
 	this.pos2D[1] = this.pos2D[1] * 2 - 1;
 	this.pos2D[2] = 0; //reset Z
@@ -169,7 +169,7 @@ LightFX.onGlarePreRender = function(render_options)
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = Renderer.raycast( scene, center, dir, dist );
+		coll = LS.Picking.raycast( scene, center, dir, dist );
 
 	if(coll.length)
 	{

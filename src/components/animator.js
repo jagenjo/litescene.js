@@ -30,7 +30,7 @@ Rotator.prototype.onRemoveFromNode = function(node)
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
-	var scene = this._root._in_tree;
+	var scene = this._root.scene;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();
@@ -39,7 +39,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 
 	if(this.swing)
 	{
-		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * Scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
+		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
 		quat.multiply( this._root.transform._rotation, R, this._default);
 		this._root.transform._dirty = true;
 	}

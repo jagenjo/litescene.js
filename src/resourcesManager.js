@@ -288,7 +288,7 @@ var ResourcesManager = {
 			settings.dataType = file_format;
 
 		//send the REQUEST
-		LS.request(settings); //ajax call
+		LS.Network.request(settings); //ajax call
 		return false;
 	},
 
@@ -550,10 +550,11 @@ var ResourcesManager = {
 			}
 		}
 
+		//Build the scene tree
 		var scene = new LS.SceneTree();
 		scene.configure(scene_data);
 
-		//load resources
+		//load from the internet associated resources 
 		scene.loadResources();
 
 		return scene;
@@ -595,10 +596,11 @@ var ResourcesManager = {
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name
 	sendResourceRenamedEvent: function(old_name, new_name, resource)
 	{
-		for(var i = 0; i < Scene._nodes.length; i++)
+		var scene = LS.GlobalScene;
+		for(var i = 0; i < scene._nodes.length; i++)
 		{
 			//nodes
-			var node = Scene._nodes[i];
+			var node = scene._nodes[i];
 
 			//components
 			for(var j = 0; j < node._components.length; j++)
@@ -678,7 +680,7 @@ var ResourcesManager = {
 
 			ResourcesManager._required_files[url] = true;
 
-			LS.request({
+			LS.Network.request({
 				url: url,
 				success: function(response)
 				{
@@ -881,17 +883,24 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 		return null;
 	}
 
-	//resources
+	//resources (meshes, textures...)
+	for(var i in scene_data.meshes)
+	{
+		var mesh = scene_data.meshes[i];
+		LS.ResourcesManager.processResource(i,mesh);
+	}
+
+	//used for anims mostly
 	for(var i in scene_data.resources)
 	{
-		var resource = scene_data.resources[i];
-		LS.ResourcesManager.processResource(i,resource);
+		var res = scene_data.resources[i];
+		LS.ResourcesManager.processResource(i,res);
 	}
 
 	var node = new LS.SceneNode();
 	node.configure(scene_data.root);
 
-	Scene.root.addChild(node);
+	LS.GlobalScene.root.addChild(node);
 	return node;
 }
 
@@ -902,7 +911,7 @@ LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.proc
 
 
 
-Mesh.fromBinary = function( data_array )
+GL.Mesh.fromBinary = function( data_array )
 {
 	var o = null;
 	if(data_array.constructor == ArrayBuffer )
@@ -934,7 +943,7 @@ Mesh.fromBinary = function( data_array )
 	return mesh;
 }
 
-Mesh.prototype.toBinary = function()
+GL.Mesh.prototype.toBinary = function()
 {
 	if(!this.info)
 		this.info = {};

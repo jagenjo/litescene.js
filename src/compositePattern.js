@@ -108,10 +108,13 @@ CompositePattern.prototype.addChild = function(node, index, options)
 */
 CompositePattern.prototype.removeChild = function(node, options)
 {
-	if(!this._children || node._parentNode != this) return false;
-	if( node._parentNode != this) return false; //not his son
+	if(!this._children || node._parentNode != this)
+		return false;
+	if( node._parentNode != this)
+		return false; //not his son
 	var pos = this._children.indexOf(node);
-	if(pos == -1) return false; //not his son ¿?
+	if(pos == -1)
+		return false; //not his son ¿?
 	this._children.splice(pos,1);
 
 	if(this._onChildRemoved)
@@ -128,11 +131,12 @@ CompositePattern.prototype.removeChild = function(node, options)
 	}
 	node._in_tree = null;
 
-	//recursive action
+	//recursive action to remove tree
 	function inner_recursive(item)
 	{
-		if(!item._children) return;
-		for(var i in item._children)
+		if(!item._children)
+			return;
+		for(var i = 0, l = item._children.length; i < l; ++i)
 		{
 			var child = item._children[i];
 			if(child._in_tree)

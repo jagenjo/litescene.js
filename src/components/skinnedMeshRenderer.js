@@ -143,7 +143,11 @@ SkinnedMeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, 
 
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 {
-	var node = Scene.getNode(name);
+	var scene = this._root.scene;
+	if(!scene)
+		return null;
+
+	var node = scene.getNode( name );
 	if(!node)
 		return null;
 	node._is_bone = true;

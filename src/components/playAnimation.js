@@ -50,35 +50,56 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
 {
-	if(!this.animation) return;
+	if(!this.animation) 
+		return;
 
 	var animation = LS.ResourcesManager.resources[ this.animation ];
-	if(!animation) return;
+	if(!animation) 
+		return;
 
 	//var time = Scene.getTime() * this.playback_speed;
 	if(this.play)
 		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
-	if(!take) return;
+	if(!take) 
+		return;
 
 	take.actionPerSample( this.current_time, this._processSample, { disabled_tracks: this.disabled_tracks } );
-	Scene.refresh();
+
+	var scene = this._root.scene;
+	if(!scene)
+		scene.refresh();
 }
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
 {
-	var node = Scene.getNode(nodename);
+	var scene = this._root.scene;
+	if(!scene)
+		return;
+	var node = scene.getNode(nodename);
 	if(!node) 
 		return;
+		
+	var trans = node.transform;
 
 	switch(property)
 	{
-		case "matrix": if(node.transform)
-							node.transform.fromMatrix(value);
-						break;
+		case "translate.X": if(trans) trans.position[0] = value; break;
+		case "translate.Y": if(trans) trans.position[1] = value; break;
+		case "translate.Z": if(trans) trans.position[2] = value; break;
+		//NOT TESTED
+		/*
+		case "rotateX.ANGLE": if(trans) trans.rotation[0] = value * DEG2RAD; break;
+		case "rotateY.ANGLE": if(trans) trans.rotation[1] = value * DEG2RAD; break;
+		case "rotateZ.ANGLE": if(trans) trans.rotation[2] = value * DEG2RAD; break;
+		*/
+		case "matrix": if(trans) trans.fromMatrix(value); break;
 		default: break;
 	}
+	
+	if(node.transform)
+		node.transform.updateMatrix();
 }
 
 PlayAnimation.prototype.getResources = function(res)

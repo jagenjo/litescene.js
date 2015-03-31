@@ -179,17 +179,17 @@ var ShadersManager = {
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
 		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
-		LS.request({
+		LS.Network.request({
 		  url: url + nocache,
 		  dataType: 'xml',
 		  success: function(response){
 				console.log("Shaders XML loaded: " + url);
 				if(reset_old)
 				{
-					ShadersManager.global_shaders = {};
-					ShadersManager.compiled_shaders = {};
+					LS.ShadersManager.global_shaders = {};
+					LS.ShadersManager.compiled_shaders = {};
 				}
-				ShadersManager.processShadersXML(response);
+				LS.ShadersManager.processShadersXML(response);
 				if(on_complete)
 					on_complete();
 		  },
@@ -252,7 +252,7 @@ var ShadersManager = {
 			if(imports)
 				options.imports = (imports == "1" || imports == "true");
 
-			ShadersManager.registerGlobalShader(vs_code, ps_code, id, macros, options );
+			LS.ShadersManager.registerGlobalShader(vs_code, ps_code, id, macros, options );
 		}
 
 		var snippets = xml.querySelectorAll('snippet');
@@ -392,19 +392,3 @@ function ShaderQuery()
 ShaderQuery.prototype.resolve = function()
 {
 }
-
-
-
-
-
-//used for hashing keys
-String.prototype.hashCode = function(){
-    var hash = 0, i, c, l;
-    if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; ++i) {
-        c  = this.charCodeAt(i);
-        hash  = ((hash<<5)-hash)+c;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};

@@ -26,13 +26,14 @@ FollowNode.prototype.updatePosition = function(e,info)
 	if(!this._root) return;
 
 	var pos = null;
-	var camera = Scene.getCamera(); //main camera
+	var scene = this._root.scene;
+	var camera = scene.getCamera(); //main camera
 
 	if(this.follow_camera)
 		pos =  camera.getEye();
 	else
 	{
-		var target_node = Scene.getNode( this.node_name );
+		var target_node = scene.getNode( this.node_name );
 		if(!target_node) return;
 		pos = target_node.transform.getPosition();
 	}
@@ -42,4 +43,4 @@ FollowNode.prototype.updatePosition = function(e,info)
 	this._root.transform.setPosition( pos );
 }
 
-LS.registerComponent(FollowNode);
+LS.registerComponent( FollowNode );

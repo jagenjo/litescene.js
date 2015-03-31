@@ -34,12 +34,14 @@ function Camera(o)
 	//orthographics planes (near and far took from ._near and ._far)
 	this._ortho = new Float32Array([-1,1,-1,1]);
 
-	this._aspect = 1.0;
+	this._aspect = 1.0; //must be one, otherwise it gest deformed, the real one is inside real_aspect
 	this._fov = 45; //persp
 	this._frustum_size = 50; //ortho
+	this._real_aspect = 1.0; //the one used when computing the projection matrix
 
 	//left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
+	this._viewport_in_pixels = vec4.create();
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -52,7 +54,7 @@ function Camera(o)
 
 	//render to texture
 	this.texture_name = ""; //name
-	this.texture_size = vec2.fromValues(512,512);
+	this.texture_size = vec2.fromValues(0,0); //0 means same as screen
 
 	if(o) 
 		this.configure(o);
@@ -292,11 +294,11 @@ Camera.prototype.lookAt = function(eye,center,up)
 Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
-		mat4.ortho(this._projection_matrix, -this._frustum_size*this._aspect*0.5, this._frustum_size*this._aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
+		mat4.ortho(this._projection_matrix, -this._frustum_size*this._real_aspect*0.5, this._frustum_size*this._real_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
 	else if (this.type == Camera.ORTHO2D)
 		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
-		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._aspect, this._near, this._far);
+		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._real_aspect, this._near, this._far);
 
 	//if (this.type != Camera.ORTHO2D)
 	if(this._root && this._root._is_root) //in root node
@@ -725,7 +727,7 @@ Camera.prototype.updateNodeTransform = function()
 * Converts from 3D to 2D
 * @method project
 * @param {vec3} vec 3D position we want to proyect to 2D
-* @param {Array[4]} viewport viewport coordinates (if omited full viewport is used)
+* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
 * @return {vec3} the coordinates in 2D
 */
@@ -733,7 +735,9 @@ Camera.prototype.updateNodeTransform = function()
 Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 {
 	result = result || vec3.create();
-	viewport = viewport || gl.getViewport();// gl.getParameter(gl.VIEWPORT);
+
+	viewport = this.getLocalViewport(viewport);
+
 	if( this._must_update_view_matrix || this._must_update_projection_matrix )
 		this.updateMatrices();
 
@@ -742,70 +746,92 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 
 	vec3.project( result, vec, this._viewprojection_matrix, viewport );
 	if(!skip_reverse)
-		result[1] = viewport[3] - result[1];
+		result[1] = viewport[3] - result[1] + viewport[1]*2; //why 2? no idea, but it works :(
 	return result;
-
-	/*
-	var ix = vec[0];
-	var iy = vec[1];
-	var iz = vec[2];
-
-	var ox = m[0] * ix + m[4] * iy + m[8] * iz + m[12];
-	var oy = m[1] * ix + m[5] * iy + m[9] * iz + m[13];
-	var oz = m[2] * ix + m[6] * iy + m[10] * iz + m[14];
-	var ow = m[3] * ix + m[7] * iy + m[11] * iz + m[15];
-
-	var projx = (ox / ow + 1) / 2;
-	var projy = (oy / ow + 1) / 2;
-	var projz = (oz / ow + 1) / 2;
-
-	result[0] = projx * viewport[2] + viewport[0];
-	if(reverse)
-		result[1] = (1.0 - projy) * viewport[3] + viewport[1];
-	else
-		result[1] = projy * viewport[3] + viewport[1];
-	result[2] = projz;
-	return result;
-	*/
-
-	/*
-	var result = mat4.projectVec3(result || vec3.create(), this._viewprojection_matrix, vec );
-	vec3.set(result, (result[0]+1.0) * (viewport[2]*0.5) + viewport[0], (result[1]+1.0) * (viewport[3]*0.5) + viewport[1], (result[2]+1.0)/2.0 );
-	return result;
-	*/
 }
 
 /**
 * Converts from 2D to 3D
 * @method unproject
 * @param {vec3} vec 2D position we want to proyect to 3D
-* @param {Array[4]} viewport viewport coordinates (if omited full viewport is used)
+* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
 * @return {vec3} the coordinates in 2D
 */
 
 Camera.prototype.unproject = function( vec, viewport, result )
 {
-	viewport = viewport || gl.getViewport(); // gl.getParameter(gl.VIEWPORT);
+	viewport = this.getLocalViewport(viewport);
 	if( this._must_update_view_matrix || this._must_update_projection_matrix )
 		this.updateMatrices();
-	return gl.unproject(result || vec3.create(), vec, this._view_matrix, this._projection_matrix, viewport );
+	return vec3.unproject(result || vec3.create(), vec, this._viewprojection_matrix, viewport );
 }
 
-Camera.prototype.getRayInPixel = function(x,y, viewport)
+/**
+* returns the viewport in pixels applying the local camera viewport to the full viewport of the canvas
+* @method getLocalViewport
+* @param {vec4} [viewport=null] viewport info, otherwise the canvas dimensions will be used (not the current viewport)
+* @param {vec4} [result=vec4] where to store the result, if omited it is created
+* @return {vec4} the viewport info of the camera in pixels
+*/
+Camera.prototype.getLocalViewport = function( viewport, result )
 {
-	viewport = viewport ||  gl.getParameter(gl.VIEWPORT);
+	result = result || vec4.create();
+
+	//if no viewport specified, use the full canvas viewport as reference
+	if(!viewport)
+	{
+		result[0] = gl.canvas.width * this._viewport[0]; //asume starts in 0
+		result[1] = gl.canvas.height * this._viewport[1]; //asume starts in 0
+		result[2] = gl.canvas.width * this._viewport[2];
+		result[3] = gl.canvas.height * this._viewport[3];
+		return result;
+	}
+
+	//apply viewport
+	result[0] = (viewport[2] * this._viewport[0] + viewport[0])|0;
+	result[1] = (viewport[3] * this._viewport[1] + viewport[1])|0;
+	result[2] = (viewport[2] * this._viewport[2])|0;
+	result[3] = (viewport[3] * this._viewport[3])|0;
+	return result;
+}
+
+/**
+* given an x and y position, returns the ray {start, dir}
+* @method getRayInPixel
+* @param {number} x
+* @param {number} y
+* @param {vec4} viewport viewport coordinates (if omited full viewport is used)
+* @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
+* @return {Object} {start, dir}
+*/
+Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
+{
+	//apply camera viewport
+	if(!skip_local_viewport)
+		viewport = this.getLocalViewport( viewport, this._viewport_in_pixels );
+
 	if( this._must_update_view_matrix || this._must_update_projection_matrix )
 		this.updateMatrices();
 	var eye = this.getEye();
-	var pos = vec3.unproject(vec3.create(), [x,y,1], this._view_matrix, this._projection_matrix, viewport );
+	var pos = vec3.unproject(vec3.create(), [x,y,1], this._viewprojection_matrix, viewport );
 
 	if(this.type == Camera.ORTHOGRAPHIC)
-		eye = vec3.unproject(vec3.create(), [x,y,0], this._view_matrix, this._projection_matrix, viewport );
+		eye = vec3.unproject(eye, [x,y,0], this._viewprojection_matrix, viewport );
 
-	var dir = vec3.subtract( vec3.create(), pos, eye );
+	var dir = vec3.subtract( pos, pos, eye );
 	vec3.normalize(dir, dir);
 	return { start: eye, direction: dir };
+}
+
+
+Camera.prototype.isPointInCamera = function( x, y, viewport )
+{
+	var v = this.getLocalViewport( viewport, this._viewport_in_pixels );
+	if( x < v[0] || x > v[0] + v[2] ||
+		y < v[1] || y > v[1] + v[3] )
+		return false;
+	return true;
 }
 
 Camera.prototype.configure = function(o)
@@ -841,7 +867,7 @@ Camera.prototype.serialize = function()
 		aspect: this._aspect,
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
-		to_texture: this._to_texture,
+		texture_name: this.texture_name,
 		texture_size: this._texture_size
 	};
 

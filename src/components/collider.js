@@ -72,4 +72,3 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 
 LS.registerComponent(Collider);
-LS.Collider = Collider;

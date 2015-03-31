@@ -5,6 +5,7 @@
 ../src/utils/lscript.js
 
 ../src/core.js
+../src/network.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
 ../src/render/defines.js
@@ -33,7 +34,7 @@
 ../src/components/animator.js
 ../src/components/cameraController.js
 ../src/components/nodeManipulator.js
-../src/components/faceTo.js
+../src/components/target.js
 ../src/components/fogFX.js
 ../src/components/followNode.js
 ../src/components/geometricPrimitive.js
@@ -49,19 +50,23 @@
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
 ../src/components/spherize.js
-../src/components/oculusController.js
+../src/components/VRCameraController.js
 
 ../src/graph/scene.js
+
+../src/helpers/path.js
 
 ../src/render/renderOptions.js
 ../src/render/renderInstance.js
 ../src/render/renderFrameContainer.js
 ../src/render/renderer.js
 
+../src/picking.js
 ../src/physics.js
 
 ../src/parsers/parser.js
 ../src/parsers/parserASE.js
+../src/parsers/collada.js
 ../src/parsers/parserDAE.js
 ../src/parsers/parserDDS.js
 ../src/parsers/parserJSMESH.js

@@ -35,7 +35,7 @@ var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI
 function RenderInstance(node, component)
 {
 	this._key = ""; //not used yet
-	this._uid = LS.generateUId(); //unique identifier for this RI
+	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
 
 	//info about the mesh
 	this.vertex_buffers = null;
@@ -85,12 +85,14 @@ function RenderInstance(node, component)
 	this._final_samplers = {};
 }
 
-
+/*
+//not used
 RenderInstance.prototype.generateKey = function(step, options)
 {
-	this._key = step + "|" + this.node._uid + "|" + this.material._uid + "|";
+	this._key = step + "|" + this.node.uid + "|" + this.material.uid + "|";
 	return this._key;
 }
+*/
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMatrix = function(matrix)

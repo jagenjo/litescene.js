@@ -41,6 +41,12 @@ var LS = {
 		return str; 
 	},
 
+	/**
+	* validates Id string to ensure there is no forbidden characters
+	* @method validateId
+	* @param {string} id
+	* @return {boolean} 
+	*/
 	validateId: function(v)
 	{
 		var exp = /^[a-z\s0-9-_]+$/i; //letters digits and dashes
@@ -68,7 +74,7 @@ var LS = {
 		for(var i in arguments)
 		{
 			//register
-			this.Components[ getClassName(arguments[i]) ] = arguments[i]; 
+			this.Components[ LS.getClassName(arguments[i]) ] = arguments[i]; 
 			//default methods
 			if(!comp.prototype.serialize) comp.prototype.serialize = LS._default_serialize;
 			if(!comp.prototype.configure) comp.prototype.configure = LS._default_configure;
@@ -107,7 +113,7 @@ var LS = {
 	*/
 	registerMaterialClass: function(material_class) { 
 		//register
-		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
 
 		//add extra material methods
 		LS.extendClass( material_class, Material );
@@ -119,6 +125,8 @@ var LS = {
 
 	//default methods inserted in components that doesnt have a configure or serialize method
 	_default_configure: function(o) { 
+		if(!o)
+			return;
 		if(o.uid) //special case, uid must never be enumerable
 			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
 		LS.cloneObject(o, this); 
@@ -128,167 +136,6 @@ var LS = {
 		if(this.uid) //special case, not enumerable
 			o.uid = this.uid;
 		return o;
-	},
-
-	/**
-	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
-	*
-	* @method request
-	* @param {Object} request object with the fields for the request: 
-    *			dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}
-	* @return {XMLHttpRequest} the XMLHttpRequest of the petition
-	*/
-	request: function(request)
-	{
-		if(typeof(request) === "string")
-			throw("LS.request expects object, not string. Use LS.requestText or LS.requestJSON");
-		var dataType = request.dataType || "text";
-		if(dataType == "json") //parse it locally
-			dataType = "text";
-		else if(dataType == "xml") //parse it locally
-			dataType = "text";
-		else if (dataType == "binary")
-		{
-			//request.mimeType = "text/plain; charset=x-user-defined";
-			dataType = "arraybuffer";
-			request.mimeType = "application/octet-stream";
-		}	
-		else if(dataType == "image") //special case: images are loaded using regular images request
-		{
-			var img = new Image();
-			img.onload = function() {
-				if(request.success)
-					request.success.call(this);
-			};
-			img.onerror = request.error;
-			img.src = request.url;
-			return img;
-		}
-
-		//regular case, use AJAX call
-        var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? 'POST' : 'GET', request.url, true);
-		xhr.withCredentials = true;
-        if(dataType)
-            xhr.responseType = dataType;
-        if (request.mimeType)
-            xhr.overrideMimeType( request.mimeType );
-        xhr.onload = function(load)
-		{
-			var response = this.response;
-			if(this.status != 200)
-			{
-				var err = "Error " + this.status;
-				if(request.error)
-					request.error(err);
-				return;
-			}
-
-			if(request.dataType == "json") //chrome doesnt support json format
-			{
-				try
-				{
-					response = JSON.parse(response);
-				}
-				catch (err)
-				{
-					if(request.error)
-						request.error(err);
-				}
-			}
-			else if(request.dataType == "xml")
-			{
-				try
-				{
-					var xmlparser = new DOMParser();
-					response = xmlparser.parseFromString(response,"text/xml");
-				}
-				catch (err)
-				{
-					if(request.error)
-						request.error(err);
-				}
-			}
-
-			if(LS.catch_errors)
-			{
-				try
-				{
-					if(request.success)
-						request.success.call(this, response);
-					LEvent.trigger(xhr,"done",response);
-				}
-				catch (err)
-				{
-					LEvent.trigger(LS,"code_error",err);
-				}
-			}
-			else
-			{
-				if(request.success)
-					request.success.call(this, response);
-				LEvent.trigger(xhr,"done",response);
-			}
-		};
-        xhr.onerror = function(err) {
-			if(request.error)
-				request.error(err);
-			LEvent.trigger(this,"fail", err);
-		}
-        xhr.send(request.data);
-
-		return xhr;
-	},
-
-	/**
-	* retrieve a file from url (you can bind LEvents to done and fail)
-	* @method requestFile
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
-	*/
-	requestFile: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == "function")
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, data:data, success: callback, error: callback_error });
-	},
-
-	/**
-	* retrieve a JSON file from url (you can bind LEvents to done and fail)
-	* @method requestJSON
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
-	*/
-	requestJSON: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == "function")
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, data:data, dataType:"json", success: callback, error: callback_error });
-	},
-
-	/**
-	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method requestText
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
-	*/
-	requestText: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == "function")
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, dataType:"txt", success: callback, success: callback, error: callback_error});
 	},
 
 	/**
@@ -333,225 +180,213 @@ var LS = {
 		{
 			LEvent.trigger(LS,"code_error",err);
 		}
-	}
+	},
 
-	//get form paths
-};
-
-
-
-/**
-* copy the properties (methods and properties) of origin class into target class
-* @method extendClass
-* @param {Class} target
-* @param {Class} origin
-*/
-
-LS.extendClass = function extendClass( target, origin ) {
-	for(var i in origin) //copy class properties
-	{
-		if(target.hasOwnProperty(i))
-			continue;
-		target[i] = origin[i];
-	}
-
-	if(origin.prototype) //copy prototype properties
-		for(var i in origin.prototype) //only enumerables
+	/**
+	* copy the properties (methods and properties) of origin class into target class
+	* @method extendClass
+	* @param {Class} target
+	* @param {Class} origin
+	*/
+	extendClass: function( target, origin ) {
+		for(var i in origin) //copy class properties
 		{
-			if(!origin.prototype.hasOwnProperty(i)) 
+			if(target.hasOwnProperty(i))
 				continue;
-
-			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
-				continue;
-
-			//copy getters 
-			if(origin.prototype.__lookupGetter__(i))
-				target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
-			else 
-				target.prototype[i] = origin.prototype[i];
-
-			//and setters
-			if(origin.prototype.__lookupSetter__(i))
-				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+			target[i] = origin[i];
 		}
-}
 
-/**
-* Clones an object (no matter where the object came from)
-* - It skip attributes starting with "_" or "jQuery" or functions
-* - to the rest it applies JSON.parse( JSON.stringify ( obj ) )
-* - use it carefully
-* @method cloneObject
-* @param {Object} object the object to clone
-* @param {Object} target=null optional, the destination object
-* @return {Object} returns the cloned object
-*/
-function cloneObject(object, target)
-{
-	var o = target || {};
-	for(var i in object)
+		if(origin.prototype) //copy prototype properties
+			for(var i in origin.prototype) //only enumerables
+			{
+				if(!origin.prototype.hasOwnProperty(i)) 
+					continue;
+
+				if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
+					continue;
+
+				//copy getters 
+				if(origin.prototype.__lookupGetter__(i))
+					target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
+				else 
+					target.prototype[i] = origin.prototype[i];
+
+				//and setters
+				if(origin.prototype.__lookupSetter__(i))
+					target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+			}
+	},
+
+	/**
+	* Clones an object (no matter where the object came from)
+	* - It skip attributes starting with "_" or "jQuery" or functions
+	* - to the rest it applies JSON.parse( JSON.stringify ( obj ) )
+	* - use it carefully
+	* @method cloneObject
+	* @param {Object} object the object to clone
+	* @param {Object} target=null optional, the destination object
+	* @return {Object} returns the cloned object
+	*/
+	cloneObject: function(object, target)
 	{
-		if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
-			continue;
-
-		var v = object[i];
-		if(v == null)
-			o[i] = null;			
-		else if ( isFunction(v) )
-			continue;
-		else if (typeof(v) == "number" || typeof(v) == "string")
-			o[i] = v;
-		else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
-			o[i] = Array.apply( [], v ); //clone
-		else if ( isArray(v) )
+		var o = target || {};
+		for(var i in object)
 		{
-			if( o[i] && o[i].constructor == Float32Array ) //reuse old container
-				o[i].set(v);
+			if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+				continue;
+
+			var v = object[i];
+			if(v == null)
+				o[i] = null;			
+			else if ( isFunction(v) )
+				continue;
+			else if (typeof(v) == "number" || typeof(v) == "string")
+				o[i] = v;
+			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
+				o[i] = Array.apply( [], v ); //clone
+			else if ( isArray(v) )
+			{
+				if( o[i] && o[i].constructor == Float32Array ) //reuse old container
+					o[i].set(v);
+				else
+					o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
+			}
+			else //slow but safe
+			{
+				try
+				{
+					//prevent circular recursions
+					o[i] = JSON.parse( JSON.stringify(v) );
+				}
+				catch (err)
+				{
+					console.error(err);
+				}
+			}
+		}
+		return o;
+	},
+
+	/**
+	* Returns an object class name (uses the constructor toString)
+	* @method getObjectClassName
+	* @param {Object} the object to see the class name
+	* @return {String} returns the string with the name
+	*/
+	getObjectClassName: function(obj) {
+		if (!obj)
+			return;
+
+		if(obj.constructor.name)
+			return obj.constructor.name;
+
+		var arr = obj.constructor.toString().match(
+			/function\s*(\w+)/);
+
+		if (arr && arr.length == 2) {
+			return arr[1];
+		}
+	},
+
+	/**
+	* Returns an string with the class name
+	* @method getClassName
+	* @param {Object} class object
+	* @return {String} returns the string with the name
+	*/
+	getClassName: function(obj) {
+		if (!obj)
+			return;
+
+		//from function info, but not standard
+		if(obj.name)
+			return obj.name;
+
+		//from sourcecode
+		if(obj.toString) {
+			var arr = obj.toString().match(
+				/function\s*(\w+)/);
+			if (arr && arr.length == 2) {
+				return arr[1];
+			}
+		}
+	},
+
+	/**
+	* Returns the attributes of one object and the type
+	* @method getObjectAttributes
+	* @param {Object} object
+	* @return {Object} returns object with attribute name and its type
+	*/
+	getObjectAttributes: function(object)
+	{
+		if(object.getAttributes)
+			return object.getAttributes();
+		var class_object = object.constructor;
+		if(class_object.attributes)
+			return class_object.attributes;
+
+		var o = {};
+		for(var i in object)
+		{
+			//ignore some
+			if(i[0] == "_" || i[0] == "@" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+				continue;
+
+			if(class_object != Object)
+			{
+				var hint = class_object["@"+i];
+				if(hint && hint.type)
+				{
+					o[i] = hint.type;
+					continue;
+				}
+			}
+
+			var v = object[i];
+			if(v == null)
+				o[i] = null;
+			else if ( isFunction(v) )
+				continue;
+			else if (  v.constructor === Boolean )
+				o[i] = "boolean";
+			else if (  v.constructor === Number )
+				o[i] = "number";
+			else if ( v.constructor === String )
+				o[i] = "string";
+			else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
+			{
+				if(v.length == 2)
+					o[i] = "vec2";
+				else if(v.length == 3)
+					o[i] = "vec3";
+				else if(v.length == 4)
+					o[i] = "vec4";
+				else if(v.length == 9)
+					o[i] = "mat3";
+				else if(v.length == 16)
+					o[i] = "mat4";
+				else
+					o[i] = 0;
+			}
 			else
-				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
+				o[i] = 0;
 		}
-		else //slow but safe
-		{
-			try
-			{
-				//prevent circular recursions
-				o[i] = JSON.parse( JSON.stringify(v) );
-			}
-			catch (err)
-			{
-				console.error(err);
-			}
-		}
-	}
-	return o;
-}
-LS.cloneObject = cloneObject;
+		return o;
+	},
 
-/**
-* Returns an object class name (uses the constructor toString)
-* @method getObjectClassName
-* @param {Object} the object to see the class name
-* @return {String} returns the string with the name
-*/
-function getObjectClassName(obj) {
-    if (!obj)
-		return;
-
-	if(obj.constructor.name)
-		return obj.constructor.name;
-
-	var arr = obj.constructor.toString().match(
-		/function\s*(\w+)/);
-
-	if (arr && arr.length == 2) {
-		return arr[1];
-	}
-}
-LS.getObjectClassName = getObjectClassName;
-
-
-/**
-* Returns an string with the class name
-* @method getClassName
-* @param {Object} class object
-* @return {String} returns the string with the name
-*/
-function getClassName(obj) {
-    if (!obj)
-		return;
-
-	//from function info, but not standard
-	if(obj.name)
-		return obj.name;
-
-	//from sourcecode
-	if(obj.toString) {
-        var arr = obj.toString().match(
-            /function\s*(\w+)/);
-        if (arr && arr.length == 2) {
-            return arr[1];
-        }
-    }
-}
-LS.getClassName = getClassName;
-
-/**
-* Returns the attributes of one object and the type
-* @method getObjectAttributes
-* @param {Object} object
-* @return {Object} returns object with attribute name and its type
-*/
-
-function getObjectAttributes(object)
-{
-	if(object.getAttributes)
-		return object.getAttributes();
-	var class_object = object.constructor;
-	if(class_object.attributes)
-		return class_object.attributes;
-
-	var o = {};
-	for(var i in object)
+	setObjectAttribute: function(obj, name, value)
 	{
-		//ignore some
-		if(i[0] == "_" || i[0] == "@" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
-			continue;
+		if(obj.setAttribute)
+			return obj.setAttribute(name, value);
 
-		if(class_object != Object)
-		{
-			var hint = class_object["@"+i];
-			if(hint && hint.type)
-			{
-				o[i] = hint.type;
-				continue;
-			}
-		}
-
-		var v = object[i];
-		if(v == null)
-			o[i] = null;
-		else if ( isFunction(v) )
-			continue;
-		else if (  v.constructor === Number )
-			o[i] = "number";
-		else if ( v.constructor === String )
-			o[i] = "string";
-		else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
-		{
-			if(v.length == 2)
-				o[i] = "vec2";
-			else if(v.length == 3)
-				o[i] = "vec3";
-			else if(v.length == 4)
-				o[i] = "vec4";
-			else if(v.length == 9)
-				o[i] = "mat3";
-			else if(v.length == 16)
-				o[i] = "mat4";
-			else
-				o[i] = "*";
-		}
+		var prev = obj[ name ];
+		if(prev && prev.set)
+			prev.set( value ); //for typed-arrays
 		else
-			o[i] = "*";
+			obj[ name ] = value; //clone¿?
 	}
-	return o;
 }
-LS.getObjectAttributes = getObjectAttributes;
-
-
-function setObjectAttribute(obj, name, value)
-{
-	if(obj.setAttribute)
-		return obj.setAttribute(name, value);
-
-	var prev = obj[ name ];
-	if(prev && prev.set)
-		prev.set( value ); //for typed-arrays
-	else
-		obj[ name ] = value; //clone¿?
-}
-
-LS.setObjectAttribute = setObjectAttribute;
 
 /**
 * Samples a curve and returns the resulting value 
@@ -611,11 +446,11 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 	return result;
 }
 
-//work in progress to create a new kind of property called parameter which comes with extra info
+//work in progress to create a new kind of property called attribute which comes with extra info
 //valid options are { type: "number"|"string"|"vec2"|"vec3"|"color"|"Texture"...  , min, max, step }
-if( !Object.prototype.hasOwnProperty("defineParameter") )
+if( !Object.prototype.hasOwnProperty("defineAttribute") )
 {
-	Object.defineProperty( Object.prototype, "defineParameter", {
+	Object.defineProperty( Object.prototype, "defineAttribute", {
 		value: function( name, value, options ) {
 			if(options && typeof(options) == "string")
 				options = { type: options };
@@ -634,7 +469,7 @@ if( !Object.prototype.hasOwnProperty("defineParameter") )
 		enumerable: false
 	});
 
-	Object.defineProperty( Object.prototype, "getParameter", {
+	Object.defineProperty( Object.prototype, "getAttribute", {
 		value: function( name ) {
 			var v = "@" + name;
 			if(this.hasOwnProperty(v))
@@ -646,4 +481,16 @@ if( !Object.prototype.hasOwnProperty("defineParameter") )
 		enumerable: false
 	});
 }
+
+//used for hashing keys:TODO move from here somewhere else
+String.prototype.hashCode = function(){
+    var hash = 0, i, c, l;
+    if (this.length == 0) return hash;
+    for (i = 0, l = this.length; i < l; ++i) {
+        c  = this.charCodeAt(i);
+        hash  = ((hash<<5)-hash)+c;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
 

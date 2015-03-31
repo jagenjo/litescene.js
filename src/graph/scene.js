@@ -96,9 +96,11 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.getNode = function()
 	{
+		var scene = this.graph.getScene();
+
 		var node = this._node;
 		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
+			node = scene.getNode( this.properties.node_id );
 
 		if(!node)
 			node = this.graph._scenenode;
@@ -222,9 +224,13 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onExecute = function()
 	{
+		var scene = this.graph.getScene();
+		if(!scene)
+			return;
+
 		var node = this._node;
 		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
+			node = scene.getNode( this.properties.node_id );
 
 		if(!node)
 			node = this.graph._scenenode;
@@ -355,9 +361,13 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.getMaterial = function()
 	{
+		var scene = this.graph.getScene();
+		if(!scene)
+			return;
+
 		var node = this._node;
 		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
+			node = scene.getNode( this.properties.node_id );
 		if(!node)
 			node = this.graph._scenenode; //use the attached node
 
@@ -537,9 +547,13 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphLight.prototype.onExecute = function()
 	{
+		var scene = this.graph.getScene();
+		if(!scene)
+			return;
+
 		var node = this._node;
 		if(	this.properties.node_id )
-			node = Scene.getNode( this.properties.node_id );
+			node = scene.getNode( this.properties.node_id );
 
 		if(!node)
 			node = this.graph._scenenode;
@@ -555,7 +569,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 
 		//read inputs
-		for(var i in this.inputs)
+		for(var i = 0; this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -572,7 +586,7 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i in this.outputs)
+		for(var i = 0; this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)

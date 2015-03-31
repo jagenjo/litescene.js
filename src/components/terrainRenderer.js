@@ -4,15 +4,28 @@ function TerrainRenderer(o)
 	this.size = 10;
 
 	this.subdivisions = 10;
-	this.heightmap = null;
+	this.heightmap = "";
+	this.primitive = null;
 	this.auto_update = true;
-	this._mesh = null;
 	this.action = "Update"; //button
+
+
+	this._mesh = null;
+
 	if(o)
 		this.configure(o);
 }
 
 TerrainRenderer.icon = "mini-icon-terrain.png";
+
+TerrainRenderer["@subdivisions"] = { type: "number", min:1,max:255,step:1 };
+TerrainRenderer["@heightmap"] = { type: "texture" };
+TerrainRenderer["@action"] = { widget: "button", callback: function() { 
+	if(this.options.instance)
+		this.options.instance.updateMesh();
+}};
+TerrainRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+
 
 TerrainRenderer.prototype.onAddedToNode = function(node)
 {
@@ -24,30 +37,6 @@ TerrainRenderer.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 	if(this._root.mesh == this._mesh)
 		delete this._root["mesh"];
-}
-
-
-/**
-* Configure the component getting the info from the object
-* @method configure
-* @param {Object} object to configure from
-*/
-
-TerrainRenderer.prototype.configure = function(o)
-{
-	cloneObject(o, this);
-}
-
-/**
-* Serialize this component)
-* @method serialize
-* @return {Object} object with the serialization info
-*/
-
-TerrainRenderer.prototype.serialize = function()
-{
-	 var o = cloneObject(this);
-	 return o;
 }
 
 TerrainRenderer.prototype.getResources = function(res)
@@ -62,19 +51,20 @@ TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, reso
 		this.heightmap = new_name;
 }
 
-TerrainRenderer["@subdivisions"] = { widget: "number", min:1,max:255,step:1 };
-TerrainRenderer["@heightmap"] = { widget: "texture" };
-TerrainRenderer["@action"] = { widget: "button", callback: function() { this.options.component.updateMesh(); }};
-
 TerrainRenderer.prototype.updateMesh = function()
 {
 	trace("updating terrain mesh...");
 	//check that we have all the data
-	if(!this.heightmap) return;
-	var heightmap = typeof(this.heightmap) == "string" ? ResourcesManager.textures[this.heightmap] : this.heightmap;
-	if(!heightmap) return;
+	if(!this.heightmap) 
+		return;
+
+	var heightmap = LS.ResourcesManager.textures[ this.heightmap ];
+	if(!heightmap) 
+		return;
+
 	var img = heightmap.img;
-	if(!img) return;
+	if(!img) 
+		return;
 
 	if(this.subdivisions > img.width)
 		this.subdivisions = img.width;
@@ -99,6 +89,7 @@ TerrainRenderer.prototype.updateMesh = function()
 
 	//create the mesh
 	var triangles = [];
+	var wireframe = [];
 	var vertices = [];
 	var normals = [];
 	var coords = [];
@@ -137,11 +128,12 @@ TerrainRenderer.prototype.updateMesh = function()
 				var i = x + y * (detailX + 1);
 				triangles.push(i+1, i, i + detailX + 1);
 				triangles.push(i + 1, i + detailX + 1, i + detailX + 2);
+				wireframe.push(i+1, i, i, i + detailX + 1 );
 			}
 		}
 	}
 
-	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles});
+	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles, wireframe: wireframe});
 	mesh.setBounding( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
 	this._mesh = mesh;
 	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
@@ -173,7 +165,7 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 	};
 
 	RI.material = this._root.getMaterial();
-	RI.setMesh( this._mesh, gl.TRIANGLES );
+	RI.setMesh( this._mesh, this.primitive );
 	
 	this._root.mesh = this._mesh;
 	this._root.transform.getGlobalMatrix( RI.matrix );

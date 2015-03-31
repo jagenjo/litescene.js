@@ -120,63 +120,60 @@ CameraFX.prototype.addFX = function(name)
 
 CameraFX.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+	//global
+	LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 CameraFX.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
+	//global
+	LEvent.unbind(LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
+//hook the RFC
 CameraFX.prototype.onBeforeRender = function(e, render_options)
 {
-	if(this.enabled)
+	if(!this.enabled)
+		return;
+
+	if(!this._renderFrameContainer)
 	{
-		if(!this._renderFrameContainer)
-		{
-			this._renderFrameContainer = new LS.RenderFrameContainer();
-			this._renderFrameContainer.onRender = this.onRenderFrame.bind(this);
-		}
-		Renderer.assignRenderFrameContainer( this._renderFrameContainer );
+		this._renderFrameContainer = new LS.RenderFrameContainer();
+		this._renderFrameContainer.component = this;
+		this._renderFrameContainer.onPreRender = this.onPreRender;
+		this._renderFrameContainer.onPostRender = this.onPostRender;
 	}
+	LS.Renderer.assignGlobalRenderFrameContainer( this._renderFrameContainer );
 }
 
-CameraFX.prototype.onRenderFrame = function(current_camera, render_options, previous_output )
+//Executed inside RFC
+CameraFX.prototype.onPreRender = function( cameras, render_options )
 {
 	var width = CameraFX.buffer_size[0];
 	var height = CameraFX.buffer_size[1];
-	if( this.use_viewport_size )
+	if( this.component.use_viewport_size )
 	{
 		width = gl.canvas.width;
 		height = gl.canvas.height;
 	}
 
-	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	this.startFBO( width, height, this.component.use_high_precision, cameras[0] );
+}
 
-	//scene already drawn
-	if(!previous_output)
-	{
-		if( !this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type )
-		{
-			this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
-		}
-		var that = this;
-		this.color_texture.drawTo( inner_render_frame );
-	}
+CameraFX.prototype.onPostRender = function()
+{
+	this.endFBO();
 
-	//render frame
-	function inner_render_frame(texture)
-	{
-			Renderer.renderFrame( current_camera, that.color_rendertarget );
-	}
+	var frame = this.color_texture;
 
-	var frame = previous_output || this.color_texture;
+	var component = this.component;
+	var fxs = component.fx;
 
-	//shadercode
+	//shadercode: TODO, do this in a lazy way
 	var key = "";
 	var update_shader = true;
-	for(var i = 0; i < this.fx.length; i++)
-		key += this.fx[i] + "|";
+	for(var i = 0; i < fxs.length; i++)
+		key += fxs[i] + "|";
 	if(key == this._last_shader_key)
 		update_shader = false;
 	this._last_shader_key = key;
@@ -184,12 +181,12 @@ CameraFX.prototype.onRenderFrame = function(current_camera, render_options, prev
 	var code = "";
 	var included_functions = {};
 	var uniforms_code = "";
-	var uniforms = { u_viewport: vec2.fromValues(frame.width,frame.height) };
+	var uniforms = { u_viewport: vec2.fromValues(frame.width, frame.height) };
 
 	var fx_id = 0;
-	for(var i = 0; i < this.fx.length; i++)
+	for(var i = 0; i < fxs.length; i++)
 	{
-		var fx = this.fx[i];
+		var fx = fxs[i];
 		fx_id = i;
 		var fx_info = CameraFX.available_fx[ fx.name ];
 		if(!fx_info)
@@ -253,9 +250,7 @@ CameraFX.prototype.onRenderFrame = function(current_camera, render_options, prev
 
 	//apply FX HERE
 	frame.toViewport(shader, uniforms);
-	return null;
 }
 
 
 LS.registerComponent(CameraFX);
-window.CameraFX = CameraFX;

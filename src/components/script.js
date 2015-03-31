@@ -3,12 +3,12 @@
 function Script(o)
 {
 	this.enabled = true;
-	this.code = "function update(dt)\n{\n\tScene.refresh();\n}";
-	this._component = null;
+	this.code = "this.update = function(dt)\n{\n\tnode.scene.refresh();\n}";
 
 	this._script = new LScript();
+	this._script.catch_exceptions = false;
 	this._script.onerror = this.onError.bind(this);
-	this._script.exported_callbacks = this.constructor.exported_callbacks;
+	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
 	this._last_error = null;
 
 	if(o)
@@ -115,6 +115,7 @@ Script.prototype.getAttributes = function()
 Script.prototype.hookEvents = function()
 {
 	var hookable = Script.exported_callbacks;
+	var scene = this._root.scene;
 
 	var context = this.getContext();
 	if(!context)
@@ -127,11 +128,11 @@ Script.prototype.hookEvents = function()
 
 		if( context[name] && context[name].constructor === Function )
 		{
-			if( !LEvent.isBind( Scene, event_name, this.onScriptEvent, this )  )
-				LEvent.bind( Scene, event_name, this.onScriptEvent, this );
+			if( !LEvent.isBind( scene, event_name, this.onScriptEvent, this )  )
+				LEvent.bind( scene, event_name, this.onScriptEvent, this );
 		}
 		else
-			LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
+			LEvent.unbind( scene, event_name, this.onScriptEvent, this );
 	}
 }
 
@@ -150,13 +151,17 @@ Script.prototype.onAddedToNode = function(node)
 
 Script.prototype.onRemovedFromNode = function(node)
 {
+	var scene = node.scene;
+	if(!scene)
+		return;
+
 	//unbind evends
 	var hookable = Script.exported_callbacks;
 	for(var i in hookable)
 	{
 		var name = hookable[i];
 		var event_name = Script.translate_events[name] || name;
-		LEvent.unbind( Scene, event_name, this.onScriptEvent, this );
+		LEvent.unbind( scene, event_name, this.onScriptEvent, this );
 	}
 }
 
@@ -164,28 +169,12 @@ Script.prototype.onScriptEvent = function(event_type, params)
 {
 	//this.processCode(true); //¿?
 
+	if(!this.enabled)
+		return;
+
 	var method_name = Script.translate_events[ event_type ] || event_type;
-
 	this._script.callMethod( method_name, params );
-
-	//if(this.enabled && this._component && this._component.start)
-	//	this._component.start();
 }
-
-/*
-Script.prototype.on_update = function(e,dt)
-{
-	this._script.callMethod("update",[dt]);
-
-	//if(this.enabled && this._component && this._component.update)
-	//	this._component.update(dt);
-}
-
-Script.prototype.on_trigger = function(e,dt)
-{
-	this._script.callMethod("trigger",[e]);
-}
-*/
 
 Script.prototype.runStep = function(method, args)
 {
@@ -194,11 +183,15 @@ Script.prototype.runStep = function(method, args)
 
 Script.prototype.onError = function(err)
 {
+	var scene = this._root.scene;
+	if(!scene)
+		return;
+
 	LEvent.trigger(this,"code_error",err);
-	LEvent.trigger(Scene,"code_error",[this,err]);
+	LEvent.trigger(scene,"code_error",[this,err]);
 	LEvent.trigger(Script,"code_error",[this,err]);
 	console.log("app stopping due to error in script");
-	Scene.stop();
+	scene.stop();
 }
 
 Script.prototype.onCodeChange = function(code)

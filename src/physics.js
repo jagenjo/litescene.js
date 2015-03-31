@@ -9,7 +9,7 @@
 */
 function PhysicsInstance(node, component)
 {
-	this._uid = LS.generateUId(); //unique identifier for this RI
+	this.uid = LS.generateUId("PHSX"); //unique identifier for this RI
 
 	this.type = PhysicsInstance.BOX;
 	this.mesh = null; 

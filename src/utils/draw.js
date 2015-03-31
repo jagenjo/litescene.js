@@ -254,12 +254,6 @@ var Draw = {
 		this.color[3] = alpha;
 	},
 
-	setLineWidth: function(v)
-	{
-		gl.lineWidth(v);
-	},
-
-
 	setPointSize: function(v)
 	{
 		this.point_size = v;
@@ -299,7 +293,7 @@ var Draw = {
 		mat4.multiply(this.model_matrix, matrix, this.model_matrix);
 	},
 
-	renderLines: function(lines, colors)
+	renderLines: function(lines, colors, strip)
 	{
 		if(!lines || !lines.length) return;
 		var vertices = null;
@@ -311,7 +305,7 @@ var Draw = {
 			colors = null;
 
 		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
-		return this.renderMesh(mesh, gl.LINES, colors ? this.shader_color : this.shader );
+		return this.renderMesh(mesh, strip ? gl.LINE_STRIP : gl.LINES, colors ? this.shader_color : this.shader );
 	},
 
 	renderPoints: function(points, colors, shader)

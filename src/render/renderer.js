@@ -13,7 +13,7 @@ var Renderer = {
 	default_render_options: new RenderOptions(),
 	default_material: new StandardMaterial(), //used for objects without material
 
-	assigned_render_frame_containers: [],
+	global_render_frame_containers: [],
 
 	default_point_size: 5,
 
@@ -57,128 +57,142 @@ var Renderer = {
 	* The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
 	* Callback must return the texture output or null
 	* Warning: this must be set before every frame, becaue this are cleared after rendering the frame
-	* @method assignRenderFrameContainer
+	* @method assignGlobalRenderFrameContainer
 	* @param {RenderFrameContainer} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
 	*/
-	assignRenderFrameContainer: function( render_frame_container )
+	assignGlobalRenderFrameContainer: function( render_frame_container )
 	{
-		this.assigned_render_frame_containers.push( render_frame_container );
+		this.global_render_frame_containers.push( render_frame_container );
+	},
+
+	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
+	setFullViewport: function(x,y,w,h)
+	{
+		this._full_viewport[0] = x; this._full_viewport[1] = y; this._full_viewport[2] = w; this._full_viewport[3] = h;
 	},
 
 	/**
 	* Renders the current scene to the screen
+	* Many steps are involved, from gathering info from the scene tree, generating shadowmaps, setup FBOs, render every camera
 	*
 	* @method render
 	* @param {SceneTree} scene
-	* @param {Camera} camera
 	* @param {RenderOptions} render_options
+	* @param {Array} [cameras=null] if no cameras are specified the cameras are taken from the scene
 	*/
-	render: function(scene, main_camera, render_options)
+	render: function(scene, render_options, cameras )
 	{
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
-		this._main_camera = main_camera;
+
+		this._main_camera = cameras ? cameras[0] : null;
+		render_options.main_camera = this._main_camera;
 
 		//done at the beginning just in case it crashes
 		scene._frame += 1;
 		scene._must_redraw = false;
 
-		render_options.main_camera = main_camera;
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
+		this.setFullViewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-		//events
+		//Event: beforeRender used in actions that could affect which info is collected for the rendering
 		LEvent.trigger(scene, "beforeRender", render_options );
 		scene.triggerInNodes("beforeRender", render_options );
 
-		//get render instances, lights, materials and all rendering info ready: computeVisibility
+		//get render instances, cameras, lights, materials and all rendering info ready: computeVisibility
 		this.processVisibleData(scene, render_options);
 
-		//shadowmaps are generated during processVisibleData but maybe some are missing
+		//Define the main camera, the camera that should be the most important (used for LOD info, or shadowmaps)
+		cameras = cameras || this._visible_cameras;
+		render_options.main_camera = cameras[0];
+
+		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, "renderShadows", render_options );
 		scene.triggerInNodes("renderShadows", render_options );
 
-		//settings for cameras (if there is a main_camera asigned, render only that one
-		var cameras = this._visible_cameras;
-		if(main_camera) // && !render_options.render_all_cameras )
-			cameras = [ main_camera ];
-		render_options.main_camera = cameras[0];
-
+		//Event: afterVisibility allows to cull objects according to the main camera
 		scene.triggerInNodes("afterVisibility", render_options );		
 
-		//in case some realtime reflections are needed, this is the moment
+		//Event: renderReflections in case some realtime reflections are needed, this is the moment to render them inside textures
 		LEvent.trigger(scene, "renderReflections", render_options );
 		scene.triggerInNodes("renderReflections", render_options );
 
+		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_options );
 		scene.triggerInNodes("beforeRenderMainPass", render_options );
 
+		//global renderframe container: used when the whole scene (all cameras included) pass through some postfx)
+		if(render_options.render_fx && this.global_render_frame_containers.length)
+		{
+			var render_frame = this.global_render_frame_containers[0]; //ignore the rest: TODO, as some pipeline flow (I've failed too many times trying to do something here)
+
+			if(	render_frame.onPreRender )
+				render_frame.onPreRender( cameras, render_options );
+
+			//render all camera views
+			this.renderFrameCameras( cameras, render_options, render_frame );
+
+			if(	render_frame.onPostRender )
+				render_frame.onPostRender( cameras, render_options );
+		}
+		else //in case no FX is used
+			this.renderFrameCameras( cameras, render_options );
+
+		//clear render frame callbacks
+		this.global_render_frame_containers.length = 0; //clear
+
+		//Event: afterRender to give closure to some actions
+		LEvent.trigger(scene, "afterRender", render_options );
+		scene.triggerInNodes("afterRender", render_options );
+	},
+
+	renderFrameCameras: function( cameras, render_options, global_render_frame )
+	{
+		var scene = this._current_scene;
+
 		//for each camera
-		for(var i in cameras)
+		for(var i = 0; i < cameras.length; ++i)
 		{
 			var current_camera = cameras[i];
 			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
 			LEvent.trigger(scene, "beforeRenderFrame", render_options );
 
-			//Render scene to screen, to texture, to Color&Depth texture ...
-			Renderer._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
-			gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
+			//¿?¿?
+			//this._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
+			//gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
 
-			//use render frame callbacks chain (used for postFX or strange renderers)
-			if(render_options.render_fx && this.assigned_render_frame_containers.length)
-			{
-				var containers = this.assigned_render_frame_containers;
-				var output = null;
-				for(var j = 0; j < containers.length; j++)
-					output = containers[j].onRender( current_camera, render_options, output );
-			}
-			else
-				this.renderFrame( current_camera ); //main render
+			//if(global_render_frame && global_render_frame.onRenderFrame)
+			//	global_render_frame.onRenderFrame( current_camera );
+
+			//main render
+			this.renderFrame( current_camera, render_options ); 
 
 			LEvent.trigger(current_camera, "afterRenderFrame", render_options );
 			LEvent.trigger(scene, "afterRenderFrame", render_options );
 		}
-
-		//clear render frame callbacks
-		this.assigned_render_frame_containers.length = 0; //clear
-
-
-		//events
-		LEvent.trigger(scene, "afterRender", render_options );
-		scene.triggerInNodes("afterRender", render_options );
-	},
-
-	//intermediate function to swap order of parameters
-	renderFrameToTexture: function( texture, camera )
-	{
-		this.renderFrame( camera, texture );
 	},
 
 	/**
 	* renders the view from one camera to the current viewport (could be a texture)
 	*
 	* @method renderFrame
-	* @param {Camera} the camera 
-	* @param {Texture} output_texture optional, if you want to render to a texture (otherwise is rendered to the viewport)
+	* @param {Camera} camera 
+	* @param {Object} render_options
 	*/
-	renderFrame: function ( camera, output_texture, skip_viewport )
+	renderFrame: function ( camera, render_options )
 	{
-		var render_options = this._current_render_options;
 		var scene = this._current_scene;
 
-		//get info about the viewport from the output texture
-		if(output_texture)
-			Renderer._full_viewport.set([0,0,output_texture.width, output_texture.height]);
-
-		this.enableCamera( camera, render_options, skip_viewport ); //set as active camera and set viewport
+		this.enableCamera( camera, render_options ); //set as active camera and set viewport
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
 		gl.enable(gl.SCISSOR_TEST);
 
-		//clear (only necessary if working with textures but...)
+		//clear buffer
 		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
 		if(render_options.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
@@ -188,18 +202,18 @@ var Renderer = {
 		//render scene
 		render_options.current_pass = "color";
 
-		LEvent.trigger(scene, "beforeRenderScene", camera);
-		scene.triggerInNodes("beforeRenderScene", camera);
+		LEvent.trigger(scene, "beforeRenderScene", camera );
+		scene.triggerInNodes("beforeRenderScene", camera );
 
 		//here we render all the instances
-		Renderer.renderInstances(render_options);
+		this.renderInstances(render_options);
 
-		LEvent.trigger(scene, "afterRenderScene", camera);
-		scene.triggerInNodes("afterRenderScene", camera);
+		LEvent.trigger(scene, "afterRenderScene", camera );
+		scene.triggerInNodes("afterRenderScene", camera );
 	},
 
 	/**
-	* Set camera as the main scene camera
+	* Set camera as the main scene camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw
 	*
 	* @method enableCamera
 	* @param {Camera} camera
@@ -209,23 +223,29 @@ var Renderer = {
 	{
 		LEvent.trigger(camera, "cameraEnabled", render_options);
 
-		//camera.setActive();
-		var width = Renderer._full_viewport[2];
-		var height = Renderer._full_viewport[3];
-		var final_width = width * camera._viewport[2];
-		var final_height = height * camera._viewport[3];
+		//assign viewport
+		var startx = this._full_viewport[0];
+		var starty = this._full_viewport[1];
+		var width = this._full_viewport[2];
+		var height = this._full_viewport[3];
+
+		var final_x = (width * camera._viewport[0] + startx)|0;
+		var final_y = (height * camera._viewport[1] + starty)|0;
+		var final_width = (width * camera._viewport[2])|0;
+		var final_height = (height * camera._viewport[3])|0;
 
 		if(!skip_viewport)
 		{
-			if(render_options && render_options.ignore_viewports)
+			//force fullscreen viewport?
+			if(render_options && render_options.ignore_viewports )
 			{
-				camera._aspect = width / height;
+				camera._real_aspect = camera._aspect * (width / height);
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			}
 			else
 			{
-				camera._aspect = final_width / final_height;
-				gl.viewport( camera._viewport[0] * width, camera._viewport[1] * height, camera._viewport[2] * width, camera._viewport[3] * height );
+				camera._real_aspect = camera._aspect * (final_width / final_height); //what if we want to change the aspect?
+				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}
 
@@ -425,7 +445,7 @@ var Renderer = {
 		gl.depthMask(true);
 		gl.frontFace(gl.CCW);
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		gl.lineWidth(1);
+		//gl.lineWidth(1);
 	},
 
 	bindSamplers: function(samplers, shader)
@@ -792,7 +812,7 @@ var Renderer = {
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
-		var pick_color = this.getNextPickingColor( node );
+		var pick_color = LS.Picking.getNextPickingColor( node );
 		/*
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -891,19 +911,6 @@ var Renderer = {
 		LEvent.trigger(scene, "fillSceneUniforms", scene._uniforms );
 	},	
 
-	//you tell what info you want to retrieve associated with this color
-	getNextPickingColor: function(info)
-	{
-		this._picking_next_color_id += 10;
-		var pick_color = new Uint32Array(1); //store four bytes number
-		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
-		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
-		//byte_pick_color[3] = 255; //Set the alpha to 1
-
-		this._picking_nodes[ this._picking_next_color_id ] = info;
-		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
-	},
-
 	enableInstanceFlags: function(instance, render_options)
 	{
 		var flags = instance.flags;
@@ -971,7 +978,7 @@ var Renderer = {
 			//materials
 			if(!instance.material)
 				instance.material = this.default_material;
-			materials[instance.material._uid] = instance.material;
+			materials[instance.material.uid] = instance.material;
 
 			//add extra info
 			instance._dist = vec3.dist( instance.center, camera_eye );
@@ -1185,182 +1192,6 @@ var Renderer = {
 
 		this._current_target = null;
 		return texture;
-	},
-
-
-	//picking
-	_pickingMap: null,
-	_picking_color: new Uint8Array(4),
-	_picking_depth: 0,
-	_picking_next_color_id: 0,
-	_picking_nodes: {},
-	_picking_render_options: new RenderOptions({is_picking: true}),
-
-	renderPickingBuffer: function(scene, camera, x,y)
-	{
-		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
-		{
-			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
-			ResourcesManager.textures[":picking"] = this._pickingMap;
-		}
-
-		y = gl.canvas.height - y; //reverse Y
-		var small_area = true;
-		this._picking_next_color_id = 0;
-
-		this._current_target = this._pickingMap;
-		this._pickingMap.drawTo(function() {
-			//trace(" START Rendering ");
-
-			var viewport = scene.viewport || [0,0,gl.canvas.width, gl.canvas.height];
-			camera.aspect = viewport[2] / viewport[3];
-			gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
-
-			if(small_area)
-			{
-				gl.scissor(x-1,y-1,2,2);
-				gl.enable(gl.SCISSOR_TEST);
-			}
-
-			gl.clearColor(0,0,0,0);
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-			Renderer.enableCamera(camera, Renderer._picking_render_options);
-
-			//gl.viewport(x-20,y-20,40,40);
-			Renderer._picking_render_options.current_pass = "picking";
-			Renderer.renderInstances(Renderer._picking_render_options);
-			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
-
-			LEvent.trigger(scene,"renderPicking", [x,y] );
-
-			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE,Renderer._picking_color);
-
-			if(small_area)
-				gl.disable(gl.SCISSOR_TEST);
-		});
-		this._current_target = null;
-
-		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
-		//trace(" END Rendering: ", this._picking_color );
-		return this._picking_color;
-	},
-
-	getNodeAtCanvasPosition: function(scene, camera, x,y)
-	{
-		var instance = this.getInstanceAtCanvasPosition(scene, camera, x,y);
-		if(!instance)
-			return null;
-
-		if(instance.constructor == SceneNode)
-			return instance;
-
-		if(instance._root && instance._root.constructor == SceneNode)
-			return instance._root;
-
-		if(instance.node)
-			return instance.node;
-
-		return null;
-
-		/*
-		camera = camera || scene.getCamera();
-
-		this._picking_nodes = {};
-
-		//render all Render Instances
-		this.renderPickingBuffer(scene, camera, x,y);
-
-		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
-		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
-
-		var info = this._picking_nodes[id];
-		this._picking_nodes = {};
-
-		if(!info) return null;
-
-		return info.node;
-		*/
-	},
-
-	//used to get special info about the instance below the mouse
-	getInstanceAtCanvasPosition: function(scene, camera, x,y)
-	{
-		camera = camera || scene.getCamera();
-
-		this._picking_nodes = {};
-
-		//render all Render Instances
-		this.renderPickingBuffer(scene, camera, x,y);
-
-		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
-		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
-
-		var instance_info = this._picking_nodes[id];
-		this._picking_nodes = {};
-		return instance_info;
-	},	
-
-	//similar to Physics.raycast but using only visible meshes
-	raycast: function(scene, origin, direction, max_dist)
-	{
-		max_dist = max_dist || Number.MAX_VALUE;
-
-		var instances = scene._instances;
-		var collisions = [];
-
-		var local_start = vec3.create();
-		var local_direction = vec3.create();
-
-		//for every instance
-		for(var i = 0; i < instances.length; ++i)
-		{
-			var instance = instances[i];
-
-			if(!(instance.flags & RI_RAYCAST_ENABLED))
-				continue;
-
-			if(instance.flags & RI_BLEND)
-				continue; //avoid semitransparent
-
-			//test against AABB
-			var collision_point = vec3.create();
-			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
-				continue;
-
-			var model = instance.matrix;
-
-			//ray to local
-			var inv = mat4.invert( mat4.create(), model );
-			mat4.multiplyVec3( local_start, inv, origin );
-			mat4.rotateVec3( local_direction, inv, direction );
-
-			//test against OOBB (a little bit more expensive)
-			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
-				continue;
-
-			//test against mesh
-			if( instance.collision_mesh )
-			{
-				var mesh = instance.collision_mesh;
-				var octree = mesh.octree;
-				if(!octree)
-					octree = mesh.octree = new Octree( mesh );
-				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
-				if(!hit)
-					continue;
-				mat4.multiplyVec3(collision_point, model, hit.pos);
-			}
-			else
-				vec3.transformMat4(collision_point, collision_point, model);
-
-			var distance = vec3.distance( origin, collision_point );
-			if(distance < max_dist)
-				collisions.push([instance, collision_point, distance]);
-		}
-
-		collisions.sort( function(a,b) { return a[2] - b[2]; } );
-		return collisions;
 	}
 };
 

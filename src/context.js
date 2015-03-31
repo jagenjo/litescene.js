@@ -26,31 +26,35 @@ function Context(options)
 {
 	options = options || {};
 
-	var container = options.container;
-
-	if(options.container_id)
-		container = document.getElementById(options.container_id);
-
-	if(container)
+	if(!options.canvas)
 	{
-		//create canvas
-		var canvas = document.createElement("canvas");
-		canvas.width = container.offsetWidth;
-		canvas.height = container.offsetHeight;
-		if(!canvas.width) canvas.width = options.width || 1;
-		if(!canvas.height) canvas.height = options.height || 1;
-		container.appendChild(canvas);
-		options.canvas = canvas;
+		var container = options.container;
+		if(options.container_id)
+			container = document.getElementById(options.container_id);
+
+		if(container)
+		{
+			//create canvas
+			var canvas = document.createElement("canvas");
+			canvas.width = container.offsetWidth;
+			canvas.height = container.offsetHeight;
+			if(!canvas.width) canvas.width = options.width || 1;
+			if(!canvas.height) canvas.height = options.height || 1;
+			container.appendChild(canvas);
+			options.canvas = canvas;
+		}
 	}
 
 	this.gl = GL.create(options);
 	this.canvas = this.gl.canvas;
 	this.render_options = new RenderOptions();
 
+	this.scene = LS.GlobalScene;
+
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
 	if(options.shaders)
-		ShadersManager.init( options.shaders );
+		LS.ShadersManager.init( options.shaders );
 	if(options.proxy)
 		LS.ResourcesManager.setProxy( options.proxy );
 
@@ -62,6 +66,9 @@ function Context(options)
 	this.state = "playing";
 
 	//bind all the events 
+	if( this.gl.ondraw )
+		throw("There is already a litegl attached to this context");
+
 	this.gl.ondraw = Context.prototype._ondraw.bind(this);
 	this.gl.onupdate = Context.prototype._onupdate.bind(this);
 	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
@@ -87,11 +94,12 @@ function Context(options)
 */
 Context.prototype.loadScene = function(url, on_complete)
 {
-	Scene.load(url, inner_start);
+	var scene = this.scene;
+	scene.load(url, inner_start);
 
 	function inner_start()
 	{
-		Scene.start();
+		scene.start();
 		if(on_complete)
 			on_complete();
 	}
@@ -115,8 +123,12 @@ Context.prototype._ondraw = function()
 	if(this.onPreDraw)
 		this.onPreDraw();
 
-	if(Scene._must_redraw || this.force_redraw )
-		Scene.render( Scene.getCamera(), this.render_options );
+	var scene = this.scene;
+
+	if(scene._must_redraw || this.force_redraw )
+	{
+		scene.render( this.render_options );
+	}
 
 	if(this.onDraw)
 		this.onDraw();
@@ -130,7 +142,7 @@ Context.prototype._onupdate = function(dt)
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
 
-	Scene.update(dt);
+	this.scene.update(dt);
 
 	if(this.onUpdate)
 		this.onUpdate(dt);
@@ -146,7 +158,7 @@ Context.prototype._onmouse = function(e)
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
-		var node = Renderer.getNodeAtCanvasPosition(Scene, null, e.mousex,e.mousey);
+		var node = Renderer.getNodeAtCanvasPosition( this.scene, null, e.mousex,e.mousey);
 		this._clicked_node = node;
 	}
 
@@ -161,7 +173,7 @@ Context.prototype._onmouse = function(e)
 
 	//send event to root
 	if(!levent || !levent.stop)
-		LEvent.trigger(Scene.root,e.eventType,e);
+		LEvent.trigger( this.scene.root,e.eventType,e);
 
 	if(e.eventType == "mouseup")
 		this._clicked_node = null;
@@ -185,7 +197,7 @@ Context.prototype._onkey = function(e)
 		if(r) return;
 	}
 
-	LEvent.trigger(Scene,e.eventType,e);
+	LEvent.trigger( this.scene,e.eventType,e);
 }
 
 LS.Context = Context;

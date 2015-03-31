@@ -9,7 +9,8 @@ function NodeManipulator(o)
 {
 	this.rot_speed = [1,1]; //degrees
 	this.smooth = false;
-	this.configure(o);
+	if(o)
+		this.configure(o);
 }
 
 NodeManipulator.icon = "mini-icon-rotator.png";
@@ -27,11 +28,6 @@ NodeManipulator.prototype.onUpdate = function(e)
 
 	if(!this._root.transform)
 		return;
-
-	if(this.smooth)
-	{
-		Scene.refresh();
-	}
 }
 
 NodeManipulator.prototype.onMouse = function(e, mouse_event)
@@ -42,8 +38,16 @@ NodeManipulator.prototype.onMouse = function(e, mouse_event)
 	if(!mouse_event.dragging)
 		return;
 
-	this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
-	this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
+	var scene = this._root.scene;
+	var camera = scene.getCamera();
+
+	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
+	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], LS.Components.Transform.UP );
+	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
+	scene.refresh();
+
+	//this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
+	//this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
 }
 
 LS.registerComponent(NodeManipulator);

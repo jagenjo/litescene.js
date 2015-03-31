@@ -60,7 +60,7 @@ GraphComponent.prototype.configure = function(o)
 		}
 		catch (err)
 		{
-			console.err("Error parsing Graph data");
+			console.error("Error configuring Graph data: " + err);
 		}
 	}
 
@@ -127,7 +127,6 @@ GraphComponent.prototype.runGraph = function()
 
 
 LS.registerComponent(GraphComponent);
-window.GraphComponent = GraphComponent;
 
 
 
@@ -139,7 +138,7 @@ window.GraphComponent = GraphComponent;
 function FXGraphComponent(o)
 {
 	this.enabled = true;
-	this.use_viewport_size = false;
+	this.use_viewport_size = true;
 	this.use_high_precision = false;
 	this.use_antialiasing = false;
 
@@ -201,11 +200,12 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
+	this.apply_to_node_camera = false;
 
 	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
 	this._graph_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
-	this._graph_viewport_node = this._graph.findNodesByTitle("Viewport")[0];
+	this._graph_viewport_node = this._graph.findNodesByType("texture/toviewport")[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
@@ -232,93 +232,131 @@ FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
-	LEvent.bind(Scene,"afterRenderFrame", this.onAfterRender, this );
+	//catch the global rendering
+	LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,"beforeRenderFrame", this.onBeforeRender, this );
-	LEvent.unbind(Scene,"afterRenderFrame", this.onAfterRender, this );
+	LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
+//used to create the buffers
 FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
-	if(!this._graph || !render_options.render_fx) return;
+	if(!this._graph || !render_options.render_fx || !this.enabled ) 
+		return;
 
+	//Define buffer size
 	var width = FXGraphComponent.buffer_size[0];
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		width = gl.canvas.width;
-		height = gl.canvas.height;
+		width = gl.viewport_data[2]; //gl.canvas.width;
+		height = gl.viewport_data[3]; //gl.canvas.height;
 	}
 
+	//Create textures
 	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
-
 	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
 	{
 		this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
-		ResourcesManager.textures[":color_" + this.uid] = this.color_texture;
+		LS.ResourcesManager.textures[":color_" + this.uid] = this.color_texture;
 	}
 
-	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
+	if( !this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height )
 	{
 		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
-		ResourcesManager.textures[":depth_" + this.uid] = this.depth_texture;
+		LS.ResourcesManager.textures[":depth_" + this.uid] = this.depth_texture;
 	}		
 
-	if(this.enabled)
+	//create RenderFrameContainer
+	if(!this._renderFrameContainer)
 	{
-		if(!this._renderFrameContainer)
-		{
-			this._renderFrameContainer = new LS.RenderFrameContainer();
-			this._renderFrameContainer.onRender = this.onRenderFrame.bind(this);
-		}
-		Renderer.assignRenderFrameContainer( this._renderFrameContainer );
-	}
-}
-
-FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_options, previous_output)
-{
-	var that = this;
-
-	Texture.drawToColorAndDepth( this.color_texture, this.depth_texture, inner_render_frame );
-
-	//render to texture callback
-	function inner_render_frame(texture)
-	{
-		Renderer.renderFrame( current_camera, that.color_rendertarget );
+		var RFC = this._renderFrameContainer = new LS.RenderFrameContainer();
+		RFC.component = this;
+		RFC.onPreRender = this.onPreRender;
+		RFC.onRender = this.onRender;
+		RFC.onPostRender = this.onPostRender;
 	}
 
-	return this.color_rendertarget;
+	//assign global render frame container
+	LS.Renderer.assignGlobalRenderFrameContainer( this._renderFrameContainer );
 }
 
-
-FXGraphComponent.prototype.onAfterRender = function(e,render_options)
+//take the resulting textures and pass them through the graph
+FXGraphComponent.prototype.applyGraph = function()
 {
-	if(!this._graph || !this.enabled || !render_options.render_fx) return;
+	if(!this._graph)
+		return;
 
+	//find graph nodes that contain the texture info
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByTitle("Color Buffer")[0];
 	if(!this._depth_depth_texture_node)
 		this._depth_depth_texture_node = this._graph.findNodesByTitle("Depth Buffer")[0];
+	if(!this._graph_viewport_node)
+		this._graph_viewport_node = this._graph.findNodesByType("texture/toviewport")[0];
 
 	if(!this._graph_color_texture_node)
 		return;
 
+	//fill the graph nodes with proper info
 	this._graph_color_texture_node.properties.name = ":color_" + this.uid;
 	if(this._graph_depth_texture_node)
 		this._graph_depth_texture_node.properties.name = ":depth_" + this.uid;
 	if(this._graph_viewport_node) //force antialiasing
 		this._graph_viewport_node.properties.antialiasing = this.use_antialiasing;
 
+	//execute graph
 	this._graph.runStep(1);
 }
 
+//Executed inside RenderFrameContainer **********
+FXGraphComponent.prototype.onPreRender = function( cameras, render_options )
+{
+	//Setup FBO
+	this._fbo = this._fbo || gl.createFramebuffer();
+	gl.bindFramebuffer( gl.FRAMEBUFFER, this._fbo );
 
-LS.registerComponent(FXGraphComponent);
-window.FXGraphComponent = FXGraphComponent;
+	var color_texture = this.component.color_texture;
+	var depth_texture = this.component.depth_texture;
+
+	gl.viewport(0, 0, color_texture.width, color_texture.height );
+	LS.Renderer._full_viewport.set( gl.viewport_data );
+
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color_texture.handler, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,  gl.TEXTURE_2D, depth_texture.handler, 0);
+
+	//set depth info
+	var camera = cameras[0];
+	if(!depth_texture.near_far_planes)
+		depth_texture.near_far_planes = vec2.create();
+	depth_texture.near_far_planes[0] = camera.near;
+	depth_texture.near_far_planes[1] = camera.far;
+
+	//ready to render the scene, which is done from the LS.Renderer.render
+}
+
+
+FXGraphComponent.prototype.onPostRender = function()
+{
+	//disable FBO
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+	//restore
+	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
+	LS.Renderer._full_viewport.set( gl.viewport_data );
+
+	//apply FX
+	this.component.applyGraph();
+}
+//************************************
+
+
+
+LS.registerComponent( FXGraphComponent );
+
 
 
 

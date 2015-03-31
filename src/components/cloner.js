@@ -205,4 +205,3 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 }
 
 LS.registerComponent(Cloner);
-LS.Cloner = Cloner;

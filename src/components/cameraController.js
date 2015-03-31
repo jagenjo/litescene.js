@@ -34,7 +34,8 @@ CameraController.prototype.onAddedToNode = function(node)
 
 CameraController.prototype.onUpdate = function(e)
 {
-	if(!this._root) return;
+	if(!this._root) 
+		return;
 
 	if(this._root.transform)
 	{
@@ -57,7 +58,7 @@ CameraController.prototype.onUpdate = function(e)
 
 	if(this.smooth)
 	{
-		Scene.refresh();
+		this._root.scene.refresh();
 	}
 }
 

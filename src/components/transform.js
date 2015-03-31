@@ -31,6 +31,10 @@ function Transform(o)
 
 Transform.temp_matrix = mat4.create();
 Transform.icon = "mini-icon-gizmo.png";
+Transform.ZERO = vec3.create();
+Transform.UP = vec3.fromValues(0,1,0);
+Transform.RIGHT = vec3.fromValues(1,0,0);
+Transform.FRONT = vec3.fromValues(0,0,-1);
 
 Transform.attributes = {
 		position:"vec3",
@@ -93,6 +97,22 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 		else
 			this._scale.set(v);
 		this._must_update_matrix = true;
+	},
+	enumerable: true
+});
+
+/**
+* The local matrix transform relative to its parent in mat4 format
+* @property matrix {mat4}
+*/
+Object.defineProperty( Transform.prototype, 'matrix', {
+	get: function() { 
+		if(this._must_update_matrix)
+			this.updateMatrix();
+		return this._local_matrix;
+	},
+	set: function(v) { 
+		this.fromMatrix(v);	
 	},
 	enumerable: true
 });
@@ -168,77 +188,107 @@ Transform.prototype.identity = function()
 Transform.prototype.reset = Transform.prototype.identity;
 
 /**
-* Returns the local position (its a copy)
+* Returns a copy of the local position
 * @method getPosition
+* @param {vec3} out [optional] where to store the result, otherwise one vec3 is created and returned
 * @return {vec3} the position
 */
-Transform.prototype.getPosition = function(p)
+Transform.prototype.getPosition = function(out)
 {
-	if(p) return vec3.copy(p, this._position);
-	return vec3.clone( this._position );
+	out = out || vec3.create();
+	out.set( this._position );
+	return out;
 }
 
 /**
-* Returns the global position (its a copy)
+* Returns a copy of the global position
 * @method getGlobalPosition
-* @param {vec3} out [optional] where to store the position, otherwise one vec3 is created and returned
+* @param {vec3} out [optional] where to store the result, otherwise one vec3 is created and returned
 * @return {vec3} the position
 */
-Transform.prototype.getGlobalPosition = function(p)
+Transform.prototype.getGlobalPosition = function(out)
 {
+	out = out || vec3.create();
 	if(this._parent)
-	{
-		var tmp = vec3.create(); //created for 0,0,0
-		return mat4.multiplyVec3( p || tmp, this.getGlobalMatrix(), tmp );
-	}
-	if(p) 
-		return vec3.copy(p,this._position);
-	return vec3.clone( this._position );
+		return mat4.multiplyVec3( out, this.getGlobalMatrix(), Transform.ZERO );
+	return vec3.copy(out, this._position );
 }
 
 /**
 * Returns the rotation in quaternion array (a copy)
 * @method getRotation
+* @param {quat} out [optional] where to store the result, otherwise one quat is created and returned
 * @return {quat} the rotation
 */
-Transform.prototype.getRotation = function()
+Transform.prototype.getRotation = function(out)
 {
-	return quat.clone(this._rotation);
+	out = out || quat.create();
+	return vec3.copy(out,this._rotation);
 }
+
+/**
+* Returns the global rotation in quaternion array (a copy)
+* @method getRotation
+* @param {quat} out [optional] where to store the result, otherwise one quat is created and returned
+* @return {quat} the rotation
+*/
+Transform.prototype.getGlobalRotation = function(out)
+{
+	out = out || quat.create();
+	if( !this._parent )
+	{
+		quat.copy(out, this._rotation);
+		return out;
+	}
+
+	var aux = this._parent;
+	quat.copy(out,this._rotation);
+	while(aux)
+	{
+		quat.multiply(out, aux._rotation, out);
+		aux = aux._parent;
+	}
+	return out;
+}
+
 
 /**
 * Returns the scale (its a copy)
 * @method getScale
+* @param {vec3} out [optional] where to store the result, otherwise one vec3 is created and returned
 * @return {vec3} the scale
 */
-Transform.prototype.getScale = function()
+Transform.prototype.getScale = function(out)
 {
-	return vec3.clone(this._scale);
+	out = out || vec3.create();
+	return vec3.copy(out,this._scale);
 }
 
 /**
-* Returns the scale in global (its a copy)
+* Returns a copy of the global scale
 * @method getGlobalScale
+* @param {vec3} out [optional] where to store the result, otherwise one vec3 is created and returned
 * @return {vec3} the scale
 */
-Transform.prototype.getGlobalScale = function()
+Transform.prototype.getGlobalScale = function(out)
 {
+	out = out || vec3.create();
 	if( this._parent )
 	{
 		var aux = this;
-		var S = vec3.clone(this._scale);
+		vec3.copy(out,this._scale);
 		while(aux._parent)
 		{
-			vec3.multiply(S, S, aux._scale);
+			vec3.multiply(out, out, aux._scale);
 			aux = aux._parent;
 		}
-		return S;
+		return out;
 	}
-	return vec3.clone(this._scale);
+	return vec3.copy(out, this._scale);
 }
 
 /**
-* update the Matrix to match the position,scale and rotation
+* update the local Matrix to match the position,scale and rotation
 * @method updateMatrix
 */
 Transform.prototype.updateMatrix = function()
@@ -247,6 +297,7 @@ Transform.prototype.updateMatrix = function()
 	mat4.scale(this._local_matrix, this._local_matrix, this._scale);
 	this._must_update_matrix = false;
 }
+Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 
 /**
 * updates the global matrix using the parents transformation
@@ -265,18 +316,21 @@ Transform.prototype.updateGlobalMatrix = function (fast)
 
 /**
 * Returns a copy of the local matrix of this transform (it updates the matrix automatically)
-* @method getLocalMatrix
-* @return {mat4} the matrix in array format
+* @method getMatrix
+* @param {mat4} out [optional] where to store the result, otherwise one mat4 is created and returned
+* @return {mat4} the matrix
 */
-Transform.prototype.getLocalMatrix = function ()
+Transform.prototype.getMatrix = function (out)
 {
+	out = out || mat4.create();
 	if(this._must_update_matrix)
 		this.updateMatrix();
-	return mat4.clone(this._local_matrix);
+	return mat4.copy(out, this._local_matrix);
 }
+Transform.prototype.getLocalMatrix = Transform.prototype.getMatrix; //alias
 
 /**
-* Returns the original world matrix of this transform (it updates the matrix automatically)
+* Returns the original local matrix of this transform (it updates the matrix automatically)
 * @method getLocalMatrixRef
 * @return {mat4} the matrix in array format
 */
@@ -288,77 +342,50 @@ Transform.prototype.getLocalMatrixRef = function ()
 }
 
 
+/**
+* Returns a copy of the global matrix of this transform (it updates the matrix automatically)
+* @method getGlobalMatrix
+* @param {mat4} out optional
+* @param {boolean} fast this flags skips recomputing parents matrices
+* @return {mat4} the matrix in array format
+*/
+Transform.prototype.getGlobalMatrix = function (out, fast)
+{
+	if(this._must_update_matrix)
+		this.updateMatrix();
+	out = out || mat4.create();
+	if (this._parent)
+		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
+	else
+		mat4.copy( this._global_matrix, this._local_matrix ); 
+	return mat4.copy(out, this._global_matrix);
+}
 
 /**
 * Returns a copy of the global matrix of this transform (it updates the matrix automatically)
 * @method getGlobalMatrix
 * @return {mat4} the matrix in array format
 */
-Transform.prototype.getGlobalMatrix = function (m, fast)
+Transform.prototype.getGlobalMatrixRef = function ()
 {
-	if(this._must_update_matrix)
-		this.updateMatrix();
-	m = m || mat4.create();
-	if (this._parent)
-		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
-	else
-		this._global_matrix.set( this._local_matrix ); 
-	m.set(this._global_matrix);
-	return m;
+	this.updateGlobalMatrix();
+	return this._global_matrix;
 }
 
 
-Transform.prototype.getHierarchy = function()
+
+/**
+* Returns an array with all the ancestors
+* @method getAncestors
+* @return {Array} 
+*/
+Transform.prototype.getAncestors = function()
 {
 	var r = [ this ];
 	var aux = this;
 	while(aux = aux._parent)
 		r.unshift(aux);	
 	return r;
-}
-
-/**
-* Returns the global rotation in quaternion array (a copy)
-* @method getRotation
-* @return {quat} the rotation
-*/
-Transform.prototype.getGlobalRotation = function()
-{
-	if( this._parent )
-	{
-		var aux = this._parent;
-		var R = quat.clone(this._rotation);
-		while(aux)
-		{
-			quat.multiply(R, aux._rotation, R);
-			aux = aux._parent;
-		}
-		return R;
-	}
-	return quat.clone(this._rotation);
-}
-
-/**
-* Returns the global rotation in quaternion array (a copy)
-* @method getGlobalRotationMatrix
-* @return {mat4} the rotation
-*/
-Transform.prototype.getGlobalRotationMatrix = function()
-{
-	var R = mat4.create();
-	if( this._parent )
-	{
-		var r = mat4.create();
-		var aux = this;
-		while(aux)
-		{
-			mat4.fromQuat(r, aux._rotation);
-			mat4.multiply(R,R,r);
-			aux = aux._parent;
-		}
-		return R;
-	}
-	return mat4.fromQuat( R, this._rotation );
 }
 
 /**
@@ -404,39 +431,53 @@ Transform.prototype.getGlobalRotationMatrix = function (m)
 }
 */
 
+
 /**
-* Returns a copy of the global matrix of this transform (it updates the matrix automatically)
-* @method getGlobalMatrix
+* Returns the local matrix of this transform without the rotation or scale
+* @method getGlobalTranslationMatrix
 * @return {mat4} the matrix in array format
 */
-Transform.prototype.getGlobalMatrixRef = function ()
+Transform.prototype.getGlobalTranslationMatrix = function ()
 {
-	if(this._must_update_matrix)
-		this.updateMatrix();
-	return this._global_matrix;
+	var pos = this.getGlobalPosition();
+	return mat4.fromValues(1,0,0,0, 0,1,0,0, 0,0,1,0, pos[0], pos[1], pos[2], 1);
 }
 
 /**
-* Returns the world matrix of this transform without the scale
-* @method getMatrixWithoutScale
+* Returns the global rotation in quaternion array (a copy)
+* @method getGlobalRotationMatrix
+* @return {mat4} the rotation
+*/
+Transform.prototype.getGlobalRotationMatrix = function(out)
+{
+	var out = out || mat4.create();
+	if( !this._parent )
+		return mat4.fromQuat( out, this._rotation );
+		
+	var r = mat4.create();
+	var aux = this;
+	while( aux )
+	{
+		mat4.fromQuat(r, aux._rotation);
+		mat4.multiply(out,out,r);
+		aux = aux._parent;
+	}
+	return out;
+}
+
+
+/**
+* Returns the local matrix of this transform without the scale
+* @method getGlobalTranslationRotationMatrix
 * @return {mat4} the matrix in array format
 */
-Transform.prototype.getMatrixWithoutScale = function ()
+Transform.prototype.getGlobalTranslationRotationMatrix = function ()
 {
 	var pos = this.getGlobalPosition();
 	return mat4.fromRotationTranslation(mat4.create(), this.getGlobalRotation(), pos);
 }
+Transform.prototype.getGlobalMatrixWithoutScale = Transform.prototype.getGlobalTranslationRotationMatrix;
 
-/**
-* Returns the world matrix of this transform without the scale
-* @method getMatrixWithoutRotation
-* @return {mat4} the matrix in array format
-*/
-Transform.prototype.getMatrixWithoutRotation = function ()
-{
-	var pos = this.getGlobalPosition();
-	return mat4.clone([1,0,0,0, 0,1,0,0, 0,0,1,0, pos[0], pos[1], pos[2], 1]);
-}
 
 
 /**
@@ -562,7 +603,7 @@ Transform.prototype.setScale = function(x,y,z)
 }
 
 /**
-* translates object (addts to the position)
+* translates object in local coordinates (adds to the position)
 * @method translate
 * @param {number} x 
 * @param {number} y
@@ -579,13 +620,14 @@ Transform.prototype.translate = function(x,y,z)
 }
 
 /**
-* translates object in local coordinates (using the rotation and the scale)
-* @method translateLocal
+* NOT TESTED
+* translates object in global coordinates (using the rotation and the scale)
+* @method translateGlobal
 * @param {number} x 
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translateLocal = function(x,y,z)
+Transform.prototype.translateGlobal = function(x,y,z)
 {
 	if(arguments.length == 3)
 		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
@@ -596,26 +638,12 @@ Transform.prototype.translateLocal = function(x,y,z)
 }
 
 /**
-* rotate object in world space
+* rotate object in local space (axis is in local space)
 * @method rotate
 * @param {number} angle_in_deg 
 * @param {vec3} axis
 */
 Transform.prototype.rotate = function(angle_in_deg, axis)
-{
-	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925);
-	quat.multiply(this._rotation, R, this._rotation);
-	this._must_update_matrix = true;
-	this._on_change();
-}
-
-/**
-* rotate object in object space
-* @method rotateLocal
-* @param {number} angle_in_deg 
-* @param {vec3} axis
-*/
-Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 {
 	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925 );
 	quat.multiply(this._rotation, this._rotation, R);
@@ -624,25 +652,76 @@ Transform.prototype.rotateLocal = function(angle_in_deg, axis)
 }
 
 /**
-* rotate object in world space using a quat
-* @method rotateQuat
-* @param {quat} quaternion
+* rotate object in local space in local X axis
+* @method rotateX
+* @param {number} angle_in_deg 
 */
-Transform.prototype.rotateQuat = function(quaternion)
+Transform.prototype.rotateX = function(angle_in_deg)
 {
-	quat.multiply(this._rotation, quaternion, this._rotation);
+	quat.rotateX(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update_matrix = true;
 	this._on_change();
 }
 
 /**
-* rotate object in world space using a quat
+* rotate object in local space in local Y axis
+* @method rotateY
+* @param {number} angle_in_deg 
+*/
+Transform.prototype.rotateY = function(angle_in_deg)
+{
+	quat.rotateY(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	this._must_update_matrix = true;
+	this._on_change();
+}
+
+/**
+* rotate object in local space in local Z axis
+* @method rotateZ
+* @param {number} angle_in_deg 
+*/
+Transform.prototype.rotateZ = function(angle_in_deg)
+{
+	quat.rotateZ(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	this._must_update_matrix = true;
+	this._on_change();
+}
+
+
+/**
+* rotate object in global space (axis is in global space)
+* @method rotateGlobal
+* @param {number} angle_in_deg 
+* @param {vec3} axis
+*/
+Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
+{
+	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925);
+	quat.multiply(this._rotation, R, this._rotation);
+	this._must_update_matrix = true;
+	this._on_change();
+}
+
+/**
+* rotate object in local space using a quat
 * @method rotateQuat
 * @param {quat} quaternion
 */
-Transform.prototype.rotateQuatLocal = function(quaternion)
+Transform.prototype.rotateQuat = function(quaternion)
 {
 	quat.multiply(this._rotation, this._rotation, quaternion);
+	this._must_update_matrix = true;
+	this._on_change();
+}
+
+/**
+* rotate object in global space using a quat
+* @method rotateQuatGlobal
+* @param {quat} quaternion
+*/
+Transform.prototype.rotateQuatGlobal = function(quaternion)
+{
+	quat.multiply(this._rotation, quaternion, this._rotation);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -719,31 +798,30 @@ Transform.prototype._on_change = function(only_events)
 
 //Transform
 /**
-* returns the [0,0,1] vector in world space
+* returns the [0,0,-1] vector in global space
 * @method getFront
 * @return {vec3}
 */
-Transform.prototype.getFront = function(dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,0,1), this.getGlobalRotation() );
+Transform.prototype.getFront = function(out) {
+	return vec3.transformQuat(out || vec3.create(), Transform.FRONT, this.getGlobalRotation() );
 }
 
 /**
-* returns the [0,1,0] vector in world space
+* returns the [0,1,0] vector in global space
 * @method getTop
 * @return {vec3}
 */
-Transform.prototype.getTop = function(dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(0,1,0), this.getGlobalRotation() );
+Transform.prototype.getTop = function(out) {
+	return vec3.transformQuat(out || vec3.create(), Transform.UP, this.getGlobalRotation() );
 }
 
 /**
-* returns the [1,0,0] vector in world space
+* returns the [1,0,0] vector in global space
 * @method getRight
 * @return {vec3}
 */
-Transform.prototype.getRight = function(dest) {
-	//return mat4.rotateVec3( this._matrix, vec3.create([1,0,0]) );
-	return vec3.transformQuat(dest || vec3.create(), vec3.fromValues(1,0,0), this.getGlobalRotation() );
+Transform.prototype.getRight = function(out) {
+	return vec3.transformQuat(out || vec3.create(), Transform.RIGHT, this.getGlobalRotation() );
 }
 
 /**

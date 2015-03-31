@@ -18,6 +18,8 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
+	this._paths = [];
+
 	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
 	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
 
@@ -211,7 +213,7 @@ SceneTree.prototype.serialize = function()
 	var o = {};
 
 	o.uid = this.uid;
-	o.object_type = getObjectClassName(this);
+	o.object_type = LS.getObjectClassName(this);
 
 	//legacy
 	o.local_repository = this.local_repository;
@@ -258,12 +260,12 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 {
 	if(!url) return;
 	var that = this;
-	var nocache = ResourcesManager.getNoCache(true);
+	var nocache = LS.ResourcesManager.getNoCache(true);
 	if(nocache)
 		url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
 
 
-	LS.request({
+	LS.Network.request({
 		url: url,
 		dataType: 'json',
 		success: inner_success,
@@ -363,7 +365,8 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 SceneTree.prototype.onNodeRemoved = function(e,node)
 {
 	var pos = this._nodes.indexOf(node);
-	if(pos == -1) return;
+	if(pos == -1) 
+		return;
 
 	this._nodes.splice(pos,1);
 	if(node.id)
@@ -371,7 +374,7 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 	if(node.uid)
 		delete this._nodes_by_uid[ node.uid ];
 
-	node.processActionInComponents("onRemovedFromNode",this); //send to components
+	//node.processActionInComponents("onRemovedFromNode",node);
 	node.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	LEvent.trigger(this,"nodeRemoved", node);
@@ -618,9 +621,9 @@ SceneTree.prototype.stop = function()
 *
 * @method render
 */
-SceneTree.prototype.render = function(camera, options)
+SceneTree.prototype.render = function(options)
 {
-	this._renderer.render(this, camera, options);
+	this._renderer.render(this, options);
 }
 
 SceneTree.prototype.collectData = function()
@@ -778,9 +781,10 @@ SceneTree.prototype.getTime = function()
 function SceneNode(id)
 {
 	//Generic
-	this.id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+	this._id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId("NODE-");
 
+	this._classList = {};
 	//this.className = "";
 	//this.mesh = "";
 
@@ -822,9 +826,21 @@ LS.extendClass(SceneNode, CompositePattern); //container methods
 * @return {Object} returns true if the name changed
 */
 
+Object.defineProperty( SceneNode.prototype, 'id', {
+	set: function(id)
+	{
+		this.setId(id);
+	},
+	get: function(){
+		return this._id;
+	},
+	enumerable: true
+});
+	
+
 SceneNode.prototype.setId = function(new_id)
 {
-	if(this.id == new_id) 
+	if(this._id == new_id) 
 		return true; //no changes
 
 	if(!LS.validateId(new_id))
@@ -833,7 +849,7 @@ SceneNode.prototype.setId = function(new_id)
 	var scene = this._in_tree;
 	if(!scene)
 	{
-		this.id = new_id;
+		this._id = new_id;
 		return;
 	}
 
@@ -843,18 +859,51 @@ SceneNode.prototype.setId = function(new_id)
 		return false;
 	}
 
-	if(this.id)
-		delete scene._nodes_by_id[this.id];
+	if(this._id)
+		delete scene._nodes_by_id[this._id];
 	//uid doesnt change, so we keep it
 
-	this.id = new_id;
-	if(this.id)
-		scene._nodes_by_id[ this.id ] = this;
+	this._id = new_id;
+	if(this._id)
+		scene._nodes_by_id[ this._id ] = this;
 
 	LEvent.trigger(this,"idChanged", new_id); //TODO: CHANGE NAME
 	LEvent.trigger(Scene,"nodeIdChanged", this); //TODO: CHANGE NAME
 	return true;
 }
+
+Object.defineProperty( SceneNode.prototype, 'classList', {
+	get: function() { return this._classList },
+	set: function(v) {},
+	enumerable: false
+});
+
+/**
+* @property className {String}
+*/
+Object.defineProperty( SceneNode.prototype, 'className', {
+	get: function() {
+			var keys = null;
+			if(Object.keys)
+				keys = Object.keys(this._classList); 
+			else
+			{
+				keys = [];
+				for(var k in this._classList)
+					keys.push(k);
+			}
+			return keys.join(" ");
+		},
+	set: function(v) { 
+		this._classList = {};
+		if(!v)
+			return;
+		var t = v.split(" ");
+		for(var i in t)
+			this._classList[ t[i] ] = true;
+	},
+	enumerable: true
+});
 
 SceneNode.prototype.getResources = function(res, include_children)
 {
@@ -897,7 +946,8 @@ SceneNode.prototype.getTransform = function() {
 	return this.transform;
 }
 
-//Mesh component
+//Helpers
+
 SceneNode.prototype.getMesh = function() {
 	var mesh = this.mesh;
 	if(!mesh && this.meshrenderer)
@@ -945,15 +995,15 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 {
 	options = options || {};
 
-	if(ResourcesManager.meshes[mesh_filename] || !mesh_filename )
+	if(LS.ResourcesManager.meshes[mesh_filename] || !mesh_filename )
 	{
 		this.setMesh( mesh_filename );
-		if(options.on_complete) options.on_complete( ResourcesManager.meshes[mesh_filename] ,this);
+		if(options.on_complete) options.on_complete( LS.ResourcesManager.meshes[mesh_filename] ,this);
 		return;
 	}
 
 	var that = this;
-	var loaded = ResourcesManager.load(mesh_filename, options, function(mesh){
+	var loaded = LS.ResourcesManager.load(mesh_filename, options, function(mesh){
 		that.setMesh(mesh.filename);
 		that.loading -= 1;
 		if(that.loading == 0)
@@ -961,7 +1011,8 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 			LEvent.trigger(that,"resource_loaded",that);
 			delete that.loading;
 		}
-		if(options.on_complete) options.on_complete(mesh,that);
+		if(options.on_complete)
+			options.on_complete(mesh,that);
 	});
 
 	if(!loaded)
@@ -976,6 +1027,13 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 			this.loading += 1;
 	}
 }
+
+SceneNode.prototype.setMaterial = function(mat)
+{
+	this.material = mat;
+	//TODO: allow only strings and force to register the material
+}
+
 
 SceneNode.prototype.getMaterial = function()
 {
@@ -1007,7 +1065,7 @@ SceneNode.prototype.clone = function()
 {
 	var scene = this._in_tree;
 
-	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
+	var new_name = scene ? scene.generateUniqueNodeName( this._id ) : this._id ;
 	var newnode = new SceneNode( new_name );
 	var info = this.serialize();
 
@@ -1059,25 +1117,36 @@ SceneNode.prototype.clone = function()
 */
 SceneNode.prototype.configure = function(info)
 {
-	if (info.id) this.setId(info.id);
-	if (info.uid) this.uid = info.uid;
-	if (info.className)	this.className = info.className;
+	//identifiers parsing
+	if (info.id)
+		this.setId(info.id);
+	if (info.uid) 
+		this.uid = info.uid;
+	if (info.className && info.className.constructor == String)	
+		this.className = info.className;
 
-	//useful parsing
+	//some helpers (mostly for when loading from js object that come from importers
 	if(info.mesh)
 	{
-		var mesh = info.mesh;
-		if(typeof(mesh) == "string")
-			mesh = ResourcesManager.meshes[mesh];
+		var mesh_id = info.mesh;
 
-		if(mesh)
-		{
-			if(mesh.bones)
-				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
-			else
-				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id, morph_targets: info.morph_targets }) );
-		}
+		var mesh = LS.ResourcesManager.meshes[ mesh_id ];
+		var mesh_render_config = { mesh: mesh_id };
+
+		if(info.submesh_id !== undefined)
+			mesh_render_config.submesh_id = info.submesh_id;
+		if(info.morph_targets !== undefined)
+			mesh_render_config.morph_targets = info.morph_targets;
+
+		if(mesh && mesh.bones)
+			this.addComponent( new LS.Components.SkinnedMeshRenderer(mesh_render_config) );
+		else
+			this.addComponent( new LS.Components.MeshRenderer(mesh_render_config) );
 	}
+
+	//transform in matrix format could come from importers so we leave it
+	if(info.model) 
+		this.transform.fromMatrix( info.model ); 
 
 	//first the no components
 	if(info.material)
@@ -1092,21 +1161,14 @@ SceneNode.prototype.configure = function(info)
 		for(var i in info.flags)
 			this.flags[i] = info.flags[i];
 	
-	//DEPRECATED: hardcoded components
-	if(info.transform) this.transform.configure( info.transform ); //all nodes have a transform
-	if(info.light) this.addComponent( new Light(info.light) );
-	if(info.camera)	this.addComponent( new Camera(info.camera) );
+	if(info.prefab) 
+		this.prefab = info.prefab;
 
-	//DEPRECATED: model in matrix format
-	if(info.model) this.transform.fromMatrix( info.model ); 
-
-	if(info.prefab) this.prefab = info.prefab;
-
-	//add animation
+	//add animation tracks player
 	if(info.animations)
 	{
 		this.animations = info.animations;
-		this.addComponent( new PlayAnimation({animation:this.animations}) );
+		this.addComponent( new LS.Components.PlayAnimation({animation:this.animations}) );
 	}
 
 	//extra user info
@@ -1120,22 +1182,8 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
+	//configure children too
 	this.configureChildren(info);
-
-	//ierarchy: this goes last because it needs to read transform
-	/*
-	if(info.parent_id) //name of the parent
-	{
-		if(this._in_tree)
-		{
-			var parent = this._in_tree.getNode( info.parent_id );
-			if(parent) 
-				parent.addChild( this );
-		}
-		else
-			this.parent = info.parent_id;
-	}
-	*/
 
 	LEvent.trigger(this,"configure",info);
 }
@@ -1150,36 +1198,34 @@ SceneNode.prototype.serialize = function()
 {
 	var o = {};
 
-	if(this.id) o.id = this.id;
-	if(this.uid) o.uid = this.uid;
-	if(this.className) o.className = this.className;
+	if(this._id) 
+		o.id = this._id;
+	if(this.uid) 
+		o.uid = this.uid;
+	if(this.className) 
+		o.className = this.className;
 
 	//modules
-	if(this.mesh && typeof(this.mesh) == "string") o.mesh = this.mesh; //do not save procedural meshes
-	if(this.submesh_id != null) o.submesh_id = this.submesh_id;
-	if(this.material) o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
-	if(this.prefab) o.prefab = this.prefab;
+	if(this.mesh && typeof(this.mesh) == "string") 
+		o.mesh = this.mesh; //do not save procedural meshes
+	if(this.submesh_id != null) 
+		o.submesh_id = this.submesh_id;
+	if(this.material) 
+		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+	if(this.prefab) 
+		o.prefab = this.prefab;
 
-	if(this.flags) o.flags = cloneObject(this.flags);
+	if(this.flags) 
+		o.flags = LS.cloneObject(this.flags);
 
 	//extra user info
-	if(this.extra) o.extra = this.extra;
-	if(this.comments) o.comments = this.comments;
+	if(this.extra) 
+		o.extra = this.extra;
+	if(this.comments) 
+		o.comments = this.comments;
 
 	if(this._children)
 		o.children = this.serializeChildren();
-
-	//save children ierarchy
-	//if(this.parentNode)
-	//	o.parent_id = this.parentNode.id;
-	/*
-	if(this._children && this._children.length)
-	{
-		o.children = [];
-		for(var i in this._children)
-			o.children.push( this._children[i].id );
-	}
-	*/
 
 	//save components
 	this.serializeComponents(o);
@@ -1190,6 +1236,7 @@ SceneNode.prototype.serialize = function()
 	return o;
 }
 
+//used to recompute matrix so when parenting one node it doesnt lose its global transformation
 SceneNode.prototype._onChildAdded = function(child_node, recompute_transform)
 {
 	if(recompute_transform && this.transform)
@@ -1241,27 +1288,27 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 
 LS.SceneTree = SceneTree;
 LS.SceneNode = SceneNode;
-var Scene = new SceneTree();
+var Scene = LS.GlobalScene = new SceneTree();
 
 LS.newMeshNode = function(id,mesh_name)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new MeshRenderer() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.MeshRenderer() );
 	node.setMesh(mesh_name);
 	return node;
 }
 
 LS.newLightNode = function(id)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new Light() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.Light() );
 	return node;
 }
 
 LS.newCameraNode = function(id)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new Camera() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.Camera() );
 	return node;
 }
 

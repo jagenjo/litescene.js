@@ -48,11 +48,15 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 {
 	if(!this.enabled || !this._root) return;
 
+	var scene = this._root.scene;
+	if(!scene)
+		return;
+
 	var camera = render_options.main_camera;
 
 	this.refresh_rate = this.refresh_rate << 0;
 
-	if( (Scene._frame == 0 || (Scene._frame % this.refresh_rate) != 0) && this._rt)
+	if( (scene._frame == 0 || (scene._frame % this.refresh_rate) != 0) && this._rt)
 		return;
 
 	var texture_size = parseInt( this.texture_size );
@@ -125,12 +129,12 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 		vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 		var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
 		render_options.clipping_plane = clipping_plane;
-		Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options);
+		LS.Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options);
 	}
 	else //spherical reflection
 	{
 		reflected_camera.eye = plane_center;
-		Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options );
+		LS.Renderer.renderInstancesToRT(reflected_camera,this._rt, render_options );
 	}
 
 	//remove flags
@@ -145,7 +149,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 		if( this._temp_blur_texture && !Texture.compareFormats(this._temp_blur_texture, this._rt) )
 			this._temp_blur_texture = null;	 //remove old one
 		this._temp_blur_texture = this._rt.applyBlur( this.blur, this.blur, 1, this._temp_blur_texture);
-		//ResourcesManager.registerResource(":BLUR", this._temp_blur_texture);//debug
+		//LS.ResourcesManager.registerResource(":BLUR", this._temp_blur_texture);//debug
 	}
 
 
@@ -159,7 +163,7 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	this._root.flags.visible = visible;
 
 	if(this.rt_name)
-		ResourcesManager.registerResource(this.rt_name, this._rt);
+		LS.ResourcesManager.registerResource(this.rt_name, this._rt);
 
 	if(!this._root.material) return;
 	
@@ -171,4 +175,4 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 	}
 }
 
-LS.registerComponent(RealtimeReflector);
+LS.registerComponent( RealtimeReflector );
