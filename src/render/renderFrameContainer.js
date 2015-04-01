@@ -45,6 +45,7 @@ RenderFrameContainer.prototype.startFBO = function(width, height, use_high_preci
 
 	gl.viewport(0, 0, color_texture.width, color_texture.height );
 	LS.Renderer._full_viewport.set( gl.viewport_data );
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (color_texture.width / color_texture.height);
 
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color_texture.handler, 0);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,  gl.TEXTURE_2D, depth_texture.handler, 0);
@@ -57,12 +58,15 @@ RenderFrameContainer.prototype.startFBO = function(width, height, use_high_preci
 		depth_texture.near_far_planes[0] = camera.near;
 		depth_texture.near_far_planes[1] = camera.far;
 	}
+
+
 }
 
 RenderFrameContainer.prototype.endFBO = function()
 {
 	//disable FBO
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	LS.Renderer.global_aspect = 1.0;
 
 	//restore
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );

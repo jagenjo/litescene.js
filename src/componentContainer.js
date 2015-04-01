@@ -1,6 +1,6 @@
 /*
-*  Components are elements that attach to Nodes to add functionality
-*  Some important components are Transform,Light or Camera
+*  Components are elements that attach to Nodes or other objects to add functionality
+*  Some important components are Transform, Light or Camera
 *
 *	*  ctor: must accept an optional parameter with the serialized data
 *	*  onAddedToNode: triggered when added to node
@@ -39,7 +39,7 @@ ComponentContainer.prototype.configureComponents = function(info)
 {
 	if(info.components)
 	{
-		for(var i in info.components)
+		for(var i = 0, l = info.components.length; i < l; ++i)
 		{
 			var comp_info = info.components[i];
 			var comp_class = comp_info[0];
@@ -66,10 +66,11 @@ ComponentContainer.prototype.configureComponents = function(info)
 
 ComponentContainer.prototype.serializeComponents = function(o)
 {
-	if(!this._components) return;
+	if(!this._components)
+		return;
 
 	o.components = [];
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 	{
 		var comp = this._components[i];
 		if( !comp.serialize )
@@ -94,6 +95,28 @@ ComponentContainer.prototype.getComponents = function()
 	return this._components;
 }
 
+//used internally to bind and unbind events
+ComponentContainer.prototype._onAddedToScene = function(scene)
+{
+	for(var i = 0, l = this._components.length; i < l; ++i)
+	{
+		var component = this._components[i];
+		if(component.onAddedToScene)
+			component.onAddedToScene(scene);
+	}
+}
+
+ComponentContainer.prototype._onRemovedFromScene = function(scene)
+{
+	for(var i = 0, l = this._components.length; i < l; ++i)
+	{
+		var component = this._components[i];
+		if(component.onRemovedFromScene)
+			component.onRemovedFromScene(scene);
+	}
+}
+
+
 /**
 * Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
@@ -109,6 +132,9 @@ ComponentContainer.prototype.addComponent = function(component)
 	component._root = this;
 	if(component.onAddedToNode)
 		component.onAddedToNode(this);
+
+	if(this._in_tree && component.onAddedToScene)
+		component.onAddedToScene(this._in_tree);
 
 	//link node with component
 	if(!this._components) 
@@ -136,12 +162,16 @@ ComponentContainer.prototype.removeComponent = function(component)
 	if(component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
+	if(this._in_tree && component.onRemovedFromScene)
+		component.onRemovedFromScene(this._in_tree);
+
 	//remove all events
 	LEvent.unbindAll(this,component);
 
 	//remove from components list
 	var pos = this._components.indexOf(component);
-	if(pos != -1) this._components.splice(pos,1);
+	if(pos != -1)
+		this._components.splice(pos,1);
 }
 
 /**
@@ -169,15 +199,15 @@ ComponentContainer.prototype.hasComponent = function(component_class) //class, n
 	//string
 	if( component_class.constructor === String)
 	{
-		for(var i in this._components)
+		for(var i = 0, l = this._components.length; i < l; ++i)
 			if( this._components[i].constructor.name == component_class )
 			return true;
 		return false;
 	}
 
 	//class
-	for(var i in this._components)
-		if( this._components[i].constructor == component_class )
+	for(var i = 0, l = this._components.length; i < l; ++i)
+		if( this._components[i].constructor === component_class )
 		return true;
 	return false;
 }
@@ -196,14 +226,14 @@ ComponentContainer.prototype.getComponent = function(component_class)
 	//string
 	if( component_class.constructor === String)
 	{
-		for(var i in this._components)
+		for(var i = 0, l = this._components.length; i < l; ++i)
 			if( this._components[i].constructor.name == component_class )
-			return this._components[i];
+				return this._components[i];
 		return null;
 	}
 
 	//class
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i].constructor == component_class )
 		return this._components[i];
 	return null;
@@ -218,9 +248,9 @@ ComponentContainer.prototype.getComponentByUId = function(uid)
 {
 	if(!this._components)
 		return null;
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i].uid == uid )
-		return this._components[i];
+			return this._components[i];
 	return null;
 }
 
@@ -256,8 +286,9 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 */
 ComponentContainer.prototype.processActionInComponents = function(action_name,params)
 {
-	if(!this._components) return;
-	for(var i = 0; i < this._components.length; ++i )
+	if(!this._components)
+		return;
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
 			this._components[i][action_name](params);
 }

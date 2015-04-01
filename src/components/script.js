@@ -1,5 +1,3 @@
-(function(){
-
 function Script(o)
 {
 	this.enabled = true;
@@ -114,20 +112,24 @@ Script.prototype.getAttributes = function()
 
 Script.prototype.hookEvents = function()
 {
-	var hookable = Script.exported_callbacks;
-	var scene = this._root.scene;
+	var hookable = LS.Script.exported_callbacks;
+	var node = this._root;
+	var scene = node.scene;
 
+	//script context
 	var context = this.getContext();
 	if(!context)
 		return;
 
+	//hook events
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = Script.translate_events[name] || name;
+		var event_name = LS.Script.translate_events[name] || name;
 
 		if( context[name] && context[name].constructor === Function )
 		{
+			//remove
 			if( !LEvent.isBind( scene, event_name, this.onScriptEvent, this )  )
 				LEvent.bind( scene, event_name, this.onScriptEvent, this );
 		}
@@ -136,7 +138,7 @@ Script.prototype.hookEvents = function()
 	}
 }
 
-Script.prototype.onAddedToNode = function(node)
+Script.prototype.onAddedToScene = function(scene)
 {
 	try
 	{
@@ -149,20 +151,10 @@ Script.prototype.onAddedToNode = function(node)
 	}
 }
 
-Script.prototype.onRemovedFromNode = function(node)
+Script.prototype.onRemovedFromScene = function(scene)
 {
-	var scene = node.scene;
-	if(!scene)
-		return;
-
 	//unbind evends
-	var hookable = Script.exported_callbacks;
-	for(var i in hookable)
-	{
-		var name = hookable[i];
-		var event_name = Script.translate_events[name] || name;
-		LEvent.unbind( scene, event_name, this.onScriptEvent, this );
-	}
+	LEvent.unbindAll( scene, this );
 }
 
 Script.prototype.onScriptEvent = function(event_type, params)
@@ -172,7 +164,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 	if(!this.enabled)
 		return;
 
-	var method_name = Script.translate_events[ event_type ] || event_type;
+	var method_name = LS.Script.translate_events[ event_type ] || event_type;
 	this._script.callMethod( method_name, params );
 }
 
@@ -201,5 +193,5 @@ Script.prototype.onCodeChange = function(code)
 
 
 LS.registerComponent(Script);
+LS.Script = Script;
 
-})();

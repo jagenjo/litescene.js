@@ -252,8 +252,8 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		width = gl.viewport_data[2]; //gl.canvas.width;
-		height = gl.viewport_data[3]; //gl.canvas.height;
+		width = gl.canvas.width;
+		height = gl.canvas.height;
 	}
 
 	//Create textures
@@ -335,6 +335,8 @@ FXGraphComponent.prototype.onPreRender = function( cameras, render_options )
 	depth_texture.near_far_planes[0] = camera.near;
 	depth_texture.near_far_planes[1] = camera.far;
 
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (color_texture.width / color_texture.height);
+
 	//ready to render the scene, which is done from the LS.Renderer.render
 }
 
@@ -343,6 +345,7 @@ FXGraphComponent.prototype.onPostRender = function()
 {
 	//disable FBO
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	LS.Renderer.global_aspect = 1;
 
 	//restore
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );

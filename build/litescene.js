@@ -4894,8 +4894,8 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 LS.registerMaterialClass(SurfaceMaterial);
 LS.SurfaceMaterial = SurfaceMaterial;
 /*
-*  Components are elements that attach to Nodes to add functionality
-*  Some important components are Transform,Light or Camera
+*  Components are elements that attach to Nodes or other objects to add functionality
+*  Some important components are Transform, Light or Camera
 *
 *	*  ctor: must accept an optional parameter with the serialized data
 *	*  onAddedToNode: triggered when added to node
@@ -4934,7 +4934,7 @@ ComponentContainer.prototype.configureComponents = function(info)
 {
 	if(info.components)
 	{
-		for(var i in info.components)
+		for(var i = 0, l = info.components.length; i < l; ++i)
 		{
 			var comp_info = info.components[i];
 			var comp_class = comp_info[0];
@@ -4961,10 +4961,11 @@ ComponentContainer.prototype.configureComponents = function(info)
 
 ComponentContainer.prototype.serializeComponents = function(o)
 {
-	if(!this._components) return;
+	if(!this._components)
+		return;
 
 	o.components = [];
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 	{
 		var comp = this._components[i];
 		if( !comp.serialize )
@@ -4989,6 +4990,28 @@ ComponentContainer.prototype.getComponents = function()
 	return this._components;
 }
 
+//used internally to bind and unbind events
+ComponentContainer.prototype._onAddedToScene = function(scene)
+{
+	for(var i = 0, l = this._components.length; i < l; ++i)
+	{
+		var component = this._components[i];
+		if(component.onAddedToScene)
+			component.onAddedToScene(scene);
+	}
+}
+
+ComponentContainer.prototype._onRemovedFromScene = function(scene)
+{
+	for(var i = 0, l = this._components.length; i < l; ++i)
+	{
+		var component = this._components[i];
+		if(component.onRemovedFromScene)
+			component.onRemovedFromScene(scene);
+	}
+}
+
+
 /**
 * Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
@@ -5004,6 +5027,9 @@ ComponentContainer.prototype.addComponent = function(component)
 	component._root = this;
 	if(component.onAddedToNode)
 		component.onAddedToNode(this);
+
+	if(this._in_tree && component.onAddedToScene)
+		component.onAddedToScene(this._in_tree);
 
 	//link node with component
 	if(!this._components) 
@@ -5031,12 +5057,16 @@ ComponentContainer.prototype.removeComponent = function(component)
 	if(component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
+	if(this._in_tree && component.onRemovedFromScene)
+		component.onRemovedFromScene(this._in_tree);
+
 	//remove all events
 	LEvent.unbindAll(this,component);
 
 	//remove from components list
 	var pos = this._components.indexOf(component);
-	if(pos != -1) this._components.splice(pos,1);
+	if(pos != -1)
+		this._components.splice(pos,1);
 }
 
 /**
@@ -5064,15 +5094,15 @@ ComponentContainer.prototype.hasComponent = function(component_class) //class, n
 	//string
 	if( component_class.constructor === String)
 	{
-		for(var i in this._components)
+		for(var i = 0, l = this._components.length; i < l; ++i)
 			if( this._components[i].constructor.name == component_class )
 			return true;
 		return false;
 	}
 
 	//class
-	for(var i in this._components)
-		if( this._components[i].constructor == component_class )
+	for(var i = 0, l = this._components.length; i < l; ++i)
+		if( this._components[i].constructor === component_class )
 		return true;
 	return false;
 }
@@ -5091,14 +5121,14 @@ ComponentContainer.prototype.getComponent = function(component_class)
 	//string
 	if( component_class.constructor === String)
 	{
-		for(var i in this._components)
+		for(var i = 0, l = this._components.length; i < l; ++i)
 			if( this._components[i].constructor.name == component_class )
-			return this._components[i];
+				return this._components[i];
 		return null;
 	}
 
 	//class
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i].constructor == component_class )
 		return this._components[i];
 	return null;
@@ -5113,9 +5143,9 @@ ComponentContainer.prototype.getComponentByUId = function(uid)
 {
 	if(!this._components)
 		return null;
-	for(var i in this._components)
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i].uid == uid )
-		return this._components[i];
+			return this._components[i];
 	return null;
 }
 
@@ -5151,8 +5181,9 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 */
 ComponentContainer.prototype.processActionInComponents = function(action_name,params)
 {
-	if(!this._components) return;
-	for(var i = 0; i < this._components.length; ++i )
+	if(!this._components)
+		return;
+	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
 			this._components[i][action_name](params);
 }
@@ -5226,20 +5257,29 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+	//the same as scene but we called tree to make it more generic
+	var tree = this._in_tree;
+
+	//this would never fire but just in case
+	if(tree && node._in_tree && node._in_tree != tree)
+		throw("Cannot add a node that belongs to another scene tree");
 
 	//Same tree
-	node._in_tree = this._in_tree;
+	node._in_tree = tree;
 
+	//overwritten from SceneNode
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
 	LEvent.trigger(this,"childAdded", node);
-	if(this._in_tree)
+	if(tree)
 	{
-		LEvent.trigger(this._in_tree, "treeItemAdded", node);
+		//added to scene tree
+		LEvent.trigger(tree, "treeItemAdded", node);
+		if(node._onAddedToScene)
+			node._onAddedToScene( tree );
 		inner_recursive(node);
 	}
-	
 
 	//recursive action
 	function inner_recursive(item)
@@ -5248,10 +5288,13 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree && item._in_tree)
+			if(!child._in_tree)
 			{
-				LEvent.trigger( item._in_tree, "treeItemAdded", child );
-				child._in_tree = item._in_tree;
+				//added to scene tree
+				LEvent.trigger( tree, "treeItemAdded", child );
+				if(child._onAddedToScene)
+					child._onAddedToScene( tree );
+				child._in_tree = tree;
 			}
 			inner_recursive( child );
 		}
@@ -5285,7 +5328,8 @@ CompositePattern.prototype.removeChild = function(node, options)
 	if(node._in_tree)
 	{
 		LEvent.trigger(node._in_tree, "treeItemRemoved", node);
-
+		if(node._onRemovedFromScene)
+			node._onRemovedFromScene( node._in_tree );
 		//propagate to childs
 		inner_recursive(node);
 	}
@@ -5302,6 +5346,8 @@ CompositePattern.prototype.removeChild = function(node, options)
 			if(child._in_tree)
 			{
 				LEvent.trigger( child._in_tree, "treeItemRemoved", child );
+				if(child._onRemovedFromScene)
+					child._onRemovedFromScene( child._in_tree );
 				child._in_tree = null;
 			}
 			inner_recursive( child );
@@ -7171,10 +7217,10 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 	}
 
 	//apply viewport
-	result[0] = (viewport[2] * this._viewport[0] + viewport[0])|0;
-	result[1] = (viewport[3] * this._viewport[1] + viewport[1])|0;
-	result[2] = (viewport[2] * this._viewport[2])|0;
-	result[3] = (viewport[3] * this._viewport[3])|0;
+	result[0] = Math.floor(viewport[2] * this._viewport[0] + viewport[0]);
+	result[1] = Math.floor(viewport[3] * this._viewport[1] + viewport[1]);
+	result[2] = Math.ceil(viewport[2] * this._viewport[2]);
+	result[3] = Math.ceil(viewport[3] * this._viewport[3]);
 	return result;
 }
 
@@ -8415,7 +8461,7 @@ LightFX.onGlarePreRender = function(render_options)
 		return; 
 
 	//project point to 2D in normalized space
-	mat4.projectVec3( this.pos2D, Renderer._viewprojection_matrix, this.center );
+	mat4.projectVec3( this.pos2D, LS.Renderer._viewprojection_matrix, this.center );
 	this.pos2D[0] = this.pos2D[0] * 2 - 1;
 	this.pos2D[1] = this.pos2D[1] * 2 - 1;
 	this.pos2D[2] = 0; //reset Z
@@ -8432,7 +8478,7 @@ LightFX.onGlarePreRender = function(render_options)
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = Renderer.raycast( scene, center, dir, dist );
+		coll = LS.Picking.raycast( scene, center, dir, dist );
 
 	if(coll.length)
 	{
@@ -10359,8 +10405,8 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 	var height = FXGraphComponent.buffer_size[1];
 	if( this.use_viewport_size )
 	{
-		width = gl.viewport_data[2]; //gl.canvas.width;
-		height = gl.viewport_data[3]; //gl.canvas.height;
+		width = gl.canvas.width;
+		height = gl.canvas.height;
 	}
 
 	//Create textures
@@ -10442,6 +10488,8 @@ FXGraphComponent.prototype.onPreRender = function( cameras, render_options )
 	depth_texture.near_far_planes[0] = camera.near;
 	depth_texture.near_far_planes[1] = camera.far;
 
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (color_texture.width / color_texture.height);
+
 	//ready to render the scene, which is done from the LS.Renderer.render
 }
 
@@ -10450,6 +10498,7 @@ FXGraphComponent.prototype.onPostRender = function()
 {
 	//disable FBO
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	LS.Renderer.global_aspect = 1;
 
 	//restore
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
@@ -11915,8 +11964,6 @@ RealtimeReflector.prototype.onRenderRT = function(e, render_options)
 }
 
 LS.registerComponent( RealtimeReflector );
-(function(){
-
 function Script(o)
 {
 	this.enabled = true;
@@ -12031,20 +12078,24 @@ Script.prototype.getAttributes = function()
 
 Script.prototype.hookEvents = function()
 {
-	var hookable = Script.exported_callbacks;
-	var scene = this._root.scene;
+	var hookable = LS.Script.exported_callbacks;
+	var node = this._root;
+	var scene = node.scene;
 
+	//script context
 	var context = this.getContext();
 	if(!context)
 		return;
 
+	//hook events
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = Script.translate_events[name] || name;
+		var event_name = LS.Script.translate_events[name] || name;
 
 		if( context[name] && context[name].constructor === Function )
 		{
+			//remove
 			if( !LEvent.isBind( scene, event_name, this.onScriptEvent, this )  )
 				LEvent.bind( scene, event_name, this.onScriptEvent, this );
 		}
@@ -12053,7 +12104,7 @@ Script.prototype.hookEvents = function()
 	}
 }
 
-Script.prototype.onAddedToNode = function(node)
+Script.prototype.onAddedToScene = function(scene)
 {
 	try
 	{
@@ -12066,20 +12117,10 @@ Script.prototype.onAddedToNode = function(node)
 	}
 }
 
-Script.prototype.onRemovedFromNode = function(node)
+Script.prototype.onRemovedFromScene = function(scene)
 {
-	var scene = node.scene;
-	if(!scene)
-		return;
-
 	//unbind evends
-	var hookable = Script.exported_callbacks;
-	for(var i in hookable)
-	{
-		var name = hookable[i];
-		var event_name = Script.translate_events[name] || name;
-		LEvent.unbind( scene, event_name, this.onScriptEvent, this );
-	}
+	LEvent.unbindAll( scene, this );
 }
 
 Script.prototype.onScriptEvent = function(event_type, params)
@@ -12089,7 +12130,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 	if(!this.enabled)
 		return;
 
-	var method_name = Script.translate_events[ event_type ] || event_type;
+	var method_name = LS.Script.translate_events[ event_type ] || event_type;
 	this._script.callMethod( method_name, params );
 }
 
@@ -12118,8 +12159,9 @@ Script.prototype.onCodeChange = function(code)
 
 
 LS.registerComponent(Script);
+LS.Script = Script;
 
-})();
+
 function TerrainRenderer(o)
 {
 	this.height = 2;
@@ -14003,6 +14045,7 @@ RenderFrameContainer.prototype.startFBO = function(width, height, use_high_preci
 
 	gl.viewport(0, 0, color_texture.width, color_texture.height );
 	LS.Renderer._full_viewport.set( gl.viewport_data );
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (color_texture.width / color_texture.height);
 
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color_texture.handler, 0);
 	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,  gl.TEXTURE_2D, depth_texture.handler, 0);
@@ -14015,12 +14058,15 @@ RenderFrameContainer.prototype.startFBO = function(width, height, use_high_preci
 		depth_texture.near_far_planes[0] = camera.near;
 		depth_texture.near_far_planes[1] = camera.far;
 	}
+
+
 }
 
 RenderFrameContainer.prototype.endFBO = function()
 {
 	//disable FBO
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	LS.Renderer.global_aspect = 1.0;
 
 	//restore
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
@@ -14062,6 +14108,7 @@ var Renderer = {
 	default_material: new StandardMaterial(), //used for objects without material
 
 	global_render_frame_containers: [],
+	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 
 	default_point_size: 5,
 
@@ -14277,22 +14324,22 @@ var Renderer = {
 		var width = this._full_viewport[2];
 		var height = this._full_viewport[3];
 
-		var final_x = (width * camera._viewport[0] + startx)|0;
-		var final_y = (height * camera._viewport[1] + starty)|0;
-		var final_width = (width * camera._viewport[2])|0;
-		var final_height = (height * camera._viewport[3])|0;
+		var final_x = Math.floor(width * camera._viewport[0] + startx);
+		var final_y = Math.floor(height * camera._viewport[1] + starty);
+		var final_width = Math.ceil(width * camera._viewport[2]);
+		var final_height = Math.ceil(height * camera._viewport[3]);
 
 		if(!skip_viewport)
 		{
 			//force fullscreen viewport?
 			if(render_options && render_options.ignore_viewports )
 			{
-				camera._real_aspect = camera._aspect * (width / height);
+				camera._real_aspect = this.global_aspect * camera._aspect * (width / height);
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			}
 			else
 			{
-				camera._real_aspect = camera._aspect * (final_width / final_height); //what if we want to change the aspect?
+				camera._real_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
 				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}

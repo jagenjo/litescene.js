@@ -14,6 +14,7 @@ var Renderer = {
 	default_material: new StandardMaterial(), //used for objects without material
 
 	global_render_frame_containers: [],
+	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 
 	default_point_size: 5,
 
@@ -229,22 +230,22 @@ var Renderer = {
 		var width = this._full_viewport[2];
 		var height = this._full_viewport[3];
 
-		var final_x = (width * camera._viewport[0] + startx)|0;
-		var final_y = (height * camera._viewport[1] + starty)|0;
-		var final_width = (width * camera._viewport[2])|0;
-		var final_height = (height * camera._viewport[3])|0;
+		var final_x = Math.floor(width * camera._viewport[0] + startx);
+		var final_y = Math.floor(height * camera._viewport[1] + starty);
+		var final_width = Math.ceil(width * camera._viewport[2]);
+		var final_height = Math.ceil(height * camera._viewport[3]);
 
 		if(!skip_viewport)
 		{
 			//force fullscreen viewport?
 			if(render_options && render_options.ignore_viewports )
 			{
-				camera._real_aspect = camera._aspect * (width / height);
+				camera._real_aspect = this.global_aspect * camera._aspect * (width / height);
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			}
 			else
 			{
-				camera._real_aspect = camera._aspect * (final_width / final_height); //what if we want to change the aspect?
+				camera._real_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
 				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}

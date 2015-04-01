@@ -789,10 +789,10 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 	}
 
 	//apply viewport
-	result[0] = (viewport[2] * this._viewport[0] + viewport[0])|0;
-	result[1] = (viewport[3] * this._viewport[1] + viewport[1])|0;
-	result[2] = (viewport[2] * this._viewport[2])|0;
-	result[3] = (viewport[3] * this._viewport[3])|0;
+	result[0] = Math.floor(viewport[2] * this._viewport[0] + viewport[0]);
+	result[1] = Math.floor(viewport[3] * this._viewport[1] + viewport[1]);
+	result[2] = Math.ceil(viewport[2] * this._viewport[2]);
+	result[3] = Math.ceil(viewport[3] * this._viewport[3]);
 	return result;
 }
 

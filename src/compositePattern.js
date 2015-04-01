@@ -66,20 +66,29 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+	//the same as scene but we called tree to make it more generic
+	var tree = this._in_tree;
+
+	//this would never fire but just in case
+	if(tree && node._in_tree && node._in_tree != tree)
+		throw("Cannot add a node that belongs to another scene tree");
 
 	//Same tree
-	node._in_tree = this._in_tree;
+	node._in_tree = tree;
 
+	//overwritten from SceneNode
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
 	LEvent.trigger(this,"childAdded", node);
-	if(this._in_tree)
+	if(tree)
 	{
-		LEvent.trigger(this._in_tree, "treeItemAdded", node);
+		//added to scene tree
+		LEvent.trigger(tree, "treeItemAdded", node);
+		if(node._onAddedToScene)
+			node._onAddedToScene( tree );
 		inner_recursive(node);
 	}
-	
 
 	//recursive action
 	function inner_recursive(item)
@@ -88,10 +97,13 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree && item._in_tree)
+			if(!child._in_tree)
 			{
-				LEvent.trigger( item._in_tree, "treeItemAdded", child );
-				child._in_tree = item._in_tree;
+				//added to scene tree
+				LEvent.trigger( tree, "treeItemAdded", child );
+				if(child._onAddedToScene)
+					child._onAddedToScene( tree );
+				child._in_tree = tree;
 			}
 			inner_recursive( child );
 		}
@@ -125,7 +137,8 @@ CompositePattern.prototype.removeChild = function(node, options)
 	if(node._in_tree)
 	{
 		LEvent.trigger(node._in_tree, "treeItemRemoved", node);
-
+		if(node._onRemovedFromScene)
+			node._onRemovedFromScene( node._in_tree );
 		//propagate to childs
 		inner_recursive(node);
 	}
@@ -142,6 +155,8 @@ CompositePattern.prototype.removeChild = function(node, options)
 			if(child._in_tree)
 			{
 				LEvent.trigger( child._in_tree, "treeItemRemoved", child );
+				if(child._onRemovedFromScene)
+					child._onRemovedFromScene( child._in_tree );
 				child._in_tree = null;
 			}
 			inner_recursive( child );
