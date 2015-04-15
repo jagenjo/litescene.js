@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -260,7 +262,7 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_assignRenderFrameCallback">assignRenderFrameCallback</a>
+                                <a href="#method_assignGlobalRenderFrameContainer">assignGlobalRenderFrameContainer</a>
 
                                 
                                 
@@ -303,8 +305,8 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_assignRenderFrameCallback" class="method item">
-    <h3 class="name"><code>assignRenderFrameCallback</code></h3>
+                    <div id="method_assignGlobalRenderFrameContainer" class="method item">
+    <h3 class="name"><code>assignGlobalRenderFrameContainer</code></h3>
 
     
         <div class="args">
@@ -345,7 +347,7 @@
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l55"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:55</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l60"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:60</code></a>
         
         </p>
 
@@ -372,7 +374,7 @@ Warning: this must be set before every frame, becaue this are cleared after rend
                 <li class="param">
                     
                         <code class="param-name">callback</code>
-                        <span class="type">Function</span>
+                        <span class="type">RenderFrameContainer</span>
                     
 
                     
@@ -443,7 +445,7 @@ Warning: this must be set before every frame, becaue this are cleared after rend
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l211"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:211</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l220"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:220</code></a>
         
         </p>
 
@@ -454,7 +456,7 @@ Warning: this must be set before every frame, becaue this are cleared after rend
     </div>
 
     <div class="description">
-        <p>Set camera as the main scene camera</p>
+        <p>Set camera as the main scene camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw</p>
 
     </div>
 
@@ -519,6 +521,133 @@ Warning: this must be set before every frame, becaue this are cleared after rend
             
                 <li class="arg">
                     
+                        <code>render_options</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code class="optional">[cameras=null]</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderer.js.html#l79"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:79</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Renders the current scene to the screen
+Many steps are involved, from gathering info from the scene tree, generating shadowmaps, setup FBOs, render every camera</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">scene</code>
+                        <span class="type">SceneTree</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">render_options</code>
+                        <span class="type">RenderOptions</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name optional">[cameras=null]</code>
+                        <span class="type">Array</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>if no cameras are specified the cameras are taken from the scene</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_renderFrame" class="method item">
+    <h3 class="name"><code>renderFrame</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
                         <code>camera</code>
                     
                 </li>
@@ -558,131 +687,7 @@ Warning: this must be set before every frame, becaue this are cleared after rend
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l68"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:68</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Renders the current scene to the screen</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">camera</code>
-                        <span class="type">Camera</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">render_options</code>
-                        <span class="type">RenderOptions</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_renderFrame" class="method item">
-    <h3 class="name"><code>renderFrame</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>the</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>output_texture</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderer.js.html#l171"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:171</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l181"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:181</code></a>
         
         </p>
 
@@ -705,15 +710,14 @@ Warning: this must be set before every frame, becaue this are cleared after rend
             
                 <li class="param">
                     
-                        <code class="param-name">the</code>
+                        <code class="param-name">camera</code>
                         <span class="type">Camera</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>camera</p>
-
+                         
                     </div>
 
                     
@@ -721,15 +725,14 @@ Warning: this must be set before every frame, becaue this are cleared after rend
             
                 <li class="param">
                     
-                        <code class="param-name">output_texture</code>
-                        <span class="type">Texture</span>
+                        <code class="param-name">render_options</code>
+                        <span class="type">Object</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>optional, if you want to render to a texture (otherwise is rendered to the viewport)</p>
-
+                         
                     </div>
 
                     

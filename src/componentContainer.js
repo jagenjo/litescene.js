@@ -95,28 +95,6 @@ ComponentContainer.prototype.getComponents = function()
 	return this._components;
 }
 
-//used internally to bind and unbind events
-ComponentContainer.prototype._onAddedToScene = function(scene)
-{
-	for(var i = 0, l = this._components.length; i < l; ++i)
-	{
-		var component = this._components[i];
-		if(component.onAddedToScene)
-			component.onAddedToScene(scene);
-	}
-}
-
-ComponentContainer.prototype._onRemovedFromScene = function(scene)
-{
-	for(var i = 0, l = this._components.length; i < l; ++i)
-	{
-		var component = this._components[i];
-		if(component.onRemovedFromScene)
-			component.onRemovedFromScene(scene);
-	}
-}
-
-
 /**
 * Adds a component to this node. (maybe attach would been a better name)
 * @method addComponent
@@ -282,14 +260,22 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 * executes the method with a given name in all the components
 * @method processActionInComponents
 * @param {String} action_name the name of the function to execute in all components (in string format)
-* @param {Object} params object with the params to be accessed by that function
+* @param {Array} params array with every parameter that the function may need
 */
 ComponentContainer.prototype.processActionInComponents = function(action_name,params)
 {
 	if(!this._components)
 		return;
 	for(var i = 0, l = this._components.length; i < l; ++i)
-		if( this._components[i][action_name] && typeof(this._components[i][action_name] ) == "function")
-			this._components[i][action_name](params);
+	{
+		var comp = this._components[i];
+		if( !comp[action_name] || comp[action_name].constructor !== Function )
+			continue;
+
+		if(!params || params.constructor !== Array)
+			comp[action_name].call(comp, params);
+		else
+			comp[action_name].apply(comp, params);
+	}
 }
 

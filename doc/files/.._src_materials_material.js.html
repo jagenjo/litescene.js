@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -176,7 +178,7 @@
 
 function Material(o)
 {
-	this._uid = LS.generateUId();
+	this.uid = LS.generateUId(&quot;MAT-&quot;);
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
@@ -258,7 +260,7 @@ Material.COORDS_WORLDYZ = &quot;worldyz&quot;;
 Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
 
-Material.available_shaders = [&quot;default&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
+Material.available_shaders = [&quot;default&quot;,&quot;global&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
 
@@ -459,7 +461,7 @@ Material.prototype.configure = function(o)
 Material.prototype.serialize = function()
 {
 	 var o = LS.cloneObject(this);
-	 o.material_class = getObjectClassName(this);
+	 o.material_class = LS.getObjectClassName(this);
 	 return o;
 }
 
@@ -471,7 +473,10 @@ Material.prototype.serialize = function()
 */
 Material.prototype.clone = function()
 {
-	return new this.constructor( JSON.parse( JSON.stringify( this.serialize() )) );
+	var data = this.serialize();
+	if(data.uid)
+		delete data.uid;
+	return new this.constructor( JSON.parse( JSON.stringify( data )) );
 }
 
 /**

@@ -32,6 +32,10 @@ var Renderer = {
 	//stats
 	_rendercalls: 0,
 	_rendered_instances: 0,
+	_frame: 0,
+
+	//settings
+	_collect_frequency: 1, //used to reuse info
 
 	//reusable locals
 	_view_matrix: mat4.create(),
@@ -85,6 +89,7 @@ var Renderer = {
 	{
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
+		render_options.current_scene = scene;
 		this._current_render_options = render_options;
 		this._current_scene = scene;
 
@@ -93,6 +98,7 @@ var Renderer = {
 
 		//done at the beginning just in case it crashes
 		scene._frame += 1;
+		this._frame += 1;
 		scene._must_redraw = false;
 
 		this._rendercalls = 0;
@@ -108,36 +114,38 @@ var Renderer = {
 
 		//Define the main camera, the camera that should be the most important (used for LOD info, or shadowmaps)
 		cameras = cameras || this._visible_cameras;
+		this._visible_cameras = cameras; //the cameras being rendered
 		render_options.main_camera = cameras[0];
 
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, "renderShadows", render_options );
-		scene.triggerInNodes("renderShadows", render_options );
+		scene.triggerInNodes("renderShadows", render_options ); //TODO: remove
 
 		//Event: afterVisibility allows to cull objects according to the main camera
-		scene.triggerInNodes("afterVisibility", render_options );		
+		scene.triggerInNodes("afterVisibility", render_options ); //TODO: remove	
 
 		//Event: renderReflections in case some realtime reflections are needed, this is the moment to render them inside textures
 		LEvent.trigger(scene, "renderReflections", render_options );
-		scene.triggerInNodes("renderReflections", render_options );
+		scene.triggerInNodes("renderReflections", render_options ); //TODO: remove
 
 		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_options );
-		scene.triggerInNodes("beforeRenderMainPass", render_options );
+		scene.triggerInNodes("beforeRenderMainPass", render_options ); //TODO: remove
 
 		//global renderframe container: used when the whole scene (all cameras included) pass through some postfx)
 		if(render_options.render_fx && this.global_render_frame_containers.length)
 		{
 			var render_frame = this.global_render_frame_containers[0]; //ignore the rest: TODO, as some pipeline flow (I've failed too many times trying to do something here)
+			render_options.current_renderframe = render_frame;
 
-			if(	render_frame.onPreRender )
-				render_frame.onPreRender( cameras, render_options );
+			if(	render_frame.preRender )
+				render_frame.preRender( cameras, render_options );
 
 			//render all camera views
 			this.renderFrameCameras( cameras, render_options, render_frame );
 
-			if(	render_frame.onPostRender )
-				render_frame.onPostRender( cameras, render_options );
+			if(	render_frame.postRender )
+				render_frame.postRender( cameras, render_options );
 		}
 		else //in case no FX is used
 			this.renderFrameCameras( cameras, render_options );
@@ -147,7 +155,7 @@ var Renderer = {
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_options );
-		scene.triggerInNodes("afterRender", render_options );
+		scene.triggerInNodes("afterRender", render_options ); //TODO: remove
 	},
 
 	renderFrameCameras: function( cameras, render_options, global_render_frame )
@@ -158,15 +166,9 @@ var Renderer = {
 		for(var i = 0; i < cameras.length; ++i)
 		{
 			var current_camera = cameras[i];
-			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
+
 			LEvent.trigger(scene, "beforeRenderFrame", render_options );
-
-			//¿?¿?
-			//this._full_viewport.set([0,0,gl.canvas.width, gl.canvas.height]);
-			//gl.viewport(0,0,gl.canvas.width, gl.canvas.height);
-
-			//if(global_render_frame && global_render_frame.onRenderFrame)
-			//	global_render_frame.onRenderFrame( current_camera );
+			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
 
 			//main render
 			this.renderFrame( current_camera, render_options ); 
@@ -187,7 +189,9 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 
+		LEvent.trigger(scene, "beforeCameraEnabled", camera );
 		this.enableCamera( camera, render_options ); //set as active camera and set viewport
+		LEvent.trigger(scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
@@ -204,13 +208,13 @@ var Renderer = {
 		render_options.current_pass = "color";
 
 		LEvent.trigger(scene, "beforeRenderScene", camera );
-		scene.triggerInNodes("beforeRenderScene", camera );
+		scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
 
 		//here we render all the instances
 		this.renderInstances(render_options);
 
 		LEvent.trigger(scene, "afterRenderScene", camera );
-		scene.triggerInNodes("afterRenderScene", camera );
+		scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
 	},
 
 	/**
@@ -222,9 +226,9 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, render_options, skip_viewport)
 	{
-		LEvent.trigger(camera, "cameraEnabled", render_options);
+		LEvent.trigger(camera, "beforeEnabled", render_options );
 
-		//assign viewport
+		//assign viewport manually (shouldnt use camera.getLocalViewport to unify?)
 		var startx = this._full_viewport[0];
 		var starty = this._full_viewport[1];
 		var width = this._full_viewport[2];
@@ -270,6 +274,8 @@ var Renderer = {
 		Draw.reset(); //clear 
 		Draw.setCameraPosition( camera.getEye() );
 		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
+
+		LEvent.trigger(camera, "afterEnabled", render_options );
 	},
 
 	
@@ -309,6 +315,7 @@ var Renderer = {
 
 		//this.updateVisibleInstances(scene,options);
 		var lights = this._visible_lights;
+		var numLights = lights.length;
 		var render_instances = this._visible_instances;
 
 		LEvent.trigger(scene, "renderInstances", render_options);
@@ -317,7 +324,7 @@ var Renderer = {
 		this.resetGLState();
 
 		//compute visibility pass
-		for(var i in render_instances)
+		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
 			//render instance
 			var instance = render_instances[i];
@@ -358,7 +365,7 @@ var Renderer = {
 		var close_lights = [];
 
 		//for each render instance
-		for(var i in render_instances)
+		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
 			//render instance
 			var instance = render_instances[i];
@@ -383,11 +390,11 @@ var Renderer = {
 				this.renderPickingInstance( instance, render_options );
 			else
 			{
-				//Compute lights affecting this RI (by proximity, only takes into account 
+				//Compute lights affecting this RI (by proximity, only takes into account spherical bounding)
 				close_lights.length = 0;
-				for(var l = 0; l < lights.length; l++)
+				for(var j = 0; j < numLights; j++)
 				{
-					var light = lights[l];
+					var light = lights[j];
 					var light_intensity = light.computeLightIntensity();
 					if(light_intensity < 0.0001)
 						continue;
@@ -524,7 +531,7 @@ var Renderer = {
 		this.enableInstanceFlags(instance, render_options);
 
 		//set blend flags
-		if(material.blend_mode != Blend.NORMAL)
+		if(material.blend_mode !== Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
 			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
@@ -569,9 +576,7 @@ var Renderer = {
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
-			shader.uniforms( sampler_uniforms );
-			shader.uniforms( scene._uniforms );
-			shader.uniforms( instance_final_uniforms );
+			shader.uniformsArray( [sampler_uniforms, scene._uniforms, instance_final_uniforms] );
 
 			//render
 			instance.render( shader );
@@ -592,8 +597,10 @@ var Renderer = {
 
 				var macros = {}; //wipeObject(macros);
 
-				if(iLight == 0) macros.FIRST_PASS = "";
-				if(iLight == (num_lights-1)) macros.LAST_PASS = "";
+				if(iLight === 0)
+					macros.FIRST_PASS = "";
+				if(iLight === (num_lights-1))
+					macros.LAST_PASS = "";
 
 				macros.merge(scene._macros);
 				macros.merge(instance_final_macros); //contains node, material and instance macros
@@ -628,10 +635,7 @@ var Renderer = {
 				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
-			shader.uniforms( sampler_uniforms ); //where is every texture binded
-			shader.uniforms( scene._uniforms );  //used mostly for environment textures
-			shader.uniforms( instance_final_uniforms ); //contains node, material and instance uniforms
-			shader.uniforms( light_uniforms ); //should this go before instance_final? to prioritize
+			shader.uniformsArray( [sampler_uniforms, scene._uniforms, instance_final_uniforms, light_uniforms] );
 
 			//render the instance
 			instance.render( shader );
@@ -672,7 +676,7 @@ var Renderer = {
 		macros.merge( scene._macros );
 		macros.merge( instance_final_macros );
 
-		if(this._current_target && this._current_target.texture_type == gl.TEXTURE_CUBE_MAP)
+		if(this._current_target && this._current_target.texture_type === gl.TEXTURE_CUBE_MAP)
 			macros["USE_LINEAR_DISTANCE"] = "";
 
 		/*
@@ -719,9 +723,7 @@ var Renderer = {
 				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
 		*/
 
-		shader.uniforms( sampler_uniforms );
-		shader.uniforms( scene._uniforms );
-		shader.uniforms( instance._final_uniforms );
+		shader.uniformsArray([ sampler_uniforms, scene._uniforms, instance._final_uniforms ]);
 
 		instance.render(shader);
 		this._rendercalls += 1;
@@ -796,10 +798,7 @@ var Renderer = {
 		var sampler_uniforms = this.bindSamplers( samplers, shader );
 
 		//assign uniforms
-		shader.uniforms( sampler_uniforms );
-		shader.uniforms( node_uniforms );
-		shader.uniforms( material._uniforms );
-		shader.uniforms( instance.uniforms );
+		shader.uniformsArray( [ sampler_uniforms, node_uniforms, material._uniforms, instance.uniforms ]);
 
 		//render
 		instance.render( shader );
@@ -859,7 +858,12 @@ var Renderer = {
 				macros.USE_COLORCLIP_FACTOR = "";
 		}
 
+		if(render_options.current_renderframe && render_options.current_renderframe.use_extra_texture)
+			macros["USE_DRAW_BUFFERS"] = "";
+
 		LEvent.trigger(scene, "fillSceneMacros", macros );
+
+
 
 		scene._macros = macros;
 	},
@@ -950,15 +954,20 @@ var Renderer = {
 		//options = options || {};
 		//options.scene = scene;
 
-		//update containers in scene
-		scene.collectData();
+		//update info about scene (collecting it all or reusing the one collected in the frame before)
+		if( this._frame % this._collect_frequency == 0)
+			scene.collectData();
+		else
+			scene.updateCollectedData();
+		LEvent.trigger(scene, "afterCollectData", scene );
 
+		//meh!
 		if(!render_options.main_camera)
 		{
 			if( scene._cameras.length )
 				render_options.main_camera = scene._cameras[0];
 			else
-				render_options.main_camera = new Camera();
+				render_options.main_camera = new LS.Camera();
 		}
 
 		var opaque_instances = [];
@@ -970,16 +979,17 @@ var Renderer = {
 		var camera_eye = camera.getEye();
 
 		//process render instances (add stuff if needed)
-		for(var i in instances)
+		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
-			if(!instance) continue;
+			if(!instance)
+				continue;
 			var node_flags = instance.node.flags;
 
 			//materials
 			if(!instance.material)
 				instance.material = this.default_material;
-			materials[instance.material.uid] = instance.material;
+			materials[ instance.material.uid ] = instance.material;
 
 			//add extra info
 			instance._dist = vec3.dist( instance.center, camera_eye );
@@ -1022,38 +1032,23 @@ var Renderer = {
 				macros.USE_TANGENT_STREAM = "";
 		}
 
-		//sort RIs in Z for alpha sorting
-		if(render_options.sort_instances_by_distance)
+		//Sorting
+		if(render_options.sort_instances_by_distance) //sort RIs in Z for alpha sorting
 		{
 			opaque_instances.sort(this._sort_near_to_far_func);
 			blend_instances.sort(this._sort_far_to_near_func);
 		}
-
 		var all_instances = opaque_instances.concat(blend_instances); //merge
-
-		if(render_options.sort_instances_by_priority)
+		if(render_options.sort_instances_by_priority) //sort by priority
 			all_instances.sort( this._sort_by_priority_func );
 
 
 		//update materials info only if they are in use
 		if(render_options.update_materials)
-		{
-			for(var i in materials)
-			{
-				var material = materials[i];
-				if(!material._macros)
-				{
-					material._macros = {};
-					material._uniforms = {};
-					material._samplers = {};
-				}
-				material.fillSurfaceShaderMacros(scene); //update shader macros on this material
-				material.fillSurfaceUniforms(scene); //update uniforms
-			}
-		}
+			this._prepareMaterials(materials, scene);
 
 		//pack all macros, uniforms, and samplers relative to this instance in single containers
-		for(var i in instances)
+		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
 			var node = instance.node;
@@ -1089,8 +1084,25 @@ var Renderer = {
 		this._visible_materials = materials;
 
 		//prepare lights (collect data and generate shadowmaps)
-		for(var i in lights)
+		for(var i = 0, l = lights.length; i < l; ++i)
 			lights[i].prepare(render_options);
+	},
+
+	//outside of processVisibleData to allow optimizations in processVisibleData
+	_prepareMaterials: function( materials, scene )
+	{
+		for(var i in materials)
+		{
+			var material = materials[i];
+			if(!material._macros)
+			{
+				material._macros = {};
+				material._uniforms = {};
+				material._samplers = {};
+			}
+			material.fillSurfaceShaderMacros(scene); //update shader macros on this material
+			material.fillSurfaceUniforms(scene); //update uniforms
+		}
 	},
 
 	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },

@@ -104,6 +104,10 @@ var Network = {
 				request.error(err);
 			LEvent.trigger(this,"fail", err);
 		}
+
+		if( request.progress )
+			xhr.addEventListener( "progress", request.progress );
+
         xhr.send(request.data);
 
 		return xhr;

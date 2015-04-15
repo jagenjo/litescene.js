@@ -127,8 +127,13 @@ var LS = {
 	_default_configure: function(o) { 
 		if(!o)
 			return;
-		if(o.uid) //special case, uid must never be enumerable
-			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
+		if(o.uid) //special case, uid must never be enumerable to avoid showing it in the editor
+		{
+			if(!Object.hasOwnProperty(this, "uid"))
+				Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
+			else
+				this.uid = o.uid;
+		}
 		LS.cloneObject(o, this); 
 	},
 	_default_serialize: function() { 

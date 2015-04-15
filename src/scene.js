@@ -20,8 +20,8 @@ function SceneTree()
 
 	this._paths = [];
 
-	LEvent.bind(this,"treeItemAdded", this.onNodeAdded.bind(this));
-	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved.bind(this));
+	LEvent.bind(this,"treeItemAdded", this.onNodeAdded, this );
+	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved, this );
 
 
 	this.init();
@@ -613,6 +613,7 @@ SceneTree.prototype.stop = function()
 	this._state = "stopped";
 	LEvent.trigger(this,"stop",this);
 	this.triggerInNodes("stop");
+	this.purgeResidualEvents();
 }
 
 
@@ -626,6 +627,7 @@ SceneTree.prototype.render = function(options)
 	this._renderer.render(this, options);
 }
 
+//This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
 SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
@@ -636,7 +638,7 @@ SceneTree.prototype.collectData = function()
 	var colliders = [];
 
 	//collect render instances, lights and cameras
-	for(var i in nodes)
+	for(var i = 0, l = nodes.length; i < l; ++i)
 	{
 		var node = nodes[i];
 
@@ -673,25 +675,24 @@ SceneTree.prototype.collectData = function()
 	}
 
 	//we also collect from the scene itself just in case (TODO: REMOVE THIS)
-	LEvent.trigger(this,"collectRenderInstances", instances );
-	LEvent.trigger(this,"collectPhysicInstances", colliders );
-	LEvent.trigger(this,"collectLights", lights );
-	LEvent.trigger(this,"collectCameras", cameras );
+	LEvent.trigger(this, "collectRenderInstances", instances );
+	LEvent.trigger(this, "collectPhysicInstances", colliders );
+	LEvent.trigger(this, "collectLights", lights );
+	LEvent.trigger(this, "collectCameras", cameras );
 
 	//for each render instance collected
-	for(var j in instances)
+	for(var i = 0, l = instances.length; i < l; ++i)
 	{
-		var instance = instances[j];
-		instance.computeNormalMatrix();
+		var instance = instances[i];
 		//compute the axis aligned bounding box
 		if(!(instance.flags & RI_IGNORE_FRUSTUM))
 			instance.updateAABB();
 	}
 
 	//for each physics instance collected
-	for(var j in colliders)
+	for(var i = 0, l = colliders.length; i < l; ++i)
 	{
-		var collider = colliders[j];
+		var collider = colliders[i];
 		collider.updateAABB();
 	}
 
@@ -704,6 +705,48 @@ SceneTree.prototype.collectData = function()
 	this._last_collect_frame = this._frame;
 }
 
+//instead of recollect everything, we can reuse the info from previous frame, but objects need to be updated
+SceneTree.prototype.updateCollectedData = function()
+{
+	var nodes = this._nodes;
+	var instances = this._instances;
+	var lights = this._lights;
+	var cameras = this._cameras;
+	var colliders = this._colliders;
+
+	//update matrices
+	for(var i = 0, l = nodes.length; i < l; ++i)
+		if(nodes[i].transform)
+			nodes[i].transform.updateGlobalMatrix();
+	
+	//render instances: just update them
+	for(var i = 0, l = instances.length; i < l; ++i)
+	{
+		var instance = instances[i];
+		if(instance.flags & RI_IGNORE_AUTOUPDATE)
+			instance.update();
+		//compute the axis aligned bounding box
+		if(!(instance.flags & RI_IGNORE_FRUSTUM))
+			instance.updateAABB();
+	}
+
+	//lights
+	for(var i = 0, l = lights.length; i < l; ++i)
+	{
+	}
+
+	//cameras
+	for(var i = 0, l = cameras.length; i < l; ++i)
+	{
+	}
+
+	//colliders
+	for(var i = 0, l = colliders.length; i < l; ++i)
+	{
+		var collider = colliders[i];
+		collider.updateAABB();
+	}
+}
 
 SceneTree.prototype.update = function(dt)
 {
@@ -766,6 +809,36 @@ SceneTree.prototype.getTime = function()
 {
 	return this._time;
 }
+
+//This is ugly but sometimes if scripts fail there is a change the could get hooked to the scene forever
+//so this way we remove any event that belongs to a component thats doesnt belong to this scene tree
+SceneTree.prototype.purgeResidualEvents = function()
+{
+	//crawl all 
+	for(var i in this)
+	{
+		if(i.substr(0,5) != "__on_")
+			continue;
+
+		var event = this[i];
+		if(!event)
+			continue;
+		var to_keep = [];
+		for(var j = 0; j < event.length; ++j)
+		{
+			var inst = event[j][1];
+			if(inst && LS.isClassComponent( inst.constructor ) )
+			{
+				//no attached node or node not attached to any scene
+				if(!inst._root || inst._root.scene !== this )
+					continue; //skip keeping it, so it will no longer exist
+			}
+			to_keep.push(event[j]);
+		}
+		this[i] = to_keep;
+	}
+}
+
 
 //****************************************************************************
 
@@ -1281,6 +1354,7 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 			node.transform._parent = null;
 	}
 }
+
 
 //***************************************************************************
 

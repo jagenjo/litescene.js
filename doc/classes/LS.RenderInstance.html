@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -337,6 +339,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_update">update</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_updateAABB">updateAABB</a>
 
                                 
@@ -391,7 +400,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l145"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:145</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l217"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:217</code></a>
         
         </p>
 
@@ -446,7 +455,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l198"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:198</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l109"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:109</code></a>
         
         </p>
 
@@ -461,95 +470,6 @@
 
     </div>
 
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>flag</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l164"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:164</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Enable flag in the flag bit field</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>id</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
     
 
     
@@ -604,7 +524,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l186"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:186</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l270"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:270</code></a>
         
         </p>
 
@@ -707,7 +627,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l175"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:175</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l259"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:259</code></a>
         
         </p>
 
@@ -719,6 +639,95 @@
 
     <div class="description">
         <p>Disable flag in the flag bit field</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">flag</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>id</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_enableFlag" class="method item">
+    <h3 class="name"><code>enableFlag</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>flag</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderInstance.js.html#l248"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:248</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Enable flag in the flag bit field</p>
 
     </div>
 
@@ -1047,7 +1056,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l220"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:220</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l304"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:304</code></a>
         
         </p>
 
@@ -1291,6 +1300,61 @@
 </div>
 
                 
+                    <div id="method_update" class="method item">
+    <h3 class="name"><code>update</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_render_renderInstance.js.html#l292"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:292</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Used to update the RI info without having to go through the collectData process, it is faster but some changes may take a while</p>
+
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_updateAABB" class="method item">
     <h3 class="name"><code>updateAABB</code></h3>
 
@@ -1323,7 +1387,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l210"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:210</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l282"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:282</code></a>
         
         </p>
 

@@ -8,9 +8,10 @@ function CameraFX(o)
 	this.enabled = true;
 	this.use_viewport_size = true;
 	this.use_high_precision = false;
-	this.use_antialiasing = false;
 
 	this.fx = [];
+
+	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_texture_depth: 1 };
 
 	if(o)
 		this.configure(o);
@@ -19,8 +20,7 @@ function CameraFX(o)
 	//this.addFX("threshold");
 }
 
-CameraFX.icon = "mini-icon-camera.png";
-CameraFX.buffer_size = [1024,512];
+CameraFX.icon = "mini-icon-fx.png";
 
 CameraFX.available_fx = {
 	"brightness/contrast": {
@@ -54,8 +54,8 @@ CameraFX.available_fx = {
 	"halftone": {
 		name: "Halftone",
 		uniforms: {
-			halftone_angle: { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
-			halftone_size: { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
+			"Halftone angle": { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
+			"Halftone size": { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
 		},
 		functions: ["pattern"],
 		code:"color.x = ( (color.x * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );" + 
@@ -65,12 +65,71 @@ CameraFX.available_fx = {
 	"halftone B/N": {
 		name: "HalftoneBN",
 		uniforms: {
-			halftone_angle: { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
-			halftone_size: { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
+			"Halftone angle": { name: "u_halftone_angle", type: "float", value: 0, step: 0.01 },
+			"Halftone size": { name: "u_halftone_size", type: "float", value: 1, step: 0.01 }
 		},
 		functions: ["pattern"],
 		code:"color.xyz = vec3( (length(color.xyz) * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );"
+	},
+	"lens": {
+		name: "Lens Distortion",
+		uniforms: {
+			lens_k: { name: "u_lens_k", type: "float", value: -0.15 },
+			lens_kcube: { name: "u_lens_kcube", type: "float", value: 0.8 },
+			lens_scale: { name: "u_lens_scale", type: "float", value: 1 }
+		},
+		uv_code:"float r2 = u_aspect * u_aspect * (uv.x-0.5) * (uv.x-0.5) + (uv.y-0.5) * (uv.y-0.5); float distort@ = 1. + r2 * (u_lens_k@ + u_lens_kcube@ * sqrt(r2)); uv = vec2( u_lens_scale@ * distort@ * (uv.x-0.5) + 0.5, u_lens_scale@  * distort@ * (uv.y-0.5) + 0.5 );"
+	},
+	"pixelate": {
+		name: "Pixelate",
+		uniforms: {
+			width: { name: "u_width", type: "float", value: 256, step: 1, min: 1 },
+			height: { name: "u_height", type: "float", value: 256, step: 1, min: 1 }
+		},
+		uv_code:"uv = vec2( floor(uv.x * u_width@) / u_width@, floor(uv.y * u_height@) / u_height@ );"
+	},
+	"quantize": {
+		name: "Quantize",
+		uniforms: {
+			levels: { name: "u_levels", type: "float", value: 8, step: 1, min: 1 }
+		},
+		code:"color.xyz = floor(color.xyz * u_levels@) / u_levels@;"
+	},
+	"edges": {
+		name: "Edges",
+		uniforms: {
+			"Edges factor": { name: "u_edges_factor", type: "float", value: 1 }
+		},
+		code:"vec4 color@ = texture2D(u_texture, uv );\n\
+				vec4 color_up@ = texture2D(u_texture, uv + vec2(0., u_iviewport.y));\n\
+				vec4 color_right@ = texture2D(u_texture, uv + vec2(u_iviewport.x,0.));\n\
+				vec4 color_down@ = texture2D(u_texture, uv + vec2(0., -u_iviewport.y));\n\
+				vec4 color_left@ = texture2D(u_texture, uv + vec2(-u_iviewport.x,0.));\n\
+				color = u_edges_factor@ * (abs(color@ - color_up@) + abs(color@ - color_down@) + abs(color@ - color_left@) + abs(color@ - color_right@));"
+	},
+	"depth": {
+		name: "Depth",
+		uniforms: {
+			"near": { name: "u_near", type: "float", value: 0.01, step: 0.1 },
+			"far": { name: "u_far", type: "float", value: 1000, step: 1 }
+		},
+		code:"color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D(u_texture_depth, uv ).x * (u_far@ - u_near@)) );"
+	},
+	"logarithmic": {
+		name: "Logarithmic",
+		uniforms: {
+			"Log. A Factor": { name: "u_logfactor_a", type: "float", value: 2, step: 0.01 },
+			"Log. B Factor": { name: "u_logfactor_b", type: "float", value: 2, step: 0.01 }
+		},
+		code:"color.xyz = log( color.xyz * u_logfactor_a@ ) * u_logfactor_b@;"
 	}
+	/*
+	,
+	"fast_edges": {
+		name: "Edges (fast)",
+		code:"color.xyz = abs( dFdx(color.xyz) ) + abs( dFdy(color.xyz) );"
+	}
+	*/
 };
 
 CameraFX.available_functions = {
@@ -93,7 +152,9 @@ CameraFX.prototype.configure = function(o)
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
-	this.use_antialiasing = !!o.use_antialiasing;
+
+	if(o.fx)
+		this.fx = o.fx.concat();
 
 }
 
@@ -103,7 +164,8 @@ CameraFX.prototype.serialize = function()
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,
 		use_high_precision: this.use_high_precision,
-		use_viewport_size: this.use_viewport_size
+		use_viewport_size: this.use_viewport_size,
+		fx: this.fx.concat()
 	};
 }
 
@@ -115,8 +177,29 @@ CameraFX.prototype.getResources = function(res)
 
 CameraFX.prototype.addFX = function(name)
 {
+	if(!name)
+		return;
+
 	this.fx.push({ name: name });
 }
+
+CameraFX.prototype.getFX = function(index)
+{
+	return this.fx[index];
+}
+
+CameraFX.prototype.removeFX = function( fx )
+{
+	for(var i = 0; i < this.fx.length; i++)
+	{
+		if(this.fx[i] !== fx)
+			continue;
+
+		this.fx.splice(i,1);
+		return;
+	}
+}
+
 
 CameraFX.prototype.onAddedToNode = function(node)
 {
@@ -127,7 +210,7 @@ CameraFX.prototype.onAddedToNode = function(node)
 CameraFX.prototype.onRemovedFromNode = function(node)
 {
 	//global
-	LEvent.unbind(LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
+	LEvent.unbind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
 
 //hook the RFC
@@ -140,13 +223,19 @@ CameraFX.prototype.onBeforeRender = function(e, render_options)
 	{
 		this._renderFrameContainer = new LS.RenderFrameContainer();
 		this._renderFrameContainer.component = this;
-		this._renderFrameContainer.onPreRender = this.onPreRender;
-		this._renderFrameContainer.onPostRender = this.onPostRender;
+		this._renderFrameContainer.postRender = CameraFX.postRender;
 	}
+
+	//configure
+	if(this.use_viewport_size)
+		this._renderFrameContainer.useCanvasSize();
+	this._renderFrameContainer.use_high_precision = this.use_high_precision;
+
 	LS.Renderer.assignGlobalRenderFrameContainer( this._renderFrameContainer );
 }
 
 //Executed inside RFC
+/*
 CameraFX.prototype.onPreRender = function( cameras, render_options )
 {
 	var width = CameraFX.buffer_size[0];
@@ -157,14 +246,20 @@ CameraFX.prototype.onPreRender = function( cameras, render_options )
 		height = gl.canvas.height;
 	}
 
-	this.startFBO( width, height, this.component.use_high_precision, cameras[0] );
-}
+	this.width = width;
+	this.height = height;
+	this.use_high_precision = this.component.use_high_precision;
 
-CameraFX.prototype.onPostRender = function()
+	this.startFBO( cameras[0] );
+}
+*/
+
+CameraFX.postRender = function()
 {
 	this.endFBO();
 
-	var frame = this.color_texture;
+	var color_texture = this.color_texture;
+	var depth_texture = this.depth_texture;
 
 	var component = this.component;
 	var fxs = component.fx;
@@ -178,10 +273,17 @@ CameraFX.prototype.onPostRender = function()
 		update_shader = false;
 	this._last_shader_key = key;
 
-	var code = "";
+	var uv_code = "";
+	var color_code = "";
 	var included_functions = {};
 	var uniforms_code = "";
-	var uniforms = { u_viewport: vec2.fromValues(frame.width, frame.height) };
+
+	var uniforms = component._uniforms;
+	uniforms.u_viewport[0] = color_texture.width;
+	uniforms.u_viewport[1] = color_texture.height;
+	uniforms.u_iviewport[0] = 1 / color_texture.width;
+	uniforms.u_iviewport[1] = 1 / color_texture.height;
+	uniforms.u_aspect = color_texture.width / color_texture.height;
 
 	var fx_id = 0;
 	for(var i = 0; i < fxs.length; i++)
@@ -196,7 +298,10 @@ CameraFX.prototype.onPostRender = function()
 			if(fx_info.functions)
 				for(var z in fx_info.functions)
 					included_functions[ fx_info.functions[z] ] = true;
-			code += fx_info.code.split("@").join( fx_id ) + ";\n";
+			if( fx_info.code )
+				color_code += fx_info.code.split("@").join( fx_id ) + ";\n";
+			if( fx_info.uv_code )
+				uv_code += fx_info.uv_code.split("@").join( fx_id ) + ";\n";
 		}
 		if(fx_info.uniforms)
 			for(var j in fx_info.uniforms)
@@ -227,18 +332,25 @@ CameraFX.prototype.onPostRender = function()
 			functions_code += func + "\n";
 		}
 
-		var fullcode = "precision highp float;\n\
+		var fullcode = "\n\
+			#extension GL_OES_standard_derivatives : enable\n\
+			precision highp float;\n\
 			#define color3 vec3\n\
 			#define color4 vec4\n\
 			uniform sampler2D u_texture;\n\
+			uniform sampler2D u_texture_depth;\n\
 			varying vec2 v_coord;\n\
 			uniform vec2 u_viewport;\n\
+			uniform vec2 u_iviewport;\n\
+			uniform float u_aspect;\n\
 			" + uniforms_code + "\n\
 			" + functions_code + "\n\
 			void main() {\n\
-				vec4 color = texture2D(u_texture, v_coord);\n\
+				vec2 uv = v_coord;\n\
+				" + uv_code + "\n\
+				vec4 color = texture2D(u_texture, uv);\n\
 				float temp = 0.0;\n\
-				" + code + "\n\
+				" + color_code + "\n\
 				gl_FragColor = color;\n\
 			}\n\
 			";
@@ -248,9 +360,11 @@ CameraFX.prototype.onPostRender = function()
 
 	shader = this._last_shader;
 
-	//apply FX HERE
-	frame.toViewport(shader, uniforms);
+	if(shader.hasUniform("u_texture_depth"))
+		depth_texture.bind(1);
+
+	color_texture.toViewport( shader, uniforms );
 }
 
 
-LS.registerComponent(CameraFX);
+LS.registerComponent( CameraFX );

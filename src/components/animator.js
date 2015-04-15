@@ -12,19 +12,22 @@ function Rotator(o)
 	this.local_space = true;
 	this.swing = false;
 	this.swing_amplitude = 45;
+
+	if(o)
+		this.configure(o);
 }
 
 Rotator.icon = "mini-icon-rotator.png";
 
-Rotator.prototype.onAddedToNode = function(node)
+Rotator.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(node,"update",this.onUpdate,this);
+	LEvent.bind(scene,"update",this.onUpdate,this);
 }
 
 
-Rotator.prototype.onRemoveFromNode = function(node)
+Rotator.prototype.onRemoveFromScene = function(scene)
 {
-	LEvent.unbind(node,"update",this.onUpdate,this);
+	LEvent.unbind(scene,"update",this.onUpdate,this);
 }
 
 Rotator.prototype.onUpdate = function(e,dt)
@@ -46,13 +49,13 @@ Rotator.prototype.onUpdate = function(e,dt)
 	else
 	{
 		if(this.local_space)
-			this._root.transform.rotateLocal(this.speed * dt,this.axis);
-		else
 			this._root.transform.rotate(this.speed * dt,this.axis);
+		else
+			this._root.transform.rotateGlobal(this.speed * dt,this.axis);
 	}
 
 	if(scene)
-		LEvent.trigger(scene,"change");
+		scene.refresh();
 }
 
 LS.registerComponent(Rotator);

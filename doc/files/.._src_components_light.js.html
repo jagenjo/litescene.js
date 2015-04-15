@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -175,21 +177,21 @@ function Light(o)
 	* @type {[[x,y,z]]}
 	* @default [0,0,0]
 	*/
-	this.position = vec3.create();
+	this._position = vec3.create();
 	/**
 	* Position where the light is pointing at (in world space)
 	* @property target
 	* @type {[[x,y,z]]}
 	* @default [0,0,1]
 	*/
-	this.target = vec3.fromValues(0,0,1);
+	this._target = vec3.fromValues(0,0,1);
 	/**
 	* Up vector (in world coordinates)
 	* @property up
 	* @type {[[x,y,z]]}
 	* @default [0,1,0]
 	*/
-	this.up = vec3.fromValues(0,1,0);
+	this._up = vec3.fromValues(0,1,0);
 
 	/**
 	* Enabled
@@ -247,7 +249,7 @@ function Light(o)
 	* @type {[[r,g,b]]}
 	* @default [1,1,1]
 	*/
-	this.color = vec3.fromValues(1,1,1);
+	this._color = vec3.fromValues(1,1,1);
 	/**
 	* The intensity of the light
 	* @property intensity
@@ -285,6 +287,30 @@ function Light(o)
 	}
 }
 
+Object.defineProperty( Light.prototype, &#x27;position&#x27;, {
+	get: function() { return this._position; },
+	set: function(v) { this._position.set(v); /*this._must_update_matrix = true;*/ },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, &#x27;target&#x27;, {
+	get: function() { return this._target; },
+	set: function(v) { this._target.set(v); /*this._must_update_matrix = true;*/ },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, &#x27;up&#x27;, {
+	get: function() { return this._up; },
+	set: function(v) { this._up.set(v); /*this._must_update_matrix = true;*/ },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, &#x27;color&#x27;, {
+	get: function() { return this._color; },
+	set: function(v) { this._color.set(v); /*this._must_update_matrix = true;*/ },
+	enumerable: true
+});
+
 //do not change
 Light.FRONT_VECTOR = new Float32Array([0,0,-1]); //const
 Light.RIGHT_VECTOR = new Float32Array([1,0,0]); //const
@@ -307,7 +333,7 @@ Light.prototype.onAddedToNode = function(node)
 Light.prototype.onRemovedFromNode = function(node)
 {
 	if(node.light == this) delete node.light;
-	delete ResourcesManager.textures[&quot;:shadowmap_&quot; + this._uid ];
+	delete ResourcesManager.textures[&quot;:shadowmap_&quot; + this.uid ];
 }
 
 Light.prototype.onCollectLights = function(e, lights)
@@ -327,6 +353,7 @@ Light._temp_target = vec3.create();
 Light._temp_up = vec3.create();
 Light._temp_front = vec3.create();
 
+//Used to create a camera from a light
 Light.prototype.updateLightCamera = function()
 {
 	if(!this._light_camera)
@@ -367,6 +394,11 @@ Light.prototype.updateLightCamera = function()
 	return camera;
 }
 
+/**
+* Returns the camera that will match the light orientation (taking into account fov, etc), useful for shadowmaps
+* @method getLightCamera
+* @return {Camera} the camera
+*/
 Light.prototype.getLightCamera = function()
 {
 	if(!this._light_camera)
@@ -379,7 +411,7 @@ Light.prototype.serialize = function()
 	this.position = vec3.toArray(this.position);
 	this.target = vec3.toArray(this.target);
 	this.color = vec3.toArray(this.color);
-	return cloneObject(this);
+	return LS.cloneObject(this);
 }
 
 Light.prototype.configure = function(o)
@@ -387,17 +419,23 @@ Light.prototype.configure = function(o)
 	LS.cloneObject(o,this);
 }
 
+
+/**
+* updates all the important vectors (target, position, etc) according to the node parent of the light
+* @method updateVectors
+*/
 Light.prototype.updateVectors = function()
 {
+	//if the light is inside the root node of the scene
 	if(!this._root || !this._root.transform) 
 	{
 		//position, target and up are already valid
 		 //front
 		 //vec3.subtract(this._front, this.position, this.target ); //positive z front
-		 vec3.subtract(this._front, this.target, this.position ); //positive z front
+		 vec3.subtract(this._front, this._target, this._position ); //positive z front
 		 vec3.normalize(this._front,this._front);
 		 //right
-		 vec3.normalize( temp_v3, this.up );
+		 vec3.normalize( temp_v3, this._up );
 		 vec3.cross( this._right, this._front, temp_v3 );
 		 //top
 		 vec3.cross( this._top, this._right, this._front );
@@ -405,13 +443,14 @@ Light.prototype.updateVectors = function()
 	}
 
 	var mat = this._root.transform.getGlobalMatrixRef();
+
 	//position
-	mat4.getTranslation( this.position, mat);
+	mat4.getTranslation( this._position, mat);
 	//target
 	if (!this.use_target)
-		mat4.multiplyVec3( this.target, mat, Light.FRONT_VECTOR ); //right in front of the object
+		mat4.multiplyVec3( this._target, mat, Light.FRONT_VECTOR ); //right in front of the object
 	//up
-	mat4.multiplyVec3( this.up, mat, Light.UP_VECTOR ); //right in front of the object
+	mat4.multiplyVec3( this._up, mat, Light.UP_VECTOR ); //right in front of the object
 
 	//vectors
 	mat4.rotateVec3( this._front, mat, Light.FRONT_VECTOR ); 
@@ -419,31 +458,64 @@ Light.prototype.updateVectors = function()
 	vec3.copy( this._top, this.up ); 
 }
 
-Light.prototype.getPosition = function(p)
+/**
+* returns a copy of the light position (in global coordinates), if you want local you can access the position property
+* @method getPosition
+* @param {vec3} output optional
+* @return {vec3} the position
+*/
+Light.prototype.getPosition = function( out )
 {
+	out = out || vec3.create();
 	//if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
 	if(this._root &amp;&amp; this._root.transform) 
-		return this._root.transform.getGlobalPosition();
-	return vec3.clone(this.position);
+		return this._root.transform.getGlobalPosition( out );
+	out.set( this._position );
+	return out;
 }
 
-Light.prototype.getTarget = function(p)
+/**
+* returns a copy of the light target (in global coordinates), if you want local you can access the target property
+* @method getTarget
+* @param {vec3} output optional
+* @return {vec3} the target
+*/
+Light.prototype.getTarget = function( out )
 {
+	out = out || vec3.create();
 	//if(this._root &amp;&amp; this._root.transform &amp;&amp; !this.use_target) 
 	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
 	if(this._root &amp;&amp; this._root.transform &amp;&amp; !this.use_target) 
-		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , p || vec3.create() );
-	return vec3.clone(this.target);
+		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , out);
+	out.set( this._target );
+	return out;
 }
 
-Light.prototype.getUp = function(p)
+/**
+* returns a copy of the light up vector (in global coordinates), if you want local you can access the up property
+* @method getUp
+* @param {vec3} output optional
+* @return {vec3} the up vector
+*/
+Light.prototype.getUp = function( out )
 {
-	if(this._root &amp;&amp; this._root.transform) return this._root.transform.transformVector( Light.UP_VECTOR , p || vec3.create() );
-	return vec3.clone(this.up);
+	out = out || vec3.create();
+
+	if(this._root &amp;&amp; this._root.transform) 
+		return this._root.transform.transformVector( Light.UP_VECTOR , out );
+	out.set( this._up );
+	return out;
 }
 
-Light.prototype.getFront = function(p) {
-	var front = p || vec3.create();
+/**
+* returns a copy of the front vector (in global coordinates)
+* @method getFront
+* @param {vec3} output optional
+* @return {vec3} the front vector
+*/
+Light.prototype.getFront = function( out ) 
+{
+	var front = out || vec3.create();
 	vec3.subtract(front, this.getPosition(), this.getTarget() ); //front is reversed?
 	//vec3.subtract(front, this.getTarget(), this.getPosition() ); //front is reversed?
 	vec3.normalize(front, front);
@@ -468,7 +540,11 @@ Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
 		this.projective_texture = new_name;
 }
 
-
+/**
+* This method is called by the Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
+* @method prepare
+* @param {Object} render_options info about how the scene will be rendered
+*/
 Light.prototype.prepare = function( render_options )
 {
 	var uniforms = this._uniforms;
@@ -536,7 +612,13 @@ Light.prototype.prepare = function( render_options )
 	this._uniforms = uniforms;
 }
 
-// gets the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
+/**
+* Collects and returns the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
+* @method getMacros
+* @param {RenderInstance} instance the render instance where this light will be applied
+* @param {Object} render_options info about how the scene will be rendered
+* @return {Object} the macros
+*/
 Light.prototype.getMacros = function(instance, render_options)
 {
 	var macros = this._macros;
@@ -568,6 +650,13 @@ Light.prototype.getMacros = function(instance, render_options)
 	return macros;
 }
 
+/**
+* Collects and returns the uniforms for the light (some uniforms have to be computed now because they depend not only on the light, also on the node or material)
+* @method getUniforms
+* @param {RenderInstance} instance the render instance where this light will be applied
+* @param {Object} render_options info about how the scene will be rendered
+* @return {Object} the uniforms
+*/
 Light.prototype.getUniforms = function( instance, render_options )
 {
 	var uniforms = this._uniforms;
@@ -620,7 +709,11 @@ Light.prototype.getUniforms = function( instance, render_options )
 	return uniforms;
 }
 
-//optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach
+/**
+* Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach
+* @method computeShadowmapFar
+* @return {number} distance
+*/
 Light.prototype.computeShadowmapFar = function()
 {
 	var closest_far = this.far;
@@ -640,12 +733,22 @@ Light.prototype.computeShadowmapFar = function()
 	return closest_far;
 }
 
+/**
+* Computes the max amount of light this object can produce (taking into account every color channel)
+* @method computeLightIntensity
+* @return {number} intensity
+*/
 Light.prototype.computeLightIntensity = function()
 {
 	var max = Math.max( this.color[0], this.color[1], this.color[2] );
 	return Math.max(0,max * this.intensity);
 }
 
+/**
+* Computes the light radius according to the attenuation
+* @method computeLightRadius
+* @return {number} radius
+*/
 Light.prototype.computeLightRadius = function()
 {
 	if(!this.range_attenuation)
@@ -657,6 +760,11 @@ Light.prototype.computeLightRadius = function()
 	return this.att_end;
 }
 
+/**
+* Generates the shadowmap for this light
+* @method generateShadowmap
+* @return {Object} render_options
+*/
 Light.prototype.generateShadowmap = function (render_options)
 {
 	if(!this.cast_shadows)
@@ -677,7 +785,7 @@ Light.prototype.generateShadowmap = function (render_options)
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
 		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-		ResourcesManager.textures[&quot;:shadowmap_&quot; + this._uid ] = this._shadowmap; //debug
+		ResourcesManager.textures[&quot;:shadowmap_&quot; + this.uid ] = this._shadowmap; //debug
 	}
 
 	//render the scene inside the texture
@@ -717,8 +825,14 @@ Light.prototype.generateShadowmap = function (render_options)
 	}
 }
 
-//Mostly used for gizmos
-Light.prototype.getTransformMatrix = function( element )
+/**
+* It returns a matrix in the position of the given light property (target, position), mostly used for gizmos
+* @method getTransformMatrix
+* @param {String} element &quot;target&quot; or &quot;position&quot;
+* @param {mat4} output [optional]
+* @return {mat4} mat4
+*/
+Light.prototype.getTransformMatrix = function( element, mat )
 {
 	if( this._root &amp;&amp; this._root.transform )
 		return null; //use the node transform
@@ -729,18 +843,26 @@ Light.prototype.getTransformMatrix = function( element )
 	else
 		p = this.position;
 
-	var T = mat4.create();
+	var T = mat || mat4.create();
 	mat4.setTranslation( T, p );
 	return T;
 }
 
-Light.prototype.applyTransformMatrix = function( matrix, center, element )
+/**
+* apply a transformation to a given light property, this is done in a function to allow more complex gizmos
+* @method applyTransformMatrix
+* @param {mat4} matrix transformation in matrix form
+* @param {vec3} center �?
+* @param {string} property_name &quot;target&quot; or &quot;position&quot;
+* @return {mat4} mat4
+*/
+Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 {
 	if( this._root &amp;&amp; this._root.transform )
 		return false; //ignore transform
 
 	var p = null;
-	if (element == &quot;target&quot;)
+	if (property_name == &quot;target&quot;)
 		p = this.target;
 	else
 		p = this.position;

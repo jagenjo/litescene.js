@@ -158,7 +158,7 @@ Context.prototype._onmouse = function(e)
 	//check which node was clicked
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
-		var node = Renderer.getNodeAtCanvasPosition( this.scene, null, e.mousex,e.mousey);
+		var node = LS.Picking.getNodeAtCanvasPosition( this.scene, null, e.canvasx, e.canvasy );
 		this._clicked_node = node;
 	}
 

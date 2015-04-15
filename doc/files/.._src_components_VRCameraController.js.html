@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/terrainRenderer.js</title>
+    <title>../src/components/VRCameraController.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -154,198 +156,170 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/terrainRenderer.js</h1>
+                        <h1 class="file-heading">File: ../src/components/VRCameraController.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-function TerrainRenderer(o)
+/**
+* This component allow to integrate with WebVR to use VR Headset
+* @class VRCameraController
+* @param {Object} o object with the serialized info
+*/
+function VRCameraController(o)
 {
-	this.height = 2;
-	this.size = 10;
-
-	this.subdivisions = 10;
-	this.heightmap = null;
-	this.auto_update = true;
-	this._mesh = null;
-	this.action = &quot;Update&quot;; //button
+	this.enabled = true;
+	this.eye_distance = 1;
 	if(o)
 		this.configure(o);
 }
 
-TerrainRenderer.icon = &quot;mini-icon-terrain.png&quot;;
+VRCameraController.icon = &quot;mini-icon-graph.png&quot;;
 
-TerrainRenderer.prototype.onAddedToNode = function(node)
+//Remove this
+VRCameraController.rift_server_url = &quot;http://tamats.com/uploads/RiftServer_0_3.zip&quot;;
+
+VRCameraController.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	var scene = node.scene;
+
+	LEvent.bind(scene,&quot;start&quot;, this.onStart, this );
+	LEvent.bind(scene,&quot;stop&quot;, this.onStop, this );
+	LEvent.bind(scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.bind(scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.bind(node, &quot;collectCameras&quot;, this.onCollectCameras, this );
 }
 
-TerrainRenderer.prototype.onRemovedFromNode = function(node)
+VRCameraController.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
-	if(this._root.mesh == this._mesh)
-		delete this._root[&quot;mesh&quot;];
+	var scene = this._root.scene;
+
+	LEvent.unbind(scene,&quot;start&quot;, this.onStart, this );
+	LEvent.unbind(scene,&quot;stoo&quot;, this.onStop, this );
+	LEvent.unbind(scene,&quot;beforeRender&quot;, this.onBeforeRender, this );
+	LEvent.unbind(scene,&quot;afterRender&quot;, this.onAfterRender, this );
+	LEvent.unbind(node, &quot;collectCameras&quot;, this.onCollectCameras, this );
+	Renderer.color_rendertarget = null;
 }
 
-
-/**
-* Configure the component getting the info from the object
-* @method configure
-* @param {Object} object to configure from
-*/
-
-TerrainRenderer.prototype.configure = function(o)
+VRCameraController.prototype.onCollectCameras = function(e, cameras)
 {
-	cloneObject(o, this);
-}
+	var main_camera = Renderer.main_camera;
 
-/**
-* Serialize this component)
-* @method serialize
-* @return {Object} object with the serialization info
-*/
+	if(this._orientation)
+		main_camera.setOrientation(this._orientation, true);
 
-TerrainRenderer.prototype.serialize = function()
-{
-	 var o = cloneObject(this);
-	 return o;
-}
+	var right_vector = main_camera.getLocalVector([ this.eye_distance * 0.5, 0, 0]);
+	var left_vector = vec3.scale( vec3.create(), right_vector, -1);
 
-TerrainRenderer.prototype.getResources = function(res)
-{
-	if(this.heightmap)
-		res[ this.heightmap ] = Texture;
-}
-
-TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-	if(this.heightmap == old_name)
-		this.heightmap = new_name;
-}
-
-TerrainRenderer[&quot;@subdivisions&quot;] = { widget: &quot;number&quot;, min:1,max:255,step:1 };
-TerrainRenderer[&quot;@heightmap&quot;] = { widget: &quot;texture&quot; };
-TerrainRenderer[&quot;@action&quot;] = { widget: &quot;button&quot;, callback: function() { this.options.component.updateMesh(); }};
-
-TerrainRenderer.prototype.updateMesh = function()
-{
-	trace(&quot;updating terrain mesh...&quot;);
-	//check that we have all the data
-	if(!this.heightmap) return;
-	var heightmap = typeof(this.heightmap) == &quot;string&quot; ? ResourcesManager.textures[this.heightmap] : this.heightmap;
-	if(!heightmap) return;
-	var img = heightmap.img;
-	if(!img) return;
-
-	if(this.subdivisions &gt; img.width)
-		this.subdivisions = img.width;
-	if(this.subdivisions &gt; img.height)
-		this.subdivisions = img.height;
-
-	if(this.subdivisions &gt; 255)	this.subdivisions = 255; //MAX because of indexed nature
-
-	//optimize it
-	var hsize = this.size * 0.5;
-	var subdivisions = (this.subdivisions)&lt;&lt;0;
-	var height = this.height;
-
-	//get the pixels
-	var canvas = createCanvas(subdivisions,subdivisions);
-	var ctx = canvas.getContext(&quot;2d&quot;);
-	ctx.drawImage(img,0,0,img.width,img.height,0,0,canvas.width, canvas.height);
-	//$(&quot;body&quot;).append(canvas);
-
-	var pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-	var data = pixels.data;
-
-	//create the mesh
-	var triangles = [];
-	var vertices = [];
-	var normals = [];
-	var coords = [];
-
-	var detailY = detailX = subdivisions-1;
-	var h,lh,th,rh,bh = 0;
-
-	var yScale = height;
-	var xzScale = hsize / (subdivisions-1);
-
-	for (var y = 0; y &lt;= detailY; y++) 
+	if(!this._left_camera)
 	{
-		var t = y / detailY;
-		for (var x = 0; x &lt;= detailX; x++) 
-		{
-			var s = x / detailX;
-
-			h = data[y * subdivisions * 4 + x * 4] / 255; //red channel
-			vertices.push(hsize*(2 * s - 1), h * height, hsize*(2 * t - 1));
-			coords.push(s,1-t);
-
-			if(x == 0 || y == 0 || x == detailX-1 || y == detailY-1)
-				normals.push(0, 1, 0);
-			else
-			{
-				var sX = (data[y * subdivisions * 4 + (x+1) * 4] / 255) - (data[y * subdivisions * 4 + (x-1) * 4] / 255);
-				var sY = (data[(y+1) * subdivisions * 4 + x * 4] / 255) - (data[(y-1) * subdivisions * 4 + x * 4] / 255);
-				var N = [-sX*yScale,2*xzScale,-sY*yScale];
-				vec3.normalize(N,N);
-				normals.push(N[0],N[1],N[2]);
-			}
-
-			//add triangle
-			if (x &lt; detailX &amp;&amp; y &lt; detailY)
-			{
-				var i = x + y * (detailX + 1);
-				triangles.push(i+1, i, i + detailX + 1);
-				triangles.push(i + 1, i + detailX + 1, i + detailX + 2);
-			}
-		}
+		this._left_camera = new LS.Camera();
+		this._right_camera = new LS.Camera();
 	}
 
-	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles});
-	mesh.setBounding( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
-	this._mesh = mesh;
-	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
+	var main_info = main_camera.serialize();
+
+	this._left_camera.configure(main_info);
+	this._right_camera.configure(main_info);
+
+	this._left_camera.eye = vec3.add(vec3.create(), main_camera.eye, left_vector);
+	this._right_camera.eye = vec3.add(vec3.create(), main_camera.eye, right_vector);
+
+	this._left_camera._viewport.set([0,0,0.5,1]);
+	this._right_camera._viewport.set([0.5,0,0.5,1]);
+	this._right_camera._ignore_clear = true;
+
+	cameras.push( this._left_camera, this._right_camera );
 }
 
-TerrainRenderer.PLANE = null;
-
-TerrainRenderer.prototype.onCollectInstances = function(e, instances)
+VRCameraController.prototype.onStart = function(e)
 {
-	if(!this._mesh &amp;&amp; this.heightmap)
-		this.updateMesh();
-
-	if(this.auto_update &amp;&amp; this._info)
+	var ws = new WebSocket(&quot;ws://localhost:1981&quot;);
+	ws.onopen = function()
 	{
-		if( this._info[0] != this.heightmap || this._info[1] != this.size || this._info[2] != this.height || this._info[3] != this.subdivisions || this._info[4] != this.smooth )
-			this.updateMesh();
+		console.log(&quot;VR connection stablished&quot;);
 	}
 
-	var RI = this._render_instance;
-	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+	ws.onmessage = this.onMessage.bind(this);
 
-	if(!this._mesh)
+	ws.onclose = function()
 	{
-		if(!TerrainRenderer.PLANE)
-			TerrainRenderer.PLANE = GL.Mesh.plane({xz:true,normals:true,coords:true});	
-		RI.mesh = TerrainRenderer.PLANE;
-		return RI;
-	};
+		console.log(&quot;OVR connection lost&quot;);
+	}
 
-	RI.material = this._root.getMaterial();
-	RI.setMesh( this._mesh, gl.TRIANGLES );
-	
-	this._root.mesh = this._mesh;
-	this._root.transform.getGlobalMatrix( RI.matrix );
-	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+	ws.onerror = function()
+	{
+		console.error(&quot;Oculus Server not found in your machine. To run an app using Oculus Rift you need to use a client side app, you can download it from: &quot; + OculusController.rift_server_url );
+	}
 
-	RI.flags = RI_DEFAULT_FLAGS;
-	RI.applyNodeFlags();
-	
-	instances.push(RI);
+	this._ws = ws;
 }
 
-LS.registerComponent(TerrainRenderer);
+VRCameraController.prototype.onMessage = function(e)
+{
+	var data = e.data;
+	data = JSON.parse(&quot;[&quot; + data + &quot;]&quot;);
+
+	var q = quat.create();
+	q.set( data );
+	var q2 = quat.fromValues(-1,0,0,0);	quat.multiply(q,q2,q);
+	this._orientation = q;
+
+	if(this._root.scene)
+		this._root.scene.refresh();
+}
+
+VRCameraController.prototype.onStop = function(e)
+{
+	if(this._ws)
+	{
+		this._ws.close();
+		this._ws = null;
+	}
+}
+
+VRCameraController.prototype.onBeforeRender = function(e,dt)
+{
+	var width = 1024;
+	var height = 512;
+	var viewport = gl.viewport_data;
+	width = v[2];
+	height = v[3];
+
+	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height)
+	{
+		this._color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR });
+		LS.ResourcesManager.textures[&quot;:vr_color_buffer&quot;] = this._color_texture;
+	}
+
+	//CHANGE THIS TO USE RENDERFRAMECONTEXT
+	if(this.enabled)
+	{
+		LS.Renderer.color_rendertarget = this._color_texture;
+	}
+	else
+	{
+		LS.Renderer.color_rendertarget = null;
+	}
+
+	//Renderer.disable_main_render
+}
+
+
+VRCameraController.prototype.onAfterRender = function(e,dt)
+{
+	if(this._color_texture)
+		this._color_texture.toViewport();
+}
+
+/* not finished
+LS.registerComponent(VRCameraController);
+window.VRCameraController = VRCameraController;
+*/
+
+
+
+
 
     </pre>
 </div>

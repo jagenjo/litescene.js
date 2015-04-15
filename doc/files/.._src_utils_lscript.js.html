@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -169,7 +171,7 @@
 function LScript()
 {
 	this.code = &quot;function update(dt) {\n\n}&quot;;
-	this.valid_callbacks = [&quot;start&quot;,&quot;update&quot;];
+	this.exported_callbacks = [&quot;start&quot;,&quot;update&quot;]; //detects if there is a function with this name and exports it as a property
 	this.extracode = &quot;&quot;;
 	this.catch_exceptions = true;
 }
@@ -196,9 +198,9 @@ LScript.prototype.compile = function( arg_vars )
 	code = LScript.expandCode( code );
 
 	var extra_code = &quot;&quot;;
-	for(var i in this.valid_callbacks)
+	for(var i in this.exported_callbacks)
 	{
-		var callback_name = this.valid_callbacks[i];
+		var callback_name = this.exported_callbacks[i];
 		extra_code += &quot;	if(typeof(&quot;+callback_name+&quot;) != &#x27;undefined&#x27; &amp;&amp; &quot;+callback_name+&quot; != window[\&quot;&quot;+callback_name+&quot;\&quot;] ) this.&quot;+callback_name + &quot; = &quot;+callback_name+&quot;;\n&quot;;
 	}
 	code += extra_code;
@@ -234,24 +236,24 @@ LScript.prototype.hasMethod = function(name)
 	return true;
 }
 
-
-LScript.prototype.callMethod = function(name, argv)
+//argv must be an array with parameters, unless skip_expand is true
+LScript.prototype.callMethod = function(name, argv, expand_parameters)
 {
 	if(!this._context || !this._context[name]) 
 		return;
 
 	if(!this.catch_exceptions)
 	{
-		if(!argv || argv.constructor !== Array)
-			return this._context[name].call(this._context, argv);
-		return this._context[name].apply(this._context, argv);
+		if(argv &amp;&amp; argv.constructor === Array &amp;&amp; expand_parameters)
+			return this._context[name].apply(this._context, argv);
+		return this._context[name].call(this._context, argv);
 	}
 
 	try
 	{
-		if(!argv || argv.constructor !== Array)
-			return this._context[name].call(this._context, argv);
-		return this._context[name].apply(this._context, argv);
+		if(argv &amp;&amp; argv.constructor === Array &amp;&amp; expand_parameters)
+			return this._context[name].apply(this._context, argv);
+		return this._context[name].call(this._context, argv);
 	}
 	catch(err)
 	{

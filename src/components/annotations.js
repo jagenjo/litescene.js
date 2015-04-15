@@ -50,6 +50,11 @@ AnnotationComponent.prototype.addAnnotation = function(item)
 	this.notes.push(item);
 }
 
+AnnotationComponent.prototype.getAnnotation = function(index)
+{
+	return this.nodes[ index ];
+}
+
 AnnotationComponent.prototype.removeAnnotation = function(item)
 {
 	this._selected = null;

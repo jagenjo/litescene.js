@@ -10,7 +10,7 @@ function BackgroundRenderer(o)
 		this.configure(o);
 }
 
-BackgroundRenderer.icon = "mini-icon-teapot.png";
+BackgroundRenderer.icon = "mini-icon-bg.png";
 BackgroundRenderer["@texture"] = { widget: "texture" };
 BackgroundRenderer["@color"] = { widget: "color" };
 BackgroundRenderer["@material_name"] = { widget: "material" };

@@ -134,7 +134,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		this._RI = RI = new RenderInstance(this._root, this);
 
 	//matrix: do not need to update, already done
-	RI.matrix.set( this._root.transform._global_matrix );
+	RI.setMatrix( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 

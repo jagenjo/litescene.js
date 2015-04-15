@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -167,7 +169,7 @@
 
 function SceneTree()
 {
-	this.uid = LS.generateUId();
+	this.uid = LS.generateUId(&quot;TREE-&quot;);
 
 	this._root = new LS.SceneNode(&quot;root&quot;);
 	this._root.removeAllComponents();
@@ -175,9 +177,13 @@ function SceneTree()
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
 	this._nodes_by_id = {&quot;root&quot;:this._root};
+	this._nodes_by_uid = {};
+	this._nodes_by_uid[ this._root.uid ] = this._root;
 
-	LEvent.bind(this,&quot;treeItemAdded&quot;, this.onNodeAdded.bind(this));
-	LEvent.bind(this,&quot;treeItemRemoved&quot;, this.onNodeRemoved.bind(this));
+	this._paths = [];
+
+	LEvent.bind(this,&quot;treeItemAdded&quot;, this.onNodeAdded, this );
+	LEvent.bind(this,&quot;treeItemRemoved&quot;, this.onNodeRemoved, this );
 
 
 	this.init();
@@ -214,7 +220,10 @@ SceneTree.prototype.init = function()
 
 	this._root.removeAllComponents();
 	this._nodes = [ this._root ];
-	this._nodes_by_id = {&quot;root&quot;:this._root};
+	this._nodes_by_id = { &quot;root&quot;: this._root };
+	this._nodes_by_uid = {};
+	this._nodes_by_uid[ this._root.uid ] = this._root;
+
 	this.rt_cameras = [];
 
 	//this._components = []; //remove all components
@@ -237,7 +246,8 @@ SceneTree.prototype.init = function()
 	this._last_dt = 1/60; //in seconds
 	this._must_redraw = true;
 
-	if(this.selected_node) delete this.selected_node;
+	if(this.selected_node) 
+		delete this.selected_node;
 
 	this.extra = {};
 
@@ -365,7 +375,7 @@ SceneTree.prototype.serialize = function()
 	var o = {};
 
 	o.uid = this.uid;
-	o.object_type = getObjectClassName(this);
+	o.object_type = LS.getObjectClassName(this);
 
 	//legacy
 	o.local_repository = this.local_repository;
@@ -394,7 +404,7 @@ SceneTree.prototype.serialize = function()
 	//serialize scene components
 	//this.serializeComponents(o);
 
-	LEvent.trigger(this,&quot;serializing&quot;,o);
+	LEvent.trigger(this,&quot;serialize&quot;,o);
 
 	return o;
 }
@@ -412,12 +422,12 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 {
 	if(!url) return;
 	var that = this;
-	var nocache = ResourcesManager.getNoCache(true);
+	var nocache = LS.ResourcesManager.getNoCache(true);
 	if(nocache)
 		url += (url.indexOf(&quot;?&quot;) == -1 ? &quot;?&quot; : &quot;&amp;&quot;) + nocache;
 
 
-	LS.request({
+	LS.Network.request({
 		url: url,
 		dataType: &#x27;json&#x27;,
 		success: inner_success,
@@ -429,14 +439,14 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
-		LEvent.trigger(that,&quot;scene_loaded&quot;);
+		LEvent.trigger(that,&quot;load&quot;);
 	}
 
 	function inner_all_loaded()
 	{
 		if(on_complete)
 			on_complete(that, url);
-		LEvent.trigger(that,&quot;complete_scene_loaded&quot;);
+		LEvent.trigger(that,&quot;full_load&quot;);
 	}
 
 	function inner_error(err)
@@ -486,15 +496,6 @@ SceneTree.prototype.getLight = function()
 	return this._root.light;
 }
 
-/*
-SceneTree.prototype.removeNode = function(node)
-{
-	if(!node._in_tree || node._in_tree != this)
-		return;
-	node.parentNode.removeChild(node);
-}
-*/
-
 SceneTree.prototype.onNodeAdded = function(e,node)
 {
 	//remove from old scene
@@ -509,7 +510,12 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 		this._nodes_by_id[node.id] = node;
 	}
 
-	//store
+	//store by uid
+	if(!node.uid)
+		node.uid = LS.generateUId(&quot;NODE-&quot;);
+	this._nodes_by_uid[ node.uid ] = node;
+
+	//store nodes linearly
 	this._nodes.push(node);
 
 	//LEvent.trigger(node,&quot;onAddedToScene&quot;, this);
@@ -521,13 +527,16 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 SceneTree.prototype.onNodeRemoved = function(e,node)
 {
 	var pos = this._nodes.indexOf(node);
-	if(pos == -1) return;
+	if(pos == -1) 
+		return;
 
 	this._nodes.splice(pos,1);
 	if(node.id)
 		delete this._nodes_by_id[ node.id ];
+	if(node.uid)
+		delete this._nodes_by_uid[ node.uid ];
 
-	node.processActionInComponents(&quot;onRemovedFromNode&quot;,this); //send to components
+	//node.processActionInComponents(&quot;onRemovedFromNode&quot;,node);
 	node.processActionInComponents(&quot;onRemovedFromScene&quot;,this); //send to components
 
 	LEvent.trigger(this,&quot;nodeRemoved&quot;, node);
@@ -541,53 +550,69 @@ SceneTree.prototype.getNodes = function()
 	return this._nodes;
 }
 
-/*
-SceneTree.prototype.getNodes = function()
-{
-	var r = [];
-	getnodes(this.root, r);
-
-	function getnodes(node, result)
-	{
-		for(var i in node._children)
-		{
-			var n = node._children[i];
-			result.push(n);
-			if(n._children &amp;&amp; n._children.length)
-				getnodes(n,result);
-		}
-	}
-
-	return r;
-}
-*/
-
 /**
-* retrieves a Node
+* retrieves a Node based on the id (if the id starts with the uid prefix, then it searches by uid)
 *
 * @method getNode
 * @param {String} id node id
 * @return {Object} the node or null if it didnt find it
 */
-
 SceneTree.prototype.getNode = function(id)
 {
+	if(!id)
+		return null;
+	if(id.charAt(0) == LS._uid_prefix)
+		return this._nodes_by_uid[id];
 	return this._nodes_by_id[id];
 }
 
+/**
+* retrieves a Node based on a given id. It is fast because they are stored in an object
+*
+* @method getNodeById
+* @param {String} id id of the node
+* @return {Object} the node or null if it didnt find it
+*/
+SceneTree.prototype.getNodeById = function(id)
+{
+	return this._nodes_by_id[ id ];
+}
+
+
+/**
+* retrieves a Node based on a given uid. It is fast because they are stored in an object
+*
+* @method getNodeByUId
+* @param {String} uid uid of the node
+* @return {Object} the node or null if it didnt find it
+*/
 SceneTree.prototype.getNodeByUId = function(uid)
 {
-	var n = this._nodes;
-	for(var i = 0, l = n.length; i &lt; l; i += 1)
-		if(n[i].uid == uid)
-			return n[i];
-	return null;
+	return this._nodes_by_uid[ uid ];
+}
+
+/**
+* retrieves a Node by its index
+*
+* @method getNodeByIndex
+* @param {Number} node index
+* @return {Object} returns the node at the &#x27;index&#x27; position in the nodes array
+*/
+SceneTree.prototype.getNodeByIndex = function(index)
+{
+	return this._nodes[index];
 }
 
 //for those who are more traditional
 SceneTree.prototype.getElementById = SceneTree.prototype.getNode;
 
-
+/**
+* retrieves a node array filtered by the filter function
+*
+* @method filterNodes
+* @param {function} filter a callback function that receives every node and must return true or false
+* @return {Array} array containing the nodes that passes the filter
+*/
 SceneTree.prototype.filterNodes = function( filter )
 {
 	var r = [];
@@ -597,6 +622,23 @@ SceneTree.prototype.filterNodes = function( filter )
 	return r;
 }
 
+/**
+* searches the component with this uid, it iterates through all the nodes and components (slow)
+*
+* @method findComponentByUId
+* @param {String} uid uid of the node
+* @return {Object} component or null
+*/
+SceneTree.prototype.findComponentByUId = function(uid)
+{
+	for(var i in this._nodes)
+	{
+		var compo = this._nodes.getComponentByUId(uid);
+		if(compo)
+			return compo;
+	}
+	return null;
+}
 
 
 /**
@@ -617,19 +659,6 @@ SceneTree.prototype.getNodeByUid = function(uid)
 }
 */
 
-/**
-* retrieves a Node by its index
-*
-* @method getNodeByIndex
-* @param {Number} node index
-* @return {Object} returns the node at the &#x27;index&#x27; position in the nodes array
-*/
-/*
-SceneTree.prototype.getNodeByIndex = function(index)
-{
-	return this.nodes[index];
-}
-*/
 
 /**
 * retrieves a Node index
@@ -746,6 +775,7 @@ SceneTree.prototype.stop = function()
 	this._state = &quot;stopped&quot;;
 	LEvent.trigger(this,&quot;stop&quot;,this);
 	this.triggerInNodes(&quot;stop&quot;);
+	this.purgeResidualEvents();
 }
 
 
@@ -754,11 +784,12 @@ SceneTree.prototype.stop = function()
 *
 * @method render
 */
-SceneTree.prototype.render = function(camera, options)
+SceneTree.prototype.render = function(options)
 {
-	this._renderer.render(this, camera, options);
+	this._renderer.render(this, options);
 }
 
+//This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
 SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
@@ -769,7 +800,7 @@ SceneTree.prototype.collectData = function()
 	var colliders = [];
 
 	//collect render instances, lights and cameras
-	for(var i in nodes)
+	for(var i = 0, l = nodes.length; i &lt; l; ++i)
 	{
 		var node = nodes[i];
 
@@ -805,20 +836,25 @@ SceneTree.prototype.collectData = function()
 		instances = instances.concat( node._instances );
 	}
 
+	//we also collect from the scene itself just in case (TODO: REMOVE THIS)
+	LEvent.trigger(this, &quot;collectRenderInstances&quot;, instances );
+	LEvent.trigger(this, &quot;collectPhysicInstances&quot;, colliders );
+	LEvent.trigger(this, &quot;collectLights&quot;, lights );
+	LEvent.trigger(this, &quot;collectCameras&quot;, cameras );
+
 	//for each render instance collected
-	for(var j in instances)
+	for(var i = 0, l = instances.length; i &lt; l; ++i)
 	{
-		var instance = instances[j];
-		instance.computeNormalMatrix();
+		var instance = instances[i];
 		//compute the axis aligned bounding box
 		if(!(instance.flags &amp; RI_IGNORE_FRUSTUM))
 			instance.updateAABB();
 	}
 
 	//for each physics instance collected
-	for(var j in colliders)
+	for(var i = 0, l = colliders.length; i &lt; l; ++i)
 	{
-		var collider = colliders[j];
+		var collider = colliders[i];
 		collider.updateAABB();
 	}
 
@@ -831,6 +867,48 @@ SceneTree.prototype.collectData = function()
 	this._last_collect_frame = this._frame;
 }
 
+//instead of recollect everything, we can reuse the info from previous frame, but objects need to be updated
+SceneTree.prototype.updateCollectedData = function()
+{
+	var nodes = this._nodes;
+	var instances = this._instances;
+	var lights = this._lights;
+	var cameras = this._cameras;
+	var colliders = this._colliders;
+
+	//update matrices
+	for(var i = 0, l = nodes.length; i &lt; l; ++i)
+		if(nodes[i].transform)
+			nodes[i].transform.updateGlobalMatrix();
+	
+	//render instances: just update them
+	for(var i = 0, l = instances.length; i &lt; l; ++i)
+	{
+		var instance = instances[i];
+		if(instance.flags &amp; RI_IGNORE_AUTOUPDATE)
+			instance.update();
+		//compute the axis aligned bounding box
+		if(!(instance.flags &amp; RI_IGNORE_FRUSTUM))
+			instance.updateAABB();
+	}
+
+	//lights
+	for(var i = 0, l = lights.length; i &lt; l; ++i)
+	{
+	}
+
+	//cameras
+	for(var i = 0, l = cameras.length; i &lt; l; ++i)
+	{
+	}
+
+	//colliders
+	for(var i = 0, l = colliders.length; i &lt; l; ++i)
+	{
+		var collider = colliders[i];
+		collider.updateAABB();
+	}
+}
 
 SceneTree.prototype.update = function(dt)
 {
@@ -894,6 +972,36 @@ SceneTree.prototype.getTime = function()
 	return this._time;
 }
 
+//This is ugly but sometimes if scripts fail there is a change the could get hooked to the scene forever
+//so this way we remove any event that belongs to a component thats doesnt belong to this scene tree
+SceneTree.prototype.purgeResidualEvents = function()
+{
+	//crawl all 
+	for(var i in this)
+	{
+		if(i.substr(0,5) != &quot;__on_&quot;)
+			continue;
+
+		var event = this[i];
+		if(!event)
+			continue;
+		var to_keep = [];
+		for(var j = 0; j &lt; event.length; ++j)
+		{
+			var inst = event[j][1];
+			if(inst &amp;&amp; LS.isClassComponent( inst.constructor ) )
+			{
+				//no attached node or node not attached to any scene
+				if(!inst._root || inst._root.scene !== this )
+					continue; //skip keeping it, so it will no longer exist
+			}
+			to_keep.push(event[j]);
+		}
+		this[i] = to_keep;
+	}
+}
+
+
 //****************************************************************************
 
 /**
@@ -908,9 +1016,10 @@ SceneTree.prototype.getTime = function()
 function SceneNode(id)
 {
 	//Generic
-	this.id = id || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
-	this.uid = LS.generateUId();
+	this._id = id || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
+	this.uid = LS.generateUId(&quot;NODE-&quot;);
 
+	this._classList = {};
 	//this.className = &quot;&quot;;
 	//this.mesh = &quot;&quot;;
 
@@ -952,14 +1061,30 @@ LS.extendClass(SceneNode, CompositePattern); //container methods
 * @return {Object} returns true if the name changed
 */
 
+Object.defineProperty( SceneNode.prototype, &#x27;id&#x27;, {
+	set: function(id)
+	{
+		this.setId(id);
+	},
+	get: function(){
+		return this._id;
+	},
+	enumerable: true
+});
+	
+
 SceneNode.prototype.setId = function(new_id)
 {
-	if(this.id == new_id) return true; //no changes
+	if(this._id == new_id) 
+		return true; //no changes
+
+	if(!LS.validateId(new_id))
+		return false;
 
 	var scene = this._in_tree;
 	if(!scene)
 	{
-		this.id = new_id;
+		this._id = new_id;
 		return;
 	}
 
@@ -969,17 +1094,51 @@ SceneNode.prototype.setId = function(new_id)
 		return false;
 	}
 
-	if(this.id)
-		delete scene._nodes_by_id[this.id];
+	if(this._id)
+		delete scene._nodes_by_id[this._id];
+	//uid doesnt change, so we keep it
 
-	this.id = new_id;
-	if(this.id)
-		scene._nodes_by_id[ this.id ] = this;
+	this._id = new_id;
+	if(this._id)
+		scene._nodes_by_id[ this._id ] = this;
 
-	LEvent.trigger(this,&quot;idChanged&quot;, new_id);
-	LEvent.trigger(Scene,&quot;nodeIdChanged&quot;, this);
+	LEvent.trigger(this,&quot;idChanged&quot;, new_id); //TODO: CHANGE NAME
+	LEvent.trigger(Scene,&quot;nodeIdChanged&quot;, this); //TODO: CHANGE NAME
 	return true;
 }
+
+Object.defineProperty( SceneNode.prototype, &#x27;classList&#x27;, {
+	get: function() { return this._classList },
+	set: function(v) {},
+	enumerable: false
+});
+
+/**
+* @property className {String}
+*/
+Object.defineProperty( SceneNode.prototype, &#x27;className&#x27;, {
+	get: function() {
+			var keys = null;
+			if(Object.keys)
+				keys = Object.keys(this._classList); 
+			else
+			{
+				keys = [];
+				for(var k in this._classList)
+					keys.push(k);
+			}
+			return keys.join(&quot; &quot;);
+		},
+	set: function(v) { 
+		this._classList = {};
+		if(!v)
+			return;
+		var t = v.split(&quot; &quot;);
+		for(var i in t)
+			this._classList[ t[i] ] = true;
+	},
+	enumerable: true
+});
 
 SceneNode.prototype.getResources = function(res, include_children)
 {
@@ -1022,7 +1181,8 @@ SceneNode.prototype.getTransform = function() {
 	return this.transform;
 }
 
-//Mesh component
+//Helpers
+
 SceneNode.prototype.getMesh = function() {
 	var mesh = this.mesh;
 	if(!mesh &amp;&amp; this.meshrenderer)
@@ -1070,15 +1230,15 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 {
 	options = options || {};
 
-	if(ResourcesManager.meshes[mesh_filename] || !mesh_filename )
+	if(LS.ResourcesManager.meshes[mesh_filename] || !mesh_filename )
 	{
 		this.setMesh( mesh_filename );
-		if(options.on_complete) options.on_complete( ResourcesManager.meshes[mesh_filename] ,this);
+		if(options.on_complete) options.on_complete( LS.ResourcesManager.meshes[mesh_filename] ,this);
 		return;
 	}
 
 	var that = this;
-	var loaded = ResourcesManager.load(mesh_filename, options, function(mesh){
+	var loaded = LS.ResourcesManager.load(mesh_filename, options, function(mesh){
 		that.setMesh(mesh.filename);
 		that.loading -= 1;
 		if(that.loading == 0)
@@ -1086,7 +1246,8 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 			LEvent.trigger(that,&quot;resource_loaded&quot;,that);
 			delete that.loading;
 		}
-		if(options.on_complete) options.on_complete(mesh,that);
+		if(options.on_complete)
+			options.on_complete(mesh,that);
 	});
 
 	if(!loaded)
@@ -1101,6 +1262,13 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 			this.loading += 1;
 	}
 }
+
+SceneNode.prototype.setMaterial = function(mat)
+{
+	this.material = mat;
+	//TODO: allow only strings and force to register the material
+}
+
 
 SceneNode.prototype.getMaterial = function()
 {
@@ -1132,12 +1300,34 @@ SceneNode.prototype.clone = function()
 {
 	var scene = this._in_tree;
 
-	var new_name = scene ? scene.generateUniqueNodeName( this.id ) : this.id ;
+	var new_name = scene ? scene.generateUniqueNodeName( this._id ) : this._id ;
 	var newnode = new SceneNode( new_name );
 	var info = this.serialize();
+
+	//remove all uids from nodes and components
+	inner_clean_uids(info);
+
 	info.id = null;
-	info.uid = LS.generateUId();
+	info.uid = LS.generateUId(&quot;NODE-&quot;);
 	newnode.configure( info );
+
+	function inner_clean_uids(root)
+	{
+		if(root.uid)
+			delete root.uid;
+		if(root.components)
+		{
+			for(var i in root.components)
+			{
+				var comp =  root.components[i];
+				if(comp[1].uid)
+					delete comp[1].uid;
+			}
+			for(var i in root.children)
+				inner_clean_uids(root.children[i]);
+		}
+	}
+
 
 	/*
 	//clone children (none of them is added to the SceneTree)
@@ -1162,25 +1352,36 @@ SceneNode.prototype.clone = function()
 */
 SceneNode.prototype.configure = function(info)
 {
-	if (info.id) this.setId(info.id);
-	if (info.uid) this.uid = info.uid;
-	if (info.className)	this.className = info.className;
+	//identifiers parsing
+	if (info.id)
+		this.setId(info.id);
+	if (info.uid) 
+		this.uid = info.uid;
+	if (info.className &amp;&amp; info.className.constructor == String)	
+		this.className = info.className;
 
-	//useful parsing
+	//some helpers (mostly for when loading from js object that come from importers
 	if(info.mesh)
 	{
-		var mesh = info.mesh;
-		if(typeof(mesh) == &quot;string&quot;)
-			mesh = ResourcesManager.meshes[mesh];
+		var mesh_id = info.mesh;
 
-		if(mesh)
-		{
-			if(mesh.bones)
-				this.addComponent( new SkinnedMeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id }) );
-			else
-				this.addComponent( new MeshRenderer({ mesh: info.mesh, submesh_id: info.submesh_id, morph_targets: info.morph_targets }) );
-		}
+		var mesh = LS.ResourcesManager.meshes[ mesh_id ];
+		var mesh_render_config = { mesh: mesh_id };
+
+		if(info.submesh_id !== undefined)
+			mesh_render_config.submesh_id = info.submesh_id;
+		if(info.morph_targets !== undefined)
+			mesh_render_config.morph_targets = info.morph_targets;
+
+		if(mesh &amp;&amp; mesh.bones)
+			this.addComponent( new LS.Components.SkinnedMeshRenderer(mesh_render_config) );
+		else
+			this.addComponent( new LS.Components.MeshRenderer(mesh_render_config) );
 	}
+
+	//transform in matrix format could come from importers so we leave it
+	if(info.model) 
+		this.transform.fromMatrix( info.model ); 
 
 	//first the no components
 	if(info.material)
@@ -1195,21 +1396,14 @@ SceneNode.prototype.configure = function(info)
 		for(var i in info.flags)
 			this.flags[i] = info.flags[i];
 	
-	//DEPRECATED: hardcoded components
-	if(info.transform) this.transform.configure( info.transform ); //all nodes have a transform
-	if(info.light) this.addComponent( new Light(info.light) );
-	if(info.camera)	this.addComponent( new Camera(info.camera) );
+	if(info.prefab) 
+		this.prefab = info.prefab;
 
-	//DEPRECATED: model in matrix format
-	if(info.model) this.transform.fromMatrix( info.model ); 
-
-	if(info.prefab) this.prefab = info.prefab;
-
-	//add animation
+	//add animation tracks player
 	if(info.animations)
 	{
 		this.animations = info.animations;
-		this.addComponent( new PlayAnimation({animation:this.animations}) );
+		this.addComponent( new LS.Components.PlayAnimation({animation:this.animations}) );
 	}
 
 	//extra user info
@@ -1223,22 +1417,8 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
+	//configure children too
 	this.configureChildren(info);
-
-	//ierarchy: this goes last because it needs to read transform
-	/*
-	if(info.parent_id) //name of the parent
-	{
-		if(this._in_tree)
-		{
-			var parent = this._in_tree.getNode( info.parent_id );
-			if(parent) 
-				parent.addChild( this );
-		}
-		else
-			this.parent = info.parent_id;
-	}
-	*/
 
 	LEvent.trigger(this,&quot;configure&quot;,info);
 }
@@ -1253,36 +1433,34 @@ SceneNode.prototype.serialize = function()
 {
 	var o = {};
 
-	if(this.id) o.id = this.id;
-	if(this.uid) o.uid = this.uid;
-	if(this.className) o.className = this.className;
+	if(this._id) 
+		o.id = this._id;
+	if(this.uid) 
+		o.uid = this.uid;
+	if(this.className) 
+		o.className = this.className;
 
 	//modules
-	if(this.mesh &amp;&amp; typeof(this.mesh) == &quot;string&quot;) o.mesh = this.mesh; //do not save procedural meshes
-	if(this.submesh_id != null) o.submesh_id = this.submesh_id;
-	if(this.material) o.material = typeof(this.material) == &quot;string&quot; ? this.material : this.material.serialize();
-	if(this.prefab) o.prefab = this.prefab;
+	if(this.mesh &amp;&amp; typeof(this.mesh) == &quot;string&quot;) 
+		o.mesh = this.mesh; //do not save procedural meshes
+	if(this.submesh_id != null) 
+		o.submesh_id = this.submesh_id;
+	if(this.material) 
+		o.material = typeof(this.material) == &quot;string&quot; ? this.material : this.material.serialize();
+	if(this.prefab) 
+		o.prefab = this.prefab;
 
-	if(this.flags) o.flags = cloneObject(this.flags);
+	if(this.flags) 
+		o.flags = LS.cloneObject(this.flags);
 
 	//extra user info
-	if(this.extra) o.extra = this.extra;
-	if(this.comments) o.comments = this.comments;
+	if(this.extra) 
+		o.extra = this.extra;
+	if(this.comments) 
+		o.comments = this.comments;
 
 	if(this._children)
 		o.children = this.serializeChildren();
-
-	//save children ierarchy
-	//if(this.parentNode)
-	//	o.parent_id = this.parentNode.id;
-	/*
-	if(this._children &amp;&amp; this._children.length)
-	{
-		o.children = [];
-		for(var i in this._children)
-			o.children.push( this._children[i].id );
-	}
-	*/
 
 	//save components
 	this.serializeComponents(o);
@@ -1293,6 +1471,7 @@ SceneNode.prototype.serialize = function()
 	return o;
 }
 
+//used to recompute matrix so when parenting one node it doesnt lose its global transformation
 SceneNode.prototype._onChildAdded = function(child_node, recompute_transform)
 {
 	if(recompute_transform &amp;&amp; this.transform)
@@ -1338,33 +1517,34 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 	}
 }
 
+
 //***************************************************************************
 
 //create one default scene
 
 LS.SceneTree = SceneTree;
 LS.SceneNode = SceneNode;
-var Scene = new SceneTree();
+var Scene = LS.GlobalScene = new SceneTree();
 
 LS.newMeshNode = function(id,mesh_name)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new MeshRenderer() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.MeshRenderer() );
 	node.setMesh(mesh_name);
 	return node;
 }
 
 LS.newLightNode = function(id)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new Light() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.Light() );
 	return node;
 }
 
 LS.newCameraNode = function(id)
 {
-	var node = new SceneNode(id);
-	node.addComponent( new Camera() );
+	var node = new LS.SceneNode(id);
+	node.addComponent( new LS.Components.Camera() );
 	return node;
 }
 

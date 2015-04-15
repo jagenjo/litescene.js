@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -172,25 +174,28 @@ function Rotator(o)
 	this.local_space = true;
 	this.swing = false;
 	this.swing_amplitude = 45;
+
+	if(o)
+		this.configure(o);
 }
 
 Rotator.icon = &quot;mini-icon-rotator.png&quot;;
 
-Rotator.prototype.onAddedToNode = function(node)
+Rotator.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(node,&quot;update&quot;,this.onUpdate,this);
+	LEvent.bind(scene,&quot;update&quot;,this.onUpdate,this);
 }
 
 
-Rotator.prototype.onRemoveFromNode = function(node)
+Rotator.prototype.onRemoveFromScene = function(scene)
 {
-	LEvent.unbind(node,&quot;update&quot;,this.onUpdate,this);
+	LEvent.unbind(scene,&quot;update&quot;,this.onUpdate,this);
 }
 
 Rotator.prototype.onUpdate = function(e,dt)
 {
 	if(!this._root) return;
-	var scene = this._root._in_tree;
+	var scene = this._root.scene;
 
 	if(!this._default)
 		this._default = this._root.transform.getRotation();
@@ -199,20 +204,20 @@ Rotator.prototype.onUpdate = function(e,dt)
 
 	if(this.swing)
 	{
-		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * Scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
+		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
 		quat.multiply( this._root.transform._rotation, R, this._default);
 		this._root.transform._dirty = true;
 	}
 	else
 	{
 		if(this.local_space)
-			this._root.transform.rotateLocal(this.speed * dt,this.axis);
-		else
 			this._root.transform.rotate(this.speed * dt,this.axis);
+		else
+			this._root.transform.rotateGlobal(this.speed * dt,this.axis);
 	}
 
 	if(scene)
-		LEvent.trigger(scene,&quot;change&quot;);
+		scene.refresh();
 }
 
 LS.registerComponent(Rotator);

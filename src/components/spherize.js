@@ -21,7 +21,7 @@ function Spherize(o)
 
 Spherize["@factor"] = { type: "number", step: 0.001 };
 
-Spherize.icon = "mini-icon-rotator.png";
+Spherize.icon = "mini-icon-circle.png";
 
 Spherize.prototype.onAddedToNode = function(node)
 {

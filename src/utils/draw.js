@@ -637,7 +637,7 @@ var Draw = {
 		}
 	},
 
-	renderMesh: function(mesh, primitive, shader)
+	renderMesh: function(mesh, primitive, shader, indices )
 	{
 		if(!this.ready) throw ("Draw.js not initialized, call Draw.init()");
 		if(!shader)
@@ -651,7 +651,7 @@ var Draw = {
 				u_color: this.color,
 				u_point_size: this.point_size,
 				u_texture: 0
-		}).draw(mesh, primitive == undefined ? gl.LINES : primitive);
+		}).draw(mesh, primitive === undefined ? gl.LINES : primitive, indices );
 		this.last_mesh = mesh;
 		return mesh;
 	},

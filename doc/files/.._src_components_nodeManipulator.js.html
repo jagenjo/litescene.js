@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -169,7 +171,8 @@ function NodeManipulator(o)
 {
 	this.rot_speed = [1,1]; //degrees
 	this.smooth = false;
-	this.configure(o);
+	if(o)
+		this.configure(o);
 }
 
 NodeManipulator.icon = &quot;mini-icon-rotator.png&quot;;
@@ -187,11 +190,6 @@ NodeManipulator.prototype.onUpdate = function(e)
 
 	if(!this._root.transform)
 		return;
-
-	if(this.smooth)
-	{
-		Scene.refresh();
-	}
 }
 
 NodeManipulator.prototype.onMouse = function(e, mouse_event)
@@ -202,8 +200,16 @@ NodeManipulator.prototype.onMouse = function(e, mouse_event)
 	if(!mouse_event.dragging)
 		return;
 
-	this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
-	this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
+	var scene = this._root.scene;
+	var camera = scene.getCamera();
+
+	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
+	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], LS.Components.Transform.UP );
+	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
+	scene.refresh();
+
+	//this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
+	//this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );
 }
 
 LS.registerComponent(NodeManipulator);

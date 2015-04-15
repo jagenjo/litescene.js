@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -168,9 +170,10 @@ function CameraFX(o)
 	this.enabled = true;
 	this.use_viewport_size = true;
 	this.use_high_precision = false;
-	this.use_antialiasing = false;
 
 	this.fx = [];
+
+	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_texture_depth: 1 };
 
 	if(o)
 		this.configure(o);
@@ -179,8 +182,7 @@ function CameraFX(o)
 	//this.addFX(&quot;threshold&quot;);
 }
 
-CameraFX.icon = &quot;mini-icon-camera.png&quot;;
-CameraFX.buffer_size = [1024,512];
+CameraFX.icon = &quot;mini-icon-fx.png&quot;;
 
 CameraFX.available_fx = {
 	&quot;brightness/contrast&quot;: {
@@ -214,8 +216,8 @@ CameraFX.available_fx = {
 	&quot;halftone&quot;: {
 		name: &quot;Halftone&quot;,
 		uniforms: {
-			halftone_angle: { name: &quot;u_halftone_angle&quot;, type: &quot;float&quot;, value: 0, step: 0.01 },
-			halftone_size: { name: &quot;u_halftone_size&quot;, type: &quot;float&quot;, value: 1, step: 0.01 }
+			&quot;Halftone angle&quot;: { name: &quot;u_halftone_angle&quot;, type: &quot;float&quot;, value: 0, step: 0.01 },
+			&quot;Halftone size&quot;: { name: &quot;u_halftone_size&quot;, type: &quot;float&quot;, value: 1, step: 0.01 }
 		},
 		functions: [&quot;pattern&quot;],
 		code:&quot;color.x = ( (color.x * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );&quot; + 
@@ -225,12 +227,71 @@ CameraFX.available_fx = {
 	&quot;halftone B/N&quot;: {
 		name: &quot;HalftoneBN&quot;,
 		uniforms: {
-			halftone_angle: { name: &quot;u_halftone_angle&quot;, type: &quot;float&quot;, value: 0, step: 0.01 },
-			halftone_size: { name: &quot;u_halftone_size&quot;, type: &quot;float&quot;, value: 1, step: 0.01 }
+			&quot;Halftone angle&quot;: { name: &quot;u_halftone_angle&quot;, type: &quot;float&quot;, value: 0, step: 0.01 },
+			&quot;Halftone size&quot;: { name: &quot;u_halftone_size&quot;, type: &quot;float&quot;, value: 1, step: 0.01 }
 		},
 		functions: [&quot;pattern&quot;],
 		code:&quot;color.xyz = vec3( (length(color.xyz) * 10.0 - 5.0) + pattern( u_halftone_angle@, u_halftone_size@ ) );&quot;
+	},
+	&quot;lens&quot;: {
+		name: &quot;Lens Distortion&quot;,
+		uniforms: {
+			lens_k: { name: &quot;u_lens_k&quot;, type: &quot;float&quot;, value: -0.15 },
+			lens_kcube: { name: &quot;u_lens_kcube&quot;, type: &quot;float&quot;, value: 0.8 },
+			lens_scale: { name: &quot;u_lens_scale&quot;, type: &quot;float&quot;, value: 1 }
+		},
+		uv_code:&quot;float r2 = u_aspect * u_aspect * (uv.x-0.5) * (uv.x-0.5) + (uv.y-0.5) * (uv.y-0.5); float distort@ = 1. + r2 * (u_lens_k@ + u_lens_kcube@ * sqrt(r2)); uv = vec2( u_lens_scale@ * distort@ * (uv.x-0.5) + 0.5, u_lens_scale@  * distort@ * (uv.y-0.5) + 0.5 );&quot;
+	},
+	&quot;pixelate&quot;: {
+		name: &quot;Pixelate&quot;,
+		uniforms: {
+			width: { name: &quot;u_width&quot;, type: &quot;float&quot;, value: 256, step: 1, min: 1 },
+			height: { name: &quot;u_height&quot;, type: &quot;float&quot;, value: 256, step: 1, min: 1 }
+		},
+		uv_code:&quot;uv = vec2( floor(uv.x * u_width@) / u_width@, floor(uv.y * u_height@) / u_height@ );&quot;
+	},
+	&quot;quantize&quot;: {
+		name: &quot;Quantize&quot;,
+		uniforms: {
+			levels: { name: &quot;u_levels&quot;, type: &quot;float&quot;, value: 8, step: 1, min: 1 }
+		},
+		code:&quot;color.xyz = floor(color.xyz * u_levels@) / u_levels@;&quot;
+	},
+	&quot;edges&quot;: {
+		name: &quot;Edges&quot;,
+		uniforms: {
+			&quot;Edges factor&quot;: { name: &quot;u_edges_factor&quot;, type: &quot;float&quot;, value: 1 }
+		},
+		code:&quot;vec4 color@ = texture2D(u_texture, uv );\n\
+				vec4 color_up@ = texture2D(u_texture, uv + vec2(0., u_iviewport.y));\n\
+				vec4 color_right@ = texture2D(u_texture, uv + vec2(u_iviewport.x,0.));\n\
+				vec4 color_down@ = texture2D(u_texture, uv + vec2(0., -u_iviewport.y));\n\
+				vec4 color_left@ = texture2D(u_texture, uv + vec2(-u_iviewport.x,0.));\n\
+				color = u_edges_factor@ * (abs(color@ - color_up@) + abs(color@ - color_down@) + abs(color@ - color_left@) + abs(color@ - color_right@));&quot;
+	},
+	&quot;depth&quot;: {
+		name: &quot;Depth&quot;,
+		uniforms: {
+			&quot;near&quot;: { name: &quot;u_near&quot;, type: &quot;float&quot;, value: 0.01, step: 0.1 },
+			&quot;far&quot;: { name: &quot;u_far&quot;, type: &quot;float&quot;, value: 1000, step: 1 }
+		},
+		code:&quot;color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D(u_texture_depth, uv ).x * (u_far@ - u_near@)) );&quot;
+	},
+	&quot;logarithmic&quot;: {
+		name: &quot;Logarithmic&quot;,
+		uniforms: {
+			&quot;Log. A Factor&quot;: { name: &quot;u_logfactor_a&quot;, type: &quot;float&quot;, value: 2, step: 0.01 },
+			&quot;Log. B Factor&quot;: { name: &quot;u_logfactor_b&quot;, type: &quot;float&quot;, value: 2, step: 0.01 }
+		},
+		code:&quot;color.xyz = log( color.xyz * u_logfactor_a@ ) * u_logfactor_b@;&quot;
 	}
+	/*
+	,
+	&quot;fast_edges&quot;: {
+		name: &quot;Edges (fast)&quot;,
+		code:&quot;color.xyz = abs( dFdx(color.xyz) ) + abs( dFdy(color.xyz) );&quot;
+	}
+	*/
 };
 
 CameraFX.available_functions = {
@@ -253,7 +314,9 @@ CameraFX.prototype.configure = function(o)
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
-	this.use_antialiasing = !!o.use_antialiasing;
+
+	if(o.fx)
+		this.fx = o.fx.concat();
 
 }
 
@@ -263,7 +326,8 @@ CameraFX.prototype.serialize = function()
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,
 		use_high_precision: this.use_high_precision,
-		use_viewport_size: this.use_viewport_size
+		use_viewport_size: this.use_viewport_size,
+		fx: this.fx.concat()
 	};
 }
 
@@ -275,74 +339,118 @@ CameraFX.prototype.getResources = function(res)
 
 CameraFX.prototype.addFX = function(name)
 {
+	if(!name)
+		return;
+
 	this.fx.push({ name: name });
 }
 
+CameraFX.prototype.getFX = function(index)
+{
+	return this.fx[index];
+}
+
+CameraFX.prototype.removeFX = function( fx )
+{
+	for(var i = 0; i &lt; this.fx.length; i++)
+	{
+		if(this.fx[i] !== fx)
+			continue;
+
+		this.fx.splice(i,1);
+		return;
+	}
+}
+
+
 CameraFX.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
+	//global
+	LEvent.bind( LS.GlobalScene, &quot;beforeRenderMainPass&quot;, this.onBeforeRender, this );
 }
 
 CameraFX.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
+	//global
+	LEvent.unbind( LS.GlobalScene, &quot;beforeRenderMainPass&quot;, this.onBeforeRender, this );
 }
 
+//hook the RFC
 CameraFX.prototype.onBeforeRender = function(e, render_options)
 {
-	if(this.enabled)
-		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+	if(!this.enabled)
+		return;
+
+	if(!this._renderFrameContainer)
+	{
+		this._renderFrameContainer = new LS.RenderFrameContainer();
+		this._renderFrameContainer.component = this;
+		this._renderFrameContainer.postRender = CameraFX.postRender;
+	}
+
+	//configure
+	if(this.use_viewport_size)
+		this._renderFrameContainer.useCanvasSize();
+	this._renderFrameContainer.use_high_precision = this.use_high_precision;
+
+	LS.Renderer.assignGlobalRenderFrameContainer( this._renderFrameContainer );
 }
 
-CameraFX.prototype.onRenderFrame = function(current_camera, render_options, previous_output )
+//Executed inside RFC
+/*
+CameraFX.prototype.onPreRender = function( cameras, render_options )
 {
 	var width = CameraFX.buffer_size[0];
 	var height = CameraFX.buffer_size[1];
-	if( this.use_viewport_size )
+	if( this.component.use_viewport_size )
 	{
 		width = gl.canvas.width;
 		height = gl.canvas.height;
 	}
 
-	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	this.width = width;
+	this.height = height;
+	this.use_high_precision = this.component.use_high_precision;
 
-	//scene already drawn
-	if(!previous_output)
-	{
-		if( !this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type )
-		{
-			this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
-		}
-		var that = this;
-		this.color_texture.drawTo( inner_render_frame );
-	}
+	this.startFBO( cameras[0] );
+}
+*/
 
-	//render frame
-	function inner_render_frame(texture)
-	{
-			Renderer.renderFrame( current_camera, that.color_rendertarget );
-	}
+CameraFX.postRender = function()
+{
+	this.endFBO();
 
-	var frame = previous_output || this.color_texture;
+	var color_texture = this.color_texture;
+	var depth_texture = this.depth_texture;
 
-	//shadercode
+	var component = this.component;
+	var fxs = component.fx;
+
+	//shadercode: TODO, do this in a lazy way
 	var key = &quot;&quot;;
 	var update_shader = true;
-	for(var i = 0; i &lt; this.fx.length; i++)
-		key += this.fx[i] + &quot;|&quot;;
+	for(var i = 0; i &lt; fxs.length; i++)
+		key += fxs[i] + &quot;|&quot;;
 	if(key == this._last_shader_key)
 		update_shader = false;
 	this._last_shader_key = key;
 
-	var code = &quot;&quot;;
+	var uv_code = &quot;&quot;;
+	var color_code = &quot;&quot;;
 	var included_functions = {};
 	var uniforms_code = &quot;&quot;;
-	var uniforms = { u_viewport: vec2.fromValues(frame.width,frame.height) };
+
+	var uniforms = component._uniforms;
+	uniforms.u_viewport[0] = color_texture.width;
+	uniforms.u_viewport[1] = color_texture.height;
+	uniforms.u_iviewport[0] = 1 / color_texture.width;
+	uniforms.u_iviewport[1] = 1 / color_texture.height;
+	uniforms.u_aspect = color_texture.width / color_texture.height;
 
 	var fx_id = 0;
-	for(var i = 0; i &lt; this.fx.length; i++)
+	for(var i = 0; i &lt; fxs.length; i++)
 	{
-		var fx = this.fx[i];
+		var fx = fxs[i];
 		fx_id = i;
 		var fx_info = CameraFX.available_fx[ fx.name ];
 		if(!fx_info)
@@ -352,7 +460,10 @@ CameraFX.prototype.onRenderFrame = function(current_camera, render_options, prev
 			if(fx_info.functions)
 				for(var z in fx_info.functions)
 					included_functions[ fx_info.functions[z] ] = true;
-			code += fx_info.code.split(&quot;@&quot;).join( fx_id ) + &quot;;\n&quot;;
+			if( fx_info.code )
+				color_code += fx_info.code.split(&quot;@&quot;).join( fx_id ) + &quot;;\n&quot;;
+			if( fx_info.uv_code )
+				uv_code += fx_info.uv_code.split(&quot;@&quot;).join( fx_id ) + &quot;;\n&quot;;
 		}
 		if(fx_info.uniforms)
 			for(var j in fx_info.uniforms)
@@ -383,18 +494,25 @@ CameraFX.prototype.onRenderFrame = function(current_camera, render_options, prev
 			functions_code += func + &quot;\n&quot;;
 		}
 
-		var fullcode = &quot;precision highp float;\n\
+		var fullcode = &quot;\n\
+			#extension GL_OES_standard_derivatives : enable\n\
+			precision highp float;\n\
 			#define color3 vec3\n\
 			#define color4 vec4\n\
 			uniform sampler2D u_texture;\n\
+			uniform sampler2D u_texture_depth;\n\
 			varying vec2 v_coord;\n\
 			uniform vec2 u_viewport;\n\
+			uniform vec2 u_iviewport;\n\
+			uniform float u_aspect;\n\
 			&quot; + uniforms_code + &quot;\n\
 			&quot; + functions_code + &quot;\n\
 			void main() {\n\
-				vec4 color = texture2D(u_texture, v_coord);\n\
+				vec2 uv = v_coord;\n\
+				&quot; + uv_code + &quot;\n\
+				vec4 color = texture2D(u_texture, uv);\n\
 				float temp = 0.0;\n\
-				&quot; + code + &quot;\n\
+				&quot; + color_code + &quot;\n\
 				gl_FragColor = color;\n\
 			}\n\
 			&quot;;
@@ -404,14 +522,14 @@ CameraFX.prototype.onRenderFrame = function(current_camera, render_options, prev
 
 	shader = this._last_shader;
 
-	//apply FX HERE
-	frame.toViewport(shader, uniforms);
-	return null;
+	if(shader.hasUniform(&quot;u_texture_depth&quot;))
+		depth_texture.bind(1);
+
+	color_texture.toViewport( shader, uniforms );
 }
 
 
-LS.registerComponent(CameraFX);
-window.CameraFX = CameraFX;
+LS.registerComponent( CameraFX );
     </pre>
 </div>
 

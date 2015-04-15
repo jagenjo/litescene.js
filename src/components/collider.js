@@ -1,15 +1,17 @@
 
 function Collider(o)
 {
+	this.enabled = true;
 	this.shape = 1;
 	this.mesh = null;
 	this.size = vec3.fromValues(0.5,0.5,0.5);
 	this.center = vec3.create();
+	this.use_mesh_bounding = false;
 	if(o)
 		this.configure(o);
 }
 
-Collider.icon = "mini-icon-teapot.png";
+Collider.icon = "mini-icon-collider.png";
 
 //vars
 Collider["@size"] = { type: "vec3", step: 0.01 };
@@ -17,19 +19,19 @@ Collider["@center"] = { type: "vec3", step: 0.01 };
 Collider["@mesh"] = { type: "mesh" };
 Collider["@shape"] = { widget:"combo", values: {"Box":1, "Sphere": 2, "Mesh":5 }};
 
-Collider.prototype.onAddedToNode = function(node)
+Collider.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(node, "collectPhysicInstances", this.onGetColliders, this);
+	LEvent.bind(scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
-Collider.prototype.onRemovedFromNode = function(node)
+Collider.prototype.onRemovedFromScene = function(node)
 {
-	LEvent.unbind(node, "collectPhysicInstances", this.onGetColliders, this);
+	LEvent.unbind(scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
 Collider.prototype.getMesh = function() {
 	if(typeof(this.mesh) === "string")
-		return ResourcesManager.meshes[this.mesh];
+		return LS.ResourcesManager.meshes[this.mesh];
 	return this.mesh;
 }
 
@@ -49,26 +51,51 @@ Collider.prototype.onResourceRenamed = function (old_name, new_name, resource)
 
 Collider.prototype.onGetColliders = function(e, colliders)
 {
+	if(!this.enabled)
+		return;
+
 	var PI = this._PI;
 	if(!PI)
-		this._PI = PI = new PhysicsInstance(this._root, this);
+		this._PI = PI = new LS.PhysicsInstance(this._root, this);
 
 	PI.matrix.set( this._root.transform._global_matrix );
 	PI.type = this.shape;
 
-	if(PI.type == PhysicsInstance.SPHERE)
-		BBox.setCenterHalfsize( PI.oobb, this.center, [this.size[0],this.size[0],this.size[0]]);
-	else
-		BBox.setCenterHalfsize( PI.oobb, this.center, this.size);
-	vec3.copy( PI.center, this.center );
-	if(PI.type == PhysicsInstance.MESH)
+	//get mesh
+	var mesh = null;
+	if(PI.type === LS.PhysicsInstance.MESH || this.use_mesh_bounding)
+		mesh = this.getMesh();
+
+	//spherical collider
+	if(PI.type === LS.PhysicsInstance.SPHERE)
 	{
-		var mesh = this.getMesh();
-		if(!mesh) return;
+		if(mesh)
+			BBox.copy( PI.oobb, mesh.bounding );
+		else
+			BBox.setCenterHalfsize( PI.oobb, this.center, [this.size[0],this.size[0],this.size[0]]);
+	}
+	else if(PI.type === LS.PhysicsInstance.BOX)
+	{
+		if(mesh)
+			BBox.copy( PI.oobb, mesh.bounding );
+		else
+			BBox.setCenterHalfsize( PI.oobb, this.center, this.size);
+	}
+
+	if(mesh)
+		vec3.copy( PI.center, BBox.getCenter( mesh.bounding ) );
+	else
+		vec3.copy( PI.center, this.center );
+
+	if(PI.type === LS.PhysicsInstance.MESH)
+	{
+		if(!mesh)
+			return;
 		PI.setMesh(mesh);
 	}
+
 	colliders.push(PI);
 }
 
 
-LS.registerComponent(Collider);
+LS.registerComponent( Collider );

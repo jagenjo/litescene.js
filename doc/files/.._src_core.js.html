@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -162,13 +164,14 @@
 var trace = window.console ? console.log.bind(console) : function() {};
 
 function toArray(v) { return Array.apply( [], v ); }
+
 Object.defineProperty(Object.prototype, &quot;merge&quot;, { 
     value: function(v) {
         for(var i in v)
 			this[i] = v[i];
 		return this;
     },
-    configurable: true,
+    configurable: false,
     writable: false,
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
@@ -181,22 +184,38 @@ Object.defineProperty(Object.prototype, &quot;merge&quot;, {
 */
 
 var LS = {
-	_last_uid: 1,
 
+	//vars used for uuid genereration
+	_last_uid: 1,
+	_uid_prefix: &quot;@&quot;, //WARNING: must be one character long
 
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
 	* @return {string} uuid
 	*/
-	generateUId: function () {
-		var str = (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + &quot;-&quot;; //user agent
+	generateUId: function ( prefix ) {
+		prefix = prefix || &quot;&quot;;
+		var str = this._uid_prefix + prefix + (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + &quot;-&quot;; //user agent
 		str += (GL.getTime()|0 % 0x1000000).toString(16) + &quot;-&quot;; //date
 		str += Math.floor((1 + Math.random()) * 0x1000000).toString(16) + &quot;-&quot;; //rand
 		str += (this._last_uid++).toString(16); //sequence
 		return str; 
 	},
-	catch_errors: false, //used to try/catch all possible callbacks 
+
+	/**
+	* validates Id string to ensure there is no forbidden characters
+	* @method validateId
+	* @param {string} id
+	* @return {boolean} 
+	*/
+	validateId: function(v)
+	{
+		var exp = /^[a-z\s0-9-_]+$/i; //letters digits and dashes
+		return v.match(exp);
+	},
+
+	catch_errors: false, //used to try/catch all possible callbacks (used mostly during development inside an editor)
 
 	/**
 	* Contains all the registered components
@@ -217,13 +236,26 @@ var LS = {
 		for(var i in arguments)
 		{
 			//register
-			this.Components[ getClassName(arguments[i]) ] = arguments[i]; 
+			this.Components[ LS.getClassName(arguments[i]) ] = arguments[i]; 
 			//default methods
-			if(!comp.prototype.serialize) comp.prototype.serialize = LS._serialize;
-			if(!comp.prototype.configure) comp.prototype.configure = LS._configure;
+			if(!comp.prototype.serialize) comp.prototype.serialize = LS._default_serialize;
+			if(!comp.prototype.configure) comp.prototype.configure = LS._default_configure;
 			//event
 			LEvent.trigger(LS,&quot;component_registered&quot;,arguments[i]); 
 		}
+	},
+
+	/**
+	* Tells you if one class is a registered component class
+	*
+	* @method isClassComponent
+	* @param {ComponentClass} comp component class to evaluate
+	* @return {boolean} true if the component class is registered
+	*/
+	isClassComponent: function( comp_class )
+	{
+		var name = this.getClassName( comp_class );
+		return !!this.Components[name];
 	},
 
 	/**
@@ -236,14 +268,14 @@ var LS = {
 	MaterialClasses: {},
 
 	/**
-	* Register a component so it is listed when searching for new components to attach
+	* Register a Material class so it is listed when searching for new materials to attach
 	*
 	* @method registerMaterialClass
 	* @param {ComponentClass} comp component class to register
 	*/
 	registerMaterialClass: function(material_class) { 
 		//register
-		this.MaterialClasses[ getClassName(material_class) ] = material_class;
+		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
 
 		//add extra material methods
 		LS.extendClass( material_class, Material );
@@ -253,178 +285,32 @@ var LS = {
 		material_class.resource_type = &quot;Material&quot;;
 	},	
 
-	_configure: function(o) { LS.cloneObject(o, this); },
-	_serialize: function() { return LS.cloneObject(this); },
-
-	/**
-	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
-	*
-	* @method request
-	* @param {Object} request object with the fields for the request: 
-    *			dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}
-	* @return {XMLHttpRequest} the XMLHttpRequest of the petition
-	*/
-	request: function(request)
-	{
-		if(typeof(request) === &quot;string&quot;)
-			throw(&quot;LS.request expects object, not string. Use LS.requestText or LS.requestJSON&quot;);
-		var dataType = request.dataType || &quot;text&quot;;
-		if(dataType == &quot;json&quot;) //parse it locally
-			dataType = &quot;text&quot;;
-		else if(dataType == &quot;xml&quot;) //parse it locally
-			dataType = &quot;text&quot;;
-		else if (dataType == &quot;binary&quot;)
+	//default methods inserted in components that doesnt have a configure or serialize method
+	_default_configure: function(o) { 
+		if(!o)
+			return;
+		if(o.uid) //special case, uid must never be enumerable to avoid showing it in the editor
 		{
-			//request.mimeType = &quot;text/plain; charset=x-user-defined&quot;;
-			dataType = &quot;arraybuffer&quot;;
-			request.mimeType = &quot;application/octet-stream&quot;;
-		}	
-		else if(dataType == &quot;image&quot;) //special case: images are loaded using regular images request
-		{
-			var img = new Image();
-			img.onload = function() {
-				if(request.success)
-					request.success.call(this);
-			};
-			img.onerror = request.error;
-			img.src = request.url;
-			return img;
-		}
-
-		//regular case, use AJAX call
-        var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, request.url, true);
-		xhr.withCredentials = true;
-        if(dataType)
-            xhr.responseType = dataType;
-        if (request.mimeType)
-            xhr.overrideMimeType( request.mimeType );
-        xhr.onload = function(load)
-		{
-			var response = this.response;
-			if(this.status != 200)
-			{
-				var err = &quot;Error &quot; + this.status;
-				if(request.error)
-					request.error(err);
-				return;
-			}
-
-			if(request.dataType == &quot;json&quot;) //chrome doesnt support json format
-			{
-				try
-				{
-					response = JSON.parse(response);
-				}
-				catch (err)
-				{
-					if(request.error)
-						request.error(err);
-				}
-			}
-			else if(request.dataType == &quot;xml&quot;)
-			{
-				try
-				{
-					var xmlparser = new DOMParser();
-					response = xmlparser.parseFromString(response,&quot;text/xml&quot;);
-				}
-				catch (err)
-				{
-					if(request.error)
-						request.error(err);
-				}
-			}
-
-			if(LS.catch_errors)
-			{
-				try
-				{
-					if(request.success)
-						request.success.call(this, response);
-					LEvent.trigger(xhr,&quot;done&quot;,response);
-				}
-				catch (err)
-				{
-					LEvent.trigger(LS,&quot;code_error&quot;,err);
-				}
-			}
+			if(!Object.hasOwnProperty(this, &quot;uid&quot;))
+				Object.defineProperty(this, &quot;uid&quot;, { value: o.uid, enumerable: false });
 			else
-			{
-				if(request.success)
-					request.success.call(this, response);
-				LEvent.trigger(xhr,&quot;done&quot;,response);
-			}
-		};
-        xhr.onerror = function(err) {
-			if(request.error)
-				request.error(err);
-			LEvent.trigger(this,&quot;fail&quot;, err);
+				this.uid = o.uid;
 		}
-        xhr.send(request.data);
-
-		return xhr;
-
-		//return $.ajax(request);
+		LS.cloneObject(o, this); 
+	},
+	_default_serialize: function() { 
+		var o = LS.cloneObject(this);
+		if(this.uid) //special case, not enumerable
+			o.uid = this.uid;
+		return o;
 	},
 
 	/**
-	* retrieve a file from url (you can bind LEvents to done and fail)
-	* @method requestFile
-	* @param {string} url
-	* @param {object} params form params
+	* Is a wrapper for setTimeout that throws an LS &quot;code_error&quot; in case something goes wrong (needed to catch the error from the system)
+	* @method setTimeout
 	* @param {function} callback
-	*/
-	requestFile: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == &quot;function&quot;)
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, data:data, success: callback, error: callback_error });
-	},
-
-	/**
-	* retrieve a JSON file from url (you can bind LEvents to done and fail)
-	* @method getJSON
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
-	*/
-	requestJSON: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == &quot;function&quot;)
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, data:data, dataType:&quot;json&quot;, success: callback, error: callback_error });
-	},
-
-	/**
-	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method getText
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
-	*/
-	requestText: function(url, data, callback, callback_error)
-	{
-		if(typeof(data) == &quot;function&quot;)
-		{
-			data = null;
-			callback = data;
-		}
-		return LS.request({url:url, dataType:&quot;txt&quot;, success: callback, success: callback, error: callback_error});
-	},
-
-	/**
-	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method getText
-	* @param {string} url
-	* @param {object} params form params
-	* @param {function} callback
+	* @param {number} time in ms
+	* @param {number} timer_id
 	*/
 	setTimeout: function(callback, time)
 	{
@@ -441,6 +327,13 @@ var LS = {
 		}
 	},
 
+	/**
+	* Is a wrapper for setInterval that throws an LS &quot;code_error&quot; in case something goes wrong (needed to catch the error from the system)
+	* @method setInterval
+	* @param {function} callback
+	* @param {number} time in ms
+	* @param {number} timer_id
+	*/
 	setInterval: function(callback, time)
 	{
 		if(!LS.catch_errors)
@@ -454,199 +347,213 @@ var LS = {
 		{
 			LEvent.trigger(LS,&quot;code_error&quot;,err);
 		}
-	}
-};
+	},
 
-
-
-/**
-* copy the properties (methods and attributes) of origin class into target class
-* @method extendClass
-* @param {Class} target
-* @param {Class} origin
-*/
-
-LS.extendClass = function extendClass( target, origin ) {
-	for(var i in origin) //copy class properties
-	{
-		if(target.hasOwnProperty(i))
-			continue;
-		target[i] = origin[i];
-	}
-
-	if(origin.prototype) //copy prototype properties
-		for(var i in origin.prototype) //only enumerables
+	/**
+	* copy the properties (methods and properties) of origin class into target class
+	* @method extendClass
+	* @param {Class} target
+	* @param {Class} origin
+	*/
+	extendClass: function( target, origin ) {
+		for(var i in origin) //copy class properties
 		{
-			if(!origin.prototype.hasOwnProperty(i)) 
+			if(target.hasOwnProperty(i))
 				continue;
-
-			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
-				continue;
-
-			//copy getters 
-			if(origin.prototype.__lookupGetter__(i))
-				target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
-			else 
-				target.prototype[i] = origin.prototype[i];
-
-			//and setters
-			if(origin.prototype.__lookupSetter__(i))
-				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+			target[i] = origin[i];
 		}
-}
 
-/**
-* Clones an object (no matter where the object came from)
-* - It skip attributes starting with &quot;_&quot; or &quot;jQuery&quot; or functions
-* - to the rest it applies JSON.parse( JSON.stringify ( obj ) )
-* - use it carefully
-* @method cloneObject
-* @param {Object} object the object to clone
-* @param {Object} target=null optional, the destination object
-* @return {Object} returns the cloned object
-*/
-function cloneObject(object, target)
-{
-	var o = target || {};
-	for(var i in object)
+		if(origin.prototype) //copy prototype properties
+			for(var i in origin.prototype) //only enumerables
+			{
+				if(!origin.prototype.hasOwnProperty(i)) 
+					continue;
+
+				if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
+					continue;
+
+				//copy getters 
+				if(origin.prototype.__lookupGetter__(i))
+					target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
+				else 
+					target.prototype[i] = origin.prototype[i];
+
+				//and setters
+				if(origin.prototype.__lookupSetter__(i))
+					target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+			}
+	},
+
+	/**
+	* Clones an object (no matter where the object came from)
+	* - It skip attributes starting with &quot;_&quot; or &quot;jQuery&quot; or functions
+	* - to the rest it applies JSON.parse( JSON.stringify ( obj ) )
+	* - use it carefully
+	* @method cloneObject
+	* @param {Object} object the object to clone
+	* @param {Object} target=null optional, the destination object
+	* @return {Object} returns the cloned object
+	*/
+	cloneObject: function(object, target)
 	{
-		if(i[0] == &quot;_&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private)
-			continue;
-
-		var v = object[i];
-		if(v == null)
-			o[i] = null;			
-		else if ( isFunction(v) )
-			continue;
-		else if (typeof(v) == &quot;number&quot; || typeof(v) == &quot;string&quot;)
-			o[i] = v;
-		else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
-			o[i] = Array.apply( [], v ); //clone
-		else if ( isArray(v) )
+		var o = target || {};
+		for(var i in object)
 		{
-			if( o[i] &amp;&amp; o[i].constructor == Float32Array ) //reuse old container
-				o[i].set(v);
+			if(i[0] == &quot;_&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private)
+				continue;
+
+			var v = object[i];
+			if(v == null)
+				o[i] = null;			
+			else if ( isFunction(v) )
+				continue;
+			else if (typeof(v) == &quot;number&quot; || typeof(v) == &quot;string&quot;)
+				o[i] = v;
+			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
+				o[i] = Array.apply( [], v ); //clone
+			else if ( isArray(v) )
+			{
+				if( o[i] &amp;&amp; o[i].constructor == Float32Array ) //reuse old container
+					o[i].set(v);
+				else
+					o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
+			}
+			else //slow but safe
+			{
+				try
+				{
+					//prevent circular recursions
+					o[i] = JSON.parse( JSON.stringify(v) );
+				}
+				catch (err)
+				{
+					console.error(err);
+				}
+			}
+		}
+		return o;
+	},
+
+	/**
+	* Returns an object class name (uses the constructor toString)
+	* @method getObjectClassName
+	* @param {Object} the object to see the class name
+	* @return {String} returns the string with the name
+	*/
+	getObjectClassName: function(obj) {
+		if (!obj)
+			return;
+
+		if(obj.constructor.name)
+			return obj.constructor.name;
+
+		var arr = obj.constructor.toString().match(
+			/function\s*(\w+)/);
+
+		if (arr &amp;&amp; arr.length == 2) {
+			return arr[1];
+		}
+	},
+
+	/**
+	* Returns an string with the class name
+	* @method getClassName
+	* @param {Object} class object
+	* @return {String} returns the string with the name
+	*/
+	getClassName: function(obj) {
+		if (!obj)
+			return;
+
+		//from function info, but not standard
+		if(obj.name)
+			return obj.name;
+
+		//from sourcecode
+		if(obj.toString) {
+			var arr = obj.toString().match(
+				/function\s*(\w+)/);
+			if (arr &amp;&amp; arr.length == 2) {
+				return arr[1];
+			}
+		}
+	},
+
+	/**
+	* Returns the attributes of one object and the type
+	* @method getObjectAttributes
+	* @param {Object} object
+	* @return {Object} returns object with attribute name and its type
+	*/
+	getObjectAttributes: function(object)
+	{
+		if(object.getAttributes)
+			return object.getAttributes();
+		var class_object = object.constructor;
+		if(class_object.attributes)
+			return class_object.attributes;
+
+		var o = {};
+		for(var i in object)
+		{
+			//ignore some
+			if(i[0] == &quot;_&quot; || i[0] == &quot;@&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private)
+				continue;
+
+			if(class_object != Object)
+			{
+				var hint = class_object[&quot;@&quot;+i];
+				if(hint &amp;&amp; hint.type)
+				{
+					o[i] = hint.type;
+					continue;
+				}
+			}
+
+			var v = object[i];
+			if(v == null)
+				o[i] = null;
+			else if ( isFunction(v) )
+				continue;
+			else if (  v.constructor === Boolean )
+				o[i] = &quot;boolean&quot;;
+			else if (  v.constructor === Number )
+				o[i] = &quot;number&quot;;
+			else if ( v.constructor === String )
+				o[i] = &quot;string&quot;;
+			else if ( v.buffer &amp;&amp; v.buffer.constructor === ArrayBuffer ) //typed array
+			{
+				if(v.length == 2)
+					o[i] = &quot;vec2&quot;;
+				else if(v.length == 3)
+					o[i] = &quot;vec3&quot;;
+				else if(v.length == 4)
+					o[i] = &quot;vec4&quot;;
+				else if(v.length == 9)
+					o[i] = &quot;mat3&quot;;
+				else if(v.length == 16)
+					o[i] = &quot;mat4&quot;;
+				else
+					o[i] = 0;
+			}
 			else
-				o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
+				o[i] = 0;
 		}
-		else //slow but safe
-		{
-			try
-			{
-				//prevent circular recursions
-				o[i] = JSON.parse( JSON.stringify(v) );
-			}
-			catch (err)
-			{
-				console.error(err);
-			}
-		}
-	}
-	return o;
-}
-LS.cloneObject = cloneObject;
+		return o;
+	},
 
-/**
-* Returns an object class name (uses the constructor toString)
-* @method getObjectClassName
-* @param {Object} the object to see the class name
-* @return {String} returns the string with the name
-*/
-function getObjectClassName(obj) {
-    if (obj &amp;&amp; obj.constructor &amp;&amp; obj.constructor.toString) {
-        var arr = obj.constructor.toString().match(
-            /function\s*(\w+)/);
-
-        if (arr &amp;&amp; arr.length == 2) {
-            return arr[1];
-        }
-    }
-    return undefined;
-}
-LS.getObjectClassName = getObjectClassName;
-
-
-/**
-* Returns an string with the class name
-* @method getClassName
-* @param {Object} class object
-* @return {String} returns the string with the name
-*/
-function getClassName(obj) {
-    if (obj &amp;&amp; obj.toString) {
-        var arr = obj.toString().match(
-            /function\s*(\w+)/);
-
-        if (arr &amp;&amp; arr.length == 2) {
-            return arr[1];
-        }
-    }
-    return undefined;
-}
-LS.getClassName = getClassName;
-
-/**
-* Returns the attributes of one object and the type
-* @method getObjectAttributes
-* @param {Object} object
-* @return {Object} returns object with attribute name and its type
-*/
-
-function getObjectAttributes(object)
-{
-	if(object.getAttributes)
-		return object.getAttributes();
-	var class_object = object.constructor;
-	if(class_object.attributes)
-		return class_object.attributes;
-
-	var o = {};
-	for(var i in object)
+	setObjectAttribute: function(obj, name, value)
 	{
-		//ignore some
-		if(i[0] == &quot;_&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private)
-			continue;
+		if(obj.setAttribute)
+			return obj.setAttribute(name, value);
 
-		if(class_object != Object)
-		{
-			var hint = class_object[&quot;@&quot;+i];
-			if(hint &amp;&amp; hint.type)
-			{
-				o[i] = hint.type;
-				continue;
-			}
-		}
-
-		var v = object[i];
-		if(v == null)
-			o[i] = null;
-		else if ( isFunction(v) )
-			continue;
-		else if (  v.constructor === Number )
-			o[i] = &quot;number&quot;;
-		else if ( v.constructor === String )
-			o[i] = &quot;string&quot;;
-		else if ( v.buffer &amp;&amp; v.buffer.constructor === ArrayBuffer ) //typed array
-		{
-			if(v.length == 2)
-				o[i] = &quot;vec2&quot;;
-			else if(v.length == 3)
-				o[i] = &quot;vec3&quot;;
-			else if(v.length == 4)
-				o[i] = &quot;vec4&quot;;
-			else if(v.length == 9)
-				o[i] = &quot;mat3&quot;;
-			else if(v.length == 16)
-				o[i] = &quot;mat4&quot;;
-			else
-				o[i] = &quot;*&quot;;
-		}
+		var prev = obj[ name ];
+		if(prev &amp;&amp; prev.set)
+			prev.set( value ); //for typed-arrays
 		else
-			o[i] = &quot;*&quot;;
+			obj[ name ] = value; //clone�?
 	}
-	return o;
 }
-LS.getObjectAttributes = getObjectAttributes;
 
 /**
 * Samples a curve and returns the resulting value 
@@ -706,11 +613,11 @@ LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
 	return result;
 }
 
-//work in progress to create a new kind of property called parameter which comes with extra info
+//work in progress to create a new kind of property called attribute which comes with extra info
 //valid options are { type: &quot;number&quot;|&quot;string&quot;|&quot;vec2&quot;|&quot;vec3&quot;|&quot;color&quot;|&quot;Texture&quot;...  , min, max, step }
-if( !Object.prototype.hasOwnProperty(&quot;defineParameter&quot;) )
+if( !Object.prototype.hasOwnProperty(&quot;defineAttribute&quot;) )
 {
-	Object.defineProperty( Object.prototype, &quot;defineParameter&quot;, {
+	Object.defineProperty( Object.prototype, &quot;defineAttribute&quot;, {
 		value: function( name, value, options ) {
 			if(options &amp;&amp; typeof(options) == &quot;string&quot;)
 				options = { type: options };
@@ -729,7 +636,7 @@ if( !Object.prototype.hasOwnProperty(&quot;defineParameter&quot;) )
 		enumerable: false
 	});
 
-	Object.defineProperty( Object.prototype, &quot;getParameter&quot;, {
+	Object.defineProperty( Object.prototype, &quot;getAttribute&quot;, {
 		value: function( name ) {
 			var v = &quot;@&quot; + name;
 			if(this.hasOwnProperty(v))
@@ -741,6 +648,18 @@ if( !Object.prototype.hasOwnProperty(&quot;defineParameter&quot;) )
 		enumerable: false
 	});
 }
+
+//used for hashing keys:TODO move from here somewhere else
+String.prototype.hashCode = function(){
+    var hash = 0, i, c, l;
+    if (this.length == 0) return hash;
+    for (i = 0, l = this.length; i &lt; l; ++i) {
+        c  = this.charCodeAt(i);
+        hash  = ((hash&lt;&lt;5)-hash)+c;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
 
 
     </pre>

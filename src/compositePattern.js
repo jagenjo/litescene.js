@@ -85,8 +85,6 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	{
 		//added to scene tree
 		LEvent.trigger(tree, "treeItemAdded", node);
-		if(node._onAddedToScene)
-			node._onAddedToScene( tree );
 		inner_recursive(node);
 	}
 
@@ -101,8 +99,6 @@ CompositePattern.prototype.addChild = function(node, index, options)
 			{
 				//added to scene tree
 				LEvent.trigger( tree, "treeItemAdded", child );
-				if(child._onAddedToScene)
-					child._onAddedToScene( tree );
 				child._in_tree = tree;
 			}
 			inner_recursive( child );
@@ -137,8 +133,6 @@ CompositePattern.prototype.removeChild = function(node, options)
 	if(node._in_tree)
 	{
 		LEvent.trigger(node._in_tree, "treeItemRemoved", node);
-		if(node._onRemovedFromScene)
-			node._onRemovedFromScene( node._in_tree );
 		//propagate to childs
 		inner_recursive(node);
 	}
@@ -155,8 +149,6 @@ CompositePattern.prototype.removeChild = function(node, options)
 			if(child._in_tree)
 			{
 				LEvent.trigger( child._in_tree, "treeItemRemoved", child );
-				if(child._onRemovedFromScene)
-					child._onRemovedFromScene( child._in_tree );
 				child._in_tree = null;
 			}
 			inner_recursive( child );

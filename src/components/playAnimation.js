@@ -35,7 +35,7 @@ PlayAnimation.prototype.configure = function(o)
 }
 
 
-PlayAnimation.icon = "mini-icon-reflector.png";
+PlayAnimation.icon = "mini-icon-clock.png";
 
 PlayAnimation.prototype.onAddedToNode = function(node)
 {

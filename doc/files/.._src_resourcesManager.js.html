@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -364,6 +366,8 @@ var ResourcesManager = {
 			if(this.proxy) //proxy external files
 				full_url = this.proxy + url.substr(7);
 		}
+		else if(url.substr(0,5) == &quot;blob:&quot;)
+			return url; //special case for local urls like URL.createObjectURL
 		else
 		{
 			if(options &amp;&amp; options.local_repository)
@@ -381,6 +385,7 @@ var ResourcesManager = {
 
 	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
+	* Do not use for regular files, instead use the LS.Network methods
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
@@ -421,9 +426,11 @@ var ResourcesManager = {
 		//otherwise we have to load it
 		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
+
+		LEvent.trigger( LS.ResourcesManager, &quot;resource_loading&quot;, url );
 		//send an event if we are starting to load (used for loading icons)
 		if(this.num_resources_being_loaded == 0)
-			LEvent.trigger(ResourcesManager,&quot;start_loading_resources&quot;,url);
+			LEvent.trigger( LS.ResourcesManager,&quot;start_loading_resources&quot;, url );
 		this.num_resources_being_loaded++;
 
 		var full_url = this.getFullURL(url);
@@ -437,9 +444,10 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
+				LS.ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
-			error: function(err) { 	ResourcesManager._resourceLoadedError(url,err); }
+			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
+			progress: function(e) { LEvent.trigger( LS.ResourcesManager, &quot;resource_loading_progress&quot;, { url: url, event: e } ); }
 		};
 
 		//in case we need to force a response format 
@@ -448,7 +456,7 @@ var ResourcesManager = {
 			settings.dataType = file_format;
 
 		//send the REQUEST
-		LS.request(settings); //ajax call
+		LS.Network.request(settings); //ajax call
 		return false;
 	},
 
@@ -554,9 +562,11 @@ var ResourcesManager = {
 	* @param {String} filename 
 	* @param {Object} resource 
 	*/
-
 	registerResource: function(filename,resource)
 	{
+		if(this.resources[filename] == resource)
+			return; //already registered
+
 		//not sure about this
 		resource.filename = filename;
 
@@ -577,8 +587,33 @@ var ResourcesManager = {
 
 		//send message to inform new resource is available
 		LEvent.trigger(this,&quot;resource_registered&quot;, resource);
-		Scene.refresh(); //render scene
+		LS.GlobalScene.refresh(); //render scene
 	},	
+
+	/**
+	* removes the resources from all the containers
+	*
+	* @method unregisterResource
+	* @param {String} filename 
+	* @return {boolean} true is removed, false if not found
+	*/
+	unregisterResource: function(filename)
+	{
+		if(!this.resources[filename])
+			return false; //not found
+
+		delete this.resources[filename];
+
+		//ugly: too hardcoded
+		if( this.meshes[filename] )
+			delete this.meshes[ filename ];
+		if( this.textures[filename] )
+			delete this.textures[ filename ];
+
+		LEvent.trigger(this,&quot;resource_unregistered&quot;, resource);
+		LS.GlobalScene.refresh(); //render scene
+		return true;
+	},
 
 	/**
 	* Returns an object with a representation of the resource internal data
@@ -639,19 +674,48 @@ var ResourcesManager = {
 			data = data.buffer; //store the data in the arraybuffer
 
 		return {data:data, encoding: encoding, extension: extension};
-	},	
+	},
+		
+	/**
+	* Used to load files and get them as File (or Blob)
+	* @method getURLasFile
+	* @param {String} filename 
+	* @return {File} the file
+	*/
+	getURLasFile: function( url, on_complete )
+	{
+		var oReq = new XMLHttpRequest();
+		oReq.open(&quot;GET&quot;, this.getFullURL(url), true);
+		oReq.responseType = &quot;blob&quot;;
+		oReq.onload = function(oEvent) {
+		  var blob = oReq.response;
+		  if(on_complete)
+			  on_complete(blob, url);
+		};
+		oReq.send();
+	},
 
-	renameResource: function(old, newname)	
+	/**
+	* Changes the name of a resource and sends an event to all components to change it accordingly
+	* @method renameResource
+	* @param {String} old 
+	* @param {String} newname
+	* @param {Boolean} [skip_event=false] ignore sending an event to all components to rename the resource
+	* @return {boolean} if the file was found
+	*/
+	renameResource: function(old, newname, skip_event)	
 	{
 		var res = this.resources[ old ];
-		if(!res) return;
+		if(!res)
+			return false;
 
 		res.filename = newname;
 		res.fullpath = newname;
 		this.resources[newname] = res;
 		delete this.resources[ old ];
 
-		this.sendResourceRenamedEvent(old, newname, res);
+		if(!skip_event)
+			this.sendResourceRenamedEvent(old, newname, res);
 
 		//ugly: too hardcoded
 		if( this.meshes[old] ) {
@@ -662,6 +726,7 @@ var ResourcesManager = {
 			delete this.textures[ old ];
 			this.textures[ newname ] = res;
 		}
+		return true;
 	},
 
 	/**
@@ -706,14 +771,15 @@ var ResourcesManager = {
 					}
 				*/
 
-				ResourcesManager.registerResource(i,mesh);
+				LS.ResourcesManager.registerResource(i,mesh);
 			}
 		}
 
+		//Build the scene tree
 		var scene = new LS.SceneTree();
 		scene.configure(scene_data);
 
-		//load resources
+		//load from the internet associated resources 
 		scene.loadResources();
 
 		return scene;
@@ -755,10 +821,11 @@ var ResourcesManager = {
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name
 	sendResourceRenamedEvent: function(old_name, new_name, resource)
 	{
-		for(var i = 0; i &lt; Scene._nodes.length; i++)
+		var scene = LS.GlobalScene;
+		for(var i = 0; i &lt; scene._nodes.length; i++)
 		{
 			//nodes
-			var node = Scene._nodes[i];
+			var node = scene._nodes[i];
 
 			//components
 			for(var j = 0; j &lt; node._components.length; j++)
@@ -781,21 +848,22 @@ var ResourcesManager = {
 	_resourceLoadedSuccess: function(url,res)
 	{
 		if( LS.ResourcesManager.debug )
-			console.log(&quot;RES: &quot; + url + &quot; ---&gt; &quot; + ResourcesManager.num_resources_being_loaded);
+			console.log(&quot;RES: &quot; + url + &quot; ---&gt; &quot; + LS.ResourcesManager.num_resources_being_loaded);
 
-		for(var i in ResourcesManager.resources_being_loaded[url])
+		for(var i in LS.ResourcesManager.resources_being_loaded[url])
 		{
-			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
-				ResourcesManager.resources_being_loaded[url][i].callback(res);
+			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
+				LS.ResourcesManager.resources_being_loaded[url][i].callback(res);
 		}
 		//two pases, one for launching, one for removing
-		if(ResourcesManager.resources_being_loaded[url])
+		if( LS.ResourcesManager.resources_being_loaded[url] )
 		{
-			delete ResourcesManager.resources_being_loaded[url];
-			ResourcesManager.num_resources_being_loaded--;
-			if( ResourcesManager.num_resources_being_loaded == 0)
+			delete LS.ResourcesManager.resources_being_loaded[url];
+			LS.ResourcesManager.num_resources_being_loaded--;
+			LEvent.trigger( LS.ResourcesManager, &quot;resource_loaded&quot;, url );
+			if( LS.ResourcesManager.num_resources_being_loaded == 0)
 			{
-				LEvent.trigger( ResourcesManager, &quot;end_loading_resources&quot;, true);
+				LEvent.trigger( LS.ResourcesManager, &quot;end_loading_resources&quot;, true);
 			}
 		}
 	},
@@ -803,12 +871,12 @@ var ResourcesManager = {
 	_resourceLoadedError: function(url, error)
 	{
 		console.log(&quot;Error loading &quot; + url);
-		delete ResourcesManager.resources_being_loaded[url];
-		ResourcesManager.resources_not_found[url] = true;
-		LEvent.trigger( ResourcesManager, &quot;resource_not_found&quot;, url);
-		ResourcesManager.num_resources_being_loaded--;
-		if( ResourcesManager.num_resources_being_loaded == 0 )
-			LEvent.trigger( ResourcesManager, &quot;end_loading_resources&quot;, false);
+		delete LS.ResourcesManager.resources_being_loaded[url];
+		LS.ResourcesManager.resources_not_found[url] = true;
+		LEvent.trigger( LS.ResourcesManager, &quot;resource_not_found&quot;, url);
+		LS.ResourcesManager.num_resources_being_loaded--;
+		if( LS.ResourcesManager.num_resources_being_loaded == 0 )
+			LEvent.trigger( LS.ResourcesManager, &quot;end_loading_resources&quot;, false);
 			//$(ResourcesManager).trigger(&quot;end_loading_resources&quot;);
 	},
 
@@ -838,7 +906,7 @@ var ResourcesManager = {
 
 			ResourcesManager._required_files[url] = true;
 
-			LS.request({
+			LS.Network.request({
 				url: url,
 				success: function(response)
 				{
@@ -926,9 +994,12 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 //Takes one image (or canvas) as input and creates a Texture
 LS.ResourcesManager.processImage = function(filename, img, options)
 {
-	if(img.width == (img.height / 6)) //cubemap
+	if(img.width == (img.height / 6) || filename.indexOf(&quot;CUBECROSS&quot;) != -1) //cubemap
 	{
-		var texture = Texture.cubemapFromImage(img, { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR });
+		var cubemap_options = { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR };
+		if( filename.indexOf(&quot;CUBECROSSL&quot;) != -1 )
+			cubemap_options.is_cross = 1;
+		var texture = Texture.cubemapFromImage(img, cubemap_options);
 		texture.img = img;
 		console.log(&quot;Cubemap created&quot;);
 	}
@@ -1041,17 +1112,24 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 		return null;
 	}
 
-	//resources
+	//resources (meshes, textures...)
+	for(var i in scene_data.meshes)
+	{
+		var mesh = scene_data.meshes[i];
+		LS.ResourcesManager.processResource(i,mesh);
+	}
+
+	//used for anims mostly
 	for(var i in scene_data.resources)
 	{
-		var resource = scene_data.resources[i];
-		LS.ResourcesManager.processResource(i,resource);
+		var res = scene_data.resources[i];
+		LS.ResourcesManager.processResource(i,res);
 	}
 
 	var node = new LS.SceneNode();
 	node.configure(scene_data.root);
 
-	Scene.root.addChild(node);
+	LS.GlobalScene.root.addChild(node);
 	return node;
 }
 
@@ -1062,7 +1140,7 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;dae&quot;, LS.ResourcesMa
 
 
 
-Mesh.fromBinary = function( data_array )
+GL.Mesh.fromBinary = function( data_array )
 {
 	var o = null;
 	if(data_array.constructor == ArrayBuffer )
@@ -1094,7 +1172,7 @@ Mesh.fromBinary = function( data_array )
 	return mesh;
 }
 
-Mesh.prototype.toBinary = function()
+GL.Mesh.prototype.toBinary = function()
 {
 	if(!this.info)
 		this.info = {};

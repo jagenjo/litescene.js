@@ -17,7 +17,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!compos)
 			return result;
 
-		for(var i in compos)
+		for(var i = 0; i < compos.length; ++i)
 		{
 			var name = LS.getClassName( compos[i].constructor );
 			result.push( [name, name] );
@@ -31,7 +31,8 @@ if(typeof(LiteGraph) != "undefined")
 		var scene = this.graph.getScene();
 
 		//read inputs
-		for(var i in this.inputs)
+		if(this.inputs)
+		for(var i = 0; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -46,7 +47,8 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i in this.outputs)
+		if(this.outputs)
+		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
@@ -112,7 +114,8 @@ if(typeof(LiteGraph) != "undefined")
 		var node = this.getNode();
 	
 		//read inputs
-		for(var i in this.inputs)
+		if(this.inputs)
+		for(var i = 0; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -127,7 +130,8 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i in this.outputs)
+		if(this.outputs)
+		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
@@ -154,7 +158,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(!compos)
 			return result;
 
-		for(var i in compos)
+		for(var i = 0; i < compos.length; ++i)
 		{
 			var name = LS.getClassName( compos[i].constructor );
 			result.push( [name, name] );
@@ -236,7 +240,8 @@ if(typeof(LiteGraph) != "undefined")
 			node = this.graph._scenenode;
 
 		//read inputs
-		for(var i in this.inputs)
+		if(this.inputs)
+		for(var i = 0; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -251,7 +256,8 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i in this.outputs)
+		if(this.outputs)
+		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
@@ -300,7 +306,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 
 		//read inputs
-		for(var i in this.inputs)
+		for(var i = 0; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -333,7 +339,8 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i in this.outputs)
+		if(this.outputs)
+		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)
@@ -569,7 +576,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 
 		//read inputs
-		for(var i = 0; this.inputs.length; ++i)
+		for(var i = 0; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -586,7 +593,7 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		//write outputs
-		for(var i = 0; this.outputs.length; ++i)
+		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
 			if(!output.links || !output.links.length)

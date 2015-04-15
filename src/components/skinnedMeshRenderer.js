@@ -31,7 +31,7 @@ function SkinnedMeshRenderer(o)
 
 SkinnedMeshRenderer.MAX_BONES = 64;
 SkinnedMeshRenderer.gpu_skinning_supported = true;
-SkinnedMeshRenderer.icon = "mini-icon-teapot.png";
+SkinnedMeshRenderer.icon = "mini-icon-stickman.png";
 
 //vars
 SkinnedMeshRenderer["@mesh"] = { widget: "mesh" };

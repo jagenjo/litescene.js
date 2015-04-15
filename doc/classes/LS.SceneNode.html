@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -162,7 +164,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_scene.js.html#l739"><code>..&#x2F;src&#x2F;scene.js:739</code></a>
+            Defined in: <a href="../files/.._src_scene.js.html#l845"><code>..&#x2F;src&#x2F;scene.js:845</code></a>
         </div>
     
 
@@ -224,7 +226,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l739"><code>..&#x2F;src&#x2F;scene.js:739</code></a>
+        <a href="../files/.._src_scene.js.html#l845"><code>..&#x2F;src&#x2F;scene.js:845</code></a>
         
         </p>
 
@@ -280,6 +282,8 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
         
         
+            <li class="api-class-tab properties"><a href="#properties">Properties</a></li>
+        
         
         
     </ul>
@@ -326,6 +330,21 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
                 </div>
             
 
+            
+                <div class="index-section properties">
+                    <h3>Properties</h3>
+
+                    <ul class="index-list properties">
+                        
+                            <li class="index-item property">
+                                <a href="#property_className">className</a>
+
+                                
+                                
+                            </li>
+                        
+                    </ul>
+                </div>
             
 
             
@@ -374,7 +393,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l965"><code>..&#x2F;src&#x2F;scene.js:965</code></a>
+        <a href="../files/.._src_scene.js.html#l1131"><code>..&#x2F;src&#x2F;scene.js:1131</code></a>
         
         </p>
 
@@ -453,7 +472,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l998"><code>..&#x2F;src&#x2F;scene.js:998</code></a>
+        <a href="../files/.._src_scene.js.html#l1186"><code>..&#x2F;src&#x2F;scene.js:1186</code></a>
         
         </p>
 
@@ -536,7 +555,7 @@ Is the base class for all objects in the scene as meshes, lights, cameras, and s
             
         
         
-        <a href="../files/.._src_scene.js.html#l1086"><code>..&#x2F;src&#x2F;scene.js:1086</code></a>
+        <a href="../files/.._src_scene.js.html#l1264"><code>..&#x2F;src&#x2F;scene.js:1264</code></a>
         
         </p>
 
@@ -620,7 +639,7 @@ it contains info about the components too</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l787"><code>..&#x2F;src&#x2F;scene.js:787</code></a>
+        <a href="../files/.._src_scene.js.html#l894"><code>..&#x2F;src&#x2F;scene.js:894</code></a>
         
         </p>
 
@@ -685,6 +704,56 @@ remember that two nodes can&#39;t have the same id</p>
             </div>
         
 
+        
+            <div id="properties" class="api-class-tabpanel">
+                <h2 class="off-left">Properties</h2>
+
+                
+                    <div id="property_className" class="property item">
+    <h3 class="name"><code>className</code></h3>
+    <span class="type">String</span>
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l954"><code>..&#x2F;src&#x2F;scene.js:954</code></a>
+        
+        </p>
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+                
+            </div>
         
 
         

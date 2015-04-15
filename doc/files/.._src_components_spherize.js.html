@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -167,20 +169,21 @@
 
 function Spherize(o)
 {
-	if(!this._uid)
-		this._uid = LS.generateUId();
-
+	this._num_id = LS._last_uid++;
 	this.radius = 10;
 	this.center = vec3.create();
 	this.factor = 0.5;
 
-	this._uniforms_code = Spherize._uniforms_code.replaceAll({&quot;@&quot;: this._uid});
-	this._code = Spherize._code.replaceAll({&quot;@&quot;: this._uid});
+	this._uniforms_code = Spherize._uniforms_code.replaceAll({&quot;@&quot;: this._num_id});
+	this._code = Spherize._code.replaceAll({&quot;@&quot;: this._num_id});
+	
+	if(o)
+		this.configure(o);
 }
 
 Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
 
-Spherize.icon = &quot;mini-icon-rotator.png&quot;;
+Spherize.icon = &quot;mini-icon-circle.png&quot;;
 
 Spherize.prototype.onAddedToNode = function(node)
 {
@@ -195,7 +198,7 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;&quot;;
-Spherize._code = &quot;vec3 vn@ = normalize(vertex-u_spherize_center@); vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));&quot;;
+Spherize._code = &quot;vec3 vn@ = normalize(vertex4.xyz-u_spherize_center@); vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));&quot;;
 
 Spherize.prototype.onMacros = function(e, macros)
 {
@@ -212,9 +215,9 @@ Spherize.prototype.onMacros = function(e, macros)
 
 Spherize.prototype.onUniforms = function(e, uniforms)
 {
-	uniforms[&quot;u_spherize_center&quot; + this._uid ] = this.center;
-	uniforms[&quot;u_spherize_radius&quot; + this._uid ] = this.radius;
-	uniforms[&quot;u_spherize_factor&quot; + this._uid ] = this.factor;
+	uniforms[&quot;u_spherize_center&quot; + this._num_id ] = this.center;
+	uniforms[&quot;u_spherize_radius&quot; + this._num_id ] = this.radius;
+	uniforms[&quot;u_spherize_factor&quot; + this._num_id ] = this.factor;
 }
 
 

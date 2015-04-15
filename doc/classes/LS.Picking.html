@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.StandardMaterial</title>
+    <title>LS.Picking</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -156,7 +156,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.StandardMaterial Class</h1>
+                        <h1>LS.Picking Class</h1>
 <div class="box meta">
     
 
@@ -164,7 +164,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_materials_standardMaterial.js.html#l7"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:7</code></a>
+            Defined in: <a href="../files/.._src_picking.js.html#l2"><code>..&#x2F;src&#x2F;picking.js:2</code></a>
         </div>
     
 
@@ -176,28 +176,18 @@
 
 
 <div class="box intro">
-    <p>StandardMaterial class improves the material class</p>
+    <p>Picking is used to detect which element is below one pixel (used the GPU) or using raycast</p>
 
 </div>
 
 
     <div class="constructor">
         <h2>Constructor</h2>
-        <div id="method_LS.StandardMaterial" class="method item">
-    <h3 class="name"><code>LS.StandardMaterial</code></h3>
+        <div id="method_LS.Picking" class="method item">
+    <h3 class="name"><code>LS.Picking</code></h3>
 
     
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>object</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
+        <span class="paren">()</span>
     
 
     
@@ -225,7 +215,7 @@
             
         
         
-        <a href="../files/.._src_materials_standardMaterial.js.html#l7"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:7</code></a>
+        <a href="../files/.._src_picking.js.html#l2"><code>..&#x2F;src&#x2F;picking.js:2</code></a>
         
         </p>
 
@@ -239,30 +229,6 @@
         
     </div>
 
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">object</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
     
 
     
@@ -296,14 +262,14 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_getProperties">getProperties</a>
+                                <a href="#method_getNodeAtCanvasPosition">getNodeAtCanvasPosition</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_setProperty">setProperty</a>
+                                <a href="#method_raycast">raycast</a>
 
                                 
                                 
@@ -325,81 +291,8 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_getProperties" class="method item">
-    <h3 class="name"><code>getProperties</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_standardMaterial.js.html#l293"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:293</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>object with name:type</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_setProperty" class="method item">
-    <h3 class="name"><code>setProperty</code></h3>
+                    <div id="method_getNodeAtCanvasPosition" class="method item">
+    <h3 class="name"><code>getNodeAtCanvasPosition</code></h3>
 
     
         <div class="args">
@@ -407,7 +300,25 @@
             
                 <li class="arg">
                     
-                        <code>object</code>
+                        <code>scene</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>camera</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>x</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>y</code>
                     
                 </li>
             
@@ -440,7 +351,7 @@
             
         
         
-        <a href="../files/.._src_materials_standardMaterial.js.html#l242"><code>..&#x2F;src&#x2F;materials&#x2F;standardMaterial.js:242</code></a>
+        <a href="../files/.._src_picking.js.html#l70"><code>..&#x2F;src&#x2F;picking.js:70</code></a>
         
         </p>
 
@@ -451,7 +362,7 @@
     </div>
 
     <div class="description">
-        <p>assign a value to a property in a safe way</p>
+        <p>Renders the pixel and retrieves the color to detect which object it was, slow but accurate</p>
 
     </div>
 
@@ -463,14 +374,60 @@
             
                 <li class="param">
                     
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
+                        <code class="param-name">scene</code>
+                        <span class="type">SceneTree</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>to configure from</p>
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">camera</code>
+                        <span class="type">Camera</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">x</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>in canvas coordinates</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">y</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>in canvas coordinates</p>
 
                     </div>
 
@@ -481,6 +438,179 @@
         </div>
     
 
+    
+
+    
+</div>
+
+                
+                    <div id="method_raycast" class="method item">
+    <h3 class="name"><code>raycast</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>scene</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>origin</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>direction</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>max_dist</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_picking.js.html#l133"><code>..&#x2F;src&#x2F;picking.js:133</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Computes the ray an traverses the scene checking for collisions with colliders
+similar to Physics.raycast but using only visible meshes</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">scene</code>
+                        <span class="type">SceneTree</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">origin</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>in world space</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">direction</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>in world space</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">max_dist</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>maxium distance</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Array</span>:
+                    
+                    <p>array containing all the RenderInstances that collided with the ray</p>
+
+                
+            </div>
+        </div>
     
 
     

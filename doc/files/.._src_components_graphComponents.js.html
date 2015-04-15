@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -163,8 +165,9 @@
 //on include, link to resources manager
 if(typeof(LGraphTexture) != &quot;undefined&quot;)
 {
-	LGraphTexture.textures_container = LS.ResourcesManager.textures;
-	LGraphTexture.loadTextureCallback = LS.ResourcesManager.load.bind(LS.ResourcesManager);
+	//link LGraph textures system with LiteScene
+	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
+	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
 }
 
 /**
@@ -183,12 +186,15 @@ function GraphComponent(o)
 		return console.error(&quot;Cannot use GraphComponent if LiteGraph is not installed&quot;);
 
 	this._graph = new LGraph();
+	this._graph._scene = Scene;
+	this._graph.getScene = function() { return this._scene; }
 
 	if(o)
 		this.configure(o);
 	else //default
 	{
 		var graphnode = LiteGraph.createNode(&quot;scene/node&quot;);
+		//graphnode.properties.node_id = �? not added yet
 		this._graph.add(graphnode);
 	}
 	
@@ -216,7 +222,7 @@ GraphComponent.prototype.configure = function(o)
 		}
 		catch (err)
 		{
-			console.err(&quot;Error parsing Graph data&quot;);
+			console.error(&quot;Error configuring Graph data: &quot; + err);
 		}
 	}
 
@@ -283,7 +289,6 @@ GraphComponent.prototype.runGraph = function()
 
 
 LS.registerComponent(GraphComponent);
-window.GraphComponent = GraphComponent;
 
 
 
@@ -295,14 +300,18 @@ window.GraphComponent = GraphComponent;
 function FXGraphComponent(o)
 {
 	this.enabled = true;
-	this.use_viewport_size = false;
+	this.use_viewport_size = true;
 	this.use_high_precision = false;
 	this.use_antialiasing = false;
+	this.use_extra_texture = false;
 
 	if(typeof(LGraphTexture) == &quot;undefined&quot;)
 		return console.error(&quot;Cannot use GraphComponent if LiteGraph is not installed&quot;);
 
 	this._graph = new LGraph();
+	this._graph._scene = Scene;
+	this._graph.getScene = function() { return this._scene; }
+
 	if(o)
 	{
 		this.configure(o);
@@ -316,7 +325,12 @@ function FXGraphComponent(o)
 		this._graph_depth_texture_node.ignore_remove = true;
 		this._graph_depth_texture_node.pos[1] = 400;
 
+		this._graph_extra_texture_node = LiteGraph.createNode(&quot;texture/texture&quot;,&quot;Extra Buffer&quot;);
+		this._graph_extra_texture_node.pos[1] = 800;
+		this._graph_extra_texture_node.ignore_remove = true;
+	
 		this._graph.add( this._graph_color_texture_node );
+		this._graph.add( this._graph_extra_texture_node );
 		this._graph.add( this._graph_depth_texture_node );
 
 		this._graph_viewport_node = LiteGraph.createNode(&quot;texture/toviewport&quot;,&quot;Viewport&quot;);
@@ -354,16 +368,26 @@ FXGraphComponent.prototype.configure = function(o)
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
 	this.use_antialiasing = !!o.use_antialiasing;
+	this.use_extra_texture = !!o.use_extra_texture;
+	this.apply_to_node_camera = false;
 
 	this._graph.configure( JSON.parse( o.graph_data ) );
 	this._graph_color_texture_node = this._graph.findNodesByTitle(&quot;Color Buffer&quot;)[0];
 	this._graph_depth_texture_node = this._graph.findNodesByTitle(&quot;Depth Buffer&quot;)[0];
-	this._graph_viewport_node = this._graph.findNodesByTitle(&quot;Viewport&quot;)[0];
+	this._graph_extra_texture_node = this._graph.findNodesByTitle(&quot;Extra Buffer&quot;)[0];
+	this._graph_viewport_node = this._graph.findNodesByType(&quot;texture/toviewport&quot;)[0];
 }
 
 FXGraphComponent.prototype.serialize = function()
 {
-	return { enabled: this.enabled, use_antialiasing: this.use_antialiasing, use_high_precision: this.use_high_precision, use_viewport_size: this.use_viewport_size, graph_data: JSON.stringify( this._graph.serialize() ) };
+	return {
+		enabled: this.enabled,
+		use_antialiasing: this.use_antialiasing,
+		use_high_precision: this.use_high_precision,
+		use_extra_texture: this.use_extra_texture,
+		use_viewport_size: this.use_viewport_size,
+		graph_data: JSON.stringify( this._graph.serialize() )
+	};
 }
 
 FXGraphComponent.prototype.getResources = function(res)
@@ -385,86 +409,136 @@ FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 FXGraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
-	LEvent.bind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
-	LEvent.bind(Scene,&quot;afterRenderFrame&quot;, this.onAfterRender, this );
+	//catch the global rendering
+	LEvent.bind( LS.GlobalScene, &quot;beforeRenderMainPass&quot;, this.onBeforeRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(Scene,&quot;beforeRenderFrame&quot;, this.onBeforeRender, this );
-	LEvent.unbind(Scene,&quot;afterRenderFrame&quot;, this.onAfterRender, this );
+	LEvent.unbind( LS.GlobalScene, &quot;beforeRenderMainPass&quot;, this.onBeforeRender, this );
 }
 
+//used to create the buffers
 FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 {
-	if(!this._graph || !render_options.render_fx) return;
+	if(!this._graph || !render_options.render_fx || !this.enabled ) 
+		return;
 
-	var width = FXGraphComponent.buffer_size[0];
-	var height = FXGraphComponent.buffer_size[1];
-	if( this.use_viewport_size )
+	//create RenderFrameContainer
+	var RFC = this._renderFrameContainer;
+	if(!RFC)
 	{
-		width = gl.canvas.width;
-		height = gl.canvas.height;
+		RFC = this._renderFrameContainer = new LS.RenderFrameContainer();
+		RFC.use_depth_texture = true;
+		RFC.component = this;
+		RFC.postRender = FXGraphComponent.postRender;
 	}
 
-	var type = this.use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	//configure RFC
+	RFC.use_high_precision = this.use_high_precision;
+	if(this.use_viewport_size)
+		RFC.useCanvasSize();
+	else
+		RFC.useDefaultSize();
+	RFC.use_extra_texture = this.use_extra_texture;
 
-	if(!this.color_texture || this.color_texture.width != width || this.color_texture.height != height || this.color_texture.type != type)
-	{
-		this.color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR, type: type });
-		ResourcesManager.textures[&quot;:color_buffer&quot;] = this.color_texture;
-	}
-
-	if((!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
-	{
-		this.depth_texture = new GL.Texture(width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
-		ResourcesManager.textures[&quot;:depth_buffer&quot;] = this.depth_texture;
-	}		
-
-	if(this.enabled)
-		Renderer.assignRenderFrameCallback( this.onRenderFrame.bind(this) );
+	//assign global render frame container
+	LS.Renderer.assignGlobalRenderFrameContainer( RFC );
 }
 
-FXGraphComponent.prototype.onRenderFrame = function(current_camera, render_options, previous_output)
+//take the resulting textures and pass them through the graph
+FXGraphComponent.prototype.applyGraph = function()
 {
-	var that = this;
+	if(!this._graph)
+		return;
 
-	Texture.drawToColorAndDepth( this.color_texture, this.depth_texture, inner_render_frame );
-
-	//render frame
-	function inner_render_frame(texture)
-	{
-			Renderer.renderFrame( current_camera, that.color_rendertarget );
-	}
-
-	return this.color_rendertarget;
-}
-
-
-FXGraphComponent.prototype.onAfterRender = function(e,render_options)
-{
-	if(!this._graph || !this.enabled || !render_options.render_fx) return;
-
+	//find graph nodes that contain the texture info
 	if(!this._graph_color_texture_node)
 		this._graph_color_texture_node = this._graph.findNodesByTitle(&quot;Color Buffer&quot;)[0];
-	if(!this._depth_depth_texture_node)
-		this._depth_depth_texture_node = this._graph.findNodesByTitle(&quot;Depth Buffer&quot;)[0];
+	if(!this._graph_extra_texture_node)
+		this._graph_extra_texture_node = this._graph.findNodesByTitle(&quot;Extra Buffer&quot;)[0];
+	if(!this._graph_depth_texture_node)
+		this._graph_depth_texture_node = this._graph.findNodesByTitle(&quot;Depth Buffer&quot;)[0];
+	if(!this._graph_viewport_node)
+		this._graph_viewport_node = this._graph.findNodesByType(&quot;texture/toviewport&quot;)[0];
 
 	if(!this._graph_color_texture_node)
 		return;
 
-	this._graph_color_texture_node.properties.name = &quot;:color_buffer&quot;;
+	//fill the graph nodes with proper info
+	this._graph_color_texture_node.properties.name = &quot;:color_&quot; + this.uid;
+	if(this._graph_extra_texture_node)
+		this._graph_extra_texture_node.properties.name = &quot;:extra_&quot; + this.uid;
 	if(this._graph_depth_texture_node)
-		this._graph_depth_texture_node.properties.name = &quot;:depth_buffer&quot;;
+		this._graph_depth_texture_node.properties.name = &quot;:depth_&quot; + this.uid;
 	if(this._graph_viewport_node) //force antialiasing
 		this._graph_viewport_node.properties.antialiasing = this.use_antialiasing;
 
+	//execute graph
 	this._graph.runStep(1);
 }
 
+//Executed inside RenderFrameContainer **********
+/*
+FXGraphComponent.prototype.onPreRender = function( cameras, render_options )
+{
+	//TODO: MIGRATE TO RenderFrameContainer
 
-LS.registerComponent(FXGraphComponent);
-window.FXGraphComponent = FXGraphComponent;
+	//Setup FBO
+	this._fbo = this._fbo || gl.createFramebuffer();
+	gl.bindFramebuffer( gl.FRAMEBUFFER, this._fbo );
+
+	var color_texture = this.component.color_texture;
+	var depth_texture = this.component.depth_texture;
+
+	gl.viewport(0, 0, color_texture.width, color_texture.height );
+	LS.Renderer._full_viewport.set( gl.viewport_data );
+
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, color_texture.handler, 0);
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,  gl.TEXTURE_2D, depth_texture.handler, 0);
+
+	//set depth info
+	var camera = cameras[0];
+	if(!depth_texture.near_far_planes)
+		depth_texture.near_far_planes = vec2.create();
+	depth_texture.near_far_planes[0] = camera.near;
+	depth_texture.near_far_planes[1] = camera.far;
+
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (color_texture.width / color_texture.height);
+	//ready to render the scene, which is done from the LS.Renderer.render
+}
+*/
+
+//Executed inside RFC
+FXGraphComponent.postRender = function()
+{
+	this.endFBO();
+
+	LS.ResourcesManager.textures[&quot;:color_&quot; + this.component.uid] = this.color_texture;
+	if(this.extra_texture)
+		LS.ResourcesManager.textures[&quot;:extra_&quot; + this.component.uid] = this.extra_texture;
+	if(this.depth_texture)
+		LS.ResourcesManager.textures[&quot;:depth_&quot; + this.component.uid] = this.depth_texture;
+
+	/*
+	//disable FBO
+	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+	LS.Renderer.global_aspect = 1;
+
+	//restore
+	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
+	LS.Renderer._full_viewport.set( gl.viewport_data );
+	*/
+
+	//apply FX
+	this.component.applyGraph();
+}
+//************************************
+
+
+
+LS.registerComponent( FXGraphComponent );
+
 
 
 

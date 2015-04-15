@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -191,7 +193,7 @@ function SkinnedMeshRenderer(o)
 
 SkinnedMeshRenderer.MAX_BONES = 64;
 SkinnedMeshRenderer.gpu_skinning_supported = true;
-SkinnedMeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
+SkinnedMeshRenderer.icon = &quot;mini-icon-stickman.png&quot;;
 
 //vars
 SkinnedMeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
@@ -303,7 +305,11 @@ SkinnedMeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, 
 
 SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 {
-	var node = Scene.getNode(name);
+	var scene = this._root.scene;
+	if(!scene)
+		return null;
+
+	var node = scene.getNode( name );
 	if(!node)
 		return null;
 	node._is_bone = true;

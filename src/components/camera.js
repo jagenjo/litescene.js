@@ -53,8 +53,11 @@ function Camera(o)
 	this._must_update_projection_matrix = true;
 
 	//render to texture
+	this.render_to_texture = false;
 	this.texture_name = ""; //name
 	this.texture_size = vec2.fromValues(0,0); //0 means same as screen
+	this.texture_high = false;
+	this.texture_clone = false; //this registers a clone of the texture used for rendering, to avoid rendering and reading of the same texture, but doubles the memory
 
 	if(o) 
 		this.configure(o);
@@ -255,7 +258,7 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
-	LEvent.bind(node, "collectCameras", this.onCollectCameras, this );
+	LEvent.bind( node, "collectCameras", this.onCollectCameras, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
@@ -263,13 +266,46 @@ Camera.prototype.onRemovedFromNode = function(node)
 	if(node.camera == this)
 		delete node.camera;
 
+	if(this._texture) //free memory
+	{
+		this._texture = null;
+		this._fbo = null;
+		this._renderbuffer = null;
+
+	}
+}
+
+Camera.prototype.isRenderedToTexture = function()
+{
+	return this.enabled && this.render_to_texture && this.texture_name;
 }
 
 Camera.prototype.onCollectCameras = function(e, cameras)
 {
 	if(!this.enabled)
 		return;
-	cameras.push(this);
+
+	if(!this.isRenderedToTexture())
+		cameras.push(this);
+	else
+		cameras.unshift(this); //put at the begining
+
+	//in case we need to render to a texture this camera
+	//not very fond of this part, but its more optimal
+	if(this.render_to_texture && this.texture_name)
+	{
+		if(!this._binded_render_frame)
+		{
+			LEvent.bind(this, "beforeRenderFrame", this.startFBO, this );
+			LEvent.bind(this, "afterRenderFrame", this.endFBO, this );
+			this._binded_render_frame = true;
+		}
+	}
+	else if( this._binded_render_frame )
+	{
+		LEvent.unbind(this, "beforeRenderFrame", this.startFBO, this );
+		LEvent.unbind(this, "afterRenderFrame", this.endFBO, this );
+	}
 }
 
 /**
@@ -836,19 +872,25 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 
 Camera.prototype.configure = function(o)
 {
-	if(o.enabled != null) this.enabled = o.enabled;
-	if(o.type != null) this._type = o.type;
+	if(o.enabled !== undefined) this.enabled = o.enabled;
+	if(o.type !== undefined) this._type = o.type;
 
-	if(o.eye != null) this._eye.set(o.eye);
-	if(o.center != null) this._center.set(o.center);
-	if(o.up != null) this._up.set(o.up);
+	if(o.eye !== undefined) this._eye.set(o.eye);
+	if(o.center !== undefined) this._center.set(o.center);
+	if(o.up !== undefined) this._up.set(o.up);
 
-	if(o.near != null) this._near = o.near;
-	if(o.far != null) this._far = o.far;
-	if(o.fov != null) this._fov = o.fov;
-	if(o.aspect != null) this._aspect = o.aspect;
-	if(o.frustum_size != null) this._frustum_size = o.frustum_size;
-	if(o.viewport != null) this._viewport.set( o.viewport );
+	if(o.near !== undefined) this._near = o.near;
+	if(o.far !== undefined) this._far = o.far;
+	if(o.fov !== undefined) this._fov = o.fov;
+	if(o.aspect !== undefined) this._aspect = o.aspect;
+	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
+	if(o.viewport !== undefined) this._viewport.set( o.viewport );
+
+	if(o.render_to_texture !== undefined) this.render_to_texture = o.render_to_texture;
+	if(o.texture_name !== undefined) this.texture_name = o.texture_name;
+	if(o.texture_size && o.texture_size.length == 2) this.texture_size.set(o.texture_size);
+	if(o.texture_high !== undefined) this.texture_high = o.texture_high;
+	if(o.texture_clone !== undefined) this.texture_clone = o.texture_clone;
 
 	this.updateMatrices();
 }
@@ -867,8 +909,11 @@ Camera.prototype.serialize = function()
 		aspect: this._aspect,
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
+		render_to_texture: this.render_to_texture,
 		texture_name: this.texture_name,
-		texture_size: this._texture_size
+		texture_size:  toArray( this.texture_size ),
+		texture_high: this.texture_high,
+		texture_clone: this.texture_clone
 	};
 
 	//clone
@@ -906,6 +951,84 @@ Camera.prototype.applyTransformMatrix = function( matrix, center, element )
 	mat4.multiplyVec3( p, matrix, p );
 	return true;
 }
+
+//used when rendering to a texture
+Camera.prototype.startFBO = function()
+{
+	if(!this.render_to_texture || !this.texture_name)
+		return;
+
+	var width = this.texture_size[0] || gl.canvas.width;
+	var height = this.texture_size[1] || gl.canvas.height;
+	var use_high_precision = this.texture_high;
+
+	//Create texture
+	var type = use_high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	if(!this._texture || this._texture.width != width || this._texture.height != height || this._texture.type != type)
+	{
+		var isPOT = (isPowerOfTwo(width) && isPowerOfTwo(height));
+		this._texture = new GL.Texture( width, height, { format: gl.RGB, wrap: isPOT ? gl.REPEAT : gl.CLAMP_TO_EDGE, filter: isPOT ? gl.LINEAR : gl.NEAREST, type: type });
+	}
+	var texture = this._texture;
+
+	//save old
+	this._old_fbo = gl.getParameter( gl.FRAMEBUFFER_BINDING );
+	if(!this._old_viewport)
+		this._old_viewport = vec4.create();
+	this._old_viewport.set( gl.viewport_data );
+
+	//Setup FBO
+	this._fbo = this._fbo || gl.createFramebuffer();
+	gl.bindFramebuffer( gl.FRAMEBUFFER, this._fbo );
+
+	gl.viewport(0, 0, width, height );
+	LS.Renderer._full_viewport.set( [0,0,width,height] );
+	LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (texture.width / texture.height); //sure?
+
+	//depth renderbuffer
+	var renderbuffer = this._renderbuffer = this._renderbuffer || gl.createRenderbuffer();
+	if(renderbuffer.width != width || renderbuffer.height != height)
+	{
+		renderbuffer.width = width;
+		renderbuffer.height = height;
+	}
+	gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer );
+	gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+
+	gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture.handler, 0);
+	gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer );
+}
+
+Camera.prototype.endFBO = function()
+{
+	if(!this.render_to_texture || !this.texture_name)
+		return;
+
+	//restore
+	gl.bindFramebuffer(gl.FRAMEBUFFER, this._old_fbo);
+	LS.Renderer.global_aspect = 1.0;
+	this._old_fbo = null;
+
+	var v = this._old_viewport;
+	gl.viewport( v[0], v[1], v[2], v[3] );
+	LS.Renderer._full_viewport.set( v );
+
+	//save texture
+	if(this.texture_name)
+	{
+		var texture = this._texture;
+		//cloning the texture allows to use the same texture in the scene (but uses more memory)
+		if(this.texture_clone)
+		{
+			if(!this._texture_clone || this._texture_clone.width != texture.width || this._texture_clone.height != texture.height || this._texture_clone.type != texture.type)
+				this._texture_clone = new GL.Texture( texture.width, texture.height, { format: gl.RGB, filter: gl.LINEAR, type: texture.type });
+			texture.copyTo( this._texture_clone );
+			texture = this._texture_clone;
+		}
+		LS.ResourcesManager.registerResource( this.texture_name, texture );
+	}
+}
+
 
 LS.registerComponent(Camera);
 LS.Camera = Camera;

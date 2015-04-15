@@ -1,42 +1,42 @@
 
-function Skybox(o)
+function Skydome(o)
 {
-	this.texture = null;
-	this.intensity = 1;
-	this.use_environment = true;
+	this.sun_altitude = 0.5;
+	this.sun_azimuth = 0.5;
+
 	if(o)
 		this.configure(o);
 }
 
-Skybox.icon = "mini-icon-dome.png";
+Skydome.icon = "mini-icon-dome.png";
 
 //vars
-Skybox["@texture"] = { widget: "texture" };
+Skydome["@texture"] = { widget: "texture" };
 
-Skybox.prototype.onAddedToNode = function(node)
+Skydome.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
-Skybox.prototype.onRemovedFromNode = function(node)
+Skydome.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
-Skybox.prototype.getResources = function(res)
+Skydome.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
 		res[this.texture] = Texture;
 	return res;
 }
 
-Skybox.prototype.onResourceRenamed = function (old_name, new_name, resource)
+Skydome.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 	if(this.texture == old_name)
 		this.texture = new_name;
 }
 
-Skybox.prototype.onCollectInstances = function(e, instances)
+Skydome.prototype.onCollectInstances = function(e, instances)
 {
 	if(!this._root) return;
 
@@ -109,5 +109,5 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent(Skybox);
-LS.Skybox = Skybox;
+LS.registerComponent(Skydome);
+LS.Skydome = Skydome;

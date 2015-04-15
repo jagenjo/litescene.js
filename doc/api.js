@@ -8,7 +8,6 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.CameraController",
         "LS.Components.CameraFX",
         "LS.Components.FXGraphComponent",
-        "LS.Components.FaceTo",
         "LS.Components.FollowNode",
         "LS.Components.GeometricPrimitive",
         "LS.Components.GraphComponent",
@@ -16,10 +15,10 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.Light",
         "LS.Components.LightFX",
         "LS.Components.NodeManipulator",
-        "LS.Components.OculusController",
         "LS.Components.PlayAnimation",
         "LS.Components.RealtimeReflector",
         "LS.Components.Spherize",
+        "LS.Components.Target",
         "LS.Components.Transform",
         "LS.CompositePattern",
         "LS.Context",
@@ -28,6 +27,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Material",
         "LS.Physics",
         "LS.PhysicsInstance",
+        "LS.Picking",
         "LS.Prefab",
         "LS.RenderInstance",
         "LS.RenderOptions",
@@ -37,7 +37,8 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.SceneTree",
         "LS.StandardMaterial",
         "LS.WBin",
-        "Rotator"
+        "Rotator",
+        "VRCameraController"
     ],
     "modules": [],
     "allModules": []

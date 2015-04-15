@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -174,6 +176,13 @@ CompositePattern.prototype.compositeCtor = function()
 {
 }
 
+/* use .scene instead
+CompositePattern.prototype.getScene = function()
+{
+	this._in_tree;
+}
+*/
+
 /**
 * Adds one child to this instance
 * @method addChild
@@ -219,20 +228,27 @@ CompositePattern.prototype.addChild = function(node, index, options)
 	else
 		this._children.splice(index,0,node);
 
+	//the same as scene but we called tree to make it more generic
+	var tree = this._in_tree;
+
+	//this would never fire but just in case
+	if(tree &amp;&amp; node._in_tree &amp;&amp; node._in_tree != tree)
+		throw(&quot;Cannot add a node that belongs to another scene tree&quot;);
 
 	//Same tree
-	node._in_tree = this._in_tree;
+	node._in_tree = tree;
 
+	//overwritten from SceneNode
 	if(this._onChildAdded)
 		this._onChildAdded(node, options);
 
 	LEvent.trigger(this,&quot;childAdded&quot;, node);
-	if(this._in_tree)
+	if(tree)
 	{
-		LEvent.trigger(this._in_tree, &quot;treeItemAdded&quot;, node);
+		//added to scene tree
+		LEvent.trigger(tree, &quot;treeItemAdded&quot;, node);
 		inner_recursive(node);
 	}
-	
 
 	//recursive action
 	function inner_recursive(item)
@@ -241,10 +257,11 @@ CompositePattern.prototype.addChild = function(node, index, options)
 		for(var i in item._children)
 		{
 			var child = item._children[i];
-			if(!child._in_tree &amp;&amp; item._in_tree)
+			if(!child._in_tree)
 			{
-				LEvent.trigger( item._in_tree, &quot;treeItemAdded&quot;, child );
-				child._in_tree = item._in_tree;
+				//added to scene tree
+				LEvent.trigger( tree, &quot;treeItemAdded&quot;, child );
+				child._in_tree = tree;
 			}
 			inner_recursive( child );
 		}
@@ -261,10 +278,13 @@ CompositePattern.prototype.addChild = function(node, index, options)
 */
 CompositePattern.prototype.removeChild = function(node, options)
 {
-	if(!this._children || node._parentNode != this) return false;
-	if( node._parentNode != this) return false; //not his son
+	if(!this._children || node._parentNode != this)
+		return false;
+	if( node._parentNode != this)
+		return false; //not his son
 	var pos = this._children.indexOf(node);
-	if(pos == -1) return false; //not his son �?
+	if(pos == -1)
+		return false; //not his son �?
 	this._children.splice(pos,1);
 
 	if(this._onChildRemoved)
@@ -275,17 +295,17 @@ CompositePattern.prototype.removeChild = function(node, options)
 	if(node._in_tree)
 	{
 		LEvent.trigger(node._in_tree, &quot;treeItemRemoved&quot;, node);
-
 		//propagate to childs
 		inner_recursive(node);
 	}
 	node._in_tree = null;
 
-	//recursive action
+	//recursive action to remove tree
 	function inner_recursive(item)
 	{
-		if(!item._children) return;
-		for(var i in item._children)
+		if(!item._children)
+			return;
+		for(var i = 0, l = item._children.length; i &lt; l; ++i)
 		{
 			var child = item._children[i];
 			if(child._in_tree)
@@ -327,10 +347,17 @@ CompositePattern.prototype.configureChildren = function(o)
 
 	for(var i in o.children)
 	{
+		var c = o.children[i];
+
 		//create instance
-		var node = new this.constructor(o.children[i].id); //id is hardcoded...
+		var node = new this.constructor(c.id); //id is hardcoded...
+		//this is important because otherwise the event fired by addChild wont have uid info which is crucial in some cases
+		if(c.uid) 
+			node.uid = c.uid;
+		//add before configure, so every child has a scene tree
 		this.addChild(node);
-		node.configure(o.children[i]);
+		//we configure afterwards otherwise children wouldnt have a scene tree to bind anything
+		node.configure(c);
 	}
 }
 

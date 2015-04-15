@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.FaceTo</title>
+    <title>../src/network.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -154,154 +156,179 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.Components.FaceTo Class</h1>
-<div class="box meta">
-    
+                        <h1 class="file-heading">File: ../src/network.js</h1>
 
-    
+<div class="file">
+    <pre class="code prettyprint linenums">
+var Network = {
+	/**
+	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
+	*
+	* @method request
+	* @param {Object} request object with the fields for the request: 
+    *			dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}
+	* @return {XMLHttpRequest} the XMLHttpRequest of the petition
+	*/
+	request: function(request)
+	{
+		if(typeof(request) === &quot;string&quot;)
+			throw(&quot;LS.Network.request expects object, not string. Use LS.Network.requestText or LS.Network.requestJSON&quot;);
+		var dataType = request.dataType || &quot;text&quot;;
+		if(dataType == &quot;json&quot;) //parse it locally
+			dataType = &quot;text&quot;;
+		else if(dataType == &quot;xml&quot;) //parse it locally
+			dataType = &quot;text&quot;;
+		else if (dataType == &quot;binary&quot;)
+		{
+			//request.mimeType = &quot;text/plain; charset=x-user-defined&quot;;
+			dataType = &quot;arraybuffer&quot;;
+			request.mimeType = &quot;application/octet-stream&quot;;
+		}	
+		else if(dataType == &quot;image&quot;) //special case: images are loaded using regular images request
+		{
+			var img = new Image();
+			img.onload = function() {
+				if(request.success)
+					request.success.call(this);
+			};
+			img.onerror = request.error;
+			img.src = request.url;
+			return img;
+		}
 
-    
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_faceTo.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;faceTo.js:1</code></a>
-        </div>
-    
+		//regular case, use AJAX call
+        var xhr = new XMLHttpRequest();
+        xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, request.url, true);
+		xhr.withCredentials = true;
+        if(dataType)
+            xhr.responseType = dataType;
+        if (request.mimeType)
+            xhr.overrideMimeType( request.mimeType );
+        xhr.onload = function(load)
+		{
+			var response = this.response;
+			if(this.status != 200)
+			{
+				var err = &quot;Error &quot; + this.status;
+				if(request.error)
+					request.error(err);
+				return;
+			}
 
-    
+			if(request.dataType == &quot;json&quot;) //chrome doesnt support json format
+			{
+				try
+				{
+					response = JSON.parse(response);
+				}
+				catch (err)
+				{
+					if(request.error)
+						request.error(err);
+				}
+			}
+			else if(request.dataType == &quot;xml&quot;)
+			{
+				try
+				{
+					var xmlparser = new DOMParser();
+					response = xmlparser.parseFromString(response,&quot;text/xml&quot;);
+				}
+				catch (err)
+				{
+					if(request.error)
+						request.error(err);
+				}
+			}
 
-    
-</div>
+			if(LS.catch_errors)
+			{
+				try
+				{
+					if(request.success)
+						request.success.call(this, response);
+					LEvent.trigger(xhr,&quot;done&quot;,response);
+				}
+				catch (err)
+				{
+					LEvent.trigger(LS,&quot;code_error&quot;,err);
+				}
+			}
+			else
+			{
+				if(request.success)
+					request.success.call(this, response);
+				LEvent.trigger(xhr,&quot;done&quot;,response);
+			}
+		};
+        xhr.onerror = function(err) {
+			if(request.error)
+				request.error(err);
+			LEvent.trigger(this,&quot;fail&quot;, err);
+		}
 
+		if( request.progress )
+			xhr.addEventListener( &quot;progress&quot;, request.progress );
 
+        xhr.send(request.data);
 
-<div class="box intro">
-    <p>FaceTo rotate a mesh to look at the camera or another object</p>
+		return xhr;
+	},
 
-</div>
+	/**
+	* retrieve a file from url (you can bind LEvents to done and fail)
+	* @method requestFile
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	requestFile: function(url, data, callback, callback_error)
+	{
+		if(typeof(data) == &quot;function&quot;)
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.Network.request({url:url, data:data, success: callback, error: callback_error });
+	},
 
+	/**
+	* retrieve a JSON file from url (you can bind LEvents to done and fail)
+	* @method requestJSON
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	requestJSON: function(url, data, callback, callback_error)
+	{
+		if(typeof(data) == &quot;function&quot;)
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.Network.request({url:url, data:data, dataType:&quot;json&quot;, success: callback, error: callback_error });
+	},
 
-    <div class="constructor">
-        <h2>Constructor</h2>
-        <div id="method_LS.Components.FaceTo" class="method item">
-    <h3 class="name"><code>LS.Components.FaceTo</code></h3>
+	/**
+	* retrieve a text file from url (you can bind LEvents to done and fail)
+	* @method requestText
+	* @param {string} url
+	* @param {object} params form params
+	* @param {function} callback
+	*/
+	requestText: function(url, data, callback, callback_error)
+	{
+		if(typeof(data) == &quot;function&quot;)
+		{
+			data = null;
+			callback = data;
+		}
+		return LS.Network.request({url:url, dataType:&quot;txt&quot;, success: callback, success: callback, error: callback_error});
+	}
+};
 
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>object</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_faceTo.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;faceTo.js:1</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">object</code>
-                        <span class="type">String</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-    </div>
-
-
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-        
-        
-        
-        
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-            
-
-            
-
-            
-
-            
-        </div>
-
-        
-
-        
-
-        
-
-        
-    </div>
+LS.Network = Network;
+    </pre>
 </div>
 
                     </div>

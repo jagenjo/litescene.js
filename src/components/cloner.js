@@ -19,7 +19,7 @@ Cloner.GRID_MODE = 1;
 Cloner.RADIAL_MODE = 2;
 Cloner.MESH_MODE = 3;
 
-Cloner.icon = "mini-icon-teapot.png";
+Cloner.icon = "mini-icon-cloner.png";
 
 //vars
 Cloner["@mesh"] = { type: "mesh" };
@@ -27,14 +27,17 @@ Cloner["@lod_mesh"] = { type: "mesh" };
 Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, "Mesh": Cloner.MESH_MODE } };
 Cloner["@count"] = { type:"vec3", min:1, step:1 };
 
-Cloner.prototype.onAddedToNode = function(node)
+Cloner.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.bind(scene, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.bind(scene, "afterCollectData", this.onUpdateInstances, this);
 }
 
-Cloner.prototype.onRemovedFromNode = function(node)
+
+Cloner.prototype.onRemovedFromNode = function(scene)
 {
-	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.unbind(scene, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.unbind(scene, "afterCollectData", this.onUpdateInstances, this);
 }
 
 Cloner.prototype.getMesh = function() {
@@ -83,16 +86,55 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		return null;
 
 	var node = this._root;
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
-	var total = 0;
-	if(this.mode == Cloner.GRID_MODE)
-		total = this.count[0] * this.count[1] * this.count[2];
-	else if(this.mode == Cloner.RADIAL_MODE)
-		total = this.count[0];
-	else if(this.mode == Cloner.MESH_MODE)
+	this.updateRenderInstancesArray();
+
+	var RIs = this._RIs;
+	var material = this.material || this._root.getMaterial();
+	var flags = 0;
+
+	//resize the instances array to fit the new RIs (avoids using push)
+	var start_array_pos = instances.length;
+	instances.length = start_array_pos + RIs.length;
+
+	//update parameters
+	for(var i = 0, l = RIs.length; i < l; ++i)
 	{
-		//TODO
+		var RI = RIs[i];
+		//genereate flags for the first instance
+		if(i == 0)
+		{
+			RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_AUTOUPDATE;
+			RI.applyNodeFlags();
+			flags = RI.flags;
+		}
+		else //for the rest just reuse the same as the first one
+			RI.flags = flags;
+
+		RI.setMesh(mesh);
+		if(this.lod_mesh)
+		{
+			var lod_mesh = this.getLODMesh();
+			if(lod_mesh)
+				RI.setLODMesh( lod_mesh );
+		}
+		RI.setMaterial( material );
+		instances[start_array_pos + i] = RI;
+	}
+}
+
+Cloner.prototype.updateRenderInstancesArray = function()
+{
+	var total = 0;
+	if(this.mode === Cloner.GRID_MODE)
+		total = this.count[0] * this.count[1] * this.count[2];
+	else if(this.mode === Cloner.RADIAL_MODE)
+		total = this.count[0];
+	else if(this.mode === Cloner.MESH_MODE)
+	{
+		total = 0; //TODO
 	}
 
 
@@ -112,58 +154,24 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 
 		for(var i = 0; i < total; ++i)
 			if(!this._RIs[i])
-				this._RIs[i] = new RenderInstance(this._root, this);
+				this._RIs[i] = new LS.RenderInstance(this._root, this);
 	}
+}
 
+Cloner.prototype.onUpdateInstances = function(e, dt)
+{
 	var RIs = this._RIs;
+	if(!RIs || !RIs.length)
+		return;
+
 	var global = this._root.transform.getGlobalMatrix(mat4.create());
-	var material = this.material || this._root.getMaterial();
-
-	var flags = 0;
-
-	/*
-	var update_transform = true;
-	var current_key = Cloner.generateTransformKey(this.count,hsize,offset);
-	if( this._genereate_key && Cloner.compareKeys(current_key, this._genereate_key))
-		update_transform = false;
-	this._genereate_key = current_key;
-	*/
-
-	//resize the instances array to fit the new RIs (avoids using push)
-	var start_array_pos = instances.length;
-	instances.length = start_array_pos + total;
-
-	//set generic parameters
-	for(var i = 0, l = RIs.length; i < l; ++i)
-	{
-		var RI = RIs[i];
-		//genereate flags for the first instance
-		if(i == 0)
-		{
-			RI.flags = RI_DEFAULT_FLAGS;
-			RI.applyNodeFlags();
-			flags = RI.flags;
-		}
-		else //for the rest just reuse the same as the first one
-			RI.flags = flags;
-
-		RI.setMesh(mesh);
-		if(this.lod_mesh)
-		{
-			var lod_mesh = this.getLODMesh();
-			if(lod_mesh)
-				RI.setLODMesh( lod_mesh );
-		}
-		RI.setMaterial( material );
-		instances[start_array_pos + i] = RI;
-	}
 
 	//Set position according to the cloner mode
 	if(this.mode == Cloner.GRID_MODE)
 	{
 		//compute offsets
 		var hsize = vec3.scale( vec3.create(), this.size, 0.5 );
-		var offset = [0,0,0];
+		var offset = vec3.create();
 		if(this.count[0] > 1) offset[0] = this.size[0] / (this.count[0]-1);
 		else hsize[0] = 0;
 		if(this.count[1] > 1) offset[1] = this.size[1] / (this.count[1]-1);
@@ -178,6 +186,8 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		for(var z = 0; z < this.count[2]; ++z)
 		{
 			var RI = RIs[i];
+			if(!RI)
+				return;
 			tmp[0] = x * offset[0] - hsize[0];
 			tmp[1] = y * offset[1] - hsize[1];
 			tmp[2] = z * offset[2] - hsize[2];
@@ -193,6 +203,9 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		for(var i = 0, l = RIs.length; i < l; ++i)
 		{
 			var RI = RIs[i];
+			if(!RI)
+				return;
+
 			tmp[0] = Math.sin( offset * i ) * this.size[0];
 			tmp[1] = 0;
 			tmp[2] = Math.cos( offset * i ) * this.size[0];
@@ -203,5 +216,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		}
 	}
 }
+
+
 
 LS.registerComponent(Cloner);

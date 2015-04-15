@@ -204,6 +204,8 @@ var ResourcesManager = {
 			if(this.proxy) //proxy external files
 				full_url = this.proxy + url.substr(7);
 		}
+		else if(url.substr(0,5) == "blob:")
+			return url; //special case for local urls like URL.createObjectURL
 		else
 		{
 			if(options && options.local_repository)
@@ -221,6 +223,7 @@ var ResourcesManager = {
 
 	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
+	* Do not use for regular files, instead use the LS.Network methods
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
@@ -261,9 +264,11 @@ var ResourcesManager = {
 		//otherwise we have to load it
 		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
+
+		LEvent.trigger( LS.ResourcesManager, "resource_loading", url );
 		//send an event if we are starting to load (used for loading icons)
 		if(this.num_resources_being_loaded == 0)
-			LEvent.trigger(ResourcesManager,"start_loading_resources",url);
+			LEvent.trigger( LS.ResourcesManager,"start_loading_resources", url );
 		this.num_resources_being_loaded++;
 
 		var full_url = this.getFullURL(url);
@@ -277,9 +282,10 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
+				LS.ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
-			error: function(err) { 	ResourcesManager._resourceLoadedError(url,err); }
+			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
+			progress: function(e) { LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e } ); }
 		};
 
 		//in case we need to force a response format 
@@ -394,9 +400,11 @@ var ResourcesManager = {
 	* @param {String} filename 
 	* @param {Object} resource 
 	*/
-
 	registerResource: function(filename,resource)
 	{
+		if(this.resources[filename] == resource)
+			return; //already registered
+
 		//not sure about this
 		resource.filename = filename;
 
@@ -417,8 +425,33 @@ var ResourcesManager = {
 
 		//send message to inform new resource is available
 		LEvent.trigger(this,"resource_registered", resource);
-		Scene.refresh(); //render scene
+		LS.GlobalScene.refresh(); //render scene
 	},	
+
+	/**
+	* removes the resources from all the containers
+	*
+	* @method unregisterResource
+	* @param {String} filename 
+	* @return {boolean} true is removed, false if not found
+	*/
+	unregisterResource: function(filename)
+	{
+		if(!this.resources[filename])
+			return false; //not found
+
+		delete this.resources[filename];
+
+		//ugly: too hardcoded
+		if( this.meshes[filename] )
+			delete this.meshes[ filename ];
+		if( this.textures[filename] )
+			delete this.textures[ filename ];
+
+		LEvent.trigger(this,"resource_unregistered", resource);
+		LS.GlobalScene.refresh(); //render scene
+		return true;
+	},
 
 	/**
 	* Returns an object with a representation of the resource internal data
@@ -479,19 +512,48 @@ var ResourcesManager = {
 			data = data.buffer; //store the data in the arraybuffer
 
 		return {data:data, encoding: encoding, extension: extension};
-	},	
+	},
+		
+	/**
+	* Used to load files and get them as File (or Blob)
+	* @method getURLasFile
+	* @param {String} filename 
+	* @return {File} the file
+	*/
+	getURLasFile: function( url, on_complete )
+	{
+		var oReq = new XMLHttpRequest();
+		oReq.open("GET", this.getFullURL(url), true);
+		oReq.responseType = "blob";
+		oReq.onload = function(oEvent) {
+		  var blob = oReq.response;
+		  if(on_complete)
+			  on_complete(blob, url);
+		};
+		oReq.send();
+	},
 
-	renameResource: function(old, newname)	
+	/**
+	* Changes the name of a resource and sends an event to all components to change it accordingly
+	* @method renameResource
+	* @param {String} old 
+	* @param {String} newname
+	* @param {Boolean} [skip_event=false] ignore sending an event to all components to rename the resource
+	* @return {boolean} if the file was found
+	*/
+	renameResource: function(old, newname, skip_event)	
 	{
 		var res = this.resources[ old ];
-		if(!res) return;
+		if(!res)
+			return false;
 
 		res.filename = newname;
 		res.fullpath = newname;
 		this.resources[newname] = res;
 		delete this.resources[ old ];
 
-		this.sendResourceRenamedEvent(old, newname, res);
+		if(!skip_event)
+			this.sendResourceRenamedEvent(old, newname, res);
 
 		//ugly: too hardcoded
 		if( this.meshes[old] ) {
@@ -502,6 +564,7 @@ var ResourcesManager = {
 			delete this.textures[ old ];
 			this.textures[ newname ] = res;
 		}
+		return true;
 	},
 
 	/**
@@ -546,7 +609,7 @@ var ResourcesManager = {
 					}
 				*/
 
-				ResourcesManager.registerResource(i,mesh);
+				LS.ResourcesManager.registerResource(i,mesh);
 			}
 		}
 
@@ -623,21 +686,22 @@ var ResourcesManager = {
 	_resourceLoadedSuccess: function(url,res)
 	{
 		if( LS.ResourcesManager.debug )
-			console.log("RES: " + url + " ---> " + ResourcesManager.num_resources_being_loaded);
+			console.log("RES: " + url + " ---> " + LS.ResourcesManager.num_resources_being_loaded);
 
-		for(var i in ResourcesManager.resources_being_loaded[url])
+		for(var i in LS.ResourcesManager.resources_being_loaded[url])
 		{
-			if(ResourcesManager.resources_being_loaded[url][i].callback != null)
-				ResourcesManager.resources_being_loaded[url][i].callback(res);
+			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
+				LS.ResourcesManager.resources_being_loaded[url][i].callback(res);
 		}
 		//two pases, one for launching, one for removing
-		if(ResourcesManager.resources_being_loaded[url])
+		if( LS.ResourcesManager.resources_being_loaded[url] )
 		{
-			delete ResourcesManager.resources_being_loaded[url];
-			ResourcesManager.num_resources_being_loaded--;
-			if( ResourcesManager.num_resources_being_loaded == 0)
+			delete LS.ResourcesManager.resources_being_loaded[url];
+			LS.ResourcesManager.num_resources_being_loaded--;
+			LEvent.trigger( LS.ResourcesManager, "resource_loaded", url );
+			if( LS.ResourcesManager.num_resources_being_loaded == 0)
 			{
-				LEvent.trigger( ResourcesManager, "end_loading_resources", true);
+				LEvent.trigger( LS.ResourcesManager, "end_loading_resources", true);
 			}
 		}
 	},
@@ -645,12 +709,12 @@ var ResourcesManager = {
 	_resourceLoadedError: function(url, error)
 	{
 		console.log("Error loading " + url);
-		delete ResourcesManager.resources_being_loaded[url];
-		ResourcesManager.resources_not_found[url] = true;
-		LEvent.trigger( ResourcesManager, "resource_not_found", url);
-		ResourcesManager.num_resources_being_loaded--;
-		if( ResourcesManager.num_resources_being_loaded == 0 )
-			LEvent.trigger( ResourcesManager, "end_loading_resources", false);
+		delete LS.ResourcesManager.resources_being_loaded[url];
+		LS.ResourcesManager.resources_not_found[url] = true;
+		LEvent.trigger( LS.ResourcesManager, "resource_not_found", url);
+		LS.ResourcesManager.num_resources_being_loaded--;
+		if( LS.ResourcesManager.num_resources_being_loaded == 0 )
+			LEvent.trigger( LS.ResourcesManager, "end_loading_resources", false);
 			//$(ResourcesManager).trigger("end_loading_resources");
 	},
 
@@ -768,9 +832,12 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 //Takes one image (or canvas) as input and creates a Texture
 LS.ResourcesManager.processImage = function(filename, img, options)
 {
-	if(img.width == (img.height / 6)) //cubemap
+	if(img.width == (img.height / 6) || filename.indexOf("CUBECROSS") != -1) //cubemap
 	{
-		var texture = Texture.cubemapFromImage(img, { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR });
+		var cubemap_options = { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR };
+		if( filename.indexOf("CUBECROSSL") != -1 )
+			cubemap_options.is_cross = 1;
+		var texture = Texture.cubemapFromImage(img, cubemap_options);
 		texture.img = img;
 		console.log("Cubemap created");
 	}

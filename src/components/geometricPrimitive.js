@@ -88,10 +88,12 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 
-	this._root.transform.getGlobalMatrix(RI.matrix);
-	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
+	this._root.transform.getGlobalMatrix( RI.matrix );
+	RI.setMatrix( RI.matrix ); //force normal
+	//mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
+	mat4.getTranslation( RI.center, RI.matrix );
 	RI.setMesh( this._mesh, this.primitive );
 	this._root.mesh = this._mesh;
 	

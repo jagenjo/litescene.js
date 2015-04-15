@@ -26,6 +26,9 @@ function Script(o)
 	}
 }
 
+Script.secure_module = false; //this module is not secure (it can execute code)
+Script.block_execution = false; //avoid executing code
+
 Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
@@ -72,7 +75,7 @@ Script.prototype.getCode = function()
 Script.prototype.processCode = function(skip_events)
 {
 	this._script.code = this.code;
-	if(this._root)
+	if(this._root && !Script.block_execution )
 	{
 		var ret = this._script.compile({component:this, node: this._root});
 		if(!skip_events)
@@ -115,6 +118,8 @@ Script.prototype.hookEvents = function()
 	var hookable = LS.Script.exported_callbacks;
 	var node = this._root;
 	var scene = node.scene;
+	if(!scene)
+		scene = LS.GlobalScene; //hack
 
 	//script context
 	var context = this.getContext();

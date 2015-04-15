@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -274,6 +276,20 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_filterNodes">filterNodes</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_findComponentByUId">findComponentByUId</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getNode">getNode</a>
 
                                 
@@ -281,7 +297,21 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getNodeById">getNodeById</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getNodeByIndex">getNodeByIndex</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getNodeByUId">getNodeByUId</a>
 
                                 
                                 
@@ -412,7 +442,7 @@
             
         
         
-        <a href="../files/.._src_scene.js.html#l87"><code>..&#x2F;src&#x2F;scene.js:87</code></a>
+        <a href="../files/.._src_scene.js.html#l95"><code>..&#x2F;src&#x2F;scene.js:95</code></a>
         
         </p>
 
@@ -478,7 +508,7 @@ and trigger a &quot;clear&quot; LEvent</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l108"><code>..&#x2F;src&#x2F;scene.js:108</code></a>
+        <a href="../files/.._src_scene.js.html#l116"><code>..&#x2F;src&#x2F;scene.js:116</code></a>
         
         </p>
 
@@ -520,6 +550,220 @@ Inserts the nodes, configure them, and change the parameters</p>
         </div>
     
 
+    
+
+    
+</div>
+
+                
+                    <div id="method_filterNodes" class="method item">
+    <h3 class="name"><code>filterNodes</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>filter</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l447"><code>..&#x2F;src&#x2F;scene.js:447</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieves a node array filtered by the filter function</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">filter</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>a callback function that receives every node and must return true or false</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Array</span>:
+                    
+                    <p>array containing the nodes that passes the filter</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_findComponentByUId" class="method item">
+    <h3 class="name"><code>findComponentByUId</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>uid</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l463"><code>..&#x2F;src&#x2F;scene.js:463</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>searches the component with this uid, it iterates through all the nodes and components (slow)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">uid</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>uid of the node</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>component or null</p>
+
+                
+            </div>
+        </div>
     
 
     
@@ -572,7 +816,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l405"><code>..&#x2F;src&#x2F;scene.js:405</code></a>
+        <a href="../files/.._src_scene.js.html#l391"><code>..&#x2F;src&#x2F;scene.js:391</code></a>
         
         </p>
 
@@ -583,7 +827,7 @@ Inserts the nodes, configure them, and change the parameters</p>
     </div>
 
     <div class="description">
-        <p>retrieves a Node</p>
+        <p>retrieves a Node based on the id (if the id starts with the uid prefix, then it searches by uid)</p>
 
     </div>
 
@@ -603,6 +847,113 @@ Inserts the nodes, configure them, and change the parameters</p>
 
                     <div class="param-description">
                         <p>node id</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>the node or null if it didnt find it</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getNodeById" class="method item">
+    <h3 class="name"><code>getNodeById</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>id</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l407"><code>..&#x2F;src&#x2F;scene.js:407</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieves a Node based on a given id. It is fast because they are stored in an object</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>id of the node</p>
 
                     </div>
 
@@ -679,7 +1030,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l460"><code>..&#x2F;src&#x2F;scene.js:460</code></a>
+        <a href="../files/.._src_scene.js.html#l432"><code>..&#x2F;src&#x2F;scene.js:432</code></a>
         
         </p>
 
@@ -740,6 +1091,113 @@ Inserts the nodes, configure them, and change the parameters</p>
 </div>
 
                 
+                    <div id="method_getNodeByUId" class="method item">
+    <h3 class="name"><code>getNodeByUId</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>uid</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l420"><code>..&#x2F;src&#x2F;scene.js:420</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieves a Node based on a given uid. It is fast because they are stored in an object</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">uid</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>uid of the node</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>the node or null if it didnt find it</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_getNodeByUid" class="method item">
     <h3 class="name"><code>getNodeByUid</code></h3>
 
@@ -786,7 +1244,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l442"><code>..&#x2F;src&#x2F;scene.js:442</code></a>
+        <a href="../files/.._src_scene.js.html#l482"><code>..&#x2F;src&#x2F;scene.js:482</code></a>
         
         </p>
 
@@ -893,7 +1351,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l474"><code>..&#x2F;src&#x2F;scene.js:474</code></a>
+        <a href="../files/.._src_scene.js.html#l501"><code>..&#x2F;src&#x2F;scene.js:501</code></a>
         
         </p>
 
@@ -999,7 +1457,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l488"><code>..&#x2F;src&#x2F;scene.js:488</code></a>
+        <a href="../files/.._src_scene.js.html#l515"><code>..&#x2F;src&#x2F;scene.js:515</code></a>
         
         </p>
 
@@ -1096,7 +1554,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l42"><code>..&#x2F;src&#x2F;scene.js:42</code></a>
+        <a href="../files/.._src_scene.js.html#l46"><code>..&#x2F;src&#x2F;scene.js:46</code></a>
         
         </p>
 
@@ -1188,7 +1646,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l242"><code>..&#x2F;src&#x2F;scene.js:242</code></a>
+        <a href="../files/.._src_scene.js.html#l250"><code>..&#x2F;src&#x2F;scene.js:250</code></a>
         
         </p>
 
@@ -1301,7 +1759,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l508"><code>..&#x2F;src&#x2F;scene.js:508</code></a>
+        <a href="../files/.._src_scene.js.html#l535"><code>..&#x2F;src&#x2F;scene.js:535</code></a>
         
         </p>
 
@@ -1358,7 +1816,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l592"><code>..&#x2F;src&#x2F;scene.js:592</code></a>
+        <a href="../files/.._src_scene.js.html#l620"><code>..&#x2F;src&#x2F;scene.js:620</code></a>
         
         </p>
 
@@ -1417,7 +1875,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l194"><code>..&#x2F;src&#x2F;scene.js:194</code></a>
+        <a href="../files/.._src_scene.js.html#l202"><code>..&#x2F;src&#x2F;scene.js:202</code></a>
         
         </p>
 
@@ -1498,7 +1956,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l560"><code>..&#x2F;src&#x2F;scene.js:560</code></a>
+        <a href="../files/.._src_scene.js.html#l587"><code>..&#x2F;src&#x2F;scene.js:587</code></a>
         
         </p>
 
@@ -1587,7 +2045,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l576"><code>..&#x2F;src&#x2F;scene.js:576</code></a>
+        <a href="../files/.._src_scene.js.html#l603"><code>..&#x2F;src&#x2F;scene.js:603</code></a>
         
         </p>
 
@@ -1682,7 +2140,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l689"><code>..&#x2F;src&#x2F;scene.js:689</code></a>
+        <a href="../files/.._src_scene.js.html#l765"><code>..&#x2F;src&#x2F;scene.js:765</code></a>
         
         </p>
 

@@ -32,7 +32,7 @@ function LineCloud(o)
 	*/
 
 }
-LineCloud.icon = "mini-icon-particles.png";
+LineCloud.icon = "mini-icon-lines.png";
 LineCloud["@color"] = { widget: "color" };
 
 

@@ -26,6 +26,7 @@ var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflecti
 
 //16-24: instance properties
 var RI_RAYCAST_ENABLED = 1 << 16; //if it could be raycasted
+var RI_IGNORE_AUTOUPDATE = 1 << 17; //if it could update matrix from scene
 
 
 //default flags for any instance
@@ -95,11 +96,27 @@ RenderInstance.prototype.generateKey = function(step, options)
 */
 
 //set the material and apply material flags to render instance
-RenderInstance.prototype.setMatrix = function(matrix)
+RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 {
 	this.matrix.set( matrix );
+
+	if( normal_matrix )
+		this.normal_matrix.set( normal_matrix )
+	else
+		this.computeNormalMatrix();
 }
 
+/**
+* Updates the normal matrix using the matrix
+*
+* @method computeNormalMatrix
+*/
+RenderInstance.prototype.computeNormalMatrix = function()
+{
+	var m = mat4.invert(this.normal_matrix, this.matrix);
+	if(m)
+		mat4.transpose(this.normal_matrix, m);
+}
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMaterial = function(material)
@@ -263,18 +280,6 @@ RenderInstance.prototype.isFlag = function(flag)
 }
 
 /**
-* Updates the normal matrix using the matrix
-*
-* @method computeNormalMatrix
-*/
-RenderInstance.prototype.computeNormalMatrix = function()
-{
-	var m = mat4.invert(this.normal_matrix, this.matrix);
-	if(m)
-		mat4.transpose(this.normal_matrix, m);
-}
-
-/**
 * Computes the instance bounding box in world space from the one in local space
 *
 * @method updateAABB
@@ -282,6 +287,18 @@ RenderInstance.prototype.computeNormalMatrix = function()
 RenderInstance.prototype.updateAABB = function()
 {
 	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+}
+
+/**
+* Used to update the RI info without having to go through the collectData process, it is faster but some changes may take a while
+*
+* @method update
+*/
+RenderInstance.prototype.update = function()
+{
+	if(!this.node || !this.node.transform)
+		return;
+	this.setMatrix( this.node.transform._global_matrix );
 }
 
 /**

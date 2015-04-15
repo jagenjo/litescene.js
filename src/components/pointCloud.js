@@ -39,7 +39,7 @@ function PointCloud(o)
 
 	this.createMesh();
 }
-PointCloud.icon = "mini-icon-particles.png";
+PointCloud.icon = "mini-icon-points.png";
 PointCloud["@texture"] = { widget: "texture" };
 PointCloud["@color"] = { widget: "color" };
 

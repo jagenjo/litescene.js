@@ -53,8 +53,6 @@
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
             
-                <li><a href="../classes/LS.Components.FaceTo.html">LS.Components.FaceTo</a></li>
-            
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
@@ -71,13 +69,13 @@
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
-                <li><a href="../classes/LS.Components.OculusController.html">LS.Components.OculusController</a></li>
-            
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+            
+                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
@@ -94,6 +92,8 @@
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
             
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+            
+                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -114,6 +114,8 @@
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
                 <li><a href="../classes/Rotator.html">Rotator</a></li>
+            
+                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -331,6 +333,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getLocalViewport">getLocalViewport</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getModelMatrix">getModelMatrix</a>
 
                                 
@@ -346,6 +355,13 @@
                         
                             <li class="index-item method">
                                 <a href="#method_getProjectionMatrix">getProjectionMatrix</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getRayInPixel">getRayInPixel</a>
 
                                 
                                 
@@ -533,7 +549,17 @@
     <h3 class="name"><code>getCenter</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -565,7 +591,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l426"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:426</code></a>
+        <a href="../files/.._src_components_camera.js.html#l504"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:504</code></a>
         
         </p>
 
@@ -580,6 +606,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -606,7 +656,17 @@
     <h3 class="name"><code>getEye</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -638,7 +698,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l409"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:409</code></a>
+        <a href="../files/.._src_components_camera.js.html#l485"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:485</code></a>
         
         </p>
 
@@ -653,6 +713,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -679,7 +763,17 @@
     <h3 class="name"><code>getFront</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -711,7 +805,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l443"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:443</code></a>
+        <a href="../files/.._src_components_camera.js.html#l524"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:524</code></a>
         
         </p>
 
@@ -726,6 +820,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -800,7 +918,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l370"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:370</code></a>
+        <a href="../files/.._src_components_camera.js.html#l446"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:446</code></a>
         
         </p>
 
@@ -928,7 +1046,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l389"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:389</code></a>
+        <a href="../files/.._src_components_camera.js.html#l465"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:465</code></a>
         
         </p>
 
@@ -1004,6 +1122,137 @@
 </div>
 
                 
+                    <div id="method_getLocalViewport" class="method item">
+    <h3 class="name"><code>getLocalViewport</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code class="optional">[viewport=null]</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code class="optional">[result=vec4]</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Vec4</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l806"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:806</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>returns the viewport in pixels applying the local camera viewport to the full viewport of the canvas</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name optional">[viewport=null]</code>
+                        <span class="type">Vec4</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>viewport info, otherwise the canvas dimensions will be used (not the current viewport)</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name optional">[result=vec4]</code>
+                        <span class="type">Vec4</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>where to store the result, if omited it is created</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Vec4</span>:
+                    
+                    <p>the viewport info of the camera in pixels</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_getModelMatrix" class="method item">
     <h3 class="name"><code>getModelMatrix</code></h3>
 
@@ -1050,7 +1299,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l284"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:284</code></a>
+        <a href="../files/.._src_components_camera.js.html#l360"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:360</code></a>
         
         </p>
 
@@ -1163,7 +1412,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l340"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:340</code></a>
+        <a href="../files/.._src_components_camera.js.html#l416"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:416</code></a>
         
         </p>
 
@@ -1286,7 +1535,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l312"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:312</code></a>
+        <a href="../files/.._src_components_camera.js.html#l388"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:388</code></a>
         
         </p>
 
@@ -1347,11 +1596,192 @@
 </div>
 
                 
+                    <div id="method_getRayInPixel" class="method item">
+    <h3 class="name"><code>getRayInPixel</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>x</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>y</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>viewport</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>skip_local_viewport</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_camera.js.html#l835"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:835</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>given an x and y position, returns the ray {start, dir}</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">x</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">y</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">viewport</code>
+                        <span class="type">Vec4</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>viewport coordinates (if omited full viewport is used)</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">skip_local_viewport</code>
+                        <span class="type">Boolean</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>ignore the local camera viewport configuration when computing the viewport</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>{start, dir}</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_getRight" class="method item">
     <h3 class="name"><code>getRight</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -1383,7 +1813,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l493"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:493</code></a>
+        <a href="../files/.._src_components_camera.js.html#l580"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:580</code></a>
         
         </p>
 
@@ -1398,6 +1828,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -1424,7 +1878,17 @@
     <h3 class="name"><code>getTop</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -1456,7 +1920,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l476"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:476</code></a>
+        <a href="../files/.._src_components_camera.js.html#l562"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:562</code></a>
         
         </p>
 
@@ -1471,6 +1935,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -1497,7 +1985,17 @@
     <h3 class="name"><code>getUp</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>out</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -1529,7 +2027,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l460"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:460</code></a>
+        <a href="../files/.._src_components_camera.js.html#l544"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:544</code></a>
         
         </p>
 
@@ -1544,6 +2042,30 @@
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">out</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>output vector [optional]</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -1612,7 +2134,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l298"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:298</code></a>
+        <a href="../files/.._src_components_camera.js.html#l374"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:374</code></a>
         
         </p>
 
@@ -1719,7 +2241,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l326"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:326</code></a>
+        <a href="../files/.._src_components_camera.js.html#l402"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:402</code></a>
         
         </p>
 
@@ -1834,7 +2356,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l240"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:240</code></a>
+        <a href="../files/.._src_components_camera.js.html#l311"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:311</code></a>
         
         </p>
 
@@ -1951,7 +2473,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l555"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:555</code></a>
+        <a href="../files/.._src_components_camera.js.html#l647"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:647</code></a>
         
         </p>
 
@@ -2012,7 +2534,7 @@
             
                 <li class="arg">
                     
-                        <code>viewport</code>
+                        <code class="optional">[viewport=null]</code>
                     
                 </li>
             
@@ -2055,7 +2577,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l670"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:670</code></a>
+        <a href="../files/.._src_components_camera.js.html#l762"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:762</code></a>
         
         </p>
 
@@ -2094,14 +2616,15 @@
             
                 <li class="param">
                     
-                        <code class="param-name">viewport</code>
-                        <span class="type">Array4</span>
+                        <code class="param-name optional">[viewport=null]</code>
+                        <span class="type">Vec4</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>viewport coordinates (if omited full viewport is used)</p>
+                        <p>viewport info (if omited full canvas viewport is used)</p>
 
                     </div>
 
@@ -2202,7 +2725,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l567"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:567</code></a>
+        <a href="../files/.._src_components_camera.js.html#l659"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:659</code></a>
         
         </p>
 
@@ -2294,7 +2817,7 @@
             
                 <li class="arg">
                     
-                        <code>viewport</code>
+                        <code class="optional">[viewport=null]</code>
                     
                 </li>
             
@@ -2337,7 +2860,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l724"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:724</code></a>
+        <a href="../files/.._src_components_camera.js.html#l789"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:789</code></a>
         
         </p>
 
@@ -2376,14 +2899,15 @@
             
                 <li class="param">
                     
-                        <code class="param-name">viewport</code>
-                        <span class="type">Array4</span>
+                        <code class="param-name optional">[viewport=null]</code>
+                        <span class="type">Vec4</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>viewport coordinates (if omited full viewport is used)</p>
+                        <p>viewport info (if omited full canvas viewport is used)</p>
 
                     </div>
 
@@ -2462,7 +2986,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l255"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:255</code></a>
+        <a href="../files/.._src_components_camera.js.html#l326"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:326</code></a>
         
         </p>
 
@@ -2517,7 +3041,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l657"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:657</code></a>
+        <a href="../files/.._src_components_camera.js.html#l749"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:749</code></a>
         
         </p>
 
@@ -2582,7 +3106,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l355"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:355</code></a>
+        <a href="../files/.._src_components_camera.js.html#l431"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:431</code></a>
         
         </p>
 
@@ -2660,7 +3184,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l170"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:170</code></a>
+        <a href="../files/.._src_components_camera.js.html#l196"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:196</code></a>
         
         </p>
 
@@ -2707,7 +3231,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l108"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:108</code></a>
+        <a href="../files/.._src_components_camera.js.html#l134"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:134</code></a>
         
         </p>
 
@@ -2754,7 +3278,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l93"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:93</code></a>
+        <a href="../files/.._src_components_camera.js.html#l119"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:119</code></a>
         
         </p>
 
@@ -2801,7 +3325,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l154"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:154</code></a>
+        <a href="../files/.._src_components_camera.js.html#l180"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:180</code></a>
         
         </p>
 
@@ -2848,7 +3372,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l185"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:185</code></a>
+        <a href="../files/.._src_components_camera.js.html#l211"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:211</code></a>
         
         </p>
 
@@ -2895,7 +3419,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l201"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:201</code></a>
+        <a href="../files/.._src_components_camera.js.html#l227"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:227</code></a>
         
         </p>
 
@@ -2942,7 +3466,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l138"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:138</code></a>
+        <a href="../files/.._src_components_camera.js.html#l164"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:164</code></a>
         
         </p>
 
@@ -2989,7 +3513,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l77"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:77</code></a>
+        <a href="../files/.._src_components_camera.js.html#l100"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:100</code></a>
         
         </p>
 
@@ -3036,7 +3560,7 @@
             
         
         
-        <a href="../files/.._src_components_camera.js.html#l123"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:123</code></a>
+        <a href="../files/.._src_components_camera.js.html#l149"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:149</code></a>
         
         </p>
 
