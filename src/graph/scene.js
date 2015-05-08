@@ -87,7 +87,7 @@ if(typeof(LiteGraph) != "undefined")
 	function LGraphSceneNode()
 	{
 		this.properties = {node_id:""};
-		this.size = [90,20];
+		this.size = [100,20];
 
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
@@ -138,12 +138,13 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( output.name )
 			{
-				case "Transform": this.setOutputData(i, node.getTransform() ); break;
 				case "Material": this.setOutputData(i, node.getMaterial() ); break;
-				case "Light": this.setOutputData(i, node.getLight() ); break;
-				case "Camera": this.setOutputData(i, node.getCamera() ); break;
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
 				case "Visible": this.setOutputData(i, node.flags.visible ); break;
+				default:
+					var compo = node.getComponentByUId( output.name );
+					this.setOutputData(i, compo );
+					break;
 			}
 		}
 	}
@@ -161,7 +162,7 @@ if(typeof(LiteGraph) != "undefined")
 		for(var i = 0; i < compos.length; ++i)
 		{
 			var name = LS.getClassName( compos[i].constructor );
-			result.push( [name, name] );
+			result.push( [ compos[i].uid, name, { label: name } ] );
 		}
 
 		return result;
@@ -521,20 +522,26 @@ if(typeof(LiteGraph) != "undefined")
 		return compo;
 	}
 
-	LGraphComponent.prototype.getComponentAttributes = function()
+	LGraphComponent.prototype.getComponentAttributes = function( v )
 	{
 		var compo = this.getComponent();
 		if(!compo)
 			return null;
-		var attrs = LS.getObjectAttributes( compo );
+
+		var attrs = null;
+		if(compo.getAttributes)
+			attrs = compo.getAttributes( v );
+		else
+			attrs = LS.getObjectAttributes( compo );
+
 		var result = [];
 		for(var i in attrs)
 			result.push( [i, attrs[i]] );
 		return result;
 	}
 
-	LGraphComponent.prototype.onGetInputs = LGraphComponent.prototype.getComponentAttributes;
-	LGraphComponent.prototype.onGetOutputs = LGraphComponent.prototype.getComponentAttributes;
+	LGraphComponent.prototype.onGetInputs = function() { return this.getComponentAttributes("input"); }
+	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentAttributes("output"); }
 
 	LiteGraph.registerNodeType("scene/component", LGraphComponent );
 	window.LGraphComponent = LGraphComponent;

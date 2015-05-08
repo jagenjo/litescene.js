@@ -277,6 +277,26 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 }
 
 /**
+* Returns the texture in a channel
+* @method getTexture
+* @param {String} channel default is COLOR
+* @return {Texture}
+*/
+Material.prototype.getTexture = function(channel) {
+	channel = channel || Material.COLOR_TEXTURE;
+
+	var v = this.textures[channel];
+	if(!v) 
+		return null;
+	var tex = v;
+	if(tex.constructor === String)
+		return LS.ResourcesManager.textures[tex];
+	else if(tex.constructor == Texture)
+		return tex;
+	return null;
+}
+
+/**
 * Assigns a texture to a channel
 * @method setTexture
 * @param {String} channel 
@@ -310,12 +330,31 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 		break;
 	}
 
-	if(!texture) return;
+	if(!texture)
+		return;
 	if(texture.constructor == String && texture[0] != ":")
-		ResourcesManager.load(texture);
+		LS.ResourcesManager.load(texture);
+}
+
+/**
+* Collects all the resources needed by this material (textures)
+* @method getResources
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+SurfaceMaterial.prototype.getResources = function (res)
+{
+	for(var i in this.textures)
+	{
+		var tex_info = this.textures[i];
+		if(!tex_info) 
+			continue;
+		if(typeof(tex_info) == "string")
+			res[ tex_info ] = GL.Texture;
+	}
+	return res;
 }
 
 
-
-LS.registerMaterialClass(SurfaceMaterial);
+LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;

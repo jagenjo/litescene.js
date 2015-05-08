@@ -400,6 +400,9 @@ Light.prototype.prepare = function( render_options )
 		macros.USE_DIRECTIONAL_LIGHT = "";
 	else if(this.type == Light.SPOT)
 		macros.USE_SPOT_LIGHT = "";
+	else //omni
+		macros.USE_OMNI_LIGHT = "";
+
 	if(this.spot_cone)
 		macros.USE_SPOT_CONE = "";
 	if(this.linear_attenuation)
@@ -478,7 +481,7 @@ Light.prototype.getMacros = function(instance, render_options)
 		macros.USE_SHADOW_MAP = "";
 		if(this._shadowmap && this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
 			macros.USE_SHADOW_CUBEMAP = "";
-		if(this.hard_shadows || macros.USE_SHADOW_CUBEMAP != null)
+		if(this.hard_shadows)// || macros.USE_SHADOW_CUBEMAP != null)
 			macros.USE_HARD_SHADOWS = "";
 		macros.SHADOWMAP_OFFSET = "";
 	}

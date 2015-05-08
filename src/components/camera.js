@@ -39,7 +39,7 @@ function Camera(o)
 	this._frustum_size = 50; //ortho
 	this._real_aspect = 1.0; //the one used when computing the projection matrix
 
-	//left, bottom, width, height
+	//viewport in normalized coordinates: left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
 	this._viewport_in_pixels = vec4.create();
 
@@ -244,6 +244,11 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 	}
 });
 
+/**
+* The viewport in normalized coordinates (left,bottom, width, height)
+* @property viewport {vec4}
+* @default 50
+*/
 Object.defineProperty( Camera.prototype, "viewport", {
 	get: function() {
 		return this._viewport;
@@ -483,7 +488,7 @@ Camera.prototype.getLocalVector = function(v, dest)
 }
 
 /**
-* returns the eye (position of the camera)
+* returns the eye (position of the camera) in global coordinates
 * @method getEye
 * @param {vec3} out output vector [optional]
 * @return {vec3} position in global coordinates
@@ -502,7 +507,7 @@ Camera.prototype.getEye = function( out )
 
 
 /**
-* returns the center of the camera (position where the camera is pointing)
+* returns the center of the camera (position where the camera is pointing) in global coordinates
 * @method getCenter
 * @param {vec3} out output vector [optional]
 * @return {vec3} position in global coordinates
@@ -635,6 +640,16 @@ Camera.prototype.getGlobalTop = function(dest)
 }
 */
 
+/**
+* set camera in orthographic mode and sets the planes
+* @method setOrthographic
+* @param {number} left
+* @param {number} right
+* @param {number} bottom
+* @param {number} top
+* @param {number} near
+* @param {number} far
+*/
 Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
 {
 	this._near = near;
@@ -735,7 +750,6 @@ Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 	this.setOrientation(q);
 }
 
-
 Camera.prototype.fromViewmatrix = function(mat)
 {
 	var M = mat4.invert( mat4.create(), mat );
@@ -743,6 +757,22 @@ Camera.prototype.fromViewmatrix = function(mat)
 	this.center = vec3.transformMat4(vec3.create(),[0,0,-1],M);
 	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
 	this._must_update_view_matrix = true;
+}
+
+/**
+* Sets the viewport in pixels (using the gl.canvas as reference)
+* @method setViewportInPixels
+* @param {number} left
+* @param {number} right
+* @param {number} width
+* @param {number} height
+*/
+Camera.prototype.setViewportInPixels = function(left,bottom,width,height)
+{
+	this._viewport[0] = left / gl.canvas.width;
+	this._viewport[1] = bottom / gl.canvas.height;
+	this._viewport[2] = width / gl.canvas.width;
+	this._viewport[3] = height / gl.canvas.height;
 }
 
 

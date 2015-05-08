@@ -22,6 +22,7 @@ function Material(o)
 	//this.shader_name = null; //default shader
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.opacity = 1.0;
+	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.shader_name = "global";
 	this.blend_mode = Blend.NORMAL;
 
@@ -213,7 +214,9 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._color_info.set( this.color );
+	this._color_info[3] = this.opacity;
+	uniforms.u_material_color = this._color_info;
 	uniforms.u_ambient_color = scene.ambient_color;
 	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
 
@@ -332,7 +335,7 @@ Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, op
 	if( typeof(texture_or_filename) === "string" ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
-			ResourcesManager.load(texture_or_filename,options, function(texture) {
+			LS.ResourcesManager.load(texture_or_filename,options, function(texture) {
 				that.setTexture(channel, texture);
 				if(options.on_complete)
 					options.on_complete();
@@ -577,7 +580,7 @@ Material.prototype.getResources = function (res)
 		if(!tex_info) 
 			continue;
 		if(typeof(tex_info.texture) == "string")
-			res[ tex_info.texture ] = Texture;
+			res[ tex_info.texture ] = GL.Texture;
 	}
 	return res;
 }

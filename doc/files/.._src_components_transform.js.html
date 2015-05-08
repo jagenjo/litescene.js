@@ -170,7 +170,7 @@ function Transform(o)
 {
 	this._position = vec3.create();
 	this._rotation = quat.create();
-	this._scale = vec3.fromValues(1,1,1);
+	this._scaling = vec3.fromValues(1,1,1);
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
@@ -184,7 +184,7 @@ function Transform(o)
 		}).bind(this);
 		Object.observe( this._position, inner_transform_change );
 		Object.observe( this._rotation, inner_transform_change );
-		Object.observe( this._scale, inner_transform_change );
+		Object.observe( this._scaling, inner_transform_change );
 	}
 
 	if(o)
@@ -199,10 +199,10 @@ Transform.RIGHT = vec3.fromValues(1,0,0);
 Transform.FRONT = vec3.fromValues(0,0,-1);
 
 Transform.attributes = {
-		position:&quot;vec3&quot;,
-		scale:&quot;vec3&quot;,
-		rotation:&quot;quat&quot;
-	};
+	position:&quot;vec3&quot;,
+	scaling:&quot;vec3&quot;,
+	rotation:&quot;quat&quot;
+};
 
 Transform.prototype.onAddedToNode = function(node)
 {
@@ -252,12 +252,12 @@ Object.defineProperty( Transform.prototype, &#x27;rotation&#x27;, {
 * @property scaling {vec3}
 */
 Object.defineProperty( Transform.prototype, &#x27;scaling&#x27;, {
-	get: function() { return this._scale; },
+	get: function() { return this._scaling; },
 	set: function(v) { 
 		if(v.constructor === Number)
-			this._scale[0] = this._scale[1] = this._scale[2] = v;
+			this._scaling[0] = this._scaling[1] = this._scaling[2] = v;
 		else
-			this._scale.set(v);
+			this._scaling.set(v);
 		this._must_update_matrix = true;
 	},
 	enumerable: true
@@ -281,6 +281,56 @@ Object.defineProperty( Transform.prototype, &#x27;matrix&#x27;, {
 
 
 /**
+* The position relative to its parent in vec3 format
+* @property position {vec3}
+*/
+Object.defineProperty( Transform.prototype, &#x27;globalPosition&#x27;, {
+	get: function() { return this.getGlobalPosition(); },
+	set: function(v) { 
+	},
+	enumerable: true
+});
+
+/**
+* The local matrix transform relative to its parent in mat4 format
+* @property matrix {mat4}
+*/
+Object.defineProperty( Transform.prototype, &#x27;globalMatrix&#x27;, {
+	get: function() { 
+		this.updateGlobalMatrix();
+		return this._global_matrix;
+	},
+	set: function(v) { 
+	},
+	enumerable: true
+});
+
+Transform.prototype.getAttributes = function(v)
+{
+	if(v == &quot;output&quot;)
+	{
+		return {
+			position:&quot;vec3&quot;,
+			scaling:&quot;vec3&quot;,
+			rotation:&quot;quat&quot;,
+			matrix:&quot;mat4&quot;,
+			globalPosition:&quot;vec3&quot;,
+			globalMatrix:&quot;mat4&quot;
+		};
+	} 
+	else //if(v == &quot;input&quot;)
+	{
+		return {
+			position:&quot;vec3&quot;,
+			scaling:&quot;vec3&quot;,
+			rotation:&quot;quat&quot;,
+			matrix:&quot;mat4&quot;
+		};
+	}
+}
+
+
+/**
 * Copy the transform from another Transform
 * @method copyFrom
 * @param {Transform} src
@@ -298,7 +348,8 @@ Transform.prototype.copyFrom = function(src)
 Transform.prototype.configure = function(o)
 {
 	if(o.position) vec3.copy( this._position, o.position );
-	if(o.scale) vec3.copy( this._scale, o.scale );
+	if(o.scaling)
+		vec3.copy( this._scaling, o.scaling );
 
 	if(o.rotation &amp;&amp; o.rotation.length == 4)
 		quat.copy( this._rotation, o.rotation );
@@ -328,7 +379,7 @@ Transform.prototype.serialize = function()
 	return {
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],
-		scale: [ this._scale[0],this._scale[1],this._scale[2] ],
+		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ],
 		matrix: toArray( this._local_matrix ) //could be useful
 	};
 }
@@ -341,7 +392,7 @@ Transform.prototype.identity = function()
 {
 	vec3.copy(this._position, [0,0,0]);
 	quat.copy(this._rotation, [0,0,0,1]);
-	vec3.copy(this._scale, [1,1,1]);
+	vec3.copy(this._scaling, [1,1,1]);
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._must_update_matrix = false;
@@ -423,7 +474,7 @@ Transform.prototype.getGlobalRotation = function(out)
 Transform.prototype.getScale = function(out)
 {
 	out = out || vec3.create();
-	return vec3.copy(out,this._scale);
+	return vec3.copy(out,this._scaling);
 }
 
 /**
@@ -438,15 +489,15 @@ Transform.prototype.getGlobalScale = function(out)
 	if( this._parent )
 	{
 		var aux = this;
-		vec3.copy(out,this._scale);
+		vec3.copy(out,this._scaling);
 		while(aux._parent)
 		{
-			vec3.multiply(out, out, aux._scale);
+			vec3.multiply(out, out, aux._scaling);
 			aux = aux._parent;
 		}
 		return out;
 	}
-	return vec3.copy(out, this._scale);
+	return vec3.copy(out, this._scaling);
 }
 
 /**
@@ -456,7 +507,7 @@ Transform.prototype.getGlobalScale = function(out)
 Transform.prototype.updateMatrix = function()
 {
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
-	mat4.scale(this._local_matrix, this._local_matrix, this._scale);
+	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
 	this._must_update_matrix = false;
 }
 Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
@@ -682,13 +733,14 @@ Transform.prototype.fromMatrix = function(m, is_global)
 
 	//scale
 	var tmp = vec3.create();
-	this._scale[0] = vec3.length( mat4.rotateVec3(tmp,M,[1,0,0]) );
-	this._scale[1] = vec3.length( mat4.rotateVec3(tmp,M,[0,1,0]) );
-	this._scale[2] = vec3.length( mat4.rotateVec3(tmp,M,[0,0,1]) );
+	this._scaling[0] = vec3.length( mat4.rotateVec3(tmp,M,[1,0,0]) );
+	this._scaling[1] = vec3.length( mat4.rotateVec3(tmp,M,[0,1,0]) );
+	this._scaling[2] = vec3.length( mat4.rotateVec3(tmp,M,[0,0,1]) );
 
-	mat4.scale( mat4.create(), M, [1/this._scale[0],1/this._scale[1],1/this._scale[2]] );
+	mat4.scale( mat4.create(), M, [1/this._scaling[0],1/this._scaling[1],1/this._scaling[2]] );
 
 	//rot
+
 	//quat.fromMat4(this._rotation, M);
 	//*
 	vec3.normalize( M.subarray(0,3), M.subarray(0,3) );
@@ -757,9 +809,9 @@ Transform.prototype.setRotation = function(q)
 Transform.prototype.setScale = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.set(this._scale, x,y,z);
+		vec3.set(this._scaling, x,y,z);
 	else
-		vec3.set(this._scale, x,x,x);
+		vec3.set(this._scaling, x,x,x);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -898,9 +950,9 @@ Transform.prototype.rotateQuatGlobal = function(quaternion)
 Transform.prototype.scale = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.multiply(this._scale, this._scale, [x,y,z]);
+		vec3.multiply(this._scaling, this._scaling, [x,y,z]);
 	else
-		vec3.multiply(this._scale, this._scale,x);
+		vec3.multiply(this._scaling, this._scaling,x);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -916,7 +968,7 @@ Transform.prototype.scale = function(x,y,z)
 */
 Transform.interpolate = function(a,b,factor, result)
 {
-	vec3.lerp(result._scale, a._scale, b._scale, factor); //scale
+	vec3.lerp(result._scaling, a._scaling, b._scaling, factor); //scale
 	vec3.lerp(result._position, a._position, b._position, factor); //position
 	quat.slerp(result._rotation, a._rotation, b._rotation, factor); //rotation
 	this._must_update_matrix = true;
@@ -1068,6 +1120,23 @@ Transform.prototype.globalVectorToLocal = function(vec, dest) {
 }
 
 
+Transform.prototype.applyTransform = function( transform, center, is_global )
+{
+	//is local
+
+	//apply translation
+	vec3.add( this._position, this._position, transform._position );
+
+	//apply rotation
+	quat.multiply( this._rotation, this._rotation, transform._rotation );
+
+	//apply scale
+	vec3.multiply( this._scaling, this._scaling, transform._scaling );
+
+	this._must_update_matrix = true; //matrix must be redone?
+}
+
+
 
 /**
 * Applies the transformation using a matrix
@@ -1076,6 +1145,90 @@ Transform.prototype.globalVectorToLocal = function(vec, dest) {
 * @param {vec3} center different pivot [optional] if omited 0,0,0 will be used
 * @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
+Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
+{
+	var M = matrix;
+
+	if(center)
+	{
+		var T = mat4.setTranslation( mat4.create(), center);
+		var inv_center = vec3.scale( vec3.create(), center, -1 );
+		var iT = mat4.setTranslation( mat4.create(), inv_center);
+
+		M = mat4.create();
+		mat4.multiply( M, T, matrix );
+		mat4.multiply( M, M, iT );
+	}
+
+
+	if(!this._parent)
+	{
+		if(is_global)
+		{
+			this.applyLocalTransformMatrix( M );
+			return;
+		}
+
+		//is local
+		this.applyLocalTransformMatrix( M );
+		return;
+	}
+
+	/*
+	//convert transform to local coordinates
+	var GM = this.getGlobalMatrix();
+	var temp_mat = mat4.multiply( mat4.create(), M, GM );
+
+	var PGM = this._parent._global_matrix;
+	var inv_pgm = mat4.invert( mat4.create(), PGM );
+
+	mat4.multiply(temp_mat, inv_pgm, temp_mat );
+	this.applyLocalTransformMatrix( temp_mat );
+	//*/
+
+	//*
+	var GM = this.getGlobalMatrix();
+	var PGM = this._parent._global_matrix;
+	var temp = mat4.create();
+	mat4.multiply( this._global_matrix, M, GM );
+
+	mat4.invert(temp,PGM);
+	mat4.multiply(this._local_matrix, temp, this._global_matrix );
+	this.fromMatrix(this._local_matrix);
+	//*/
+}
+
+//applies matrix to position, rotation and scale individually, doesnt take into account parents
+Transform.prototype.applyLocalTransformMatrix = function( M )
+{
+	var temp = vec3.create();
+
+	//apply translation
+	vec3.transformMat4( this._position, this._position, M );
+
+	//apply scale
+	mat4.rotateVec3( temp, M, [1,0,0] );
+	this._scaling[0] *= vec3.length( temp );
+	mat4.rotateVec3( temp, M, [0,1,0] );
+	this._scaling[1] *= vec3.length( temp );
+	mat4.rotateVec3( temp, M, [0,0,1] );
+	this._scaling[2] *= vec3.length( temp );
+
+	//apply rotation
+	var m = mat4.invert(mat4.create(), M);
+	mat4.transpose(m, m);
+	var m3 = mat3.fromMat4( mat3.create(), m);
+	var q = quat.fromMat3(quat.create(), m3);
+	quat.normalize(q, q);
+	quat.multiply( this._rotation, q, this._rotation );
+
+	this._must_update_matrix = true; //matrix must be redone?
+	return;
+}
+
+
+
+/*
 Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 {
 	var M = matrix;
@@ -1111,7 +1264,7 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 	mat4.multiply(this._local_matrix, temp, this._global_matrix );
 	this.fromMatrix(this._local_matrix);
 }
-
+*/
 
 LS.registerComponent(Transform);
 LS.Transform = Transform;

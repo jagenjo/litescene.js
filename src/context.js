@@ -9,6 +9,7 @@
 	- resources: string with the path to the resources folder
 	- shaders: string with the url to the shaders.xml file
 	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
+	- autoresize: boolean to automatically resize the canvas when the window is resized
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -48,7 +49,6 @@ function Context(options)
 	this.gl = GL.create(options);
 	this.canvas = this.gl.canvas;
 	this.render_options = new RenderOptions();
-
 	this.scene = LS.GlobalScene;
 
 	if(options.resources)
@@ -58,7 +58,15 @@ function Context(options)
 	if(options.proxy)
 		LS.ResourcesManager.setProxy( options.proxy );
 
-	Renderer.init();
+	if(options.autoresize)
+	{
+		window.addEventListener("resize", (function(){
+			this.canvas.width = canvas.parentNode.offsetWidth;
+			this.canvas.height = canvas.parentNode.offsetHeight;
+		}).bind(this));
+	}
+
+	LS.Renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
 	this.force_redraw = options.redraw || false;
@@ -102,8 +110,34 @@ Context.prototype.loadScene = function(url, on_complete)
 		scene.start();
 		if(on_complete)
 			on_complete();
+		console.log("Scene playing");
 	}
 }
+
+/**
+* loads Scene from object or JSON
+* @method setScene
+* @param {Object} scene
+* @param {Function} on_complete callback trigged when the scene and the resources are loaded
+*/
+Context.prototype.setScene = function(scene_info, on_complete)
+{
+	var scene = this.scene;
+	if(typeof(scene_info) == "string")
+		scene_info = JSON.parse(scene_info);
+	scene.configure( scene_info );
+	scene.loadResources( inner_all_loaded );
+
+	function inner_all_loaded()
+	{
+		scene.start();
+		if(on_complete)
+			on_complete();
+		scene._must_redraw = true;
+		console.log("Scene playing");
+	}
+}
+
 
 Context.prototype.pause = function()
 {

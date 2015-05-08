@@ -1,6 +1,7 @@
 
 function Skybox(o)
 {
+	this.enabled = true;
 	this.texture = null;
 	this.intensity = 1;
 	this.use_environment = true;
@@ -38,7 +39,8 @@ Skybox.prototype.onResourceRenamed = function (old_name, new_name, resource)
 
 Skybox.prototype.onCollectInstances = function(e, instances)
 {
-	if(!this._root) return;
+	if(!this._root || !this.enabled)
+		return;
 
 	var texture = null;
 	if (this.use_environment)
@@ -46,12 +48,14 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	else
 		texture = this.texture;
 
-	if(!texture) return;
+	if(!texture)
+		return;
 
 	if(texture.constructor === String)
 		texture = LS.ResourcesManager.textures[texture];
 
-	if(!texture) return;
+	if(!texture)
+		return;
 
 	var mesh = this._mesh;
 	if(!mesh)

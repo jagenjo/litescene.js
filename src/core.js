@@ -273,12 +273,53 @@ var LS = {
 	},
 
 	/**
+	* Clears all the uids inside this object and children (it also works with serialized object)
+	* @method clearUIds
+	* @param {Object} root could be a node or an object from a node serialization
+	*/
+	clearUIds: function(root)
+	{
+		if(root.uid)
+			delete root.uid;
+
+		var components = root.components;
+		if(!components && root.getComponents)
+			components = root.getComponents();
+
+		if(!components)
+			return;
+
+		if(components)
+		{
+			for(var i in components)
+			{
+				var comp = components[i];
+				if(comp[1].uid)
+					delete comp[1].uid;
+				if(comp[1]._uid)
+					delete comp[1]._uid;
+			}
+		}
+
+		var children = root.children;
+		if(!children && root.getChildren)
+			children = root.getChildren();
+
+		if(!children)
+			return;
+		for(var i in children)
+			LS.clearUIds(children[i]);
+	},
+
+
+	/**
 	* Returns an object class name (uses the constructor toString)
 	* @method getObjectClassName
 	* @param {Object} the object to see the class name
 	* @return {String} returns the string with the name
 	*/
-	getObjectClassName: function(obj) {
+	getObjectClassName: function(obj)
+	{
 		if (!obj)
 			return;
 
@@ -299,7 +340,8 @@ var LS = {
 	* @param {Object} class object
 	* @return {String} returns the string with the name
 	*/
-	getClassName: function(obj) {
+	getClassName: function(obj)
+	{
 		if (!obj)
 			return;
 

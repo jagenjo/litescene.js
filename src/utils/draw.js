@@ -852,3 +852,6 @@ var Draw = {
 	}
 
 };
+
+if(typeof(LS) != "undefined")
+	LS.Draw = Draw;

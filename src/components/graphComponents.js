@@ -125,6 +125,11 @@ GraphComponent.prototype.runGraph = function()
 		LEvent.trigger(this._root._in_tree, "change");
 }
 
+GraphComponent.prototype.getGraph = function()
+{
+	return this._graph;
+}
+
 
 LS.registerComponent(GraphComponent);
 
@@ -282,6 +287,11 @@ FXGraphComponent.prototype.onBeforeRender = function(e, render_options)
 
 	//assign global render frame container
 	LS.Renderer.assignGlobalRenderFrameContainer( RFC );
+}
+
+FXGraphComponent.prototype.getGraph = function()
+{
+	return this._graph;
 }
 
 //take the resulting textures and pass them through the graph

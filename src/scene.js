@@ -20,9 +20,8 @@ function SceneTree()
 
 	this._paths = [];
 
-	LEvent.bind(this,"treeItemAdded", this.onNodeAdded, this );
-	LEvent.bind(this,"treeItemRemoved", this.onNodeRemoved, this );
-
+	LEvent.bind( this, "treeItemAdded", this.onNodeAdded, this );
+	LEvent.bind( this, "treeItemRemoved", this.onNodeRemoved, this );
 
 	this.init();
 }
@@ -109,6 +108,11 @@ SceneTree.prototype.clear = function()
 	this._root.processActionInComponents("onRemovedFromScene",this); //send to components
 
 	this.init();
+	/**
+	 * Fired when the whole scene is cleared
+	 *
+	 * @event clear
+	 */
 	LEvent.trigger(this,"clear");
 	LEvent.trigger(this,"change");
 }
@@ -195,6 +199,11 @@ SceneTree.prototype.configure = function(scene_info)
 	//if(scene_info.animations)
 	//	this._root.animations = scene_info.animations;
 
+	/**
+	 * Fired after the scene has been configured
+	 * @event configure
+	 * @param {Object} scene_info contains all the info to do the configuration
+	 */
 	LEvent.trigger(this,"configure",scene_info);
 	LEvent.trigger(this,"change");
 }
@@ -242,6 +251,11 @@ SceneTree.prototype.serialize = function()
 	//serialize scene components
 	//this.serializeComponents(o);
 
+	/**
+	 * Fired after the scene has been serialized to an object
+	 * @event serialize
+	 * @param {Object} object to store the persistent info
+	 */
 	LEvent.trigger(this,"serialize",o);
 
 	return o;
@@ -272,11 +286,21 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 		error: inner_error
 	});
 
+	/**
+	 * Fired before loading scene
+	 * @event beforeLoad
+	 */
+	LEvent.trigger(this,"beforeLoad");
+
 	function inner_success(response)
 	{
 		that.init();
 		that.configure(response);
 		that.loadResources(inner_all_loaded);
+		/**
+		 * Fired when the scene has been loaded but before the resources
+		 * @event load
+		 */
 		LEvent.trigger(that,"load");
 	}
 
@@ -284,7 +308,11 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 	{
 		if(on_complete)
 			on_complete(that, url);
-		LEvent.trigger(that,"full_load");
+		/**
+		 * Fired after all resources have been loaded
+		 * @event loadCompleted
+		 */
+		LEvent.trigger(that,"loadCompleted");
 	}
 
 	function inner_error(err)
@@ -358,6 +386,12 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 
 	//LEvent.trigger(node,"onAddedToScene", this);
 	node.processActionInComponents("onAddedToScene",this); //send to components
+	/**
+	 * Fired when a new node is added to this scene
+	 *
+	 * @event nodeAdded
+	 * @param {LS.SceneNode} node
+	 */
 	LEvent.trigger(this,"nodeAdded", node);
 	LEvent.trigger(this,"change");
 }
@@ -377,6 +411,12 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 	//node.processActionInComponents("onRemovedFromNode",node);
 	node.processActionInComponents("onRemovedFromScene",this); //send to components
 
+	/**
+	 * Fired after a node has been removed
+	 *
+	 * @event nodeRemoved
+	 * @param {LS.SceneNode} node
+	 */
 	LEvent.trigger(this,"nodeRemoved", node);
 	LEvent.trigger(this,"change");
 	return true;
@@ -454,7 +494,7 @@ SceneTree.prototype.getElementById = SceneTree.prototype.getNode;
 SceneTree.prototype.filterNodes = function( filter )
 {
 	var r = [];
-	for(var i in this._nodes)
+	for(var i = 0; i < this._nodes.length; ++i)
 		if( filter(this._nodes[i]) )
 			r.push(this._nodes[i]);
 	return r;
@@ -469,9 +509,9 @@ SceneTree.prototype.filterNodes = function( filter )
 */
 SceneTree.prototype.findComponentByUId = function(uid)
 {
-	for(var i in this._nodes)
+	for(var i = 0; i < this._nodes.length; ++i)
 	{
-		var compo = this._nodes.getComponentByUId(uid);
+		var compo = this._nodes[i].getComponentByUId( uid );
 		if(compo)
 			return compo;
 	}
@@ -596,6 +636,12 @@ SceneTree.prototype.start = function()
 
 	this._state = "running";
 	this._start_time = getTime() * 0.001;
+	/**
+	 * Fired when the scene is starting to play
+	 *
+	 * @event start
+	 * @param {LS.SceneTree} scene
+	 */
 	LEvent.trigger(this,"start",this);
 	this.triggerInNodes("start");
 }
@@ -611,6 +657,12 @@ SceneTree.prototype.stop = function()
 	if(this._state == "stopped") return;
 
 	this._state = "stopped";
+	/**
+	 * Fired when the scene stops playing
+	 *
+	 * @event stop
+	 * @param {LS.SceneTree} scene
+	 */
 	LEvent.trigger(this,"stop",this);
 	this.triggerInNodes("stop");
 	this.purgeResidualEvents();
@@ -645,7 +697,7 @@ SceneTree.prototype.collectData = function()
 		if(node.flags.visible == false) //skip invisibles
 			continue;
 
-		//trigger event
+		//trigger event 
 		LEvent.trigger(node, "computeVisibility"); //, {camera: camera} options: options }
 
 		//compute global matrix
@@ -750,15 +802,32 @@ SceneTree.prototype.updateCollectedData = function()
 
 SceneTree.prototype.update = function(dt)
 {
+	/**
+	 * Fired before doing an update
+	 *
+	 * @event beforeUpdate
+	 * @param {LS.SceneTree} scene
+	 */
 	LEvent.trigger(this,"beforeUpdate", this);
 
 	this._global_time = getTime() * 0.001;
 	this._time = this._global_time - this._start_time;
 	this._last_dt = dt;
 
+	/**
+	 * Fired while updating
+	 *
+	 * @event update
+	 * @param {number} dt
+	 */
 	LEvent.trigger(this,"update", dt);
 	this.triggerInNodes("update",dt, true);
 
+	/**
+	 * Fired after updating the scene
+	 *
+	 * @event afterUpdate
+	 */
 	LEvent.trigger(this,"afterUpdate", this);
 }
 
@@ -940,6 +1009,12 @@ SceneNode.prototype.setId = function(new_id)
 	if(this._id)
 		scene._nodes_by_id[ this._id ] = this;
 
+	/**
+	 * Node changed id
+	 *
+	 * @event idChanged
+	 * @param {String} new_id
+	 */
 	LEvent.trigger(this,"idChanged", new_id); //TODO: CHANGE NAME
 	LEvent.trigger(Scene,"nodeIdChanged", this); //TODO: CHANGE NAME
 	return true;
@@ -1139,46 +1214,15 @@ SceneNode.prototype.clone = function()
 	var scene = this._in_tree;
 
 	var new_name = scene ? scene.generateUniqueNodeName( this._id ) : this._id ;
-	var newnode = new SceneNode( new_name );
+	var newnode = new LS.SceneNode( new_name );
 	var info = this.serialize();
 
 	//remove all uids from nodes and components
-	inner_clean_uids(info);
+	LS.clearUIds( info );
 
 	info.id = null;
 	info.uid = LS.generateUId("NODE-");
 	newnode.configure( info );
-
-	function inner_clean_uids(root)
-	{
-		if(root.uid)
-			delete root.uid;
-		if(root.components)
-		{
-			for(var i in root.components)
-			{
-				var comp =  root.components[i];
-				if(comp[1].uid)
-					delete comp[1].uid;
-			}
-			for(var i in root.children)
-				inner_clean_uids(root.children[i]);
-		}
-	}
-
-
-	/*
-	//clone children (none of them is added to the SceneTree)
-	for(var i in this._children)
-	{
-		var new_child_name = scene ? scene.generateUniqueNodeName( this._children[i].id ) : this._children[i].id;
-		var childnode = new SceneNode( new_child_name );
-		var info = this._children[i].serialize();
-		info.id = null;
-		childnode.configure( info );
-		newnode.addChild(childnode);
-	}
-	*/
 
 	return newnode;
 }

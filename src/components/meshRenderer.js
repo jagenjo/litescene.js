@@ -1,6 +1,7 @@
 
 function MeshRenderer(o)
 {
+	this.enabled = true;
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.submesh_id = -1;
@@ -55,6 +56,8 @@ MeshRenderer.prototype.onRemovedFromNode = function(node)
 */
 MeshRenderer.prototype.configure = function(o)
 {
+	if(o.enabled !== undefined)
+		this.enabled = o.enabled;
 	this.mesh = o.mesh;
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
@@ -75,6 +78,7 @@ MeshRenderer.prototype.configure = function(o)
 MeshRenderer.prototype.serialize = function()
 {
 	var o = { 
+		enabled: this.enabled,
 		mesh: this.mesh,
 		lod_mesh: this.lod_mesh
 	};
@@ -93,13 +97,13 @@ MeshRenderer.prototype.serialize = function()
 
 MeshRenderer.prototype.getMesh = function() {
 	if(typeof(this.mesh) === "string")
-		return ResourcesManager.meshes[this.mesh];
+		return LS.ResourcesManager.meshes[this.mesh];
 	return this.mesh;
 }
 
 MeshRenderer.prototype.getLODMesh = function() {
 	if(typeof(this.lod_mesh) === "string")
-		return ResourcesManager.meshes[this.lod_mesh];
+		return LS.ResourcesManager.meshes[this.lod_mesh];
 	return this.low_mesh;
 }
 
@@ -123,15 +127,20 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 //MeshRenderer.prototype.getRenderInstance = function(options)
 MeshRenderer.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	var mesh = this.getMesh();
-	if(!mesh) return null;
+	if(!mesh)
+		return null;
 
 	var node = this._root;
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	var RI = this._RI;
 	if(!RI)
-		this._RI = RI = new RenderInstance(this._root, this);
+		this._RI = RI = new LS.RenderInstance(this._root, this);
 
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
@@ -168,7 +177,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.lod_mesh)
 	{
 		if(typeof(this.lod_mesh) === "string")
-			RI.collision_mesh = ResourcesManager.resources[ this.lod_mesh ];
+			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
 		RI.setLODMesh( RI.collision_mesh );
@@ -179,5 +188,5 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent(MeshRenderer);
+LS.registerComponent( MeshRenderer );
 LS.MeshRenderer = MeshRenderer;

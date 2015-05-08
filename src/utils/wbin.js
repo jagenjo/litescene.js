@@ -221,7 +221,7 @@ WBin.load = function( data_array, skip_classname )
 	var header = WBin.getHeaderInfo(data_array);
 	if(!header)
 	{
-		console.error("Wrong WBin");
+		console.error("Wrong WBin Header");
 		return null;
 	}
 

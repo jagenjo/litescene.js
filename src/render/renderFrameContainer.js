@@ -138,7 +138,6 @@ RenderFrameContainer.prototype.endFBO = function()
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	LS.Renderer.global_aspect = 1.0;
 
-	//restore previous FBO and viewport
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
 	LS.Renderer._full_viewport.set( gl.viewport_data );
 }

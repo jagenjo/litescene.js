@@ -212,7 +212,7 @@ var Renderer = {
 	init: function()
 	{
 		Draw.init();
-		Draw.onRequestFrame = function() { Scene.refresh(); }
+		Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
 	},
 
 	reset: function()
@@ -633,14 +633,17 @@ var Renderer = {
 			//REFACTOR THIS
 			var tex = null;
 			if(sampler.constructor === String || sampler.constructor === Texture) //old way
+			{
 				tex = sampler;
+				sampler = null;
+			}
 			else if(sampler.texture)
 				tex = sampler.texture;
 			else
 				continue;
 
 			if(tex.constructor === String)
-				tex = ResourcesManager.textures[ tex ];
+				tex = LS.ResourcesManager.textures[ tex ];
 			if(!tex)
 				continue;
 
@@ -648,14 +651,17 @@ var Renderer = {
 			sampler_uniforms[ i ] = tex.bind( slot++ );
 
 			//texture properties
-			if(sampler.minFilter)
-				gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
-			if(sampler.magFilter)
-				gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
-			if(sampler.wrap)
+			if(sampler)
 			{
-				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
-				gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
+				if(sampler.minFilter)
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+				if(sampler.magFilter)
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
+				if(sampler.wrap)
+				{
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
+				}
 			}
 		}
 

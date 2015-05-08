@@ -48,19 +48,21 @@
 				float shadow = 1.0;
 				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
 					#ifdef USE_HARD_SHADOWS
-						shadow = 1.0 - testShadow(vec2(0.,0.));
+						shadow = 1.0 - testShadow(vec3(0.0));
 					#else
-						if (v_light_coord.w > 0.0) //inside the light frustrum
+						#ifndef USE_OMNI_LIGHT
+							if (v_light_coord.w > 0.0) //inside the light frustrum (omnis dont have frustrum)
+						#endif
 						{
-							shadow = 2.0 * testShadow(vec2(0.0,0.0));
-							shadow += testShadow(vec2(0.0,u_shadow_params.x));
-							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(-u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,u_shadow_params.x));
+							shadow = 2.0 * testShadow(vec3(0.0));
+							shadow += testShadow(vec3(0.0,u_shadow_params.x,u_shadow_params.x));
+							shadow += testShadow(vec3(0.0,-u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec3(-u_shadow_params.x,0.0,u_shadow_params.x));
+							shadow += testShadow(vec3(u_shadow_params.x,0.0,-u_shadow_params.x));
+							shadow += testShadow(vec3(-u_shadow_params.x,-u_shadow_params.x,u_shadow_params.x));
+							shadow += testShadow(vec3(u_shadow_params.x,-u_shadow_params.x,-u_shadow_params.x));
+							shadow += testShadow(vec3(-u_shadow_params.x,u_shadow_params.x,u_shadow_params.x));
+							shadow += testShadow(vec3(u_shadow_params.x,u_shadow_params.x,-u_shadow_params.x));
 							shadow = 1.0 - shadow * 0.1;
 						}
 					#endif	
@@ -79,7 +81,7 @@
 				float light_dist = length(L);
 				L /= light_dist;
 
-				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
+				#ifndef USE_OMNI_LIGHT
 					L = -u_light_front;
 				#endif
 
@@ -189,9 +191,7 @@
 					//compute reflection color from environment
 					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
 
-						#ifdef USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
-						#else //USE_ENVIRONMENT_TEXTURE
+						#ifdef USE_ENVIRONMENT_TEXTURE
 							vec2 uvs_0 = v_uvs; vec2 uvs_1 = v_uvs; vec2 uvs_transformed = v_uvs;
 							vec2 uvs_polar_reflected = polarToCartesian(-R);
 							vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
@@ -212,6 +212,8 @@
 							reflection_color = texture2D( environment_texture, env_uv, reflection_gloss ).xyz;
 
 							//reflection_color = texture2D(environment_texture, uvs_polar_reflected ).xyz;
+						#else USE_ENVIRONMENT_CUBEMAP
+							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
 						#endif
 
 					#endif //environment
@@ -276,7 +278,7 @@
 				return dot(depth.xyzw , bitShifts);
 			}
 
-			float testShadow(vec2 offset)
+			float testShadow(vec3 offset)
 			{
 				float shadow = 0.0;
 				float depth = 0.0;
@@ -285,7 +287,7 @@
 					
 					vec3 l_vector = (v_pos - u_light_pos);
 					float dist = length(l_vector);
-					vec4 depth_color = textureCube(shadowmap, l_vector / dist + vec3(offset,0.0));
+					vec4 depth_color = textureCube(shadowmap, l_vector / dist + offset);
 					//if ( abs(depth_color.x) + abs(depth_color.y) + abs(depth_color.z) + abs(depth_color.w) < 0.0001 ) return 0.0;
 					float sampleDepth = UnpackDepth32( depth_color );
 					depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
@@ -293,7 +295,7 @@
 					float bias = u_shadow_params.y;
 					return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
 				#else
-					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset;
+					vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;
 					//is inside light frustum
 					if (clamp(sample, 0.0, 1.0) == sample) { 
 						float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );
@@ -745,7 +747,7 @@
 	</skeleton>
 
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_DRAW_BUFFERS" multipass="true" imports="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_DRAW_BUFFERS" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -989,8 +991,7 @@
 				IN.viewDir = normalize(u_camera_eye - v_pos);
 				IN.worldPos = v_pos;
 				IN.worldNormal = normalize(v_normal);
-				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-
+				IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all
 				o.Albedo = IN.color.xyz;
 				o.Normal = IN.worldNormal;
 				o.Emission = vec3(0.0);
@@ -1239,17 +1240,17 @@
 		<macros>
 			NO_NORMALS, NO_COORDS, USE_COORDS1_STREAM, USE_COLOR_STREAM, USE_TANGENT_STREAM,
 			USE_ALPHA_TEST, USE_POINTS,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,
-			USE_COLOR_TEXTURE, USE_COLOR_CUBEMAP, USE_OPACITY_TEXTURE, USE_SPECULAR_TEXTURE, USE_AMBIENT_TEXTURE,
+			USE_COLOR_TEXTURE, USE_COLOR_CUBEMAP, USE_OPACITY_TEXTURE, USE_SPECULAR_TEXTURE, USE_AMBIENT_TEXTURE, USE_EXTRA_TEXTURE,
 			USE_EMISSIVE_TEXTURE, USE_EMISSIVE_MATERIAL, USE_SHADOW_MAP, USE_SHADOW_CUBEMAP, SHADOWMAP_OFFSET,
 			USE_VELVET, USE_VELVET_ALPHA, USE_DETAIL_TEXTURE, USE_NORMAL_TEXTURE,
 			USE_NORMALMAP_FACTOR, USE_TANGENT_NORMALMAP,
 			USE_BUMP_TEXTURE, USE_BUMP_FACTOR, USE_DISPLACEMENT_TEXTURE, USE_DISPLACEMENTMAP_FACTOR,
 			USE_REFLECTION, USE_REFLECTIVITY_TEXTURE, USE_ENVIRONMENT_TEXTURE, USE_ENVIRONMENT_CUBEMAP, USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,
-			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,
+			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_OMNI_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,
 			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
 			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
 			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
-			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE,
+			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_EXTRA_SURFACE_SHADER_CODE, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE,
 			USE_DRAW_BUFFERS
 		</macros>
 		<code type="vertex_shader">
@@ -1298,6 +1299,7 @@
 			varying vec3 v_pos;
 			varying vec3 v_local_pos;
 			varying vec3 v_normal;
+			varying vec3 v_local_normal; //normal in local space
 			//varying vec3 v_tangent;
 			varying vec2 v_uvs;
 
@@ -1387,6 +1389,7 @@
 				gl_Position =  u_mvp * vertex4;
 				//gl_Position.xy = (v_uvs * 2.0 - 1.0) * gl_Position.w ; // lightmapping
 				v_local_pos = vertex4.xyz;
+				v_local_normal = v_normal;
 				v_pos = (u_model * vertex4).xyz;
 				v_screenpos = gl_Position;
 
@@ -1412,6 +1415,7 @@
 			//varying vec3 v_tangent;
 			varying vec4 v_screenpos; //used for projective textures
 			varying vec3 v_local_pos; //position in local space
+			varying vec3 v_local_normal; //normal in local space
 
 			#ifdef USE_COLOR_STREAM
 				varying vec4 v_color;
@@ -1498,6 +1502,10 @@
 				#endif
 			#endif
 
+			#ifdef USE_EXTRA_TEXTURE
+				uniform sampler2D extra_texture;
+			#endif
+
 			#ifdef USE_TEXTURE_AVERAGE_LIGHT
 				uniform sampler2D light_average_texture;
 			#endif
@@ -1548,7 +1556,10 @@
 			uniform vec3 u_fog_info;
 			uniform vec3 u_fog_color;
 
+			uniform vec4 u_extra_data;
+
 			uniform vec2 u_specular;
+			uniform float u_time;
 
 			uniform vec4 u_clipping_plane;
 
@@ -1639,7 +1650,7 @@
 				vec2 uvs_worldxy = v_pos.xy * 0.1;
 				vec2 uvs_worldxz = v_pos.xz * 0.1;
 				vec2 uvs_worldyz = v_pos.yz * 0.1;
-				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
+				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;  // gl_FragCoord.xy / u_viewport
 				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
 
 				// Normalmap ***************************************
@@ -1753,6 +1764,26 @@
 				//Surface properties
 				o.Albedo = color;
 
+				#ifdef USE_EXTRA_SURFACE_SHADER_CODE
+					IN.vertex = v_local_pos;
+					IN.normal = v_local_normal;
+					IN.color = u_material_color;
+					#ifdef USE_COLOR_STREAM
+						IN.color = v_color;
+					#endif
+					IN.uv = v_uvs;
+					#ifdef USE_COORD1_STREAM
+						IN.uv1 = v_uvs1;
+					#endif
+					IN.camPos = u_camera_eye;
+					IN.viewDir = normalize(u_camera_eye - v_pos);
+					IN.worldPos = v_pos;
+					IN.worldNormal = normalize(v_normal);
+					IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all
+
+					USE_EXTRA_SURFACE_SHADER_CODE
+				#endif
+
 				//Compute light equation **********************************************************
 				vec3 final_color = computeLight(o);
 				//*********************************************************************************
@@ -1788,753 +1819,7 @@
 		</code>
 	</shader>
 
-<shader id="global_old" tags="instance" multipass="true" imports="true">
-		<macros>
-			NO_NORMALS, NO_COORDS, USE_COORDS1_STREAM, USE_COLOR_STREAM, USE_TANGENT_STREAM,
-			USE_ALPHA_TEST, USE_POINTS,USE_CLIPPING_PLANE,USE_BRIGHTNESS_FACTOR,USE_COLORCLIP_FACTOR,USE_TEXTURE_MATRIX,
-			USE_COLOR_TEXTURE, USE_COLOR_CUBEMAP, USE_OPACITY_TEXTURE, USE_SPECULAR_TEXTURE, USE_AMBIENT_TEXTURE,
-			USE_EMISSIVE_TEXTURE, USE_EMISSIVE_MATERIAL, USE_SHADOW_MAP, USE_SHADOW_CUBEMAP, SHADOWMAP_OFFSET,
-			USE_VELVET, USE_VELVET_ALPHA, USE_DETAIL_TEXTURE, USE_NORMAL_TEXTURE,
-			USE_NORMALMAP_FACTOR, USE_TANGENT_NORMALMAP,
-			USE_BUMP_TEXTURE, USE_BUMP_FACTOR, USE_DISPLACEMENT_TEXTURE, USE_DISPLACEMENTMAP_FACTOR,
-			USE_REFLECTION, USE_REFLECTIVITY_TEXTURE, USE_ENVIRONMENT_TEXTURE, USE_ENVIRONMENT_CUBEMAP, USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,
-			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,
-			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
-			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
-			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
-			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE
-		</macros>
-		<code type="vertex_shader">
-		<![CDATA[
-			precision mediump float;
-			attribute vec3 a_vertex;
-
-			#ifndef NO_NORMALS
-				attribute vec3 a_normal;
-			#endif
-
-			#ifndef NO_COORDS
-				attribute vec2 a_coord;
-			#endif
-
-			#ifdef USE_COORDS1_STREAM
-				attribute vec2 a_coord1;
-				varying vec2 v_uvs1;
-			#endif			
-
-			#ifdef USE_COLOR_STREAM
-				attribute vec4 a_color;
-				varying vec4 v_color;
-			#endif
-
-			#ifdef USE_TANGENT_STREAM
-				//attribute vec3 a_tangent;
-			#endif
-
-			#ifdef USE_DISPLACEMENT_TEXTURE
-				uniform sampler2D displacement_texture;
-			#endif
-
-			#ifdef USE_DISPLACEMENTMAP_FACTOR
-				uniform float u_displacementmap_factor;
-			#endif
-
-			uniform mat4 u_mvp;
-			uniform mat4 u_model;
-			//uniform mat4 u_viewprojection;
-			uniform mat4 u_normal_model;
-
-			uniform mat3 u_texture_matrix; //matrix to modify uvs
-			varying vec2 v_uvs_transformed;
-
-			varying vec3 v_pos;
-			varying vec3 v_local_pos;
-			varying vec3 v_normal;
-			//varying vec3 v_tangent;
-			varying vec2 v_uvs;
-
-			varying vec4 v_screenpos; //used for projective textures
-			uniform vec3 u_camera_eye;
-			uniform vec2 u_camera_perspective;
-			uniform float u_pointSize;
-
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
-				uniform mat4 u_lightMatrix;
-				varying vec4 v_light_coord;
-			#endif
-
-			#ifdef USE_SKINNING
-				#import "skinning"
-			#endif			
-
-			#ifdef USE_VERTEX_SHADER_UNIFORMS
-				USE_VERTEX_SHADER_UNIFORMS
-			#endif
-
-			#ifdef USE_VERTEX_SHADER_FUNCTIONS
-				USE_VERTEX_SHADER_FUNCTIONS
-			#endif
-
-			void main() {
-
-				vec4 vertex4 = vec4(a_vertex,1.0);
-
-				#ifdef NO_NORMALS
-					v_normal = vec3(0.,1.,0.);
-				#else
-					v_normal = a_normal;
-				#endif
-
-				/*
-				#ifndef USE_TANGENT_STREAM
-					v_tangent = vec3(1.,0.,0.);
-				#else
-					v_tangent = (u_normal_model * vec4(a_tangent,1.0)).xyz;
-				#endif
-				*/
-
-				#ifdef USE_COLOR_STREAM
-					v_color = a_color;
-				#endif
-
-				#ifdef NO_COORDS
-					v_uvs = vec2(0.5);
-				#else
-					v_uvs = a_coord;
-				#endif
-
-				#ifdef USE_COORDS1_STREAM
-					v_uvs1 = a_coord1;
-				#endif				
-
-				v_uvs_transformed = (u_texture_matrix * vec3(v_uvs,1.0)).xy;
-
-				#ifdef USE_SKINNING
-					applySkinning(vertex4, v_normal);
-				#endif				
-
-				#ifdef USE_VERTEX_SHADER_CODE
-					USE_VERTEX_SHADER_CODE
-				#endif
-
-
-				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
-					v_light_coord = (u_lightMatrix) * vertex4;
-				#endif
-
-				#ifdef USE_DISPLACEMENT_TEXTURE
-					vec2 uvs_0 = v_uvs;
-					vec2 uvs_1 = uvs_0;
-					vec2 uvs_transformed = v_uvs_transformed;
-
-					float height = texture2D( displacement_texture, USE_DISPLACEMENT_TEXTURE ).x;
-					#ifdef USE_DISPLACEMENTMAP_FACTOR
-						height *= u_displacementmap_factor;
-					#endif
-					vertex4.xyz += v_normal * height;
-				#endif
-
-
-				//position
-				gl_Position =  u_mvp * vertex4;
-				//gl_Position.xy = (v_uvs * 2.0 - 1.0) * gl_Position.w ; // lightmapping
-				v_local_pos = vertex4.xyz;
-				v_pos = (u_model * vertex4).xyz;
-				v_screenpos = gl_Position;
-
-				//normal
-				v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
-
-				gl_PointSize = (u_pointSize / length(u_camera_eye - v_pos)) * u_camera_perspective.y; 
-			}
-		]]>
-		</code>
-		<code type="pixel_shader">
-		<![CDATA[
-			precision mediump float;
-
-			varying vec3 v_pos; //position in wold space
-			varying vec3 v_normal; //normal in world space
-			varying vec2 v_uvs;
-			varying vec2 v_uvs_transformed;
-			//varying vec3 v_tangent;
-			varying vec4 v_screenpos; //used for projective textures
-			varying vec3 v_local_pos; //position in local space
-
-			#ifdef USE_COLOR_STREAM
-				varying vec4 v_color;
-			#endif
-
-			#ifdef USE_COORDS1_STREAM
-				varying vec2 v_uvs1;
-			#endif
-			
-			#ifdef USE_COLOR_TEXTURE
-				uniform sampler2D color_texture;
-			#endif
-
-			#ifdef USE_COLOR_CUBEMAP
-				uniform samplerCube color_cubemap;
-			#endif
-
-
-			#ifdef USE_OPACITY_TEXTURE
-				uniform sampler2D opacity_texture;
-			#endif
-
-			#ifdef USE_SPECULAR_TEXTURE
-				uniform sampler2D specular_texture;
-			#endif
-
-			#ifdef USE_AMBIENT_TEXTURE
-				uniform sampler2D ambient_texture;
-			#endif
-
-			#ifdef USE_EMISSIVE_TEXTURE
-				uniform sampler2D emissive_texture;
-			#endif
-
-			#ifdef USE_NORMAL_TEXTURE
-				uniform mat4 u_normal_model;
-				uniform sampler2D normal_texture;
-			#endif
-			
-			#ifdef USE_BUMP_TEXTURE
-				uniform sampler2D bump_texture;
-			#endif
-
-			#ifdef USE_BUMP_FACTOR
-				uniform float u_bumpmap_factor;
-			#endif
-
-			#ifdef USE_NORMALMAP_FACTOR
-				uniform float u_normalmap_factor;
-			#endif
-
- 			
-			#ifdef USE_DETAIL_TEXTURE
-				uniform sampler2D detail_texture;
-				uniform vec3 u_detail_info;
-			#endif
-
-			#ifdef USE_REFLECTIVITY_TEXTURE
-				uniform sampler2D reflectivity_texture;
-			#endif
-
-			uniform vec2 u_reflection_info;
-			#ifdef USE_ENVIRONMENT_TEXTURE
-				uniform sampler2D environment_texture;
-			#endif
-
-			#ifdef USE_ENVIRONMENT_CUBEMAP
-				uniform samplerCube environment_cubemap;
-			#endif
-
-			#ifdef USE_IRRADIANCE_TEXTURE
-				uniform sampler2D irradiance_texture;
-			#endif
-
-			#ifdef USE_IRRADIANCE_CUBEMAP
-				uniform samplerCube irradiance_cubemap;
-			#endif
-
-			#ifdef USE_PROJECTIVE_LIGHT
-				#ifdef USE_PROJECTIVE_LIGHT_CUBEMAP
-					uniform samplerCube light_texture;
-				#else
-					uniform sampler2D light_texture;
-				#endif
-			#endif
-
-			#ifdef USE_TEXTURE_AVERAGE_LIGHT
-				uniform sampler2D light_average_texture;
-			#endif
-
-			#ifdef USE_SOFT_PARTICLES
-				uniform sampler2D depth_texture;
-			#endif
-
-			#ifdef USE_VELVET
-				uniform vec4 u_velvet_info;
-			#endif
-
-			#ifdef USE_BACKLIGHT
-				uniform float u_backlight_factor;
-			#endif
-
-			#ifdef USE_LIGHT_OFFSET
-				uniform float u_light_offset;
-			#endif
-
-			#ifdef USE_BRIGHTNESS_FACTOR
-				uniform float u_brightness_factor;
-			#endif
-
-			#ifdef USE_COLORCLIP_FACTOR
-				uniform float u_colorclip_factor;
-			#endif
-
-			uniform vec3 u_background_color;
-
-			uniform vec4 u_material_color;
-			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
-			uniform vec3 u_emissive_color;
-
-			uniform vec3 u_light_pos;
-			uniform vec3 u_light_front;
-			uniform vec3 u_light_color;
-			uniform vec4 u_light_angle; //start,end,phi,theta
-			uniform vec2 u_light_att; //start,end
-
-			uniform vec3 u_camera_eye;
-			uniform vec3 u_camera_front;
-			uniform vec2 u_camera_planes; //far near
-			uniform float u_pointSize;
-
-			uniform vec3 u_fog_info;
-			uniform vec3 u_fog_color;
-
-			uniform vec2 u_specular;
-
-			uniform vec4 u_clipping_plane;
-
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
-				varying vec4 v_light_coord;
-			#endif
-
-			#ifdef USE_SHADOW_MAP
-				#import "testShadow"
-			#endif
-
-			#ifdef USE_SPOT_LIGHT
-				#import "spotFalloff"
-			#endif
-
-			#ifdef USE_TANGENT_NORMALMAP
-				#import "perturbNormal"
-			#endif
-
-			#ifdef USE_BUMP_TEXTURE
-				#import "bumpNormal"
-			#endif
-
-			#ifdef USE_PIXEL_SHADER_FUNCTIONS
-				USE_PIXEL_SHADER_FUNCTIONS
-			#endif
-
-			vec2 polarToCartesian(in vec3 V)
-			{
-				return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);
-			}
-			
-			void main() {
-				float temp = 0.0;
-				vec2 temp_v2 = vec2(0.0);
-				vec3 temp_v3 = vec3(0.0);
-
-				#ifdef USE_CLIPPING_PLANE
-					if( dot(v_pos, u_clipping_plane.xyz) < u_clipping_plane.w)
-						discard;
-				#endif
-				
-
-				//surface color
-				vec3 final_color = vec3(0.0);
-				vec3 color = u_material_color.xyz;
-				float alpha = u_material_color.a;
-				#ifdef USE_COLOR_STREAM
-					color *= v_color.xyz;
-					alpha *= v_color.w;
-				#endif
-
-				float spec_factor = u_specular.x;
-				float spec_gloss = u_specular.y;
-				float spec_light = 0.0;
-
-				vec3 N = normalize(v_normal);
-
-				//eye vector
-				vec3 E = (u_camera_eye - v_pos);
-				float cam_dist = length(E);
-
-				#ifdef USE_ORTHOGRAPHIC_CAMERA
-					//E /= cam_dist;
-					E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes �?
-				#else
-					E /= cam_dist;
-				#endif
-
-				//* COMPUTE TEXTURE COORDINATES ***************************
-				vec2 uvs_0 = v_uvs;
-				vec2 uvs_1 = uvs_0;
-				#ifdef USE_COORDS1_STREAM
-					uvs_1 = v_uvs1;
-				#endif
-				vec2 uvs_transformed = v_uvs_transformed;
-				vec2 uvs_worldxy = v_pos.xy * 0.1;
-				vec2 uvs_worldxz = v_pos.xz * 0.1;
-				vec2 uvs_worldyz = v_pos.yz * 0.1;
-				vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
-				vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
-
-				vec3 prev_norm = N;
-				#ifdef USE_NORMAL_TEXTURE
-					//warning: v_normal is in World space
-					vec3 normalmap_pixel = texture2D( normal_texture, USE_NORMAL_TEXTURE ).xyz;
-					#ifdef USE_TANGENT_NORMALMAP
-						normalmap_pixel.xy = vec2(1.0) - normalmap_pixel.xy; //fixes in woman
-						N = perturbNormal(N, E, USE_NORMAL_TEXTURE, normalmap_pixel );
-						//N is in world space
-					#else
-						N = (normalmap_pixel - vec3(0.5)) * 2.0;
-						//N is in object space so we need to convert it to world space
-						N = (u_normal_model * vec4(N,1.0)).xyz;
-					#endif
-
-					#ifdef USE_NORMALMAP_FACTOR
-						N = mix(prev_norm, normalize(N), u_normalmap_factor);
-					#endif
-					N = normalize(N);
-				#endif
-
-				#ifdef USE_BUMP_TEXTURE
-					float bump_factor = 1.0;
-					#ifdef USE_BUMP_FACTOR
-						bump_factor = u_bumpmap_factor;
-					#endif
-					N = bumpNormal(v_pos, N, bump_texture, USE_BUMP_TEXTURE, bump_factor );
-				#endif
-
-				vec3 localPosN = normalize(v_local_pos); //use_polar_vertex
-
-				vec2 uvs_polar = polarToCartesian(N);
-				vec2 uvs_polar_reflected = uvs_polar; //computed later when we know the Reflected vector
-				vec2 uvs_polar_vertex = polarToCartesian(localPosN);
-
-				//********************************************************
-
-				#ifdef USE_OPACITY_TEXTURE
-					alpha *= texture2D(opacity_texture,USE_OPACITY_TEXTURE).x;
-				#endif
-
-				#if defined(USE_COLOR_TEXTURE) || defined(USE_COLOR_CUBEMAP)
-					vec4 diffuse_tex = vec4(0.0);
-					#ifdef USE_COLOR_TEXTURE
-						diffuse_tex = texture2D(color_texture, USE_COLOR_TEXTURE );
-					#endif
-					#ifdef USE_COLOR_CUBEMAP
-						diffuse_tex = textureCube(color_cubemap, normalize(v_local_pos) );
-					#endif
-
-					color *= diffuse_tex.xyz;
-					#ifndef USE_OPACITY_TEXTURE
-						alpha *= diffuse_tex.a;
-					#endif
-				#endif
-
-				/* DEBUG
-				#ifdef USE_SHADOW_MAP
-					color *= textureCube(shadowmap, normalize(v_pos - u_light_pos)).xyz;
-				#endif
-				*/
-
-				#ifdef USE_ALPHA_TEST
-					if(alpha < USE_ALPHA_TEST)
-						discard;
-				#endif
-				
-				#ifdef USE_SPECULAR_TEXTURE
-					vec3 spec_tex = texture2D(specular_texture, USE_SPECULAR_TEXTURE ).xyz;
-					spec_factor *= spec_tex.x;
-					spec_gloss *= spec_tex.y;
-				#endif
-
-				#ifdef USE_DETAIL_TEXTURE
-					vec3 detail_tex = texture2D(detail_texture,uvs_0 * u_detail_info.yz).xyz;
-					color = color + color * (detail_tex - vec3(0.5)) * u_detail_info.x;
-				#endif
-
-				//lighting calculation
-				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
-					float shadow = 1.0;
-
-					#ifdef USE_HARD_SHADOWS
-						shadow = 1.0 - testShadow(vec2(0.,0.));
-					#else
-						#ifndef USE_SHADOW_CUBEMAP
-						if (v_light_coord.w > 0.0) //inside the light frustrum (only apply to frontal lights)
-						#endif
-						{
-							shadow = 2.0 * testShadow(vec2(0.0,0.0));
-							shadow += testShadow(vec2(0.0,u_shadow_params.x));
-							shadow += testShadow(vec2(0.0,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(u_shadow_params.x,0.0));
-							shadow += testShadow(vec2(-u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec2(-u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec2(u_shadow_params.x,u_shadow_params.x));
-							shadow = 1.0 - shadow * 0.1;
-						}
-					#endif	
-				#else
-					float shadow = 1.0;
-				#endif
-
-				vec3 L = (u_light_pos - v_pos);
-				float light_dist = length(L);
-				L /= light_dist;
-
-				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
-					L = -u_light_front;
-				#endif
-
-				vec3 R = reflect(E,N);
-				uvs_polar_reflected = polarToCartesian(-R);
-
-				float NdotL = 1.0;
-				#ifdef USE_DIFFUSE_LIGHT
-					NdotL = dot(N,L);
-				#endif
-				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
-				#ifdef USE_SPECULAR_LIGHT
-					spec_light = spec_factor * pow( clamp(dot(R,-L),0.001,1.0), spec_gloss);
-				#endif
-
-				vec3 light = vec3(0.0);
-
-				//ambient light
-				#ifdef FIRST_PASS
-					temp_v3 = u_ambient_color;
-					#ifdef USE_AMBIENT_TEXTURE
-						temp_v3 *= texture2D(ambient_texture,USE_AMBIENT_TEXTURE).xyz;
-					#endif
-
-					#ifdef USE_IRRADIANCE_CUBEMAP
-						temp_v3 *= textureCube(irradiance_cubemap,N).xyz;
-					#else
-						#ifdef USE_IRRADIANCE_TEXTURE
-							temp_v3 *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
-						#endif
-					#endif
-
-					light += temp_v3;
-				#endif
-
-
-				float att = 1.0;
-				#ifdef USE_LINEAR_ATTENUATION
-					att = 100.0 / light_dist;
-				#endif
-
-				#ifdef USE_RANGE_ATTENUATION
-					if(light_dist >= u_light_att.y)
-						att = 0.0;
-					else if(light_dist >= u_light_att.x)
-						att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
-				#endif
-
-				vec3 light_color = u_light_color;
-				#ifdef USE_TEXTURE_AVERAGE_LIGHT
-					light_color *= texture2D(light_average_texture,vec2(0.5), 12.0).xyz;
-				#endif
-
-				#ifdef USE_PROJECTIVE_LIGHT
-					#ifdef USE_PROJECTIVE_LIGHT_CUBEMAP
-						light_color *= textureCube(light_texture, -L).xyz;
-					#else
-						vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
-						light_color *= texture2D(light_texture,light_sample).xyz;
-					#endif
-
-					#ifndef USE_SPOT_CONE
-						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
-							att = 0.0;
-					#endif
-				#endif
-
-				#ifdef USE_SPOT_LIGHT
-					#ifdef USE_SPOT_CONE
-						att *= spotFalloff(u_light_front, normalize(u_light_pos - v_pos), u_light_angle.z, u_light_angle.w);
-					#endif
-				#endif
-
-			
-				#ifndef USE_AMBIENT_ONLY
-					#ifdef USE_LIGHT_OFFSET
-						NdotL += u_light_offset;
-					#endif
-
-					#ifdef USE_BACKLIGHT
-						//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
-						if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
-					#else
-						//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
-						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
-					#endif
-
-					NdotL = abs(NdotL);
-					light += u_diffuse_color * light_color * att * NdotL * shadow; 
-				#endif
-
-				//emissive
-				temp_v3 = u_emissive_color;
-				#ifdef USE_EMISSIVE_TEXTURE
-					temp_v3 *= texture2D(emissive_texture,USE_EMISSIVE_TEXTURE).xyz;
-				#endif
-				#ifndef USE_EMISSIVE_MATERIAL //no idea why
-					#ifdef FIRST_PASS
-						light += temp_v3;
-					#endif
-				#endif
-
-				#ifdef USE_IGNORE_LIGHT
-					light = vec3(1.0);
-				#endif
-
-				//FINAL COLOR ************************* (clamped from 0)
-				final_color = max(color * light, vec3(0.0));
-
-				#ifdef USE_EMISSIVE_MATERIAL
-					final_color = max(temp_v3,final_color);
-				#endif
-
-				float velvet_factor = 0.0;
-				#ifdef FIRST_PASS
-				#ifdef USE_VELVET
-					velvet_factor = pow( 1.0 - abs(EdotN), abs(u_velvet_info.w) );
-
-					#ifdef USE_VELVET_ALPHA
-						alpha += velvet_factor;
-					#endif
-
-					#ifdef USE_DETAIL_TEXTURE
-						velvet_factor += (detail_tex.x - 0.5) * u_detail_info.x;
-					#endif
-
-					if(u_velvet_info.w > 0.0)
-						final_color += u_velvet_info.xyz * velvet_factor;
-					else
-						final_color = final_color * (1.0 - velvet_factor) + u_velvet_info.xyz * velvet_factor;
-
-					#ifdef USE_SKIN_SHADER
-						spec_factor = pow(spec_factor,velvet_factor);
-					#endif
-				#endif
-				#endif
-
-				//get reflection factor and gloss
-				#ifdef USE_REFLECTION
-					vec3 reflection_color = u_background_color;
-
-					float reflection_factor = abs(u_reflection_info.x) * pow( 1.0 - clamp(0.0,EdotN,1.0), u_reflection_info.y );
-					float reflection_gloss = 0.0;
-
-					#ifdef USE_REFLECTIVITY_TEXTURE
-						reflection_factor *= texture2D(reflectivity_texture, USE_REFLECTIVITY_TEXTURE).x;
-					#endif
-
-					#ifdef USE_SPECULAR_IN_REFLECTION
-						//reflection_factor *= spec_factor;
-						reflection_gloss = max(0.0, (20.0 - spec_gloss) / 4.0);
-					#endif
-
-
-					#ifdef FIRST_PASS
-
-					//compute reflection color from environment
-					#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
-
-						#ifdef USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap,-R, reflection_gloss).xyz;
-						#endif
-						#ifdef USE_ENVIRONMENT_TEXTURE
-							temp_v2 = vec2(0.0);
-							vec2 env_uv = USE_ENVIRONMENT_TEXTURE ;
-
-							#ifdef USE_NORMAL_TEXTURE
-								//temp_v2 += vec2(0.0, -length(normalmap_pixel.xy)) * 0.1; //this can be improved, it is just a hack
-								temp_v2 = vec2(0.0,-0.1) * (1.0 - dot(N, normalize(v_normal)));
-								#ifdef USE_NORMALMAP_FACTOR
-									temp_v2 *= u_normalmap_factor;
-								#endif
-								env_uv += temp_v2;
-							#endif
-							reflection_color = texture2D(environment_texture, env_uv, reflection_gloss ).xyz;
-						#endif
-					#endif //environtment
-
-					//apply reflection
-
-					if( u_reflection_info.x > 0.0 )
-						final_color = final_color * max(0.0, 1.0 - reflection_factor) + reflection_color * reflection_factor;
-					else
-						final_color += reflection_color * reflection_factor;
-					#endif //firstpass
-				#endif //use_reflection
-
-				//apply spec factor
-				#ifndef USE_AMBIENT_ONLY
-					#ifdef USE_SPECULAR_ONTOP
-						final_color += light_color * max(0.0, att * spec_light * shadow);
-					#else
-						final_color += color * light_color * max(0.0, att * spec_light * shadow);
-					#endif
-					#ifdef USE_SPECULAR_ON_ALPHA
-						alpha += spec_light;
-					#endif
-				#endif
-
-
-				/* TODO
-				#ifdef USE_SOFT_PARTICLES
-					alpha *= clamp((v_screenpos.z - texture2D(depth_texture,uvs_screen).r),0.0,1.0);
-				#endif
-				*/
-
-				//apply fog
-				#ifdef USE_FOG
-					#ifdef USE_FOG_EXP
-						float fog = 1. - 1.0 / exp(max(0.0,cam_dist - u_fog_info.x) * u_fog_info.z);
-					#elif defined(USE_FOG_EXP2)
-						float fog = 1. - 1.0 / exp(pow(max(0.0,cam_dist - u_fog_info.x) * u_fog_info.z,2.0));
-					#else
-						float fog = 1. - clamp((u_fog_info.y - cam_dist) / (u_fog_info.y - u_fog_info.x),0.,1.);
-					#endif
-					#ifdef FIRST_PASS
-						final_color = mix(final_color, u_fog_color, fog);
-					#else
-						final_color = mix(final_color, vec3(0.0), fog);
-					#endif
-				#endif
-
-				#ifdef USE_BRIGHTNESS_FACTOR
-					final_color *= u_brightness_factor;
-				#endif
-				#ifdef USE_COLORCLIP_FACTOR
-					final_color -= vec3(u_colorclip_factor);
-					/*
-					temp = length(final_color);
-					if( temp < u_colorclip_factor * 0.75)
-						final_color = vec3(0.0);
-					else if( temp < u_colorclip_factor)
-						final_color *= clamp((temp - u_colorclip_factor * 0.75) / (u_colorclip_factor * 0.25),0.0,1.0);
-					*/
-				#endif
-
-				gl_FragColor = vec4(final_color, alpha); //regular color
-
-				//gl_FragColor.xyz = v_pos;
-				//gl_FragColor = vec4(-E,1.0); //front vector
-				//gl_FragColor = vec4(v_pos * 0.005,1.0); //pos vector
-				//gl_FragColor = vec4(light,1.0);
-			}
-		]]>
-		</code>
-	</shader>
-
-	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,USE_POINTS,USE_POINT_CLOUD,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS,USE_SKINNING,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
+	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_OMNI_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,USE_POINTS,USE_POINT_CLOUD,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,FIRST_PASS,USE_SKINNING,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -3148,7 +2433,7 @@
 		</code>
 	</shader>
 
-	<shader id="phong" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
+	<shader id="phong" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_AMBIENT_ONLY">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -3187,7 +2472,7 @@
 					vec3 color = u_material_color.xyz * u_ambient_color;
 				#else
 					vec3 L = normalize(u_light_pos - v_pos);
-					#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
+					#ifndef USE_OMNI_LIGHT
 						L = u_light_front;
 					#endif
 
@@ -3240,7 +2525,7 @@
 		</code>
 	</shader>
 
-	<shader id="phong_texture" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_AMBIENT_ONLY">
+	<shader id="phong_texture" tags="instance" macros="USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_AMBIENT_ONLY">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -3285,7 +2570,7 @@
 					vec3 color = u_material_color.xyz * u_ambient_color;
 				#else
 					vec3 L = normalize(u_light_pos - v_pos);
-					#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
+					#ifndef USE_OMNI_LIGHT
 						L = u_light_front;
 					#endif
 

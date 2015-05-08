@@ -21,6 +21,7 @@ function StandardMaterial(o)
 	this.color = new Float32Array([1.0,1.0,1.0]);
 	this.opacity = 1.0;
 	this.shader_name = "global";
+	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);;
 
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
 	this.diffuse = new Float32Array([1.0,1.0,1.0]);
@@ -36,16 +37,21 @@ function StandardMaterial(o)
 	this.velvet = new Float32Array([0.5,0.5,0.5]);
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
+	this._velvet_info = vec4.create();
 	this.detail = new Float32Array([0.0, 10, 10]);
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.extra_factor = 0.0; //used for debug and dev
 	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
+	this._extra_data = vec4.create();
 
 	this.blend_mode = Blend.NORMAL;
 	this.normalmap_factor = 1.0;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
 	this.use_scene_ambient = true;
+
+	//used for special fx 
+	this.extra_surface_shader_code = "";
 
 	this.textures = {};
 	this.extra_uniforms = {};
@@ -64,6 +70,35 @@ StandardMaterial.EXTRA_TEXTURE = "extra";
 
 StandardMaterial.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
 StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+
+StandardMaterial.coding_help = "\
+Input IN -> info about the mesh\n\
+SurfaceOutput o -> info about the surface properties of this pixel\n\
+\n\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+";
 
 // RENDERING METHODS
 StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
@@ -121,6 +156,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 			}
 			continue;
 		}
+
 		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
@@ -142,6 +178,25 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	if(this.reflection_factor > 0.0) 
 		macros.USE_REFLECTION = "";
 
+	//extra code
+	if(this.extra_surface_shader_code)
+	{
+		var code = null;
+		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
+		{
+			code = this._last_extra_surface_shader_code = this.extra_surface_shader_code;
+			var lines = code.split("\n");
+			for(var i in lines)
+				lines[i] = lines[i].split("//")[0]; //remove comments
+			code = lines.join("");
+			this._last_processed_extra_surface_shader_code = code;
+		}
+		else
+			code = this._last_processed_extra_surface_shader_code;
+		if(code)
+			macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
+	}
+
 
 	//extra macros
 	if(this.extra_macros)
@@ -156,12 +211,16 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._color_info.set( this.color );
+	this._color_info[3] = this.opacity;
+	uniforms.u_material_color = this._color_info;
+
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	if(this.use_scene_ambient)
 		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
 	else
 		uniforms.u_ambient_color = this.ambient;
+
 	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
@@ -170,8 +229,16 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_normalmap_factor = this.normalmap_factor;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
 	uniforms.u_bumpmap_factor = this.bumpmap_factor;
-	uniforms.u_velvet_info = new Float32Array([ this.velvet[0], this.velvet[1], this.velvet[2], (this.velvet_additive ? this.velvet_exp : -this.velvet_exp) ]);
+
+	this._velvet_info.set( this.velvet );
+	this._velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
+	uniforms.u_velvet_info = this._velvet_info;
+
 	uniforms.u_detail_info = this.detail;
+
+	this._extra_data.set( this.extra_color );
+	this._extra_data[3] = this.extra_factor;
+	uniforms.u_extra_data = this._extra_data;
 
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
@@ -269,6 +336,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
+		case "extra_surface_shader_code":
 			this[name] = value; 
 			break;
 		//vectors
@@ -310,6 +378,7 @@ StandardMaterial.prototype.getProperties = function()
 		normalmap_factor:"number",
 		displacementmap_factor:"number",
 		extra_factor:"number",
+		extra_surface_shader_code:"string",
 
 		ambient:"vec3",
 		diffuse:"vec3",
