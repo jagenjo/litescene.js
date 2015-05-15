@@ -8,6 +8,7 @@
 
 	<snippet id="surface_structs">
 		<![CDATA[
+			//used to store topology input information
 			struct Input {
 				vec4 color;
 				vec3 vertex;
@@ -22,15 +23,29 @@
 				vec4 screenPos;
 			};
 
+			//used to store surface shading properties
 			struct SurfaceOutput {
 				vec3 Albedo;
 				vec3 Normal;
 				vec3 Emission;
+				vec3 Ambient;
 				float Specular;
 				float Gloss;
 				float Alpha;
 				float Reflectivity;
-				vec4 Extra;
+				vec4 Extra; //for special purposes
+			};
+
+			//used to store light contribution
+			struct LightInfo {
+				vec3 Color;
+				vec3 Ambient;
+				float Diffuse; //NdotL
+				float Specular; //RdotL
+				vec3 Emission;
+				vec3 Reflection;
+				float Attenuation;
+				float Shadow; //1.0 means fully lit
 			};
 		]]>
 	</snippet>
@@ -38,32 +53,38 @@
 	<snippet id="computeLight">
 		<![CDATA[
 		//***** compute Light
-			vec3 computeLight(in SurfaceOutput IN)
+			vec3 computeLight(in SurfaceOutput o)
 			{
-				vec3 final_color = vec3(0.0);
-				vec3 N = IN.Normal;
-				float spec_light = 0.0;
+				vec3 N = o.Normal;
+
+				LightInfo LIGHT;
+				LIGHT.Color = u_light_color;
+				LIGHT.Ambient = vec3(0.0);
+				LIGHT.Diffuse = 1.0;
+				LIGHT.Specular = 0.0;
+				LIGHT.Reflection = vec3(0.0);
+				LIGHT.Attenuation = 0.0;
+				LIGHT.Shadow = 1.0;
 
 				//lighting calculation
-				float shadow = 1.0;
 				#if defined(USE_SHADOW_MAP) && !defined(USE_AMBIENT_ONLY)
 					#ifdef USE_HARD_SHADOWS
-						shadow = 1.0 - testShadow(vec3(0.0));
+						LIGHT.Shadow = 1.0 - testShadow(vec3(0.0));
 					#else
 						#ifndef USE_OMNI_LIGHT
 							if (v_light_coord.w > 0.0) //inside the light frustrum (omnis dont have frustrum)
 						#endif
 						{
-							shadow = 2.0 * testShadow(vec3(0.0));
-							shadow += testShadow(vec3(0.0,u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec3(0.0,-u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec3(-u_shadow_params.x,0.0,u_shadow_params.x));
-							shadow += testShadow(vec3(u_shadow_params.x,0.0,-u_shadow_params.x));
-							shadow += testShadow(vec3(-u_shadow_params.x,-u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec3(u_shadow_params.x,-u_shadow_params.x,-u_shadow_params.x));
-							shadow += testShadow(vec3(-u_shadow_params.x,u_shadow_params.x,u_shadow_params.x));
-							shadow += testShadow(vec3(u_shadow_params.x,u_shadow_params.x,-u_shadow_params.x));
-							shadow = 1.0 - shadow * 0.1;
+							LIGHT.Shadow = 2.0 * testShadow(vec3(0.0));
+							LIGHT.Shadow += testShadow(vec3(0.0,u_shadow_params.x,u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(0.0,-u_shadow_params.x,-u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(-u_shadow_params.x,0.0,u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(u_shadow_params.x,0.0,-u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(-u_shadow_params.x,-u_shadow_params.x,u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(u_shadow_params.x,-u_shadow_params.x,-u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(-u_shadow_params.x,u_shadow_params.x,u_shadow_params.x));
+							LIGHT.Shadow += testShadow(vec3(u_shadow_params.x,u_shadow_params.x,-u_shadow_params.x));
+							LIGHT.Shadow = 1.0 - LIGHT.Shadow * 0.1;
 						}
 					#endif	
 				#endif
@@ -77,9 +98,9 @@
 					E /= cam_dist;
 				#endif
 
-				vec3 L = (u_light_pos - v_pos);
-				float light_dist = length(L);
-				L /= light_dist;
+				vec3 L = (u_light_position - v_pos);
+				float light_distance = length(L);
+				L /= light_distance;
 
 				#ifndef USE_OMNI_LIGHT
 					L = -u_light_front;
@@ -92,55 +113,51 @@
 					NdotL = dot(N,L);
 				#endif
 				float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
-				spec_light = IN.Specular * pow( clamp(dot(R,-L),0.001,1.0), IN.Gloss);
+				LIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );
 
-				vec3 light = vec3(0.0);
-
-				//ambient light
-				vec3 ambient = vec3(0.0);
+				//ambient light and emissive
+				LIGHT.Ambient = vec3(0.0);
 				#ifdef FIRST_PASS
-					ambient = u_ambient_light;
+					LIGHT.Ambient = u_ambient_light;
 					#ifdef USE_IRRADIANCE_CUBEMAP
-						ambient *= textureCube( irradiance_cubemap, N).xyz;
+						LIGHT.Ambient *= textureCube( irradiance_cubemap, N).xyz;
 					#else
 					/*
 						#ifdef USE_IRRADIANCE_TEXTURE
-							ambient *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
+							LIGHT.Ambient *= texture2D(irradiance_texture, uvs_polar_reflected ).xyz;
 						#endif
 					*/
 					#endif
+					LIGHT.Ambient += o.Emission;
 				#endif
-				light += ambient;
 
-				float att = 1.0;
+				LIGHT.Attenuation = 1.0;
 				#ifdef USE_LINEAR_ATTENUATION
-					att = 100.0 / light_dist;
+					LIGHT.Attenuation = 100.0 / light_distance;
 				#endif
 
 				#ifdef USE_RANGE_ATTENUATION
 					#ifndef USE_DIRECTIONAL_LIGHT
-						if(light_dist >= u_light_att.y)
-							att = 0.0;
-						else if(light_dist >= u_light_att.x)
-							att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
+						if(light_distance >= u_light_att.y)
+							LIGHT.Attenuation = 0.0;
+						else if(light_distance >= u_light_att.x)
+							LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);
 					#endif
 				#endif
 
-				vec3 light_color = u_light_color;
-
 				#ifdef USE_PROJECTIVE_LIGHT
 					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
-					light_color *= texture2D(light_texture,light_sample).xyz;
+					LIGHT.Color *= texture2D(light_texture,light_sample).xyz;
 
 					#ifndef USE_SPOT_CONE
 						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
-							att = 0.0;
+							LIGHT.Attenuation = 0.0;
 					#endif
 				#endif
 
 				#ifdef USE_SPOT_LIGHT
 					#ifdef USE_SPOT_CONE
-						att *= spotFalloff( u_light_front, normalize( u_light_pos - v_pos ), u_light_angle.z, u_light_angle.w );
+						LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );
 					#endif
 				#endif
 
@@ -157,35 +174,18 @@
 						NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
 					#endif
 
-					NdotL = abs(NdotL);
-					light += light_color * (att * ( NdotL + spec_light ) * shadow); 
+					LIGHT.Diffuse = abs(NdotL);
 				#endif
 
-				//emissive
-				light += IN.Emission;
-
-				#ifdef USE_IGNORE_LIGHT
-					light = vec3(1.0);
-				#endif
-
-				//FINAL COLOR ************************* 
-				final_color = max( IN.Albedo * light , vec3(0.0)); //(clamped from 0)
-
-
-				#ifdef USE_SPECULAR_ONTOP
-					final_color	+= light_color * spec_light * shadow * att;
-				#endif
-
-
-				//REFLECTION
-				vec3 reflection_color = u_background_color;
+				//REFLECTION (ENVIRONMENT)
+				LIGHT.Reflection = u_background_color;
 				float reflection_gloss = 0.0; //expressed in mipmap offset
 
 				#ifdef FIRST_PASS
-				if(IN.Reflectivity > 0.0)
+				if(o.Reflectivity > 0.0)
 				{
 					#ifdef USE_SPECULAR_IN_REFLECTION
-						reflection_gloss = max(0.0, (20.0 - IN.Gloss) / 4.0);
+						reflection_gloss = max(0.0, (20.0 - o.Gloss) / 4.0);
 					#endif
 
 					//compute reflection color from environment
@@ -209,21 +209,43 @@
 								env_uv += temp_v2;
 							#endif
 							*/
-							reflection_color = texture2D( environment_texture, env_uv, reflection_gloss ).xyz;
+							LIGHT.Reflection = texture2D( environment_texture, env_uv, reflection_gloss ).xyz;
 
-							//reflection_color = texture2D(environment_texture, uvs_polar_reflected ).xyz;
+							//LIGHT.Reflection = texture2D(environment_texture, uvs_polar_reflected ).xyz;
 						#else USE_ENVIRONMENT_CUBEMAP
-							reflection_color = textureCube(environment_cubemap, -R, 0.0).xyz;
+							LIGHT.Reflection = textureCube(environment_cubemap, -R, 0.0).xyz;
 						#endif
 
 					#endif //environment
-
-					//apply reflection
-					final_color = final_color * max(0.0, 1.0 - IN.Reflectivity) + reflection_color * IN.Reflectivity;
 				}
 				#endif //firstpass
 
-				return max(final_color, vec3(0.0));
+				#ifdef USE_IGNORE_LIGHTS
+					LIGHT.Color = vec3(1.0);
+					LIGHT.Ambient = vec3(0.0);
+					LIGHT.Diffuse = 1.0;
+					LIGHT.Specular = 0.0;
+				#endif
+
+				#ifdef USE_EXTRA_LIGHT_SHADER_CODE
+					USE_EXTRA_LIGHT_SHADER_CODE
+				#endif
+
+				//FINAL LIGHT FORMULA ************************* 
+				vec3 final_color = o.Albedo * (LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow);
+
+				#ifndef USE_SPECULAR_ONTOP
+					final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);
+				#endif
+
+				//apply reflection
+				final_color = mix( final_color, LIGHT.Reflection, max(0.0,o.Reflectivity) );
+
+				#ifdef USE_SPECULAR_ONTOP
+					final_color	+= LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow;
+				#endif
+
+				return max( final_color, vec3(0.0) );
 			}
 		]]>
 	</snippet>
@@ -285,7 +307,7 @@
 
 				#ifdef USE_SHADOW_CUBEMAP
 					
-					vec3 l_vector = (v_pos - u_light_pos);
+					vec3 l_vector = (v_pos - u_light_position);
 					float dist = length(l_vector);
 					vec4 depth_color = textureCube(shadowmap, l_vector / dist + offset);
 					//if ( abs(depth_color.x) + abs(depth_color.y) + abs(depth_color.z) + abs(depth_color.w) < 0.0001 ) return 0.0;
@@ -466,6 +488,7 @@
 		]]>
 	</snippet>
 
+	<!--
 	<skeleton>
 		<code type="vertex_shader">
 		<![CDATA[
@@ -619,7 +642,7 @@
 
 			uniform vec3 u_ambient_light;
 			uniform vec3 u_background_color;
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
 			uniform vec4 u_light_angle; //cone start,end,phi,theta
@@ -716,6 +739,7 @@
 				IN.screenPos = v_screenpos;  //(v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
 
 				//surface properties
+				o.Ambient = vec3(1.0);
 				o.Albedo = IN.color.xyz;
 				o.Normal = IN.worldNormal;
 				o.Emission = vec3(0.0);
@@ -745,9 +769,10 @@
 		]]>
 		</code>
 	</skeleton>
+	-->
 
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHT,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_DRAW_BUFFERS" multipass="true" imports="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHTS,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_EXTRA_LIGHT_SHADER_CODE,USE_DRAW_BUFFERS" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -897,7 +922,7 @@
 
 			uniform vec3 u_ambient_light;
 			uniform vec3 u_background_color;
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
 			uniform vec4 u_light_angle; //cone start,end,phi,theta
@@ -977,7 +1002,7 @@
 				
 				IN.vertex = v_local_pos;
 				IN.normal = v_local_normal;
-				IN.color = u_material_color;
+				IN.color = vec4(1.0);
 				#ifdef USE_COLOR_STREAM
 					IN.color = v_color;
 				#endif
@@ -992,7 +1017,8 @@
 				IN.worldPos = v_pos;
 				IN.worldNormal = normalize(v_normal);
 				IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all
-				o.Albedo = IN.color.xyz;
+				o.Albedo = u_material_color.xyz * IN.color.xyz;
+				o.Ambient = vec3(1.0);
 				o.Normal = IN.worldNormal;
 				o.Emission = vec3(0.0);
 				o.Specular = 0.0;
@@ -1246,11 +1272,11 @@
 			USE_NORMALMAP_FACTOR, USE_TANGENT_NORMALMAP,
 			USE_BUMP_TEXTURE, USE_BUMP_FACTOR, USE_DISPLACEMENT_TEXTURE, USE_DISPLACEMENTMAP_FACTOR,
 			USE_REFLECTION, USE_REFLECTIVITY_TEXTURE, USE_ENVIRONMENT_TEXTURE, USE_ENVIRONMENT_CUBEMAP, USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,
-			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_OMNI_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHT,USE_HARD_SHADOWS,
+			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_OMNI_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHTS,USE_HARD_SHADOWS,
 			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
 			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
 			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
-			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_EXTRA_SURFACE_SHADER_CODE, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE,
+			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_EXTRA_SURFACE_SHADER_CODE, USE_EXTRA_LIGHT_SHADER_CODE, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE,
 			USE_DRAW_BUFFERS
 		</macros>
 		<code type="vertex_shader">
@@ -1539,10 +1565,9 @@
 
 			uniform vec4 u_material_color;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_emissive_color;
 
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
 			uniform vec4 u_light_angle; //start,end,phi,theta
@@ -1613,6 +1638,7 @@
 						discard;
 				#endif
 				
+				o.Ambient = u_ambient_color;
 				o.Extra = vec4(0.0);
 
 				// Surface color **************************
@@ -1625,7 +1651,6 @@
 
 				float spec_factor = u_specular.x;
 				float spec_gloss = u_specular.y;
-				float spec_light = 0.0;
 
 				vec3 N = normalize(v_normal);
 
@@ -1635,7 +1660,7 @@
 
 				#ifdef USE_ORTHOGRAPHIC_CAMERA
 					//E /= cam_dist;
-					E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes �?
+					E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes ¿?
 				#else
 					E /= cam_dist;
 				#endif
@@ -1764,23 +1789,23 @@
 				//Surface properties
 				o.Albedo = color;
 
-				#ifdef USE_EXTRA_SURFACE_SHADER_CODE
-					IN.vertex = v_local_pos;
-					IN.normal = v_local_normal;
-					IN.color = u_material_color;
-					#ifdef USE_COLOR_STREAM
-						IN.color = v_color;
-					#endif
-					IN.uv = v_uvs;
-					#ifdef USE_COORD1_STREAM
-						IN.uv1 = v_uvs1;
-					#endif
-					IN.camPos = u_camera_eye;
-					IN.viewDir = normalize(u_camera_eye - v_pos);
-					IN.worldPos = v_pos;
-					IN.worldNormal = normalize(v_normal);
-					IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all
+				IN.vertex = v_local_pos;
+				IN.normal = v_local_normal;
+				IN.color = vec4(1.0);
+				#ifdef USE_COLOR_STREAM
+					IN.color = v_color;
+				#endif
+				IN.uv = v_uvs;
+				#ifdef USE_COORD1_STREAM
+					IN.uv1 = v_uvs1;
+				#endif
+				IN.camPos = u_camera_eye;
+				IN.viewDir = normalize(u_camera_eye - v_pos);
+				IN.worldPos = v_pos;
+				IN.worldNormal = normalize(v_normal);
+				IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all
 
+				#ifdef USE_EXTRA_SURFACE_SHADER_CODE
 					USE_EXTRA_SURFACE_SHADER_CODE
 				#endif
 
@@ -1849,7 +1874,6 @@
 
 			uniform vec2 u_specular;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_emissive_color;
 
 			uniform mat4 u_mvp;
@@ -1862,7 +1886,7 @@
 			uniform float u_pointSize;
 
 
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 			uniform vec3 u_light_color;
 			uniform vec4 u_light_angle; //start,end,phi,theta
@@ -1918,20 +1942,20 @@
 					E /= cam_dist;
 				#endif
 
-				vec3 L = (u_light_pos - v_pos);
-				float light_dist = length(L);
-				L /= light_dist;
+				vec3 L = (u_light_position - v_pos);
+				float light_distance = length(L);
+				L /= light_distance;
 
 				float att = 1.0;
 				#ifdef USE_LINEAR_ATTENUATION
-					att = 100.0 / light_dist;
+					att = 100.0 / light_distance;
 				#endif
 
 				#ifdef USE_RANGE_ATTENUATION
-					if(light_dist >= u_light_att.y)
+					if(light_distance >= u_light_att.y)
 						att = 0.0;
-					else if(light_dist >= u_light_att.x)
-						att *= 1.0 - (light_dist - u_light_att.x) / (u_light_att.y - u_light_att.x);
+					else if(light_distance >= u_light_att.x)
+						att *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);
 				#endif
 
 				#if defined(USE_SPOT_LIGHT) || defined(USE_DIRECTIONAL_LIGHT)
@@ -1958,8 +1982,8 @@
 					#endif
 
 					NdotL = clamp(NdotL,0.0,1.0);
-					light += u_diffuse_color * u_light_color * att * NdotL; 
-					light += u_light_color * (att * spec_factor);
+					light += u_light_color * att * NdotL; 
+					light += u_light_color * att * spec_factor;
 				#endif
 
 				light += u_emissive_color;
@@ -2463,22 +2487,21 @@
 			varying vec3 v_normal;
 			uniform vec4 u_material_color;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 
 			void main() {
 				#ifdef USE_AMBIENT_ONLY
 					vec3 color = u_material_color.xyz * u_ambient_color;
 				#else
-					vec3 L = normalize(u_light_pos - v_pos);
+					vec3 L = normalize(u_light_position - v_pos);
 					#ifndef USE_OMNI_LIGHT
 						L = u_light_front;
 					#endif
 
 					vec3 N = normalize(v_normal);
 					vec3 light = vec3(1.0) * clamp(0.0,dot(N,L),1.0);
-					vec3 color = u_material_color.xyz * (light * u_diffuse_color + u_ambient_color);
+					vec3 color = u_material_color.xyz * (light + u_ambient_color);
 				#endif
 
 				gl_FragColor = vec4(color.x, color.y, color.z, u_material_color.a);
@@ -2560,23 +2583,22 @@
 			uniform sampler2D color_texture;
 			uniform vec4 u_material_color;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_light_color;
-			uniform vec3 u_light_pos;
+			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
 
 			void main() {
 				#ifdef USE_AMBIENT_ONLY
 					vec3 color = u_material_color.xyz * u_ambient_color;
 				#else
-					vec3 L = normalize(u_light_pos - v_pos);
+					vec3 L = normalize(u_light_position - v_pos);
 					#ifndef USE_OMNI_LIGHT
 						L = u_light_front;
 					#endif
 
 					vec3 N = normalize(v_normal);
 					vec3 light = u_light_color * max(0.0,dot(N,L));
-					vec3 color = u_material_color.xyz * (light * u_diffuse_color + u_ambient_color);
+					vec3 color = u_material_color.xyz * (light + u_ambient_color);
 				#endif
 
 				gl_FragColor = vec4(color, u_material_color.a) * texture2D( color_texture, v_coord );
@@ -2657,7 +2679,6 @@
 			varying vec3 v_normal;
 			varying vec4 v_light_coord;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_lightpos;
 			uniform sampler2D shadowmap;
 			
@@ -2699,7 +2720,7 @@
 				vec3 N = normalize(v_normal);
 				vec3 color = vec3(1.0,1.0,1.0) * clamp(0.0,dot(N,L),1.0) * (1.0 - shadow);
 				color += vec3(0.4,0.8,1.0) * clamp(0.0,dot(-N,L),1.0) * 0.5;
-				color = color * u_diffuse_color + u_ambient_color;
+				color = color + u_ambient_color;
 				gl_FragColor = vec4(color.x, color.y, color.z, 1.0);
 				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowmap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/
 				/*gl_FragColor = vec4(1.0,1.0,1.0,1.0) * shadow;*/
@@ -2742,7 +2763,6 @@
 			varying vec2 v_uvs;
 			uniform sampler2D color_texture;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_lightpos;
 			void main()
 			{
@@ -2751,7 +2771,7 @@
 				vec3 N = normalize(v_normal);
 				vec3 color = vec3(1.0,1.0,1.0) * clamp(0.0,dot(N,L),1.0);
 				color += vec3(0.4,0.8,1.0) * clamp(0.0,dot(-N,L),1.0) * 0.6;
-				color = color * u_diffuse_color + u_ambient_color;
+				color = color + u_ambient_color;
 				color *= tex;
 				gl_FragColor = vec4(color.x, color.y, color.z, 1.0);
 			}
@@ -2797,7 +2817,6 @@
 			uniform sampler2D color_texture;
 			varying vec4 v_light_coord;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_diffuse_color;
 			uniform vec3 u_lightpos;
 			uniform sampler2D shadowmap;
 			
@@ -2840,7 +2859,7 @@
 				vec3 N = normalize(v_normal);
 				vec3 color = vec3(1.0,1.0,1.0) * clamp(0.0,dot(N,L),1.0) * (1.0 - shadow);
 				color += vec3(0.4,0.8,1.0) * clamp(0.0,dot(-N,L),1.0) * 0.5;
-				color = color * u_diffuse_color + u_ambient_color;
+				color = color + u_ambient_color;
 				color *= tex;
 				gl_FragColor = vec4(color.x, color.y, color.z, 1.0);
 				/*gl_FragColor = vec4(1.0,0.7,1.0,1.0) * texture2D(shadowmap, v_light_coord.xy / v_light_coord.w * 0.5 + 0.5).r;*/ 
@@ -2910,89 +2929,6 @@
 		</code>
 	</shader>
 
-
-	<shader id="screen" tags="">
-		<code type="vertex_shader">
-			precision highp float;
-
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-
-			varying vec2 coord;
-
-			void main() {
-				coord = a_coord;
-				gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-
-			void main() {
-				gl_FragColor = texture2D(texture, coord) * color;
-			}
-		</code>
-	</shader>
-
-	<shader id="colorFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform float u_red;
-			uniform float u_blue;
-			uniform float u_green;
-
-			void main() {
-				gl_FragColor = texture2D(texture, coord) * color * vec4(u_red,u_green,u_blue,1.0);
-			}
-		</code>
-	</shader>
-
-	<shader id="contrastFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform float u_contrast;
-			uniform float u_brightness;
-
-			void main() {
-				vec4 final = texture2D(texture, coord) * u_brightness;
-				vec3 diff = final.xyz - vec3(0.5);
-				final = vec4(vec3(0.5) + diff * (1.0 + u_contrast), final.a);
-				gl_FragColor = final * color;
-			}
-		</code>
-	</shader>
 
 	<shader id="hueFX" tags="fx">
 		<code type="vertex_shader">
@@ -3066,365 +3002,8 @@
 		</code>
 	</shader>
 
-	<shader id="glowFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
 
-		<code type="pixel_shader">
-			precision highp float;
 
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-
-			void main() {
-				vec4 final = texture2D(texture, coord) + texture2D(texture, coord,3.0) * 0.6;
-				gl_FragColor = final;
-			}
-		</code>
-	</shader>
-
-	<shader id="bwFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform float u_threshold;
-
-			void main() {
-				vec4 final = texture2D(texture, coord);
-				if(final.x + final.y + final.z > (1.0 + u_threshold))
-					gl_FragColor = color;
-				else
-					gl_FragColor = vec4(0.0);
-			}
-		</code>
-	</shader>
-
-	<shader id="lensFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 v_coord;
-			void main() {
-				v_coord = a_coord; gl_Position = vec4(a_coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 v_coord;
-			uniform vec4 color;
-
-			void main() {
-				vec2 coord = v_coord;
-
-				float corner_factor = 1.0 - abs(sin(coord.x*3.1415)*sin(coord.y*3.1415));
-				float df = 1. / 512.;
-				float aberration_factor = 3.0;
-				float distortion_factor = 0.75;
-				coord = (distortion_factor*(coord - vec2(0.5,0.5))) / (1.0 - corner_factor * (1.0 - distortion_factor)) + vec2(0.5,0.5);
-
-				vec4 final = texture2D(texture, coord, corner_factor * 2.0);
-				vec3 c = final.xyz * vec3(0.0,1.0,0.0);
-				c += texture2D(texture, coord - vec2(df * aberration_factor * (corner_factor),0.), corner_factor * 2.0 ).xyz * vec3(0.5,0.0,0.0);
-				c += texture2D(texture, coord + vec2(df * aberration_factor * (corner_factor),0.), corner_factor * 2.0 ).xyz * vec3(0.0,0.0,0.5);
-				c += texture2D(texture, coord - vec2(0., df * aberration_factor * (corner_factor)), corner_factor * 2.0 ).xyz * vec3(0.5,0.0,0.0);
-				c += texture2D(texture, coord + vec2(0., df * aberration_factor * (corner_factor)), corner_factor * 2.0 ).xyz * vec3(0.0,0.0,0.5);
-				c *= 0.5 + 0.5 * (1.0 - corner_factor);
-				gl_FragColor = vec4(c,final.a) * color;
-			}
-		</code>
-	</shader>
-
-	<shader id="tvFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-
-			void main() {
-				float corner_factor = 1.0 - abs(sin(coord.x*3.1415)*sin(coord.y*3.1415));
-				float df = 1. / 512.;
-				float aberration_factor = 3.0;
-				vec4 final = texture2D(texture, coord, corner_factor * 2.0);
-				vec3 c = final.xyz * vec3(0.0,1.0,0.0);
-				c += texture2D(texture, coord - vec2(df * aberration_factor * (corner_factor),0.) ).xyz * vec3(1.0,0.0,0.0);
-				c += texture2D(texture, coord + vec2(df * aberration_factor * (corner_factor),0.) ).xyz * vec3(0.0,0.0,1.0);
-				c *= 0.5 + 0.5 * (1.0 - corner_factor);
-				gl_FragColor = vec4(c,final.a) * color;
-			}
-		</code>
-	</shader>
-
-	<shader id="8bitsFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-			uniform float time;
-
-			void main() {
-				vec3 color;
-				float size = 0.1;
-				vec2 p = vec2(ivec2(coord * texSize / size)) + 0.5 + 1.0 / size;
-				color = floor(((texture2D(texture, p / texSize * size).rgb - 0.5) * 1.6 + 0.8) * 2.0) / 2.0;
-				gl_FragColor = vec4(color, 1.0);
-			}
-		</code>
-	</shader>
-
-	<shader id="instagramFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-			uniform float time;
-
-			const vec3 offset = vec3(0.22, 0.07, 0.28);
-			const vec3 haze = vec3(1.0, 0.78, 0.24);
-
-			void main() {
-				vec3 color = texture2D(texture, coord).rgb;
-				color = min(color * haze * 1.3, haze);
-				color += offset * (1.0 - color);
-				gl_FragColor = vec4(1.0 - (1.0 - color), 1.0);
-			}
-		</code>
-	</shader>
-
-	<shader id="edgesFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			<![CDATA[
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-			uniform float time;
-
-			const vec2 size = vec2(1.0/512.0,1.0/512.0);
-			void main() {
-				float big = 0.0, small = 0.0, c;
-				for (float x = -1.0; x <= 1.0; x += 1.0) {
-					for (float y = -1.0; y <= 1.0; y += 1.0) {
-						c = texture2D(texture, coord + size * vec2(x, y)).g;
-						big += c;
-						if (x == 0.0 || y == 0.0) {
-							small += c;
-						}
-					}
-				}
-				float edge = max(0.0, big / 9.0 - small / 5.0);
-				gl_FragColor = vec4(max(vec3(0.0), texture2D(texture, coord).rgb - (edge * edge * 4000.0)), 1.0);
-			}
-			]]>
-		</code>
-	</shader>
-
-	<shader id="edgesDepthFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			<![CDATA[
-			precision highp float;
-
-			uniform sampler2D texture;
-			uniform sampler2D depth;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-			uniform vec2 camera_planes;
-			uniform float time;
-			uniform float u_threshold;
-
-			vec2 size = vec2(1.0/texSize.x,1.0/texSize.y);
-
-			float LinearDepth(vec2 uv)
-			{
-				float n = camera_planes.x;
-				float f = camera_planes.y;
-				return (2.0 * n) / (f + n - texture2D(depth, uv).x * (f - n));
-			}
-
-			void main() {
-				float big = 0.0, small = 0.0, c;
-				for (float x = -1.0; x <= 1.0; x += 1.0) {
-					for (float y = -1.0; y <= 1.0; y += 1.0) {
-						c = LinearDepth(coord + size * vec2(x, y));
-						big += c;
-						if (x == 0.0 && y == 0.0) {
-							small += c;
-						}
-					}
-				}
-				float edge = max(0.0, big / 9.0 - small ) * 100.0 * u_threshold;
-				gl_FragColor = vec4(max(vec3(0.0), texture2D(texture, coord).rgb - (edge * edge * 4000.0)), 1.0);
-			}
-			]]>
-		</code>
-	</shader>
-
-	<shader id="DOFFX" tags="fx">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			<![CDATA[
-			precision highp float;
-
-			uniform sampler2D texture;
-			uniform sampler2D depth;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-			uniform float time;
-			uniform vec2 camera_planes;
-
-			uniform float u_focus_distance;
-			uniform float u_focus_range;
-			uniform float u_max_blur;
-
-			float LinearDepth()
-			{
-				float n = camera_planes.x;
-				float f = camera_planes.y;
-				return (2.0 * n) / (f + n - texture2D(depth, coord).x * (f - n));
-			}
-
-			void main() {
-				//float diff = abs(u_focus_distance - texture2D(depth, coord).x );
-				float diff = abs(LinearDepth() * camera_planes.y - u_focus_distance);
-				float dof = 1.0;
-				if(diff <= u_focus_range)
-					dof = diff / u_focus_range;
-				//gl_FragColor = vec4(dof,dof,dof,1.0);
-				//return;
-
-				gl_FragColor = texture2D(texture, coord, dof * u_max_blur ).rgba;
-			}
-			]]>
-		</code>
-	</shader>
-
-	<shader id="blurFX" tags="fx" macros="USE_HBLUR">
-		<code type="vertex_shader">
-			precision highp float;
-			attribute vec3 a_vertex;
-			attribute vec2 a_coord;
-			varying vec2 coord;
-			void main() {
-				coord = a_coord; gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);
-			}
-		</code>
-		<code type="pixel_shader">
-			<![CDATA[
-			precision highp float;
-
-			uniform sampler2D texture;
-			varying vec2 coord;
-			uniform vec4 color;
-			uniform vec2 texSize;
-
-			void main() {
-				#ifdef USE_HBLUR
-					vec2 delta = vec2(1.0 / 256.0, 0.0);
-				#else
-					vec2 delta = vec2(0.0, 1.0 / 256.0);
-				#endif
-				vec4 final = texture2D(texture, coord) * 0.3989422804;
-				final += texture2D(texture, coord + delta) * 0.2419707245;
-				final += texture2D(texture, coord - delta) * 0.2419707245;
-				final += texture2D(texture, coord + delta * 2.0) * 0.0539909665;
-				final += texture2D(texture, coord - delta * 2.0) * 0.0539909665;
-				final += texture2D(texture, coord + delta * 3.0) * 0.0044318484;
-				final += texture2D(texture, coord - delta * 3.0) * 0.0044318484;
-				gl_FragColor = final * color;
-			}
-			]]>
-		</code>
-	</shader>
 	<!--
 	<shader id="" tags="">
 		<code id="vertex_shader">

@@ -85,7 +85,7 @@ var Renderer = {
 	* @param {RenderOptions} render_options
 	* @param {Array} [cameras=null] if no cameras are specified the cameras are taken from the scene
 	*/
-	render: function(scene, render_options, cameras )
+	render: function( scene, render_options, cameras )
 	{
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
@@ -185,12 +185,15 @@ var Renderer = {
 	* @param {Camera} camera 
 	* @param {Object} render_options
 	*/
-	renderFrame: function ( camera, render_options )
+	renderFrame: function ( camera, render_options, scene )
 	{
-		var scene = this._current_scene;
+		if(scene) //in case we use another scene
+			this.processVisibleData(scene, render_options);
+
+		scene = scene || this._current_scene;
 
 		LEvent.trigger(scene, "beforeCameraEnabled", camera );
-		this.enableCamera( camera, render_options ); //set as active camera and set viewport
+		this.enableCamera( camera, render_options, render_options.skip_viewport ); //set as active camera and set viewport
 		LEvent.trigger(scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
@@ -572,7 +575,7 @@ var Renderer = {
 			macros.merge(instance_final_macros); //contains node, material and instance macros
 
 			if( ignore_lights )
-				macros.USE_IGNORE_LIGHT = "";
+				macros.USE_IGNORE_LIGHTS = "";
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 				macros.USE_CLIPPING_PLANE = "";
 
@@ -1141,34 +1144,6 @@ var Renderer = {
 		}
 	},
 
-	/*
-	//Render Cameras that need to store the result in RTs
-	renderRTCameras: function()
-	{
-		var scene = this.current_scene || Scene;
-
-		for(var i in scene.rt_cameras)
-		{
-			var camera = scene.rt_cameras[i];
-			if(camera.texture == null)
-			{
-				camera.texture = new GL.Texture( camera.resolution || 1024, camera.resolution || 1024, { format: gl.RGB, magFilter: gl.LINEAR });
-				ResourcesManager.textures[camera.id] = camera.texture;
-			}
-
-			this.enableCamera(camera);
-
-			camera.texture.drawTo(function() {
-				gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], 0.0);
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-				var options = {is_rt: true, clipping_plane: camera.clipping_plane};
-				Renderer.renderInstances(options);
-			});
-		}
-	},
-	*/
-
 	/* reverse
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
@@ -1211,6 +1186,37 @@ var Renderer = {
 
 		this._current_target = null;
 		return texture;
+	},
+
+	renderMaterialPreview: function( material, size, options )
+	{
+		options = options || {};
+
+		var scene = this._material_scene;
+		if(!scene)
+		{
+			scene = this._material_scene = new LS.SceneTree();
+			scene.background_color.set([0,0,0,0]);
+			if(options.environment_texture)
+				scene.textures.environment = options.environment_texture;
+			var node = new LS.SceneNode( "sphere" );
+			var compo = new LS.Components.GeometricPrimitive( { size: 40, subdivisions: 50, geometry: LS.Components.GeometricPrimitive.SPHERE } );
+			node.addComponent( compo );
+			scene.root.addChild( node );
+		}
+
+		var node = scene.getNodeById( "sphere") ;
+		node.material = material;
+
+		var tex = new GL.Texture(size,size);
+		tex.drawTo( function()
+		{
+			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true }, scene );
+		});
+
+		var canvas = tex.toCanvas(null, true);
+		//document.body.appendChild( canvas ); //debug
+		return canvas;
 	}
 };
 

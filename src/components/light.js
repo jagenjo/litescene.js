@@ -78,6 +78,8 @@ function Light(o)
 	this.offset = 0;
 	this.spot_cone = true;
 
+	this._attenuation_info = new Float32Array([ this.att_start, this.att_end ]);
+
 	//use target (when attached to node)
 	this.use_target = false;
 
@@ -107,6 +109,8 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
+
+	this.extra_light_shader_code = null;
 
 	//vectors in world space
 	this._front = vec3.clone( Light.FRONT_VECTOR );
@@ -160,6 +164,48 @@ Light.DIRECTIONAL = 3;
 
 Light.DEFAULT_SHADOWMAP_RESOLUTION = 1024;
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
+
+Light.coding_help = "\
+LightInfo LIGHT -> light info before applying equation\n\
+Input IN -> info about the mesh\n\
+SurfaceOutput o -> info about the surface properties of this pixel\n\
+\n\
+struct LightInfo {\n\
+	vec3 Color;\n\
+	vec3 Ambient;\n\
+	float Diffuse; //NdotL\n\
+	float Specular; //RdotL\n\
+	vec3 Emission;\n\
+	vec3 Reflection;\n\
+	float Attenuation;\n\
+	float Shadow; //1.0 means fully lit\n\
+};\n\
+\n\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Ambient;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+";
 
 Light.prototype.onAddedToNode = function(node)
 {
@@ -393,6 +439,12 @@ Light.prototype.prepare = function( render_options )
 	if(this.projective_texture || this.cast_shadows || this.average_texture)
 		this.updateLightCamera();
 
+	if(!this.cast_shadows && this._shadowmap)
+	{
+		this._shadowmap = null;
+		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
+	}
+
 	this.updateVectors();
 
 	//PREPARE MACROS
@@ -439,10 +491,27 @@ Light.prototype.prepare = function( render_options )
 	if(this.type == Light.SPOT)
 		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
 
-	uniforms.u_light_pos = this.position;
+	uniforms.u_light_position = this.position;
 	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
-	uniforms.u_light_att = [this.att_start,this.att_end];
+	this._attenuation_info[0] = this.att_start;
+	this._attenuation_info[1] = this.att_end;
+	uniforms.u_light_att = this._attenuation_info; //[this.att_start,this.att_end];
 	uniforms.u_light_offset = this.offset;
+
+	//extra code
+	if(this.extra_light_shader_code)
+	{
+		var code = null;
+		if(this._last_extra_light_shader_code != this.extra_light_shader_code)
+		{
+			code = LS.Material.processShaderCode( this.extra_light_shader_code );
+			this._last_processed_extra_light_shader_code = code;
+		}
+		else
+			code = this._last_processed_extra_light_shader_code;
+	}
+	else
+		this._last_processed_extra_light_shader_code = null;
 
 	//generate shadowmaps
 	if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
@@ -487,6 +556,9 @@ Light.prototype.getMacros = function(instance, render_options)
 	}
 	else
 		delete macros["USE_SHADOW_MAP"];
+
+	if(this._last_processed_extra_light_shader_code)
+		macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
 
 	return macros;
 }
@@ -626,7 +698,7 @@ Light.prototype.generateShadowmap = function (render_options)
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
 		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-		ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
+		LS.ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
 	}
 
 	//render the scene inside the texture

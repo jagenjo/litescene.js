@@ -3657,9 +3657,7 @@ function Material(o)
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
-	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);
+	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.shader_name = "global";
 	this.blend_mode = Blend.NORMAL;
 
@@ -3738,6 +3736,19 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
+
+//properties
+Object.defineProperty( Material.prototype, 'color', {
+	get: function() { return this._color; },
+	set: function(v) { this._color.set(v); },
+	enumerable: true
+});
+
+Object.defineProperty( Material.prototype, 'opacity', {
+	get: function() { return this._color[3]; },
+	set: function(v) { this._color[3] = v; },
+	enumerable: true
+});
 
 
 Material.prototype.applyToRenderInstance = function(ri)
@@ -3851,9 +3862,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	this._color_info.set( this.color );
-	this._color_info[3] = this.opacity;
-	uniforms.u_material_color = this._color_info;
+	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.ambient_color;
 	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
 
@@ -4264,6 +4273,49 @@ Material.prototype.registerMaterial = function(name)
 	this.material = name;
 }
 
+Material.prototype.getCategory = function()
+{
+	return this.category || "Material";
+}
+
+Material.prototype.updatePreview = function(size, options)
+{
+	options = options || {};
+
+	var res = {};
+	this.getResources(res);
+
+	for(var i in res)
+	{
+		var resource = LS.ResourcesManager.resources[i];
+		if(!resource)
+		{
+			console.warn("Cannot generate preview with resources missing.");
+			return null;
+		}
+	}
+
+	if(LS.GlobalScene.textures.environment)
+		options.environment = LS.GlobalScene.textures.environment;
+
+	size = size || 256;
+	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
+	this.preview = preview;
+	if(preview.toDataURL)
+		this.preview_url = preview.toDataURL("image/png");
+}
+
+Material.processShaderCode = function(code)
+{
+	var lines = code.split("\n");
+	for(var i in lines)
+		lines[i] = lines[i].split("//")[0]; //remove comments
+	code = lines.join("");
+	if(!code)
+		return null;
+	return code;
+}
+
 LS.registerMaterialClass(Material);
 LS.Material = Material;
 
@@ -4286,13 +4338,10 @@ function StandardMaterial(o)
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
+	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.shader_name = "global";
-	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);;
 
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
-	this.diffuse = new Float32Array([1.0,1.0,1.0]);
 	this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 	this.specular_factor = 0.1;
@@ -4337,7 +4386,7 @@ StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 StandardMaterial.EXTRA_TEXTURE = "extra";
 
 StandardMaterial.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
-StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture"];
 
 StandardMaterial.coding_help = "\
 Input IN -> info about the mesh\n\
@@ -4360,6 +4409,7 @@ struct Input {\n\
 struct SurfaceOutput {\n\
 	vec3 Albedo;\n\
 	vec3 Normal;\n\
+	vec3 Ambient;\n\
 	vec3 Emission;\n\
 	float Specular;\n\
 	float Gloss;\n\
@@ -4452,11 +4502,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 		var code = null;
 		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
 		{
-			code = this._last_extra_surface_shader_code = this.extra_surface_shader_code;
-			var lines = code.split("\n");
-			for(var i in lines)
-				lines[i] = lines[i].split("//")[0]; //remove comments
-			code = lines.join("");
+			code = Material.processShaderCode( this.extra_surface_shader_code );
 			this._last_processed_extra_surface_shader_code = code;
 		}
 		else
@@ -4464,7 +4510,6 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 		if(code)
 			macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
 	}
-
 
 	//extra macros
 	if(this.extra_macros)
@@ -4479,9 +4524,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	this._color_info.set( this.color );
-	this._color_info[3] = this.opacity;
-	uniforms.u_material_color = this._color_info;
+	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	if(this.use_scene_ambient)
@@ -4489,7 +4532,6 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	else
 		uniforms.u_ambient_color = this.ambient;
 
-	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
@@ -4609,7 +4651,6 @@ StandardMaterial.prototype.setProperty = function(name, value)
 			break;
 		//vectors
 		case "ambient":	
-		case "diffuse": 
 		case "emissive": 
 		case "velvet":
 		case "detail":
@@ -4649,7 +4690,6 @@ StandardMaterial.prototype.getProperties = function()
 		extra_surface_shader_code:"string",
 
 		ambient:"vec3",
-		diffuse:"vec3",
 		emissive:"vec3",
 		velvet:"vec3",
 		extra_color:"vec3",
@@ -4773,8 +4813,7 @@ function SurfaceMaterial(o)
 	this.shader_name = "surface";
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
+	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.blend_mode = Blend.NORMAL;
 
 	this.vs_code = "";
@@ -8303,6 +8342,8 @@ function Light(o)
 	this.offset = 0;
 	this.spot_cone = true;
 
+	this._attenuation_info = new Float32Array([ this.att_start, this.att_end ]);
+
 	//use target (when attached to node)
 	this.use_target = false;
 
@@ -8332,6 +8373,8 @@ function Light(o)
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
+
+	this.extra_light_shader_code = null;
 
 	//vectors in world space
 	this._front = vec3.clone( Light.FRONT_VECTOR );
@@ -8385,6 +8428,48 @@ Light.DIRECTIONAL = 3;
 
 Light.DEFAULT_SHADOWMAP_RESOLUTION = 1024;
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
+
+Light.coding_help = "\
+LightInfo LIGHT -> light info before applying equation\n\
+Input IN -> info about the mesh\n\
+SurfaceOutput o -> info about the surface properties of this pixel\n\
+\n\
+struct LightInfo {\n\
+	vec3 Color;\n\
+	vec3 Ambient;\n\
+	float Diffuse; //NdotL\n\
+	float Specular; //RdotL\n\
+	vec3 Emission;\n\
+	vec3 Reflection;\n\
+	float Attenuation;\n\
+	float Shadow; //1.0 means fully lit\n\
+};\n\
+\n\
+struct Input {\n\
+	vec4 color;\n\
+	vec3 vertex;\n\
+	vec3 normal;\n\
+	vec2 uv;\n\
+	vec2 uv1;\n\
+	\n\
+	vec3 camPos;\n\
+	vec3 viewDir;\n\
+	vec3 worldPos;\n\
+	vec3 worldNormal;\n\
+	vec4 screenPos;\n\
+};\n\
+\n\
+struct SurfaceOutput {\n\
+	vec3 Albedo;\n\
+	vec3 Normal;\n\
+	vec3 Ambient;\n\
+	vec3 Emission;\n\
+	float Specular;\n\
+	float Gloss;\n\
+	float Alpha;\n\
+	float Reflectivity;\n\
+};\n\
+";
 
 Light.prototype.onAddedToNode = function(node)
 {
@@ -8618,6 +8703,12 @@ Light.prototype.prepare = function( render_options )
 	if(this.projective_texture || this.cast_shadows || this.average_texture)
 		this.updateLightCamera();
 
+	if(!this.cast_shadows && this._shadowmap)
+	{
+		this._shadowmap = null;
+		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
+	}
+
 	this.updateVectors();
 
 	//PREPARE MACROS
@@ -8664,10 +8755,27 @@ Light.prototype.prepare = function( render_options )
 	if(this.type == Light.SPOT)
 		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
 
-	uniforms.u_light_pos = this.position;
+	uniforms.u_light_position = this.position;
 	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
-	uniforms.u_light_att = [this.att_start,this.att_end];
+	this._attenuation_info[0] = this.att_start;
+	this._attenuation_info[1] = this.att_end;
+	uniforms.u_light_att = this._attenuation_info; //[this.att_start,this.att_end];
 	uniforms.u_light_offset = this.offset;
+
+	//extra code
+	if(this.extra_light_shader_code)
+	{
+		var code = null;
+		if(this._last_extra_light_shader_code != this.extra_light_shader_code)
+		{
+			code = LS.Material.processShaderCode( this.extra_light_shader_code );
+			this._last_processed_extra_light_shader_code = code;
+		}
+		else
+			code = this._last_processed_extra_light_shader_code;
+	}
+	else
+		this._last_processed_extra_light_shader_code = null;
 
 	//generate shadowmaps
 	if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
@@ -8712,6 +8820,9 @@ Light.prototype.getMacros = function(instance, render_options)
 	}
 	else
 		delete macros["USE_SHADOW_MAP"];
+
+	if(this._last_processed_extra_light_shader_code)
+		macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
 
 	return macros;
 }
@@ -8851,7 +8962,7 @@ Light.prototype.generateShadowmap = function (render_options)
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
 		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
-		ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
+		LS.ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
 	}
 
 	//render the scene inside the texture
@@ -12741,8 +12852,10 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","update","trigger","render","afterRender","finish","collectRenderInstances"];
+Script.exported_callbacks = ["start","update","trigger","sceneRender", "render","afterRender","finish","collectRenderInstances"];
 Script.translate_events = {
+	"sceneRender": "beforeRender",
+	"beforeRender": "sceneRender",
 	"render": "renderInstances", 
 	"renderInstances": "render",
 	"afterRender":"afterRenderInstances", 
@@ -12902,6 +13015,16 @@ Script.prototype.onError = function(err)
 Script.prototype.onCodeChange = function(code)
 {
 	this.processCode();
+}
+
+Script.prototype.getResources = function(res)
+{
+	var ctx = this.getContext();
+
+	if(!ctx || !ctx.getResources )
+		return;
+	
+	ctx.getResources( res );
 }
 
 
@@ -15041,7 +15164,7 @@ var Renderer = {
 	* @param {RenderOptions} render_options
 	* @param {Array} [cameras=null] if no cameras are specified the cameras are taken from the scene
 	*/
-	render: function(scene, render_options, cameras )
+	render: function( scene, render_options, cameras )
 	{
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
@@ -15141,12 +15264,15 @@ var Renderer = {
 	* @param {Camera} camera 
 	* @param {Object} render_options
 	*/
-	renderFrame: function ( camera, render_options )
+	renderFrame: function ( camera, render_options, scene )
 	{
-		var scene = this._current_scene;
+		if(scene) //in case we use another scene
+			this.processVisibleData(scene, render_options);
+
+		scene = scene || this._current_scene;
 
 		LEvent.trigger(scene, "beforeCameraEnabled", camera );
-		this.enableCamera( camera, render_options ); //set as active camera and set viewport
+		this.enableCamera( camera, render_options, render_options.skip_viewport ); //set as active camera and set viewport
 		LEvent.trigger(scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
@@ -15528,7 +15654,7 @@ var Renderer = {
 			macros.merge(instance_final_macros); //contains node, material and instance macros
 
 			if( ignore_lights )
-				macros.USE_IGNORE_LIGHT = "";
+				macros.USE_IGNORE_LIGHTS = "";
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
 				macros.USE_CLIPPING_PLANE = "";
 
@@ -16097,34 +16223,6 @@ var Renderer = {
 		}
 	},
 
-	/*
-	//Render Cameras that need to store the result in RTs
-	renderRTCameras: function()
-	{
-		var scene = this.current_scene || Scene;
-
-		for(var i in scene.rt_cameras)
-		{
-			var camera = scene.rt_cameras[i];
-			if(camera.texture == null)
-			{
-				camera.texture = new GL.Texture( camera.resolution || 1024, camera.resolution || 1024, { format: gl.RGB, magFilter: gl.LINEAR });
-				ResourcesManager.textures[camera.id] = camera.texture;
-			}
-
-			this.enableCamera(camera);
-
-			camera.texture.drawTo(function() {
-				gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], 0.0);
-				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-				var options = {is_rt: true, clipping_plane: camera.clipping_plane};
-				Renderer.renderInstances(options);
-			});
-		}
-	},
-	*/
-
 	/* reverse
 	cubemap_camera_parameters: [
 		{dir: [1,0,0], up:[0,1,0]}, //positive X
@@ -16167,6 +16265,37 @@ var Renderer = {
 
 		this._current_target = null;
 		return texture;
+	},
+
+	renderMaterialPreview: function( material, size, options )
+	{
+		options = options || {};
+
+		var scene = this._material_scene;
+		if(!scene)
+		{
+			scene = this._material_scene = new LS.SceneTree();
+			scene.background_color.set([0,0,0,0]);
+			if(options.environment_texture)
+				scene.textures.environment = options.environment_texture;
+			var node = new LS.SceneNode( "sphere" );
+			var compo = new LS.Components.GeometricPrimitive( { size: 40, subdivisions: 50, geometry: LS.Components.GeometricPrimitive.SPHERE } );
+			node.addComponent( compo );
+			scene.root.addChild( node );
+		}
+
+		var node = scene.getNodeById( "sphere") ;
+		node.material = material;
+
+		var tex = new GL.Texture(size,size);
+		tex.drawTo( function()
+		{
+			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true }, scene );
+		});
+
+		var canvas = tex.toCanvas(null, true);
+		//document.body.appendChild( canvas ); //debug
+		return canvas;
 	}
 };
 
@@ -17016,7 +17145,7 @@ global.Collada = {
 			if(this.verbose)
 				console.log(" - XML parsed");			
 		}
-		else
+		else //USING JS XML PARSER IMPLEMENTATION
 		{
 			if(!global["DOMImplementation"] )
 				return Collada.throwException( Collada.NOXMLPARSER_ERROR );
@@ -17034,9 +17163,15 @@ global.Collada = {
 			if(this.verbose)
 				console.log(" - XML parsed");
 
+			//for every node...
 			var by_ids = root._nodes_by_id = {};
 			for(var i = 0, l = root.all.length; i < l; ++i)
-				by_ids[ root.all[i].id ] = root.all[i];
+			{
+				var node = root.all[i];
+				by_ids[ node.id ] = node;
+				if(node.getAttribute("sid"))
+					by_ids[ node.getAttribute("sid") ] = node;
+			}
 
 			if(!this.extra_functions)
 			{
@@ -17181,6 +17316,12 @@ global.Collada = {
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		if(node_id)
 			this._nodes_by_id[node_id] = true; //node found
+		//nodes seem to have to possible ids, id and sid, I guess one is unique, the other user-defined
+		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+		if(node_sid)
+			this._nodes_by_id[node_sid] = true; //node found
+
+
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
 		{
 			var xmlchild = xmlnode.childNodes.item(i);
@@ -17195,11 +17336,14 @@ global.Collada = {
 	readNode: function(xmlnode, scene, level, flip)
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
-		if(!node_id)
+		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+
+		if(!node_id && !node_sid)
 			return null;
+
 		var node_type = xmlnode.getAttribute("type");
-		var node = { id: node_id, children:[], _depth: level };
-		this._nodes_by_id[node_id] = node;
+		var node = { id: node_sid || node_id, children:[], _depth: level };
+		this._nodes_by_id[ node.id ] = node;
 
 		//transform
 		node.model = this.readTransform(xmlnode, level, flip );
@@ -18178,6 +18322,11 @@ global.Collada = {
 				var inv_mat = inv_bind_source.subarray(i*16,i*16+16);
 				var nodename = joints_source[i];
 				var node = this._nodes_by_id[ nodename ];
+				if(!node)
+				{
+					console.warn("Node " + nodename + " not found");
+					continue;
+				}
 				this.transformMatrix(inv_mat, node._depth == 0, true );
 				joints.push([ nodename, inv_mat ]);
 			}
@@ -18285,7 +18434,7 @@ global.Collada = {
 
 			//console.log("Bones: ", joints.length, "Max bone: ", max_bone);
 			if(max_bone >= joints.length)
-				console.warning("Mesh uses higher bone index than bones found");
+				console.warn("Mesh uses higher bone index than bones found");
 
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;

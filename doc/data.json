@@ -1933,7 +1933,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 84,
+            "line": 86,
             "description": "The color of the light",
             "itemtype": "property",
             "name": "color",
@@ -1944,7 +1944,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 91,
+            "line": 93,
             "description": "The intensity of the light",
             "itemtype": "property",
             "name": "intensity",
@@ -1955,7 +1955,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 99,
+            "line": 101,
             "description": "If the light cast shadows",
             "itemtype": "property",
             "name": "cast_shadows",
@@ -1966,7 +1966,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 235,
+            "line": 281,
             "description": "Returns the camera that will match the light orientation (taking into account fov, etc), useful for shadowmaps",
             "itemtype": "method",
             "name": "getLightCamera",
@@ -1979,7 +1979,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 261,
+            "line": 307,
             "description": "updates all the important vectors (target, position, etc) according to the node parent of the light",
             "itemtype": "method",
             "name": "updateVectors",
@@ -1988,7 +1988,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 299,
+            "line": 345,
             "description": "returns a copy of the light position (in global coordinates), if you want local you can access the position property",
             "itemtype": "method",
             "name": "getPosition",
@@ -2008,7 +2008,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 315,
+            "line": 361,
             "description": "returns a copy of the light target (in global coordinates), if you want local you can access the target property",
             "itemtype": "method",
             "name": "getTarget",
@@ -2028,7 +2028,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 332,
+            "line": 378,
             "description": "returns a copy of the light up vector (in global coordinates), if you want local you can access the up property",
             "itemtype": "method",
             "name": "getUp",
@@ -2048,7 +2048,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 348,
+            "line": 394,
             "description": "returns a copy of the front vector (in global coordinates)",
             "itemtype": "method",
             "name": "getFront",
@@ -2068,7 +2068,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 381,
+            "line": 427,
             "description": "This method is called by the Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)",
             "itemtype": "method",
             "name": "prepare",
@@ -2084,7 +2084,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 456,
+            "line": 525,
             "description": "Collects and returns the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getMacros",
@@ -2109,7 +2109,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 494,
+            "line": 566,
             "description": "Collects and returns the uniforms for the light (some uniforms have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getUniforms",
@@ -2134,7 +2134,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 553,
+            "line": 625,
             "description": "Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach",
             "itemtype": "method",
             "name": "computeShadowmapFar",
@@ -2147,7 +2147,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 577,
+            "line": 649,
             "description": "Computes the max amount of light this object can produce (taking into account every color channel)",
             "itemtype": "method",
             "name": "computeLightIntensity",
@@ -2160,7 +2160,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 588,
+            "line": 660,
             "description": "Computes the light radius according to the attenuation",
             "itemtype": "method",
             "name": "computeLightRadius",
@@ -2173,7 +2173,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 604,
+            "line": 676,
             "description": "Generates the shadowmap for this light",
             "itemtype": "method",
             "name": "generateShadowmap",
@@ -2186,7 +2186,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 669,
+            "line": 741,
             "description": "It returns a matrix in the position of the given light property (target, position), mostly used for gizmos",
             "itemtype": "method",
             "name": "getTransformMatrix",
@@ -2211,7 +2211,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 692,
+            "line": 764,
             "description": "apply a transformation to a given light property, this is done in a function to allow more complex gizmos",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -3361,7 +3361,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 47,
+            "line": 45,
             "description": "Surface color",
             "itemtype": "property",
             "name": "color",
@@ -3372,7 +3372,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 54,
+            "line": 52,
             "description": "Opacity. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.",
             "itemtype": "property",
             "name": "opacity",
@@ -3383,7 +3383,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 62,
+            "line": 60,
             "description": "Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)",
             "itemtype": "property",
             "name": "blend_mode",
@@ -3394,7 +3394,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 71,
+            "line": 69,
             "description": "Specular glossiness: the glossines (exponent) of specular light",
             "itemtype": "property",
             "name": "specular_gloss",
@@ -3405,7 +3405,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 249,
+            "line": 258,
             "description": "Configure the material getting the info from the object",
             "itemtype": "method",
             "name": "configure",
@@ -3421,7 +3421,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 297,
+            "line": 306,
             "description": "Serialize this material",
             "itemtype": "method",
             "name": "serialize",
@@ -3434,7 +3434,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 310,
+            "line": 319,
             "description": "Clone this material (keeping the class)",
             "itemtype": "method",
             "name": "clone",
@@ -3447,7 +3447,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 323,
+            "line": 332,
             "description": "Loads and assigns a texture to a channel",
             "itemtype": "method",
             "name": "loadAndSetTexture",
@@ -3468,7 +3468,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 354,
+            "line": 363,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3481,7 +3481,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 377,
+            "line": 386,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3494,7 +3494,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 390,
+            "line": 399,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3507,7 +3507,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 442,
+            "line": 451,
             "description": "gets all the texture channels supported by this material",
             "itemtype": "method",
             "name": "getTextureChannels",
@@ -3520,7 +3520,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 456,
+            "line": 465,
             "description": "Assigns a texture to a channel and its sampling parameters",
             "itemtype": "method",
             "name": "setTexture",
@@ -3546,7 +3546,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 489,
+            "line": 498,
             "description": "Set a property of the sampling (wrap, uvs, filter)",
             "itemtype": "method",
             "name": "setTextureProperty",
@@ -3572,7 +3572,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 510,
+            "line": 519,
             "description": "Returns the texture in a channel",
             "itemtype": "method",
             "name": "getTexture",
@@ -3592,7 +3592,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 530,
+            "line": 539,
             "description": "Returns the texture info of one texture channel (filter, wrap, uvs)",
             "itemtype": "method",
             "name": "getTextureInfo",
@@ -3612,7 +3612,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 555,
+            "line": 564,
             "description": "Assigns a texture and its info to one texture channel (filter, wrap, uvs)",
             "itemtype": "method",
             "name": "setTextureInfo",
@@ -3637,7 +3637,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 569,
+            "line": 578,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -3657,7 +3657,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 588,
+            "line": 597,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -3677,7 +3677,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 606,
+            "line": 615,
             "description": "Loads all the textures inside this material, by sending the through the ResourcesManager",
             "itemtype": "method",
             "name": "loadTextures",
@@ -3686,7 +3686,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 618,
+            "line": 627,
             "description": "Register this material in a materials pool to be shared with other nodes",
             "itemtype": "method",
             "name": "registerMaterial",
@@ -3702,7 +3702,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 309,
+            "line": 299,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -3718,7 +3718,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 361,
+            "line": 350,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3731,7 +3731,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 167,
+            "line": 166,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3744,7 +3744,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 192,
+            "line": 191,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -3764,7 +3764,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 213,
+            "line": 212,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3777,7 +3777,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 240,
+            "line": 239,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -3793,7 +3793,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 279,
+            "line": 278,
             "description": "Returns the texture in a channel",
             "itemtype": "method",
             "name": "getTexture",
@@ -3813,7 +3813,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 299,
+            "line": 298,
             "description": "Assigns a texture to a channel",
             "itemtype": "method",
             "name": "setTexture",
@@ -3834,7 +3834,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 339,
+            "line": 338,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -4023,7 +4023,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 220,
+            "line": 223,
             "description": "Set camera as the main scene camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw",
             "itemtype": "method",
             "name": "enableCamera",

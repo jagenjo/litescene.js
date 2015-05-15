@@ -33,8 +33,10 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","update","trigger","render","afterRender","finish","collectRenderInstances"];
+Script.exported_callbacks = ["start","update","trigger","sceneRender", "render","afterRender","finish","collectRenderInstances"];
 Script.translate_events = {
+	"sceneRender": "beforeRender",
+	"beforeRender": "sceneRender",
 	"render": "renderInstances", 
 	"renderInstances": "render",
 	"afterRender":"afterRenderInstances", 
@@ -194,6 +196,16 @@ Script.prototype.onError = function(err)
 Script.prototype.onCodeChange = function(code)
 {
 	this.processCode();
+}
+
+Script.prototype.getResources = function(res)
+{
+	var ctx = this.getContext();
+
+	if(!ctx || !ctx.getResources )
+		return;
+	
+	ctx.getResources( res );
 }
 
 

@@ -20,9 +20,7 @@ function Material(o)
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
-	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);
+	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.shader_name = "global";
 	this.blend_mode = Blend.NORMAL;
 
@@ -101,6 +99,19 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
+
+//properties
+Object.defineProperty( Material.prototype, 'color', {
+	get: function() { return this._color; },
+	set: function(v) { this._color.set(v); },
+	enumerable: true
+});
+
+Object.defineProperty( Material.prototype, 'opacity', {
+	get: function() { return this._color[3]; },
+	set: function(v) { this._color[3] = v; },
+	enumerable: true
+});
 
 
 Material.prototype.applyToRenderInstance = function(ri)
@@ -214,9 +225,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	this._color_info.set( this.color );
-	this._color_info[3] = this.opacity;
-	uniforms.u_material_color = this._color_info;
+	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.ambient_color;
 	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
 
@@ -625,6 +634,49 @@ Material.prototype.registerMaterial = function(name)
 	this.name = name;
 	LS.ResourcesManager.registerResource(name, this);
 	this.material = name;
+}
+
+Material.prototype.getCategory = function()
+{
+	return this.category || "Material";
+}
+
+Material.prototype.updatePreview = function(size, options)
+{
+	options = options || {};
+
+	var res = {};
+	this.getResources(res);
+
+	for(var i in res)
+	{
+		var resource = LS.ResourcesManager.resources[i];
+		if(!resource)
+		{
+			console.warn("Cannot generate preview with resources missing.");
+			return null;
+		}
+	}
+
+	if(LS.GlobalScene.textures.environment)
+		options.environment = LS.GlobalScene.textures.environment;
+
+	size = size || 256;
+	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
+	this.preview = preview;
+	if(preview.toDataURL)
+		this.preview_url = preview.toDataURL("image/png");
+}
+
+Material.processShaderCode = function(code)
+{
+	var lines = code.split("\n");
+	for(var i in lines)
+		lines[i] = lines[i].split("//")[0]; //remove comments
+	code = lines.join("");
+	if(!code)
+		return null;
+	return code;
 }
 
 LS.registerMaterialClass(Material);

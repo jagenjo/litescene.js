@@ -18,13 +18,10 @@ function StandardMaterial(o)
 	this._dirty = true;
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
+	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.shader_name = "global";
-	this._color_info = new Float32Array([1.0,1.0,1.0,1.0]);;
 
 	this.ambient = new Float32Array([1.0,1.0,1.0]);
-	this.diffuse = new Float32Array([1.0,1.0,1.0]);
 	this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 	this.specular_factor = 0.1;
@@ -69,7 +66,7 @@ StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 StandardMaterial.EXTRA_TEXTURE = "extra";
 
 StandardMaterial.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
-StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
+StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture"];
 
 StandardMaterial.coding_help = "\
 Input IN -> info about the mesh\n\
@@ -92,6 +89,7 @@ struct Input {\n\
 struct SurfaceOutput {\n\
 	vec3 Albedo;\n\
 	vec3 Normal;\n\
+	vec3 Ambient;\n\
 	vec3 Emission;\n\
 	float Specular;\n\
 	float Gloss;\n\
@@ -184,11 +182,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 		var code = null;
 		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
 		{
-			code = this._last_extra_surface_shader_code = this.extra_surface_shader_code;
-			var lines = code.split("\n");
-			for(var i in lines)
-				lines[i] = lines[i].split("//")[0]; //remove comments
-			code = lines.join("");
+			code = Material.processShaderCode( this.extra_surface_shader_code );
 			this._last_processed_extra_surface_shader_code = code;
 		}
 		else
@@ -196,7 +190,6 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 		if(code)
 			macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
 	}
-
 
 	//extra macros
 	if(this.extra_macros)
@@ -211,9 +204,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	var uniforms = {};
 	var samplers = {};
 
-	this._color_info.set( this.color );
-	this._color_info[3] = this.opacity;
-	uniforms.u_material_color = this._color_info;
+	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
 	if(this.use_scene_ambient)
@@ -221,7 +212,6 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	else
 		uniforms.u_ambient_color = this.ambient;
 
-	uniforms.u_diffuse_color = this.diffuse;
 	uniforms.u_emissive_color = this.emissive || vec3.create();
 	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
@@ -341,7 +331,6 @@ StandardMaterial.prototype.setProperty = function(name, value)
 			break;
 		//vectors
 		case "ambient":	
-		case "diffuse": 
 		case "emissive": 
 		case "velvet":
 		case "detail":
@@ -381,7 +370,6 @@ StandardMaterial.prototype.getProperties = function()
 		extra_surface_shader_code:"string",
 
 		ambient:"vec3",
-		diffuse:"vec3",
 		emissive:"vec3",
 		velvet:"vec3",
 		extra_color:"vec3",
