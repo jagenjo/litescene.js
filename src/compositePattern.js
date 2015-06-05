@@ -158,6 +158,19 @@ CompositePattern.prototype.removeChild = function(node, options)
 	return true;
 }
 
+
+/**
+* Remove node from parent
+*
+* @method destroy
+*/
+CompositePattern.prototype.destroy = function()
+{
+	if(this._parentNode)
+		this._parentNode.removeChild( this );
+}
+
+
 /**
 * Serialize the data from all the children
 *

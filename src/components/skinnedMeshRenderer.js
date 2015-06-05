@@ -2,6 +2,7 @@
 function SkinnedMeshRenderer(o)
 {
 	this.enabled = true;
+	this.apply_skinning = true;
 	this.cpu_skinning = false;
 	this.mesh = null;
 	this.lod_mesh = null;
@@ -36,7 +37,7 @@ SkinnedMeshRenderer.icon = "mini-icon-stickman.png";
 //vars
 SkinnedMeshRenderer["@mesh"] = { widget: "mesh" };
 SkinnedMeshRenderer["@lod_mesh"] = { widget: "mesh" };
-SkinnedMeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4 }};
+SkinnedMeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 SkinnedMeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();
@@ -94,6 +95,7 @@ SkinnedMeshRenderer.prototype.serialize = function()
 {
 	var o = { 
 		enabled: this.enabled,
+		apply_skinning: this.apply_skinning,
 		cpu_skinning: this.cpu_skinning,
 		ignore_transform: this.ignore_transform,
 		mesh: this.mesh,
@@ -154,6 +156,7 @@ SkinnedMeshRenderer.prototype.getNodeMatrix = function(name)
 	return node.transform.getGlobalMatrixRef();
 }
 
+//checks the list of bones in mesh.bones and retrieves its matrices
 SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 {
 	//bone matrices
@@ -170,12 +173,15 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	for(var i = 0; i < ref_mesh.bones.length; ++i)
 	{
 		var m = bones[i]; //mat4.create();
-		var mat = this.getNodeMatrix( ref_mesh.bones[i][0] ); //get the current matrix from the bone Node transform
+		var joint = ref_mesh.bones[i];
+		var mat = this.getNodeMatrix( joint[0] ); //get the current matrix from the bone Node transform
 		if(!mat)
+		{
 			mat4.identity( m );
+		}
 		else
 		{
-			var inv = ref_mesh.bones[i][1];
+			var inv = joint[1];
 			mat4.multiply( m, mat, inv );
 			if(ref_mesh.bind_matrix)
 				mat4.multiply( m, m, ref_mesh.bind_matrix);
@@ -190,11 +196,16 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 //MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
+	if(!this.enabled)
+		return;
+
 	var mesh = this.getMesh();
-	if(!mesh) return null;
+	if(!mesh)
+		return null;
 
 	var node = this._root;
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	var RI = this._render_instance;
 	if(!RI)
@@ -204,9 +215,9 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
-	if(!this.enabled)
+	if(!this.apply_skinning)
 	{
-		RI.setMesh(mesh, this.primitive);
+		RI.setMesh( mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
 		delete RI.macros["USE_SKINNING"]; 
 		delete RI.macros["USE_SKINNING_TEXTURE"];
@@ -283,7 +294,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 
 		//apply cpu skinning
-		this.applySkin(mesh, this._skinned_mesh);
+		this.applySkin( mesh, this._skinned_mesh );
 		RI.setMesh(this._skinned_mesh, this.primitive);
 		//remove the flags to avoid recomputing shaders
 		delete RI.macros["USE_SKINNING"]; 
@@ -293,14 +304,21 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	//do not need to update
 	//RI.matrix.set( this._root.transform._global_matrix );
-	if(this.ignore_transform)
-		mat4.identity(RI.matrix);
+	if( this.ignore_transform )
+		mat4.identity( RI.matrix );
 	else
-		this._root.transform.getGlobalMatrix(RI.matrix);
+		this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	if(this.submesh_id != -1 && this.submesh_id != null)
-		RI.submesh_id = this.submesh_id;
+	if(this.submesh_id != -1 && this.submesh_id != null && mesh.info && mesh.info.groups)
+	{
+		var group = mesh.info.groups[this.submesh_id];
+		if(group)
+			RI.setRange( group.start, group.length );
+	}
+	else
+		RI.setRange(0,-1);
+
 	RI.material = this.material || this._root.getMaterial();
 
 	RI.flags = RI_DEFAULT_FLAGS;
@@ -308,7 +326,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(this.two_sided)
 		RI.flags &= ~RI_CULL_FACE;
 
-	if(this.enabled)
+	if( this.apply_skinning )
 		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
 
 	instances.push(RI);

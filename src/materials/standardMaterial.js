@@ -14,6 +14,7 @@
 
 function StandardMaterial(o)
 {
+	this.name = "";
 	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
@@ -106,7 +107,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture_info = this.getTextureInfo(i);
+		var texture_info = this.getTextureSampler(i);
 		if(!texture_info) continue;
 		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
 
@@ -235,7 +236,7 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var sampler = this.getTextureInfo(i);
+		var sampler = this.getTextureSampler(i);
 		if(!sampler)
 			continue;
 
@@ -244,47 +245,28 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 			continue;
 
 		if(texture.constructor === String)
-			texture = ResourcesManager.textures[texture];
+			texture = LS.ResourcesManager.textures[texture];
 		else if (texture.constructor != Texture)
 			continue;		
+		
 		if(!texture)  //loading or non-existant
-			continue;
+			sampler = { texture: ":missing" };
+		else
+			samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
 
-		samplers[i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap")] = sampler;
 		var texture_uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
 		//last_slot += 1;
 
-		//special cases
-		/*
-		if(i == "environment")
-			if(this.reflection_factor <= 0) continue;
-		else */
-
-		if(i == "normal")
-			continue;
-		else if(i == "displacement")
-			continue;
-		else if(i == "bump")
+		if(texture)
 		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
-			//texture.setParameter( gl.TEXTURE_MAG_FILTER, gl.LINEAR );
-			continue;
-		}
-		else if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
-		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
-			texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
-			//texture.min_filter = gl.GL_LINEAR;
-		}
-
-		if(texture.texture_type == gl.TEXTURE_2D && (texture_uvs == Material.COORDS_POLAR_REFLECTED || texture_uvs == Material.COORDS_POLAR))
-		{
-			texture.bind(0);
-			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
-			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+			if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
+			{
+				texture.bind(0);
+				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+				texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+				texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+				//texture.min_filter = gl.GL_LINEAR;
+			}
 		}
 	}
 

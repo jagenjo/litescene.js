@@ -49,6 +49,7 @@ var Renderer = {
 	//called from...
 	init: function()
 	{
+		this._missing_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		Draw.init();
 		Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
 	},
@@ -467,7 +468,9 @@ var Renderer = {
 		{
 			var sampler = samplers[i];
 			if(!sampler) //weird case
+			{
 				throw("Samplers should always be valid values"); //assert
+			}
 
 			//if(shader && !shader[i]) continue; ¿?
 
@@ -486,7 +489,10 @@ var Renderer = {
 			if(tex.constructor === String)
 				tex = LS.ResourcesManager.textures[ tex ];
 			if(!tex)
-				continue;
+			{
+				tex = this._missing_texture;
+				//continue;
+			}
 
 			//bind
 			sampler_uniforms[ i ] = tex.bind( slot++ );
@@ -508,6 +514,32 @@ var Renderer = {
 
 		return sampler_uniforms;
 	},
+
+	/*
+	computeShader: function( instance, light, render_options, macros )
+	{
+		var light_macros = light.getMacros( instance, render_options );
+
+		macros = macros || {};
+
+		if(iLight === 0)
+			macros.FIRST_PASS = "";
+		if(iLight === (num_lights-1))
+			macros.LAST_PASS = "";
+
+		macros.merge(scene._macros);
+		macros.merge(instance_final_macros); //contains node, material and instance macros
+		macros.merge(light_macros);
+
+		if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+			macros.USE_CLIPPING_PLANE = "";
+
+		if( material.onModifyMacros )
+			material.onModifyMacros( macros );
+
+		shader = ShadersManager.get(shader_name, macros);
+	},
+	*/
 
 	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderColorPassInstance: function(instance, lights, scene, render_options)

@@ -1,20 +1,6 @@
 /*
-*  Components are elements that attach to Nodes or other objects to add functionality
-*  Some important components are Transform, Light or Camera
-*
-*	*  ctor: must accept an optional parameter with the serialized data
-*	*  onAddedToNode: triggered when added to node
-*	*  onRemovedFromNode: triggered when removed from node
-*	*  onAddedToScene: triggered when the node is added to the scene
-*	*  onRemovedFromScene: triggered when the node is removed from the scene
-*	*  serialize: returns a serialized version packed in an object
-*	*  configure: recieves an object to unserialize and configure this instance
-*	*  getResources: adds to the object the resources to load
-*	*  _root contains the node where the component is added
-*
-*	*  use the LEvent system to hook events to the node or the scene
-*	*  never share the same component instance between two nodes
-*
+	A component container is someone who could have components attached to it.
+	Mostly used for SceneNodes but it could be used for other classes too.
 */
 
 /**

@@ -37,69 +37,75 @@ var Draw = {
 		var coords = [[0,1],[1,1],[1,0],[0,0]];
 		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
 
-		//create shaders
-		this.shader = new Shader('\
+		var vertex_shader = '\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
-			uniform mat4 u_mvp;\n\
-			uniform float u_point_size;\n\
-			void main() {\
-				gl_PointSize = u_point_size;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
-			}\
-			','\
-			precision mediump float;\n\
-			uniform vec4 u_color;\n\
-			void main() {\
-			  gl_FragColor = u_color;\n\
-			}\
-		');
-
-		this.shader_color = new Shader('\
-			precision mediump float;\n\
-			attribute vec3 a_vertex;\n\
-			attribute vec4 a_color;\n\
-			uniform mat4 u_mvp;\n\
-			uniform float u_point_size;\n\
-			varying vec4 v_color;\n\
-			void main() {\
-				v_color = a_color;\n\
-				gl_PointSize = u_point_size;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
-			}\
-			','\
-			precision mediump float;\n\
-			uniform vec4 u_color;\n\
-			varying vec4 v_color;\n\
-			void main() {\
-			  gl_FragColor = u_color * v_color;\n\
-			}\
-		');
-
-		this.shader_texture = new Shader('\
-			precision mediump float;\n\
-			attribute vec3 a_vertex;\n\
-			attribute vec2 a_coord;\n\
-			varying vec2 v_coord;\n\
+			#ifdef USE_COLOR\n\
+				attribute vec4 a_color;\n\
+				varying vec4 v_color;\n\
+			#endif\n\
+			#ifdef USE_TEXTURE\n\
+				attribute vec2 a_coord;\n\
+				varying vec2 v_coord;\n\
+			#endif\n\
+			#ifdef USE_SIZE\n\
+				attribute float a_extra;\n\
+			#endif\n\
 			uniform mat4 u_mvp;\n\
 			uniform float u_point_size;\n\
 			void main() {\n\
 				gl_PointSize = u_point_size;\n\
-				v_coord = a_coord;\n\
+				#ifdef USE_SIZE\n\
+					gl_PointSize = a_extra;\n\
+				#endif\n\
+				#ifdef USE_TEXTURE\n\
+					v_coord = a_coord;\n\
+				#endif\n\
+				#ifdef USE_COLOR\n\
+					v_color = a_color;\n\
+				#endif\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			','\
+			';
+
+		var pixel_shader = '\
 			precision mediump float;\n\
-			varying vec2 v_coord;\n\
 			uniform vec4 u_color;\n\
-			uniform sampler2D u_texture;\n\
+			#ifdef USE_COLOR\n\
+				varying vec4 v_color;\n\
+			#endif\n\
+			#ifdef USE_TEXTURE\n\
+				varying vec2 v_coord;\n\
+				uniform sampler2D u_texture;\n\
+			#endif\n\
 			void main() {\n\
-			  vec4 tex = texture2D(u_texture, v_coord);\n\
-			  if(tex.a < 0.1)\n\
-				discard;\n\
-			  gl_FragColor = u_color * tex;\n\
+				vec4 color = u_color;\n\
+				#ifdef USE_TEXTURE\n\
+				  color *= texture2D(u_texture, v_coord);\n\
+				  if(color.a < 0.1)\n\
+					discard;\n\
+			    #endif\n\
+				#ifdef USE_POINTS\n\
+				    float dist = length( gl_PointCoord.xy - vec2(0.5) );\n\
+					if( dist > 0.45 )\n\
+						discard;\n\
+			    #endif\n\
+				#ifdef USE_COLOR\n\
+					color *= v_color;\n\
+				#endif\n\
+				gl_FragColor = color;\n\
 			}\
-		');
+		';
+
+		//create shaders
+		this.shader = new Shader(vertex_shader,pixel_shader);
+
+		this.shader_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":""});
+		this.shader_texture = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":""});
+		this.shader_points = new Shader(vertex_shader,pixel_shader,{"USE_POINTS":""});
+		this.shader_points_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_POINTS":""});
+		this.shader_points_color_size = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_SIZE":"","USE_POINTS":""});
+
 
 		this.shader_image = new Shader('\
 			precision mediump float;\n\
@@ -122,27 +128,7 @@ var Draw = {
 			}\
 		');
 
-		this.shader_points_color_size = new Shader('\
-			precision mediump float;\n\
-			attribute vec3 a_vertex;\n\
-			attribute vec4 a_color;\n\
-			attribute float a_extra;\n\
-			uniform mat4 u_mvp;\n\
-			uniform float u_point_size;\n\
-			uniform vec4 u_color;\n\
-			varying vec4 v_color;\n\
-			void main() {\n\
-				v_color = u_color * a_color;\n\
-				gl_PointSize = u_point_size * a_extra;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
-			}\
-			','\
-			precision mediump float;\n\
-			varying vec4 v_color;\n\
-			void main() {\n\
-			  gl_FragColor = v_color;\n\
-			}\
-		');
+
 
 		this.shader_points_color_texture_size = new Shader('\
 			precision mediump float;\n\
@@ -327,6 +313,27 @@ var Draw = {
 		if(!shader)
 			shader = colors ? this.shader_color : this.shader;
 
+		return this.renderMesh(mesh, gl.POINTS, shader );
+	},
+
+	renderRoundPoints: function(points, colors, shader)
+	{
+		if(!points || !points.length) return;
+		var vertices = null;
+
+		if(points.constructor == Float32Array)
+			vertices = points;
+		else if(points[0].length) //array of arrays
+			vertices = this.linearize(points);
+		else
+			vertices = new Float32Array(points);
+
+		if(colors)
+			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
+
+		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
+		if(!shader)
+			shader = colors ? this.shader_points_color : this.shader_points;
 		return this.renderMesh(mesh, gl.POINTS, shader );
 	},
 

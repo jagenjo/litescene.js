@@ -470,40 +470,43 @@ Light.prototype.configure = function(o)
 * updates all the important vectors (target, position, etc) according to the node parent of the light
 * @method updateVectors
 */
-Light.prototype.updateVectors = function()
-{
-	//if the light is inside the root node of the scene
-	if(!this._root || !this._root.transform) 
+Light.prototype.updateVectors = (function(){
+	var temp_v3 = vec3.create();
+
+	return function()
 	{
-		//position, target and up are already valid
-		 //front
-		 //vec3.subtract(this._front, this.position, this.target ); //positive z front
-		 vec3.subtract(this._front, this._target, this._position ); //positive z front
-		 vec3.normalize(this._front,this._front);
-		 //right
-		 vec3.normalize( temp_v3, this._up );
-		 vec3.cross( this._right, this._front, temp_v3 );
-		 //top
-		 vec3.cross( this._top, this._right, this._front );
-		 return;
+		//if the light is inside the root node of the scene
+		if(!this._root || !this._root.transform) 
+		{
+			//position, target and up are already valid
+			 //front
+			 //vec3.subtract(this._front, this.position, this.target ); //positive z front
+			 vec3.subtract(this._front, this._target, this._position ); //positive z front
+			 vec3.normalize(this._front,this._front);
+			 //right
+			 vec3.normalize( temp_v3, this._up );
+			 vec3.cross( this._right, this._front, temp_v3 );
+			 //top
+			 vec3.cross( this._top, this._right, this._front );
+			 return;
+		}
+
+		var mat = this._root.transform.getGlobalMatrixRef();
+
+		//position
+		mat4.getTranslation( this._position, mat);
+		//target
+		if (!this.use_target)
+			mat4.multiplyVec3( this._target, mat, Light.FRONT_VECTOR ); //right in front of the object
+		//up
+		mat4.multiplyVec3( this._up, mat, Light.UP_VECTOR ); //right in front of the object
+
+		//vectors
+		mat4.rotateVec3( this._front, mat, Light.FRONT_VECTOR ); 
+		mat4.rotateVec3( this._right, mat, Light.RIGHT_VECTOR ); 
+		vec3.copy( this._top, this.up ); 
 	}
-
-	var mat = this._root.transform.getGlobalMatrixRef();
-
-	//position
-	mat4.getTranslation( this._position, mat);
-	//target
-	if (!this.use_target)
-		mat4.multiplyVec3( this._target, mat, Light.FRONT_VECTOR ); //right in front of the object
-	//up
-	mat4.multiplyVec3( this._up, mat, Light.UP_VECTOR ); //right in front of the object
-
-	//vectors
-	mat4.rotateVec3( this._front, mat, Light.FRONT_VECTOR ); 
-	mat4.rotateVec3( this._right, mat, Light.RIGHT_VECTOR ); 
-	vec3.copy( this._top, this.up ); 
-}
-
+})();
 /**
 * returns a copy of the light position (in global coordinates), if you want local you can access the position property
 * @method getPosition
@@ -598,7 +601,7 @@ Light.prototype.prepare = function( render_options )
 	wipeObject(macros); //delete all properties (I dont like to generate garbage)
 
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture || this.cast_shadows || this.average_texture)
+	if(this.projective_texture || this.cast_shadows)
 		this.updateLightCamera();
 
 	if(!this.cast_shadows &amp;&amp; this._shadowmap)
@@ -628,20 +631,14 @@ Light.prototype.prepare = function( render_options )
 
 	if(this.projective_texture)
 	{
-		var light_projective_texture = this.projective_texture.constructor === String ? ResourcesManager.textures[this.projective_texture] : this.projective_texture;
+		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[this.projective_texture] : this.projective_texture;
 		if(light_projective_texture)
 		{
-			macros.USE_PROJECTIVE_LIGHT = &quot;&quot;;
 			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				macros.USE_PROJECTIVE_LIGHT_CUBEMAP = &quot;&quot;;
+				macros.USE_LIGHT_CUBEMAP = &quot;&quot;;
+			else
+				macros.USE_LIGHT_TEXTURE = &quot;&quot;;
 		}
-	}
-
-	if(this.average_texture)
-	{
-		var light_average_texture = this.average_texture.constructor === String ? ResourcesManager.textures[ this.average_texture ] : this.average_texture;
-		if(light_average_texture)
-			macros.USE_TEXTURE_AVERAGE_LIGHT = &quot;&quot;;
 	}
 
 	//if(vec3.squaredLength( light.color ) &lt; 0.001 || node.flags.ignore_lights)
@@ -750,23 +747,18 @@ Light.prototype.getUniforms = function( instance, render_options )
 		var light_projective_texture = this.projective_texture.constructor === String ? ResourcesManager.textures[this.projective_texture] : this.projective_texture;
 		if(light_projective_texture)
 		{
-			uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
-			//if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				uniforms.light_cubemap = light_projective_texture.bind(11); //fixed slot
+			else
+				uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
 			//	uniforms.light_rotation_matrix = 
 		}
 	}
 	else
-		delete uniforms[&quot;light_texture&quot;];
-
-	//average texture
-	if(this.average_texture)
 	{
-		var light_average_texture = this.average_texture.constructor === String ? ResourcesManager.textures[ this.average_texture ] : this.average_texture;
-		if(light_average_texture)
-			uniforms.light_average_texture = light_average_texture.bind(12); //fixed slot
+		delete uniforms[&quot;light_texture&quot;];
+		delete uniforms[&quot;light_texture&quot;];
 	}
-	else
-		delete uniforms[&quot;light_average_texture&quot;];
 
 	//use shadows?
 	if(use_shadows)

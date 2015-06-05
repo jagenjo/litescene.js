@@ -169,6 +169,7 @@
 
 function Spherize(o)
 {
+	this.enabled = true;
 	this._num_id = LS._last_uid++;
 	this.radius = 10;
 	this.center = vec3.create();
@@ -182,6 +183,7 @@ function Spherize(o)
 }
 
 Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
+Spherize[&quot;@center&quot;] = { type: &quot;position&quot;, step: 0.001 };
 
 Spherize.icon = &quot;mini-icon-circle.png&quot;;
 
@@ -198,10 +200,20 @@ Spherize.prototype.onRemoveFromNode = function(node)
 }
 
 Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;&quot;;
-Spherize._code = &quot;vec3 vn@ = normalize(vertex4.xyz-u_spherize_center@); vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, u_spherize_factor@); v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,u_spherize_factor@)));&quot;;
+Spherize._code = &quot;\
+	vec3 off@ = vertex4.xyz - u_spherize_center@;\
+    float dist@ = length(off@);\
+	vec3 vn@ = off@ / dist@;\
+	float factor@ = max(0.0, u_spherize_factor@ / dist@ );\
+	vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, factor@);\
+	v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,factor@)));\
+&quot;;
 
 Spherize.prototype.onMacros = function(e, macros)
 {
+	if(!this.enabled)
+		return;
+
 	if(macros.USE_VERTEX_SHADER_UNIFORMS)
 		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
 	else
@@ -215,13 +227,70 @@ Spherize.prototype.onMacros = function(e, macros)
 
 Spherize.prototype.onUniforms = function(e, uniforms)
 {
+	if(!this.enabled)
+		return;
+
 	uniforms[&quot;u_spherize_center&quot; + this._num_id ] = this.center;
 	uniforms[&quot;u_spherize_radius&quot; + this._num_id ] = this.radius;
 	uniforms[&quot;u_spherize_factor&quot; + this._num_id ] = this.factor;
 }
 
+Spherize.prototype.renderEditor = function(node_selected, component_selected)
+{
+	if(!this.enabled)
+		return;
 
-LS.registerComponent(Spherize);
+	//if node is selected, render frustrum
+	if (node_selected &amp;&amp; this.enabled)
+	{
+		Draw.setPointSize(6);
+		Draw.setColor([0.33,0.874,0.56, component_selected ? 0.8 : 0.5 ]);
+		var pos = vec3.clone(this.center);
+		if(this._root &amp;&amp; this._root.transform)
+			vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
+		Draw.renderRoundPoints( pos );
+	}
+}
+
+//Mostly used for gizmos
+Spherize.prototype.getTransformMatrix = function( element )
+{
+	if( !this._root || !this._root.transform )
+		return null; //use the node transform
+
+	var p = null;
+	if (element == &quot;center&quot;)
+		p = this.center;
+	else
+		return false;
+
+	var T = mat4.clone( this._root.transform._global_matrix );
+	mat4.translate( T, T, p );
+	return T;
+}
+
+Spherize.prototype.renderPicking = function(ray)
+{
+	var pos = vec3.clone(this.center);
+	if(this._root &amp;&amp; this._root.transform)
+		vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
+	EditorView.addPickingPoint( pos, 4, { instance: this, info: &quot;center&quot; } );
+}
+
+Spherize.prototype.applyTransformMatrix = function( matrix, center, element )
+{
+	if( !this._root || !this._root.transform )
+		return false; //ignore transform
+
+	if (element != &quot;center&quot;)
+		return false;
+
+	var p = this.center;
+	mat4.multiplyVec3( p, matrix, p );
+	return true;
+}
+
+LS.registerComponent( Spherize );
     </pre>
 </div>
 

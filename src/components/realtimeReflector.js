@@ -99,7 +99,7 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		var texture = this._textures[ camera.uid ];
 		if(!texture || texture.width != texture_width || texture.height != texture_height || texture.type != type || texture.texture_type != texture_type || texture.mipmaps != this.generate_mipmaps)
 		{
-			texture = new Texture(texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+			texture = new GL.Texture(texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
 			texture.mipmaps = this.generate_mipmaps;
 			this._textures[ camera.uid ] = texture;
 		}
@@ -117,8 +117,8 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 			var mesh = this._root.getMesh();
 			if(mesh)
 			{
-				plane_center = this._root.transform.transformPointGlobal( mesh.vertices.subarray(0,3) );
-				plane_normal = this._root.transform.transformVectorGlobal( mesh.normals.subarray(0,3) );
+				plane_center = this._root.transform.transformPointGlobal( BBox.getCenter( mesh.bounding ) );
+				plane_normal = this._root.transform.transformVectorGlobal( [0,1,0] );
 			}
 		}
 
@@ -153,7 +153,7 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		if(this.blur)
 		{
 			var blur_texture = this._textures[ "blur_" + camera.uid ];
-			if( blur_texture && !Texture.compareFormats( blur_texture, texture) )
+			if( blur_texture && !GL.Texture.compareFormats( blur_texture, texture) )
 				blur_texture = null;	 //remove old one
 			blur_texture = texture.applyBlur( this.blur, this.blur, 1, blur_texture );
 			this._textures[ "blur_" + camera.uid ] = blur_texture;
@@ -169,7 +169,7 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 
 		if(this.texture_name)
 			LS.ResourcesManager.registerResource( this.texture_name, texture );
-		LS.ResourcesManager.registerResource( "reflection_" + camera.uid, texture );
+		LS.ResourcesManager.registerResource( ":reflection_" + camera.uid, texture );
 
 		if(!this.all_cameras)
 			break;
@@ -202,7 +202,7 @@ RealtimeReflector.prototype.onCameraEnabled = function(e, camera)
 	var mat = this._root.getMaterial();
 	if(mat)
 	{
-		var sampler = mat.setTexture( Material.ENVIRONMENT_TEXTURE, "reflection_" + camera.uid );
+		var sampler = mat.setTexture( Material.ENVIRONMENT_TEXTURE, ":reflection_" + camera.uid );
 		sampler.uvs = Material.COORDS_FLIPPED_SCREEN;
 	}
 }

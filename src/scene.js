@@ -14,7 +14,7 @@ function SceneTree()
 	this._root._is_root  = true;
 	this._root._in_tree = this;
 	this._nodes = [ this._root ];
-	this._nodes_by_id = {"root":this._root};
+	this._nodes_by_name = {"root":this._root};
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
@@ -57,7 +57,7 @@ SceneTree.prototype.init = function()
 
 	this._root.removeAllComponents();
 	this._nodes = [ this._root ];
-	this._nodes_by_id = { "root": this._root };
+	this._nodes_by_name = { "root": this._root };
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
@@ -368,6 +368,10 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 	if(node._in_tree && node._in_tree != this)
 		throw("Cannot add a node from other scene, clone it");
 
+	if( node._name && !this._nodes_by_name[ node._name ] )
+		this._nodes_by_name[ node._name ] = node;
+
+	/*
 	//generate unique id
 	if(node.id && node.id != -1)
 	{
@@ -375,6 +379,7 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 			node.id = node.id + "_" + (Math.random() * 1000).toFixed(0);
 		this._nodes_by_id[node.id] = node;
 	}
+	*/
 
 	//store by uid
 	if(!node.uid)
@@ -403,8 +408,8 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 		return;
 
 	this._nodes.splice(pos,1);
-	if(node.id)
-		delete this._nodes_by_id[ node.id ];
+	if(node._name && this._nodes_by_name[ node._name ] == node )
+		delete this._nodes_by_name[ node._name ];
 	if(node.uid)
 		delete this._nodes_by_uid[ node.uid ];
 
@@ -429,31 +434,32 @@ SceneTree.prototype.getNodes = function()
 }
 
 /**
-* retrieves a Node based on the id (if the id starts with the uid prefix, then it searches by uid)
+* retrieves a Node based on the name or uid
 *
 * @method getNode
 * @param {String} id node id
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNode = function(id)
+SceneTree.prototype.getNode = function( name )
 {
-	if(!id)
+	if(!name)
 		return null;
-	if(id.charAt(0) == LS._uid_prefix)
-		return this._nodes_by_uid[id];
-	return this._nodes_by_id[id];
+	if(name.charAt(0) == LS._uid_prefix)
+		return this._nodes_by_uid[ name ];
+	return this._nodes_by_name[ name ];
 }
 
 /**
-* retrieves a Node based on a given id. It is fast because they are stored in an object
+* retrieves a Node that matches that name. It is fast because they are stored in an object.
+* If more than one object has the same name, the first one added to the tree is returned
 *
-* @method getNodeById
-* @param {String} id id of the node
+* @method getNodeByName
+* @param {String} name name of the node
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNodeById = function(id)
+SceneTree.prototype.getNodeByName = function(name)
 {
-	return this._nodes_by_id[ id ];
+	return this._nodes_by_name[ name ];
 }
 
 
@@ -478,7 +484,7 @@ SceneTree.prototype.getNodeByUId = function(uid)
 */
 SceneTree.prototype.getNodeByIndex = function(index)
 {
-	return this._nodes[index];
+	return this._nodes[ index ];
 }
 
 //for those who are more traditional
@@ -920,10 +926,10 @@ SceneTree.prototype.purgeResidualEvents = function()
 * @constructor
 */
 
-function SceneNode(id)
+function SceneNode( name )
 {
 	//Generic
-	this._id = id || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId("NODE-");
 
 	this._classList = {};
@@ -961,62 +967,60 @@ LS.extendClass(SceneNode, ComponentContainer); //container methods
 LS.extendClass(SceneNode, CompositePattern); //container methods
 
 /**
-* changes the node id (its better to do not change the id, it can lead to unexpected results)
-* remember that two nodes can't have the same id
-* @method setId
-* @param {String} new_id the new id
+* changes the node name
+* @method setName
+* @param {String} new_name the new name
 * @return {Object} returns true if the name changed
 */
 
-Object.defineProperty( SceneNode.prototype, 'id', {
-	set: function(id)
+Object.defineProperty( SceneNode.prototype, 'name', {
+	set: function(name)
 	{
-		this.setId(id);
+		this.setName( name );
 	},
 	get: function(){
-		return this._id;
+		return this._name;
 	},
 	enumerable: true
 });
 	
 
-SceneNode.prototype.setId = function(new_id)
+SceneNode.prototype.setName = function(new_name)
 {
-	if(this._id == new_id) 
+	if(this._name == new_name) 
 		return true; //no changes
 
-	if(!LS.validateId(new_id))
+	//check that the name is valid (doesnt have invalid characters)
+	if(!LS.validateName(new_name))
 		return false;
 
 	var scene = this._in_tree;
 	if(!scene)
 	{
-		this._id = new_id;
-		return;
+		this._name = new_name;
+		return true;
 	}
 
-	if( scene.getNode(new_id) != null)
-	{
-		console.error("ID already in use");
-		return false;
-	}
+	//remove old link
+	if( this._name )
+		delete scene._nodes_by_name[ this._name ];
 
-	if(this._id)
-		delete scene._nodes_by_id[this._id];
-	//uid doesnt change, so we keep it
+	//assign name
+	this._name = new_name;
 
-	this._id = new_id;
-	if(this._id)
-		scene._nodes_by_id[ this._id ] = this;
+	//we already have another node with this name
+	if( new_name && !scene._nodes_by_name[ new_name ] )
+		scene._nodes_by_name[ this._name ] = this;
 
 	/**
-	 * Node changed id
+	 * Node changed name
 	 *
-	 * @event idChanged
-	 * @param {String} new_id
+	 * @event name_changed
+	 * @param {String} new_name
 	 */
-	LEvent.trigger(this,"idChanged", new_id); //TODO: CHANGE NAME
-	LEvent.trigger(Scene,"nodeIdChanged", this); //TODO: CHANGE NAME
+	LEvent.trigger( this, "name_changed", new_name );
+	if(scene)
+		LEvent.trigger( scene, "node_name_changed", this );
 	return true;
 }
 
@@ -1213,14 +1217,13 @@ SceneNode.prototype.clone = function()
 {
 	var scene = this._in_tree;
 
-	var new_name = scene ? scene.generateUniqueNodeName( this._id ) : this._id ;
+	var new_name = scene ? scene.generateUniqueNodeName( this._name ) : this._name ;
 	var newnode = new LS.SceneNode( new_name );
 	var info = this.serialize();
 
 	//remove all uids from nodes and components
 	LS.clearUIds( info );
 
-	info.id = null;
 	info.uid = LS.generateUId("NODE-");
 	newnode.configure( info );
 
@@ -1235,13 +1238,17 @@ SceneNode.prototype.clone = function()
 SceneNode.prototype.configure = function(info)
 {
 	//identifiers parsing
-	if (info.id)
-		this.setId(info.id);
+	if (info.name)
+		this.setName(info.name);
+	else if (info.id)
+		this.setName(info.id);
+
 	if (info.uid) 
 		this.uid = info.uid;
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 
+	//TO DO: Change this to more generic stuff
 	//some helpers (mostly for when loading from js object that come from importers
 	if(info.mesh)
 	{
@@ -1315,8 +1322,8 @@ SceneNode.prototype.serialize = function()
 {
 	var o = {};
 
-	if(this._id) 
-		o.id = this._id;
+	if(this._name) 
+		o.name = this._name;
 	if(this.uid) 
 		o.uid = this.uid;
 	if(this.className) 

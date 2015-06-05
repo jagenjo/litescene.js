@@ -25,7 +25,7 @@ var ResourcesManager = {
 	proxy: "", //url to retrieve resources outside of this host
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
-	keep_files: false, //keep the original files inside the resource (used mostly in the webglstudio editor)
+	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
 
 	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
@@ -35,7 +35,7 @@ var ResourcesManager = {
 
 	resources_not_found: {}, //resources that will be skipped because they werent found
 	resources_being_loaded: {}, //resources waiting to be loaded
-	resources_being_processes: {}, //used to avoid loading stuff that is being processes
+	resources_being_processed: {}, //used to avoid loading stuff that is being processes
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
@@ -43,6 +43,9 @@ var ResourcesManager = {
 	formats_resource: {},	//tells which resource expect from this file format
 	resource_pre_callbacks: {}, //used to extract resource info from a file ->  "obj":callback
 	resource_post_callbacks: {}, //used to post process a resource type -> "Mesh":callback
+	resource_once_callbacks: {}, //callback called once
+
+	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -133,14 +136,13 @@ var ResourcesManager = {
 	* @param {String} fullpath
 	* @return {String} filename extension
 	*/
-
 	getBasename: function(fullpath)
 	{
 		var name = this.getFilename(fullpath);
 		var pos = name.indexOf(".");
 		if(pos == -1) return name;
 		return name.substr(0,pos);
-	},		
+	},
 
 	/**
 	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
@@ -188,7 +190,7 @@ var ResourcesManager = {
 	},
 
 	/**
-	* transform a url to a full url taking into account proxy and local_repository
+	* transform a url to a full url taking into account proxy, virtual file systems and local_repository
 	*
 	* @method getFullURL
 	* @param {String} url
@@ -197,28 +199,56 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
-		var full_url = "";
-		if(url.substr(0,7) == "http://")
-		{
-			full_url = url;
-			if(this.proxy) //proxy external files
-				full_url = this.proxy + url.substr(7);
-		}
-		else if(url.substr(0,5) == "blob:")
-			return url; //special case for local urls like URL.createObjectURL
-		else
-		{
-			if(options && options.local_repository)
-				full_url = options.local_repository + "/" + url;
-			else
-				full_url = this.path + url;
-		}
+		var pos = url.indexOf(":");
+		var protocol = "";
+		if(pos != -1)
+			protocol = url.substr(0,pos);
 
-		//you can ignore the resources server for some assets if you want
+		var resources_path = this.path;
 		if(options && options.force_local_url)
-			full_url = url;
+			resources_path = ".";
 
-		return full_url;
+		//used special repository
+		if(options && options.local_repository)
+			resources_path = options.local_repository;
+
+		if(protocol)
+		{
+			switch(protocol)
+			{
+				case 'http':
+				case 'https':
+					full_url = url;
+					if(this.proxy) //proxy external files
+						return this.proxy + url.substr(pos+3); //"://"
+					break;
+				case 'blob':
+					return url; //special case for local urls like URL.createObjectURL
+				case '': //local resource?
+					return url;
+					break;
+				default:
+					//test for virtual file system address
+					var root_path = this.virtual_file_systems[ protocol ] || resources_path;
+					return root_path + "/" + url.substr(pos+1);
+			}
+		}
+		else
+			return resources_path + "/" + url;
+	},
+
+	/**
+	* Allows to associate a resource path like "vfs:myfile.png" to an url according to the value before the ":".
+	* This way we can have alias for different folders where the assets are stored.
+	* P.e:   "e","http://domain.com"  -> will transform "e:myfile.png" in "http://domain.com/myfile.png"
+	*
+	* @method registerFileSystem
+	* @param {String} name the filesystem name (the string before the colons in the path)
+	* @param {String} url the url to attach before 
+	*/
+	registerFileSystem: function(name, url)
+	{
+		this.virtual_file_systems[name] = url;
 	},
 
 	/**
@@ -258,7 +288,7 @@ var ResourcesManager = {
 			return;
 		}
 
-		if(this.resources_being_processes[url])
+		if(this.resources_being_processed[url])
 			return; //nothing to load, just waiting for the callback to process it
 
 		//otherwise we have to load it
@@ -315,7 +345,7 @@ var ResourcesManager = {
 		var extension = this.getExtension(url);
 
 		//this.resources_being_loaded[url] = [];
-		this.resources_being_processes[url] = true;
+		this.resources_being_processed[url] = true;
 
 		//no extension, then or it is a JSON, or an object with object_type or a WBin
 		if(!extension)
@@ -373,8 +403,8 @@ var ResourcesManager = {
 			if(!resource.fullpath)
 				resource.fullpath = url;
 
-			if(LS.ResourcesManager.resources_being_processes[filename])
-				delete LS.ResourcesManager.resources_being_processes[filename];
+			if(LS.ResourcesManager.resources_being_processed[filename])
+				delete LS.ResourcesManager.resources_being_processed[filename];
 
 			//keep original file inside the resource
 			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) )
@@ -652,8 +682,9 @@ var ResourcesManager = {
 	*/
 
 	getTexture: function(name) {
-		if(name != null) return this.textures[name];
-		return null;
+		if(!name)
+			return null;
+		return this.textures[name];
 	},
 
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name
@@ -680,6 +711,23 @@ var ResourcesManager = {
 		}
 	},
 
+	//used when waiting to something to be loaded
+	onceLoaded: function( fullpath, callback )
+	{
+		var array = this.resource_once_callbacks[ fullpath ];
+		if(!array)
+		{
+			this.resource_once_callbacks = [ callback ];
+			return;
+		}
+
+		//avoid repeating
+		for(var i in array)
+			if( array[i] == callback )
+				return;
+		array.push( callback );
+	},
+
 	//*************************************
 
 	//Called after a resource has been loaded successfully and processed
@@ -693,6 +741,16 @@ var ResourcesManager = {
 			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
 				LS.ResourcesManager.resources_being_loaded[url][i].callback(res);
 		}
+
+		//triggers 'once' callbacks
+		if(LS.ResourcesManager.resource_once_callbacks[ url ])
+		{
+			var v = LS.ResourcesManager.resource_once_callbacks[url];
+			for(var i in v)
+				v[i](url, res);
+			delete LS.ResourcesManager.resource_once_callbacks[url];
+		}
+
 		//two pases, one for launching, one for removing
 		if( LS.ResourcesManager.resources_being_loaded[url] )
 		{
@@ -710,6 +768,7 @@ var ResourcesManager = {
 	{
 		console.log("Error loading " + url);
 		delete LS.ResourcesManager.resources_being_loaded[url];
+		delete LS.ResourcesManager.resource_once_callbacks[url];
 		LS.ResourcesManager.resources_not_found[url] = true;
 		LEvent.trigger( LS.ResourcesManager, "resource_not_found", url);
 		LS.ResourcesManager.num_resources_being_loaded--;

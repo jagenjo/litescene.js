@@ -8,6 +8,8 @@
 	- height: the height for the canvas in case it is created without a container_id
 	- resources: string with the path to the resources folder
 	- shaders: string with the url to the shaders.xml file
+	- proxy: string with the url where the proxy is located (useful to avoid CORS)
+	- filesystems: object that contains the virtual file systems info { "VFS":"http://litefileserver.com/" } ...
 	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
 	- autoresize: boolean to automatically resize the canvas when the window is resized
 	Optional callbacks to attach
@@ -57,6 +59,11 @@ function Context(options)
 		LS.ShadersManager.init( options.shaders );
 	if(options.proxy)
 		LS.ResourcesManager.setProxy( options.proxy );
+	if(options.filesystems)
+	{
+		for(var i in options.filesystems)
+			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
+	}
 
 	if(options.autoresize)
 	{

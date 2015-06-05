@@ -17,6 +17,7 @@
 
 ../src/componentContainer.js
 ../src/compositePattern.js
+../src/component.js
 
 ../src/components/transform.js
 ../src/components/camera.js

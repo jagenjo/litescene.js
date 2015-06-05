@@ -6,7 +6,7 @@
 	]]>		
 	</snippet>
 
-	<snippet id="surface_structs">
+	<snippet id="structs">
 		<![CDATA[
 			//used to store topology input information
 			struct Input {
@@ -36,8 +36,19 @@
 				vec4 Extra; //for special purposes
 			};
 
+			/*
+			struct Light {
+				vec3 position;
+				vec3 color;
+				vec2 attenuation; //start,end
+				vec3 front;
+				vec4 angle; //cone start,end,phi,theta
+				vec3 shadowmap_info; //bias, size, alpha
+			}
+			*/
+
 			//used to store light contribution
-			struct LightInfo {
+			struct FinalLight {
 				vec3 Color;
 				vec3 Ambient;
 				float Diffuse; //NdotL
@@ -57,7 +68,7 @@
 			{
 				vec3 N = o.Normal;
 
-				LightInfo LIGHT;
+				FinalLight LIGHT;
 				LIGHT.Color = u_light_color;
 				LIGHT.Ambient = vec3(0.0);
 				LIGHT.Diffuse = 1.0;
@@ -102,7 +113,7 @@
 				float light_distance = length(L);
 				L /= light_distance;
 
-				#ifndef USE_OMNI_LIGHT
+				#ifdef USE_DIRECTIONAL_LIGHT
 					L = -u_light_front;
 				#endif
 
@@ -145,7 +156,7 @@
 					#endif
 				#endif
 
-				#ifdef USE_PROJECTIVE_LIGHT
+				#ifdef USE_LIGHT_TEXTURE
 					vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
 					LIGHT.Color *= texture2D(light_texture,light_sample).xyz;
 
@@ -153,6 +164,10 @@
 						if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
 							LIGHT.Attenuation = 0.0;
 					#endif
+				#endif
+
+				#ifdef USE_LIGHT_CUBEMAP
+					LIGHT.Color *= textureCube(light_cubemap,-L).xyz;
 				#endif
 
 				#ifdef USE_SPOT_LIGHT
@@ -211,9 +226,9 @@
 							*/
 							LIGHT.Reflection = texture2D( environment_texture, env_uv, reflection_gloss ).xyz;
 
-							//LIGHT.Reflection = texture2D(environment_texture, uvs_polar_reflected ).xyz;
-						#else USE_ENVIRONMENT_CUBEMAP
-							LIGHT.Reflection = textureCube(environment_cubemap, -R, 0.0).xyz;
+							//LIGHT.Reflection = texture2D( environment_texture, uvs_polar_reflected ).xyz;
+						#else //USE_ENVIRONMENT_CUBEMAP
+							LIGHT.Reflection = textureCube( environment_cubemap, -R, 0.0).xyz;
 						#endif
 
 					#endif //environment
@@ -309,11 +324,12 @@
 					
 					vec3 l_vector = (v_pos - u_light_position);
 					float dist = length(l_vector);
-					vec4 depth_color = textureCube(shadowmap, l_vector / dist + offset);
+					vec4 depth_color = textureCube(shadowmap, l_vector / dist  + offset);
 					//if ( abs(depth_color.x) + abs(depth_color.y) + abs(depth_color.z) + abs(depth_color.w) < 0.0001 ) return 0.0;
 					float sampleDepth = UnpackDepth32( depth_color );
 					depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away
 					dist = (dist - u_shadow_params.z) / (u_shadow_params.w - u_shadow_params.z); //normalize
+					//if(dist > 1.0) return 0.0; //BUG: pixelated border problem, don't know how to solve it
 					float bias = u_shadow_params.y;
 					return dist > depth * (1.0 + bias) ? 1.0 : 0.0;
 				#else
@@ -335,7 +351,38 @@
 				}
 				return shadow;
 			}
+		]]>
+	</snippet>
 
+	<snippet id="getSkyboxColor">
+		<![CDATA[
+			vec3 getSkyboxColor(vec3 dir)
+			{
+				float reflection_gloss = 0.0; //expressed in mipmap offset
+
+				#ifdef USE_ENVIRONMENT_TEXTURE
+					vec2 uvs_polar_reflected = polarToCartesian( dir );
+					return texture2D( environment_texture, uvs_polar_reflected, reflection_gloss ).xyz;
+				#endif 
+				
+				#ifdef USE_ENVIRONMENT_CUBEMAP
+					return textureCube(environment_cubemap, dir, 0.0).xyz;
+				#endif //environment
+
+				return u_background_color;
+			}
+		]]>
+	</snippet>
+
+	<snippet id="getFlatNormal">
+		<![CDATA[
+			#extension GL_OES_standard_derivatives : enable 
+			vec3 getFlatNormal(vec3 pos)
+			{
+				vec3 A = dFdx( pos );
+				vec3 B = dFdy( pos );
+				return normalize( cross(A,B) );
+			}
 		]]>
 	</snippet>
 
@@ -652,7 +699,7 @@
 				uniform float u_light_offset;
 			#endif			
 
-			#ifdef USE_PROJECTIVE_LIGHT
+			#ifdef USE_LIGHT_TEXTURE
 				uniform sampler2D light_texture;
 			#endif
 
@@ -668,7 +715,7 @@
 				uniform samplerCube irradiance_cubemap;
 			#endif			
 
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+			#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 				varying vec4 v_light_coord;
 			#endif
 
@@ -772,7 +819,7 @@
 	-->
 
 
-	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_PROJECTIVE_LIGHT,USE_IGNORE_LIGHTS,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_EXTRA_LIGHT_SHADER_CODE,USE_DRAW_BUFFERS" multipass="true" imports="true">
+	<shader id="surface" tags="instance" macros="NO_NORMALS,NO_COORDS,USE_COORDS1_STREAM,USE_COLOR_STREAM,USE_TANGENT_STREAM,USE_CLIPPING_PLANE,USE_ALPHA_TEST,USE_ORTHOGRAPHIC_CAMERA,USE_VERTEX_SHADER_UNIFORMS,USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_PIXEL_SHADER_UNIFORMS,USE_PIXEL_SHADER_FUNCTIONS,USE_PIXEL_SHADER_CODE,USE_SURFACE_SHADER,USE_SHADOW_MAP,SHADOWMAP_OFFSET,USE_SHADOW_CUBEMAP,USE_LIGHT_TEXTURE,USE_LIGHT_CUBEMAP,USE_IGNORE_LIGHTS,USE_LIGHT_OFFSET,USE_BACKLIGHT,FIRST_PASS,USE_AMBIENT_ONLY,USE_HARD_SHADOWS,USE_SPOT_CONE,USE_SPOT_LIGHT,USE_DIRECTIONAL_LIGHT,USE_OMNI_LIGHT,USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_IRRADIANCE_CUBEMAP,USE_LINEAR_ATTENUATION,USE_RANGE_ATTENUATION,USE_ENVIRONMENT_TEXTURE,USE_ENVIRONMENT_CUBEMAP,USE_SPECULAR_ONTOP,USE_SKINNING,USE_SKINNING_TEXTURE,USE_EXTRA_LIGHT_SHADER_CODE,USE_DRAW_BUFFERS" multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision mediump float;
@@ -819,7 +866,7 @@
 			uniform vec2 u_camera_perspective;
 			uniform float u_pointSize;
 
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+			#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 				uniform mat4 u_lightMatrix;
 				varying vec4 v_light_coord;
 			#endif			
@@ -879,7 +926,7 @@
 				v_local_normal = normal;
 				v_normal = (u_normal_model * vec4(normal,1.0)).xyz;
 
-				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+				#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 					v_light_coord = (u_lightMatrix) * vertex4;
 				#endif				
 
@@ -932,9 +979,14 @@
 				uniform float u_light_offset;
 			#endif			
 
-			#ifdef USE_PROJECTIVE_LIGHT
+			#ifdef USE_LIGHT_TEXTURE
 				uniform sampler2D light_texture;
 			#endif
+
+			#ifdef USE_LIGHT_CUBEMAP
+				uniform samplerCube light_cubemap;
+			#endif
+
 
 			#ifdef USE_ENVIRONMENT_TEXTURE
 				uniform sampler2D environment_texture;
@@ -948,11 +1000,11 @@
 				uniform samplerCube irradiance_cubemap;
 			#endif			
 
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+			#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 				varying vec4 v_light_coord;
 			#endif
 
-			#import "surface_structs"
+			#import "structs"
 
 			#ifdef USE_SPOT_LIGHT
 				#import "spotFalloff"
@@ -1274,7 +1326,7 @@
 			USE_REFLECTION, USE_REFLECTIVITY_TEXTURE, USE_ENVIRONMENT_TEXTURE, USE_ENVIRONMENT_CUBEMAP, USE_IRRADIANCE_TEXTURE,USE_IRRADIANCE_CUBEMAP,
 			USE_DIRECTIONAL_LIGHT, USE_SPOT_LIGHT, USE_OMNI_LIGHT, USE_LINEAR_ATTENUATION, USE_RANGE_ATTENUATION, USE_DIFFUSE_LIGHT,USE_SPECULAR_LIGHT,USE_AMBIENT_ONLY,USE_IGNORE_LIGHTS,USE_HARD_SHADOWS,
 			USE_SPECULAR_ONTOP, USE_SPECULAR_ON_ALPHA, USE_SPECULAR_IN_REFLECTION, USE_BACKLIGHT, USE_LIGHT_OFFSET, USE_SPOT_CONE,
-			USE_PROJECTIVE_LIGHT, USE_PROJECTIVE_LIGHT_CUBEMAP, USE_TEXTURE_AVERAGE_LIGHT,
+			USE_LIGHT_TEXTURE, USE_LIGHT_CUBEMAP,
 			USE_FOG, USE_FOG_EXP, USE_FOG_EXP2,
 			USE_ORTHOGRAPHIC_CAMERA, USE_SOFT_PARTICLES, FIRST_PASS, USE_EXTRA_SURFACE_SHADER_CODE, USE_EXTRA_LIGHT_SHADER_CODE, USE_VERTEX_SHADER_UNIFORMS, USE_VERTEX_SHADER_FUNCTIONS,USE_VERTEX_SHADER_CODE,USE_SKINNING,USE_SKINNING_TEXTURE,
 			USE_DRAW_BUFFERS
@@ -1334,7 +1386,7 @@
 			uniform vec2 u_camera_perspective;
 			uniform float u_pointSize;
 
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+			#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 				uniform mat4 u_lightMatrix;
 				varying vec4 v_light_coord;
 			#endif
@@ -1393,8 +1445,7 @@
 					USE_VERTEX_SHADER_CODE
 				#endif
 
-
-				#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+				#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 					v_light_coord = (u_lightMatrix) * vertex4;
 				#endif
 
@@ -1520,20 +1571,16 @@
 				uniform samplerCube irradiance_cubemap;
 			#endif
 
-			#ifdef USE_PROJECTIVE_LIGHT
-				#ifdef USE_PROJECTIVE_LIGHT_CUBEMAP
-					uniform samplerCube light_texture;
-				#else
-					uniform sampler2D light_texture;
-				#endif
+			#ifdef USE_LIGHT_TEXTURE
+				uniform sampler2D light_texture;
+			#endif
+
+			#ifdef USE_LIGHT_CUBEMAP
+				uniform samplerCube light_cubemap;
 			#endif
 
 			#ifdef USE_EXTRA_TEXTURE
 				uniform sampler2D extra_texture;
-			#endif
-
-			#ifdef USE_TEXTURE_AVERAGE_LIGHT
-				uniform sampler2D light_average_texture;
 			#endif
 
 			#ifdef USE_SOFT_PARTICLES
@@ -1588,11 +1635,11 @@
 
 			uniform vec4 u_clipping_plane;
 
-			#if defined(USE_SHADOW_MAP) || defined(USE_PROJECTIVE_LIGHT)
+			#if defined(USE_SHADOW_MAP) || defined(USE_LIGHT_TEXTURE)
 				varying vec4 v_light_coord;
 			#endif
 
-			#import "surface_structs"
+			#import "structs"
 
 			#ifdef USE_SPOT_LIGHT
 				#import "spotFalloff"
@@ -1755,7 +1802,7 @@
 
 				// Detail Texture *******
 				#ifdef USE_DETAIL_TEXTURE
-					vec3 detail_tex = texture2D(detail_texture,uvs_0 * u_detail_info.yz).xyz;
+					vec3 detail_tex = texture2D(detail_texture, USE_DETAIL_TEXTURE * u_detail_info.yz).xyz;
 					color = color + color * (detail_tex - vec3(0.5)) * u_detail_info.x;
 				#endif
 

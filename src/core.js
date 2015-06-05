@@ -32,22 +32,24 @@ var LS = {
 	* @method generateUId
 	* @return {string} uuid
 	*/
-	generateUId: function ( prefix ) {
+	generateUId: function ( prefix, suffix ) {
 		prefix = prefix || "";
+		suffix = suffix || "";
 		var str = this._uid_prefix + prefix + (window.navigator.userAgent.hashCode() % 0x1000000).toString(16) + "-"; //user agent
 		str += (GL.getTime()|0 % 0x1000000).toString(16) + "-"; //date
 		str += Math.floor((1 + Math.random()) * 0x1000000).toString(16) + "-"; //rand
 		str += (this._last_uid++).toString(16); //sequence
+		str += suffix;
 		return str; 
 	},
 
 	/**
-	* validates Id string to ensure there is no forbidden characters
-	* @method validateId
-	* @param {string} id
+	* validates name string to ensure there is no forbidden characters
+	* @method validateName
+	* @param {string} name
 	* @return {boolean} 
 	*/
-	validateId: function(v)
+	validateName: function(v)
 	{
 		var exp = /^[a-z\s0-9-_]+$/i; //letters digits and dashes
 		return v.match(exp);
@@ -75,9 +77,9 @@ var LS = {
 		{
 			//register
 			this.Components[ LS.getClassName(arguments[i]) ] = arguments[i]; 
-			//default methods
-			if(!comp.prototype.serialize) comp.prototype.serialize = LS._default_serialize;
-			if(!comp.prototype.configure) comp.prototype.configure = LS._default_configure;
+			//add default methods
+			LS.extendClass(comp, LS.Component );
+
 			//event
 			LEvent.trigger(LS,"component_registered",arguments[i]); 
 		}
@@ -122,26 +124,6 @@ var LS = {
 		LEvent.trigger(LS,"materialclass_registered",material_class);
 		material_class.resource_type = "Material";
 	},	
-
-	//default methods inserted in components that doesnt have a configure or serialize method
-	_default_configure: function(o) { 
-		if(!o)
-			return;
-		if(o.uid) //special case, uid must never be enumerable to avoid showing it in the editor
-		{
-			if(!Object.hasOwnProperty(this, "uid"))
-				Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
-			else
-				this.uid = o.uid;
-		}
-		LS.cloneObject(o, this); 
-	},
-	_default_serialize: function() { 
-		var o = LS.cloneObject(this);
-		if(this.uid) //special case, not enumerable
-			o.uid = this.uid;
-		return o;
-	},
 
 	/**
 	* Is a wrapper for setTimeout that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
@@ -258,15 +240,20 @@ var LS = {
 			}
 			else //slow but safe
 			{
-				try
+				if(LS.catch_errors)
 				{
-					//prevent circular recursions
+					try
+					{
+						//prevent circular recursions
+						o[i] = JSON.parse( JSON.stringify(v) );
+					}
+					catch (err)
+					{
+						console.error(err);
+					}
+				}
+				else
 					o[i] = JSON.parse( JSON.stringify(v) );
-				}
-				catch (err)
-				{
-					console.error(err);
-				}
 			}
 		}
 		return o;

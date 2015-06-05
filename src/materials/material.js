@@ -16,6 +16,7 @@
 
 function Material(o)
 {
+	this.name = "";
 	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
@@ -133,12 +134,12 @@ Material.prototype.fillSurfaceShaderMacros = function(scene)
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture_info = this.getTextureInfo(i);
-		if(!texture_info)
+		var sampler = this.getTextureSampler(i);
+		if(!sampler)
 			continue;
-		var uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
+		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
 
-		var texture = Material.getTextureFromSampler( texture_info );
+		var texture = Material.getTextureFromSampler( sampler );
 		if(!texture) //loading or non-existant
 			continue;
 
@@ -237,7 +238,7 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	//iterate through textures in the material
 	for(var i in this.textures) 
 	{
-		var texture_info = this.getTextureInfo(i);
+		var texture_info = this.getTextureSampler(i);
 		if(!texture_info) continue;
 
 		var texture = Material.getTextureFromSampler( texture_info );
@@ -522,13 +523,19 @@ Material.prototype.setTextureProperty = function( channel, property, value )
 * @param {String} channel default is COLOR
 * @return {Texture}
 */
-Material.prototype.getTexture = function(channel) {
+Material.prototype.getTexture = function( channel ) {
 	channel = channel || Material.COLOR_TEXTURE;
 
 	var v = this.textures[channel];
 	if(!v) 
 		return null;
+
+	if(v.constructor === String)
+		return LS.ResourcesManager.textures[v];
+
 	var tex = v.texture;
+	if(!tex)
+		return null;
 	if(tex.constructor === String)
 		return LS.ResourcesManager.textures[tex];
 	else if(tex.constructor == Texture)
@@ -537,12 +544,12 @@ Material.prototype.getTexture = function(channel) {
 }
 
 /**
-* Returns the texture info of one texture channel (filter, wrap, uvs)
-* @method getTextureInfo
+* Returns the texture sampler info of one texture channel (filter, wrap, uvs)
+* @method getTextureSampler
 * @param {String} channel get available channels using getTextureChannels
 * @return {Texture}
 */
-Material.prototype.getTextureInfo = function(channel) {
+Material.prototype.getTextureSampler = function(channel) {
 	return this.textures[ channel ];
 }
 
@@ -562,17 +569,16 @@ Material.getTextureFromSampler = function(sampler)
 }
 
 /**
-* Assigns a texture and its info to one texture channel (filter, wrap, uvs)
+* Assigns a texture sampler to one texture channel (filter, wrap, uvs)
 * @method setTextureInfo
 * @param {String} channel default is COLOR
-* @param {Object} info { texture, uvs, wrap, filter }
-* @return {Texture}
+* @param {Object} sampler { texture, uvs, wrap, filter }
 */
-Material.prototype.setTextureInfo = function(channel, info) {
-	if(!info)
+Material.prototype.setTextureSampler = function(channel, sampler) {
+	if(!sampler)
 		delete this.textures[ channel ];
 	else
-		this.textures[ channel ] = v;
+		this.textures[ channel ] = sampler;
 }
 
 /**
@@ -585,11 +591,11 @@ Material.prototype.getResources = function (res)
 {
 	for(var i in this.textures)
 	{
-		var tex_info = this.textures[i];
-		if(!tex_info) 
+		var sampler = this.textures[i];
+		if(!sampler) 
 			continue;
-		if(typeof(tex_info.texture) == "string")
-			res[ tex_info.texture ] = GL.Texture;
+		if(typeof(sampler.texture) == "string")
+			res[ sampler.texture ] = GL.Texture;
 	}
 	return res;
 }
@@ -604,11 +610,11 @@ Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 	for(var i in this.textures)
 	{
-		var tex_info = this.textures[i];
-		if(!tex_info)
+		var sampler = this.textures[i];
+		if(!sampler)
 			continue;
-		if(tex_info.texture == old_name)
-			tex_info.texture = new_name;
+		if(sampler.texture == old_name)
+			sampler.texture = new_name;
 	}
 }
 

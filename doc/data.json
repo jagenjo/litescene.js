@@ -889,7 +889,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/componentContainer.js",
-            "line": 20,
+            "line": 6,
             "description": "ComponentContainer class allows to add component based properties to any other class",
             "is_constructor": 1
         },
@@ -918,7 +918,7 @@
             "namespace": "LS",
             "file": "../src/context.js",
             "line": 1,
-            "description": "Context class allows to handle the app context easily without having to glue manually all events\n\tThere is a list of options\n\t==========================\n\t- canvas: the canvas where the scene should be rendered, if not specified one will be created\n\t- container_id: string with container id where to create the canvas, width and height will be those from the container\n\t- width: the width for the canvas in case it is created without a container_id\n\t- height: the height for the canvas in case it is created without a container_id\n\t- resources: string with the path to the resources folder\n\t- shaders: string with the url to the shaders.xml file\n\t- redraw: boolean to force to render the scene constantly (useful for animated scenes)\n\t- autoresize: boolean to automatically resize the canvas when the window is resized\n\tOptional callbacks to attach\n\t============================\n\t- onPreDraw: executed before drawing a frame\n\t- onDraw: executed after drawing a frame\n\t- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)\n\t- onUpdate(dt): executed after updating the scene (delta_time as parameter)\n\t- onMouse(e): when a mouse event is triggered\n\t- onKey(e): when a key event is triggered",
+            "description": "Context class allows to handle the app context easily without having to glue manually all events\n\tThere is a list of options\n\t==========================\n\t- canvas: the canvas where the scene should be rendered, if not specified one will be created\n\t- container_id: string with container id where to create the canvas, width and height will be those from the container\n\t- width: the width for the canvas in case it is created without a container_id\n\t- height: the height for the canvas in case it is created without a container_id\n\t- resources: string with the path to the resources folder\n\t- shaders: string with the url to the shaders.xml file\n\t- proxy: string with the url where the proxy is located (useful to avoid CORS)\n\t- filesystems: object that contains the virtual file systems info { \"VFS\":\"http://litefileserver.com/\" } ...\n\t- redraw: boolean to force to render the scene constantly (useful for animated scenes)\n\t- autoresize: boolean to automatically resize the canvas when the window is resized\n\tOptional callbacks to attach\n\t============================\n\t- onPreDraw: executed before drawing a frame\n\t- onDraw: executed after drawing a frame\n\t- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)\n\t- onUpdate(dt): executed after updating the scene (delta_time as parameter)\n\t- onMouse(e): when a mouse event is triggered\n\t- onKey(e): when a key event is triggered",
             "is_constructor": 1,
             "params": [
                 {
@@ -938,7 +938,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 438,
+            "line": 425,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -1067,7 +1067,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/scene.js",
-            "line": 914,
+            "line": 920,
             "description": "The SceneNode class represents and object in the scene\nIs the base class for all objects in the scene as meshes, lights, cameras, and so",
             "params": [
                 {
@@ -1988,7 +1988,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 345,
+            "line": 348,
             "description": "returns a copy of the light position (in global coordinates), if you want local you can access the position property",
             "itemtype": "method",
             "name": "getPosition",
@@ -2008,7 +2008,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 361,
+            "line": 364,
             "description": "returns a copy of the light target (in global coordinates), if you want local you can access the target property",
             "itemtype": "method",
             "name": "getTarget",
@@ -2028,7 +2028,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 378,
+            "line": 381,
             "description": "returns a copy of the light up vector (in global coordinates), if you want local you can access the up property",
             "itemtype": "method",
             "name": "getUp",
@@ -2048,7 +2048,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 394,
+            "line": 397,
             "description": "returns a copy of the front vector (in global coordinates)",
             "itemtype": "method",
             "name": "getFront",
@@ -2068,7 +2068,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 427,
+            "line": 430,
             "description": "This method is called by the Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)",
             "itemtype": "method",
             "name": "prepare",
@@ -2084,7 +2084,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 525,
+            "line": 522,
             "description": "Collects and returns the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getMacros",
@@ -2109,7 +2109,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 566,
+            "line": 563,
             "description": "Collects and returns the uniforms for the light (some uniforms have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getUniforms",
@@ -2134,7 +2134,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 625,
+            "line": 617,
             "description": "Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach",
             "itemtype": "method",
             "name": "computeShadowmapFar",
@@ -2147,7 +2147,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 649,
+            "line": 641,
             "description": "Computes the max amount of light this object can produce (taking into account every color channel)",
             "itemtype": "method",
             "name": "computeLightIntensity",
@@ -2160,7 +2160,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 660,
+            "line": 652,
             "description": "Computes the light radius according to the attenuation",
             "itemtype": "method",
             "name": "computeLightRadius",
@@ -2173,7 +2173,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 676,
+            "line": 668,
             "description": "Generates the shadowmap for this light",
             "itemtype": "method",
             "name": "generateShadowmap",
@@ -2186,7 +2186,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 741,
+            "line": 733,
             "description": "It returns a matrix in the position of the given light property (target, position), mostly used for gizmos",
             "itemtype": "method",
             "name": "getTransformMatrix",
@@ -2211,7 +2211,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 764,
+            "line": 756,
             "description": "apply a transformation to a given light property, this is done in a function to allow more complex gizmos",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -2270,7 +2270,7 @@
         },
         {
             "file": "../src/components/skinnedMeshRenderer.js",
-            "line": 67,
+            "line": 68,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -2286,7 +2286,7 @@
         },
         {
             "file": "../src/components/skinnedMeshRenderer.js",
-            "line": 88,
+            "line": 89,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -2898,7 +2898,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 706,
+            "line": 711,
             "description": "rotate object in local space in local X axis",
             "itemtype": "method",
             "name": "rotateX",
@@ -2914,7 +2914,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 718,
+            "line": 723,
             "description": "rotate object in local space in local Y axis",
             "itemtype": "method",
             "name": "rotateY",
@@ -2930,7 +2930,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 730,
+            "line": 735,
             "description": "rotate object in local space in local Z axis",
             "itemtype": "method",
             "name": "rotateZ",
@@ -2946,7 +2946,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 743,
+            "line": 748,
             "description": "rotate object in global space (axis is in global space)",
             "itemtype": "method",
             "name": "rotateGlobal",
@@ -2967,7 +2967,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 757,
+            "line": 762,
             "description": "rotate object in local space using a quat",
             "itemtype": "method",
             "name": "rotateQuat",
@@ -2983,7 +2983,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 769,
+            "line": 774,
             "description": "rotate object in global space using a quat",
             "itemtype": "method",
             "name": "rotateQuatGlobal",
@@ -2999,7 +2999,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 781,
+            "line": 786,
             "description": "scale the object",
             "itemtype": "method",
             "name": "scale",
@@ -3025,7 +3025,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 798,
+            "line": 803,
             "description": "This method is static (call it from Transform.interpolate)\ninterpolate the transform between two transforms and stores the result in another Transform",
             "itemtype": "method",
             "name": "interpolate",
@@ -3056,8 +3056,8 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 816,
-            "description": "Orients the transform to look from one position to another (overwrites scale)",
+            "line": 821,
+            "description": "Orients the transform to look from one position to another",
             "itemtype": "method",
             "name": "lookAt",
             "params": [
@@ -3087,7 +3087,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 852,
+            "line": 884,
             "description": "returns the [0,0,-1] vector in global space",
             "itemtype": "method",
             "name": "getFront",
@@ -3100,7 +3100,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 861,
+            "line": 893,
             "description": "returns the [0,1,0] vector in global space",
             "itemtype": "method",
             "name": "getTop",
@@ -3113,7 +3113,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 870,
+            "line": 902,
             "description": "returns the [1,0,0] vector in global space",
             "itemtype": "method",
             "name": "getRight",
@@ -3126,7 +3126,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 879,
+            "line": 911,
             "description": "Multiplies a point by the local matrix (not global)\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -3147,7 +3147,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 893,
+            "line": 925,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPointGlobal",
@@ -3168,7 +3168,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 906,
+            "line": 938,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "localToGlobal",
@@ -3189,7 +3189,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 915,
+            "line": 947,
             "description": "convert from global coordinates to local coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -3210,7 +3210,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 930,
+            "line": 962,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVector",
@@ -3231,7 +3231,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 941,
+            "line": 973,
             "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
             "itemtype": "method",
             "name": "transformVectorGlobal",
@@ -3252,7 +3252,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 979,
+            "line": 1011,
             "description": "Applies the transformation using a matrix",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -3361,7 +3361,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 45,
+            "line": 46,
             "description": "Surface color",
             "itemtype": "property",
             "name": "color",
@@ -3372,7 +3372,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 52,
+            "line": 53,
             "description": "Opacity. It must be < 1 to enable alpha sorting. If it is <= 0 wont be visible.",
             "itemtype": "property",
             "name": "opacity",
@@ -3383,7 +3383,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 60,
+            "line": 61,
             "description": "Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)",
             "itemtype": "property",
             "name": "blend_mode",
@@ -3394,7 +3394,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 69,
+            "line": 70,
             "description": "Specular glossiness: the glossines (exponent) of specular light",
             "itemtype": "property",
             "name": "specular_gloss",
@@ -3405,7 +3405,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 258,
+            "line": 259,
             "description": "Configure the material getting the info from the object",
             "itemtype": "method",
             "name": "configure",
@@ -3421,7 +3421,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 306,
+            "line": 307,
             "description": "Serialize this material",
             "itemtype": "method",
             "name": "serialize",
@@ -3434,7 +3434,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 319,
+            "line": 320,
             "description": "Clone this material (keeping the class)",
             "itemtype": "method",
             "name": "clone",
@@ -3447,7 +3447,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 332,
+            "line": 333,
             "description": "Loads and assigns a texture to a channel",
             "itemtype": "method",
             "name": "loadAndSetTexture",
@@ -3468,7 +3468,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 363,
+            "line": 364,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3481,7 +3481,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 386,
+            "line": 387,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3494,7 +3494,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 399,
+            "line": 400,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3507,7 +3507,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 451,
+            "line": 452,
             "description": "gets all the texture channels supported by this material",
             "itemtype": "method",
             "name": "getTextureChannels",
@@ -3520,7 +3520,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 465,
+            "line": 466,
             "description": "Assigns a texture to a channel and its sampling parameters",
             "itemtype": "method",
             "name": "setTexture",
@@ -3546,7 +3546,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 498,
+            "line": 499,
             "description": "Set a property of the sampling (wrap, uvs, filter)",
             "itemtype": "method",
             "name": "setTextureProperty",
@@ -3572,7 +3572,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 519,
+            "line": 520,
             "description": "Returns the texture in a channel",
             "itemtype": "method",
             "name": "getTexture",
@@ -3592,10 +3592,10 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 539,
-            "description": "Returns the texture info of one texture channel (filter, wrap, uvs)",
+            "line": 546,
+            "description": "Returns the texture sampler info of one texture channel (filter, wrap, uvs)",
             "itemtype": "method",
-            "name": "getTextureInfo",
+            "name": "getTextureSampler",
             "params": [
                 {
                     "name": "channel",
@@ -3612,8 +3612,8 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 564,
-            "description": "Assigns a texture and its info to one texture channel (filter, wrap, uvs)",
+            "line": 571,
+            "description": "Assigns a texture sampler to one texture channel (filter, wrap, uvs)",
             "itemtype": "method",
             "name": "setTextureInfo",
             "params": [
@@ -3623,21 +3623,17 @@
                     "type": "String"
                 },
                 {
-                    "name": "info",
+                    "name": "sampler",
                     "description": "{ texture, uvs, wrap, filter }",
                     "type": "Object"
                 }
             ],
-            "return": {
-                "description": "",
-                "type": "Texture"
-            },
             "class": "LS.Material",
             "namespace": "LS"
         },
         {
             "file": "../src/materials/material.js",
-            "line": 578,
+            "line": 584,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -3657,7 +3653,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 597,
+            "line": 603,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -3677,7 +3673,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 615,
+            "line": 621,
             "description": "Loads all the textures inside this material, by sending the through the ResourcesManager",
             "itemtype": "method",
             "name": "loadTextures",
@@ -3686,7 +3682,7 @@
         },
         {
             "file": "../src/materials/material.js",
-            "line": 627,
+            "line": 633,
             "description": "Register this material in a materials pool to be shared with other nodes",
             "itemtype": "method",
             "name": "registerMaterial",
@@ -3702,7 +3698,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 299,
+            "line": 281,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -3718,7 +3714,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 350,
+            "line": 332,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3731,7 +3727,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 166,
+            "line": 188,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperties",
@@ -3744,7 +3740,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 191,
+            "line": 213,
             "description": "Event used to inform if one resource has changed its name",
             "itemtype": "method",
             "name": "onResourceRenamed",
@@ -3764,7 +3760,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 212,
+            "line": 234,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getProperty",
@@ -3777,7 +3773,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 239,
+            "line": 261,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -3793,27 +3789,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 278,
-            "description": "Returns the texture in a channel",
-            "itemtype": "method",
-            "name": "getTexture",
-            "params": [
-                {
-                    "name": "channel",
-                    "description": "default is COLOR",
-                    "type": "String"
-                }
-            ],
-            "return": {
-                "description": "",
-                "type": "Texture"
-            },
-            "class": "LS.RenderInstance",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/materials/surfaceMaterial.js",
-            "line": 298,
+            "line": 300,
             "description": "Assigns a texture to a channel",
             "itemtype": "method",
             "name": "setTexture",
@@ -3834,7 +3810,7 @@
         },
         {
             "file": "../src/materials/surfaceMaterial.js",
-            "line": 338,
+            "line": 346,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -3854,7 +3830,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 109,
+            "line": 110,
             "description": "Updates the normal matrix using the matrix",
             "itemtype": "method",
             "name": "computeNormalMatrix",
@@ -3863,7 +3839,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 217,
+            "line": 218,
             "description": "takes the flags on the node and update the render instance flags",
             "itemtype": "method",
             "name": "applyNodeFlags",
@@ -3872,7 +3848,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 248,
+            "line": 249,
             "description": "Enable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -3888,7 +3864,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 259,
+            "line": 260,
             "description": "Disable flag in the flag bit field",
             "itemtype": "method",
             "name": "enableFlag",
@@ -3904,7 +3880,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 270,
+            "line": 271,
             "description": "Tells if a flag is enabled",
             "itemtype": "method",
             "name": "enableFlag",
@@ -3924,7 +3900,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 282,
+            "line": 283,
             "description": "Computes the instance bounding box in world space from the one in local space",
             "itemtype": "method",
             "name": "updateAABB",
@@ -3933,7 +3909,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 292,
+            "line": 293,
             "description": "Used to update the RI info without having to go through the collectData process, it is faster but some changes may take a while",
             "itemtype": "method",
             "name": "update",
@@ -3942,7 +3918,7 @@
         },
         {
             "file": "../src/render/renderInstance.js",
-            "line": 304,
+            "line": 305,
             "description": "Calls render taking into account primitive and range",
             "itemtype": "method",
             "name": "render",
@@ -3958,7 +3934,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 60,
+            "line": 61,
             "description": "Overwrites the default rendering to screen function, allowing to render to one or several textures\nThe callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them\nCallback must return the texture output or null\nWarning: this must be set before every frame, becaue this are cleared after rendering the frame",
             "itemtype": "method",
             "name": "assignGlobalRenderFrameContainer",
@@ -3974,7 +3950,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 79,
+            "line": 80,
             "description": "Renders the current scene to the screen\nMany steps are involved, from gathering info from the scene tree, generating shadowmaps, setup FBOs, render every camera",
             "itemtype": "method",
             "name": "render",
@@ -4002,7 +3978,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 181,
+            "line": 182,
             "description": "renders the view from one camera to the current viewport (could be a texture)",
             "itemtype": "method",
             "name": "renderFrame",
@@ -4023,7 +3999,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 223,
+            "line": 224,
             "description": "Set camera as the main scene camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw",
             "itemtype": "method",
             "name": "enableCamera",
@@ -4140,7 +4116,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 32,
+            "line": 18,
             "description": "Adds a component to this node.",
             "itemtype": "method",
             "name": "configureComponents",
@@ -4156,7 +4132,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 61,
+            "line": 47,
             "description": "Adds a component to this node.",
             "itemtype": "method",
             "name": "serializeComponents",
@@ -4172,7 +4148,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 88,
+            "line": 74,
             "description": "returns an array with all the components",
             "itemtype": "method",
             "name": "getComponents",
@@ -4185,7 +4161,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 98,
+            "line": 84,
             "description": "Adds a component to this node. (maybe attach would been a better name)",
             "itemtype": "method",
             "name": "addComponent",
@@ -4205,7 +4181,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 128,
+            "line": 114,
             "description": "Removes a component from this node.",
             "itemtype": "method",
             "name": "removeComponent",
@@ -4221,7 +4197,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 155,
+            "line": 141,
             "description": "Removes all components from this node.",
             "itemtype": "method",
             "name": "removeAllComponents",
@@ -4237,7 +4213,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 167,
+            "line": 153,
             "description": "Returns if the class has an instance of this component",
             "itemtype": "method",
             "name": "hasComponent",
@@ -4253,7 +4229,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 194,
+            "line": 180,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "getComponent",
@@ -4269,7 +4245,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 220,
+            "line": 206,
             "description": "Returns the component with the given uid",
             "itemtype": "method",
             "name": "getComponentByUId",
@@ -4285,7 +4261,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 235,
+            "line": 221,
             "description": "Returns the position in the components array of this component",
             "itemtype": "method",
             "name": "getIndexOfComponent",
@@ -4301,7 +4277,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 247,
+            "line": 233,
             "description": "Returns the component at index position",
             "itemtype": "method",
             "name": "getComponentByIndex",
@@ -4317,7 +4293,7 @@
         },
         {
             "file": "../src/componentContainer.js",
-            "line": 259,
+            "line": 245,
             "description": "executes the method with a given name in all the components",
             "itemtype": "method",
             "name": "processActionInComponents",
@@ -4389,7 +4365,16 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 161,
+            "line": 162,
+            "description": "Remove node from parent",
+            "itemtype": "method",
+            "name": "destroy",
+            "class": "LS.CompositePattern",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/compositePattern.js",
+            "line": 174,
             "description": "Serialize the data from all the children",
             "itemtype": "method",
             "name": "serializeChildren",
@@ -4402,7 +4387,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 176,
+            "line": 189,
             "description": "Configure every children with the data",
             "itemtype": "method",
             "name": "configureChildren",
@@ -4415,7 +4400,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 202,
+            "line": 215,
             "description": "Returns parent node",
             "itemtype": "method",
             "name": "getParent",
@@ -4428,7 +4413,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 256,
+            "line": 269,
             "description": "get all nodes below this in the hierarchy (children and children of children)",
             "itemtype": "method",
             "name": "getDescendants",
@@ -4441,7 +4426,7 @@
         },
         {
             "file": "../src/context.js",
-            "line": 97,
+            "line": 104,
             "description": "Loads an scene and triggers start",
             "itemtype": "method",
             "name": "loadScene",
@@ -4462,7 +4447,7 @@
         },
         {
             "file": "../src/context.js",
-            "line": 117,
+            "line": 124,
             "description": "loads Scene from object or JSON",
             "itemtype": "method",
             "name": "setScene",
@@ -4496,13 +4481,13 @@
         },
         {
             "file": "../src/core.js",
-            "line": 44,
-            "description": "validates Id string to ensure there is no forbidden characters",
+            "line": 46,
+            "description": "validates name string to ensure there is no forbidden characters",
             "itemtype": "method",
-            "name": "validateId",
+            "name": "validateName",
             "params": [
                 {
-                    "name": "id",
+                    "name": "name",
                     "description": "",
                     "type": "String"
                 }
@@ -4516,7 +4501,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 58,
+            "line": 60,
             "description": "Contains all the registered components",
             "itemtype": "property",
             "name": "Components",
@@ -4527,7 +4512,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 67,
+            "line": 69,
             "description": "Register a component so it is listed when searching for new components to attach",
             "itemtype": "method",
             "name": "registerComponent",
@@ -4543,7 +4528,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 86,
+            "line": 88,
             "description": "Tells you if one class is a registered component class",
             "itemtype": "method",
             "name": "isClassComponent",
@@ -4563,7 +4548,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 99,
+            "line": 101,
             "description": "Contains all the registered material classes",
             "itemtype": "property",
             "name": "MaterialClasses",
@@ -4574,7 +4559,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 108,
+            "line": 110,
             "description": "Register a Material class so it is listed when searching for new materials to attach",
             "itemtype": "method",
             "name": "registerMaterialClass",
@@ -4590,7 +4575,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 146,
+            "line": 128,
             "description": "Is a wrapper for setTimeout that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setTimeout",
@@ -4616,7 +4601,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 168,
+            "line": 150,
             "description": "Is a wrapper for setInterval that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setInterval",
@@ -4642,7 +4627,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 190,
+            "line": 172,
             "description": "copy the properties (methods and properties) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -4663,7 +4648,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 225,
+            "line": 207,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -4688,7 +4673,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 275,
+            "line": 262,
             "description": "Clears all the uids inside this object and children (it also works with serialized object)",
             "itemtype": "method",
             "name": "clearUIds",
@@ -4704,7 +4689,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 315,
+            "line": 302,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -4724,7 +4709,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 337,
+            "line": 324,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -4744,7 +4729,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 362,
+            "line": 349,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -4764,7 +4749,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 474,
+            "line": 461,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",
@@ -5017,7 +5002,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 47,
+            "line": 50,
             "description": "Returns a string to append to any url that should use the browser cache (when updating server info)",
             "itemtype": "method",
             "name": "getNoCache",
@@ -5037,7 +5022,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 57,
+            "line": 60,
             "description": "Resets all the resources cached, so it frees the memory",
             "itemtype": "method",
             "name": "reset",
@@ -5046,7 +5031,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 93,
+            "line": 96,
             "description": "Returns the filename extension from an url",
             "itemtype": "method",
             "name": "getExtension",
@@ -5066,7 +5051,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 112,
+            "line": 115,
             "description": "Returns the filename from a full path",
             "itemtype": "method",
             "name": "getFilename",
@@ -5086,7 +5071,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 129,
+            "line": 132,
             "description": "Returns the filename without the extension",
             "itemtype": "method",
             "name": "getBasename",
@@ -5106,7 +5091,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 145,
+            "line": 147,
             "description": "Loads all the resources in the Object (it uses an object to store not only the filename but also the type)",
             "itemtype": "method",
             "name": "loadResources",
@@ -5129,7 +5114,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 163,
+            "line": 165,
             "description": "Set the base path where all the resources will be fetched (unless they have absolute URL)\nBy default it will use the website home address",
             "itemtype": "method",
             "name": "setPath",
@@ -5145,7 +5130,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 175,
+            "line": 177,
             "description": "Set a proxy url where all non-local resources will be requested, allows to fetch assets to other servers.\nrequest will be in this form: proxy_url + \"/\" + url_with_protocol: ->   http://myproxy.com/google.com/images/...",
             "itemtype": "method",
             "name": "setProxy",
@@ -5161,8 +5146,8 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 190,
-            "description": "transform a url to a full url taking into account proxy and local_repository",
+            "line": 192,
+            "description": "transform a url to a full url taking into account proxy, virtual file systems and local_repository",
             "itemtype": "method",
             "name": "getFullURL",
             "params": [
@@ -5186,7 +5171,28 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 224,
+            "line": 240,
+            "description": "Allows to associate a resource path like \"vfs:myfile.png\" to an url according to the value before the \":\".\nThis way we can have alias for different folders where the assets are stored.\nP.e:   \"e\",\"http://domain.com\"  -> will transform \"e:myfile.png\" in \"http://domain.com/myfile.png\"",
+            "itemtype": "method",
+            "name": "registerFileSystem",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "the filesystem name (the string before the colons in the path)",
+                    "type": "String"
+                },
+                {
+                    "name": "url",
+                    "description": "the url to attach before",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resourcesManager.js",
+            "line": 254,
             "description": "Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed\nDo not use for regular files, instead use the LS.Network methods",
             "itemtype": "method",
             "name": "load",
@@ -5216,7 +5222,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 301,
+            "line": 331,
             "description": "Process resource: transform some data in an Object ready to use and stores it (in most cases uploads it to the GPU)",
             "itemtype": "method",
             "name": "processResource",
@@ -5244,7 +5250,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 396,
+            "line": 426,
             "description": "Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.",
             "itemtype": "method",
             "name": "registerResource",
@@ -5265,7 +5271,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 431,
+            "line": 461,
             "description": "removes the resources from all the containers",
             "itemtype": "method",
             "name": "unregisterResource",
@@ -5285,7 +5291,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 456,
+            "line": 486,
             "description": "Returns an object with a representation of the resource internal data\nThe order to obtain that object is:\n1. test for _original_file (File or Blob)\n2. test for _original_data (ArrayBuffer)\n3. toBinary() (ArrayBuffer)\n4. toBlob() (Blob)\n5. toBase64() (String)\n6. serialize() (Object in JSON format)\n7. data property \n8. JSON.stringify(...)",
             "itemtype": "method",
             "name": "computeResourceInternalData",
@@ -5305,7 +5311,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 517,
+            "line": 547,
             "description": "Used to load files and get them as File (or Blob)",
             "itemtype": "method",
             "name": "getURLasFile",
@@ -5325,7 +5331,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 536,
+            "line": 566,
             "description": "Changes the name of a resource and sends an event to all components to change it accordingly",
             "itemtype": "method",
             "name": "renameResource",
@@ -5357,7 +5363,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 570,
+            "line": 600,
             "description": "Tells if it is loading resources",
             "itemtype": "method",
             "name": "isLoading",
@@ -5370,7 +5376,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 581,
+            "line": 611,
             "description": "forces to try to reload again resources not found",
             "itemtype": "method",
             "name": "isLoading",
@@ -5383,7 +5389,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 633,
+            "line": 663,
             "description": "returns a mesh resource if it is loaded",
             "itemtype": "method",
             "name": "getMesh",
@@ -5403,7 +5409,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 646,
+            "line": 676,
             "description": "returns a texture resource if it is loaded",
             "itemtype": "method",
             "name": "getTexture",
@@ -5572,7 +5578,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 389,
+            "line": 394,
             "description": "Fired when a new node is added to this scene",
             "itemtype": "event",
             "name": "nodeAdded",
@@ -5588,7 +5594,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 414,
+            "line": 419,
             "description": "Fired after a node has been removed",
             "itemtype": "event",
             "name": "nodeRemoved",
@@ -5604,8 +5610,8 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 431,
-            "description": "retrieves a Node based on the id (if the id starts with the uid prefix, then it searches by uid)",
+            "line": 436,
+            "description": "retrieves a Node based on the name or uid",
             "itemtype": "method",
             "name": "getNode",
             "params": [
@@ -5624,14 +5630,14 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 447,
-            "description": "retrieves a Node based on a given id. It is fast because they are stored in an object",
+            "line": 452,
+            "description": "retrieves a Node that matches that name. It is fast because they are stored in an object.\nIf more than one object has the same name, the first one added to the tree is returned",
             "itemtype": "method",
-            "name": "getNodeById",
+            "name": "getNodeByName",
             "params": [
                 {
-                    "name": "id",
-                    "description": "id of the node",
+                    "name": "name",
+                    "description": "name of the node",
                     "type": "String"
                 }
             ],
@@ -5644,7 +5650,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 460,
+            "line": 466,
             "description": "retrieves a Node based on a given uid. It is fast because they are stored in an object",
             "itemtype": "method",
             "name": "getNodeByUId",
@@ -5664,7 +5670,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 472,
+            "line": 478,
             "description": "retrieves a Node by its index",
             "itemtype": "method",
             "name": "getNodeByIndex",
@@ -5684,7 +5690,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 487,
+            "line": 493,
             "description": "retrieves a node array filtered by the filter function",
             "itemtype": "method",
             "name": "filterNodes",
@@ -5704,7 +5710,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 503,
+            "line": 509,
             "description": "searches the component with this uid, it iterates through all the nodes and components (slow)",
             "itemtype": "method",
             "name": "findComponentByUId",
@@ -5724,7 +5730,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 522,
+            "line": 528,
             "description": "retrieves a Node",
             "itemtype": "method",
             "name": "getNodeByUid",
@@ -5744,7 +5750,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 541,
+            "line": 547,
             "description": "retrieves a Node index",
             "itemtype": "method",
             "name": "getNodeIndex",
@@ -5764,7 +5770,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 555,
+            "line": 561,
             "description": "retrieves a Node",
             "itemtype": "method",
             "name": "getNodesByClass",
@@ -5784,7 +5790,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 575,
+            "line": 581,
             "description": "loads all the resources of all the nodes in this scene\nit sends a signal to every node to get all the resources info\nand load them in bulk using the ResourceManager",
             "itemtype": "method",
             "name": "loadResources",
@@ -5793,7 +5799,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 627,
+            "line": 633,
             "description": "start the scene (triggers and start event)",
             "itemtype": "method",
             "name": "start",
@@ -5809,7 +5815,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 639,
+            "line": 645,
             "description": "Fired when the scene is starting to play",
             "itemtype": "event",
             "name": "start",
@@ -5825,7 +5831,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 649,
+            "line": 655,
             "description": "stop the scene (triggers and start event)",
             "itemtype": "method",
             "name": "stop",
@@ -5841,7 +5847,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 660,
+            "line": 666,
             "description": "Fired when the scene stops playing",
             "itemtype": "event",
             "name": "stop",
@@ -5857,7 +5863,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 672,
+            "line": 678,
             "description": "renders the scene using the assigned renderer",
             "itemtype": "method",
             "name": "render",
@@ -5866,7 +5872,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 805,
+            "line": 811,
             "description": "Fired before doing an update",
             "itemtype": "event",
             "name": "beforeUpdate",
@@ -5882,7 +5888,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 817,
+            "line": 823,
             "description": "Fired while updating",
             "itemtype": "event",
             "name": "update",
@@ -5898,7 +5904,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 826,
+            "line": 832,
             "description": "Fired after updating the scene",
             "itemtype": "event",
             "name": "afterUpdate",
@@ -5907,7 +5913,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 834,
+            "line": 840,
             "description": "triggers an event to all nodes in the scene",
             "itemtype": "method",
             "name": "triggerInNodes",
@@ -5928,14 +5934,14 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 963,
-            "description": "changes the node id (its better to do not change the id, it can lead to unexpected results)\nremember that two nodes can't have the same id",
+            "line": 969,
+            "description": "changes the node name",
             "itemtype": "method",
-            "name": "setId",
+            "name": "setName",
             "params": [
                 {
-                    "name": "new_id",
-                    "description": "the new id",
+                    "name": "new_name",
+                    "description": "the new name",
                     "type": "String"
                 }
             ],
@@ -5948,13 +5954,13 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1012,
-            "description": "Node changed id",
+            "line": 1015,
+            "description": "Node changed name",
             "itemtype": "event",
-            "name": "idChanged",
+            "name": "name_changed",
             "params": [
                 {
-                    "name": "new_id",
+                    "name": "new_name",
                     "description": "",
                     "type": "String"
                 }
@@ -5964,7 +5970,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1029,
+            "line": 1033,
             "itemtype": "property",
             "name": "className",
             "type": "String",
@@ -5973,7 +5979,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1206,
+            "line": 1210,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -5986,7 +5992,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1230,
+            "line": 1233,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -6002,7 +6008,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1308,
+            "line": 1315,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",
@@ -6017,7 +6023,7 @@
     "warnings": [
         {
             "message": "param name missing: {bool}",
-            "line": " ../src/componentContainer.js:167"
+            "line": " ../src/componentContainer.js:153"
         },
         {
             "message": "Missing item type",

@@ -695,13 +695,18 @@ Transform.prototype.translateGlobal = function(x,y,z)
 * @param {number} angle_in_deg 
 * @param {vec3} axis
 */
-Transform.prototype.rotate = function(angle_in_deg, axis)
-{
-	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925 );
-	quat.multiply(this._rotation, this._rotation, R);
-	this._must_update_matrix = true;
-	this._on_change();
-}
+Transform.prototype.rotate = (function(){
+
+	var temp = quat.create();
+
+	return function(angle_in_deg, axis)
+	{
+		quat.setAxisAngle( temp, axis, angle_in_deg * 0.0174532925 );
+		quat.multiply( this._rotation, this._rotation, temp );
+		this._must_update_matrix = true;
+		this._on_change();
+	}
+})();
 
 /**
 * rotate object in local space in local X axis
@@ -710,7 +715,7 @@ Transform.prototype.rotate = function(angle_in_deg, axis)
 */
 Transform.prototype.rotateX = function(angle_in_deg)
 {
-	quat.rotateX(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateX( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -722,7 +727,7 @@ Transform.prototype.rotateX = function(angle_in_deg)
 */
 Transform.prototype.rotateY = function(angle_in_deg)
 {
-	quat.rotateY(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateY( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -734,7 +739,7 @@ Transform.prototype.rotateY = function(angle_in_deg)
 */
 Transform.prototype.rotateZ = function(angle_in_deg)
 {
-	quat.rotateZ(this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateZ( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -814,29 +819,56 @@ Transform.interpolate = function(a,b,factor, result)
 }
 
 /**
-* Orients the transform to look from one position to another (overwrites scale)
+* Orients the transform to look from one position to another
 * @method lookAt
 * @param {vec3} position
 * @param {vec3} target
 * @param {vec3} up
 * @param {boolean} in_world tells if the values are in world coordinates (otherwise asume its in local coordinates)
 */
-Transform.prototype.lookAt = function(pos, target, up, in_world)
-{
+Transform.prototype.lookAt = (function() { 
+
+	//avoid garbage
+	var GM = mat4.create();
 	var temp = mat4.create();
+	var temp_pos = vec3.create();
+	var temp_target = vec3.create();
+	var temp_up = vec3.create();
+	
+	return function(pos, target, up, in_world)
+	{
+
+	//convert to local space
 	if(in_world && this._parent)
 	{
-		var M = this._parent.getGlobalMatrix();
-		var inv = mat4.invert(M,M);
-		pos = mat4.multiplyVec3(vec3.create(), inv, pos);
-		target = mat4.multiplyVec3(vec3.create(), inv,target);
-		up = mat4.rotateVec3(vec3.create(), inv, up );
+		this._parent.getGlobalMatrix( GM );
+		var inv = mat4.invert(GM,GM);
+		mat4.multiplyVec3(temp_pos, inv, pos);
+		mat4.multiplyVec3(temp_target, inv, target);
+		mat4.rotateVec3(temp_up, inv, up );
 	}
+	else
+	{
+		temp_pos.set( pos );
+		temp_target.set( target );
+		temp_up.set( up );
+	}
+
+	mat4.lookAt(temp, temp_pos, temp_target, temp_up);
+	//mat4.invert(temp, temp);
+
+	quat.fromMat4( this._rotation, temp );
+	this._position.set( temp_pos );	
+	this._must_update_matrix = true;
+
+	/*
 	mat4.lookAt(temp, pos, target, up);
 	mat4.invert(temp, temp);
 	this.fromMatrix(temp);
 	this.updateGlobalMatrix();
-}
+	*/
+	}
+})();
 
 //Events
 Transform.prototype._on_change = function(only_events)

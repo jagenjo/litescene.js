@@ -42,7 +42,7 @@ var ShadersManager = {
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
-	get: function(id, macros )
+	get: function( id, macros )
 	{
 		if(!id) return null;
 

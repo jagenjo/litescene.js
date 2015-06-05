@@ -1,5 +1,6 @@
 function SurfaceMaterial(o)
 {
+	this.name = "";
 	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
@@ -23,6 +24,7 @@ function SurfaceMaterial(o)
 	this._macros = {};
 
 	this.properties = []; //array of configurable properties
+	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 	if(o) 
 		this.configure(o);
@@ -133,28 +135,48 @@ SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 {
 	var macros = {};
 	this._macros = macros;
+	if( this.textures["environment"] )
+	{
+		var sampler = this.textures["environment"];
+		var tex = LS.getTexture( sampler.texture );
+		if(tex)
+			this._macros[ "USE_ENVIRONMENT_" + (tex.type == gl.TEXTURE_2D ? "TEXTURE" : "CUBEMAP") ] = sampler.uvs;
+	}
 }
 
 
 SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
-	var samplers = [];
+	var samplers = {};
 
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
-		if(prop.type == "texture" || prop.type == "cubemap")
+		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
 		{
-			var texture = LS.getTexture( prop.value );
-			if(!texture) 
+			if(!prop.value)
 				continue;
-			samplers[prop.name] = texture;
+
+			var tex_name = prop.type == "sampler" ? prop.value.texture : prop.value;
+			var texture = LS.getTexture( tex_name );
+			if(!texture)
+				texture = ":missing";
+			samplers[ prop.name ] = texture;
 		}
 		else
 			this._uniforms[ prop.name ] = prop.value;
 	}
 
-	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
+	this._uniforms.u_material_color = this.color;
+
+	if(this.textures["environment"])
+	{
+		var sampler = this.textures["environment"];
+		var texture = LS.getTexture( sampler.texture );
+		if(texture)
+			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
+	}
+
 	this._samplers = samplers;
 }
 
@@ -267,32 +289,12 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 	for(var i in this.properties)
 	{
 		var prop = this.properties[i];
-		if(prop.type != "texture" && prop.type != "cubemap")
+		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler" )
 			continue;
-		channels.push(prop.name);
+		channels.push( prop.name );
 	}
 
 	return channels;
-}
-
-/**
-* Returns the texture in a channel
-* @method getTexture
-* @param {String} channel default is COLOR
-* @return {Texture}
-*/
-Material.prototype.getTexture = function(channel) {
-	channel = channel || Material.COLOR_TEXTURE;
-
-	var v = this.textures[channel];
-	if(!v) 
-		return null;
-	var tex = v;
-	if(tex.constructor === String)
-		return LS.ResourcesManager.textures[tex];
-	else if(tex.constructor == Texture)
-		return tex;
-	return null;
 }
 
 /**
@@ -303,36 +305,42 @@ Material.prototype.getTexture = function(channel) {
 */
 SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
 	if(!channel)
-		throw("Material.prototype.setTexture channel must be specified");
+		throw("SurfaceMaterial.prototype.setTexture channel must be specified");
 
-	uvs = uvs || Material.DEFAULT_UVS[channel];
-	filter = filter || gl.LINEAR;
-	wrap = wrap || gl.REPEAT;
+	var sampler = null;
 
-	for(var i in this.properties)
+
+	//special case
+	if(channel == "environment")
+		return Material.prototype.setTexture.call(this, channel, texture, sampler_options );
+
+	for(var i = 0; i < this.properties.length; ++i)
 	{
 		var prop = this.properties[i];
-		if(prop.type != "texture" && prop.type != "cubemap")
+		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")
 			continue;
 
 		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
 			continue;
 
-		prop.value = texture;
-		var sampler = this.textures[channel];
+		//assign sampler
+		sampler = this.textures[ channel ];
 		if(!sampler)
 			sampler = this.textures[channel] = { texture: texture, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 }; //sampler
 
 		if(sampler_options)
 			for(var i in sampler_options)
 				sampler[i] = sampler_options[i];
+
+		prop.value = prop.type == "sampler" ? sampler : texture;
 		break;
 	}
 
-	if(!texture)
-		return;
-	if(texture.constructor == String && texture[0] != ":")
-		LS.ResourcesManager.load(texture);
+	//preload texture
+	if(texture && texture.constructor == String && texture[0] != ":")
+		LS.ResourcesManager.load( texture );
+
+	return sampler;
 }
 
 /**
@@ -343,14 +351,19 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 */
 SurfaceMaterial.prototype.getResources = function (res)
 {
-	for(var i in this.textures)
+	for(var i in this.properties)
 	{
-		var tex_info = this.textures[i];
-		if(!tex_info) 
+		var prop = this.properties[i];
+		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")
 			continue;
-		if(typeof(tex_info) == "string")
-			res[ tex_info ] = GL.Texture;
+		if(!prop.value)
+			continue;
+
+		var texture = prop.type == "sampler" ? prop.value.texture : prop.value;
+		if( typeof( texture ) == "string" )
+			res[ texture ] = GL.Texture;
 	}
+
 	return res;
 }
 

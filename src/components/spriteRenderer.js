@@ -10,6 +10,8 @@ function SpriteRenderer(o)
 
 SpriteRenderer.icon = "mini-icon-teapot.png";
 
+SpriteRenderer["@texture"] = { type:"texture" };
+
 SpriteRenderer.prototype.onAddedToNode = function(node)
 {
 	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
@@ -39,7 +41,8 @@ SpriteRenderer.prototype.onCollectInstances = function(e, instances)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
 	//do not need to update
-	RI.matrix.set( this._root.transform._global_matrix );
+	if( this._root.transform )
+		RI.setMatrix( this._root.transform._global_matrix );
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
 	RI.setMesh(mesh, gl.TRIANGLES);
@@ -51,4 +54,4 @@ SpriteRenderer.prototype.onCollectInstances = function(e, instances)
 	instances.push(RI);
 }
 
-LS.registerComponent(SpriteRenderer);
+//LS.registerComponent(SpriteRenderer);

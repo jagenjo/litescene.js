@@ -65,7 +65,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!take) 
 		return;
 
-	take.actionPerSample( this.current_time, this._processSample, { disabled_tracks: this.disabled_tracks } );
+	take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 
 	var scene = this._root.scene;
 	if(!scene)
