@@ -193,7 +193,6 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	return bones;
 }
 
-//MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this.enabled)
@@ -250,6 +249,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
+			if(bones.length > SkinnedMeshRenderer.MAX_BONES)
+				RI.macros["MAX_BONES"] = bones.length.toString();
 			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
@@ -257,19 +258,19 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture = this._bones_texture = new GL.Texture( 1, bones.length * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
+			LS.RM.textures[":bones"] = texture; //debug
 			RI.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
 			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
 		else
 			console.error("impossible to get here")
-
 	}
 	else //cpu skinning (mega slow)
 	{
@@ -413,6 +414,11 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	vertices_buffer.upload(gl.STREAM_DRAW);
 	if(normals_buffer)
 		normals_buffer.upload(gl.STREAM_DRAW);
+}
+
+SkinnedMeshRenderer.prototype.extractSkeleton = function()
+{
+	//TODO
 }
 
 LS.registerComponent(SkinnedMeshRenderer);

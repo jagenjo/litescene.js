@@ -738,8 +738,13 @@ var Draw = {
 		else
 			vertices = new Float32Array(points);
 
-		if(colors)
-			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
+		if(colors && colors.constructor != Float32Array)
+		{
+			if(colors.constructor === Array )
+				colors = new Float32Array( colors );
+			else
+				colors = this.linearize(colors);
+		}
 
 		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
 		if(!shader)
@@ -3279,7 +3284,9 @@ var ShadersManager = {
 	default_xml_url: "data/shaders.xml",
 
 	snippets: {},//to save source snippets
-	compiled_shaders: {}, //shaders already compiled and ready to use
+	compiled_programs: {}, //shaders already compiled and ready to use
+	compiled_shaders: {}, //every vertex and fragment shader compiled
+
 	global_shaders: {}, //shader codes to be compiled using some macros
 
 	default_shader: null, //a default shader to rely when a shader is not found
@@ -3292,6 +3299,7 @@ var ShadersManager = {
 		this.default_shader = null;
 
 		//storage
+		this.compiled_programs = {};
 		this.compiled_shaders = {};
 		this.global_shaders = {};
 
@@ -3321,7 +3329,7 @@ var ShadersManager = {
 		//if there is no macros, just get the old one
 		if(!macros)
 		{
-			var shader = this.compiled_shaders[id];
+			var shader = this.compiled_programs[id];
 			if (shader)
 				return shader;
 		}
@@ -3351,8 +3359,8 @@ var ShadersManager = {
 		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.compiled_shaders[hashkey] != null)
-			return this.compiled_shaders[hashkey];
+		if (this.compiled_programs[hashkey] != null)
+			return this.compiled_programs[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -3381,7 +3389,7 @@ var ShadersManager = {
 			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
 		}
 
-		var shader = this.compileShader(vs_code, ps_code, key);
+		var shader = this.compileShader( vs_code, ps_code, key );
 		if(shader)
 			shader.global = global;
 		return this.registerCompiledShader(shader, hashkey, id);
@@ -3392,13 +3400,24 @@ var ShadersManager = {
 		return this.global_shaders[id];
 	},
 
-	compileShader: function(vs_code, ps_code, name)
+	compileShader: function( vs_code, ps_code, name )
 	{
 		if(!gl) return null;
 		var shader = null;
 		try
 		{
-			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
+			vs_code = this.global_extra_code + vs_code;
+			ps_code = this.global_extra_code + ps_code;
+
+			//speed up compilations by caching shaders compiled
+			var vs_shader = this.compiled_shaders[name + ":VS"];
+			if(!vs_shader)
+				vs_shader = this.compiled_shaders[name + ":VS"] = GL.Shader.compileSource(gl.VERTEX_SHADER, vs_code);
+			var fs_shader = this.compiled_shaders[name + ":FS"];
+			if(!fs_shader)
+				fs_shader = this.compiled_shaders[name + ":FS"] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, ps_code);
+
+			shader = new GL.Shader(vs_shader, fs_shader);
 			shader.name = name;
 			//console.log("Shader compiled: " + name);
 		}
@@ -3437,13 +3456,13 @@ var ShadersManager = {
 	{
 		if(shader == null)
 		{
-			this.compiled_shaders[key] = this.default_shader;
+			this.compiled_programs[key] = this.default_shader;
 			return this.default_shader;
 		}
 
 		shader.id = id;
 		shader.key = key;
-		this.compiled_shaders[key] = shader;
+		this.compiled_programs[key] = shader;
 		return shader;
 	},
 
@@ -3459,6 +3478,7 @@ var ShadersManager = {
 				if(reset_old)
 				{
 					LS.ShadersManager.global_shaders = {};
+					LS.ShadersManager.compiled_programs = {};
 					LS.ShadersManager.compiled_shaders = {};
 				}
 				LS.ShadersManager.processShadersXML(response);
@@ -9767,7 +9787,6 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	return bones;
 }
 
-//MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this.enabled)
@@ -9824,6 +9843,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
+			if(bones.length > SkinnedMeshRenderer.MAX_BONES)
+				RI.macros["MAX_BONES"] = bones.length.toString();
 			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
@@ -9831,19 +9852,19 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture = this._bones_texture = new GL.Texture( 1, bones.length * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
+			LS.RM.textures[":bones"] = texture; //debug
 			RI.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
 			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
 		else
 			console.error("impossible to get here")
-
 	}
 	else //cpu skinning (mega slow)
 	{
@@ -9987,6 +10008,11 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	vertices_buffer.upload(gl.STREAM_DRAW);
 	if(normals_buffer)
 		normals_buffer.upload(gl.STREAM_DRAW);
+}
+
+SkinnedMeshRenderer.prototype.extractSkeleton = function()
+{
+	//TODO
 }
 
 LS.registerComponent(SkinnedMeshRenderer);
@@ -12721,12 +12747,17 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
-PlayAnimation.prototype.onUpdate = function(e, dt)
+
+PlayAnimation.prototype.getAnimation = function()
 {
 	if(!this.animation) 
-		return;
+		return null;
+	return LS.ResourcesManager.resources[ this.animation ];
+}
 
-	var animation = LS.ResourcesManager.resources[ this.animation ];
+PlayAnimation.prototype.onUpdate = function(e, dt)
+{
+	var animation = this.getAnimation();
 	if(!animation) 
 		return;
 
@@ -13617,7 +13648,7 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 
 LS.registerComponent(Cloner);
 /**
-* Spherize deforms a mesh, it is an example of a component that modifies the meshes being rendered
+* Spherize deforms a mesh, it is an example of a deformer, a component that modifies the meshes of one node
 * @class Spherize
 * @constructor
 * @param {String} object to configure from
@@ -13908,6 +13939,59 @@ window.VRCameraController = VRCameraController;
 
 
 
+/**
+* Transitions between different poses
+* @class Poser
+* @constructor
+* @param {String} object to configure from
+*/
+
+
+function Poser(o)
+{
+	this.poses = {};
+
+	if(o)
+		this.configure(o);
+}
+
+//Poser["@animation"] = { widget: "resource" };
+
+Poser.prototype.configure = function(o)
+{
+}
+
+
+Poser.icon = "mini-icon-clock.png";
+
+Poser.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node,"update",this.onUpdate, this);
+}
+
+Poser.prototype.onRemoveFromNode = function(node)
+{
+	LEvent.unbind(node,"update",this.onUpdate, this);
+}
+
+Poser.prototype.onUpdate = function(e, dt)
+{
+
+
+	var scene = this._root.scene;
+	if(!scene)
+		scene.refresh();
+}
+
+Poser.prototype.getResources = function(res)
+{
+}
+
+Poser.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+}
+
+//LS.registerComponent( Poser );
 if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
@@ -14571,6 +14655,320 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 };
+
+/**
+* An Animation is a resource that contains samples of properties over time, similar to animation curves
+* Values could be associated to an specific node.
+* Data is contained in tracks
+*
+* @class Animation
+* @namespace LS
+* @constructor
+*/
+
+function Animation(o)
+{
+	this.name = "";
+	this.takes = {}; //packs of tracks
+	if(o)
+		this.configure(o);
+}
+
+Animation.prototype.createTake = function( name, duration )
+{
+	var take = new Animation.Take();
+	take.name = name;
+	take.duration = duration || 0;
+	this.addTake( take );
+	return take;
+}
+
+Animation.prototype.addTake = function(take)
+{
+	this.takes[ take.name ] = take;
+	return take;
+}
+
+
+Animation.prototype.addTrackToTake = function(takename, track)
+{
+	var take = this.takes[ takename ];
+	if(!take)
+		take = this.createTake( takename );
+	take.addTrack( track );
+}
+
+
+Animation.prototype.configure = function(data)
+{
+	if(data.takes)
+	{
+		for(var i in data.takes)
+		{
+			var take = data.takes[i];
+			for(var j in take.tracks)
+				this.addTrackToTake( i, new LS.Animation.Track( take.tracks[j] ) );
+		}
+	}
+}
+
+Animation.fromBinary = function(data)
+{
+	if(data.constructor == ArrayBuffer)
+		data = WBin.load(data, true);
+
+	var o = data["@json"];
+	for(var i in o.takes)
+	{
+		var take = o.takes[i];
+		for(var j in take.tracks)
+		{
+			var track = take.tracks[j];
+			track.data = data["@track_" + track.data];
+		}
+	}
+
+	return new Animation(o);
+}
+
+Animation.prototype.toBinary = function()
+{
+	var o = {};
+	var tracks_data = [];
+
+	//we need to remove the bin data to generate the JSON
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		for(var j in take.tracks)
+		{
+			var track = take.tracks[j];
+			var bindata = track.data;
+			var num = tracks_data.length;
+			o["@track_" + num] = bindata;
+			track.data = num;
+			tracks_data.push(bindata); //to restore after
+		}
+	}
+
+	//create the binary
+	o["@json"] = { takes: this.takes };
+	var bin = WBin.create(o, "Animation");
+
+	//restore the bin data state in this instance
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		for(var j in take.tracks)
+		{
+			var track = take.tracks[j];
+			track.data = tracks_data[ track.data ];
+		}
+	}
+
+	return bin;
+}
+
+
+LS.Animation = Animation;
+
+/** Represents a set of animations **/
+function Take(o)
+{
+	this.name = null;
+	this.tracks = [];
+	this.duration = 0;
+}
+
+Take.prototype.addTrack = function( track )
+{
+	this.tracks.push( track );
+}
+
+Take.prototype.getPropertiesSample = function(time, result)
+{
+	result = result || [];
+	for(var i in this.tracks)
+	{
+		var track = this.tracks[i];
+		var value = track.getSample(time);
+		result.push([track.nodename, track.property, value ]);
+	}
+	return result;
+}
+
+Take.prototype.actionPerSample = function(time, callback, options)
+{
+	for(var i in this.tracks)
+	{
+		var track = this.tracks[i];
+		var value = track.getSample(time, true);
+		if( options.disabled_tracks && options.disabled_tracks[ track.nodename ] )
+			continue;
+
+		callback(track.nodename, track.property, value, options);
+	}
+}
+
+Animation.Take = Take;
+
+
+/**
+* Represents one track with data over time about one property
+* Data could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode
+*
+* @class Animation.Track
+* @namespace LS
+* @constructor
+*/
+
+function Track(o)
+{
+	this.nodename = ""; //nodename
+	this.property = ""; //property
+	this.duration = 0; //length of the animation
+	this.typed_mode = false; //this means the data is stored in one continuous datatype, faster but harder to edit
+	this.value_size = 0; //how many numbers contains every sample of this property
+	this.data = null; //array or typed array where you have the time value followed by this.value_size bytes of data
+
+	if(o)
+		this.configure(o);
+}
+
+Track.prototype.configure = function( data )
+{
+	this.property = data.property;
+	this.duration = data.duration;
+	this.nodename = data.nodename;
+	this.value_size = data.value_size;
+
+	if( data.data.constructor == Array )
+		this.typed_mode = false;
+	else
+		this.typed_mode = true;
+	this.data = data.data;
+
+}
+
+//check for the last sample time
+Track.prototype.computeDuration = function()
+{
+	if(!this.data)
+		return;
+
+	if(this.typed_mode)
+	{
+		var time = this.data[ this.data.length - 2 - this.value_size ];
+		this.duration = time;
+		return time;
+	}
+
+	//not typed
+	var last = this.data[ this.data.length - 1 ];
+	if(last)
+		this.duration = last[0];
+}
+
+Track.prototype.convertToTyped = function()
+{
+	//TODO
+}
+
+Track.prototype.convertToArray = function()
+{
+	//TODO
+}
+
+/* not tested
+Track.prototype.findSampleIndex = function(time)
+{
+	var data = this.data;
+	var offset = this.value_size + 1;
+	var l = data.length;
+	var n = l / offset;
+	var imin = 0;
+	var imax = n;
+	var imid = 0;
+
+	//dichotimic search
+	// continue searching while [imin,imax] is not empty
+	while (imax >= imin)
+	{
+		// calculate the midpoint for roughly equal partition
+		imid = (((imax - imin)*0.5)|0) + imin;
+		var v = data[ imid * offset ];
+		if( v == time )
+			return imid * offset; 
+			// determine which subarray to search
+		else if (v < key)
+			// change min index to search upper subarray
+			imin = imid + 1;
+		else         
+			// change max index to search lower subarray
+			imax = imid - 1;
+	}
+
+	return imid * offset;
+}
+*/
+
+Track.prototype.getSample = function(time, interpolate)
+{
+	var local_time = (time % this.duration);
+	if(local_time < 0)
+		local_time = this.duration + local_time;
+
+	var data = this.data;
+	var last_time = 0;
+
+	var value = data.subarray(1,offset);
+	var last_value = value;
+
+	var value_size = this.value_size;
+	var offset = this.value_size + 1;
+	var current_time = time;
+
+	for(var p = 0, l = data.length; p < l; p += offset)
+	{
+		last_time = current_time;
+		current_time = data[p];
+		last_value = value;
+		value = data.subarray(p + 1, p + offset);
+		if(current_time < local_time) 
+			continue;
+		break;
+	}
+
+	if(!interpolate || last_value == value)
+	{
+		if(value_size == 1)
+			return last_value[0];
+		else
+			return last_value;
+	}
+
+	var factor = (local_time - last_time) / (current_time - last_time);
+
+	if(last_value != null && value != null)
+	{
+		if(value_size == 1)
+			return last_value[0] * (1.0 - factor) +  value[0] * factor;
+		else
+		{
+			if(!this._last_sample)	
+				this._last_sample = new Float32Array( value_size );
+			var result = this._last_sample;
+			for(var i = 0; i < value_size; i++)
+				result[i] = last_value[i] * (1.0 - factor) +  value[i] * factor;
+			return result;
+		}
+	}
+	else if(last_value != null)
+		return last_value;
+	return value;
+}
+
+Animation.Track = Track;
 function Path()
 {
 	this.points = [];
@@ -16199,6 +16597,7 @@ var Renderer = {
 
 		var shader = ShadersManager.get("flat", macros);
 		shader.uniforms(scene._uniforms);
+		shader.uniforms(instance.uniforms);
 		shader.uniforms({u_model: model, u_pointSize: this.default_point_size, u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
 		//hardcoded, ugly
@@ -17556,7 +17955,7 @@ global.Collada = {
 
 		//hack to avoid problems with bones with spaces in names
 		this._nodes_by_id = {}; //clear
-		this.readAllNodeNames(xmlvisual_scene);
+		//this.readAllNodeNames(xmlvisual_scene);
 
 		//Create a scene tree
 		var scene = { 
@@ -17576,10 +17975,19 @@ global.Collada = {
 			if(xmlnodes.item(i).localName != "node")
 				continue;
 
-			var node = this.readNode( xmlnodes.item(i), scene, 0, flip );
+			var node = this.readNodeTree( xmlnodes.item(i), scene, 0, flip );
 			if(node)
 				scene.root.children.push(node);
 		}
+
+		//parse nodes info (two steps so we have first all the scene tree)
+		for(var i = 0; i < xmlnodes.length; i++)
+		{
+			if(xmlnodes.item(i).localName != "node")
+				continue;
+			this.readNodeInfo( xmlnodes.item(i), scene, 0, flip );
+		}
+
 
 		//read animations
 		var animations = this.readAnimations(root, scene);
@@ -17598,6 +18006,7 @@ global.Collada = {
 	},
 
 	/* Collect node ids, in case there is bones (with spaces in name) I need to know the nodenames in advance */
+	/*
 	readAllNodeNames: function(xmlnode)
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
@@ -17619,8 +18028,9 @@ global.Collada = {
 			this.readAllNodeNames(xmlchild);
 		}
 	},
+		*/
 
-	readNode: function(xmlnode, scene, level, flip)
+	readNodeTree: function(xmlnode, scene, level, flip)
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
@@ -17628,12 +18038,14 @@ global.Collada = {
 		if(!node_id && !node_sid)
 			return null;
 
-		var node_type = xmlnode.getAttribute("type");
 		var node = { id: node_sid || node_id, children:[], _depth: level };
+		var node_type = xmlnode.getAttribute("type");
 		var node_name = xmlnode.getAttribute("name");
 		if( node_name)
 			node.name = node_name;
 		this._nodes_by_id[ node.id ] = node;
+		if( node_sid )
+			this._nodes_by_id[ node_sid ] = node;
 
 		//transform
 		node.model = this.readTransform(xmlnode, level, flip );
@@ -17646,9 +18058,35 @@ global.Collada = {
 			//children
 			if(xmlchild.localName == "node")
 			{
-				var child_node = this.readNode(xmlchild, scene, level+1, flip);
+				var child_node = this.readNodeTree(xmlchild, scene, level+1, flip);
 				if(child_node)
 					node.children.push( child_node );
+				continue;
+			}
+		}
+
+		return node;
+	},
+
+	readNodeInfo: function(xmlnode, scene, level, flip)
+	{
+		var node_id = this.safeString( xmlnode.getAttribute("id") );
+		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+
+		if(!node_id && !node_sid)
+			return null;
+
+		var node = this._nodes_by_id[ node_id || node_sid ];
+
+		//node elements
+		for( var i = 0; i < xmlnode.childNodes.length; i++ )
+		{
+			var xmlchild = xmlnode.childNodes.item(i);
+
+			//children
+			if(xmlchild.localName == "node")
+			{
+				this.readNodeInfo( xmlchild, scene, level+1, flip );
 				continue;
 			}
 
@@ -17748,8 +18186,6 @@ global.Collada = {
 
 			//other possible tags?
 		}
-
-		return node;
 	},
 
 	//if you want to rename some material names
@@ -18806,6 +19242,8 @@ global.Collada = {
 			//remap: because vertices order is now changed after parsing the mesh
 			var final_weights = new Float32Array(4 * num_vertices); //4 bones per vertex
 			var final_bone_indices = new Uint8Array(4 * num_vertices); //4 bones per vertex
+			var used_joints = [];
+
 			for(var i = 0; i < num_vertices; ++i)
 			{
 				var p = remap[ i ] * 4;
@@ -18830,7 +19268,7 @@ global.Collada = {
 						w[k] = w[max_pos];
 						w[max_pos] = tmp;
 						tmp = b[k];
-						b[k] = b[max_pos];
+						b[k] = b[max_pos]; 
 						b[max_pos] = tmp;
 					}
 				}
@@ -18838,16 +19276,47 @@ global.Collada = {
 				//store
 				final_weights.set( w, i*4);
 				final_bone_indices.set( b, i*4);
+
+				//mark bones used
+				if(w[0]) used_joints[b[0]] = true;
+				if(w[1]) used_joints[b[1]] = true;
+				if(w[2]) used_joints[b[2]] = true;
+				if(w[3]) used_joints[b[3]] = true;
+			}
+
+			if(max_bone >= joints.length)
+				console.warn("Mesh uses higher bone index than bones found");
+
+			//trim unused bones (collada could give you 100 bones for an object that only uses a fraction of them)
+			if(1)
+			{
+				var new_bones = [];
+				var bones_translation = {};
+				for(var i = 0; i < used_joints.length; ++i)
+					if(used_joints[i])
+					{
+						bones_translation[i] = new_bones.length;
+						new_bones.push( joints[i] );
+					}
+
+				//in case there are less bones in use...
+				if(new_bones.length < joints.length)
+				{
+					//remap
+					for(var i = 0; i < final_bone_indices.length; i++)
+						final_bone_indices[i] = bones_translation[ final_bone_indices[i] ];
+					joints = new_bones;
+				}
+				//console.log("Bones: ", joints.length, " used:", num_used_joints );
 			}
 
 			//console.log("Bones: ", joints.length, "Max bone: ", max_bone);
-			if(max_bone >= joints.length)
-				console.warn("Mesh uses higher bone index than bones found");
 
 			mesh.weights = final_weights;
 			mesh.bone_indices = final_bone_indices;
 			mesh.bones = joints;
 			mesh.bind_matrix = bind_matrix;
+
 			delete mesh["_remap"];
 		}
 
@@ -19225,7 +19694,7 @@ var parserDAE = {
 
 	no_flip: true,
 
-	parse: function(data, options, filename)
+	parse: function( data, options, filename )
 	{
 		Collada.material_translate_table = {
 			transparency: "opacity",
@@ -19240,6 +19709,12 @@ var parserDAE = {
 		var data = Collada.parse( data, options, filename );
 		console.log(data); 
 
+		//skip renaming ids (this is done to ensure no collision with names coming from other files)
+		if(options.skip_renaming)
+			return data;
+
+		var basename = filename.substr(0, filename.indexOf("."));
+
 		//change local collada ids to valid uids 
 		var renamed = {};
 		replace_uids( data.root );
@@ -19249,8 +19724,16 @@ var parserDAE = {
 			//change uid
 			if(node.id)
 			{
-				node.uid = "@" + filename + "::" + node.id;
+				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
+			}
+
+			//change mesh names
+			if(node.mesh)
+			{
+				var newmeshname = basename + "::" + node.mesh;
+				renamed[ node.mesh ] = newmeshname;
+				node.mesh = newmeshname;
 			}
 
 			if(node.children)
@@ -19259,6 +19742,8 @@ var parserDAE = {
 		}
 
 		//replace skinning joint ids
+		var newmeshes = {};
+
 		for(var i in data.meshes)
 		{
 			var mesh = data.meshes[i];
@@ -19272,22 +19757,10 @@ var parserDAE = {
 				if(uid)
 					mesh.bones[j][0] = uid;
 			}
+
+			newmeshes[ renamed[i] ] = mesh;
 		}
-
-
-		//organize info
-		/*
-		var resources = {};
-		for(var i in data.meshes)
-			resources[i] = data.meshes[i];
-
-		for(var i in data.materials)
-			resources[i] = data.materials[i];
-		
-		//what about textures?
-		//save resources
-		data.resources = resources;
-		*/
+		data.meshes = newmeshes;
 
 		return data;
 	}
@@ -19747,14 +20220,14 @@ SceneTree.prototype.init = function()
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
+	this._root.uid = LS.generateUId("NODE-");
+
 	this._nodes = [ this._root ];
 	this._nodes_by_name = { "root": this._root };
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
 	this.rt_cameras = [];
-
-	//this._components = []; //remove all components
 
 	this._root.addComponent( new Camera() );
 	this.current_camera = this._root.camera;
@@ -19811,6 +20284,7 @@ SceneTree.prototype.clear = function()
 /**
 * Configure the Scene using an object (the object can be obtained from the function serialize)
 * Inserts the nodes, configure them, and change the parameters
+* Destroys previously existing info
 *
 * @method configure
 * @param {Object} scene_info the object containing all the info about the nodes and config of the scene
@@ -20934,8 +21408,14 @@ SceneNode.prototype.configure = function(info)
 	else if (info.id)
 		this.setName(info.id);
 
-	if (info.uid) 
+	if (info.uid)
+	{
+		if( this._in_tree && this._in_tree._nodes_by_uid[ this.uid ] )
+			delete this._in_tree._nodes_by_uid[ this.uid ];
 		this.uid = info.uid;
+		if( this._in_tree )
+			this._in_tree._nodes_by_uid[ this.uid ] = this;
+	}
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 
@@ -21293,226 +21773,6 @@ Prefab.packResources = function(resources, base_data)
 
 LS.Prefab = Prefab;
 
-
-/**
-* An Animation is a resource that contains samples of properties over time, similar to animation curves
-* Values could be associated to an specific node.
-* Data is contained in tracks
-*
-* @class Animation
-* @namespace LS
-* @constructor
-*/
-
-function Animation(o)
-{
-	this.takes = {}; //packs of tracks
-	if(o)
-		this.configure(o);
-}
-
-Animation.prototype.configure = function(data)
-{
-	if(data.takes)
-	{
-		for(var i in data.takes)
-		{
-			var take = data.takes[i];
-			for(var j in take.tracks)
-				this.addTrackToTake( i, new LS.Animation.Track( take.tracks[j] ) );
-		}
-	}
-}
-
-Animation.fromBinary = function(data)
-{
-	if(data.constructor == ArrayBuffer)
-		data = WBin.load(data, true);
-
-	var o = data["@json"];
-	for(var i in o.takes)
-	{
-		var take = o.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			track.data = data["@track_" + track.data];
-		}
-	}
-
-	return new Animation(o);
-}
-
-Animation.prototype.toBinary = function()
-{
-	var o = {};
-	var tracks_data = [];
-
-	//we need to remove the bin data to generate the JSON
-	for(var i in this.takes)
-	{
-		var take = this.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			var bindata = track.data;
-			var num = tracks_data.length;
-			o["@track_" + num] = bindata;
-			track.data = num;
-			tracks_data.push(bindata); //to restore after
-		}
-	}
-
-	//create the binary
-	o["@json"] = { takes: this.takes };
-	var bin = WBin.create(o, "Animation");
-
-	//restore the bin data state in this instance
-	for(var i in this.takes)
-	{
-		var take = this.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			track.data = tracks_data[ track.data ];
-		}
-	}
-
-	return bin;
-}
-
-Animation.prototype.addTrackToTake = function(takename, track)
-{
-	var take = this.takes[takename];
-	if(!take)
-		take = this.takes[takename] = new Take();
-	take.tracks.push(track);
-}
-
-
-LS.Animation = Animation;
-
-/** Represents a set of animations **/
-function Take(o)
-{
-	this.tracks = [];
-	this.duration = 0;
-}
-
-Take.prototype.getPropertiesSample = function(time, result)
-{
-	result = result || [];
-	for(var i in this.tracks)
-	{
-		var track = this.tracks[i];
-		var value = track.getSample(time);
-		result.push([track.nodename, track.property, value ]);
-	}
-	return result;
-}
-
-Take.prototype.actionPerSample = function(time, callback, options)
-{
-	for(var i in this.tracks)
-	{
-		var track = this.tracks[i];
-		var value = track.getSample(time, true);
-		if( options.disabled_tracks && options.disabled_tracks[ track.nodename ] )
-			continue;
-
-		callback(track.nodename, track.property, value, options);
-	}
-}
-
-Animation.Take = Take;
-
-
-/**
-* Represents one track with data over time about one property
-*
-* @class Animation.Track
-* @namespace LS
-* @constructor
-*/
-
-function Track(o)
-{
-	this.nodename = ""; //nodename
-	this.property = ""; //property
-	this.duration = 0; //length of the animation
-	this.value_size = 0; //how many numbers contains every sample of this property
-	this.data = null;
-
-	if(o)
-		this.configure(o);
-}
-
-Track.prototype.configure = function(data)
-{
-	this.property = data.property;
-	this.duration = data.duration;
-	this.nodename = data.nodename;
-	this.value_size = data.value_size;
-	this.data = data.data;
-}
-
-Track.prototype.getSample = function(time, interpolate)
-{
-	var local_time = (time % this.duration);
-	if(local_time < 0)
-		local_time = this.duration + local_time;
-
-	var data = this.data;
-	var last_time = 0;
-
-	var value = data.subarray(1,offset);
-	var last_value = value;
-
-	var value_size = this.value_size;
-	var offset = this.value_size + 1;
-	var current_time = time;
-
-	for(var p = 0, l = data.length; p < l; p += offset)
-	{
-		last_time = current_time;
-		current_time = data[p];
-		last_value = value;
-		value = data.subarray(p + 1, p + offset);
-		if(current_time < local_time) 
-			continue;
-		break;
-	}
-
-	if(!interpolate || last_value == value)
-	{
-		if(value_size == 1)
-			return last_value[0];
-		else
-			return last_value;
-	}
-
-	var factor = (local_time - last_time) / (current_time - last_time);
-
-	if(last_value != null && value != null)
-	{
-		if(value_size == 1)
-			return last_value[0] * (1.0 - factor) +  value[0] * factor;
-		else
-		{
-			if(!this._last_sample)	
-				this._last_sample = new Float32Array( value_size );
-			var result = this._last_sample;
-			for(var i = 0; i < value_size; i++)
-				result[i] = last_value[i] * (1.0 - factor) +  value[i] * factor;
-			return result;
-		}
-	}
-	else if(last_value != null)
-		return last_value;
-	return value;
-}
-
-Animation.Track = Track;
 /**
 * Context class allows to handle the app context easily without having to glue manually all events
 	There is a list of options

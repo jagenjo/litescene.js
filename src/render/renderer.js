@@ -869,6 +869,7 @@ var Renderer = {
 
 		var shader = ShadersManager.get("flat", macros);
 		shader.uniforms(scene._uniforms);
+		shader.uniforms(instance.uniforms);
 		shader.uniforms({u_model: model, u_pointSize: this.default_point_size, u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
 		//hardcoded, ugly

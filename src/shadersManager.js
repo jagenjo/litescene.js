@@ -7,7 +7,9 @@ var ShadersManager = {
 	default_xml_url: "data/shaders.xml",
 
 	snippets: {},//to save source snippets
-	compiled_shaders: {}, //shaders already compiled and ready to use
+	compiled_programs: {}, //shaders already compiled and ready to use
+	compiled_shaders: {}, //every vertex and fragment shader compiled
+
 	global_shaders: {}, //shader codes to be compiled using some macros
 
 	default_shader: null, //a default shader to rely when a shader is not found
@@ -20,6 +22,7 @@ var ShadersManager = {
 		this.default_shader = null;
 
 		//storage
+		this.compiled_programs = {};
 		this.compiled_shaders = {};
 		this.global_shaders = {};
 
@@ -49,7 +52,7 @@ var ShadersManager = {
 		//if there is no macros, just get the old one
 		if(!macros)
 		{
-			var shader = this.compiled_shaders[id];
+			var shader = this.compiled_programs[id];
 			if (shader)
 				return shader;
 		}
@@ -79,8 +82,8 @@ var ShadersManager = {
 		var hashkey = key.hashCode();
 
 		//already compiled
-		if (this.compiled_shaders[hashkey] != null)
-			return this.compiled_shaders[hashkey];
+		if (this.compiled_programs[hashkey] != null)
+			return this.compiled_programs[hashkey];
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
@@ -109,7 +112,7 @@ var ShadersManager = {
 			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
 		}
 
-		var shader = this.compileShader(vs_code, ps_code, key);
+		var shader = this.compileShader( vs_code, ps_code, key );
 		if(shader)
 			shader.global = global;
 		return this.registerCompiledShader(shader, hashkey, id);
@@ -120,13 +123,24 @@ var ShadersManager = {
 		return this.global_shaders[id];
 	},
 
-	compileShader: function(vs_code, ps_code, name)
+	compileShader: function( vs_code, ps_code, name )
 	{
 		if(!gl) return null;
 		var shader = null;
 		try
 		{
-			shader = new GL.Shader(this.global_extra_code + vs_code, this.global_extra_code + ps_code);
+			vs_code = this.global_extra_code + vs_code;
+			ps_code = this.global_extra_code + ps_code;
+
+			//speed up compilations by caching shaders compiled
+			var vs_shader = this.compiled_shaders[name + ":VS"];
+			if(!vs_shader)
+				vs_shader = this.compiled_shaders[name + ":VS"] = GL.Shader.compileSource(gl.VERTEX_SHADER, vs_code);
+			var fs_shader = this.compiled_shaders[name + ":FS"];
+			if(!fs_shader)
+				fs_shader = this.compiled_shaders[name + ":FS"] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, ps_code);
+
+			shader = new GL.Shader(vs_shader, fs_shader);
 			shader.name = name;
 			//console.log("Shader compiled: " + name);
 		}
@@ -165,13 +179,13 @@ var ShadersManager = {
 	{
 		if(shader == null)
 		{
-			this.compiled_shaders[key] = this.default_shader;
+			this.compiled_programs[key] = this.default_shader;
 			return this.default_shader;
 		}
 
 		shader.id = id;
 		shader.key = key;
-		this.compiled_shaders[key] = shader;
+		this.compiled_programs[key] = shader;
 		return shader;
 	},
 
@@ -187,6 +201,7 @@ var ShadersManager = {
 				if(reset_old)
 				{
 					LS.ShadersManager.global_shaders = {};
+					LS.ShadersManager.compiled_programs = {};
 					LS.ShadersManager.compiled_shaders = {};
 				}
 				LS.ShadersManager.processShadersXML(response);

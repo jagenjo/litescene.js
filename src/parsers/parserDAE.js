@@ -6,7 +6,7 @@ var parserDAE = {
 
 	no_flip: true,
 
-	parse: function(data, options, filename)
+	parse: function( data, options, filename )
 	{
 		Collada.material_translate_table = {
 			transparency: "opacity",
@@ -21,6 +21,12 @@ var parserDAE = {
 		var data = Collada.parse( data, options, filename );
 		console.log(data); 
 
+		//skip renaming ids (this is done to ensure no collision with names coming from other files)
+		if(options.skip_renaming)
+			return data;
+
+		var basename = filename.substr(0, filename.indexOf("."));
+
 		//change local collada ids to valid uids 
 		var renamed = {};
 		replace_uids( data.root );
@@ -30,8 +36,16 @@ var parserDAE = {
 			//change uid
 			if(node.id)
 			{
-				node.uid = "@" + filename + "::" + node.id;
+				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
+			}
+
+			//change mesh names
+			if(node.mesh)
+			{
+				var newmeshname = basename + "::" + node.mesh;
+				renamed[ node.mesh ] = newmeshname;
+				node.mesh = newmeshname;
 			}
 
 			if(node.children)
@@ -40,6 +54,8 @@ var parserDAE = {
 		}
 
 		//replace skinning joint ids
+		var newmeshes = {};
+
 		for(var i in data.meshes)
 		{
 			var mesh = data.meshes[i];
@@ -53,22 +69,10 @@ var parserDAE = {
 				if(uid)
 					mesh.bones[j][0] = uid;
 			}
+
+			newmeshes[ renamed[i] ] = mesh;
 		}
-
-
-		//organize info
-		/*
-		var resources = {};
-		for(var i in data.meshes)
-			resources[i] = data.meshes[i];
-
-		for(var i in data.materials)
-			resources[i] = data.materials[i];
-		
-		//what about textures?
-		//save resources
-		data.resources = resources;
-		*/
+		data.meshes = newmeshes;
 
 		return data;
 	}

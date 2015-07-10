@@ -11,10 +11,36 @@
 
 function Animation(o)
 {
+	this.name = "";
 	this.takes = {}; //packs of tracks
 	if(o)
 		this.configure(o);
 }
+
+Animation.prototype.createTake = function( name, duration )
+{
+	var take = new Animation.Take();
+	take.name = name;
+	take.duration = duration || 0;
+	this.addTake( take );
+	return take;
+}
+
+Animation.prototype.addTake = function(take)
+{
+	this.takes[ take.name ] = take;
+	return take;
+}
+
+
+Animation.prototype.addTrackToTake = function(takename, track)
+{
+	var take = this.takes[ takename ];
+	if(!take)
+		take = this.createTake( takename );
+	take.addTrack( track );
+}
+
 
 Animation.prototype.configure = function(data)
 {
@@ -86,22 +112,20 @@ Animation.prototype.toBinary = function()
 	return bin;
 }
 
-Animation.prototype.addTrackToTake = function(takename, track)
-{
-	var take = this.takes[takename];
-	if(!take)
-		take = this.takes[takename] = new Take();
-	take.tracks.push(track);
-}
-
 
 LS.Animation = Animation;
 
 /** Represents a set of animations **/
 function Take(o)
 {
+	this.name = null;
 	this.tracks = [];
 	this.duration = 0;
+}
+
+Take.prototype.addTrack = function( track )
+{
+	this.tracks.push( track );
 }
 
 Take.prototype.getPropertiesSample = function(time, result)
@@ -134,6 +158,7 @@ Animation.Take = Take;
 
 /**
 * Represents one track with data over time about one property
+* Data could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode
 *
 * @class Animation.Track
 * @namespace LS
@@ -145,21 +170,90 @@ function Track(o)
 	this.nodename = ""; //nodename
 	this.property = ""; //property
 	this.duration = 0; //length of the animation
+	this.typed_mode = false; //this means the data is stored in one continuous datatype, faster but harder to edit
 	this.value_size = 0; //how many numbers contains every sample of this property
-	this.data = null;
+	this.data = null; //array or typed array where you have the time value followed by this.value_size bytes of data
 
 	if(o)
 		this.configure(o);
 }
 
-Track.prototype.configure = function(data)
+Track.prototype.configure = function( data )
 {
 	this.property = data.property;
 	this.duration = data.duration;
 	this.nodename = data.nodename;
 	this.value_size = data.value_size;
+
+	if( data.data.constructor == Array )
+		this.typed_mode = false;
+	else
+		this.typed_mode = true;
 	this.data = data.data;
+
 }
+
+//check for the last sample time
+Track.prototype.computeDuration = function()
+{
+	if(!this.data)
+		return;
+
+	if(this.typed_mode)
+	{
+		var time = this.data[ this.data.length - 2 - this.value_size ];
+		this.duration = time;
+		return time;
+	}
+
+	//not typed
+	var last = this.data[ this.data.length - 1 ];
+	if(last)
+		this.duration = last[0];
+}
+
+Track.prototype.convertToTyped = function()
+{
+	//TODO
+}
+
+Track.prototype.convertToArray = function()
+{
+	//TODO
+}
+
+/* not tested
+Track.prototype.findSampleIndex = function(time)
+{
+	var data = this.data;
+	var offset = this.value_size + 1;
+	var l = data.length;
+	var n = l / offset;
+	var imin = 0;
+	var imax = n;
+	var imid = 0;
+
+	//dichotimic search
+	// continue searching while [imin,imax] is not empty
+	while (imax >= imin)
+	{
+		// calculate the midpoint for roughly equal partition
+		imid = (((imax - imin)*0.5)|0) + imin;
+		var v = data[ imid * offset ];
+		if( v == time )
+			return imid * offset; 
+			// determine which subarray to search
+		else if (v < key)
+			// change min index to search upper subarray
+			imin = imid + 1;
+		else         
+			// change max index to search lower subarray
+			imax = imid - 1;
+	}
+
+	return imid * offset;
+}
+*/
 
 Track.prototype.getSample = function(time, interpolate)
 {

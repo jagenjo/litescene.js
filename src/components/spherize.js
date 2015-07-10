@@ -1,5 +1,5 @@
 /**
-* Spherize deforms a mesh, it is an example of a component that modifies the meshes being rendered
+* Spherize deforms a mesh, it is an example of a deformer, a component that modifies the meshes of one node
 * @class Spherize
 * @constructor
 * @param {String} object to configure from

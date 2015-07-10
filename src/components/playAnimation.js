@@ -48,12 +48,17 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 	LEvent.unbind(node,"update",this.onUpdate, this);
 }
 
-PlayAnimation.prototype.onUpdate = function(e, dt)
+
+PlayAnimation.prototype.getAnimation = function()
 {
 	if(!this.animation) 
-		return;
+		return null;
+	return LS.ResourcesManager.resources[ this.animation ];
+}
 
-	var animation = LS.ResourcesManager.resources[ this.animation ];
+PlayAnimation.prototype.onUpdate = function(e, dt)
+{
+	var animation = this.getAnimation();
 	if(!animation) 
 		return;
 

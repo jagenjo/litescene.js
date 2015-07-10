@@ -56,14 +56,14 @@ SceneTree.prototype.init = function()
 	this.local_repository = null;
 
 	this._root.removeAllComponents();
+	this._root.uid = LS.generateUId("NODE-");
+
 	this._nodes = [ this._root ];
 	this._nodes_by_name = { "root": this._root };
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
 	this.rt_cameras = [];
-
-	//this._components = []; //remove all components
 
 	this._root.addComponent( new Camera() );
 	this.current_camera = this._root.camera;
@@ -120,6 +120,7 @@ SceneTree.prototype.clear = function()
 /**
 * Configure the Scene using an object (the object can be obtained from the function serialize)
 * Inserts the nodes, configure them, and change the parameters
+* Destroys previously existing info
 *
 * @method configure
 * @param {Object} scene_info the object containing all the info about the nodes and config of the scene
@@ -1243,8 +1244,14 @@ SceneNode.prototype.configure = function(info)
 	else if (info.id)
 		this.setName(info.id);
 
-	if (info.uid) 
+	if (info.uid)
+	{
+		if( this._in_tree && this._in_tree._nodes_by_uid[ this.uid ] )
+			delete this._in_tree._nodes_by_uid[ this.uid ];
 		this.uid = info.uid;
+		if( this._in_tree )
+			this._in_tree._nodes_by_uid[ this.uid ] = this;
+	}
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 

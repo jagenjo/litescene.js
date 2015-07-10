@@ -306,8 +306,13 @@ var Draw = {
 		else
 			vertices = new Float32Array(points);
 
-		if(colors)
-			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
+		if(colors && colors.constructor != Float32Array)
+		{
+			if(colors.constructor === Array )
+				colors = new Float32Array( colors );
+			else
+				colors = this.linearize(colors);
+		}
 
 		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
 		if(!shader)
