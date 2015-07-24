@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -184,11 +186,11 @@ function Material(o)
 
 	//this.shader_name = null; //default shader
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
+	this.createProperty(&quot;diffuse&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
 	this.shader_name = &quot;global&quot;;
-	this.blend_mode = Blend.NORMAL;
+	this.blend_mode = LS.Blend.NORMAL;
 
-	this.specular_factor = 0.1;
-	this.specular_gloss = 10.0;
+	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
 	//this.reflection_factor = 0.0;	
 
@@ -196,9 +198,38 @@ function Material(o)
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 
+	//properties with special storage (multiple vars shared among single properties)
+
+	Object.defineProperty( this, &#x27;color&#x27;, {
+		get: function() { return this._color.subarray(0,3); },
+		set: function(v) { vec3.copy( this._color, v ); },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, &#x27;opacity&#x27;, {
+		get: function() { return this._color[3]; },
+		set: function(v) { this._color[3] = v; },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, &#x27;specular_factor&#x27;, {
+		get: function() { return this._specular_data[0]; },
+		set: function(v) { this._specular_data[0] = v; },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, &#x27;specular_gloss&#x27;, {
+		get: function() { return this._specular_data[1]; },
+		set: function(v) { this._specular_data[1] = v; },
+		enumerable: true
+	});
+
 	if(o) 
 		this.configure(o);
 }
+
+Material[&quot;@color&quot;] = { type:&quot;color&quot; };
+Material[&quot;@blend_mode&quot;] = { type: &quot;enum&quot;, values: LS.Blend };
 
 Material.icon = &quot;mini-icon-material.png&quot;;
 
@@ -249,6 +280,7 @@ Material.COORDS_UV0 = &quot;0&quot;;
 Material.COORDS_UV1 = &quot;1&quot;;
 Material.COORDS_UV_TRANSFORMED = &quot;transformed&quot;;
 Material.COORDS_SCREEN = &quot;screen&quot;;					//project to screen space
+Material.COORDS_SCREENCENTERED = &quot;screen_centered&quot;;	//project to screen space and centers and corrects aspect
 Material.COORDS_FLIPPED_SCREEN = &quot;flipped_screen&quot;;	//used for realtime reflections
 Material.COORDS_POLAR = &quot;polar&quot;;					//use view vector as polar coordinates
 Material.COORDS_POLAR_REFLECTED = &quot;polar_reflected&quot;;//use reflected view vector as polar coordinates
@@ -257,35 +289,21 @@ Material.COORDS_WORLDXZ = &quot;worldxz&quot;;
 Material.COORDS_WORLDXY = &quot;worldxy&quot;;
 Material.COORDS_WORLDYZ = &quot;worldyz&quot;;
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_SCREENCENTERED, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
 
 Material.available_shaders = [&quot;default&quot;,&quot;global&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
-//properties
-Object.defineProperty( Material.prototype, &#x27;color&#x27;, {
-	get: function() { return this._color; },
-	set: function(v) { this._color.set(v); },
-	enumerable: true
-});
-
-Object.defineProperty( Material.prototype, &#x27;opacity&#x27;, {
-	get: function() { return this._color[3]; },
-	set: function(v) { this._color[3] = v; },
-	enumerable: true
-});
-
-
 Material.prototype.applyToRenderInstance = function(ri)
 {
-	if(this.blend_mode != Blend.NORMAL)
+	if(this.blend_mode != LS.Blend.NORMAL)
 		ri.flags |= RI_BLEND;
 
-	if(this.blend_mode == Blend.CUSTOM &amp;&amp; this.blend_func)
+	if(this.blend_mode == LS.Blend.CUSTOM &amp;&amp; this.blend_func)
 		ri.blend_func = this.blend_func;
 	else
-		ri.blend_func = BlendFunctions[ this.blend_mode ];
+		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
 }
 
 // RENDERING METHODS
@@ -389,10 +407,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	var samplers = {};
 
 	uniforms.u_material_color = this._color;
-	uniforms.u_ambient_color = scene.ambient_color;
-	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
+	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
+	uniforms.u_diffuse_color = this._diffuse;
 
-	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_specular = this._specular_data;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_reflection = this.reflection_factor;
@@ -623,8 +641,6 @@ Material.prototype.getTextureChannels = function()
 	return [];
 }
 
-
-
 /**
 * Assigns a texture to a channel and its sampling parameters
 * @method setTexture
@@ -826,14 +842,21 @@ Material.prototype.updatePreview = function(size, options)
 		}
 	}
 
-	if(LS.GlobalScene.textures.environment)
-		options.environment = LS.GlobalScene.textures.environment;
+	if(LS.GlobalScene.info.textures.environment)
+		options.environment = LS.GlobalScene.info.textures.environment;
 
 	size = size || 256;
 	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
 	this.preview = preview;
 	if(preview.toDataURL)
 		this.preview_url = preview.toDataURL(&quot;image/png&quot;);
+}
+
+Material.prototype.getLocatorString = function()
+{
+	if(this._root)
+		return this._root.uid + &quot;/material&quot;;
+	return this.uid;
 }
 
 Material.processShaderCode = function(code)
@@ -846,6 +869,34 @@ Material.processShaderCode = function(code)
 		return null;
 	return code;
 }
+
+Material.prototype.createProperty = function( name, value, type )
+{
+	if(type)
+		this.constructor[ &quot;@&quot; + name ] = { type: type };
+
+	//basic type
+	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
+	{
+		this[ name ] = value;
+		return;
+	}
+
+	//vector type
+	if(value.constructor === Float32Array)
+	{
+		var private_name = &quot;_&quot; + name;
+		value = new Float32Array( value ); //clone
+		this[ private_name ] = value; //this could be removed...
+
+		Object.defineProperty( this, name, {
+			get: function() { return value; },
+			set: function(v) { value.set( v ); },
+			enumerable: true
+		});
+	}
+}
+
 
 LS.registerMaterialClass(Material);
 LS.Material = Material;

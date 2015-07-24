@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -168,7 +170,7 @@ function MeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 
 	if(o)
@@ -178,13 +180,24 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+Object.defineProperty( MeshRenderer.prototype, &#x27;primitive&#x27;, {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 &amp;&amp; v != 0 &amp;&amp; v!= 1 &amp;&amp; v!= 4 &amp;&amp; v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
+
 MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
 
 //vars
-MeshRenderer[&quot;@mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@lod_mesh&quot;] = { widget: &quot;mesh&quot; };
-MeshRenderer[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
-MeshRenderer[&quot;@submesh_id&quot;] = {widget:&quot;combo&quot;, values: function() {
+MeshRenderer[&quot;@mesh&quot;] = { type: &quot;mesh&quot; };
+MeshRenderer[&quot;@lod_mesh&quot;] = { type: &quot;mesh&quot; };
+MeshRenderer[&quot;@primitive&quot;] = { type:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
+MeshRenderer[&quot;@submesh_id&quot;] = { type:&quot;enum&quot;, values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
@@ -248,7 +261,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.material)
 		o.material = typeof(this.material) == &quot;string&quot; ? this.material : this.material.serialize();
 
-	if(this.primitive != null)
+	if(this.primitive != -1)
 		o.primitive = this.primitive;
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;

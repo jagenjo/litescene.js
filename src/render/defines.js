@@ -8,10 +8,12 @@ var Blend = {
 	CUSTOM: "custom"
 }
 
+LS.Blend = Blend;
+
 if(typeof(GL) == "undefined")
 	throw("LiteSCENE requires to have litegl.js included before litescene.js");
 
-BlendFunctions = {
+LS.BlendFunctions = {
 	"normal": 	[GL.ONE, GL.ZERO],
 	"alpha": 	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],	
 	"add": 		[GL.SRC_ALPHA, GL.ONE],

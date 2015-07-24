@@ -6,7 +6,7 @@ function MeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 
 	if(o)
@@ -16,13 +16,24 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+Object.defineProperty( MeshRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
+
 MeshRenderer.icon = "mini-icon-teapot.png";
 
 //vars
-MeshRenderer["@mesh"] = { widget: "mesh" };
-MeshRenderer["@lod_mesh"] = { widget: "mesh" };
-MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
-MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
+MeshRenderer["@mesh"] = { type: "mesh" };
+MeshRenderer["@lod_mesh"] = { type: "mesh" };
+MeshRenderer["@primitive"] = { type:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
@@ -86,7 +97,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.material)
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
 
-	if(this.primitive != null)
+	if(this.primitive != -1)
 		o.primitive = this.primitive;
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;

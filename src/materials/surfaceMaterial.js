@@ -1,14 +1,6 @@
 function SurfaceMaterial(o)
 {
-	this.name = "";
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
-
-	this.shader_name = "surface";
-
-	//this.shader_name = null; //default shader
-	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.blend_mode = Blend.NORMAL;
+	Material.call(this, null);
 
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -24,8 +16,6 @@ function SurfaceMaterial(o)
 	this._macros = {};
 
 	this.properties = []; //array of configurable properties
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.textures = {};
 	if(o) 
 		this.configure(o);
 
@@ -74,7 +64,7 @@ SurfaceMaterial.prototype.getCode = function()
 SurfaceMaterial.prototype.computeCode = function()
 {
 	var uniforms_code = "";
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var code = "uniform ";
 		var prop = this.properties[i];
@@ -95,7 +85,7 @@ SurfaceMaterial.prototype.computeCode = function()
 	}
 
 	var lines = this.code.split("\n");
-	for(var i in lines)
+	for(var i = 0, l = lines.length; i < l; ++i )
 		lines[i] = lines[i].split("//")[0]; //remove comments
 
 	this.surf_code = uniforms_code + lines.join("");
@@ -149,7 +139,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var samplers = {};
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
@@ -167,7 +157,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 			this._uniforms[ prop.name ] = prop.value;
 	}
 
-	this._uniforms.u_material_color = this.color;
+	this._uniforms.u_material_color = this._color;
 
 	if(this.textures["environment"])
 	{
@@ -222,7 +212,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
 
 	//specific
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if( prop.value == old_name)
@@ -248,7 +238,7 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return tex.texture;
 	}
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name == name)
@@ -269,7 +259,7 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	if( Material.prototype.setProperty.call(this,name,value) )
 		return true;
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name != name)
@@ -286,7 +276,7 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler" )
@@ -351,7 +341,7 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 */
 SurfaceMaterial.prototype.getResources = function (res)
 {
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")

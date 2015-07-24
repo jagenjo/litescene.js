@@ -3,7 +3,12 @@ function BackgroundRenderer(o)
 {
 	this.enabled = true;
 	this.texture = null;
-	this.color = vec3.fromValues(1,1,1);
+
+	this.createProperty( "color", vec3.fromValues(1,1,1), "color" );
+	this.opacity = 1.0;
+	this.blend_mode = Blend.NORMAL;
+
+	//this._color = vec3.fromValues(1,1,1);
 	this.material_name = null;
 
 	if(o)
@@ -11,9 +16,18 @@ function BackgroundRenderer(o)
 }
 
 BackgroundRenderer.icon = "mini-icon-bg.png";
-BackgroundRenderer["@texture"] = { widget: "texture" };
-BackgroundRenderer["@color"] = { widget: "color" };
-BackgroundRenderer["@material_name"] = { widget: "material" };
+BackgroundRenderer["@texture"] = { type: "texture" };
+BackgroundRenderer["@material_name"] = { type: "material" };
+BackgroundRenderer["@blend_mode"] = { type: "enum", values: LS.Blend };
+BackgroundRenderer["@opacity"] = { type: "number", step: 0.01 };
+
+/*
+Object.defineProperty( BackgroundRenderer.prototype, 'color', {
+	get: function() { return this._color; },
+	set: function(v) { this._color.set(v);},
+	enumerable: true
+});
+*/
 
 BackgroundRenderer.prototype.onAddedToNode = function(node)
 {
@@ -28,7 +42,7 @@ BackgroundRenderer.prototype.onRemovedFromNode = function(node)
 BackgroundRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
-		res[this.texture] = Texture;
+		res[this.texture] = GL.Texture;
 	return res;
 }
 
@@ -60,8 +74,11 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 			mat = this._material = new LS.Material({use_scene_ambient:false});
 		else
 			mat = this._material;
+
 		mat.setTexture("color", texture);
 		mat.color.set( this.color );
+		mat.opacity = this.opacity;
+		mat.blend_mode = this.blend_mode;
 	}
 
 	var mesh = this._mesh;
@@ -71,7 +88,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 		RI.priority = 100; //render the first one (is a background)
 	}
 

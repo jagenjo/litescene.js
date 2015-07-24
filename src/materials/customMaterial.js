@@ -1,22 +1,13 @@
 function CustomMaterial(o)
 {
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
-
-	this.shader_name = "base";
-	this.blend_mode = Blend.NORMAL;
+	Material.call(this, null);
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
 	this.vs_code = "";
 	this.code = "vec4 surf() {\n\treturn u_material_color * vec4(1.0,0.0,0.0,1.0);\n}\n";
 
 	this._uniforms = {};
 	this._macros = {};
-
-	this.textures = {};
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 
 	if(o) 
 		this.configure(o);

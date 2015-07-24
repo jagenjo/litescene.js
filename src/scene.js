@@ -26,10 +26,6 @@ function SceneTree()
 	this.init();
 }
 
-//globals
-SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
-SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
-
 Object.defineProperty( SceneTree.prototype, "root", {
 	enumerable: true,
 	get: function() {
@@ -63,16 +59,12 @@ SceneTree.prototype.init = function()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
-	this.rt_cameras = [];
-
-	this._root.addComponent( new Camera() );
+	//default components
+	this.info = new LS.Components.GlobalInfo();
+	this._root.addComponent( this.info );
+	this._root.addComponent( new LS.Camera() );
 	this.current_camera = this._root.camera;
-
-	this._root.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
-
-	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
-	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
-	this.textures = {};
+	this._root.addComponent( new LS.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
@@ -140,14 +132,6 @@ SceneTree.prototype.configure = function(scene_info)
 
 	if(scene_info.local_repository)
 		this.local_repository = scene_info.local_repository;
-	//parse basics
-	if(scene_info.background_color)
-		this.background_color.set(scene_info.background_color);
-	if(scene_info.ambient_color)
-		this.ambient_color.set(scene_info.ambient_color);
-
-	if(scene_info.textures)
-		this.textures = scene_info.textures;
 
 	//extra info that the user wanted to save (comments, etc)
 	if(scene_info.extra)
@@ -227,11 +211,6 @@ SceneTree.prototype.serialize = function()
 
 	//legacy
 	o.local_repository = this.local_repository;
-
-	//this is ugly but scenes can have also some rendering properties
-	o.ambient_color = toArray( this.ambient_color );
-	o.background_color = toArray( this.background_color ); //to non-typed
-	o.textures = cloneObject(this.textures);
 
 	//o.nodes = [];
 	o.extra = this.extra || {};
@@ -525,58 +504,66 @@ SceneTree.prototype.findComponentByUId = function(uid)
 	return null;
 }
 
+/**
+* Returns information of a node component property based on the locator of that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
+*
+* @method getPropertyInfo
+* @param {String} locator locator of the property
+* @return {Object} object with node, component, name, and value
+*/
+SceneTree.prototype.getPropertyInfo = function( property_uid )
+{
+	var path = property_uid.split("/");
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+
+	return node.getPropertyInfoFromPath( path );
+}
+
+
 
 /**
-* retrieves a Node
+* Assigns a value to the property of a component in a node based on the locator of that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
 *
-* @method getNodeByUid
-* @param {number} uid number
-* @return {Object} the node or null if it didnt find it
+* @method setPropertyValue
+* @param {String} locator locator of the property
+* @param {*} value the value to assign
+* @param {Component} target [Optional] used to avoid searching for the component every time
+* @return {Component} the target where the action was performed
 */
-
-/*
-SceneTree.prototype.getNodeByUid = function(uid)
+SceneTree.prototype.setPropertyValue = function( locator, value )
 {
-	for(var i in this.nodes)
-		if(this.nodes[i]._uid == uid)
-			return this.nodes[i];
-	return null;
-}
-*/
+	var path = locator.split("/");
 
+	//get node
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+
+	return node.setPropertyValueFromPath( path, value );
+}
 
 /**
-* retrieves a Node index
+* Assigns a value to the property of a component in a node based on the locator that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
 *
-* @method getNodeIndex
-* @param {Node} node
-* @return {Number} returns the node index in the nodes array
+* @method setPropertyValueFromPath
+* @param {Array} path a property locator split by "/"
+* @param {*} value the value to assign
+* @return {Component} the target where the action was performed
 */
-/*
-SceneTree.prototype.getNodeIndex = function(node)
+SceneTree.prototype.setPropertyValueFromPath = function( property_path, value )
 {
-	return this.nodes.indexOf(node);
-}
-*/
+	//get node
+	var node = this.getNode( property_path[0] );
+	if(!node)
+		return null;
 
-/**
-* retrieves a Node
-*
-* @method getNodesByClass
-* @param {String} className class name
-* @return {Object} returns all the nodes that match this class name
-*/
-
-/*
-SceneTree.prototype.getNodesByClass = function(classname)
-{
-	var r = [];
-	for (var i in this.nodes)
-		if(this.nodes[i].className && this.nodes[i].className.split(" ").indexOf(classname) != -1)
-			r.push(this.nodes[i]);
-	return r;
+	return node.setPropertyValueFromPath( property_path, value );
 }
-*/
 
 
 /**
@@ -959,6 +946,7 @@ function SceneNode( name )
 	this.addComponent( new Transform() );
 
 	//material
+	this._material = null;
 	//this.material = new Material();
 	this.extra = {}; //for extra info
 }
@@ -981,6 +969,36 @@ Object.defineProperty( SceneNode.prototype, 'name', {
 	},
 	get: function(){
 		return this._name;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'visible', {
+	set: function(v)
+	{
+		this.flags.visible = v;
+	},
+	get: function(){
+		return this.flags.visible;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'material', {
+	set: function(v)
+	{
+		this._material = v;
+		if(!v)
+			return;
+		if(v.constructor === String)
+			return;
+		if(v._root && v._root != this)
+			console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
+		else
+			v._root = this; //link
+	},
+	get: function(){
+		return this._material;
 	},
 	enumerable: true
 });
@@ -1057,6 +1075,114 @@ Object.defineProperty( SceneNode.prototype, 'className', {
 	},
 	enumerable: true
 });
+
+SceneNode.prototype.getPropertyInfoFromPath = function( path )
+{
+	var target = this;
+	var varname = path[1];
+
+	if(path.length > 2)
+	{
+		if(path[1][0] == "@")
+		{
+			varname = path[2];
+			target = this.getComponentByUId( path[1] );
+		}
+		else if (path[1] == "material")
+		{
+			target = this.getMaterial();
+			varname = path[2];
+		}
+
+		if(!target)
+			return null;
+	}
+
+	var v = undefined;
+
+	if( target.getPropertyInfoFromPath )
+	{
+		var r = target.getPropertyInfoFromPath( path );
+		if(r)
+			return r;
+	}
+
+	if( target.getPropertyValue )
+		v = target.getPropertyValue( varname );
+
+	if(v === undefined && target[ varname ] === undefined)
+		return null;
+
+	var value = v !== undefined ? v : target[ varname ];
+
+	var extra_info = target.constructor[ "@" + varname ];
+	var type = "";
+	if(extra_info)
+		type = extra_info.type;
+	if(!type && value !== null && value !== undefined)
+	{
+		if(value.constructor === String)
+			type = "string";
+		else if(value.constructor === Boolean)
+			type = "boolean";
+		else if(value.length)
+			type = "vec" + value.length;
+		else if(value.constructor === Number)
+			type = "number";
+	}
+
+	return {
+		node: this,
+		target: target,
+		name: varname,
+		value: value,
+		type: type
+	};
+}
+
+SceneNode.prototype.setPropertyValueFromPath = function( path, value )
+{
+	var target = null;
+	var varname = path[1];
+
+	if(path.length > 2)
+	{
+		if(path[1][0] == "@")
+		{
+			varname = path[2];
+			target = this.getComponentByUId( path[1] );
+		}
+		else if( path[1] == "material" )
+		{
+			target = this.getMaterial();
+			varname = path[2];
+		}
+
+		if(!target)
+			return null;
+	}
+	else
+		target = this;
+
+	if(target.setPropertyValueFromPath)
+		if( target.setPropertyValueFromPath(path, value) === true )
+			return target;
+	
+	if(target.setPropertyValue)
+		if( target.setPropertyValue( varname, value ) === true )
+			return target;
+
+	if( target[ varname ] === undefined )
+		return;
+
+	//disabled because if the vars has a setter it wont be called using the array.set
+	//if( target[ varname ] !== null && target[ varname ].set )
+	//	target[ varname ].set( value );
+	//else
+		target[ varname ] = value;
+
+	return target;
+}
 
 SceneNode.prototype.getResources = function(res, include_children)
 {
@@ -1181,16 +1307,10 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 	}
 }
 
-SceneNode.prototype.setMaterial = function(mat)
-{
-	this.material = mat;
-	//TODO: allow only strings and force to register the material
-}
-
-
 SceneNode.prototype.getMaterial = function()
 {
-	if (!this.material) return null;
+	if (!this.material)
+		return null;
 	if(this.material.constructor === String)
 		return this._in_tree ? LS.ResourcesManager.materials[ this.material ] : null;
 	return this.material;

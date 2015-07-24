@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -196,7 +198,7 @@ function WBin()
 
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = &quot;WBIN&quot;;
-WBin.VERSION = 0.2; //use numbers, never strings, fixed size in binary
+WBin.VERSION = 0.3; //use numbers, never strings, fixed size in binary
 WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
 
 WBin.LUMPNAME_SIZE = 54; //max size of a lump name, it is big because sometimes some names have urls
@@ -204,7 +206,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	&quot;ArrayBuffer&quot;:&quot;AB&quot;, &quot;Int8Array&quot;:&quot;I1&quot;, &quot;Uint8Array&quot;:&quot;i1&quot;, &quot;Int16Array&quot;:&quot;I2&quot;, &quot;Uint16Array&quot;:&quot;i2&quot;, &quot;Int32Array&quot;:&quot;I4&quot;, &quot;Uint32Array&quot;:&quot;i4&quot;,
-	&quot;Float32Array&quot;:&quot;F4&quot;, &quot;Float64Array&quot;: &quot;F8&quot;, &quot;Object&quot;:&quot;OB&quot;,&quot;String&quot;:&quot;ST&quot;,&quot;Number&quot;:&quot;NU&quot;, &quot;null&quot;:&quot;00&quot;
+	&quot;Float32Array&quot;:&quot;F4&quot;, &quot;Float64Array&quot;: &quot;F8&quot;, &quot;Object&quot;:&quot;OB&quot;,&quot;String&quot;:&quot;ST&quot;,&quot;WString&quot;:&quot;WS&quot;,&quot;Number&quot;:&quot;NU&quot;, &quot;null&quot;:&quot;00&quot;
 };
 
 WBin.REVERSE_CODES = {};
@@ -294,7 +296,7 @@ WBin.create = function( origin, origin_class_name )
 
 		//class specific actions
 		if (code == &quot;NU&quot;)
-			data = data.toString(); //numbers are stored as strings
+			data = new Float64Array([data]);  //data.toString(); //numbers are stored as strings
 		else if(code == &quot;OB&quot;)
 			data = JSON.stringify(data); //serialize the data
 
@@ -410,7 +412,12 @@ WBin.load = function( data_array, skip_classname )
 		{
 			case &quot;null&quot;: break;
 			case &quot;String&quot;: lump_final = WBin.Uint8ArrayToString( lump_data ); break;
-			case &quot;Number&quot;: lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case &quot;Number&quot;: 
+					if(header.version &lt; 0.3) //LEGACY: remove
+						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+					else
+						lump_final = (new Float64Array( lump_data.buffer ))[0];
+					break;
 			case &quot;Object&quot;: lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
 			case &quot;ArrayBuffer&quot;: lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
@@ -506,8 +513,17 @@ WBin.getObjectClassName = function(obj) {
 WBin.stringToUint8Array = function(str, fixed_length)
 {
 	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
 	for(var i = 0; i &lt; str.length; i++)
-		r[i] = str.charCodeAt(i);
+	{
+		var c = str.charCodeAt(i);
+		if(c &gt; 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(warning)
+		console.warn(&quot;WBin: there are characters in the string that cannot be encoded in 1 byte.&quot;);
 	return r;
 }
 

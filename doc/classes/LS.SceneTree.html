@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -320,21 +322,7 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getNodeByUid">getNodeByUid</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_getNodeIndex">getNodeIndex</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_getNodesByClass">getNodesByClass</a>
+                                <a href="#method_getPropertyInfo">getPropertyInfo</a>
 
                                 
                                 
@@ -370,6 +358,20 @@
                         
                             <li class="index-item method">
                                 <a href="#method_serialize">serialize</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_setPropertyValue">setPropertyValue</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_setPropertyValueFromPath">setPropertyValueFromPath</a>
 
                                 
                                 
@@ -543,7 +545,7 @@
             
         
         
-        <a href="../files/.._src_scene.js.html#l94"><code>..&#x2F;src&#x2F;scene.js:94</code></a>
+        <a href="../files/.._src_scene.js.html#l86"><code>..&#x2F;src&#x2F;scene.js:86</code></a>
         
         </p>
 
@@ -609,7 +611,7 @@ and trigger a &quot;clear&quot; LEvent</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l120"><code>..&#x2F;src&#x2F;scene.js:120</code></a>
+        <a href="../files/.._src_scene.js.html#l112"><code>..&#x2F;src&#x2F;scene.js:112</code></a>
         
         </p>
 
@@ -621,7 +623,8 @@ and trigger a &quot;clear&quot; LEvent</p>
 
     <div class="description">
         <p>Configure the Scene using an object (the object can be obtained from the function serialize)
-Inserts the nodes, configure them, and change the parameters</p>
+Inserts the nodes, configure them, and change the parameters
+Destroys previously existing info</p>
 
     </div>
 
@@ -703,7 +706,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l493"><code>..&#x2F;src&#x2F;scene.js:493</code></a>
+        <a href="../files/.._src_scene.js.html#l473"><code>..&#x2F;src&#x2F;scene.js:473</code></a>
         
         </p>
 
@@ -810,7 +813,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l509"><code>..&#x2F;src&#x2F;scene.js:509</code></a>
+        <a href="../files/.._src_scene.js.html#l489"><code>..&#x2F;src&#x2F;scene.js:489</code></a>
         
         </p>
 
@@ -917,7 +920,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l436"><code>..&#x2F;src&#x2F;scene.js:436</code></a>
+        <a href="../files/.._src_scene.js.html#l416"><code>..&#x2F;src&#x2F;scene.js:416</code></a>
         
         </p>
 
@@ -1024,7 +1027,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l478"><code>..&#x2F;src&#x2F;scene.js:478</code></a>
+        <a href="../files/.._src_scene.js.html#l458"><code>..&#x2F;src&#x2F;scene.js:458</code></a>
         
         </p>
 
@@ -1131,7 +1134,7 @@ Inserts the nodes, configure them, and change the parameters</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l452"><code>..&#x2F;src&#x2F;scene.js:452</code></a>
+        <a href="../files/.._src_scene.js.html#l432"><code>..&#x2F;src&#x2F;scene.js:432</code></a>
         
         </p>
 
@@ -1239,7 +1242,7 @@ If more than one object has the same name, the first one added to the tree is re
             
         
         
-        <a href="../files/.._src_scene.js.html#l466"><code>..&#x2F;src&#x2F;scene.js:466</code></a>
+        <a href="../files/.._src_scene.js.html#l446"><code>..&#x2F;src&#x2F;scene.js:446</code></a>
         
         </p>
 
@@ -1300,8 +1303,8 @@ If more than one object has the same name, the first one added to the tree is re
 </div>
 
                 
-                    <div id="method_getNodeByUid" class="method item">
-    <h3 class="name"><code>getNodeByUid</code></h3>
+                    <div id="method_getPropertyInfo" class="method item">
+    <h3 class="name"><code>getPropertyInfo</code></h3>
 
     
         <div class="args">
@@ -1309,7 +1312,7 @@ If more than one object has the same name, the first one added to the tree is re
             
                 <li class="arg">
                     
-                        <code>uid</code>
+                        <code>locator</code>
                     
                 </li>
             
@@ -1346,7 +1349,7 @@ If more than one object has the same name, the first one added to the tree is re
             
         
         
-        <a href="../files/.._src_scene.js.html#l528"><code>..&#x2F;src&#x2F;scene.js:528</code></a>
+        <a href="../files/.._src_scene.js.html#l507"><code>..&#x2F;src&#x2F;scene.js:507</code></a>
         
         </p>
 
@@ -1357,7 +1360,8 @@ If more than one object has the same name, the first one added to the tree is re
     </div>
 
     <div class="description">
-        <p>retrieves a Node</p>
+        <p>Returns information of a node component property based on the locator of that property
+Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;</p>
 
     </div>
 
@@ -1369,227 +1373,14 @@ If more than one object has the same name, the first one added to the tree is re
             
                 <li class="param">
                     
-                        <code class="param-name">uid</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>number</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>the node or null if it didnt find it</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getNodeIndex" class="method item">
-    <h3 class="name"><code>getNodeIndex</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>node</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Number</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l547"><code>..&#x2F;src&#x2F;scene.js:547</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>retrieves a Node index</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">node</code>
-                        <span class="type">Node</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Number</span>:
-                    
-                    <p>returns the node index in the nodes array</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getNodesByClass" class="method item">
-    <h3 class="name"><code>getNodesByClass</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>className</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l561"><code>..&#x2F;src&#x2F;scene.js:561</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>retrieves a Node</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">className</code>
+                        <code class="param-name">locator</code>
                         <span class="type">String</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>class name</p>
+                        <p>locator of the property</p>
 
                     </div>
 
@@ -1609,7 +1400,7 @@ If more than one object has the same name, the first one added to the tree is re
                     
                         <span class="type">Object</span>:
                     
-                    <p>returns all the nodes that match this class name</p>
+                    <p>object with node, component, name, and value</p>
 
                 
             </div>
@@ -1656,7 +1447,7 @@ If more than one object has the same name, the first one added to the tree is re
             
         
         
-        <a href="../files/.._src_scene.js.html#l45"><code>..&#x2F;src&#x2F;scene.js:45</code></a>
+        <a href="../files/.._src_scene.js.html#l41"><code>..&#x2F;src&#x2F;scene.js:41</code></a>
         
         </p>
 
@@ -1748,7 +1539,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l264"><code>..&#x2F;src&#x2F;scene.js:264</code></a>
+        <a href="../files/.._src_scene.js.html#l244"><code>..&#x2F;src&#x2F;scene.js:244</code></a>
         
         </p>
 
@@ -1861,7 +1652,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l581"><code>..&#x2F;src&#x2F;scene.js:581</code></a>
+        <a href="../files/.._src_scene.js.html#l569"><code>..&#x2F;src&#x2F;scene.js:569</code></a>
         
         </p>
 
@@ -1918,7 +1709,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l678"><code>..&#x2F;src&#x2F;scene.js:678</code></a>
+        <a href="../files/.._src_scene.js.html#l666"><code>..&#x2F;src&#x2F;scene.js:666</code></a>
         
         </p>
 
@@ -1977,7 +1768,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l211"><code>..&#x2F;src&#x2F;scene.js:211</code></a>
+        <a href="../files/.._src_scene.js.html#l196"><code>..&#x2F;src&#x2F;scene.js:196</code></a>
         
         </p>
 
@@ -2006,6 +1797,288 @@ It calls the serialize method in every node</p>
                         <span class="type">Object</span>:
                     
                     <p>return a JS Object with all the scene info</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_setPropertyValue" class="method item">
+    <h3 class="name"><code>setPropertyValue</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>locator</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>value</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>target</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Component</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l527"><code>..&#x2F;src&#x2F;scene.js:527</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Assigns a value to the property of a component in a node based on the locator of that property
+Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">locator</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>locator of the property</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">value</code>
+                        <span class="type"></span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the value to assign</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">target</code>
+                        <span class="type">Component</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>[Optional] used to avoid searching for the component every time</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Component</span>:
+                    
+                    <p>the target where the action was performed</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_setPropertyValueFromPath" class="method item">
+    <h3 class="name"><code>setPropertyValueFromPath</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>path</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>value</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Component</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l549"><code>..&#x2F;src&#x2F;scene.js:549</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Assigns a value to the property of a component in a node based on the locator that property
+Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">path</code>
+                        <span class="type">Array</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>a property locator split by &quot;/&quot;</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">value</code>
+                        <span class="type"></span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the value to assign</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Component</span>:
+                    
+                    <p>the target where the action was performed</p>
 
                 
             </div>
@@ -2058,7 +2131,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l633"><code>..&#x2F;src&#x2F;scene.js:633</code></a>
+        <a href="../files/.._src_scene.js.html#l621"><code>..&#x2F;src&#x2F;scene.js:621</code></a>
         
         </p>
 
@@ -2147,7 +2220,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l655"><code>..&#x2F;src&#x2F;scene.js:655</code></a>
+        <a href="../files/.._src_scene.js.html#l643"><code>..&#x2F;src&#x2F;scene.js:643</code></a>
         
         </p>
 
@@ -2242,7 +2315,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l840"><code>..&#x2F;src&#x2F;scene.js:840</code></a>
+        <a href="../files/.._src_scene.js.html#l828"><code>..&#x2F;src&#x2F;scene.js:828</code></a>
         
         </p>
 
@@ -2340,7 +2413,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l832"><code>..&#x2F;src&#x2F;scene.js:832</code></a>
+        <a href="../files/.._src_scene.js.html#l820"><code>..&#x2F;src&#x2F;scene.js:820</code></a>
         
         </p>
 
@@ -2384,7 +2457,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l289"><code>..&#x2F;src&#x2F;scene.js:289</code></a>
+        <a href="../files/.._src_scene.js.html#l269"><code>..&#x2F;src&#x2F;scene.js:269</code></a>
         
         </p>
 
@@ -2428,7 +2501,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l811"><code>..&#x2F;src&#x2F;scene.js:811</code></a>
+        <a href="../files/.._src_scene.js.html#l799"><code>..&#x2F;src&#x2F;scene.js:799</code></a>
         
         </p>
 
@@ -2495,7 +2568,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l111"><code>..&#x2F;src&#x2F;scene.js:111</code></a>
+        <a href="../files/.._src_scene.js.html#l103"><code>..&#x2F;src&#x2F;scene.js:103</code></a>
         
         </p>
 
@@ -2539,7 +2612,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l202"><code>..&#x2F;src&#x2F;scene.js:202</code></a>
+        <a href="../files/.._src_scene.js.html#l187"><code>..&#x2F;src&#x2F;scene.js:187</code></a>
         
         </p>
 
@@ -2607,7 +2680,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l300"><code>..&#x2F;src&#x2F;scene.js:300</code></a>
+        <a href="../files/.._src_scene.js.html#l280"><code>..&#x2F;src&#x2F;scene.js:280</code></a>
         
         </p>
 
@@ -2651,7 +2724,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l311"><code>..&#x2F;src&#x2F;scene.js:311</code></a>
+        <a href="../files/.._src_scene.js.html#l291"><code>..&#x2F;src&#x2F;scene.js:291</code></a>
         
         </p>
 
@@ -2695,7 +2768,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l394"><code>..&#x2F;src&#x2F;scene.js:394</code></a>
+        <a href="../files/.._src_scene.js.html#l374"><code>..&#x2F;src&#x2F;scene.js:374</code></a>
         
         </p>
 
@@ -2762,7 +2835,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l419"><code>..&#x2F;src&#x2F;scene.js:419</code></a>
+        <a href="../files/.._src_scene.js.html#l399"><code>..&#x2F;src&#x2F;scene.js:399</code></a>
         
         </p>
 
@@ -2829,7 +2902,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l254"><code>..&#x2F;src&#x2F;scene.js:254</code></a>
+        <a href="../files/.._src_scene.js.html#l234"><code>..&#x2F;src&#x2F;scene.js:234</code></a>
         
         </p>
 
@@ -2897,7 +2970,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l645"><code>..&#x2F;src&#x2F;scene.js:645</code></a>
+        <a href="../files/.._src_scene.js.html#l633"><code>..&#x2F;src&#x2F;scene.js:633</code></a>
         
         </p>
 
@@ -2964,7 +3037,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l666"><code>..&#x2F;src&#x2F;scene.js:666</code></a>
+        <a href="../files/.._src_scene.js.html#l654"><code>..&#x2F;src&#x2F;scene.js:654</code></a>
         
         </p>
 
@@ -3031,7 +3104,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l823"><code>..&#x2F;src&#x2F;scene.js:823</code></a>
+        <a href="../files/.._src_scene.js.html#l811"><code>..&#x2F;src&#x2F;scene.js:811</code></a>
         
         </p>
 

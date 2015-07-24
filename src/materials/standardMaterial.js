@@ -14,35 +14,25 @@
 
 function StandardMaterial(o)
 {
-	this.name = "";
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
+	Material.call(this,null); //do not pass the object
 
-	//this.shader_name = null; //default shader
-	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.shader_name = "global";
-
-	this.ambient = new Float32Array([1.0,1.0,1.0]);
-	this.emissive = new Float32Array([0.0,0.0,0.0]);
+	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
+	this.createProperty("emissive", new Float32Array(3), "color" );
+	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
-	this.specular_factor = 0.1;
-	this.specular_gloss = 10.0;
+
 	this.specular_ontop = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
 	this.reflection_additive = false;
 	this.reflection_specular = false;
-	this.velvet = new Float32Array([0.5,0.5,0.5]);
+	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
 	this._velvet_info = vec4.create();
-	this.detail = new Float32Array([0.0, 10, 10]);
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.extra_factor = 0.0; //used for debug and dev
-	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
+	this._detail = new Float32Array([0.0, 10, 10]);
 	this._extra_data = vec4.create();
 
-	this.blend_mode = Blend.NORMAL;
 	this.normalmap_factor = 1.0;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
@@ -51,12 +41,36 @@ function StandardMaterial(o)
 	//used for special fx 
 	this.extra_surface_shader_code = "";
 
-	this.textures = {};
 	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
 }
+
+Object.defineProperty( StandardMaterial.prototype, 'detail_factor', {
+	get: function() { return this._detail[0]; },
+	set: function(v) { this._detail[0] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'detail_scale', {
+	get: function() { return this._detail.subarray(1,3); },
+	set: function(v) { this._detail[1] = v[0]; this._detail[2] = v[1]; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'extra_factor', {
+	get: function() { return this._extra_data[3]; },
+	set: function(v) { this._extra_data[3] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
+	get: function() { return this._extra_data.subarray(0,3); },
+	set: function(v) { this._extra_data.set( v ); },
+	enumerable: true
+});
+
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
 StandardMaterial.NORMAL_TEXTURE = "normal";
@@ -208,13 +222,13 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient)
-		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	if(this.use_scene_ambient && scene.info)
+		uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
 	else
 		uniforms.u_ambient_color = this.ambient;
 
 	uniforms.u_emissive_color = this.emissive || vec3.create();
-	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_specular = this._specular_data;
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
 	uniforms.u_backlight_factor = this.backlight_factor;
 	uniforms.u_normalmap_factor = this.normalmap_factor;
@@ -225,10 +239,8 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	this._velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
 	uniforms.u_velvet_info = this._velvet_info;
 
-	uniforms.u_detail_info = this.detail;
+	uniforms.u_detail_info = this._detail;
 
-	this._extra_data.set( this.extra_color );
-	this._extra_data[3] = this.extra_factor;
 	uniforms.u_extra_data = this._extra_data;
 
 	uniforms.u_texture_matrix = this.uvs_matrix;
@@ -302,6 +314,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_factor":
 		case "displacementmap_factor":
 		case "extra_factor":
+		case "detail_factor":
 		//strings
 		//bools
 		case "specular_ontop":
@@ -315,7 +328,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "ambient":	
 		case "emissive": 
 		case "velvet":
-		case "detail":
+		case "detail_scale":
 		case "extra_color":
 			if(this[name].length == value.length)
 				this[name].set(value);
@@ -355,7 +368,8 @@ StandardMaterial.prototype.getProperties = function()
 		emissive:"vec3",
 		velvet:"vec3",
 		extra_color:"vec3",
-		detail:"vec3",
+		detail_factor:"number",
+		detail_scale:"vec2",
 
 		specular_ontop:"boolean",
 		normalmap_tangent:"boolean",
@@ -367,5 +381,5 @@ StandardMaterial.prototype.getProperties = function()
 	return o;
 }
 
-LS.registerMaterialClass(StandardMaterial);
+LS.registerMaterialClass( StandardMaterial );
 LS.StandardMaterial = StandardMaterial;

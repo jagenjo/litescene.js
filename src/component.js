@@ -28,10 +28,11 @@ Component.prototype.configure = function(o)
 { 
 	if(!o)
 		return;
-	if(o.uid) //special case, uid must never be enumerable to avoid showing it in the editor
+	if(o.uid) 
 	{
-		if(!this.uid && !Object.hasOwnProperty(this, "uid"))
-			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
+		//special case, uid must never be enumerable to avoid showing it in the editor
+		if(this.uid === undefined && !Object.hasOwnProperty(this, "uid"))
+			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false, writable: true });
 		else
 			this.uid = o.uid;
 	}
@@ -44,6 +45,40 @@ Component.prototype.serialize = function()
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
 	return o;
+}
+
+Component.prototype.createProperty = function( name, value, type )
+{
+	if(type)
+		this.constructor[ "@" + name ] = { type: type };
+
+	//basic type
+	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
+	{
+		this[ name ] = value;
+		return;
+	}
+
+	//vector type
+	if(value.constructor === Float32Array)
+	{
+		var private_name = "_" + name;
+		value = new Float32Array( value ); //clone
+		this[ private_name ] = value; //this could be removed...
+
+		Object.defineProperty( this, name, {
+			get: function() { return value; },
+			set: function(v) { value.set( v ); },
+			enumerable: true
+		});
+	}
+}
+
+Component.prototype.getLocatorString = function()
+{
+	if(!this._root)
+		return "";
+	return this._root.uid + "/" + this.uid;
 }
 
 LS.Component = Component;

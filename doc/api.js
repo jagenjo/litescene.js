@@ -16,6 +16,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.LightFX",
         "LS.Components.NodeManipulator",
         "LS.Components.PlayAnimation",
+        "LS.Components.Poser",
         "LS.Components.RealtimeReflector",
         "LS.Components.Spherize",
         "LS.Components.Target",

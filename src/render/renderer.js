@@ -202,7 +202,12 @@ var Renderer = {
 		gl.enable(gl.SCISSOR_TEST);
 
 		//clear buffer
-		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
+		var info = scene.info;
+		if(info)
+			gl.clearColor( info.background_color[0],info.background_color[1],info.background_color[2], info.background_color[3] );
+		else
+			gl.clearColor(0,0,0,0);
+
 		if(render_options.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
 
@@ -301,11 +306,11 @@ var Renderer = {
 		this.fillSceneShaderUniforms( scene, render_options );
 
 		//render background: maybe this should be moved to a component
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.textures["background"])
+		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["background"])
 		{
 			var texture = null;
-			if(typeof(scene.textures["background"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["background"] ];
+			if(typeof(scene.info.textures["background"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.info.textures["background"] ];
 			if(texture)
 			{
 				gl.disable( gl.BLEND );
@@ -421,11 +426,11 @@ var Renderer = {
 		LEvent.trigger(scene, "renderScreenSpace", render_options);
 
 		//foreground object
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.textures["foreground"])
+		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["foreground"])
 		{
 			var texture = null;
-			if(typeof(scene.textures["foreground"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(typeof(scene.info.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.info.textures["foreground"] ];
 			if(texture)
 			{
 				gl.enable( gl.BLEND );
@@ -926,8 +931,9 @@ var Renderer = {
 			u_time: scene._time || getTime() * 0.001,
 			u_brightness_factor: render_options.brightness_factor != null ? render_options.brightness_factor : 1,
 			u_colorclip_factor: render_options.colorclip_factor != null ? render_options.colorclip_factor : 0,
-			u_ambient_light: scene.ambient_color,
-			u_background_color: scene.background_color.subarray(0,3)
+			u_ambient_light: scene.info.ambient_color,
+			u_background_color: scene.info.background_color.subarray(0,3),
+			u_viewport: gl.viewport_data
 		};
 
 		if(render_options.clipping_plane)
@@ -937,13 +943,11 @@ var Renderer = {
 		scene._samplers = {};
 
 
-		//if(scene.textures.environment)
-		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
-
-		for(var i in scene.textures)
+		for(var i in scene.info.textures)
 		{
-			var texture = LS.getTexture( scene.textures[i] );
-			if(!texture) continue;
+			var texture = LS.getTexture( scene.info.textures[i] );
+			if(!texture)
+				continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
 			if(texture.texture_type == gl.TEXTURE_2D)
@@ -1169,7 +1173,7 @@ var Renderer = {
 		function inner_draw_2d()
 		{
 			var scene = Renderer._current_scene;
-			gl.clearColor(scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
+			gl.clearColor(scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 			if(render_options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
@@ -1205,10 +1209,10 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var cams = Camera.cubemap_camera_parameters;
-			if(render_options.is_shadowmap)
+			if(render_options.is_shadowmap || !scene.info )
 				gl.clearColor(0,0,0,0);
 			else
-				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
+				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
@@ -1229,9 +1233,9 @@ var Renderer = {
 		if(!scene)
 		{
 			scene = this._material_scene = new LS.SceneTree();
-			scene.background_color.set([0,0,0,0]);
+			scene.info.background_color.set([0,0,0,0]);
 			if(options.environment_texture)
-				scene.textures.environment = options.environment_texture;
+				scene.info.textures.environment = options.environment_texture;
 			var node = new LS.SceneNode( "sphere" );
 			var compo = new LS.Components.GeometricPrimitive( { size: 40, subdivisions: 50, geometry: LS.Components.GeometricPrimitive.SPHERE } );
 			node.addComponent( compo );

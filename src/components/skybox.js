@@ -27,7 +27,7 @@ Skybox.prototype.onRemovedFromNode = function(node)
 Skybox.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
-		res[this.texture] = Texture;
+		res[this.texture] = GL.Texture;
 	return res;
 }
 
@@ -44,7 +44,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 	var texture = null;
 	if (this.use_environment)
-		texture = Renderer._current_scene.textures["environment"];
+		texture = LS.Renderer._current_scene.info.textures["environment"];
 	else
 		texture = this.texture;
 
@@ -66,7 +66,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 		RI.priority = 100;
 
 		RI.onPreRender = function(render_options) { 
@@ -89,7 +89,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material = new LS.Material({use_scene_ambient:false});
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
-	var sampler = mat.setTexture( Material.COLOR, texture);
+	var sampler = mat.setTexture( LS.Material.COLOR, texture );
 
 	if(texture && texture.texture_type == gl.TEXTURE_2D)
 	{

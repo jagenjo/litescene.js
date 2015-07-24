@@ -6,6 +6,8 @@
 
 function Transform(o)
 {
+	//this.uid = null;
+
 	this._position = vec3.create();
 	this._rotation = quat.create();
 	this._scaling = vec3.fromValues(1,1,1);
@@ -35,6 +37,10 @@ Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
 Transform.RIGHT = vec3.fromValues(1,0,0);
 Transform.FRONT = vec3.fromValues(0,0,-1);
+
+
+Transform["@position"] = { type: "position"};
+Transform["@rotation"] = { type: "quat"};
 
 Transform.attributes = {
 	position:"vec3",
@@ -70,6 +76,33 @@ Object.defineProperty( Transform.prototype, 'position', {
 		this._must_update_matrix = true; 
 	},
 	enumerable: true
+});
+
+Object.defineProperty( Transform.prototype, 'x', {
+	get: function() { return this._position[0]; },
+	set: function(v) { 
+		this._position[0] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+
+Object.defineProperty( Transform.prototype, 'y', {
+	get: function() { return this._position[1]; },
+	set: function(v) { 
+		this._position[1] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+
+Object.defineProperty( Transform.prototype, 'z', {
+	get: function() { return this._position[2]; },
+	set: function(v) { 
+		this._position[2] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
 });
 
 /**
@@ -185,12 +218,12 @@ Transform.prototype.copyFrom = function(src)
 */
 Transform.prototype.configure = function(o)
 {
-	if(o.position) vec3.copy( this._position, o.position );
-	if(o.scaling)
-		vec3.copy( this._scaling, o.scaling );
+	if(o.uid) this.uid = o.uid;
+	if(o.position) this._position.set( o.position );
+	if(o.scaling) this._scaling.set( o.scaling );
 
 	if(o.rotation && o.rotation.length == 4)
-		quat.copy( this._rotation, o.rotation );
+		this._rotation.set( o.rotation );
 	if(o.rotation && o.rotation.length == 3)
 	{
 		quat.identity( this._rotation );
@@ -215,6 +248,7 @@ Transform.prototype.configure = function(o)
 Transform.prototype.serialize = function()
 {
 	return {
+		uid: this.uid,
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],
 		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ],

@@ -34,7 +34,7 @@ function WBin()
 
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.2; //use numbers, never strings, fixed size in binary
+WBin.VERSION = 0.3; //use numbers, never strings, fixed size in binary
 WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
 
 WBin.LUMPNAME_SIZE = 54; //max size of a lump name, it is big because sometimes some names have urls
@@ -42,7 +42,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","WString":"WS","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -132,7 +132,7 @@ WBin.create = function( origin, origin_class_name )
 
 		//class specific actions
 		if (code == "NU")
-			data = data.toString(); //numbers are stored as strings
+			data = new Float64Array([data]);  //data.toString(); //numbers are stored as strings
 		else if(code == "OB")
 			data = JSON.stringify(data); //serialize the data
 
@@ -248,7 +248,12 @@ WBin.load = function( data_array, skip_classname )
 		{
 			case "null": break;
 			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
-			case "Number": lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "Number": 
+					if(header.version < 0.3) //LEGACY: remove
+						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+					else
+						lump_final = (new Float64Array( lump_data.buffer ))[0];
+					break;
 			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
@@ -344,8 +349,17 @@ WBin.getObjectClassName = function(obj) {
 WBin.stringToUint8Array = function(str, fixed_length)
 {
 	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
 	for(var i = 0; i < str.length; i++)
-		r[i] = str.charCodeAt(i);
+	{
+		var c = str.charCodeAt(i);
+		if(c > 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(warning)
+		console.warn("WBin: there are characters in the string that cannot be encoded in 1 byte.");
 	return r;
 }
 

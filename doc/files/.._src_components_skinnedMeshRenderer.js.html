@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -170,7 +172,7 @@ function SkinnedMeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 	this.ignore_transform = true;
 	//this.factor = 1;
@@ -191,6 +193,17 @@ function SkinnedMeshRenderer(o)
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
 }
+
+Object.defineProperty( SkinnedMeshRenderer.prototype, &#x27;primitive&#x27;, {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 &amp;&amp; v != 0 &amp;&amp; v!= 1 &amp;&amp; v!= 4 &amp;&amp; v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 SkinnedMeshRenderer.MAX_BONES = 64;
 SkinnedMeshRenderer.gpu_skinning_supported = true;
@@ -355,7 +368,6 @@ SkinnedMeshRenderer.prototype.getBoneMatrices = function(ref_mesh)
 	return bones;
 }
 
-//MeshRenderer.prototype.getRenderInstance = function(options)
 SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, options)
 {
 	if(!this.enabled)
@@ -412,6 +424,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms[&quot;u_bones&quot;] = u_bones;
+			if(bones.length &gt; SkinnedMeshRenderer.MAX_BONES)
+				RI.macros[&quot;MAX_BONES&quot;] = bones.length.toString();
 			delete RI.samplers[&quot;u_bones&quot;]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures &gt; 0 ) //upload the bones as a float texture (slower)
@@ -419,19 +433,19 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, SkinnedMeshRenderer.MAX_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} );
+				texture = this._bones_texture = new GL.Texture( 1, bones.length * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
+			LS.RM.textures[&quot;:bones&quot;] = texture; //debug
 			RI.macros[&quot;USE_SKINNING_TEXTURE&quot;] = &quot;&quot;;
 			RI.samplers[&quot;u_bones&quot;] = texture;
 			delete RI.uniforms[&quot;u_bones&quot;]; //use samplers, not uniforms
 		}
 		else
 			console.error(&quot;impossible to get here&quot;)
-
 	}
 	else //cpu skinning (mega slow)
 	{
@@ -575,6 +589,11 @@ SkinnedMeshRenderer.prototype.applySkin = function(ref_mesh, skin_mesh)
 	vertices_buffer.upload(gl.STREAM_DRAW);
 	if(normals_buffer)
 		normals_buffer.upload(gl.STREAM_DRAW);
+}
+
+SkinnedMeshRenderer.prototype.extractSkeleton = function()
+{
+	//TODO
 }
 
 LS.registerComponent(SkinnedMeshRenderer);

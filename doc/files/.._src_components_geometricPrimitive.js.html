@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -169,15 +171,27 @@
 
 function GeometricPrimitive(o)
 {
+	this.enabled = true;
 	this.size = 10;
 	this.subdivisions = 10;
 	this.geometry = GeometricPrimitive.CUBE;
-	this.primitive = null;
+	this._primitive = -1;
 	this.align_z = false;
 
 	if(o)
 		this.configure(o);
 }
+
+Object.defineProperty( GeometricPrimitive.prototype, &#x27;primitive&#x27;, {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 &amp;&amp; v != 0 &amp;&amp; v!= 1 &amp;&amp; v!= 4 &amp;&amp; v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
@@ -189,7 +203,7 @@ GeometricPrimitive.ICOSAHEDRON = 7;
 
 GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
 GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER, &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Icosahedron&quot;:GeometricPrimitive.ICOSAHEDRON, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
-GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;combo&quot;, values: {&quot;Default&quot;:null, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
+GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
 GeometricPrimitive[&quot;@subdivisions&quot;] = { type:&quot;number&quot;, step:1, min:0 };
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -238,6 +252,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 //GeometricPrimitive.prototype.getRenderInstance = function()
 GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	//if(this.size == 0) return;
 	var mesh = null;
 	if(!this._root) return;

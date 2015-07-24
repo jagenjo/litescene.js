@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -292,6 +294,44 @@ GraphComponent.prototype.getGraph = function()
 	return this._graph;
 }
 
+GraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType(&quot;scene/global&quot;);
+	if(nodes.length)
+	{
+		for(var i = 0; i &lt; nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+GraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType(&quot;scene/global&quot;);
+	if(nodes.length)
+	{
+		for(var i = 0; i &lt; nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value &amp;&amp; n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
+}
 
 LS.registerComponent(GraphComponent);
 
@@ -404,6 +444,45 @@ FXGraphComponent.prototype.getResources = function(res)
 			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
+}
+
+FXGraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType(&quot;scene/global&quot;);
+	if(nodes.length)
+	{
+		for(var i = 0; i &lt; nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+FXGraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType(&quot;scene/global&quot;);
+	if(nodes.length)
+	{
+		for(var i = 0; i &lt; nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value &amp;&amp; n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
 }
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)

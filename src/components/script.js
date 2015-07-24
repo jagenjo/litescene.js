@@ -4,6 +4,7 @@ function Script(o)
 	this.code = "this.update = function(dt)\n{\n\tnode.scene.refresh();\n}";
 
 	this._script = new LScript();
+
 	this._script.catch_exceptions = false;
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
@@ -80,6 +81,12 @@ Script.prototype.processCode = function(skip_events)
 	if(this._root && !Script.block_execution )
 	{
 		var ret = this._script.compile({component:this, node: this._root});
+		if(	this._script._context )
+		{
+			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);
+			this._script._context.__proto__.getLocatorString = function() { return this.getComponent().getLocatorString() + "/context"; };
+		}
+
 		if(!skip_events)
 			this.hookEvents();
 		return ret;
@@ -87,6 +94,7 @@ Script.prototype.processCode = function(skip_events)
 	return true;
 }
 
+//used for graphs
 Script.prototype.setAttribute = function(name, value)
 {
 	var ctx = this.getContext();
@@ -113,6 +121,99 @@ Script.prototype.getAttributes = function()
 	var attrs = LS.getObjectAttributes( ctx );
 	attrs.enabled = "boolean";
 	return attrs;
+}
+
+/*
+Script.prototype.getPropertyValue = function( property )
+{
+	var ctx = this.getContext();
+	if(!ctx)
+		return;
+
+	return ctx[ property ];
+}
+
+Script.prototype.setPropertyValue = function( property, value )
+{
+	var context = this.getContext();
+	if(!context)
+		return;
+
+	if( context[ property ] === undefined )
+		return;
+
+	if(context[ property ] && context[ property ].set)
+		context[ property ].set( value );
+	else
+		context[ property ] = value;
+
+	return true;
+}
+*/
+
+//used for animation tracks
+Script.prototype.getPropertyInfoFromPath = function( path )
+{
+	if(path.length < 4)
+		return;
+
+	if(path[2] != "context")
+		return;
+
+	var context = this.getContext();
+	var varname = path[3];
+	if(!context || context[ varname ] === undefined )
+		return;
+
+	var value = context[ varname ];
+	var extra_info = context[ "@" + varname ];
+
+	var type = "";
+	if(extra_info)
+		type = extra_info.type;
+
+
+	if(!type && value !== null && value !== undefined)
+	{
+		if(value.constructor === String)
+			type = "string";
+		else if(value.constructor === Boolean)
+			type = "boolean";
+		else if(value.length)
+			type = "vec" + value.length;
+		else if(value.constructor === Number)
+			type = "number";
+	}
+
+	return {
+		node: this._root,
+		target: context,
+		name: varname,
+		value: value,
+		type: type
+	};
+}
+
+Script.prototype.setPropertyValueFromPath = function( path, value )
+{
+	if(path.length < 4)
+		return;
+
+	if(path[2] != "context" )
+		return;
+
+	var context = this.getContext();
+	var varname = path[3];
+	if(!context || context[ varname ] === undefined )
+		return;
+
+	if( context[ varname ] === undefined )
+		return;
+
+	if(context[ varname ] && context[ varname ].set)
+		context[ varname ].set( value );
+	else
+		context[ varname ] = value;
 }
 
 Script.prototype.hookEvents = function()
@@ -207,7 +308,6 @@ Script.prototype.getResources = function(res)
 	
 	ctx.getResources( res );
 }
-
 
 LS.registerComponent(Script);
 LS.Script = Script;

@@ -5,7 +5,7 @@ function TerrainRenderer(o)
 
 	this.subdivisions = 10;
 	this.heightmap = "";
-	this.primitive = null;
+	this._primitive = -1;
 	this.auto_update = true;
 	this.action = "Update"; //button
 
@@ -16,6 +16,17 @@ function TerrainRenderer(o)
 		this.configure(o);
 }
 
+Object.defineProperty( TerrainRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
+
 TerrainRenderer.icon = "mini-icon-terrain.png";
 
 TerrainRenderer["@subdivisions"] = { type: "number", min:1,max:255,step:1 };
@@ -24,7 +35,7 @@ TerrainRenderer["@action"] = { widget: "button", callback: function() {
 	if(this.options.instance)
 		this.options.instance.updateMesh();
 }};
-TerrainRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+TerrainRenderer["@primitive"] = {type:"enum", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 
 
 TerrainRenderer.prototype.onAddedToNode = function(node)

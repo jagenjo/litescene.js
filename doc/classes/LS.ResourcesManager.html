@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -312,6 +314,13 @@ It also contains the parsers and methods in charge of processing them</p>
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_getResource">getResource</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_getTexture">getTexture</a>
 
                                 
@@ -471,7 +480,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l486"><code>..&#x2F;src&#x2F;resourcesManager.js:486</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l496"><code>..&#x2F;src&#x2F;resourcesManager.js:496</code></a>
         
         </p>
 
@@ -1031,7 +1040,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l663"><code>..&#x2F;src&#x2F;resourcesManager.js:663</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l673"><code>..&#x2F;src&#x2F;resourcesManager.js:673</code></a>
         
         </p>
 
@@ -1196,6 +1205,95 @@ The order to obtain that object is:
 </div>
 
                 
+                    <div id="method_getResource" class="method item">
+    <h3 class="name"><code>getResource</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l254"><code>..&#x2F;src&#x2F;resourcesManager.js:254</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the resource if it has been loaded, if you want to force to load it, use load</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>where the resource is located (if its a relative url it depends on the path attribute)</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_getTexture" class="method item">
     <h3 class="name"><code>getTexture</code></h3>
 
@@ -1242,7 +1340,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l676"><code>..&#x2F;src&#x2F;resourcesManager.js:676</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l686"><code>..&#x2F;src&#x2F;resourcesManager.js:686</code></a>
         
         </p>
 
@@ -1346,7 +1444,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l547"><code>..&#x2F;src&#x2F;resourcesManager.js:547</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l557"><code>..&#x2F;src&#x2F;resourcesManager.js:557</code></a>
         
         </p>
 
@@ -1442,7 +1540,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l600"><code>..&#x2F;src&#x2F;resourcesManager.js:600</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l621"><code>..&#x2F;src&#x2F;resourcesManager.js:621</code></a>
         
         </p>
 
@@ -1453,7 +1551,7 @@ The order to obtain that object is:
     </div>
 
     <div class="description">
-        <p>Tells if it is loading resources</p>
+        <p>forces to try to reload again resources not found</p>
 
     </div>
 
@@ -1513,7 +1611,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l611"><code>..&#x2F;src&#x2F;resourcesManager.js:611</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l610"><code>..&#x2F;src&#x2F;resourcesManager.js:610</code></a>
         
         </p>
 
@@ -1524,7 +1622,7 @@ The order to obtain that object is:
     </div>
 
     <div class="description">
-        <p>forces to try to reload again resources not found</p>
+        <p>Tells if it is loading resources</p>
 
     </div>
 
@@ -1602,7 +1700,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l254"><code>..&#x2F;src&#x2F;resourcesManager.js:254</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l265"><code>..&#x2F;src&#x2F;resourcesManager.js:265</code></a>
         
         </p>
 
@@ -1614,7 +1712,7 @@ The order to obtain that object is:
 
     <div class="description">
         <p>Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
-Do not use for regular files, instead use the LS.Network methods</p>
+Do not use to load regular files (txts, csv, etc), instead use the LS.Network methods</p>
 
     </div>
 
@@ -1650,7 +1748,7 @@ Do not use for regular files, instead use the LS.Network methods</p>
                     
 
                     <div class="param-description">
-                        <p>options to apply to the loaded image</p>
+                        <p>options to apply to the loaded resource when processing it</p>
 
                     </div>
 
@@ -1667,7 +1765,7 @@ Do not use for regular files, instead use the LS.Network methods</p>
                     
 
                     <div class="param-description">
-                        <p>callback when the resource is loaded and cached</p>
+                        <p>callback when the resource is loaded and cached, params: callback( url, resource, options )</p>
 
                     </div>
 
@@ -1850,7 +1948,7 @@ Do not use for regular files, instead use the LS.Network methods</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l331"><code>..&#x2F;src&#x2F;resourcesManager.js:331</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l341"><code>..&#x2F;src&#x2F;resourcesManager.js:341</code></a>
         
         </p>
 
@@ -2091,7 +2189,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l426"><code>..&#x2F;src&#x2F;resourcesManager.js:426</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l436"><code>..&#x2F;src&#x2F;resourcesManager.js:436</code></a>
         
         </p>
 
@@ -2210,7 +2308,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l566"><code>..&#x2F;src&#x2F;resourcesManager.js:566</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l576"><code>..&#x2F;src&#x2F;resourcesManager.js:576</code></a>
         
         </p>
 
@@ -2581,7 +2679,7 @@ request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&g
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l461"><code>..&#x2F;src&#x2F;resourcesManager.js:461</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l471"><code>..&#x2F;src&#x2F;resourcesManager.js:471</code></a>
         
         </p>
 

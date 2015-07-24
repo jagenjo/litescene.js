@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -222,7 +224,7 @@ function RenderInstance(node, component)
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
-	this.blend_func = BlendFunctions[&quot;normal&quot;]; //Blend.funcs[&quot;add&quot;], ...
+	this.blend_func = LS.BlendFunctions[&quot;normal&quot;]; //Blend.funcs[&quot;add&quot;], ...
 
 	//transformation
 	this.matrix = mat4.create();
@@ -292,7 +294,7 @@ RenderInstance.prototype.setMaterial = function(material)
 //sets the buffers to render, the primitive, and the bounding
 RenderInstance.prototype.setMesh = function(mesh, primitive)
 {
-	if( !primitive &amp;&amp; primitive != 0)
+	if( primitive == -1 || primitive === undefined )
 		primitive = gl.TRIANGLES;
 
 	this.mesh = mesh;

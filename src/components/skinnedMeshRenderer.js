@@ -8,7 +8,7 @@ function SkinnedMeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 	this.ignore_transform = true;
 	//this.factor = 1;
@@ -29,6 +29,17 @@ function SkinnedMeshRenderer(o)
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
 }
+
+Object.defineProperty( SkinnedMeshRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 SkinnedMeshRenderer.MAX_BONES = 64;
 SkinnedMeshRenderer.gpu_skinning_supported = true;

@@ -1,8 +1,11 @@
 
 function Cloner(o)
 {
-	this.count = [10,1,1];
-	this.size = [100,100,100];
+	this.enabled = true;
+
+	this.createProperty( "count", vec3.fromValues(10,1,1) );
+	this.createProperty( "size", vec3.fromValues(100,100,100) );
+
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.material = null;
@@ -81,6 +84,9 @@ Cloner.compareKeys = function(a,b)
 
 Cloner.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	var mesh = this.getMesh();
 	if(!mesh) 
 		return null;
@@ -129,9 +135,9 @@ Cloner.prototype.updateRenderInstancesArray = function()
 {
 	var total = 0;
 	if(this.mode === Cloner.GRID_MODE)
-		total = this.count[0] * this.count[1] * this.count[2];
+		total = (this.count[0]|0) * (this.count[1]|0) * (this.count[2]|0);
 	else if(this.mode === Cloner.RADIAL_MODE)
-		total = this.count[0];
+		total = this.count[0]|0;
 	else if(this.mode === Cloner.MESH_MODE)
 	{
 		total = 0; //TODO
@@ -160,11 +166,18 @@ Cloner.prototype.updateRenderInstancesArray = function()
 
 Cloner.prototype.onUpdateInstances = function(e, dt)
 {
+	if(!this.enabled)
+		return;
+
 	var RIs = this._RIs;
 	if(!RIs || !RIs.length)
 		return;
 
 	var global = this._root.transform.getGlobalMatrix(mat4.create());
+
+	var countx = this._count[0]|0;
+	var county = this._count[1]|0;
+	var countz = this._count[2]|0;
 
 	//Set position according to the cloner mode
 	if(this.mode == Cloner.GRID_MODE)
@@ -172,18 +185,18 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 		//compute offsets
 		var hsize = vec3.scale( vec3.create(), this.size, 0.5 );
 		var offset = vec3.create();
-		if(this.count[0] > 1) offset[0] = this.size[0] / (this.count[0]-1);
+		if( countx > 1) offset[0] = this.size[0] / ( countx - 1);
 		else hsize[0] = 0;
-		if(this.count[1] > 1) offset[1] = this.size[1] / (this.count[1]-1);
+		if( county > 1) offset[1] = this.size[1] / ( county - 1);
 		else hsize[1] = 0;
-		if(this.count[2] > 1) offset[2] = this.size[2] / (this.count[2]-1);
+		if( countz > 1) offset[2] = this.size[2] / ( countz - 1);
 		else hsize[2] = 0;
 
 		var i = 0;
 		var tmp = vec3.create(), zero = vec3.create();
-		for(var x = 0; x < this.count[0]; ++x)
-		for(var y = 0; y < this.count[1]; ++y)
-		for(var z = 0; z < this.count[2]; ++z)
+		for(var x = 0; x < countx; ++x)
+		for(var y = 0; y < county; ++y)
+		for(var z = 0; z < countz; ++z)
 		{
 			var RI = RIs[i];
 			if(!RI)

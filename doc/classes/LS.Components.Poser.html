@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/animation.js</title>
+    <title>LS.Components.Poser</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -70,6 +70,8 @@
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
+            
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
@@ -156,231 +158,154 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/animation.js</h1>
+                        <h1>LS.Components.Poser Class</h1>
+<div class="box meta">
+    
 
-<div class="file">
-    <pre class="code prettyprint linenums">
+    
 
-/**
-* An Animation is a resource that contains samples of properties over time, similar to animation curves
-* Values could be associated to an specific node.
-* Data is contained in tracks
-*
-* @class Animation
-* @namespace LS
-* @constructor
-*/
+    
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_components_poser.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;poser.js:1</code></a>
+        </div>
+    
 
-function Animation(o)
-{
-	this.takes = {}; //packs of tracks
-	if(o)
-		this.configure(o);
-}
+    
 
-Animation.prototype.configure = function(data)
-{
-	if(data.takes)
-	{
-		for(var i in data.takes)
-		{
-			var take = data.takes[i];
-			for(var j in take.tracks)
-				this.addTrackToTake( i, new LS.Animation.Track( take.tracks[j] ) );
-		}
-	}
-}
-
-Animation.fromBinary = function(data)
-{
-	if(data.constructor == ArrayBuffer)
-		data = WBin.load(data, true);
-
-	var o = data[&quot;@json&quot;];
-	for(var i in o.takes)
-	{
-		var take = o.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			track.data = data[&quot;@track_&quot; + track.data];
-		}
-	}
-
-	return new Animation(o);
-}
-
-Animation.prototype.toBinary = function()
-{
-	var o = {};
-	var tracks_data = [];
-
-	//we need to remove the bin data to generate the JSON
-	for(var i in this.takes)
-	{
-		var take = this.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			var bindata = track.data;
-			var num = tracks_data.length;
-			o[&quot;@track_&quot; + num] = bindata;
-			track.data = num;
-			tracks_data.push(bindata); //to restore after
-		}
-	}
-
-	//create the binary
-	o[&quot;@json&quot;] = { takes: this.takes };
-	var bin = WBin.create(o, &quot;Animation&quot;);
-
-	//restore the bin data state in this instance
-	for(var i in this.takes)
-	{
-		var take = this.takes[i];
-		for(var j in take.tracks)
-		{
-			var track = take.tracks[j];
-			track.data = tracks_data[ track.data ];
-		}
-	}
-
-	return bin;
-}
-
-Animation.prototype.addTrackToTake = function(takename, track)
-{
-	var take = this.takes[takename];
-	if(!take)
-		take = this.takes[takename] = new Take();
-	take.tracks.push(track);
-}
+    
+</div>
 
 
-LS.Animation = Animation;
 
-/** Represents a set of animations **/
-function Take(o)
-{
-	this.tracks = [];
-	this.duration = 0;
-}
+<div class="box intro">
+    <p>Transitions between different poses</p>
 
-Take.prototype.getPropertiesSample = function(time, result)
-{
-	result = result || [];
-	for(var i in this.tracks)
-	{
-		var track = this.tracks[i];
-		var value = track.getSample(time);
-		result.push([track.nodename, track.property, value ]);
-	}
-	return result;
-}
-
-Take.prototype.actionPerSample = function(time, callback, options)
-{
-	for(var i in this.tracks)
-	{
-		var track = this.tracks[i];
-		var value = track.getSample(time, true);
-		if( options.disabled_tracks &amp;&amp; options.disabled_tracks[ track.nodename ] )
-			continue;
-
-		callback(track.nodename, track.property, value, options);
-	}
-}
-
-Animation.Take = Take;
+</div>
 
 
-/**
-* Represents one track with data over time about one property
-*
-* @class Animation.Track
-* @namespace LS
-* @constructor
-*/
+    <div class="constructor">
+        <h2>Constructor</h2>
+        <div id="method_LS.Components.Poser" class="method item">
+    <h3 class="name"><code>LS.Components.Poser</code></h3>
 
-function Track(o)
-{
-	this.nodename = &quot;&quot;; //nodename
-	this.property = &quot;&quot;; //property
-	this.duration = 0; //length of the animation
-	this.value_size = 0; //how many numbers contains every sample of this property
-	this.data = null;
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>object</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
 
-	if(o)
-		this.configure(o);
-}
+    
 
-Track.prototype.configure = function(data)
-{
-	this.property = data.property;
-	this.duration = data.duration;
-	this.nodename = data.nodename;
-	this.value_size = data.value_size;
-	this.data = data.data;
-}
+    
 
-Track.prototype.getSample = function(time, interpolate)
-{
-	var local_time = (time % this.duration);
-	if(local_time &lt; 0)
-		local_time = this.duration + local_time;
+    
 
-	var data = this.data;
-	var last_time = 0;
+    
 
-	var value = data.subarray(1,offset);
-	var last_value = value;
+    
 
-	var value_size = this.value_size;
-	var offset = this.value_size + 1;
-	var current_time = time;
+    
 
-	for(var p = 0, l = data.length; p &lt; l; p += offset)
-	{
-		last_time = current_time;
-		current_time = data[p];
-		last_value = value;
-		value = data.subarray(p + 1, p + offset);
-		if(current_time &lt; local_time) 
-			continue;
-		break;
-	}
+    
 
-	if(!interpolate || last_value == value)
-	{
-		if(value_size == 1)
-			return last_value[0];
-		else
-			return last_value;
-	}
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_components_poser.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;poser.js:1</code></a>
+        
+        </p>
 
-	var factor = (local_time - last_time) / (current_time - last_time);
 
-	if(last_value != null &amp;&amp; value != null)
-	{
-		if(value_size == 1)
-			return last_value[0] * (1.0 - factor) +  value[0] * factor;
-		else
-		{
-			if(!this._last_sample)	
-				this._last_sample = new Float32Array( value_size );
-			var result = this._last_sample;
-			for(var i = 0; i &lt; value_size; i++)
-				result[i] = last_value[i] * (1.0 - factor) +  value[i] * factor;
-			return result;
-		}
-	}
-	else if(last_value != null)
-		return last_value;
-	return value;
-}
+        
 
-Animation.Track = Track;
-    </pre>
+        
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">object</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+    </div>
+
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+        
+        
+        
+        
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+            
+
+            
+
+            
+
+            
+        </div>
+
+        
+
+        
+
+        
+
+        
+    </div>
 </div>
 
                     </div>

@@ -12,6 +12,7 @@ function ComponentContainer()
 {
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
+	this._components = [];
 }
 
 
@@ -23,24 +24,24 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function(info)
 {
-	if(info.components)
+	if(!info.components)
+		return;
+
+	for(var i = 0, l = info.components.length; i < l; ++i)
 	{
-		for(var i = 0, l = info.components.length; i < l; ++i)
+		var comp_info = info.components[i];
+		var comp_class = comp_info[0];
+		if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
 		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
-			{
-				this.transform.configure(comp_info[1]);
-				continue;
-			}
-			if(!LS.Components[comp_class]){
-				console.error("Unknown component found: " + comp_class);
-				continue;
-			}
-			var comp = new LS.Components[comp_class]( comp_info[1] );
-			this.addComponent(comp);
+			this.transform.configure(comp_info[1]);
+			continue;
 		}
+		if(!LS.Components[comp_class]){
+			console.error("Unknown component found: " + comp_class);
+			continue;
+		}
+		var comp = new LS.Components[comp_class]( comp_info[1] );
+		this.addComponent(comp);
 	}
 }
 
@@ -107,7 +108,8 @@ ComponentContainer.prototype.addComponent = function(component)
 		throw("inserting the same component twice");
 	this._components.push(component);
 	if( !component.hasOwnProperty("uid") )
-		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false});
+		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false, writable: true});
+		//component.uid = LS.generateUId("COMP-");
 	return component;
 }
 

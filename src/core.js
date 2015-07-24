@@ -14,6 +14,10 @@ Object.defineProperty(Object.prototype, "merge", {
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
 
+//better array conversion to string for serializing
+var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
+typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
+
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *

@@ -42,7 +42,7 @@ function WBin()
 
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
-WBin.VERSION = 0.2; //use numbers, never strings, fixed size in binary
+WBin.VERSION = 0.3; //use numbers, never strings, fixed size in binary
 WBin.CLASSNAME_SIZE = 32; //32 bytes: stores a type for the object stored inside this binary
 
 WBin.LUMPNAME_SIZE = 54; //max size of a lump name, it is big because sometimes some names have urls
@@ -50,7 +50,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","Number":"NU", "null":"00"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","WString":"WS","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -140,7 +140,7 @@ WBin.create = function( origin, origin_class_name )
 
 		//class specific actions
 		if (code == "NU")
-			data = data.toString(); //numbers are stored as strings
+			data = new Float64Array([data]);  //data.toString(); //numbers are stored as strings
 		else if(code == "OB")
 			data = JSON.stringify(data); //serialize the data
 
@@ -256,7 +256,12 @@ WBin.load = function( data_array, skip_classname )
 		{
 			case "null": break;
 			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
-			case "Number": lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "Number": 
+					if(header.version < 0.3) //LEGACY: remove
+						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+					else
+						lump_final = (new Float64Array( lump_data.buffer ))[0];
+					break;
 			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
@@ -352,8 +357,17 @@ WBin.getObjectClassName = function(obj) {
 WBin.stringToUint8Array = function(str, fixed_length)
 {
 	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
 	for(var i = 0; i < str.length; i++)
-		r[i] = str.charCodeAt(i);
+	{
+		var c = str.charCodeAt(i);
+		if(c > 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(warning)
+		console.warn("WBin: there are characters in the string that cannot be encoded in 1 byte.");
 	return r;
 }
 
@@ -1462,6 +1476,10 @@ Object.defineProperty(Object.prototype, "merge", {
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
 
+//better array conversion to string for serializing
+var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
+typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
+
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *
@@ -2399,15 +2417,25 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns the resource if it has been loaded, if you want to force to load it, use load
+	*
+	* @method getResource
+	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
+	*/
+	getResource: function( url )
+	{
+		return this.resources[ url ];
+	},
+
+	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
-	* Do not use for regular files, instead use the LS.Network methods
+	* Do not use to load regular files (txts, csv, etc), instead use the LS.Network methods
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
-	* @param {Object}[options={}] options to apply to the loaded image
-	* @param {Function} [on_complete=null] callback when the resource is loaded and cached
+	* @param {Object}[options={}] options to apply to the loaded resource when processing it
+	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
 	*/
-
 	load: function(url, options, on_complete)
 	{
 		options = options || {};
@@ -3695,10 +3723,12 @@ var Blend = {
 	CUSTOM: "custom"
 }
 
+LS.Blend = Blend;
+
 if(typeof(GL) == "undefined")
 	throw("LiteSCENE requires to have litegl.js included before litescene.js");
 
-BlendFunctions = {
+LS.BlendFunctions = {
 	"normal": 	[GL.ONE, GL.ZERO],
 	"alpha": 	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA],	
 	"add": 		[GL.SRC_ALPHA, GL.ONE],
@@ -3732,11 +3762,11 @@ function Material(o)
 
 	//this.shader_name = null; //default shader
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
+	this.createProperty("diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.shader_name = "global";
-	this.blend_mode = Blend.NORMAL;
+	this.blend_mode = LS.Blend.NORMAL;
 
-	this.specular_factor = 0.1;
-	this.specular_gloss = 10.0;
+	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
 	//this.reflection_factor = 0.0;	
 
@@ -3744,9 +3774,38 @@ function Material(o)
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 
+	//properties with special storage (multiple vars shared among single properties)
+
+	Object.defineProperty( this, 'color', {
+		get: function() { return this._color.subarray(0,3); },
+		set: function(v) { vec3.copy( this._color, v ); },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, 'opacity', {
+		get: function() { return this._color[3]; },
+		set: function(v) { this._color[3] = v; },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, 'specular_factor', {
+		get: function() { return this._specular_data[0]; },
+		set: function(v) { this._specular_data[0] = v; },
+		enumerable: true
+	});
+
+	Object.defineProperty( this, 'specular_gloss', {
+		get: function() { return this._specular_data[1]; },
+		set: function(v) { this._specular_data[1] = v; },
+		enumerable: true
+	});
+
 	if(o) 
 		this.configure(o);
 }
+
+Material["@color"] = { type:"color" };
+Material["@blend_mode"] = { type: "enum", values: LS.Blend };
 
 Material.icon = "mini-icon-material.png";
 
@@ -3797,6 +3856,7 @@ Material.COORDS_UV0 = "0";
 Material.COORDS_UV1 = "1";
 Material.COORDS_UV_TRANSFORMED = "transformed";
 Material.COORDS_SCREEN = "screen";					//project to screen space
+Material.COORDS_SCREENCENTERED = "screen_centered";	//project to screen space and centers and corrects aspect
 Material.COORDS_FLIPPED_SCREEN = "flipped_screen";	//used for realtime reflections
 Material.COORDS_POLAR = "polar";					//use view vector as polar coordinates
 Material.COORDS_POLAR_REFLECTED = "polar_reflected";//use reflected view vector as polar coordinates
@@ -3805,35 +3865,21 @@ Material.COORDS_WORLDXZ = "worldxz";
 Material.COORDS_WORLDXY = "worldxy";
 Material.COORDS_WORLDYZ = "worldyz";
 
-Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
+Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Material.COORDS_UV_TRANSFORMED, Material.COORDS_SCREEN, Material.COORDS_SCREENCENTERED, Material.COORDS_FLIPPED_SCREEN, Material.COORDS_POLAR, Material.COORDS_POLAR_REFLECTED, Material.COORDS_POLAR_VERTEX, Material.COORDS_WORLDXY, Material.COORDS_WORLDXZ, Material.COORDS_WORLDYZ ];
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
 
-//properties
-Object.defineProperty( Material.prototype, 'color', {
-	get: function() { return this._color; },
-	set: function(v) { this._color.set(v); },
-	enumerable: true
-});
-
-Object.defineProperty( Material.prototype, 'opacity', {
-	get: function() { return this._color[3]; },
-	set: function(v) { this._color[3] = v; },
-	enumerable: true
-});
-
-
 Material.prototype.applyToRenderInstance = function(ri)
 {
-	if(this.blend_mode != Blend.NORMAL)
+	if(this.blend_mode != LS.Blend.NORMAL)
 		ri.flags |= RI_BLEND;
 
-	if(this.blend_mode == Blend.CUSTOM && this.blend_func)
+	if(this.blend_mode == LS.Blend.CUSTOM && this.blend_func)
 		ri.blend_func = this.blend_func;
 	else
-		ri.blend_func = BlendFunctions[ this.blend_mode ];
+		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
 }
 
 // RENDERING METHODS
@@ -3937,10 +3983,10 @@ Material.prototype.fillSurfaceUniforms = function( scene, options )
 	var samplers = {};
 
 	uniforms.u_material_color = this._color;
-	uniforms.u_ambient_color = scene.ambient_color;
-	uniforms.u_diffuse_color = new Float32Array([1,1,1]);
+	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
+	uniforms.u_diffuse_color = this._diffuse;
 
-	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_specular = this._specular_data;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_reflection = this.reflection_factor;
@@ -4171,8 +4217,6 @@ Material.prototype.getTextureChannels = function()
 	return [];
 }
 
-
-
 /**
 * Assigns a texture to a channel and its sampling parameters
 * @method setTexture
@@ -4374,14 +4418,21 @@ Material.prototype.updatePreview = function(size, options)
 		}
 	}
 
-	if(LS.GlobalScene.textures.environment)
-		options.environment = LS.GlobalScene.textures.environment;
+	if(LS.GlobalScene.info.textures.environment)
+		options.environment = LS.GlobalScene.info.textures.environment;
 
 	size = size || 256;
 	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
 	this.preview = preview;
 	if(preview.toDataURL)
 		this.preview_url = preview.toDataURL("image/png");
+}
+
+Material.prototype.getLocatorString = function()
+{
+	if(this._root)
+		return this._root.uid + "/material";
+	return this.uid;
 }
 
 Material.processShaderCode = function(code)
@@ -4394,6 +4445,34 @@ Material.processShaderCode = function(code)
 		return null;
 	return code;
 }
+
+Material.prototype.createProperty = function( name, value, type )
+{
+	if(type)
+		this.constructor[ "@" + name ] = { type: type };
+
+	//basic type
+	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
+	{
+		this[ name ] = value;
+		return;
+	}
+
+	//vector type
+	if(value.constructor === Float32Array)
+	{
+		var private_name = "_" + name;
+		value = new Float32Array( value ); //clone
+		this[ private_name ] = value; //this could be removed...
+
+		Object.defineProperty( this, name, {
+			get: function() { return value; },
+			set: function(v) { value.set( v ); },
+			enumerable: true
+		});
+	}
+}
+
 
 LS.registerMaterialClass(Material);
 LS.Material = Material;
@@ -4413,35 +4492,25 @@ LS.Material = Material;
 
 function StandardMaterial(o)
 {
-	this.name = "";
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
+	Material.call(this,null); //do not pass the object
 
-	//this.shader_name = null; //default shader
-	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.shader_name = "global";
-
-	this.ambient = new Float32Array([1.0,1.0,1.0]);
-	this.emissive = new Float32Array([0.0,0.0,0.0]);
+	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
+	this.createProperty("emissive", new Float32Array(3), "color" );
+	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
-	this.specular_factor = 0.1;
-	this.specular_gloss = 10.0;
+
 	this.specular_ontop = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
 	this.reflection_additive = false;
 	this.reflection_specular = false;
-	this.velvet = new Float32Array([0.5,0.5,0.5]);
+	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
 	this._velvet_info = vec4.create();
-	this.detail = new Float32Array([0.0, 10, 10]);
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.extra_factor = 0.0; //used for debug and dev
-	this.extra_color = new Float32Array([0.0,0.0,0.0]); //used for debug and dev
+	this._detail = new Float32Array([0.0, 10, 10]);
 	this._extra_data = vec4.create();
 
-	this.blend_mode = Blend.NORMAL;
 	this.normalmap_factor = 1.0;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
@@ -4450,12 +4519,36 @@ function StandardMaterial(o)
 	//used for special fx 
 	this.extra_surface_shader_code = "";
 
-	this.textures = {};
 	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
 }
+
+Object.defineProperty( StandardMaterial.prototype, 'detail_factor', {
+	get: function() { return this._detail[0]; },
+	set: function(v) { this._detail[0] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'detail_scale', {
+	get: function() { return this._detail.subarray(1,3); },
+	set: function(v) { this._detail[1] = v[0]; this._detail[2] = v[1]; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'extra_factor', {
+	get: function() { return this._extra_data[3]; },
+	set: function(v) { this._extra_data[3] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
+	get: function() { return this._extra_data.subarray(0,3); },
+	set: function(v) { this._extra_data.set( v ); },
+	enumerable: true
+});
+
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
 StandardMaterial.NORMAL_TEXTURE = "normal";
@@ -4607,13 +4700,13 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient)
-		uniforms.u_ambient_color = vec3.fromValues(scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]);
+	if(this.use_scene_ambient && scene.info)
+		uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
 	else
 		uniforms.u_ambient_color = this.ambient;
 
 	uniforms.u_emissive_color = this.emissive || vec3.create();
-	uniforms.u_specular = [ this.specular_factor, this.specular_gloss ];
+	uniforms.u_specular = this._specular_data;
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
 	uniforms.u_backlight_factor = this.backlight_factor;
 	uniforms.u_normalmap_factor = this.normalmap_factor;
@@ -4624,10 +4717,8 @@ StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 	this._velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
 	uniforms.u_velvet_info = this._velvet_info;
 
-	uniforms.u_detail_info = this.detail;
+	uniforms.u_detail_info = this._detail;
 
-	this._extra_data.set( this.extra_color );
-	this._extra_data[3] = this.extra_factor;
 	uniforms.u_extra_data = this._extra_data;
 
 	uniforms.u_texture_matrix = this.uvs_matrix;
@@ -4701,6 +4792,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_factor":
 		case "displacementmap_factor":
 		case "extra_factor":
+		case "detail_factor":
 		//strings
 		//bools
 		case "specular_ontop":
@@ -4714,7 +4806,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "ambient":	
 		case "emissive": 
 		case "velvet":
-		case "detail":
+		case "detail_scale":
 		case "extra_color":
 			if(this[name].length == value.length)
 				this[name].set(value);
@@ -4754,7 +4846,8 @@ StandardMaterial.prototype.getProperties = function()
 		emissive:"vec3",
 		velvet:"vec3",
 		extra_color:"vec3",
-		detail:"vec3",
+		detail_factor:"number",
+		detail_scale:"vec2",
 
 		specular_ontop:"boolean",
 		normalmap_tangent:"boolean",
@@ -4766,27 +4859,18 @@ StandardMaterial.prototype.getProperties = function()
 	return o;
 }
 
-LS.registerMaterialClass(StandardMaterial);
+LS.registerMaterialClass( StandardMaterial );
 LS.StandardMaterial = StandardMaterial;
 function CustomMaterial(o)
 {
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
-
-	this.shader_name = "base";
-	this.blend_mode = Blend.NORMAL;
+	Material.call(this, null);
 
 	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
 	this.vs_code = "";
 	this.code = "vec4 surf() {\n\treturn u_material_color * vec4(1.0,0.0,0.0,1.0);\n}\n";
 
 	this._uniforms = {};
 	this._macros = {};
-
-	this.textures = {};
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 
 	if(o) 
 		this.configure(o);
@@ -4868,15 +4952,7 @@ LS.registerMaterialClass(CustomMaterial);
 LS.CustomMaterial = CustomMaterial;
 function SurfaceMaterial(o)
 {
-	this.name = "";
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
-
-	this.shader_name = "surface";
-
-	//this.shader_name = null; //default shader
-	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.blend_mode = Blend.NORMAL;
+	Material.call(this, null);
 
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -4892,8 +4968,6 @@ function SurfaceMaterial(o)
 	this._macros = {};
 
 	this.properties = []; //array of configurable properties
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.textures = {};
 	if(o) 
 		this.configure(o);
 
@@ -4942,7 +5016,7 @@ SurfaceMaterial.prototype.getCode = function()
 SurfaceMaterial.prototype.computeCode = function()
 {
 	var uniforms_code = "";
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var code = "uniform ";
 		var prop = this.properties[i];
@@ -4963,7 +5037,7 @@ SurfaceMaterial.prototype.computeCode = function()
 	}
 
 	var lines = this.code.split("\n");
-	for(var i in lines)
+	for(var i = 0, l = lines.length; i < l; ++i )
 		lines[i] = lines[i].split("//")[0]; //remove comments
 
 	this.surf_code = uniforms_code + lines.join("");
@@ -5017,7 +5091,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var samplers = {};
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
@@ -5035,7 +5109,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 			this._uniforms[ prop.name ] = prop.value;
 	}
 
-	this._uniforms.u_material_color = this.color;
+	this._uniforms.u_material_color = this._color;
 
 	if(this.textures["environment"])
 	{
@@ -5090,7 +5164,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
 
 	//specific
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if( prop.value == old_name)
@@ -5116,7 +5190,7 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return tex.texture;
 	}
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name == name)
@@ -5137,7 +5211,7 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	if( Material.prototype.setProperty.call(this,name,value) )
 		return true;
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name != name)
@@ -5154,7 +5228,7 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler" )
@@ -5219,7 +5293,7 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 */
 SurfaceMaterial.prototype.getResources = function (res)
 {
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")
@@ -5252,6 +5326,7 @@ function ComponentContainer()
 {
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
+	this._components = [];
 }
 
 
@@ -5263,24 +5338,24 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function(info)
 {
-	if(info.components)
+	if(!info.components)
+		return;
+
+	for(var i = 0, l = info.components.length; i < l; ++i)
 	{
-		for(var i = 0, l = info.components.length; i < l; ++i)
+		var comp_info = info.components[i];
+		var comp_class = comp_info[0];
+		if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
 		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
-			{
-				this.transform.configure(comp_info[1]);
-				continue;
-			}
-			if(!LS.Components[comp_class]){
-				console.error("Unknown component found: " + comp_class);
-				continue;
-			}
-			var comp = new LS.Components[comp_class]( comp_info[1] );
-			this.addComponent(comp);
+			this.transform.configure(comp_info[1]);
+			continue;
 		}
+		if(!LS.Components[comp_class]){
+			console.error("Unknown component found: " + comp_class);
+			continue;
+		}
+		var comp = new LS.Components[comp_class]( comp_info[1] );
+		this.addComponent(comp);
 	}
 }
 
@@ -5347,7 +5422,8 @@ ComponentContainer.prototype.addComponent = function(component)
 		throw("inserting the same component twice");
 	this._components.push(component);
 	if( !component.hasOwnProperty("uid") )
-		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false});
+		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false, writable: true});
+		//component.uid = LS.generateUId("COMP-");
 	return component;
 }
 
@@ -5822,10 +5898,11 @@ Component.prototype.configure = function(o)
 { 
 	if(!o)
 		return;
-	if(o.uid) //special case, uid must never be enumerable to avoid showing it in the editor
+	if(o.uid) 
 	{
-		if(!this.uid && !Object.hasOwnProperty(this, "uid"))
-			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false });
+		//special case, uid must never be enumerable to avoid showing it in the editor
+		if(this.uid === undefined && !Object.hasOwnProperty(this, "uid"))
+			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false, writable: true });
 		else
 			this.uid = o.uid;
 	}
@@ -5840,6 +5917,40 @@ Component.prototype.serialize = function()
 	return o;
 }
 
+Component.prototype.createProperty = function( name, value, type )
+{
+	if(type)
+		this.constructor[ "@" + name ] = { type: type };
+
+	//basic type
+	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
+	{
+		this[ name ] = value;
+		return;
+	}
+
+	//vector type
+	if(value.constructor === Float32Array)
+	{
+		var private_name = "_" + name;
+		value = new Float32Array( value ); //clone
+		this[ private_name ] = value; //this could be removed...
+
+		Object.defineProperty( this, name, {
+			get: function() { return value; },
+			set: function(v) { value.set( v ); },
+			enumerable: true
+		});
+	}
+}
+
+Component.prototype.getLocatorString = function()
+{
+	if(!this._root)
+		return "";
+	return this._root.uid + "/" + this.uid;
+}
+
 LS.Component = Component;
 /** Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * @class Transform
@@ -5849,6 +5960,8 @@ LS.Component = Component;
 
 function Transform(o)
 {
+	//this.uid = null;
+
 	this._position = vec3.create();
 	this._rotation = quat.create();
 	this._scaling = vec3.fromValues(1,1,1);
@@ -5878,6 +5991,10 @@ Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
 Transform.RIGHT = vec3.fromValues(1,0,0);
 Transform.FRONT = vec3.fromValues(0,0,-1);
+
+
+Transform["@position"] = { type: "position"};
+Transform["@rotation"] = { type: "quat"};
 
 Transform.attributes = {
 	position:"vec3",
@@ -5913,6 +6030,33 @@ Object.defineProperty( Transform.prototype, 'position', {
 		this._must_update_matrix = true; 
 	},
 	enumerable: true
+});
+
+Object.defineProperty( Transform.prototype, 'x', {
+	get: function() { return this._position[0]; },
+	set: function(v) { 
+		this._position[0] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+
+Object.defineProperty( Transform.prototype, 'y', {
+	get: function() { return this._position[1]; },
+	set: function(v) { 
+		this._position[1] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+
+Object.defineProperty( Transform.prototype, 'z', {
+	get: function() { return this._position[2]; },
+	set: function(v) { 
+		this._position[2] = v; 
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
 });
 
 /**
@@ -6028,12 +6172,12 @@ Transform.prototype.copyFrom = function(src)
 */
 Transform.prototype.configure = function(o)
 {
-	if(o.position) vec3.copy( this._position, o.position );
-	if(o.scaling)
-		vec3.copy( this._scaling, o.scaling );
+	if(o.uid) this.uid = o.uid;
+	if(o.position) this._position.set( o.position );
+	if(o.scaling) this._scaling.set( o.scaling );
 
 	if(o.rotation && o.rotation.length == 4)
-		quat.copy( this._rotation, o.rotation );
+		this._rotation.set( o.rotation );
 	if(o.rotation && o.rotation.length == 3)
 	{
 		quat.identity( this._rotation );
@@ -6058,6 +6202,7 @@ Transform.prototype.configure = function(o)
 Transform.prototype.serialize = function()
 {
 	return {
+		uid: this.uid,
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],
 		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ],
@@ -7056,6 +7201,11 @@ Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
 
+Camera["@type"] = { type: "enum", values: { "perspective": Camera.PERSPECTIVE, "orthographic": Camera.ORTHOGRAPHIC, "ortho2D": Camera.ORTHO2D } };
+Camera["@eye"] = { type: "position" };
+Camera["@center"] = { type: "position" };
+Camera["@texture_name"] = { type: "texture" };
+
 // used when rendering a cubemap to set the camera view direction
 Camera.cubemap_camera_parameters = [
 	{ dir: vec3.fromValues(1,0,0), 	up: vec3.fromValues(0,-1,0) }, //positive X
@@ -7886,6 +8036,8 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 
 Camera.prototype.configure = function(o)
 {
+	if(o.uid !== undefined) this.uid = o.uid;
+
 	if(o.enabled !== undefined) this.enabled = o.enabled;
 	if(o.type !== undefined) this._type = o.type;
 
@@ -7912,6 +8064,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		uid: this.uid,
 		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
@@ -8022,6 +8175,13 @@ Camera.prototype.endFBO = function()
 	gl.bindFramebuffer(gl.FRAMEBUFFER, this._old_fbo);
 	LS.Renderer.global_aspect = 1.0;
 	this._old_fbo = null;
+
+	//generate mipmaps
+	if ( gl.NEAREST_MIPMAP_NEAREST <= this._texture.minFilter && this._texture.minFilter <= gl.LINEAR_MIPMAP_LINEAR )
+	{
+		this._texture.bind(0);
+		gl.generateMipmap( this._texture.texture_type );
+	}
 
 	var v = this._old_viewport;
 	gl.viewport( v[0], v[1], v[2], v[3] );
@@ -9408,7 +9568,7 @@ function MeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 
 	if(o)
@@ -9418,13 +9578,24 @@ function MeshRenderer(o)
 		MeshRenderer._identity = mat4.create();
 }
 
+Object.defineProperty( MeshRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
+
 MeshRenderer.icon = "mini-icon-teapot.png";
 
 //vars
-MeshRenderer["@mesh"] = { widget: "mesh" };
-MeshRenderer["@lod_mesh"] = { widget: "mesh" };
-MeshRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
-MeshRenderer["@submesh_id"] = {widget:"combo", values: function() {
+MeshRenderer["@mesh"] = { type: "mesh" };
+MeshRenderer["@lod_mesh"] = { type: "mesh" };
+MeshRenderer["@primitive"] = { type:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();
 	if(!mesh) return null;
@@ -9488,7 +9659,7 @@ MeshRenderer.prototype.serialize = function()
 	if(this.material)
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
 
-	if(this.primitive != null)
+	if(this.primitive != -1)
 		o.primitive = this.primitive;
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
@@ -9602,7 +9773,7 @@ function SkinnedMeshRenderer(o)
 	this.lod_mesh = null;
 	this.submesh_id = -1;
 	this.material = null;
-	this.primitive = null;
+	this._primitive = -1;
 	this.two_sided = false;
 	this.ignore_transform = true;
 	//this.factor = 1;
@@ -9623,6 +9794,17 @@ function SkinnedMeshRenderer(o)
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
 }
+
+Object.defineProperty( SkinnedMeshRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 SkinnedMeshRenderer.MAX_BONES = 64;
 SkinnedMeshRenderer.gpu_skinning_supported = true;
@@ -10103,7 +10285,7 @@ Skybox.prototype.onRemovedFromNode = function(node)
 Skybox.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
-		res[this.texture] = Texture;
+		res[this.texture] = GL.Texture;
 	return res;
 }
 
@@ -10120,7 +10302,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 	var texture = null;
 	if (this.use_environment)
-		texture = Renderer._current_scene.textures["environment"];
+		texture = LS.Renderer._current_scene.info.textures["environment"];
 	else
 		texture = this.texture;
 
@@ -10142,7 +10324,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 		RI.priority = 100;
 
 		RI.onPreRender = function(render_options) { 
@@ -10165,7 +10347,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material = new LS.Material({use_scene_ambient:false});
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
-	var sampler = mat.setTexture( Material.COLOR, texture);
+	var sampler = mat.setTexture( LS.Material.COLOR, texture );
 
 	if(texture && texture.texture_type == gl.TEXTURE_2D)
 	{
@@ -10196,7 +10378,12 @@ function BackgroundRenderer(o)
 {
 	this.enabled = true;
 	this.texture = null;
-	this.color = vec3.fromValues(1,1,1);
+
+	this.createProperty( "color", vec3.fromValues(1,1,1), "color" );
+	this.opacity = 1.0;
+	this.blend_mode = Blend.NORMAL;
+
+	//this._color = vec3.fromValues(1,1,1);
 	this.material_name = null;
 
 	if(o)
@@ -10204,9 +10391,18 @@ function BackgroundRenderer(o)
 }
 
 BackgroundRenderer.icon = "mini-icon-bg.png";
-BackgroundRenderer["@texture"] = { widget: "texture" };
-BackgroundRenderer["@color"] = { widget: "color" };
-BackgroundRenderer["@material_name"] = { widget: "material" };
+BackgroundRenderer["@texture"] = { type: "texture" };
+BackgroundRenderer["@material_name"] = { type: "material" };
+BackgroundRenderer["@blend_mode"] = { type: "enum", values: LS.Blend };
+BackgroundRenderer["@opacity"] = { type: "number", step: 0.01 };
+
+/*
+Object.defineProperty( BackgroundRenderer.prototype, 'color', {
+	get: function() { return this._color; },
+	set: function(v) { this._color.set(v);},
+	enumerable: true
+});
+*/
 
 BackgroundRenderer.prototype.onAddedToNode = function(node)
 {
@@ -10221,7 +10417,7 @@ BackgroundRenderer.prototype.onRemovedFromNode = function(node)
 BackgroundRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
-		res[this.texture] = Texture;
+		res[this.texture] = GL.Texture;
 	return res;
 }
 
@@ -10253,8 +10449,11 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 			mat = this._material = new LS.Material({use_scene_ambient:false});
 		else
 			mat = this._material;
+
 		mat.setTexture("color", texture);
 		mat.color.set( this.color );
+		mat.opacity = this.opacity;
+		mat.blend_mode = this.blend_mode;
 	}
 
 	var mesh = this._mesh;
@@ -10264,7 +10463,7 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 	var RI = this._render_instance;
 	if(!RI)
 	{
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 		RI.priority = 100; //render the first one (is a background)
 	}
 
@@ -11053,15 +11252,27 @@ LS.registerComponent( FollowNode );
 
 function GeometricPrimitive(o)
 {
+	this.enabled = true;
 	this.size = 10;
 	this.subdivisions = 10;
 	this.geometry = GeometricPrimitive.CUBE;
-	this.primitive = null;
+	this._primitive = -1;
 	this.align_z = false;
 
 	if(o)
 		this.configure(o);
 }
+
+Object.defineProperty( GeometricPrimitive.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
@@ -11073,7 +11284,7 @@ GeometricPrimitive.ICOSAHEDRON = 7;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
-GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+GeometricPrimitive["@primitive"] = {widget:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 GeometricPrimitive["@subdivisions"] = { type:"number", step:1, min:0 };
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -11122,6 +11333,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 //GeometricPrimitive.prototype.getRenderInstance = function()
 GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	//if(this.size == 0) return;
 	var mesh = null;
 	if(!this._root) return;
@@ -11152,6 +11366,54 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 LS.registerComponent(GeometricPrimitive);
 
+
+function GlobalInfo(o)
+{
+	this.ambient_color = new Float32Array( GlobalInfo.DEFAULT_AMBIENT_COLOR );
+	this.background_color = new Float32Array( GlobalInfo.DEFAULT_BACKGROUND_COLOR );
+	this.textures = {};
+
+	if(o)
+		this.configure(o);
+}
+
+GlobalInfo.icon = "mini-icon-bg.png";
+GlobalInfo.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
+GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
+
+GlobalInfo.prototype.onAddedToScene = function(scene)
+{
+	scene.info = this;
+}
+
+GlobalInfo.prototype.onRemovedFromScene = function(scene)
+{
+	//scene.info = null;
+}
+
+
+GlobalInfo.prototype.getResources = function(res)
+{
+	for(var i in this.textures)
+	{
+		if(typeof(this.textures[i]) == "string")
+			res[ this.textures[i] ] = GL.Texture;
+	}
+	return res;
+}
+
+GlobalInfo.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	for(var i in this.textures)
+	{
+		if(this.textures[i] == old_name)
+			this.texture[i] = new_name;
+	}
+}
+
+
+LS.registerComponent( GlobalInfo );
+LS.GlobalInfo = GlobalInfo;
 /* Requires LiteGraph.js ******************************/
 
 //on include, link to resources manager
@@ -11284,6 +11546,44 @@ GraphComponent.prototype.getGraph = function()
 	return this._graph;
 }
 
+GraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+GraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value && n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
+}
 
 LS.registerComponent(GraphComponent);
 
@@ -11396,6 +11696,45 @@ FXGraphComponent.prototype.getResources = function(res)
 			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
+}
+
+FXGraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+FXGraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value && n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
 }
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
@@ -12769,10 +13108,29 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!take) 
 		return;
 
-	take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
+	var time = this.current_time;
+
+	if(time > take.duration)
+	{
+		switch( this.mode )
+		{
+			case "once": time = take.duration; break;
+			case "loop": time = this.current_time % take.duration; break;
+			case "pingpong": if( ((time / take.duration)|0) % 2 == 0 )
+								time = this.current_time % take.duration; 
+							else
+								time = take.duration - (this.current_time % take.duration);
+						break;
+			default: break;
+		}
+	}
+
+	take.applyTracks( time );
+
+	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 
 	var scene = this._root.scene;
-	if(!scene)
+	if(scene)
 		scene.refresh();
 }
 
@@ -13035,6 +13393,7 @@ function Script(o)
 	this.code = "this.update = function(dt)\n{\n\tnode.scene.refresh();\n}";
 
 	this._script = new LScript();
+
 	this._script.catch_exceptions = false;
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
@@ -13111,6 +13470,12 @@ Script.prototype.processCode = function(skip_events)
 	if(this._root && !Script.block_execution )
 	{
 		var ret = this._script.compile({component:this, node: this._root});
+		if(	this._script._context )
+		{
+			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);
+			this._script._context.__proto__.getLocatorString = function() { return this.getComponent().getLocatorString() + "/context"; };
+		}
+
 		if(!skip_events)
 			this.hookEvents();
 		return ret;
@@ -13118,6 +13483,7 @@ Script.prototype.processCode = function(skip_events)
 	return true;
 }
 
+//used for graphs
 Script.prototype.setAttribute = function(name, value)
 {
 	var ctx = this.getContext();
@@ -13144,6 +13510,99 @@ Script.prototype.getAttributes = function()
 	var attrs = LS.getObjectAttributes( ctx );
 	attrs.enabled = "boolean";
 	return attrs;
+}
+
+/*
+Script.prototype.getPropertyValue = function( property )
+{
+	var ctx = this.getContext();
+	if(!ctx)
+		return;
+
+	return ctx[ property ];
+}
+
+Script.prototype.setPropertyValue = function( property, value )
+{
+	var context = this.getContext();
+	if(!context)
+		return;
+
+	if( context[ property ] === undefined )
+		return;
+
+	if(context[ property ] && context[ property ].set)
+		context[ property ].set( value );
+	else
+		context[ property ] = value;
+
+	return true;
+}
+*/
+
+//used for animation tracks
+Script.prototype.getPropertyInfoFromPath = function( path )
+{
+	if(path.length < 4)
+		return;
+
+	if(path[2] != "context")
+		return;
+
+	var context = this.getContext();
+	var varname = path[3];
+	if(!context || context[ varname ] === undefined )
+		return;
+
+	var value = context[ varname ];
+	var extra_info = context[ "@" + varname ];
+
+	var type = "";
+	if(extra_info)
+		type = extra_info.type;
+
+
+	if(!type && value !== null && value !== undefined)
+	{
+		if(value.constructor === String)
+			type = "string";
+		else if(value.constructor === Boolean)
+			type = "boolean";
+		else if(value.length)
+			type = "vec" + value.length;
+		else if(value.constructor === Number)
+			type = "number";
+	}
+
+	return {
+		node: this._root,
+		target: context,
+		name: varname,
+		value: value,
+		type: type
+	};
+}
+
+Script.prototype.setPropertyValueFromPath = function( path, value )
+{
+	if(path.length < 4)
+		return;
+
+	if(path[2] != "context" )
+		return;
+
+	var context = this.getContext();
+	var varname = path[3];
+	if(!context || context[ varname ] === undefined )
+		return;
+
+	if( context[ varname ] === undefined )
+		return;
+
+	if(context[ varname ] && context[ varname ].set)
+		context[ varname ].set( value );
+	else
+		context[ varname ] = value;
 }
 
 Script.prototype.hookEvents = function()
@@ -13239,7 +13698,6 @@ Script.prototype.getResources = function(res)
 	ctx.getResources( res );
 }
 
-
 LS.registerComponent(Script);
 LS.Script = Script;
 
@@ -13251,7 +13709,7 @@ function TerrainRenderer(o)
 
 	this.subdivisions = 10;
 	this.heightmap = "";
-	this.primitive = null;
+	this._primitive = -1;
 	this.auto_update = true;
 	this.action = "Update"; //button
 
@@ -13262,6 +13720,17 @@ function TerrainRenderer(o)
 		this.configure(o);
 }
 
+Object.defineProperty( TerrainRenderer.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
+
 TerrainRenderer.icon = "mini-icon-terrain.png";
 
 TerrainRenderer["@subdivisions"] = { type: "number", min:1,max:255,step:1 };
@@ -13270,7 +13739,7 @@ TerrainRenderer["@action"] = { widget: "button", callback: function() {
 	if(this.options.instance)
 		this.options.instance.updateMesh();
 }};
-TerrainRenderer["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+TerrainRenderer["@primitive"] = {type:"enum", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 
 
 TerrainRenderer.prototype.onAddedToNode = function(node)
@@ -13428,8 +13897,11 @@ LS.registerComponent(TerrainRenderer);
 
 function Cloner(o)
 {
-	this.count = [10,1,1];
-	this.size = [100,100,100];
+	this.enabled = true;
+
+	this.createProperty( "count", vec3.fromValues(10,1,1) );
+	this.createProperty( "size", vec3.fromValues(100,100,100) );
+
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.material = null;
@@ -13508,6 +13980,9 @@ Cloner.compareKeys = function(a,b)
 
 Cloner.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	var mesh = this.getMesh();
 	if(!mesh) 
 		return null;
@@ -13556,9 +14031,9 @@ Cloner.prototype.updateRenderInstancesArray = function()
 {
 	var total = 0;
 	if(this.mode === Cloner.GRID_MODE)
-		total = this.count[0] * this.count[1] * this.count[2];
+		total = (this.count[0]|0) * (this.count[1]|0) * (this.count[2]|0);
 	else if(this.mode === Cloner.RADIAL_MODE)
-		total = this.count[0];
+		total = this.count[0]|0;
 	else if(this.mode === Cloner.MESH_MODE)
 	{
 		total = 0; //TODO
@@ -13587,11 +14062,18 @@ Cloner.prototype.updateRenderInstancesArray = function()
 
 Cloner.prototype.onUpdateInstances = function(e, dt)
 {
+	if(!this.enabled)
+		return;
+
 	var RIs = this._RIs;
 	if(!RIs || !RIs.length)
 		return;
 
 	var global = this._root.transform.getGlobalMatrix(mat4.create());
+
+	var countx = this._count[0]|0;
+	var county = this._count[1]|0;
+	var countz = this._count[2]|0;
 
 	//Set position according to the cloner mode
 	if(this.mode == Cloner.GRID_MODE)
@@ -13599,18 +14081,18 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 		//compute offsets
 		var hsize = vec3.scale( vec3.create(), this.size, 0.5 );
 		var offset = vec3.create();
-		if(this.count[0] > 1) offset[0] = this.size[0] / (this.count[0]-1);
+		if( countx > 1) offset[0] = this.size[0] / ( countx - 1);
 		else hsize[0] = 0;
-		if(this.count[1] > 1) offset[1] = this.size[1] / (this.count[1]-1);
+		if( county > 1) offset[1] = this.size[1] / ( county - 1);
 		else hsize[1] = 0;
-		if(this.count[2] > 1) offset[2] = this.size[2] / (this.count[2]-1);
+		if( countz > 1) offset[2] = this.size[2] / ( countz - 1);
 		else hsize[2] = 0;
 
 		var i = 0;
 		var tmp = vec3.create(), zero = vec3.create();
-		for(var x = 0; x < this.count[0]; ++x)
-		for(var y = 0; y < this.count[1]; ++y)
-		for(var z = 0; z < this.count[2]; ++z)
+		for(var x = 0; x < countx; ++x)
+		for(var y = 0; y < county; ++y)
+		for(var z = 0; z < countz; ++z)
 		{
 			var RI = RIs[i];
 			if(!RI)
@@ -14656,6 +15138,13 @@ if(typeof(LiteGraph) != "undefined")
 	//************************************
 };
 
+//Interpolation methods
+LS.NONE = 0;
+LS.LINEAR = 1;
+LS.TRIGONOMETRIC = 2;
+LS.BEZIER = 3;
+LS.SPLINE = 4;
+
 /**
 * An Animation is a resource that contains samples of properties over time, similar to animation curves
 * Values could be associated to an specific node.
@@ -14689,6 +15178,10 @@ Animation.prototype.addTake = function(take)
 	return take;
 }
 
+Animation.prototype.getTake = function( name )
+{
+	return this.takes[ name ];
+}
 
 Animation.prototype.addTrackToTake = function(takename, track)
 {
@@ -14712,7 +15205,7 @@ Animation.prototype.configure = function(data)
 	}
 }
 
-Animation.fromBinary = function(data)
+Animation.fromBinary = function( data )
 {
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
@@ -14724,11 +15217,13 @@ Animation.fromBinary = function(data)
 		for(var j in take.tracks)
 		{
 			var track = take.tracks[j];
-			track.data = data["@track_" + track.data];
+			var name = "@take_" + i + "_track_" + j;
+			if( data[name] )
+				track.data = data[name];
 		}
 	}
 
-	return new Animation(o);
+	return new LS.Animation( o );
 }
 
 Animation.prototype.toBinary = function()
@@ -14743,11 +15238,14 @@ Animation.prototype.toBinary = function()
 		for(var j in take.tracks)
 		{
 			var track = take.tracks[j];
-			var bindata = track.data;
-			var num = tracks_data.length;
-			o["@track_" + num] = bindata;
-			track.data = num;
-			tracks_data.push(bindata); //to restore after
+			if(track.packed_data)
+			{
+				var bindata = track.data;
+				var name = "@take_" + i + "_track_" + j;
+				o[name] = bindata;
+				track.data = null;
+				tracks_data.push( bindata );
+			}
 		}
 	}
 
@@ -14762,7 +15260,9 @@ Animation.prototype.toBinary = function()
 		for(var j in take.tracks)
 		{
 			var track = take.tracks[j];
-			track.data = tracks_data[ track.data ];
+			var name = "@take_" + i + "_track_" + j;
+			if(o[name])
+				track.data = o[name];
 		}
 	}
 
@@ -14778,21 +15278,80 @@ function Take(o)
 	this.name = null;
 	this.tracks = [];
 	this.duration = 0;
+	
+	if(!o)
+		return;
+
+	if( o.name ) this.name = o.name;
+	if( o.tracks ) 
+	{
+		for(var i in o.tracks)
+			this.addTrack( o.tracks[i] );
+	}
+	if( o.duration ) this.duration = o.duration;
 }
+
+Take.prototype.createTrack = function( data )
+{
+	if(!data)
+		throw("Data missing when creating track");
+
+	var track = this.getTrack( data.property );
+	if( track )
+		return track;
+
+	var track = new LS.Animation.Track( data );
+	this.addTrack( track );
+	return track;
+}
+
+Take.prototype.applyTracks = function(time)
+{
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if( track.enabled === false )
+			continue;
+		var sample = track.getSample( time, true );
+		if( sample !== undefined )
+			LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
+	}
+}
+
+
 
 Take.prototype.addTrack = function( track )
 {
 	this.tracks.push( track );
 }
 
+Take.prototype.getTrack = function( property )
+{
+	for(var i = 0; i < this.tracks.length; ++i)
+		if(this.tracks[i].property == property)
+			return this.tracks[i];
+	return null;
+}
+
+Take.prototype.removeTrack = function( track )
+{
+	for(var i = 0; i < this.tracks.length; ++i)
+		if(this.tracks[i] == track)
+		{
+			this.tracks.splice( i, 1 );
+			return;
+		}
+}
+
+
 Take.prototype.getPropertiesSample = function(time, result)
 {
 	result = result || [];
-	for(var i in this.tracks)
+	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		var value = track.getSample(time);
-		result.push([track.nodename, track.property, value ]);
+		var value = track.getSample( time );
+		result.push([track.property, value]);
 	}
 	return result;
 }
@@ -14803,10 +15362,9 @@ Take.prototype.actionPerSample = function(time, callback, options)
 	{
 		var track = this.tracks[i];
 		var value = track.getSample(time, true);
-		if( options.disabled_tracks && options.disabled_tracks[ track.nodename ] )
+		if( options.disabled_tracks && options.disabled_tracks[ track.property ] )
 			continue;
-
-		callback(track.nodename, track.property, value, options);
+		callback(track.property, value, options);
 	}
 }
 
@@ -14824,39 +15382,189 @@ Animation.Take = Take;
 
 function Track(o)
 {
-	this.nodename = ""; //nodename
-	this.property = ""; //property
-	this.duration = 0; //length of the animation
-	this.typed_mode = false; //this means the data is stored in one continuous datatype, faster but harder to edit
-	this.value_size = 0; //how many numbers contains every sample of this property
+	this.enabled = true;
+	this.name = ""; //title
+	this.type = null; //type of data (number, vec2, color, texture, etc)
+	this.interpolation = LS.NONE;
+	this.looped = false; //interpolate last keyframe with first
+
+	//data
+	this.packed_data = false; //this means the data is stored in one continuous datatype, faster to load but not editable
+	this.value_size = 0; //how many numbers contains every sample of this property, 0 means basic type (string, boolean)
 	this.data = null; //array or typed array where you have the time value followed by this.value_size bytes of data
+
+	//to speed up sampling
+	Object.defineProperty( this, '_property', {
+		value: "",
+		enumerable: false,
+		writable: true
+	});
+
+	Object.defineProperty( this, '_property_path', {
+		value: [],
+		enumerable: false,
+		writable: true
+	});
 
 	if(o)
 		this.configure(o);
 }
 
-Track.prototype.configure = function( data )
+Object.defineProperty( Track.prototype, 'property', {
+	set: function( property )
+	{
+		this._property = property;
+		this._property_path = property.split("/");
+	},
+	get: function(){
+		return this._property;
+	},
+	enumerable: true
+});
+
+Track.prototype.configure = function( o )
 {
-	this.property = data.property;
-	this.duration = data.duration;
-	this.nodename = data.nodename;
-	this.value_size = data.value_size;
+	if(o.enabled !== undefined) this.enabled = o.enabled;
+	if(o.name) this.name = o.name;
+	if(o.property) this.property = o.property;
+	if(o.type) this.type = o.type;
+	if(o.looped) this.looped = o.looped;
+	if(o.interpolation) this.interpolation = o.interpolation;
 
-	if( data.data.constructor == Array )
-		this.typed_mode = false;
-	else
-		this.typed_mode = true;
-	this.data = data.data;
+	//data
+	if(o.data)
+	{
+		this.value_size = o.value_size;
+		this.data = o.data;
 
+		if( o.data.constructor == Array )
+			this.packed_data = false;
+		else
+		{
+			this.packed_data = true;
+			this.unpackData();
+		}
+	}
+}
+
+Track.prototype.serialize = function()
+{
+	var o = {
+		enabled: this.enabled,
+		name: this.name,
+		property: this.property,
+		type: this.type,
+		interpolation: this.interpolation,
+		looped: this.looped,
+		value_size: this.value_size,
+		packed_data: false
+	}
+
+	if(this.value_size <= 1)
+		o.data = this.data; //regular array
+	else //pack data
+	{
+		this.packData();
+		o.data = this.data;
+		o.packed_data = this.packed_data;
+	}
+
+	return o;
+}
+
+Track.prototype.addKeyframe = function( time, value )
+{
+	if(this.value_size > 1)
+		value = new Float32Array( value ); //clone
+
+	if(this.packed_data)
+	{
+		//TODO!!!!!
+		console.warn("TODO: add keyframe in packed data");
+		return;
+	}
+
+	for(var i = 0; i < this.data.length; ++i)
+	{
+		if(this.data[i][0] < time )
+			continue;
+		if(this.data[i][0] == time )
+			this.data[i][1] = value;
+		else
+			this.data.splice(i,0, [time,value]);
+		return;
+	}
+
+	this.data.push( [time,value] );
+}
+
+Track.prototype.getKeyframe = function(index)
+{
+	if(this.packed_data)
+	{
+		var pos = index * (1 + this.value_size );
+		if(pos > (this.data.length - this.value_size) )
+			return null;
+		return [ this.data[pos], this.data.subarray(pos+1, pos+this.value_size) ];
+	}
+
+	return this.data[index];
+}
+
+Track.prototype.moveKeyframe = function(index, new_time)
+{
+	if(this.packed_data)
+	{
+		//TODO
+		console.warn("Cannot move keyframes if packed");
+		return;
+	}
+
+	if(index >= this.data.length)
+	{
+		console.warn("keyframe index out of bounds");
+		return;
+	}
+
+	var keyframe = this.data.splice(index, 1);
+	keyframe[0] = new_time;
+	var new_index = this.findTimeIndex( new_time );
+	this.data.splice(new_index, 0, keyframe);
+}
+
+Track.prototype.removeKeyframe = function(index)
+{
+	if(this.packed_data)
+	{
+		//TODO
+		console.warn("Cannot move keyframes if packed");
+		return;
+	}
+
+	if(index >= this.data.length)
+	{
+		console.warn("keyframe index out of bounds");
+		return;
+	}
+
+	this.data.splice(index, 1);
+}
+
+
+Track.prototype.getNumberOfKeyframes = function()
+{
+	if(this.packed_data)
+		return this.data.length / (1 + this.value_size );
+	return this.data.length;
 }
 
 //check for the last sample time
 Track.prototype.computeDuration = function()
 {
-	if(!this.data)
-		return;
+	if(!this.data || this.data.length == 0)
+		return 0;
 
-	if(this.typed_mode)
+	if(this.packed_data)
 	{
 		var time = this.data[ this.data.length - 2 - this.value_size ];
 		this.duration = time;
@@ -14866,17 +15574,48 @@ Track.prototype.computeDuration = function()
 	//not typed
 	var last = this.data[ this.data.length - 1 ];
 	if(last)
-		this.duration = last[0];
+		return last[0];
+	return 0;
 }
 
-Track.prototype.convertToTyped = function()
+//better for reading
+Track.prototype.packData = function()
 {
-	//TODO
+	if(this.packed_data)
+		return;
+
+	if(this.value_size == 0)
+		return; //cannot be packed (bools and strings cannot be packed)
+
+	var offset = this.value_size + 1;
+	var data = this.data;
+	var typed_data = new Float32Array( data.length * offset );
+
+	for(var i = 0; i < data.length; ++i)
+	{
+		typed_data[i] = data[0];
+		typed_data.set( data[1], i+1 );
+	}
+
+	this.data = typed_data;
+	this.packed_data = true;
 }
 
-Track.prototype.convertToArray = function()
+//better for writing
+Track.prototype.unpackData = function()
 {
-	//TODO
+	if(!this.packed_data)
+		return;
+
+	var offset = this.value_size + 1;
+	var typed_data = this.data;
+	var data = Array( typed_data.length / offset );
+
+	for(var i = 0; i < typed_data.length; i += offset )
+		data[i] = [ typed_data[i], typed_data.subarray( i+1, i+offset ) ];
+
+	this.data = data;
+	this.packed_data = false;
 }
 
 /* not tested
@@ -14912,63 +15651,195 @@ Track.prototype.findSampleIndex = function(time)
 }
 */
 
-Track.prototype.getSample = function(time, interpolate)
+//TODO: IMPROVE WITH DICOTOMIC SEARCH
+//Returns the index of the last sample with a time less or equal to time
+Track.prototype.findTimeIndex = function( time )
 {
-	var local_time = (time % this.duration);
-	if(local_time < 0)
-		local_time = this.duration + local_time;
-
 	var data = this.data;
-	var last_time = 0;
-
-	var value = data.subarray(1,offset);
-	var last_value = value;
-
-	var value_size = this.value_size;
-	var offset = this.value_size + 1;
-	var current_time = time;
-
-	for(var p = 0, l = data.length; p < l; p += offset)
+	var l = this.data.length;
+	if(!l)
+		return -1;
+	var i = 0;
+	if(this.packed_data)
 	{
-		last_time = current_time;
-		current_time = data[p];
-		last_value = value;
-		value = data.subarray(p + 1, p + offset);
-		if(current_time < local_time) 
-			continue;
-		break;
-	}
-
-	if(!interpolate || last_value == value)
-	{
-		if(value_size == 1)
-			return last_value[0];
-		else
-			return last_value;
-	}
-
-	var factor = (local_time - last_time) / (current_time - last_time);
-
-	if(last_value != null && value != null)
-	{
-		if(value_size == 1)
-			return last_value[0] * (1.0 - factor) +  value[0] * factor;
-		else
+		var offset = this.value_size + 1;
+		for(i = 0; i < l; i += offset)
 		{
-			if(!this._last_sample)	
-				this._last_sample = new Float32Array( value_size );
-			var result = this._last_sample;
-			for(var i = 0; i < value_size; i++)
-				result[i] = last_value[i] * (1.0 - factor) +  value[i] * factor;
-			return result;
+			var current_time = data[i];
+			if(current_time < time) 
+				continue;
+			return i-1; //prev sample
 		}
 	}
-	else if(last_value != null)
-		return last_value;
-	return value;
+	else //unpacked data
+	{
+		for(i = 0; i < l; ++i )
+		{
+			if(time > data[i][0]) 
+				continue;
+			if(i == 0)
+				return 0;
+			return i-1; //prev sample
+		}
+	}
+
+	return l-1; //last sample
+}
+
+
+Track.prototype.getSample = function( time, interpolate, result )
+{
+	time = Math.clamp( time, 0, this.duration );
+
+	var index = this.findTimeIndex( time );
+	if(index == -1)
+		return null;
+
+	var index_a = index;
+	var index_b = index + 1;
+
+	if(!interpolate || !this.interpolation || this.data.length == 1 || this.value_size == 0 || index_b == this.data.length ) //(index_b == this.data.length && !this.looped)
+		return this.data[ index ][1];
+
+	var data = this.data;
+
+	/*
+	if(this.looped)
+	{
+		if(index_a == 0 && time < data[0][0])
+			index_a = data.length - 1; //last
+		if(index_b == data.length && time < data[0][0])
+			index_b = 0; //last
+	}
+	*/
+
+	var a = data[ index_a ];
+	var b = data[ index_b ];
+	var t = (b[0] - time) / (b[0] - a[0]);
+
+	if(this.interpolation === LS.LINEAR)
+	{
+		if(this.value_size == 1)
+			return a[1] * t + b[1] * (1-t);
+
+		result = result || this._result;
+
+		if(!result || result.length != this.value_size)
+			result = this._result = new Float32Array( this.value_size );
+
+		for(var i = 0; i < this.value_size; i++)
+			result[i] = a[1][i] * t + b[1][i] * (1-t);
+
+		if(this.type == "quat")
+			quat.normalize(result, result);
+
+		return result;
+	}
+	else if(this.interpolation === LS.BEZIER)
+	{
+		var pre_a = index > 0 ? data[ index - 1 ] : a;
+		var post_b = index < data.length - 2 ? data[ index + 2 ] : b;
+
+		if(this.value_size === 1)
+			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
+
+		result = result || this._result;
+
+		//multiple data
+		if(!result || result.length != this.value_size)
+			result = this._result = new Float32Array( this.value_size );
+
+		result = result || this._result;
+		result = Animation.EvaluateHermiteSplineVector(a[1],b[1], pre_a[1], post_b[1], 1 - t, result );
+
+		if(this.type == "quat")
+			quat.normalize(result, result);
+
+		return result;
+	}
+
+	return null;
+}
+
+Track.prototype.getPropertyInfo = function()
+{
+	return LS.GlobalScene.getPropertyInfo( this.property );
+}
+
+Track.prototype.getSampledData = function( start_time, end_time, num_samples )
+{
+	var delta = (end_time - start_time) / num_samples;
+	if(delta <= 0)
+		return null;
+
+	var samples = [];
+	for(var i = 0; i < num_samples; ++i)
+	{
+		var t = i * delta + start_time;
+		var sample = this.getSample( t, true );
+		if(this.value_size > 1)
+			sample = new sample.constructor( sample );
+		samples.push(sample);
+	}
+
+	return samples;
 }
 
 Animation.Track = Track;
+
+/*
+vec3f EvaluateHermiteSpline(const vec3f& p0, const vec3f& p1, const vec3f& t0, const vec3f& t1, float s)
+{
+	float s2 = s * s;
+	float s3 = s2 * s;
+	float h1 =  2*s3 - 3*s2 + 1;          // calculate basis function 1
+	float h2 = -2*s3 + 3*s2;              // calculate basis function 2
+	float h3 =   s3 - 2*s2 + s;         // calculate basis function 3
+	float h4 =   s3 -  s2;              // calculate basis function 4
+	vec3f p = h1*p0+                    // multiply and sum all funtions
+						 h2*p1 +                    // together to build the interpolated
+						 h3*t0 +                    // point along the curve.
+						 h4*t1;
+	return p;
+}
+*/
+
+
+Animation.EvaluateHermiteSpline = function( p0, p1, pre_p0, post_p1, s )
+{
+	var s2 = s * s;
+	var s3 = s2 * s;
+	var h1 =  2*s3 - 3*s2 + 1;          // calculate basis function 1
+	var h2 = -2*s3 + 3*s2;              // calculate basis function 2
+	var h3 =   s3 - 2*s2 + s;         // calculate basis function 3
+	var h4 =   s3 -  s2;              // calculate basis function 4
+	
+	var t0 = p1 - pre_p0;
+	var t1 = post_p1 - p0;
+
+	return h1 * p0 + h2 * p1 + h3 * t0 + h4 * t1;
+}
+
+Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, result )
+{
+	result = result || new Float32Array( result.length );
+
+	var s2 = s * s;
+	var s3 = s2 * s;
+	var h1 =  2*s3 - 3*s2 + 1;          // calculate basis function 1
+	var h2 = -2*s3 + 3*s2;              // calculate basis function 2
+	var h3 =   s3 - 2*s2 + s;         // calculate basis function 3
+	var h4 =   s3 -  s2;              // calculate basis function 4
+
+	for(var i = 0; i < result.length; ++i)
+	{
+		var t0 = p1[i] - pre_p0[i];
+		var t1 = post_p1[i] - p0[i];
+		result[i] = h1 * p0[i] + h2 * p1[i] + h3 * t0 + h4 * t1;
+	}
+
+	return result;
+}
 function Path()
 {
 	this.points = [];
@@ -15277,7 +16148,7 @@ function RenderInstance(node, component)
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
-	this.blend_func = BlendFunctions["normal"]; //Blend.funcs["add"], ...
+	this.blend_func = LS.BlendFunctions["normal"]; //Blend.funcs["add"], ...
 
 	//transformation
 	this.matrix = mat4.create();
@@ -15347,7 +16218,7 @@ RenderInstance.prototype.setMaterial = function(material)
 //sets the buffers to render, the primitive, and the bounding
 RenderInstance.prototype.setMesh = function(mesh, primitive)
 {
-	if( !primitive && primitive != 0)
+	if( primitive == -1 || primitive === undefined )
 		primitive = gl.TRIANGLES;
 
 	this.mesh = mesh;
@@ -15930,7 +16801,12 @@ var Renderer = {
 		gl.enable(gl.SCISSOR_TEST);
 
 		//clear buffer
-		gl.clearColor(scene.background_color[0],scene.background_color[1],scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
+		var info = scene.info;
+		if(info)
+			gl.clearColor( info.background_color[0],info.background_color[1],info.background_color[2], info.background_color[3] );
+		else
+			gl.clearColor(0,0,0,0);
+
 		if(render_options.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
 
@@ -16029,11 +16905,11 @@ var Renderer = {
 		this.fillSceneShaderUniforms( scene, render_options );
 
 		//render background: maybe this should be moved to a component
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.textures["background"])
+		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["background"])
 		{
 			var texture = null;
-			if(typeof(scene.textures["background"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["background"] ];
+			if(typeof(scene.info.textures["background"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.info.textures["background"] ];
 			if(texture)
 			{
 				gl.disable( gl.BLEND );
@@ -16149,11 +17025,11 @@ var Renderer = {
 		LEvent.trigger(scene, "renderScreenSpace", render_options);
 
 		//foreground object
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.textures["foreground"])
+		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["foreground"])
 		{
 			var texture = null;
-			if(typeof(scene.textures["foreground"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.textures["foreground"] ];
+			if(typeof(scene.info.textures["foreground"]) == "string")
+				texture = LS.ResourcesManager.textures[ scene.info.textures["foreground"] ];
 			if(texture)
 			{
 				gl.enable( gl.BLEND );
@@ -16654,8 +17530,9 @@ var Renderer = {
 			u_time: scene._time || getTime() * 0.001,
 			u_brightness_factor: render_options.brightness_factor != null ? render_options.brightness_factor : 1,
 			u_colorclip_factor: render_options.colorclip_factor != null ? render_options.colorclip_factor : 0,
-			u_ambient_light: scene.ambient_color,
-			u_background_color: scene.background_color.subarray(0,3)
+			u_ambient_light: scene.info.ambient_color,
+			u_background_color: scene.info.background_color.subarray(0,3),
+			u_viewport: gl.viewport_data
 		};
 
 		if(render_options.clipping_plane)
@@ -16665,13 +17542,11 @@ var Renderer = {
 		scene._samplers = {};
 
 
-		//if(scene.textures.environment)
-		//	scene._samplers.push(["environment" + (scene.textures.environment.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") , scene.textures.environment]);
-
-		for(var i in scene.textures)
+		for(var i in scene.info.textures)
 		{
-			var texture = LS.getTexture( scene.textures[i] );
-			if(!texture) continue;
+			var texture = LS.getTexture( scene.info.textures[i] );
+			if(!texture)
+				continue;
 			if(i != "environment" && i != "irradiance") continue; //TO DO: improve this, I dont want all textures to be binded 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
 			if(texture.texture_type == gl.TEXTURE_2D)
@@ -16897,7 +17772,7 @@ var Renderer = {
 		function inner_draw_2d()
 		{
 			var scene = Renderer._current_scene;
-			gl.clearColor(scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 0.0);
+			gl.clearColor(scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 			if(render_options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
@@ -16933,10 +17808,10 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var cams = Camera.cubemap_camera_parameters;
-			if(render_options.is_shadowmap)
+			if(render_options.is_shadowmap || !scene.info )
 				gl.clearColor(0,0,0,0);
 			else
-				gl.clearColor( scene.background_color[0], scene.background_color[1], scene.background_color[2], scene.background_color.length > 3 ? scene.background_color[3] : 1.0);
+				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
@@ -16957,9 +17832,9 @@ var Renderer = {
 		if(!scene)
 		{
 			scene = this._material_scene = new LS.SceneTree();
-			scene.background_color.set([0,0,0,0]);
+			scene.info.background_color.set([0,0,0,0]);
 			if(options.environment_texture)
-				scene.textures.environment = options.environment_texture;
+				scene.info.textures.environment = options.environment_texture;
 			var node = new LS.SceneNode( "sphere" );
 			var compo = new LS.Components.GeometricPrimitive( { size: 40, subdivisions: 50, geometry: LS.Components.GeometricPrimitive.SPHERE } );
 			node.addComponent( compo );
@@ -20190,10 +21065,6 @@ function SceneTree()
 	this.init();
 }
 
-//globals
-SceneTree.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
-SceneTree.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
-
 Object.defineProperty( SceneTree.prototype, "root", {
 	enumerable: true,
 	get: function() {
@@ -20227,16 +21098,12 @@ SceneTree.prototype.init = function()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
-	this.rt_cameras = [];
-
-	this._root.addComponent( new Camera() );
+	//default components
+	this.info = new LS.Components.GlobalInfo();
+	this._root.addComponent( this.info );
+	this._root.addComponent( new LS.Camera() );
 	this.current_camera = this._root.camera;
-
-	this._root.addComponent( new Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
-
-	this.ambient_color = new Float32Array( SceneTree.DEFAULT_AMBIENT_COLOR );
-	this.background_color = new Float32Array( SceneTree.DEFAULT_BACKGROUND_COLOR );
-	this.textures = {};
+	this._root.addComponent( new LS.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
@@ -20304,14 +21171,6 @@ SceneTree.prototype.configure = function(scene_info)
 
 	if(scene_info.local_repository)
 		this.local_repository = scene_info.local_repository;
-	//parse basics
-	if(scene_info.background_color)
-		this.background_color.set(scene_info.background_color);
-	if(scene_info.ambient_color)
-		this.ambient_color.set(scene_info.ambient_color);
-
-	if(scene_info.textures)
-		this.textures = scene_info.textures;
 
 	//extra info that the user wanted to save (comments, etc)
 	if(scene_info.extra)
@@ -20391,11 +21250,6 @@ SceneTree.prototype.serialize = function()
 
 	//legacy
 	o.local_repository = this.local_repository;
-
-	//this is ugly but scenes can have also some rendering properties
-	o.ambient_color = toArray( this.ambient_color );
-	o.background_color = toArray( this.background_color ); //to non-typed
-	o.textures = cloneObject(this.textures);
 
 	//o.nodes = [];
 	o.extra = this.extra || {};
@@ -20689,58 +21543,66 @@ SceneTree.prototype.findComponentByUId = function(uid)
 	return null;
 }
 
+/**
+* Returns information of a node component property based on the locator of that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
+*
+* @method getPropertyInfo
+* @param {String} locator locator of the property
+* @return {Object} object with node, component, name, and value
+*/
+SceneTree.prototype.getPropertyInfo = function( property_uid )
+{
+	var path = property_uid.split("/");
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+
+	return node.getPropertyInfoFromPath( path );
+}
+
+
 
 /**
-* retrieves a Node
+* Assigns a value to the property of a component in a node based on the locator of that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
 *
-* @method getNodeByUid
-* @param {number} uid number
-* @return {Object} the node or null if it didnt find it
+* @method setPropertyValue
+* @param {String} locator locator of the property
+* @param {*} value the value to assign
+* @param {Component} target [Optional] used to avoid searching for the component every time
+* @return {Component} the target where the action was performed
 */
-
-/*
-SceneTree.prototype.getNodeByUid = function(uid)
+SceneTree.prototype.setPropertyValue = function( locator, value )
 {
-	for(var i in this.nodes)
-		if(this.nodes[i]._uid == uid)
-			return this.nodes[i];
-	return null;
-}
-*/
+	var path = locator.split("/");
 
+	//get node
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+
+	return node.setPropertyValueFromPath( path, value );
+}
 
 /**
-* retrieves a Node index
+* Assigns a value to the property of a component in a node based on the locator that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
 *
-* @method getNodeIndex
-* @param {Node} node
-* @return {Number} returns the node index in the nodes array
+* @method setPropertyValueFromPath
+* @param {Array} path a property locator split by "/"
+* @param {*} value the value to assign
+* @return {Component} the target where the action was performed
 */
-/*
-SceneTree.prototype.getNodeIndex = function(node)
+SceneTree.prototype.setPropertyValueFromPath = function( property_path, value )
 {
-	return this.nodes.indexOf(node);
-}
-*/
+	//get node
+	var node = this.getNode( property_path[0] );
+	if(!node)
+		return null;
 
-/**
-* retrieves a Node
-*
-* @method getNodesByClass
-* @param {String} className class name
-* @return {Object} returns all the nodes that match this class name
-*/
-
-/*
-SceneTree.prototype.getNodesByClass = function(classname)
-{
-	var r = [];
-	for (var i in this.nodes)
-		if(this.nodes[i].className && this.nodes[i].className.split(" ").indexOf(classname) != -1)
-			r.push(this.nodes[i]);
-	return r;
+	return node.setPropertyValueFromPath( property_path, value );
 }
-*/
 
 
 /**
@@ -21123,6 +21985,7 @@ function SceneNode( name )
 	this.addComponent( new Transform() );
 
 	//material
+	this._material = null;
 	//this.material = new Material();
 	this.extra = {}; //for extra info
 }
@@ -21145,6 +22008,36 @@ Object.defineProperty( SceneNode.prototype, 'name', {
 	},
 	get: function(){
 		return this._name;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'visible', {
+	set: function(v)
+	{
+		this.flags.visible = v;
+	},
+	get: function(){
+		return this.flags.visible;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'material', {
+	set: function(v)
+	{
+		this._material = v;
+		if(!v)
+			return;
+		if(v.constructor === String)
+			return;
+		if(v._root && v._root != this)
+			console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
+		else
+			v._root = this; //link
+	},
+	get: function(){
+		return this._material;
 	},
 	enumerable: true
 });
@@ -21221,6 +22114,114 @@ Object.defineProperty( SceneNode.prototype, 'className', {
 	},
 	enumerable: true
 });
+
+SceneNode.prototype.getPropertyInfoFromPath = function( path )
+{
+	var target = this;
+	var varname = path[1];
+
+	if(path.length > 2)
+	{
+		if(path[1][0] == "@")
+		{
+			varname = path[2];
+			target = this.getComponentByUId( path[1] );
+		}
+		else if (path[1] == "material")
+		{
+			target = this.getMaterial();
+			varname = path[2];
+		}
+
+		if(!target)
+			return null;
+	}
+
+	var v = undefined;
+
+	if( target.getPropertyInfoFromPath )
+	{
+		var r = target.getPropertyInfoFromPath( path );
+		if(r)
+			return r;
+	}
+
+	if( target.getPropertyValue )
+		v = target.getPropertyValue( varname );
+
+	if(v === undefined && target[ varname ] === undefined)
+		return null;
+
+	var value = v !== undefined ? v : target[ varname ];
+
+	var extra_info = target.constructor[ "@" + varname ];
+	var type = "";
+	if(extra_info)
+		type = extra_info.type;
+	if(!type && value !== null && value !== undefined)
+	{
+		if(value.constructor === String)
+			type = "string";
+		else if(value.constructor === Boolean)
+			type = "boolean";
+		else if(value.length)
+			type = "vec" + value.length;
+		else if(value.constructor === Number)
+			type = "number";
+	}
+
+	return {
+		node: this,
+		target: target,
+		name: varname,
+		value: value,
+		type: type
+	};
+}
+
+SceneNode.prototype.setPropertyValueFromPath = function( path, value )
+{
+	var target = null;
+	var varname = path[1];
+
+	if(path.length > 2)
+	{
+		if(path[1][0] == "@")
+		{
+			varname = path[2];
+			target = this.getComponentByUId( path[1] );
+		}
+		else if( path[1] == "material" )
+		{
+			target = this.getMaterial();
+			varname = path[2];
+		}
+
+		if(!target)
+			return null;
+	}
+	else
+		target = this;
+
+	if(target.setPropertyValueFromPath)
+		if( target.setPropertyValueFromPath(path, value) === true )
+			return target;
+	
+	if(target.setPropertyValue)
+		if( target.setPropertyValue( varname, value ) === true )
+			return target;
+
+	if( target[ varname ] === undefined )
+		return;
+
+	//disabled because if the vars has a setter it wont be called using the array.set
+	//if( target[ varname ] !== null && target[ varname ].set )
+	//	target[ varname ].set( value );
+	//else
+		target[ varname ] = value;
+
+	return target;
+}
 
 SceneNode.prototype.getResources = function(res, include_children)
 {
@@ -21345,16 +22346,10 @@ SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 	}
 }
 
-SceneNode.prototype.setMaterial = function(mat)
-{
-	this.material = mat;
-	//TODO: allow only strings and force to register the material
-}
-
-
 SceneNode.prototype.getMaterial = function()
 {
-	if (!this.material) return null;
+	if (!this.material)
+		return null;
 	if(this.material.constructor === String)
 		return this._in_tree ? LS.ResourcesManager.materials[ this.material ] : null;
 	return this.material;

@@ -39,6 +39,7 @@
 ../src/components/fogFX.js
 ../src/components/followNode.js
 ../src/components/geometricPrimitive.js
+../src/components/globalInfo.js
 ../src/components/graphComponents.js
 ../src/components/knob.js
 ../src/components/particles.js

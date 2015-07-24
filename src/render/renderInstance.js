@@ -60,7 +60,7 @@ function RenderInstance(node, component)
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
-	this.blend_func = BlendFunctions["normal"]; //Blend.funcs["add"], ...
+	this.blend_func = LS.BlendFunctions["normal"]; //Blend.funcs["add"], ...
 
 	//transformation
 	this.matrix = mat4.create();
@@ -130,7 +130,7 @@ RenderInstance.prototype.setMaterial = function(material)
 //sets the buffers to render, the primitive, and the bounding
 RenderInstance.prototype.setMesh = function(mesh, primitive)
 {
-	if( !primitive && primitive != 0)
+	if( primitive == -1 || primitive === undefined )
 		primitive = gl.TRIANGLES;
 
 	this.mesh = mesh;

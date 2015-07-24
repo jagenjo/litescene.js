@@ -7,15 +7,27 @@
 
 function GeometricPrimitive(o)
 {
+	this.enabled = true;
 	this.size = 10;
 	this.subdivisions = 10;
 	this.geometry = GeometricPrimitive.CUBE;
-	this.primitive = null;
+	this._primitive = -1;
 	this.align_z = false;
 
 	if(o)
 		this.configure(o);
 }
+
+Object.defineProperty( GeometricPrimitive.prototype, 'primitive', {
+	get: function() { return this._primitive; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+			return;
+		this._primitive = v;
+	},
+	enumerable: true
+});
 
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
@@ -27,7 +39,7 @@ GeometricPrimitive.ICOSAHEDRON = 7;
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
-GeometricPrimitive["@primitive"] = {widget:"combo", values: {"Default":null, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+GeometricPrimitive["@primitive"] = {widget:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 GeometricPrimitive["@subdivisions"] = { type:"number", step:1, min:0 };
 
 GeometricPrimitive.prototype.onAddedToNode = function(node)
@@ -76,6 +88,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 //GeometricPrimitive.prototype.getRenderInstance = function()
 GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 {
+	if(!this.enabled)
+		return;
+
 	//if(this.size == 0) return;
 	var mesh = null;
 	if(!this._root) return;

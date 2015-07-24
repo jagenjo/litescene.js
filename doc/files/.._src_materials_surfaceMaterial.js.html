@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -162,15 +164,7 @@
     <pre class="code prettyprint linenums">
 function SurfaceMaterial(o)
 {
-	this.name = &quot;&quot;;
-	this.uid = LS.generateUId(&quot;MAT-&quot;);
-	this._dirty = true;
-
-	this.shader_name = &quot;surface&quot;;
-
-	//this.shader_name = null; //default shader
-	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.blend_mode = Blend.NORMAL;
+	Material.call(this, null);
 
 	this.vs_code = &quot;&quot;;
 	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -186,8 +180,6 @@ function SurfaceMaterial(o)
 	this._macros = {};
 
 	this.properties = []; //array of configurable properties
-	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
-	this.textures = {};
 	if(o) 
 		this.configure(o);
 
@@ -236,7 +228,7 @@ SurfaceMaterial.prototype.getCode = function()
 SurfaceMaterial.prototype.computeCode = function()
 {
 	var uniforms_code = &quot;&quot;;
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var code = &quot;uniform &quot;;
 		var prop = this.properties[i];
@@ -257,7 +249,7 @@ SurfaceMaterial.prototype.computeCode = function()
 	}
 
 	var lines = this.code.split(&quot;\n&quot;);
-	for(var i in lines)
+	for(var i = 0, l = lines.length; i &lt; l; ++i )
 		lines[i] = lines[i].split(&quot;//&quot;)[0]; //remove comments
 
 	this.surf_code = uniforms_code + lines.join(&quot;&quot;);
@@ -311,7 +303,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 {
 	var samplers = {};
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot; || prop.type == &quot;sampler&quot;)
@@ -329,7 +321,7 @@ SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
 			this._uniforms[ prop.name ] = prop.value;
 	}
 
-	this._uniforms.u_material_color = this.color;
+	this._uniforms.u_material_color = this._color;
 
 	if(this.textures[&quot;environment&quot;])
 	{
@@ -384,7 +376,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
 
 	//specific
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if( prop.value == old_name)
@@ -410,7 +402,7 @@ SurfaceMaterial.prototype.getProperty = function(name)
 		return tex.texture;
 	}
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name == name)
@@ -431,7 +423,7 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	if( Material.prototype.setProperty.call(this,name,value) )
 		return true;
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.name != name)
@@ -448,7 +440,7 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];
 
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot; &amp;&amp; prop.type != &quot;sampler&quot; )
@@ -513,7 +505,7 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 */
 SurfaceMaterial.prototype.getResources = function (res)
 {
-	for(var i in this.properties)
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
 		var prop = this.properties[i];
 		if(prop.type != &quot;texture&quot; &amp;&amp; prop.type != &quot;cubemap&quot; &amp;&amp; prop.type != &quot;sampler&quot;)

@@ -130,6 +130,44 @@ GraphComponent.prototype.getGraph = function()
 	return this._graph;
 }
 
+GraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+GraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value && n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
+}
 
 LS.registerComponent(GraphComponent);
 
@@ -242,6 +280,45 @@ FXGraphComponent.prototype.getResources = function(res)
 			res[nodes[i].properties.name] = Texture;
 	}
 	return res;
+}
+
+FXGraphComponent.prototype.getPropertyValue = function( property )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			return n.properties.value;
+		}
+	}
+}
+
+
+FXGraphComponent.prototype.setPropertyValue = function( property, value )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(nodes.length)
+	{
+		for(var i = 0; i < nodes.length; ++i)
+		{
+			var n = nodes[i];
+			var type = n.properties.type;
+			if(n.properties.name != property)
+				continue;
+
+			if(n.properties.value && n.properties.value.set)
+				n.properties.value.set(value);
+			else
+				n.properties.value = value;
+			return true;
+		}
+	}
 }
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)

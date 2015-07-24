@@ -252,15 +252,25 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns the resource if it has been loaded, if you want to force to load it, use load
+	*
+	* @method getResource
+	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
+	*/
+	getResource: function( url )
+	{
+		return this.resources[ url ];
+	},
+
+	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
-	* Do not use for regular files, instead use the LS.Network methods
+	* Do not use to load regular files (txts, csv, etc), instead use the LS.Network methods
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
-	* @param {Object}[options={}] options to apply to the loaded image
-	* @param {Function} [on_complete=null] callback when the resource is loaded and cached
+	* @param {Object}[options={}] options to apply to the loaded resource when processing it
+	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
 	*/
-
 	load: function(url, options, on_complete)
 	{
 		options = options || {};

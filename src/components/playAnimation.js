@@ -70,10 +70,29 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!take) 
 		return;
 
-	take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
+	var time = this.current_time;
+
+	if(time > take.duration)
+	{
+		switch( this.mode )
+		{
+			case "once": time = take.duration; break;
+			case "loop": time = this.current_time % take.duration; break;
+			case "pingpong": if( ((time / take.duration)|0) % 2 == 0 )
+								time = this.current_time % take.duration; 
+							else
+								time = take.duration - (this.current_time % take.duration);
+						break;
+			default: break;
+		}
+	}
+
+	take.applyTracks( time );
+
+	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 
 	var scene = this._root.scene;
-	if(!scene)
+	if(scene)
 		scene.refresh();
 }
 

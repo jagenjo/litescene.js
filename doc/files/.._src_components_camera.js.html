@@ -71,6 +71,8 @@
             
                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
             
+                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+            
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -233,6 +235,11 @@ Camera.icon = &quot;mini-icon-camera.png&quot;;
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
+
+Camera[&quot;@type&quot;] = { type: &quot;enum&quot;, values: { &quot;perspective&quot;: Camera.PERSPECTIVE, &quot;orthographic&quot;: Camera.ORTHOGRAPHIC, &quot;ortho2D&quot;: Camera.ORTHO2D } };
+Camera[&quot;@eye&quot;] = { type: &quot;position&quot; };
+Camera[&quot;@center&quot;] = { type: &quot;position&quot; };
+Camera[&quot;@texture_name&quot;] = { type: &quot;texture&quot; };
 
 // used when rendering a cubemap to set the camera view direction
 Camera.cubemap_camera_parameters = [
@@ -1064,6 +1071,8 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 
 Camera.prototype.configure = function(o)
 {
+	if(o.uid !== undefined) this.uid = o.uid;
+
 	if(o.enabled !== undefined) this.enabled = o.enabled;
 	if(o.type !== undefined) this._type = o.type;
 
@@ -1090,6 +1099,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		uid: this.uid,
 		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
@@ -1200,6 +1210,13 @@ Camera.prototype.endFBO = function()
 	gl.bindFramebuffer(gl.FRAMEBUFFER, this._old_fbo);
 	LS.Renderer.global_aspect = 1.0;
 	this._old_fbo = null;
+
+	//generate mipmaps
+	if ( gl.NEAREST_MIPMAP_NEAREST &lt;= this._texture.minFilter &amp;&amp; this._texture.minFilter &lt;= gl.LINEAR_MIPMAP_LINEAR )
+	{
+		this._texture.bind(0);
+		gl.generateMipmap( this._texture.texture_type );
+	}
 
 	var v = this._old_viewport;
 	gl.viewport( v[0], v[1], v[2], v[3] );

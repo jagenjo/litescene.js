@@ -72,6 +72,11 @@ Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
 
+Camera["@type"] = { type: "enum", values: { "perspective": Camera.PERSPECTIVE, "orthographic": Camera.ORTHOGRAPHIC, "ortho2D": Camera.ORTHO2D } };
+Camera["@eye"] = { type: "position" };
+Camera["@center"] = { type: "position" };
+Camera["@texture_name"] = { type: "texture" };
+
 // used when rendering a cubemap to set the camera view direction
 Camera.cubemap_camera_parameters = [
 	{ dir: vec3.fromValues(1,0,0), 	up: vec3.fromValues(0,-1,0) }, //positive X
@@ -902,6 +907,8 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 
 Camera.prototype.configure = function(o)
 {
+	if(o.uid !== undefined) this.uid = o.uid;
+
 	if(o.enabled !== undefined) this.enabled = o.enabled;
 	if(o.type !== undefined) this._type = o.type;
 
@@ -928,6 +935,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		uid: this.uid,
 		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
@@ -1038,6 +1046,13 @@ Camera.prototype.endFBO = function()
 	gl.bindFramebuffer(gl.FRAMEBUFFER, this._old_fbo);
 	LS.Renderer.global_aspect = 1.0;
 	this._old_fbo = null;
+
+	//generate mipmaps
+	if ( gl.NEAREST_MIPMAP_NEAREST <= this._texture.minFilter && this._texture.minFilter <= gl.LINEAR_MIPMAP_LINEAR )
+	{
+		this._texture.bind(0);
+		gl.generateMipmap( this._texture.texture_type );
+	}
 
 	var v = this._old_viewport;
 	gl.viewport( v[0], v[1], v[2], v[3] );
