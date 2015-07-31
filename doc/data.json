@@ -794,7 +794,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/helpers/animation.js",
-            "line": 235,
+            "line": 239,
             "description": "Represents one track with data over time about one property\nData could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode",
             "is_constructor": 1
         },
@@ -968,7 +968,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 429,
+            "line": 435,
             "description": "Samples a curve and returns the resulting value",
             "itemtype": "method",
             "params": [
@@ -3308,7 +3308,7 @@
         },
         {
             "file": "../src/helpers/animation.js",
-            "line": 136,
+            "line": 137,
             "class": "LS.Animation",
             "namespace": "LS"
         },
@@ -4703,7 +4703,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 266,
+            "line": 270,
             "description": "Clears all the uids inside this object and children (it also works with serialized object)",
             "itemtype": "method",
             "name": "clearUIds",
@@ -4719,7 +4719,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 306,
+            "line": 310,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -4739,7 +4739,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 328,
+            "line": 332,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -4759,7 +4759,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 353,
+            "line": 357,
             "description": "Returns the attributes of one object and the type",
             "itemtype": "method",
             "name": "getObjectAttributes",
@@ -4779,7 +4779,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 465,
+            "line": 471,
             "description": "Resamples a full curve in values (useful to upload to GPU array)",
             "itemtype": "method",
             "name": "resampleCurve",
@@ -6040,7 +6040,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1331,
+            "line": 1335,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -6053,7 +6053,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1354,
+            "line": 1358,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -6069,7 +6069,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1442,
+            "line": 1446,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",
@@ -6088,7 +6088,7 @@
         },
         {
             "message": "Missing item type",
-            "line": " ../src/helpers/animation.js:136"
+            "line": " ../src/helpers/animation.js:137"
         }
     ]
 }

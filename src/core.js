@@ -218,7 +218,7 @@ var LS = {
 	* @param {Object} target=null optional, the destination object
 	* @return {Object} returns the cloned object
 	*/
-	cloneObject: function(object, target)
+	cloneObject: function(object, target, recursive)
 	{
 		var o = target || {};
 		for(var i in object)
@@ -229,26 +229,30 @@ var LS = {
 			var v = object[i];
 			if(v == null)
 				o[i] = null;			
-			else if ( isFunction(v) )
-				continue;
+			else if ( isFunction(v) ) //&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
+				continue;//o[i] = v;
 			else if (typeof(v) == "number" || typeof(v) == "string")
 				o[i] = v;
 			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
 				o[i] = Array.apply( [], v ); //clone
 			else if ( isArray(v) )
 			{
-				if( o[i] && o[i].constructor == Float32Array ) //reuse old container
+				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
 					o[i].set(v);
 				else
 					o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 			}
-			else //slow but safe
+			else //object: 
 			{
-				if(LS.catch_errors)
+				if(v.toJSON)
+					o[i] = v.toJSON();
+				else if(recursive)
+					o[i] = LS.cloneObject( v, null, true );
+				else if(LS.catch_errors)
 				{
 					try
 					{
-						//prevent circular recursions
+						//prevent circular recursions //slow but safe
 						o[i] = JSON.parse( JSON.stringify(v) );
 					}
 					catch (err)
@@ -256,7 +260,7 @@ var LS = {
 						console.error(err);
 					}
 				}
-				else
+				else //slow but safe
 					o[i] = JSON.parse( JSON.stringify(v) );
 			}
 		}
@@ -356,6 +360,7 @@ var LS = {
 	* @param {Object} object
 	* @return {Object} returns object with attribute name and its type
 	*/
+	//TODO: merge this with the locator stuff
 	getObjectAttributes: function(object)
 	{
 		if(object.getAttributes)
@@ -384,8 +389,8 @@ var LS = {
 			var v = object[i];
 			if(v == null)
 				o[i] = null;
-			else if ( isFunction(v) )
-				continue;
+			else if ( isFunction(v) )//&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
+				continue; //o[i] = v;
 			else if (  v.constructor === Boolean )
 				o[i] = "boolean";
 			else if (  v.constructor === Number )
@@ -413,6 +418,7 @@ var LS = {
 		return o;
 	},
 
+	//TODO: merge this with the locator stuff
 	setObjectAttribute: function(obj, name, value)
 	{
 		if(obj.setAttribute)

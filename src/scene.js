@@ -1097,10 +1097,12 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 		if(!target)
 			return null;
 	}
+	else if(path[1] == "matrix") //special case
+		target = this.transform;
 
 	var v = undefined;
 
-	if( target.getPropertyInfoFromPath )
+	if( target.getPropertyInfoFromPath && target != this )
 	{
 		var r = target.getPropertyInfoFromPath( path );
 		if(r)
@@ -1161,10 +1163,12 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		if(!target)
 			return null;
 	}
+	else if(path[1] == "matrix") //special case
+		target = this.transform;
 	else
 		target = this;
 
-	if(target.setPropertyValueFromPath)
+	if(target.setPropertyValueFromPath && target != this)
 		if( target.setPropertyValueFromPath(path, value) === true )
 			return target;
 	

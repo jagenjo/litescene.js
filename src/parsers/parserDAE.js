@@ -43,7 +43,8 @@ var parserDAE = {
 			//change mesh names
 			if(node.mesh)
 			{
-				var newmeshname = basename + "::" + node.mesh;
+				var newmeshname = basename + "__" + node.mesh;
+				newmeshname = newmeshname.replace(/[^a-z0-9]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
 				renamed[ node.mesh ] = newmeshname;
 				node.mesh = newmeshname;
 			}

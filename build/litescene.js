@@ -1680,7 +1680,7 @@ var LS = {
 	* @param {Object} target=null optional, the destination object
 	* @return {Object} returns the cloned object
 	*/
-	cloneObject: function(object, target)
+	cloneObject: function(object, target, recursive)
 	{
 		var o = target || {};
 		for(var i in object)
@@ -1691,26 +1691,30 @@ var LS = {
 			var v = object[i];
 			if(v == null)
 				o[i] = null;			
-			else if ( isFunction(v) )
-				continue;
+			else if ( isFunction(v) ) //&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
+				continue;//o[i] = v;
 			else if (typeof(v) == "number" || typeof(v) == "string")
 				o[i] = v;
 			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
 				o[i] = Array.apply( [], v ); //clone
 			else if ( isArray(v) )
 			{
-				if( o[i] && o[i].constructor == Float32Array ) //reuse old container
+				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
 					o[i].set(v);
 				else
 					o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
 			}
-			else //slow but safe
+			else //object: 
 			{
-				if(LS.catch_errors)
+				if(v.toJSON)
+					o[i] = v.toJSON();
+				else if(recursive)
+					o[i] = LS.cloneObject( v, null, true );
+				else if(LS.catch_errors)
 				{
 					try
 					{
-						//prevent circular recursions
+						//prevent circular recursions //slow but safe
 						o[i] = JSON.parse( JSON.stringify(v) );
 					}
 					catch (err)
@@ -1718,7 +1722,7 @@ var LS = {
 						console.error(err);
 					}
 				}
-				else
+				else //slow but safe
 					o[i] = JSON.parse( JSON.stringify(v) );
 			}
 		}
@@ -1818,6 +1822,7 @@ var LS = {
 	* @param {Object} object
 	* @return {Object} returns object with attribute name and its type
 	*/
+	//TODO: merge this with the locator stuff
 	getObjectAttributes: function(object)
 	{
 		if(object.getAttributes)
@@ -1846,8 +1851,8 @@ var LS = {
 			var v = object[i];
 			if(v == null)
 				o[i] = null;
-			else if ( isFunction(v) )
-				continue;
+			else if ( isFunction(v) )//&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
+				continue; //o[i] = v;
 			else if (  v.constructor === Boolean )
 				o[i] = "boolean";
 			else if (  v.constructor === Number )
@@ -1875,6 +1880,7 @@ var LS = {
 		return o;
 	},
 
+	//TODO: merge this with the locator stuff
 	setObjectAttribute: function(obj, name, value)
 	{
 		if(obj.setAttribute)
@@ -15198,9 +15204,8 @@ Animation.prototype.configure = function(data)
 	{
 		for(var i in data.takes)
 		{
-			var take = data.takes[i];
-			for(var j in take.tracks)
-				this.addTrackToTake( i, new LS.Animation.Track( take.tracks[j] ) );
+			var take = new LS.Animation.Take( data.takes[i] );
+			this.addTake( take );
 		}
 	}
 }
@@ -15238,6 +15243,8 @@ Animation.prototype.toBinary = function()
 		for(var j in take.tracks)
 		{
 			var track = take.tracks[j];
+			track.packData(); //reduce storage space and speed ups load
+
 			if(track.packed_data)
 			{
 				var bindata = track.data;
@@ -15250,7 +15257,7 @@ Animation.prototype.toBinary = function()
 	}
 
 	//create the binary
-	o["@json"] = { takes: this.takes };
+	o["@json"] = LS.cloneObject(this, null, true);
 	var bin = WBin.create(o, "Animation");
 
 	//restore the bin data state in this instance
@@ -15277,7 +15284,7 @@ function Take(o)
 {
 	this.name = null;
 	this.tracks = [];
-	this.duration = 0;
+	this.duration = 10;
 	
 	if(!o)
 		return;
@@ -15286,7 +15293,10 @@ function Take(o)
 	if( o.tracks ) 
 	{
 		for(var i in o.tracks)
-			this.addTrack( o.tracks[i] );
+		{
+			var track = new LS.Animation.Track( o.tracks[i] );
+			this.addTrack( track );
+		}
 	}
 	if( o.duration ) this.duration = o.duration;
 }
@@ -15392,6 +15402,7 @@ function Track(o)
 	this.packed_data = false; //this means the data is stored in one continuous datatype, faster to load but not editable
 	this.value_size = 0; //how many numbers contains every sample of this property, 0 means basic type (string, boolean)
 	this.data = null; //array or typed array where you have the time value followed by this.value_size bytes of data
+	this.data_table = null; //used to index data when storing it
 
 	//to speed up sampling
 	Object.defineProperty( this, '_property', {
@@ -15410,6 +15421,9 @@ function Track(o)
 		this.configure(o);
 }
 
+Track.FRAMERATE = 30;
+
+//string identifying the property being animated in a locator form ( node/component_uid/property )
 Object.defineProperty( Track.prototype, 'property', {
 	set: function( property )
 	{
@@ -15424,12 +15438,20 @@ Object.defineProperty( Track.prototype, 'property', {
 
 Track.prototype.configure = function( o )
 {
+	if(!o.property)
+		console.warn("Track with property name");
+
 	if(o.enabled !== undefined) this.enabled = o.enabled;
 	if(o.name) this.name = o.name;
 	if(o.property) this.property = o.property;
 	if(o.type) this.type = o.type;
 	if(o.looped) this.looped = o.looped;
-	if(o.interpolation) this.interpolation = o.interpolation;
+	if(o.interpolation !== undefined)
+		this.interpolation = o.interpolation;
+	else
+		this.interpolation = LS.LINEAR;
+
+	if(o.data_table) this.data_table = o.data_table;
 
 	//data
 	if(o.data)
@@ -15445,6 +15467,9 @@ Track.prototype.configure = function( o )
 			this.unpackData();
 		}
 	}
+
+	if(o.interpolation && !this.value_size)
+		o.interpolation = LS.NONE;
 }
 
 Track.prototype.serialize = function()
@@ -15452,12 +15477,13 @@ Track.prototype.serialize = function()
 	var o = {
 		enabled: this.enabled,
 		name: this.name,
-		property: this.property,
+		property: this.property, 
 		type: this.type,
 		interpolation: this.interpolation,
 		looped: this.looped,
 		value_size: this.value_size,
-		packed_data: false
+		packed_data: false,
+		data_table: this.data_table
 	}
 
 	if(this.value_size <= 1)
@@ -15472,7 +15498,9 @@ Track.prototype.serialize = function()
 	return o;
 }
 
-Track.prototype.addKeyframe = function( time, value )
+Track.prototype.toJSON = Track.prototype.serialize;
+
+Track.prototype.addKeyframe = function( time, value, skip_replace )
 {
 	if(this.value_size > 1)
 		value = new Float32Array( value ); //clone
@@ -15481,21 +15509,22 @@ Track.prototype.addKeyframe = function( time, value )
 	{
 		//TODO!!!!!
 		console.warn("TODO: add keyframe in packed data");
-		return;
+		return -1;
 	}
 
 	for(var i = 0; i < this.data.length; ++i)
 	{
 		if(this.data[i][0] < time )
 			continue;
-		if(this.data[i][0] == time )
+		if(this.data[i][0] == time && !skip_replace )
 			this.data[i][1] = value;
 		else
 			this.data.splice(i,0, [time,value]);
-		return;
+		return i;
 	}
 
 	this.data.push( [time,value] );
+	return this.data.length - 1;
 }
 
 Track.prototype.getKeyframe = function(index)
@@ -15517,19 +15546,48 @@ Track.prototype.moveKeyframe = function(index, new_time)
 	{
 		//TODO
 		console.warn("Cannot move keyframes if packed");
-		return;
+		return -1;
 	}
 
 	if(index >= this.data.length)
 	{
 		console.warn("keyframe index out of bounds");
-		return;
+		return -1;
 	}
 
-	var keyframe = this.data.splice(index, 1);
-	keyframe[0] = new_time;
 	var new_index = this.findTimeIndex( new_time );
-	this.data.splice(new_index, 0, keyframe);
+	var keyframe = this.data[ index ];
+	var old_time = keyframe[0];
+	if(old_time == new_time)
+		return index;
+	keyframe[0] = new_time; //set time
+	if(old_time > new_time)
+		new_index += 1;
+	if(index == new_index)
+	{
+		//console.warn("same index");
+		return index;
+	}
+
+	//extract
+	this.data.splice(index, 1);
+	//reinsert
+	index = this.addKeyframe( keyframe[0], keyframe[1], true );
+
+	this.sortKeyframes();
+	return index;
+}
+
+//solve bugs
+Track.prototype.sortKeyframes = function()
+{
+	if(this.packed_data)
+	{
+		//TODO!!!!!
+		console.warn("TODO: sortKeyframes in packed data");
+		return -1;
+	}
+	this.data.sort( function(a,b){ return a[0] - b[0];  });
 }
 
 Track.prototype.removeKeyframe = function(index)
@@ -15593,8 +15651,11 @@ Track.prototype.packData = function()
 
 	for(var i = 0; i < data.length; ++i)
 	{
-		typed_data[i] = data[0];
-		typed_data.set( data[1], i+1 );
+		typed_data[i*offset] = data[i][0];
+		if( this.value_size == 1 )
+			typed_data[i*offset+1] = data[i][1];
+		else
+			typed_data.set( data[i][1], i*offset+1 );
 	}
 
 	this.data = typed_data;
@@ -15612,7 +15673,7 @@ Track.prototype.unpackData = function()
 	var data = Array( typed_data.length / offset );
 
 	for(var i = 0; i < typed_data.length; i += offset )
-		data[i] = [ typed_data[i], typed_data.subarray( i+1, i+offset ) ];
+		data[i/offset] = [ typed_data[i], typed_data.subarray( i+1, i+offset ) ];
 
 	this.data = data;
 	this.packed_data = false;
@@ -15677,6 +15738,8 @@ Track.prototype.findTimeIndex = function( time )
 		{
 			if(time > data[i][0]) 
 				continue;
+			if(time == data[i][0]) 
+				return i;
 			if(i == 0)
 				return 0;
 			return i-1; //prev sample
@@ -15697,11 +15760,10 @@ Track.prototype.getSample = function( time, interpolate, result )
 
 	var index_a = index;
 	var index_b = index + 1;
-
-	if(!interpolate || !this.interpolation || this.data.length == 1 || this.value_size == 0 || index_b == this.data.length ) //(index_b == this.data.length && !this.looped)
-		return this.data[ index ][1];
-
 	var data = this.data;
+
+	if(!interpolate || !this.interpolation || data.length == 1 || this.value_size == 0 || index_b == data.length || (index_a == 0 && this.data[0][0] > time)) //(index_b == this.data.length && !this.looped)
+		return this.data[ index ][1];
 
 	/*
 	if(this.looped)
@@ -15715,6 +15777,7 @@ Track.prototype.getSample = function( time, interpolate, result )
 
 	var a = data[ index_a ];
 	var b = data[ index_b ];
+
 	var t = (b[0] - time) / (b[0] - a[0]);
 
 	if(this.interpolation === LS.LINEAR)
@@ -18657,6 +18720,10 @@ global.Collada = {
 	safeString: function (str) { 
 		if(!str)
 			return "";
+
+		if(this.convertID)
+			return this.convertID(str);
+
 		return str.replace(/ /g,"_"); 
 	},
 
@@ -19525,7 +19592,7 @@ global.Collada = {
 			xmlpolygons = xmlmesh.querySelector("polylist");
 			if(xmlpolygons)
 			{
-				console.error("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
+				console.warn("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
 				return null;
 			}
 			//polylist = true;
@@ -19814,6 +19881,7 @@ global.Collada = {
 
 		var default_take = { tracks: [] };
 		var tracks = default_take.tracks;
+		var max_time = 0;
 
 		for(var i = 0; i < xmlanimation_childs.length; ++i)
 		{
@@ -19896,23 +19964,29 @@ global.Collada = {
 			//construct animation
 			var path = target.split("/");
 
-			var anim = {}
-			anim.nodename = this.safeString( path[0] ); //where it goes
-			anim.property = path[1];
-			var node = this._nodes_by_id[ anim.nodename ];
-
+			var anim = {};
+			var nodename = path[0]; //safeString ?
+			var locator = nodename + "/" + path[1];
+			//anim.nodename = this.safeString( path[0] ); //where it goes
+			anim.name = path[1];
+			anim.property = locator;
+			var node = this._nodes_by_id[ nodename ];
+			var type = "number";
 			var element_size = 1;
 			var param_type = params["OUTPUT"];
 			switch(param_type)
 			{
 				case "float": element_size = 1; break;
-				case "float3x3": element_size = 9; break;
-				case "float4x4": element_size = 16; break;
+				case "float3x3": element_size = 9; type = "mat3"; break;
+				case "float4x4": element_size = 16; type = "mat4"; break;
 				default: break;
 			}
 
+			anim.type = type;
 			anim.value_size = element_size;
 			anim.duration = time_data[ time_data.length - 1]; //last sample
+			if(max_time < anim.duration)
+				max_time = anim.duration;
 
 			var value_data = sources[ inputs["OUTPUT"].source ];
 			if(!value_data) continue;
@@ -19928,7 +20002,7 @@ global.Collada = {
 				var value = value_data.subarray( j * element_size, (j+1) * element_size );
 				if(param_type == "float4x4")
 				{
-					this.transformMatrix( value, node._depth == 0 );
+					this.transformMatrix( value, node ? node._depth == 0 : 0 );
 					//mat4.transpose(value, value);
 				}
 				anim_data.set(value, j * sample_size + 1); //set data
@@ -19948,7 +20022,9 @@ global.Collada = {
 		if(!tracks.length) 
 			return null; //empty animation
 
-		animations.takes["default"] = default_take;
+		default_take.name = "default";
+		default_take.duration = max_time;
+		animations.takes[ default_take.name ] = default_take;
 		return animations;
 	},		
 
@@ -20606,7 +20682,8 @@ var parserDAE = {
 			//change mesh names
 			if(node.mesh)
 			{
-				var newmeshname = basename + "::" + node.mesh;
+				var newmeshname = basename + "__" + node.mesh;
+				newmeshname = newmeshname.replace(/[^a-z0-9]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
 				renamed[ node.mesh ] = newmeshname;
 				node.mesh = newmeshname;
 			}
@@ -22136,10 +22213,12 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 		if(!target)
 			return null;
 	}
+	else if(path[1] == "matrix") //special case
+		target = this.transform;
 
 	var v = undefined;
 
-	if( target.getPropertyInfoFromPath )
+	if( target.getPropertyInfoFromPath && target != this )
 	{
 		var r = target.getPropertyInfoFromPath( path );
 		if(r)
@@ -22200,10 +22279,12 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		if(!target)
 			return null;
 	}
+	else if(path[1] == "matrix") //special case
+		target = this.transform;
 	else
 		target = this;
 
-	if(target.setPropertyValueFromPath)
+	if(target.setPropertyValueFromPath && target != this)
 		if( target.setPropertyValueFromPath(path, value) === true )
 			return target;
 	
