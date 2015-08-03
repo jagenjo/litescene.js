@@ -686,6 +686,22 @@ SceneTree.prototype.getPropertyInfo = function( property_uid )
 	return node.getPropertyInfoFromPath( path );
 }
 
+/**
+* Returns information of a node component property based on the locator of that property
+* Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;
+*
+* @method getPropertyInfoFromPath
+* @param {Array} path
+* @return {Object} object with node, component, name, and value
+*/
+SceneTree.prototype.getPropertyInfoFromPath = function( path )
+{
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+	return node.getPropertyInfoFromPath( path );
+}
+
 
 
 /**
@@ -1245,7 +1261,46 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	var target = this;
 	var varname = path[1];
 
-	if(path.length &gt; 2)
+	if(path.length == 1)
+		return {
+			node: this,
+			target: null,
+			name: &quot;&quot;,
+			value: null,
+			type: &quot;node&quot;
+		};
+    else if(path.length == 2) //compo/var
+	{
+		if(path[1][0] == &quot;@&quot;)
+		{
+			target = this.getComponentByUId( path[1] );
+			return {
+				node: this,
+				target: target,
+				name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
+				type: &quot;component&quot;
+			};
+		}
+		else if (path[1] == &quot;material&quot;)
+		{
+			target = this.getMaterial();
+			return {
+				node: this,
+				target: target,
+				name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
+				type: &quot;material&quot;
+			};
+		}
+
+		var target = this.getComponent( path[1] );
+		return {
+			node: this,
+			target: target,
+			name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
+			type: &quot;component&quot;
+		};
+	}
+    else if(path.length &gt; 2) //compo/var
 	{
 		if(path[1][0] == &quot;@&quot;)
 		{

@@ -84,7 +84,7 @@ Script.prototype.processCode = function(skip_events)
 		if(	this._script._context )
 		{
 			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);
-			this._script._context.__proto__.getLocatorString = function() { return this.getComponent().getLocatorString() + "/context"; };
+			this._script._context.__proto__.getLocator = function() { return this.getComponent().getLocator() + "/context"; };
 		}
 
 		if(!skip_events)
@@ -154,13 +154,18 @@ Script.prototype.setPropertyValue = function( property, value )
 //used for animation tracks
 Script.prototype.getPropertyInfoFromPath = function( path )
 {
-	if(path.length < 4)
-		return;
-
 	if(path[2] != "context")
 		return;
 
 	var context = this.getContext();
+
+	if(path.length == 3)
+		return {
+			node: this._root,
+			target: context,
+			type: "object"
+		};
+
 	var varname = path[3];
 	if(!context || context[ varname ] === undefined )
 		return;

@@ -852,7 +852,7 @@ Material.prototype.updatePreview = function(size, options)
 		this.preview_url = preview.toDataURL(&quot;image/png&quot;);
 }
 
-Material.prototype.getLocatorString = function()
+Material.prototype.getLocator = function()
 {
 	if(this._root)
 		return this._root.uid + &quot;/material&quot;;

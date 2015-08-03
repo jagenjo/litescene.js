@@ -170,16 +170,33 @@ Take.prototype.createTrack = function( data )
 	return track;
 }
 
-Take.prototype.applyTracks = function(time)
+Take.prototype.applyTracks = function( current_time, last_time )
 {
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if( track.enabled === false )
+		if( track.enabled === false || !track.data )
 			continue;
-		var sample = track.getSample( time, true );
-		if( sample !== undefined )
-			LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
+
+		if( track.type == "events" )
+		{
+			var keyframe = track.getKeyframeByTime( current_time );
+			if( !keyframe || keyframe[0] < last_time || keyframe[0] > current_time )
+				return;
+
+			var info = LS.GlobalScene.getPropertyInfoFromPath( track._property_path );
+			if(!info)
+				return;
+
+			if(info.node && info.target && info.target[ keyframe[1][0] ] )
+				info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
+		}
+		else
+		{
+			var sample = track.getSample( current_time, true );
+			if( sample !== undefined )
+				LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
+		}
 	}
 }
 
@@ -282,8 +299,8 @@ Track.FRAMERATE = 30;
 Object.defineProperty( Track.prototype, 'property', {
 	set: function( property )
 	{
-		this._property = property;
-		this._property_path = property.split("/");
+		this._property = property.trim();
+		this._property_path = this._property.split("/");
 	},
 	get: function(){
 		return this._property;
@@ -313,14 +330,15 @@ Track.prototype.configure = function( o )
 	{
 		this.value_size = o.value_size;
 		this.data = o.data;
+		this.packed_data = !!o.packed_data;
 
 		if( o.data.constructor == Array )
-			this.packed_data = false;
-		else
 		{
-			this.packed_data = true;
-			this.unpackData();
+			if( this.packed_data )
+				this.data = new Float32Array( o.data );
 		}
+		else
+			this.unpackData();
 	}
 
 	if(o.interpolation && !this.value_size)
@@ -342,11 +360,11 @@ Track.prototype.serialize = function()
 	}
 
 	if(this.value_size <= 1)
-		o.data = this.data; //regular array
+		o.data = this.data.concat(); //regular array, clone it
 	else //pack data
 	{
 		this.packData();
-		o.data = this.data;
+		o.data = new Float32Array( this.data ); //clone it
 		o.packed_data = this.packed_data;
 	}
 
@@ -367,6 +385,9 @@ Track.prototype.addKeyframe = function( time, value, skip_replace )
 		return -1;
 	}
 
+	if(!this.data)
+		this.data = [];
+
 	for(var i = 0; i < this.data.length; ++i)
 	{
 		if(this.data[i][0] < time )
@@ -382,7 +403,7 @@ Track.prototype.addKeyframe = function( time, value, skip_replace )
 	return this.data.length - 1;
 }
 
-Track.prototype.getKeyframe = function(index)
+Track.prototype.getKeyframe = function( index )
 {
 	if(this.packed_data)
 	{
@@ -392,8 +413,17 @@ Track.prototype.getKeyframe = function(index)
 		return [ this.data[pos], this.data.subarray(pos+1, pos+this.value_size) ];
 	}
 
-	return this.data[index];
+	return this.data[ index ];
 }
+
+Track.prototype.getKeyframeByTime = function( time )
+{
+	var index = this.findTimeIndex( time );
+	if(index == -1)
+		return;
+	return this.getKeyframe( index );
+}
+
 
 Track.prototype.moveKeyframe = function(index, new_time)
 {
@@ -466,6 +496,9 @@ Track.prototype.removeKeyframe = function(index)
 
 Track.prototype.getNumberOfKeyframes = function()
 {
+	if(!this.data || this.data.length == 0)
+		return 0;
+
 	if(this.packed_data)
 		return this.data.length / (1 + this.value_size );
 	return this.data.length;
@@ -494,6 +527,9 @@ Track.prototype.computeDuration = function()
 //better for reading
 Track.prototype.packData = function()
 {
+	if(!this.data || this.data.length == 0)
+		return 0;
+
 	if(this.packed_data)
 		return;
 
@@ -520,6 +556,9 @@ Track.prototype.packData = function()
 //better for writing
 Track.prototype.unpackData = function()
 {
+	if(!this.data || this.data.length == 0)
+		return 0;
+
 	if(!this.packed_data)
 		return;
 
@@ -571,6 +610,9 @@ Track.prototype.findSampleIndex = function(time)
 //Returns the index of the last sample with a time less or equal to time
 Track.prototype.findTimeIndex = function( time )
 {
+	if(!this.data || this.data.length == 0)
+		return -1;
+
 	var data = this.data;
 	var l = this.data.length;
 	if(!l)

@@ -74,7 +74,7 @@ Component.prototype.createProperty = function( name, value, type )
 	}
 }
 
-Component.prototype.getLocatorString = function()
+Component.prototype.getLocator = function()
 {
 	if(!this._root)
 		return "";

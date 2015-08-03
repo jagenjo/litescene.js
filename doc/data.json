@@ -794,7 +794,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/helpers/animation.js",
-            "line": 239,
+            "line": 256,
             "description": "Represents one track with data over time about one property\nData could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode",
             "is_constructor": 1
         },
@@ -1097,7 +1097,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/scene.js",
-            "line": 908,
+            "line": 924,
             "description": "The SceneNode class represents and object in the scene\nIs the base class for all objects in the scene as meshes, lights, cameras, and so",
             "params": [
                 {
@@ -5796,7 +5796,27 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 527,
+            "line": 525,
+            "description": "Returns information of a node component property based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
+            "itemtype": "method",
+            "name": "getPropertyInfoFromPath",
+            "params": [
+                {
+                    "name": "path",
+                    "description": "",
+                    "type": "Array"
+                }
+            ],
+            "return": {
+                "description": "object with node, component, name, and value",
+                "type": "Object"
+            },
+            "class": "LS.SceneTree",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/scene.js",
+            "line": 543,
             "description": "Assigns a value to the property of a component in a node based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "setPropertyValue",
@@ -5826,7 +5846,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 549,
+            "line": 565,
             "description": "Assigns a value to the property of a component in a node based on the locator that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "setPropertyValueFromPath",
@@ -5851,7 +5871,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 569,
+            "line": 585,
             "description": "loads all the resources of all the nodes in this scene\nit sends a signal to every node to get all the resources info\nand load them in bulk using the ResourceManager",
             "itemtype": "method",
             "name": "loadResources",
@@ -5860,7 +5880,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 621,
+            "line": 637,
             "description": "start the scene (triggers and start event)",
             "itemtype": "method",
             "name": "start",
@@ -5876,7 +5896,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 633,
+            "line": 649,
             "description": "Fired when the scene is starting to play",
             "itemtype": "event",
             "name": "start",
@@ -5892,7 +5912,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 643,
+            "line": 659,
             "description": "stop the scene (triggers and start event)",
             "itemtype": "method",
             "name": "stop",
@@ -5908,7 +5928,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 654,
+            "line": 670,
             "description": "Fired when the scene stops playing",
             "itemtype": "event",
             "name": "stop",
@@ -5924,7 +5944,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 666,
+            "line": 682,
             "description": "renders the scene using the assigned renderer",
             "itemtype": "method",
             "name": "render",
@@ -5933,7 +5953,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 799,
+            "line": 815,
             "description": "Fired before doing an update",
             "itemtype": "event",
             "name": "beforeUpdate",
@@ -5949,7 +5969,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 811,
+            "line": 827,
             "description": "Fired while updating",
             "itemtype": "event",
             "name": "update",
@@ -5965,7 +5985,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 820,
+            "line": 836,
             "description": "Fired after updating the scene",
             "itemtype": "event",
             "name": "afterUpdate",
@@ -5974,7 +5994,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 828,
+            "line": 844,
             "description": "triggers an event to all nodes in the scene",
             "itemtype": "method",
             "name": "triggerInNodes",
@@ -5995,7 +6015,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 958,
+            "line": 974,
             "description": "changes the node name",
             "itemtype": "method",
             "name": "setName",
@@ -6015,7 +6035,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1034,
+            "line": 1050,
             "description": "Node changed name",
             "itemtype": "event",
             "name": "name_changed",
@@ -6031,7 +6051,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1052,
+            "line": 1068,
             "itemtype": "property",
             "name": "className",
             "type": "String",
@@ -6040,7 +6060,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1335,
+            "line": 1390,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -6053,7 +6073,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1358,
+            "line": 1413,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -6069,7 +6089,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1446,
+            "line": 1501,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",
