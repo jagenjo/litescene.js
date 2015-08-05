@@ -308,14 +308,17 @@ var Renderer = {
 		//render background: maybe this should be moved to a component
 		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["background"])
 		{
-			var texture = null;
-			if(typeof(scene.info.textures["background"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.info.textures["background"] ];
+			var texture = scene.info.textures["background"];
 			if(texture)
 			{
-				gl.disable( gl.BLEND );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
+				if( texture.constructor === String)
+					texture = LS.ResourcesManager.textures[ scene.info.textures["background"] ];
+				if( texture && texture.constructor === GL.Texture )
+				{
+					gl.disable( gl.BLEND );
+					gl.disable( gl.DEPTH_TEST );
+					texture.toViewport();
+				}
 			}
 		}
 
@@ -428,17 +431,21 @@ var Renderer = {
 		//foreground object
 		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["foreground"])
 		{
-			var texture = null;
-			if(typeof(scene.info.textures["foreground"]) == "string")
-				texture = LS.ResourcesManager.textures[ scene.info.textures["foreground"] ];
-			if(texture)
+			var texture = scene.info.textures["foreground"];
+			if( texture )
 			{
-				gl.enable( gl.BLEND );
-				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
-				gl.disable( gl.BLEND );
-				gl.enable( gl.DEPTH_TEST );
+				if (texture.constructor === String )
+					texture = LS.ResourcesManager.textures[ scene.info.textures["foreground"] ];
+
+				if(texture && texture.constructor === GL.Texture )
+				{
+					gl.enable( gl.BLEND );
+					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+					gl.disable( gl.DEPTH_TEST );
+					texture.toViewport();
+					gl.disable( gl.BLEND );
+					gl.enable( gl.DEPTH_TEST );
+				}
 			}
 		}
 

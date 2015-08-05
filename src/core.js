@@ -130,6 +130,28 @@ var LS = {
 	},	
 
 	/**
+	* Is a wrapper for callbacks that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
+	* @method safeCall
+	* @param {function} callback
+	* @param {array} params
+	* @param {object} instance
+	*/
+	safeCall: function(callback, params, instance)
+	{
+		if(!LS.catch_errors)
+			return callback.apply( instance, params );
+
+		try
+		{
+			return callback.apply( instance, params );
+		}
+		catch (err)
+		{
+			LEvent.trigger(LS,"code_error",err);
+		}
+	},
+
+	/**
 	* Is a wrapper for setTimeout that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
 	* @method setTimeout
 	* @param {function} callback
@@ -424,10 +446,10 @@ var LS = {
 		if(obj.setAttribute)
 			return obj.setAttribute(name, value);
 
-		var prev = obj[ name ];
-		if(prev && prev.set)
-			prev.set( value ); //for typed-arrays
-		else
+		//var prev = obj[ name ];
+		//if(prev && prev.set)
+		//	prev.set( value ); //for typed-arrays
+		//else
 			obj[ name ] = value; //clone¿?
 	}
 }

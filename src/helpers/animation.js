@@ -55,14 +55,23 @@ Animation.prototype.addTrackToTake = function(takename, track)
 
 Animation.prototype.configure = function(data)
 {
+	if(data.name)
+		this.name = data.name;
+
 	if(data.takes)
 	{
 		for(var i in data.takes)
 		{
 			var take = new LS.Animation.Take( data.takes[i] );
 			this.addTake( take );
+			take.loadResources(); //load associated resources
 		}
 	}
+}
+
+Animation.prototype.serialize = function()
+{
+	return LS.cloneObject(this, null, true);
 }
 
 Animation.fromBinary = function( data )
@@ -98,7 +107,7 @@ Animation.prototype.toBinary = function()
 		for(var j in take.tracks)
 		{
 			var track = take.tracks[j];
-			track.packData(); //reduce storage space and speed ups load
+			track.packData(); //reduce storage space and speeds up loading
 
 			if(track.packed_data)
 			{
@@ -184,6 +193,7 @@ Take.prototype.applyTracks = function( current_time, last_time )
 			if( !keyframe || keyframe[0] < last_time || keyframe[0] > current_time )
 				return;
 
+			//need info to search for node
 			var info = LS.GlobalScene.getPropertyInfoFromPath( track._property_path );
 			if(!info)
 				return;
@@ -195,7 +205,7 @@ Take.prototype.applyTracks = function( current_time, last_time )
 		{
 			var sample = track.getSample( current_time, true );
 			if( sample !== undefined )
-				LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
+				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
 		}
 	}
 }
@@ -240,13 +250,32 @@ Take.prototype.getPropertiesSample = function(time, result)
 
 Take.prototype.actionPerSample = function(time, callback, options)
 {
-	for(var i in this.tracks)
+	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
 		var value = track.getSample(time, true);
 		if( options.disabled_tracks && options.disabled_tracks[ track.property ] )
 			continue;
 		callback(track.property, value, options);
+	}
+}
+
+//Ensures all the resources associated to keyframes are loaded in memory
+Take.prototype.loadResources = function()
+{
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if(track.type == "texture")
+		{
+			var l = track.getNumberOfKeyframes();
+			for(var j = 0; j < l; ++j)
+			{
+				var keyframe = track.getKeyframe(j);
+				if(keyframe && keyframe[1] && keyframe[1][0] != ":")
+					LS.ResourcesManager.load( keyframe[1] );
+			}
+		}
 	}
 }
 
@@ -325,10 +354,11 @@ Track.prototype.configure = function( o )
 
 	if(o.data_table) this.data_table = o.data_table;
 
+	if(o.value_size) this.value_size = o.value_size;
+
 	//data
 	if(o.data)
 	{
-		this.value_size = o.value_size;
 		this.data = o.data;
 		this.packed_data = !!o.packed_data;
 
@@ -337,8 +367,8 @@ Track.prototype.configure = function( o )
 			if( this.packed_data )
 				this.data = new Float32Array( o.data );
 		}
-		else
-			this.unpackData();
+		//else
+		//	this.unpackData();
 	}
 
 	if(o.interpolation && !this.value_size)
@@ -355,17 +385,20 @@ Track.prototype.serialize = function()
 		interpolation: this.interpolation,
 		looped: this.looped,
 		value_size: this.value_size,
-		packed_data: false,
+		packed_data: this.packed_data,
 		data_table: this.data_table
 	}
 
-	if(this.value_size <= 1)
-		o.data = this.data.concat(); //regular array, clone it
-	else //pack data
+	if(this.data)
 	{
-		this.packData();
-		o.data = new Float32Array( this.data ); //clone it
-		o.packed_data = this.packed_data;
+		if(this.value_size <= 1)
+			o.data = this.data.concat(); //regular array, clone it
+		else //pack data
+		{
+			this.packData();
+			o.data = new Float32Array( this.data ); //clone it
+			o.packed_data = this.packed_data;
+		}
 	}
 
 	return o;
@@ -373,17 +406,20 @@ Track.prototype.serialize = function()
 
 Track.prototype.toJSON = Track.prototype.serialize;
 
+Track.prototype.clear = function()
+{
+	this.data = [];
+	this.packed_data = false;
+}
+
+
 Track.prototype.addKeyframe = function( time, value, skip_replace )
 {
 	if(this.value_size > 1)
 		value = new Float32Array( value ); //clone
 
 	if(this.packed_data)
-	{
-		//TODO!!!!!
-		console.warn("TODO: add keyframe in packed data");
-		return -1;
-	}
+		this.unpackData();
 
 	if(!this.data)
 		this.data = [];
@@ -405,12 +441,19 @@ Track.prototype.addKeyframe = function( time, value, skip_replace )
 
 Track.prototype.getKeyframe = function( index )
 {
+	if(index < 0 || index >= this.data.length)
+	{
+		console.warn("keyframe index out of bounds");
+		return null;
+	}
+
 	if(this.packed_data)
 	{
 		var pos = index * (1 + this.value_size );
 		if(pos > (this.data.length - this.value_size) )
 			return null;
-		return [ this.data[pos], this.data.subarray(pos+1, pos+this.value_size) ];
+		return [ this.data[pos], this.data.subarray(pos+1, pos+this.value_size+1) ];
+		//return this.data.subarray(pos, pos+this.value_size+1) ];
 	}
 
 	return this.data[ index ];
@@ -434,7 +477,7 @@ Track.prototype.moveKeyframe = function(index, new_time)
 		return -1;
 	}
 
-	if(index >= this.data.length)
+	if(index < 0 || index >= this.data.length)
 	{
 		console.warn("keyframe index out of bounds");
 		return -1;
@@ -468,9 +511,9 @@ Track.prototype.sortKeyframes = function()
 {
 	if(this.packed_data)
 	{
-		//TODO!!!!!
-		console.warn("TODO: sortKeyframes in packed data");
-		return -1;
+		this.unpackData();
+		this.sortKeyframes();
+		this.packData();
 	}
 	this.data.sort( function(a,b){ return a[0] - b[0];  });
 }
@@ -478,13 +521,9 @@ Track.prototype.sortKeyframes = function()
 Track.prototype.removeKeyframe = function(index)
 {
 	if(this.packed_data)
-	{
-		//TODO
-		console.warn("Cannot move keyframes if packed");
-		return;
-	}
+		this.unpackData();
 
-	if(index >= this.data.length)
+	if(index < 0 || index >= this.data.length)
 	{
 		console.warn("keyframe index out of bounds");
 		return;
@@ -522,6 +561,13 @@ Track.prototype.computeDuration = function()
 	if(last)
 		return last[0];
 	return 0;
+}
+
+Track.prototype.isInterpolable = function()
+{
+	if( this.value_size > 0 || LS.Interpolators[ this.type ] )
+		return true;
+	return false;
 }
 
 //better for reading
@@ -621,56 +667,73 @@ Track.prototype.findTimeIndex = function( time )
 	if(this.packed_data)
 	{
 		var offset = this.value_size + 1;
+		var last = -1;
 		for(i = 0; i < l; i += offset)
 		{
 			var current_time = data[i];
 			if(current_time < time) 
+			{
+				last = i;
 				continue;
-			return i-1; //prev sample
+			}
+			if(last == -1)
+				return -1;
+			return (last/offset); //prev sample
 		}
+		if(last == -1)
+			return -1;
+		return (last/offset);
 	}
 	else //unpacked data
 	{
+		var last = -1;
 		for(i = 0; i < l; ++i )
 		{
 			if(time > data[i][0]) 
+			{
+				last = i;
 				continue;
+			}
 			if(time == data[i][0]) 
 				return i;
-			if(i == 0)
-				return 0;
-			return i-1; //prev sample
+			if(last == -1)
+				return -1;
+			return last;
 		}
+		if(last == -1)
+			return -1;
+		return last;
 	}
 
-	return l-1; //last sample
+	return -1;
 }
 
-
 Track.prototype.getSample = function( time, interpolate, result )
+{
+	if(!this.data || this.data.length === 0)
+		return undefined;
+
+	if(this.packed_data)
+		return this.getSamplePacked( time, interpolate, result);
+	return this.getSampleUnpacked( time, interpolate, result);
+}
+
+Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 {
 	time = Math.clamp( time, 0, this.duration );
 
 	var index = this.findTimeIndex( time );
-	if(index == -1)
-		return null;
+	if(index === -1)
+		index = 0;
 
 	var index_a = index;
 	var index_b = index + 1;
 	var data = this.data;
 
-	if(!interpolate || !this.interpolation || data.length == 1 || this.value_size == 0 || index_b == data.length || (index_a == 0 && this.data[0][0] > time)) //(index_b == this.data.length && !this.looped)
-		return this.data[ index ][1];
+	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this.type ] );
 
-	/*
-	if(this.looped)
-	{
-		if(index_a == 0 && time < data[0][0])
-			index_a = data.length - 1; //last
-		if(index_b == data.length && time < data[0][0])
-			index_b = 0; //last
-	}
-	*/
+	if(!interpolate || (data.length == 1) || index_b == data.length || (index_a == 0 && this.data[0][0] > time)) //(index_b == this.data.length && !this.looped)
+		return this.data[ index ][1];
 
 	var a = data[ index_a ];
 	var b = data[ index_b ];
@@ -679,6 +742,14 @@ Track.prototype.getSample = function( time, interpolate, result )
 
 	if(this.interpolation === LS.LINEAR)
 	{
+		if(this.value_size === 0 && LS.Interpolators[ this.type ] )
+		{
+			var func = LS.Interpolators[ this.type ];
+			var r = func( a[1], b[1], t, this._last_value );
+			this._last_value = r;
+			return r;
+		}
+
 		if(this.value_size == 1)
 			return a[1] * t + b[1] * (1-t);
 
@@ -697,11 +768,21 @@ Track.prototype.getSample = function( time, interpolate, result )
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
+		//bezier not implemented for interpolators
+		if(this.value_size === 0 && LS.Interpolators[ this.type ] )
+		{
+			var func = LS.Interpolators[ this.type ];
+			var r = func( a[1], b[1], t, this._last_value );
+			this._last_value = r;
+			return r;
+		}
+
 		var pre_a = index > 0 ? data[ index - 1 ] : a;
 		var post_b = index < data.length - 2 ? data[ index + 2 ] : b;
 
 		if(this.value_size === 1)
 			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
+
 
 		result = result || this._result;
 
@@ -720,6 +801,84 @@ Track.prototype.getSample = function( time, interpolate, result )
 
 	return null;
 }
+
+Track.prototype.getSamplePacked = function( time, interpolate, result )
+{
+	time = Math.clamp( time, 0, this.duration );
+
+	var index = this.findTimeIndex( time );
+	if(index == -1)
+		index = 0;
+
+	var offset = (this.value_size+1);
+	var index_a = index;
+	var index_b = index + 1;
+	var data = this.data;
+
+	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this.type ] );
+
+	if( !interpolate || (data.length == offset) || index_b*offset == data.length || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
+		return this.getKeyframe(index)[1];
+
+	var a = data.subarray( index_a * offset, (index_a + 1) * offset );
+	var b = data.subarray( index_b * offset, (index_b + 1) * offset );
+
+	var t = (b[0] - time) / (b[0] - a[0]);
+
+	if(this.interpolation === LS.LINEAR)
+	{
+		if(this.value_size == 1)
+			return a[1] * t + b[1] * (1-t);
+		else if( LS.Interpolators[ this.type ] )
+		{
+			var func = LS.Interpolators[ this.type ];
+			var r = func( a[1], b[1], t, this._last_v );
+			this._last_v = r;
+			return r;
+		}
+
+		result = result || this._result;
+
+		if(!result || result.length != this.value_size)
+			result = this._result = new Float32Array( this.value_size );
+
+		for(var i = 0; i < this.value_size; i++)
+			result[i] = a[1+i] * t + b[1+i] * (1-t);
+
+		if(this.type == "quat")
+			quat.normalize(result, result);
+
+		return result;
+	}
+	else if(this.interpolation === LS.BEZIER)
+	{
+		if( this.value_size === 0) //bezier not supported in interpolators
+			return a[1];
+
+		var pre_a = index > 0 ? data.subarray( (index-1) * offset, (index) * offset ) : a;
+		var post_b = index < (data.length - offset*2) ? data.subarray( (index+1) * offset, (index+2) * offset ) : b;
+
+		if(this.value_size === 1)
+			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
+
+		result = result || this._result;
+
+		//multiple data
+		if(!result || result.length != this.value_size)
+			result = this._result = new Float32Array( this.value_size );
+
+		result = result || this._result;
+		result = Animation.EvaluateHermiteSplineVector(a.subarray(1,offset),b.subarray(1,offset), pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
+
+		if(this.type == "quat")
+			quat.normalize(result, result);
+
+		return result;
+	}
+
+	return null;
+}
+
 
 Track.prototype.getPropertyInfo = function()
 {
@@ -799,4 +958,51 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 	}
 
 	return result;
+}
+
+LS.Interpolators = {};
+
+LS.Interpolators["texture"] = function( a, b, t, last )
+{
+	var texture_a = a ? LS.getTexture( a ) : null;
+	var texture_b = b ? LS.getTexture( b ) : null;
+
+	if(a && !texture_a && a[0] != ":" )
+		LS.ResourcesManager.load(a);
+	if(b && !texture_b && b[0] != ":" )
+		LS.ResourcesManager.load(b);
+
+	var texture = texture_a || texture_b;
+
+	var black = gl.textures[":black"];
+	if(!black)
+		black = gl.textures[":black"] = new GL.Texture(1,1, { format: gl.RGB, pixel_data: [0,0,0], filter: gl.NEAREST });
+
+	if(!texture)
+		return black;
+
+	var w = texture ? texture.width : 256;
+	var h = texture ? texture.height : 256;
+
+	if(!texture_a)
+		texture_a = black;
+	if(!texture_b)
+		texture_b = black;
+
+	if(!last || last.width != w || last.height != h || last.format != texture.format )
+		last = new GL.Texture( w, h, { format: texture.format, type: texture.type, filter: gl.LINEAR } );
+
+	var shader = gl.shaders[":interpolate_texture"];
+	if(!shader)
+		shader = gl.shaders[":interpolate_texture"] = GL.Shader.createFX("color = mix( texture2D( u_texture_b, uv ), color , u_factor );", "uniform sampler2D u_texture_b; uniform float u_factor;" );
+
+	gl.disable( gl.DEPTH_TEST );
+	last.drawTo( function() {
+		gl.clearColor(0,0,0,0);
+		gl.clear( gl.COLOR_BUFFER_BIT );
+		texture_b.bind(1);
+		texture_a.toViewport( shader, { u_texture_b: 1, u_factor: t } );
+	});
+
+	return last;
 }

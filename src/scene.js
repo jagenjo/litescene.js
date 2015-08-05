@@ -18,7 +18,10 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
-	this._paths = [];
+	//FEATURES NOT YET FULLY IMPLEMENTED
+	this._paths = []; //FUTURE FEATURE: to store splines I think
+	this._local_resources = {}; //used to store resources that go with the scene
+	this.animation = null;
 
 	LEvent.bind( this, "treeItemAdded", this.onNodeAdded, this );
 	LEvent.bind( this, "treeItemRemoved", this.onNodeRemoved, this );
@@ -78,6 +81,8 @@ SceneTree.prototype.init = function()
 	if(this.selected_node) 
 		delete this.selected_node;
 
+	this.animation = null;
+	this._local_resources = {};
 	this.extra = {};
 
 	this._renderer = LS.Renderer;
@@ -140,7 +145,7 @@ SceneTree.prototype.configure = function(scene_info)
 	if(scene_info.root)
 		this.root.configure( scene_info.root );
 
-	//legacy
+	//LEGACY
 	if(scene_info.nodes)
 		this.root.configure( { children: scene_info.nodes } );
 
@@ -151,7 +156,7 @@ SceneTree.prototype.configure = function(scene_info)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
 	*/
 
-	//legacy
+	//LEGACY
 	if(scene_info.components)
 		this._root.configureComponents(scene_info);
 
@@ -180,6 +185,14 @@ SceneTree.prototype.configure = function(scene_info)
 			this._root.light = null;
 		}
 	}
+
+	//TODO
+	if( scene_info._local_resources )
+	{
+	}
+
+	if(scene_info.animation)
+		this.animation = new LS.Animation( scene_info.animation );
 
 	//if(scene_info.animations)
 	//	this._root.animations = scene_info.animations;
@@ -217,6 +230,9 @@ SceneTree.prototype.serialize = function()
 
 	//add nodes
 	o.root = this.root.serialize();
+
+	if(this.animation)
+		o.animation = this.animation.serialize();
 
 	//add shared materials
 	/*
@@ -1148,6 +1164,11 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			target = this.getMaterial();
 			varname = path[2];
 		}
+		else
+		{
+			target = this.getComponent( path[1] );
+			varname = path[2];
+		}
 
 		if(!target)
 			return null;
@@ -1212,6 +1233,11 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		else if( path[1] == "material" )
 		{
 			target = this.getMaterial();
+			varname = path[2];
+		}
+		else 
+		{
+			target = this.getComponent( path[1] );
 			varname = path[2];
 		}
 

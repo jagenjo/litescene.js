@@ -14,6 +14,7 @@ function PlayAnimation(o)
 	this.mode = "loop";
 	this.play = true;
 	this.current_time = 0;
+	this._last_time = 0;
 
 	this.disabled_tracks = {};
 
@@ -51,8 +52,8 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 
 PlayAnimation.prototype.getAnimation = function()
 {
-	if(!this.animation) 
-		return null;
+	if(!this.animation || this.animation == "@scene") 
+		return this._root.scene.animation;
 	return LS.ResourcesManager.resources[ this.animation ];
 }
 
@@ -87,7 +88,8 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		}
 	}
 
-	take.applyTracks( time );
+	take.applyTracks( time, this._last_time );
+	this._last_time = time; //TODO, add support for pingpong events in tracks
 
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 

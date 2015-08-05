@@ -263,6 +263,22 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Marks the resource as modified, used in editor to know when a resource data should be updated
+	*
+	* @method resourceModified
+	* @param {Object} resource
+	*/
+	resourceModified: function(resource)
+	{
+		if(!resource)
+			return;
+		delete resource._original_data;
+		delete resource._original_file;
+		resource._modified = true;
+		LEvent.trigger(this, "resource_modified", resource );
+	},
+
+	/**
 	* Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed
 	* Do not use to load regular files (txts, csv, etc), instead use the LS.Network methods
 	*
@@ -679,7 +695,12 @@ var ResourcesManager = {
 	*/
 
 	getMesh: function(name) {
-		if(name != null) return this.meshes[name];
+		if(!name)
+			return null;
+		if(name.constructor === String)
+			return this.meshes[name];
+		if(name.constructor === GL.Mesh)
+			return name;
 		return null;
 	},
 
@@ -687,14 +708,18 @@ var ResourcesManager = {
 	* returns a texture resource if it is loaded
 	*
 	* @method getTexture
-	* @param {String} filename 
+	* @param {String} filename could be a texture itself in which case returns the same texture
 	* @return {Texture} 
 	*/
 
 	getTexture: function(name) {
 		if(!name)
 			return null;
-		return this.textures[name];
+		if(name.constructor === String)
+			return this.textures[name];
+		if(name.constructor === GL.Texture)
+			return name;
+		return null;
 	},
 
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name

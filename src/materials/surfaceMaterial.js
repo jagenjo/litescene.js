@@ -226,7 +226,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 * @method getProperty
 * @return {Object} object with name:type
 */
-SurfaceMaterial.prototype.getProperty = function(name)
+SurfaceMaterial.prototype.getProperty = function( name )
 {
 	if(this[name])
 		return this[name];
@@ -269,6 +269,38 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	}
 
 	return false;
+}
+
+SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value )
+{
+	if( path.length < 3)
+		return;
+	return this.setProperty( path[2], value );
+}
+
+SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length < 3)
+		return;
+
+	var varname = path[2];
+
+	for(var i = 0, l = this.properties.length; i < l; ++i )
+	{
+		var prop = this.properties[i];
+		if(prop.name != varname)
+			continue;
+
+		return {
+			node: this._root,
+			target: this,
+			name: prop.name,
+			value: prop.value,
+			type: prop.type
+		};
+	}
+
+	return;
 }
 
 

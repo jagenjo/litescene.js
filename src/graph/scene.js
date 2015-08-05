@@ -38,12 +38,6 @@ if(typeof(LiteGraph) != "undefined")
 			var v = this.getInputData(i);
 			if(v === undefined)
 				continue;
-
-			switch( input.name )
-			{
-				case "Ambient color": vec3.copy(scene.ambient_color,v); break;
-				case "Bg Color": vec3.copy(scene.background_color,v); break;
-			}
 		}
 
 		//write outputs
@@ -56,8 +50,6 @@ if(typeof(LiteGraph) != "undefined")
 			var result = null;
 			switch( output.name )
 			{
-				case "Ambient color": result = scene.ambient_color; break;
-				case "Bg Color": result = scene.background_color; break;
 				case "Time": result = scene.getTime(); break;
 				case "Elapsed": result = (scene._last_dt != null ? scene._last_dt : 0); break;
 				case "Frame": result = (scene._frame != null ? scene._frame : 0); break;
@@ -68,14 +60,9 @@ if(typeof(LiteGraph) != "undefined")
 		}
 	}
 
-	LGraphScene.prototype.onGetInputs = function()
-	{
-		return [["Ambient color","color"],["Bg Color","color"]];
-	}
-
 	LGraphScene.prototype.onGetOutputs = function()
 	{
-		var r = [["Ambient color","color"],["Bg Color","color"],["Elapsed","number"],["Frame","number"]];
+		var r = [["Elapsed","number"],["Frame","number"]];
 		return LGraphScene.getComponents( this.graph.getScene().root, r);
 	}
 

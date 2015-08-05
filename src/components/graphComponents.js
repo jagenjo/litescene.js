@@ -50,6 +50,7 @@ GraphComponent.icon = "mini-icon-graph.png";
 */
 GraphComponent.prototype.configure = function(o)
 {
+	this.uid = o.uid;
 	this.enabled = !!o.enabled;
 	if(o.graph_data)
 	{
@@ -73,6 +74,7 @@ GraphComponent.prototype.configure = function(o)
 GraphComponent.prototype.serialize = function()
 {
 	return { 
+		uid: this.uid,
 		enabled: this.enabled, 
 		force_redraw: this.force_redraw , 
 		graph_data: JSON.stringify( this._graph.serialize() ),
@@ -245,6 +247,7 @@ FXGraphComponent.prototype.configure = function(o)
 	if(!o.graph_data)
 		return;
 
+	this.uid = o.uid;
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
@@ -262,6 +265,7 @@ FXGraphComponent.prototype.configure = function(o)
 FXGraphComponent.prototype.serialize = function()
 {
 	return {
+		uid: this.uid,
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,
 		use_high_precision: this.use_high_precision,
