@@ -259,6 +259,9 @@ var ResourcesManager = {
 	*/
 	getResource: function( url )
 	{
+		if(!url)
+			return null;
+		url = url.split("/").filter(function(v){ return !!v; }).join("/");
 		return this.resources[ url ];
 	},
 
@@ -276,6 +279,20 @@ var ResourcesManager = {
 		delete resource._original_file;
 		resource._modified = true;
 		LEvent.trigger(this, "resource_modified", resource );
+	},
+
+	/**
+	* Unmarks the resource as modified
+	*
+	* @method resourceSaved
+	* @param {Object} resource
+	*/
+	resourceSaved: function(resource)
+	{
+		if(!resource)
+			return;
+		delete resource._modified;
+		LEvent.trigger(this, "resource_saved", resource );
 	},
 
 	/**
@@ -453,20 +470,23 @@ var ResourcesManager = {
 	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
 	*
 	* @method registerResource
-	* @param {String} filename 
+	* @param {String} filename fullpath 
 	* @param {Object} resource 
 	*/
-	registerResource: function(filename,resource)
+	registerResource: function( filename, resource )
 	{
-		if(this.resources[filename] == resource)
+		filename = filename.split("/").filter(function(v){ return !!v; }).join("/");
+
+		if(this.resources[ filename ] == resource)
 			return; //already registered
 
-		//not sure about this
+		//not sure about this, filename or fullpath
 		resource.filename = filename;
+		resource.fullpath = filename;
 
 		//get which kind of resource
 		if(!resource.object_type)
-			resource.object_type = LS.getObjectClassName(resource);
+			resource.object_type = LS.getObjectClassName( resource );
 		var type = resource.object_type;
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
@@ -477,7 +497,7 @@ var ResourcesManager = {
 			post_callback(filename, resource);
 
 		//global container
-		this.resources[filename] = resource;
+		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
 		LEvent.trigger(this,"resource_registered", resource);

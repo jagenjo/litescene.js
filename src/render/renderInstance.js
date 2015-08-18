@@ -33,10 +33,11 @@ var RI_IGNORE_AUTOUPDATE = 1 << 17; //if it could update matrix from scene
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
 var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
 
-function RenderInstance(node, component)
+function RenderInstance( node, component )
 {
 	this._key = ""; //not used yet
 	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
+	this.layers = 3;
 
 	//info about the mesh
 	this.vertex_buffers = null;
@@ -223,6 +224,7 @@ RenderInstance.prototype.setRange = function(start, offset)
 RenderInstance.prototype.applyNodeFlags = function()
 {
 	var node_flags = this.node.flags;
+	this.layers = this.node.layers;
 
 	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
 	else this.flags |= RI_CULL_FACE;

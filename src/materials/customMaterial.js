@@ -2,6 +2,8 @@ function CustomMaterial(o)
 {
 	Material.call(this, null);
 
+	this.shader_name = "custom";
+
 	//this.shader_name = null; //default shader
 	this.vs_code = "";
 	this.code = "vec4 surf() {\n\treturn u_material_color * vec4(1.0,0.0,0.0,1.0);\n}\n";

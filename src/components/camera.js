@@ -11,6 +11,7 @@
 function Camera(o)
 {
 	this.enabled = true;
+	this.layers = 3;
 
 	this.clear_color = true;
 	this.clear_depth = true;
@@ -34,7 +35,7 @@ function Camera(o)
 	//orthographics planes (near and far took from ._near and ._far)
 	this._ortho = new Float32Array([-1,1,-1,1]);
 
-	this._aspect = 1.0; //must be one, otherwise it gest deformed, the real one is inside real_aspect
+	this._aspect = 1.0; //must be one, otherwise it gets deformed, the real one is inside real_aspect
 	this._fov = 45; //persp
 	this._frustum_size = 50; //ortho
 	this._real_aspect = 1.0; //the one used when computing the projection matrix
@@ -76,6 +77,7 @@ Camera["@type"] = { type: "enum", values: { "perspective": Camera.PERSPECTIVE, "
 Camera["@eye"] = { type: "position" };
 Camera["@center"] = { type: "position" };
 Camera["@texture_name"] = { type: "texture" };
+Camera["@layers"] = { type: "layers" };
 
 // used when rendering a cubemap to set the camera view direction
 Camera.cubemap_camera_parameters = [
@@ -908,6 +910,7 @@ Camera.prototype.isPointInCamera = function( x, y, viewport )
 Camera.prototype.configure = function(o)
 {
 	if(o.uid !== undefined) this.uid = o.uid;
+	if(o.layers !== undefined) this.layers = o.layers;
 
 	if(o.enabled !== undefined) this.enabled = o.enabled;
 	if(o.type !== undefined) this._type = o.type;
@@ -920,6 +923,7 @@ Camera.prototype.configure = function(o)
 	if(o.far !== undefined) this._far = o.far;
 	if(o.fov !== undefined) this._fov = o.fov;
 	if(o.aspect !== undefined) this._aspect = o.aspect;
+	if(o.real_aspect !== undefined) this._real_aspect = o.real_aspect;
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
 
@@ -936,6 +940,7 @@ Camera.prototype.serialize = function()
 {
 	var o = {
 		uid: this.uid,
+		layers: this.layers,
 		enabled: this.enabled,
 		type: this._type,
 		eye: vec3.toArray(this._eye),
@@ -956,6 +961,36 @@ Camera.prototype.serialize = function()
 
 	//clone
 	return o;
+}
+
+//Layer stuff
+Camera.prototype.checkLayersVisibility = function( layers )
+{
+	return (this.layers & layers) !== 0;
+}
+
+Camera.prototype.getLayers = function()
+{
+	var r = [];
+	for(var i = 0; i < 32; ++i)
+	{
+		if( this.layers & (1<<i) )
+			r.push( this._root.scene.layer_names[i] || ("layer"+i) );
+	}
+	return r;
+}
+
+Camera.prototype.setLayer = function(num, value) 
+{
+	var f = 1<<num;
+	this.layers = (this.layers & (~f));
+	if(value)
+		this.layers |= f;
+}
+
+Camera.prototype.isInLayer = function(num)
+{
+	return (this.layers & (1<<num)) !== 0;
 }
 
 //Mostly used for gizmos

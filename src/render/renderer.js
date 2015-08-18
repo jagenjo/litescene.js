@@ -118,6 +118,9 @@ var Renderer = {
 		this._visible_cameras = cameras; //the cameras being rendered
 		render_options.main_camera = cameras[0];
 
+		//remove the lights that do not lay in front of any camera (this way we avoid creating shadowmaps)
+		//TODO
+
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, "renderShadows", render_options );
 		scene.triggerInNodes("renderShadows", render_options ); //TODO: remove
@@ -284,16 +287,17 @@ var Renderer = {
 		Draw.setCameraPosition( camera.getEye() );
 		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
 
-		LEvent.trigger(camera, "afterEnabled", render_options );
+		LEvent.trigger( camera, "afterEnabled", render_options );
 	},
 
 	
-	renderInstances: function(render_options)
+	renderInstances: function( render_options )
 	{
 		var scene = this._current_scene;
 		if(!scene)
 			return console.warn("Renderer.renderInstances: no scene found");
 
+		var camera = this._current_camera;
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix, this.frustum_planes );
 		this.frustum_planes = frustum_planes;
 		var apply_frustum_culling = render_options.frustum_culling;
@@ -354,6 +358,8 @@ var Renderer = {
 				continue;
 			if(node_flags.selectable == false && render_options.is_picking)
 				continue;
+			if( !camera.checkLayersVisibility( instance.layers ) )
+				continue;
 
 			//done here because sometimes some nodes are moved in this action
 			if(instance.onPreRender)
@@ -407,6 +413,8 @@ var Renderer = {
 				for(var j = 0; j < numLights; j++)
 				{
 					var light = lights[j];
+					if( (light._root.layers & instance.layers) == 0 || (light._root.layers & camera.layers) == 0)
+						continue;
 					var light_intensity = light.computeLightIntensity();
 					if(light_intensity < 0.0001)
 						continue;
@@ -1249,7 +1257,7 @@ var Renderer = {
 			scene.root.addChild( node );
 		}
 
-		var node = scene.getNodeById( "sphere") ;
+		var node = scene.getNode( "sphere") ;
 		node.material = material;
 
 		var tex = new GL.Texture(size,size);

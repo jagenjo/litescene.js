@@ -427,6 +427,21 @@ Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
 		this.projective_texture = new_name;
 }
 
+//Layer stuff
+Light.prototype.checkLayersVisibility = function( layers )
+{
+	if(!this._root)
+		return false;
+	return (this._root.layers & layers) !== 0;
+}
+
+Light.prototype.isInLayer = function(num)
+{
+	if(!this._root)
+		return false;
+	return (this._root.layers & (1<<num)) !== 0;
+}
+
 /**
 * This method is called by the Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
 * @method prepare

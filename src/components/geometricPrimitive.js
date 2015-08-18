@@ -93,7 +93,8 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	//if(this.size == 0) return;
 	var mesh = null;
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	var subdivisions = Math.max(0,this.subdivisions|0);
 	var key = "" + this.geometry + "|" + this.size + "|" + subdivisions + "|" + this.align_z;

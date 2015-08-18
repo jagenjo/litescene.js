@@ -2,6 +2,8 @@ function SurfaceMaterial(o)
 {
 	Material.call(this, null);
 
+	this.shader_name = "surface";
+
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
@@ -72,10 +74,10 @@ SurfaceMaterial.prototype.computeCode = function()
 		{
 			case 'number': code += "float "; break;
 			case 'vec2': code += "vec2 "; break;
-			case 'vec3': code += "vec3 "; break;
-			case 'vec4':
 			case 'color':
-			 	code += "vec4 "; break;
+			case 'vec3': code += "vec3 "; break;
+			case 'color4':
+			case 'vec4': code += "vec4 "; break;
 			case 'texture': code += "sampler2D "; break;
 			case 'cubemap': code += "samplerCube "; break;
 			default: continue;

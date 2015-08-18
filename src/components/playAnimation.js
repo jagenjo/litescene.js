@@ -54,7 +54,7 @@ PlayAnimation.prototype.getAnimation = function()
 {
 	if(!this.animation || this.animation == "@scene") 
 		return this._root.scene.animation;
-	return LS.ResourcesManager.resources[ this.animation ];
+	return LS.ResourcesManager.getResource( this.animation );
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)

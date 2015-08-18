@@ -23,6 +23,8 @@ function SceneTree()
 	this._local_resources = {}; //used to store resources that go with the scene
 	this.animation = null;
 
+	this.layer_names = ["main","secondary"];
+
 	LEvent.bind( this, "treeItemAdded", this.onNodeAdded, this );
 	LEvent.bind( this, "treeItemRemoved", this.onNodeRemoved, this );
 
@@ -81,6 +83,7 @@ SceneTree.prototype.init = function()
 	if(this.selected_node) 
 		delete this.selected_node;
 
+	this.layer_names = ["main","secondary"];
 	this.animation = null;
 	this._local_resources = {};
 	this.extra = {};
@@ -191,6 +194,9 @@ SceneTree.prototype.configure = function(scene_info)
 	{
 	}
 
+	if( scene_info.layer_names )
+		this.layer_names = scene_info.layer_names;
+
 	if(scene_info.animation)
 		this.animation = new LS.Animation( scene_info.animation );
 
@@ -233,6 +239,8 @@ SceneTree.prototype.serialize = function()
 
 	if(this.animation)
 		o.animation = this.animation.serialize();
+
+	o.layer_names = this.layer_names.concat();
 
 	//add shared materials
 	/*
@@ -951,6 +959,7 @@ function SceneNode( name )
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId("NODE-");
+	this.layers = 3; //32 bits for layers
 
 	this._classList = {};
 	//this.className = "";
@@ -1412,6 +1421,35 @@ SceneNode.prototype.setPrefab = function(prefab_name)
 
 }
 
+/**
+* Assigns this node to one layer
+* @method setLayer
+* @param {number} num layer number
+* @param {boolean} value 
+*/
+SceneNode.prototype.setLayer = function(num, value)
+{
+	var f = 1<<num;
+	this.layers = (this.layers & (~f));
+	if(value)
+		this.layers |= f;
+}
+
+SceneNode.prototype.isInLayer = function(num)
+{
+	return (this.layers & (1<<num)) !== 0;
+}
+
+SceneNode.prototype.getLayers = function()
+{
+	var r = [];
+	for(var i = 0; i < 32; ++i)
+	{
+		if( this.layers & (1<<i) )
+			r.push( this.scene.layer_names[i] || ("layer"+i) );
+	}
+	return r;
+}
 
 /**
 * remember clones this node and returns the new copy (you need to add it to the scene to see it)
