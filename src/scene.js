@@ -1443,6 +1443,9 @@ SceneNode.prototype.isInLayer = function(num)
 SceneNode.prototype.getLayers = function()
 {
 	var r = [];
+	if(!this.scene)
+		return r;
+
 	for(var i = 0; i < 32; ++i)
 	{
 		if( this.layers & (1<<i) )
@@ -1512,10 +1515,20 @@ SceneNode.prototype.configure = function(info)
 		if(info.morph_targets !== undefined)
 			mesh_render_config.morph_targets = info.morph_targets;
 
+		var compo = null;
 		if(mesh && mesh.bones)
-			this.addComponent( new LS.Components.SkinnedMeshRenderer(mesh_render_config) );
+			compo = new LS.Components.SkinnedMeshRenderer(mesh_render_config);
 		else
-			this.addComponent( new LS.Components.MeshRenderer(mesh_render_config) );
+			compo = new LS.Components.MeshRenderer(mesh_render_config);
+
+		//parsed meshes have info about primitive
+		if( mesh.primitive === "line_strip" )
+		{
+			compo.primitive = 3;
+			delete mesh.primitive;
+		}
+
+		this.addComponent( compo );
 	}
 
 	//transform in matrix format could come from importers so we leave it

@@ -98,6 +98,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		console.error("Error in function\n" + err);
 		if(this.onerror)
 			this.onerror(err);
+		//throw new Error( err.stack ); //TEST THIS
 	}
 }
 

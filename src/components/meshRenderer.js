@@ -20,7 +20,7 @@ Object.defineProperty( MeshRenderer.prototype, 'primitive', {
 	get: function() { return this._primitive; },
 	set: function(v) { 
 		v = (v === undefined || v === null ? -1 : v|0);
-		if(v != -1 && v != 0 && v!= 1 && v!= 4 && v!= 10)
+		if( v < -1 || v > 10 )
 			return;
 		this._primitive = v;
 	},
@@ -32,7 +32,7 @@ MeshRenderer.icon = "mini-icon-teapot.png";
 //vars
 MeshRenderer["@mesh"] = { type: "mesh" };
 MeshRenderer["@lod_mesh"] = { type: "mesh" };
-MeshRenderer["@primitive"] = { type:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
+MeshRenderer["@primitive"] = { type:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "LineLoop":2, "LineStrip":3, "Triangles":4, "TriangleStrip":5, "TriangleFan":6, "Wireframe":10 }};
 MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();

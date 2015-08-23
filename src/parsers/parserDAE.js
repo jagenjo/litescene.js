@@ -60,15 +60,15 @@ var parserDAE = {
 		for(var i in data.meshes)
 		{
 			var mesh = data.meshes[i];
-			if(!mesh.bones)
-				continue;
-
-			for(var j in mesh.bones)
+			if(mesh.bones)
 			{
-				var id = mesh.bones[j][0];
-				var uid = renamed[ id ];
-				if(uid)
-					mesh.bones[j][0] = uid;
+				for(var j in mesh.bones)
+				{
+					var id = mesh.bones[j][0];
+					var uid = renamed[ id ];
+					if(uid)
+						mesh.bones[j][0] = uid;
+				}
 			}
 
 			newmeshes[ renamed[i] ] = mesh;

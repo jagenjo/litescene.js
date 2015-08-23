@@ -148,6 +148,9 @@ var LS = {
 		catch (err)
 		{
 			LEvent.trigger(LS,"code_error",err);
+			//test this
+			//throw new Error( err.stack );
+			console.error( err.stack );
 		}
 	},
 
