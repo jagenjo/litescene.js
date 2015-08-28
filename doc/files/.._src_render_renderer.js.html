@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -252,6 +252,9 @@ var Renderer = {
 	*/
 	render: function( scene, render_options, cameras )
 	{
+		if(!LS.ShadersManager.ready)
+			return; //not ready
+
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
 		render_options.current_scene = scene;
@@ -281,6 +284,9 @@ var Renderer = {
 		cameras = cameras || this._visible_cameras;
 		this._visible_cameras = cameras; //the cameras being rendered
 		render_options.main_camera = cameras[0];
+
+		//remove the lights that do not lay in front of any camera (this way we avoid creating shadowmaps)
+		//TODO
 
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, &quot;renderShadows&quot;, render_options );
@@ -357,9 +363,7 @@ var Renderer = {
 
 		scene = scene || this._current_scene;
 
-		LEvent.trigger(scene, &quot;beforeCameraEnabled&quot;, camera );
 		this.enableCamera( camera, render_options, render_options.skip_viewport ); //set as active camera and set viewport
-		LEvent.trigger(scene, &quot;afterCameraEnabled&quot;, camera ); //used to change stuff according to the current camera (reflection textures)
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
@@ -399,7 +403,10 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, render_options, skip_viewport)
 	{
-		LEvent.trigger(camera, &quot;beforeEnabled&quot;, render_options );
+		var scene = this._current_scene;
+
+		LEvent.trigger( camera, &quot;beforeEnabled&quot;, render_options );
+		LEvent.trigger( scene, &quot;beforeCameraEnabled&quot;, camera );
 
 		//assign viewport manually (shouldnt use camera.getLocalViewport to unify?)
 		var startx = this._full_viewport[0];
@@ -448,16 +455,18 @@ var Renderer = {
 		Draw.setCameraPosition( camera.getEye() );
 		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
 
-		LEvent.trigger(camera, &quot;afterEnabled&quot;, render_options );
+		LEvent.trigger( camera, &quot;afterEnabled&quot;, render_options );
+		LEvent.trigger( scene, &quot;afterCameraEnabled&quot;, camera ); //used to change stuff according to the current camera (reflection textures)
 	},
 
 	
-	renderInstances: function(render_options)
+	renderInstances: function( render_options )
 	{
 		var scene = this._current_scene;
 		if(!scene)
 			return console.warn(&quot;Renderer.renderInstances: no scene found&quot;);
 
+		var camera = this._current_camera;
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix, this.frustum_planes );
 		this.frustum_planes = frustum_planes;
 		var apply_frustum_culling = render_options.frustum_culling;
@@ -472,14 +481,17 @@ var Renderer = {
 		//render background: maybe this should be moved to a component
 		if(!render_options.is_shadowmap &amp;&amp; !render_options.is_picking &amp;&amp; scene.info.textures[&quot;background&quot;])
 		{
-			var texture = null;
-			if(typeof(scene.info.textures[&quot;background&quot;]) == &quot;string&quot;)
-				texture = LS.ResourcesManager.textures[ scene.info.textures[&quot;background&quot;] ];
+			var texture = scene.info.textures[&quot;background&quot;];
 			if(texture)
 			{
-				gl.disable( gl.BLEND );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
+				if( texture.constructor === String)
+					texture = LS.ResourcesManager.textures[ scene.info.textures[&quot;background&quot;] ];
+				if( texture &amp;&amp; texture.constructor === GL.Texture )
+				{
+					gl.disable( gl.BLEND );
+					gl.disable( gl.DEPTH_TEST );
+					texture.toViewport();
+				}
 			}
 		}
 
@@ -514,6 +526,8 @@ var Renderer = {
 			if(node_flags.seen_by_picking == false &amp;&amp; render_options.is_picking)
 				continue;
 			if(node_flags.selectable == false &amp;&amp; render_options.is_picking)
+				continue;
+			if( !camera.checkLayersVisibility( instance.layers ) )
 				continue;
 
 			//done here because sometimes some nodes are moved in this action
@@ -568,6 +582,8 @@ var Renderer = {
 				for(var j = 0; j &lt; numLights; j++)
 				{
 					var light = lights[j];
+					if( (light._root.layers &amp; instance.layers) == 0 || (light._root.layers &amp; camera.layers) == 0)
+						continue;
 					var light_intensity = light.computeLightIntensity();
 					if(light_intensity &lt; 0.0001)
 						continue;
@@ -592,17 +608,21 @@ var Renderer = {
 		//foreground object
 		if(!render_options.is_shadowmap &amp;&amp; !render_options.is_picking &amp;&amp; scene.info.textures[&quot;foreground&quot;])
 		{
-			var texture = null;
-			if(typeof(scene.info.textures[&quot;foreground&quot;]) == &quot;string&quot;)
-				texture = LS.ResourcesManager.textures[ scene.info.textures[&quot;foreground&quot;] ];
-			if(texture)
+			var texture = scene.info.textures[&quot;foreground&quot;];
+			if( texture )
 			{
-				gl.enable( gl.BLEND );
-				gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-				gl.disable( gl.DEPTH_TEST );
-				texture.toViewport();
-				gl.disable( gl.BLEND );
-				gl.enable( gl.DEPTH_TEST );
+				if (texture.constructor === String )
+					texture = LS.ResourcesManager.textures[ scene.info.textures[&quot;foreground&quot;] ];
+
+				if(texture &amp;&amp; texture.constructor === GL.Texture )
+				{
+					gl.enable( gl.BLEND );
+					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+					gl.disable( gl.DEPTH_TEST );
+					texture.toViewport();
+					gl.disable( gl.BLEND );
+					gl.enable( gl.DEPTH_TEST );
+				}
 			}
 		}
 
@@ -1406,7 +1426,7 @@ var Renderer = {
 			scene.root.addChild( node );
 		}
 
-		var node = scene.getNodeById( &quot;sphere&quot;) ;
+		var node = scene.getNode( &quot;sphere&quot;) ;
 		node.material = material;
 
 		var tex = new GL.Texture(size,size);

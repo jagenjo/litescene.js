@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -184,7 +184,7 @@ Object.defineProperty( MeshRenderer.prototype, &#x27;primitive&#x27;, {
 	get: function() { return this._primitive; },
 	set: function(v) { 
 		v = (v === undefined || v === null ? -1 : v|0);
-		if(v != -1 &amp;&amp; v != 0 &amp;&amp; v!= 1 &amp;&amp; v!= 4 &amp;&amp; v!= 10)
+		if( v &lt; -1 || v &gt; 10 )
 			return;
 		this._primitive = v;
 	},
@@ -196,7 +196,7 @@ MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
 //vars
 MeshRenderer[&quot;@mesh&quot;] = { type: &quot;mesh&quot; };
 MeshRenderer[&quot;@lod_mesh&quot;] = { type: &quot;mesh&quot; };
-MeshRenderer[&quot;@primitive&quot;] = { type:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
+MeshRenderer[&quot;@primitive&quot;] = { type:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;LineLoop&quot;:2, &quot;LineStrip&quot;:3, &quot;Triangles&quot;:4, &quot;TriangleStrip&quot;:5, &quot;TriangleFan&quot;:6, &quot;Wireframe&quot;:10 }};
 MeshRenderer[&quot;@submesh_id&quot;] = { type:&quot;enum&quot;, values: function() {
 	var component = this.instance;
 	var mesh = component.getMesh();

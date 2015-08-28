@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -262,6 +262,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		console.error(&quot;Error in function\n&quot; + err);
 		if(this.onerror)
 			this.onerror(err);
+		//throw new Error( err.stack ); //TEST THIS
 	}
 }
 

@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -283,7 +283,6 @@ var ResourcesManager = {
 	* @param {String} fullpath
 	* @return {String} filename extension
 	*/
-
 	getFilename: function(fullpath)
 	{
 		var pos = fullpath.lastIndexOf(&quot;/&quot;);
@@ -291,6 +290,19 @@ var ResourcesManager = {
 		var question = fullpath.lastIndexOf(&quot;?&quot;);
 		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
 		return fullpath.substr(pos+1,question);
+	},	
+
+	/**
+	* Returns the folder from a fullpath
+	*
+	* @method getFolder
+	* @param {String} fullpath
+	* @return {String} folder name
+	*/
+	getFolder: function(fullpath)
+	{
+		var pos = fullpath.lastIndexOf(&quot;/&quot;);
+		return fullpath.substr(0,pos);
 	},	
 
 	/**
@@ -309,13 +321,27 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Cleans resource name (removing double slashes)
+	*
+	* @method cleanFullpath
+	* @param {String} fullpath
+	* @return {String} fullpath cleaned
+	*/
+	cleanFullpath: function(fullpath)
+	{
+		//clean up the filename (to avoid problems with //)
+		if(fullpath.indexOf(&quot;://&quot;) == -1)
+			return fullpath.split(&quot;/&quot;).filter(function(v){ return !!v; }).join(&quot;/&quot;);
+		return fullpath;
+	},
+
+	/**
 	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
 	*
 	* @method loadResources
 	* @param {Object} resources contains all the resources, associated with its type
 	* @param {Object}[options={}] options to apply to the loaded resources
 	*/
-
 	loadResources: function(res, options )
 	{
 		for(var i in res)
@@ -385,6 +411,7 @@ var ResourcesManager = {
 					full_url = url;
 					if(this.proxy) //proxy external files
 						return this.proxy + url.substr(pos+3); //&quot;://&quot;
+					return full_url;
 					break;
 				case &#x27;blob&#x27;:
 					return url; //special case for local urls like URL.createObjectURL
@@ -423,7 +450,40 @@ var ResourcesManager = {
 	*/
 	getResource: function( url )
 	{
+		if(!url)
+			return null;
+		url = url.split(&quot;/&quot;).filter(function(v){ return !!v; }).join(&quot;/&quot;);
 		return this.resources[ url ];
+	},
+
+	/**
+	* Marks the resource as modified, used in editor to know when a resource data should be updated
+	*
+	* @method resourceModified
+	* @param {Object} resource
+	*/
+	resourceModified: function(resource)
+	{
+		if(!resource)
+			return;
+		delete resource._original_data;
+		delete resource._original_file;
+		resource._modified = true;
+		LEvent.trigger(this, &quot;resource_modified&quot;, resource );
+	},
+
+	/**
+	* Unmarks the resource as modified
+	*
+	* @method resourceSaved
+	* @param {Object} resource
+	*/
+	resourceSaved: function(resource)
+	{
+		if(!resource)
+			return;
+		delete resource._modified;
+		LEvent.trigger(this, &quot;resource_saved&quot;, resource );
 	},
 
 	/**
@@ -601,20 +661,24 @@ var ResourcesManager = {
 	* Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.
 	*
 	* @method registerResource
-	* @param {String} filename 
+	* @param {String} filename fullpath 
 	* @param {Object} resource 
 	*/
-	registerResource: function(filename,resource)
+	registerResource: function( filename, resource )
 	{
-		if(this.resources[filename] == resource)
+		//clean up the filename (to avoid problems with //)
+		filename = this.cleanFullpath( filename );
+
+		if(this.resources[ filename ] == resource)
 			return; //already registered
 
-		//not sure about this
+		//not sure about this, filename or fullpath
 		resource.filename = filename;
+		resource.fullpath = filename;
 
 		//get which kind of resource
 		if(!resource.object_type)
-			resource.object_type = LS.getObjectClassName(resource);
+			resource.object_type = LS.getObjectClassName( resource );
 		var type = resource.object_type;
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
@@ -625,7 +689,7 @@ var ResourcesManager = {
 			post_callback(filename, resource);
 
 		//global container
-		this.resources[filename] = resource;
+		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
 		LEvent.trigger(this,&quot;resource_registered&quot;, resource);
@@ -843,7 +907,12 @@ var ResourcesManager = {
 	*/
 
 	getMesh: function(name) {
-		if(name != null) return this.meshes[name];
+		if(!name)
+			return null;
+		if(name.constructor === String)
+			return this.meshes[name];
+		if(name.constructor === GL.Mesh)
+			return name;
 		return null;
 	},
 
@@ -851,14 +920,18 @@ var ResourcesManager = {
 	* returns a texture resource if it is loaded
 	*
 	* @method getTexture
-	* @param {String} filename 
+	* @param {String} filename could be a texture itself in which case returns the same texture
 	* @return {Texture} 
 	*/
 
 	getTexture: function(name) {
 		if(!name)
 			return null;
-		return this.textures[name];
+		if(name.constructor === String)
+			return this.textures[name];
+		if(name.constructor === GL.Texture)
+			return name;
+		return null;
 	},
 
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name
@@ -1172,6 +1245,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 }
 
 LS.ResourcesManager.registerResourcePreProcessor(&quot;obj,ase&quot;, LS.ResourcesManager.processASCIIMesh, &quot;text&quot;,&quot;Mesh&quot;);
+LS.ResourcesManager.registerResourcePreProcessor(&quot;stl&quot;, LS.ResourcesManager.processASCIIMesh, &quot;binary&quot;,&quot;Mesh&quot;);
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
@@ -1205,6 +1279,7 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 }
 
 LS.ResourcesManager.registerResourcePreProcessor(&quot;dae&quot;, LS.ResourcesManager.processASCIIScene, &quot;text&quot;,&quot;Scene&quot;);
+
 
 
 

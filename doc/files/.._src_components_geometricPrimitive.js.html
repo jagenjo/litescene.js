@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -257,7 +257,8 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	//if(this.size == 0) return;
 	var mesh = null;
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	var subdivisions = Math.max(0,this.subdivisions|0);
 	var key = &quot;&quot; + this.geometry + &quot;|&quot; + this.size + &quot;|&quot; + subdivisions + &quot;|&quot; + this.align_z;

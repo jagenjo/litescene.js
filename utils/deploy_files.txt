@@ -75,11 +75,12 @@
 ../src/parsers/parserDDS.js
 ../src/parsers/parserJSMESH.js
 ../src/parsers/parserOBJ.js
+../src/parsers/parserSTL.js
 ../src/parsers/parserTGA.js
 
 ../src/scene.js
 ../src/prefab.js
 
-../src/context.js
+../src/player.js
 
 ../src/outro.js

@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -182,7 +182,12 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
-	this._paths = [];
+	//FEATURES NOT YET FULLY IMPLEMENTED
+	this._paths = []; //FUTURE FEATURE: to store splines I think
+	this._local_resources = {}; //used to store resources that go with the scene
+	this.animation = null;
+
+	this.layer_names = [&quot;main&quot;,&quot;secondary&quot;];
 
 	LEvent.bind( this, &quot;treeItemAdded&quot;, this.onNodeAdded, this );
 	LEvent.bind( this, &quot;treeItemRemoved&quot;, this.onNodeRemoved, this );
@@ -242,6 +247,9 @@ SceneTree.prototype.init = function()
 	if(this.selected_node) 
 		delete this.selected_node;
 
+	this.layer_names = [&quot;main&quot;,&quot;secondary&quot;];
+	this.animation = null;
+	this._local_resources = {};
 	this.extra = {};
 
 	this._renderer = LS.Renderer;
@@ -304,7 +312,7 @@ SceneTree.prototype.configure = function(scene_info)
 	if(scene_info.root)
 		this.root.configure( scene_info.root );
 
-	//legacy
+	//LEGACY
 	if(scene_info.nodes)
 		this.root.configure( { children: scene_info.nodes } );
 
@@ -315,7 +323,7 @@ SceneTree.prototype.configure = function(scene_info)
 			this.materials[ i ] = new Material( scene_info.materials[i] );
 	*/
 
-	//legacy
+	//LEGACY
 	if(scene_info.components)
 		this._root.configureComponents(scene_info);
 
@@ -344,6 +352,17 @@ SceneTree.prototype.configure = function(scene_info)
 			this._root.light = null;
 		}
 	}
+
+	//TODO
+	if( scene_info._local_resources )
+	{
+	}
+
+	if( scene_info.layer_names )
+		this.layer_names = scene_info.layer_names;
+
+	if(scene_info.animation)
+		this.animation = new LS.Animation( scene_info.animation );
 
 	//if(scene_info.animations)
 	//	this._root.animations = scene_info.animations;
@@ -381,6 +400,11 @@ SceneTree.prototype.serialize = function()
 
 	//add nodes
 	o.root = this.root.serialize();
+
+	if(this.animation)
+		o.animation = this.animation.serialize();
+
+	o.layer_names = this.layer_names.concat();
 
 	//add shared materials
 	/*
@@ -1099,6 +1123,7 @@ function SceneNode( name )
 	//Generic
 	this._name = name || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId(&quot;NODE-&quot;);
+	this.layers = 3; //32 bits for layers
 
 	this._classList = {};
 	//this.className = &quot;&quot;;
@@ -1312,6 +1337,11 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			target = this.getMaterial();
 			varname = path[2];
 		}
+		else
+		{
+			target = this.getComponent( path[1] );
+			varname = path[2];
+		}
 
 		if(!target)
 			return null;
@@ -1378,14 +1408,28 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 			target = this.getMaterial();
 			varname = path[2];
 		}
+		else 
+		{
+			target = this.getComponent( path[1] );
+			varname = path[2];
+		}
 
 		if(!target)
 			return null;
 	}
-	else if(path[1] == &quot;matrix&quot;) //special case
-		target = this.transform;
-	else
-		target = this;
+	else { //special cases usually after importing from collada
+		switch (path[1])
+		{
+			case &quot;matrix&quot;: target = this.transform; break;
+			case &quot;translate.X&quot;: target = this.transform; varname = &quot;x&quot;; break;
+			case &quot;translate.Y&quot;: target = this.transform; varname = &quot;y&quot;; break;
+			case &quot;translate.Z&quot;: target = this.transform; varname = &quot;z&quot;; break;
+			case &quot;rotateX.ANGLE&quot;: target = this.transform; varname = &quot;pitch&quot;; break;
+			case &quot;rotateY.ANGLE&quot;: target = this.transform; varname = &quot;yaw&quot;; break;
+			case &quot;rotateZ.ANGLE&quot;: target = this.transform; varname = &quot;roll&quot;; break;
+			default: target = null;
+		}
+	}
 
 	if(target.setPropertyValueFromPath &amp;&amp; target != this)
 		if( target.setPropertyValueFromPath(path, value) === true )
@@ -1550,6 +1594,38 @@ SceneNode.prototype.setPrefab = function(prefab_name)
 
 }
 
+/**
+* Assigns this node to one layer
+* @method setLayer
+* @param {number} num layer number
+* @param {boolean} value 
+*/
+SceneNode.prototype.setLayer = function(num, value)
+{
+	var f = 1&lt;&lt;num;
+	this.layers = (this.layers &amp; (~f));
+	if(value)
+		this.layers |= f;
+}
+
+SceneNode.prototype.isInLayer = function(num)
+{
+	return (this.layers &amp; (1&lt;&lt;num)) !== 0;
+}
+
+SceneNode.prototype.getLayers = function()
+{
+	var r = [];
+	if(!this.scene)
+		return r;
+
+	for(var i = 0; i &lt; 32; ++i)
+	{
+		if( this.layers &amp; (1&lt;&lt;i) )
+			r.push( this.scene.layer_names[i] || (&quot;layer&quot;+i) );
+	}
+	return r;
+}
 
 /**
 * remember clones this node and returns the new copy (you need to add it to the scene to see it)
@@ -1612,10 +1688,20 @@ SceneNode.prototype.configure = function(info)
 		if(info.morph_targets !== undefined)
 			mesh_render_config.morph_targets = info.morph_targets;
 
+		var compo = null;
 		if(mesh &amp;&amp; mesh.bones)
-			this.addComponent( new LS.Components.SkinnedMeshRenderer(mesh_render_config) );
+			compo = new LS.Components.SkinnedMeshRenderer(mesh_render_config);
 		else
-			this.addComponent( new LS.Components.MeshRenderer(mesh_render_config) );
+			compo = new LS.Components.MeshRenderer(mesh_render_config);
+
+		//parsed meshes have info about primitive
+		if( mesh.primitive === &quot;line_strip&quot; )
+		{
+			compo.primitive = 3;
+			delete mesh.primitive;
+		}
+
+		this.addComponent( compo );
 	}
 
 	//transform in matrix format could come from importers so we leave it

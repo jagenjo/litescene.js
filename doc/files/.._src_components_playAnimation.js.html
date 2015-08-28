@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -178,6 +178,7 @@ function PlayAnimation(o)
 	this.mode = &quot;loop&quot;;
 	this.play = true;
 	this.current_time = 0;
+	this._last_time = 0;
 
 	this.disabled_tracks = {};
 
@@ -215,9 +216,9 @@ PlayAnimation.prototype.onRemoveFromNode = function(node)
 
 PlayAnimation.prototype.getAnimation = function()
 {
-	if(!this.animation) 
-		return null;
-	return LS.ResourcesManager.resources[ this.animation ];
+	if(!this.animation || this.animation == &quot;@scene&quot;) 
+		return this._root.scene.animation;
+	return LS.ResourcesManager.getResource( this.animation );
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
@@ -251,7 +252,8 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		}
 	}
 
-	take.applyTracks( time );
+	take.applyTracks( time, this._last_time );
+	this._last_time = time; //TODO, add support for pingpong events in tracks
 
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 

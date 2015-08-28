@@ -83,8 +83,6 @@
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
-                <li><a href="../classes/LS.Context.html">LS.Context</a></li>
-            
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
@@ -96,6 +94,8 @@
                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
             
                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+            
+                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
@@ -165,6 +165,8 @@
 function SurfaceMaterial(o)
 {
 	Material.call(this, null);
+
+	this.shader_name = &quot;surface&quot;;
 
 	this.vs_code = &quot;&quot;;
 	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -236,10 +238,10 @@ SurfaceMaterial.prototype.computeCode = function()
 		{
 			case &#x27;number&#x27;: code += &quot;float &quot;; break;
 			case &#x27;vec2&#x27;: code += &quot;vec2 &quot;; break;
-			case &#x27;vec3&#x27;: code += &quot;vec3 &quot;; break;
-			case &#x27;vec4&#x27;:
 			case &#x27;color&#x27;:
-			 	code += &quot;vec4 &quot;; break;
+			case &#x27;vec3&#x27;: code += &quot;vec3 &quot;; break;
+			case &#x27;color4&#x27;:
+			case &#x27;vec4&#x27;: code += &quot;vec4 &quot;; break;
 			case &#x27;texture&#x27;: code += &quot;sampler2D &quot;; break;
 			case &#x27;cubemap&#x27;: code += &quot;samplerCube &quot;; break;
 			default: continue;
@@ -390,7 +392,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 * @method getProperty
 * @return {Object} object with name:type
 */
-SurfaceMaterial.prototype.getProperty = function(name)
+SurfaceMaterial.prototype.getProperty = function( name )
 {
 	if(this[name])
 		return this[name];
@@ -433,6 +435,38 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	}
 
 	return false;
+}
+
+SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value )
+{
+	if( path.length &lt; 3)
+		return;
+	return this.setProperty( path[2], value );
+}
+
+SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length &lt; 3)
+		return;
+
+	var varname = path[2];
+
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
+	{
+		var prop = this.properties[i];
+		if(prop.name != varname)
+			continue;
+
+		return {
+			node: this._root,
+			target: this,
+			name: prop.name,
+			value: prop.value,
+			type: prop.type
+		};
+	}
+
+	return;
 }
 
 
