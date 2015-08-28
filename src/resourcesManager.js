@@ -119,7 +119,6 @@ var ResourcesManager = {
 	* @param {String} fullpath
 	* @return {String} filename extension
 	*/
-
 	getFilename: function(fullpath)
 	{
 		var pos = fullpath.lastIndexOf("/");
@@ -127,6 +126,19 @@ var ResourcesManager = {
 		var question = fullpath.lastIndexOf("?");
 		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
 		return fullpath.substr(pos+1,question);
+	},	
+
+	/**
+	* Returns the folder from a fullpath
+	*
+	* @method getFolder
+	* @param {String} fullpath
+	* @return {String} folder name
+	*/
+	getFolder: function(fullpath)
+	{
+		var pos = fullpath.lastIndexOf("/");
+		return fullpath.substr(0,pos);
 	},	
 
 	/**
@@ -145,13 +157,27 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Cleans resource name (removing double slashes)
+	*
+	* @method cleanFullpath
+	* @param {String} fullpath
+	* @return {String} fullpath cleaned
+	*/
+	cleanFullpath: function(fullpath)
+	{
+		//clean up the filename (to avoid problems with //)
+		if(fullpath.indexOf("://") == -1)
+			return fullpath.split("/").filter(function(v){ return !!v; }).join("/");
+		return fullpath;
+	},
+
+	/**
 	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
 	*
 	* @method loadResources
 	* @param {Object} resources contains all the resources, associated with its type
 	* @param {Object}[options={}] options to apply to the loaded resources
 	*/
-
 	loadResources: function(res, options )
 	{
 		for(var i in res)
@@ -221,6 +247,7 @@ var ResourcesManager = {
 					full_url = url;
 					if(this.proxy) //proxy external files
 						return this.proxy + url.substr(pos+3); //"://"
+					return full_url;
 					break;
 				case 'blob':
 					return url; //special case for local urls like URL.createObjectURL
@@ -475,7 +502,8 @@ var ResourcesManager = {
 	*/
 	registerResource: function( filename, resource )
 	{
-		filename = filename.split("/").filter(function(v){ return !!v; }).join("/");
+		//clean up the filename (to avoid problems with //)
+		filename = this.cleanFullpath( filename );
 
 		if(this.resources[ filename ] == resource)
 			return; //already registered
@@ -1053,6 +1081,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 }
 
 LS.ResourcesManager.registerResourcePreProcessor("obj,ase", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
+LS.ResourcesManager.registerResourcePreProcessor("stl", LS.ResourcesManager.processASCIIMesh, "binary","Mesh");
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
@@ -1086,6 +1115,7 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 }
 
 LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.processASCIIScene, "text","Scene");
+
 
 
 

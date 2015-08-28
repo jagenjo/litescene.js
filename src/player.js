@@ -1,5 +1,5 @@
 /**
-* Context class allows to handle the app context easily without having to glue manually all events
+* Player class allows to handle the app context easily without having to glue manually all events
 	There is a list of options
 	==========================
 	- canvas: the canvas where the scene should be rendered, if not specified one will be created
@@ -21,11 +21,11 @@
 	- onMouse(e): when a mouse event is triggered
 	- onKey(e): when a key event is triggered
 * @namespace LS
-* @class Context
+* @class Player
 * @constructor
 * @param {Object} options settings for the webgl context creation
 */
-function Context(options)
+function Player(options)
 {
 	options = options || {};
 
@@ -35,17 +35,20 @@ function Context(options)
 		if(options.container_id)
 			container = document.getElementById(options.container_id);
 
-		if(container)
+		if(!container)
 		{
-			//create canvas
-			var canvas = document.createElement("canvas");
-			canvas.width = container.offsetWidth;
-			canvas.height = container.offsetHeight;
-			if(!canvas.width) canvas.width = options.width || 1;
-			if(!canvas.height) canvas.height = options.height || 1;
-			container.appendChild(canvas);
-			options.canvas = canvas;
+			console.log("No container specified in LS.Player, using BODY as container");
+			container = document.body;
 		}
+
+		//create canvas
+		var canvas = document.createElement("canvas");
+		canvas.width = container.offsetWidth;
+		canvas.height = container.offsetHeight;
+		if(!canvas.width) canvas.width = options.width || 1;
+		if(!canvas.height) canvas.height = options.height || 1;
+		container.appendChild(canvas);
+		options.canvas = canvas;
 	}
 
 	this.gl = GL.create(options);
@@ -55,8 +58,13 @@ function Context(options)
 
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
-	if(options.shaders)
-		LS.ShadersManager.init( options.shaders );
+	else
+		console.warn("LS: no resources path specified");
+
+	LS.ShadersManager.init( options.shaders || "data/shaders.xml" );
+	if(!options.shaders)
+		console.warn("LS: no shaders folder specified, using default file.");
+
 	if(options.proxy)
 		LS.ResourcesManager.setProxy( options.proxy );
 	if(options.filesystems)
@@ -80,18 +88,18 @@ function Context(options)
 	this.interactive = true;
 	this.state = "playing";
 
-	//bind all the events 
 	if( this.gl.ondraw )
 		throw("There is already a litegl attached to this context");
 
-	this.gl.ondraw = Context.prototype._ondraw.bind(this);
-	this.gl.onupdate = Context.prototype._onupdate.bind(this);
-	this.gl.onmousedown = Context.prototype._onmouse.bind(this);
-	this.gl.onmousemove = Context.prototype._onmouse.bind(this);
-	this.gl.onmouseup = Context.prototype._onmouse.bind(this);
-	this.gl.onmousewheel = Context.prototype._onmouse.bind(this);
-	this.gl.onkeydown = Context.prototype._onkey.bind(this);
-	this.gl.onkeyup = Context.prototype._onkey.bind(this);
+	//bind all the events 
+	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
+	this.gl.onupdate = LS.Player.prototype._onupdate.bind(this);
+	this.gl.onmousedown = LS.Player.prototype._onmouse.bind(this);
+	this.gl.onmousemove = LS.Player.prototype._onmouse.bind(this);
+	this.gl.onmouseup = LS.Player.prototype._onmouse.bind(this);
+	this.gl.onmousewheel = LS.Player.prototype._onmouse.bind(this);
+	this.gl.onkeydown = LS.Player.prototype._onkey.bind(this);
+	this.gl.onkeyup = LS.Player.prototype._onkey.bind(this);
 
 	//capture input
 	gl.captureMouse(true);
@@ -107,7 +115,7 @@ function Context(options)
 * @param {String} url url to the JSON file containing all the scene info
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Context.prototype.loadScene = function(url, on_complete)
+Player.prototype.loadScene = function(url, on_complete)
 {
 	var scene = this.scene;
 	scene.load(url, inner_start);
@@ -127,7 +135,7 @@ Context.prototype.loadScene = function(url, on_complete)
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Context.prototype.setScene = function(scene_info, on_complete)
+Player.prototype.setScene = function(scene_info, on_complete)
 {
 	var scene = this.scene;
 	if(typeof(scene_info) == "string")
@@ -146,17 +154,17 @@ Context.prototype.setScene = function(scene_info, on_complete)
 }
 
 
-Context.prototype.pause = function()
+Player.prototype.pause = function()
 {
 	this.state = "paused";
 }
 
-Context.prototype.play = function()
+Player.prototype.play = function()
 {
 	this.state = "playing";
 }
 
-Context.prototype._ondraw = function()
+Player.prototype._ondraw = function()
 {
 	if(this.state != "playing")
 		return;
@@ -175,7 +183,7 @@ Context.prototype._ondraw = function()
 		this.onDraw();
 }
 
-Context.prototype._onupdate = function(dt)
+Player.prototype._onupdate = function(dt)
 {
 	if(this.state != "playing")
 		return;
@@ -190,13 +198,13 @@ Context.prototype._onupdate = function(dt)
 }
 
 //input
-Context.prototype._onmouse = function(e)
+Player.prototype._onmouse = function(e)
 {
-	//trace(e);
+	//console.log(e);
 	if(this.state != "playing")
 		return;
 
-	//check which node was clicked
+	//Intereactive: check which node was clicked (this is a mode that helps clicking stuff)
 	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
 	{
 		var node = LS.Picking.getNodeAtCanvasPosition( this.scene, null, e.canvasx, e.canvasy );
@@ -206,32 +214,35 @@ Context.prototype._onmouse = function(e)
 	var levent = null; //levent dispatched
 
 	//send event to clicked node
-	if(this._clicked_node && this._clicked_node.flags.interactive)
+	if(this._clicked_node) // && this._clicked_node.flags.interactive)
 	{
 		e.scene_node = this._clicked_node;
 		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
 	}
 
-	//send event to root
+	//send event to scene (or to root?)
 	if(!levent || !levent.stop)
-		LEvent.trigger( this.scene.root,e.eventType,e);
+		LEvent.trigger( this.scene, e.eventType, e );
 
 	if(e.eventType == "mouseup")
 		this._clicked_node = null;
 
+	//hardcoded event handlers in the player
 	if(this.onMouse)
 	{
 		e.scene_node = this._clicked_node;
 		var r = this.onMouse(e);
-		if(r) return;
+		if(r)
+			return;
 	}
 }
 
-Context.prototype._onkey = function(e)
+Player.prototype._onkey = function(e)
 {
 	if(this.state != "playing")
 		return;
 
+	//hardcoded event handlers in the player
 	if(this.onKey)
 	{
 		var r = this.onKey(e);
@@ -241,4 +252,4 @@ Context.prototype._onkey = function(e)
 	LEvent.trigger( this.scene,e.eventType,e);
 }
 
-LS.Context = Context;
+LS.Player = Player;

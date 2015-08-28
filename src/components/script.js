@@ -1,6 +1,7 @@
 function Script(o)
 {
 	this.enabled = true;
+	this.name = "Unnamed";
 	this.code = "this.update = function(dt)\n{\n\tnode.scene.refresh();\n}";
 
 	this._script = new LScript();
@@ -80,7 +81,7 @@ Script.prototype.processCode = function(skip_events)
 	this._script.code = this.code;
 	if(this._root && !Script.block_execution )
 	{
-		var ret = this._script.compile({component:this, node: this._root});
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
 		if(	this._script._context )
 		{
 			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);

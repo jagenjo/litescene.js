@@ -201,8 +201,14 @@ var Picking = {
 		return collisions;
 	},
 
-	//you tell what info you want to retrieve associated with this color
-	getNextPickingColor: function(info)
+	/**
+	* Returns a color you should use to paint this node during picking rendering
+	* you tell what info you want to retrieve associated with this object if it is clicked
+	* @method getNextPickingColor
+	* @param {*} info
+	* @return {vec3} array containing all the RenderInstances that collided with the ray
+	*/
+	getNextPickingColor: function( info )
 	{
 		this._picking_next_color_id += 10;
 		var pick_color = new Uint32Array(1); //store four bytes number
@@ -211,7 +217,7 @@ var Picking = {
 		//byte_pick_color[3] = 255; //Set the alpha to 1
 
 		this._picking_nodes[ this._picking_next_color_id ] = info;
-		return new Float32Array([byte_pick_color[0] / 255,byte_pick_color[1] / 255,byte_pick_color[2] / 255, 1]);
+		return vec4.fromValues( byte_pick_color[0] / 255, byte_pick_color[1] / 255, byte_pick_color[2] / 255, 1 );
 	}
 };
 

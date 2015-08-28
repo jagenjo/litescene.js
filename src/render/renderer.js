@@ -88,6 +88,9 @@ var Renderer = {
 	*/
 	render: function( scene, render_options, cameras )
 	{
+		if(!LS.ShadersManager.ready)
+			return; //not ready
+
 		render_options = render_options || this.default_render_options;
 		render_options.current_renderer = this;
 		render_options.current_scene = scene;
@@ -196,9 +199,7 @@ var Renderer = {
 
 		scene = scene || this._current_scene;
 
-		LEvent.trigger(scene, "beforeCameraEnabled", camera );
 		this.enableCamera( camera, render_options, render_options.skip_viewport ); //set as active camera and set viewport
-		LEvent.trigger(scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
@@ -238,7 +239,10 @@ var Renderer = {
 	*/
 	enableCamera: function(camera, render_options, skip_viewport)
 	{
-		LEvent.trigger(camera, "beforeEnabled", render_options );
+		var scene = this._current_scene;
+
+		LEvent.trigger( camera, "beforeEnabled", render_options );
+		LEvent.trigger( scene, "beforeCameraEnabled", camera );
 
 		//assign viewport manually (shouldnt use camera.getLocalViewport to unify?)
 		var startx = this._full_viewport[0];
@@ -288,6 +292,7 @@ var Renderer = {
 		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
 
 		LEvent.trigger( camera, "afterEnabled", render_options );
+		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 	},
 
 	

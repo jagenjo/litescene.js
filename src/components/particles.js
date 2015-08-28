@@ -1,5 +1,7 @@
 function ParticleEmissor(o)
 {
+	this.enabled = true;
+
 	this.max_particles = 1024;
 	this.warm_up_time = 0;
 
@@ -76,22 +78,34 @@ ParticleEmissor.MESH_EMISSOR = 3;
 
 ParticleEmissor.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"update",this.onUpdate,this);
-	LEvent.bind(node,"start",this.onStart,this);
-	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 ParticleEmissor.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node,"update",this.onUpdate,this);
-	LEvent.unbind(node,"start",this.onStart,this);
-	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+}
+
+ParticleEmissor.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "update",this.onUpdate,this);
+	LEvent.bind( scene, "start",this.onStart,this);
+	LEvent.bind( scene, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.bind( scene, "afterCameraEnabled",this.onAfterCamera, this);
+}
+
+ParticleEmissor.prototype.oRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "update",this.onUpdate,this);
+	LEvent.unbind( scene, "start",this.onStart,this);
+	LEvent.unbind( scene, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.unbind( scene, "afterCameraEnabled",this.onAfterCamera, this);
 }
 
 ParticleEmissor.prototype.getResources = function(res)
 {
-	if(this.emissor_mesh) res[ this.emissor_mesh ] = Mesh;
-	if(this.texture) res[ this.texture ] = Texture;
+	if(this.emissor_mesh)
+		res[ this.emissor_mesh ] = Mesh;
+	if(this.texture)
+		res[ this.texture ] = Texture;
 }
 
 ParticleEmissor.prototype.onResourceRenamed = function (old_name, new_name, resource)
@@ -100,6 +114,15 @@ ParticleEmissor.prototype.onResourceRenamed = function (old_name, new_name, reso
 		this.emissor_mesh = new_name;
 	if(this.texture == old_name)
 		this.texture = new_name;
+}
+
+ParticleEmissor.prototype.onAfterCamera = function(e,camera)
+{
+	if(!this.enabled)
+		return;
+
+	if(this.align_always)
+		this.updateMesh( camera );
 }
 
 ParticleEmissor.prototype.createParticle = function(p)
@@ -151,15 +174,25 @@ ParticleEmissor.prototype.createParticle = function(p)
 
 ParticleEmissor.prototype.onStart = function(e)
 {
-	if(this.warm_up_time <= 0) return;
+	if(!this.enabled)
+		return;
+
+	if(this.warm_up_time <= 0)
+		return;
 
 	var delta = 1/30;
 	for(var i = 0; i < this.warm_up_time; i+= delta)
-		this.onUpdate(null,delta,true);
+		this.onUpdate( null, delta, true);
 }
 
-ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
+ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 {
+	if(!this.enabled)
+		return;
+
+	if(!this._root.scene)
+		throw("update without scene? impossible");
+
 	if(this._root.transform)
 		this._root.transform.getGlobalPosition(this._emissor_pos);
 
@@ -222,9 +255,10 @@ ParticleEmissor.prototype.onUpdate = function(e,dt, do_not_updatemesh )
 
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
-		this.updateMesh(Renderer._current_camera);
+		this.updateMesh( LS.Renderer._current_camera );
 
-	LEvent.trigger(Scene,"change");
+	//send change
+	LEvent.trigger( this._root.scene , "change");
 }
 
 ParticleEmissor.prototype.createMesh = function ()
@@ -250,6 +284,9 @@ ParticleEmissor.prototype.createMesh = function ()
 
 ParticleEmissor.prototype.updateMesh = function (camera)
 {
+	if(!camera) //no main camera specified (happens at early updates)
+		return;
+
 	if( this._mesh_maxparticles != this.max_particles) 
 		this.createMesh();
 
@@ -454,12 +491,10 @@ ParticleEmissor._identity = mat4.create();
 //ParticleEmissor.prototype.getRenderInstance = function(options,camera)
 ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 {
-	if(!this._root) return;
+	if(!this._root || !this.enabled)
+		return;
 
 	var camera = Renderer._current_camera;
-
-	if(this.align_always)
-		this.updateMesh(camera);
 
 	if(!this._material)
 		this._material = new Material({ shader_name:"lowglobal" });

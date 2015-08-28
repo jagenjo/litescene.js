@@ -24,6 +24,8 @@ function Animation(o)
 		this.configure(o);
 }
 
+Animation.DEFAULT_SCENE_NAME = "@scene";
+
 Animation.prototype.createTake = function( name, duration )
 {
 	var take = new Animation.Take();
@@ -60,6 +62,7 @@ Animation.prototype.configure = function(data)
 
 	if(data.takes)
 	{
+		this.takes = {};
 		for(var i in data.takes)
 		{
 			var take = new LS.Animation.Take( data.takes[i] );
@@ -150,19 +153,31 @@ function Take(o)
 	this.tracks = [];
 	this.duration = 10;
 	
-	if(!o)
-		return;
+	if(o)
+		this.configure(o);
 
-	if( o.name ) this.name = o.name;
+}
+
+Take.prototype.configure = function( o )
+{
+	if( o.name )
+		this.name = o.name;
 	if( o.tracks ) 
 	{
+		this.tracks = []; //clear
 		for(var i in o.tracks)
 		{
 			var track = new LS.Animation.Track( o.tracks[i] );
 			this.addTrack( track );
 		}
 	}
-	if( o.duration ) this.duration = o.duration;
+	if( o.duration )
+		this.duration = o.duration;
+}
+
+Take.prototype.serialize = function()
+{
+	return LS.cloneObject(this, null, true);
 }
 
 Take.prototype.createTrack = function( data )
@@ -179,7 +194,7 @@ Take.prototype.createTrack = function( data )
 	return track;
 }
 
-Take.prototype.applyTracks = function( current_time, last_time )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation )
 {
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
@@ -203,7 +218,7 @@ Take.prototype.applyTracks = function( current_time, last_time )
 		}
 		else
 		{
-			var sample = track.getSample( current_time, true );
+			var sample = track.getSample( current_time, !ignore_interpolation );
 			if( sample !== undefined )
 				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
 		}
@@ -360,7 +375,12 @@ Track.prototype.configure = function( o )
 	if(o.data)
 	{
 		this.data = o.data;
-		this.packed_data = !!o.packed_data;
+
+		//this is ugly but makes it easy to work with the collada importer
+		if(o.packed_data === undefined && this.data.constructor !== Array)
+			this.packed_data = true;
+		else
+			this.packed_data = !!o.packed_data;
 
 		if( o.data.constructor == Array )
 		{

@@ -190,7 +190,7 @@ ComponentContainer.prototype.getComponent = function(component_class)
 		return null;
 
 	//string
-	if( component_class.constructor === String)
+	if( component_class.constructor === String )
 	{
 		for(var i = 0, l = this._components.length; i < l; ++i)
 			if( this._components[i].constructor.name == component_class )

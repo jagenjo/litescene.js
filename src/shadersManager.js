@@ -279,6 +279,7 @@ var ShadersManager = {
 			this.registerSnippet( id, code );
 		}
 
+		this.ready = true;
 	},
 	
 	//adds source code of a shader that could be compiled if needed

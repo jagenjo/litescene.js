@@ -1253,10 +1253,19 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		if(!target)
 			return null;
 	}
-	else if(path[1] == "matrix") //special case
-		target = this.transform;
-	else
-		target = this;
+	else { //special cases usually after importing from collada
+		switch (path[1])
+		{
+			case "matrix": target = this.transform; break;
+			case "translate.X": target = this.transform; varname = "x"; break;
+			case "translate.Y": target = this.transform; varname = "y"; break;
+			case "translate.Z": target = this.transform; varname = "z"; break;
+			case "rotateX.ANGLE": target = this.transform; varname = "pitch"; break;
+			case "rotateY.ANGLE": target = this.transform; varname = "yaw"; break;
+			case "rotateZ.ANGLE": target = this.transform; varname = "roll"; break;
+			default: target = null;
+		}
+	}
 
 	if(target.setPropertyValueFromPath && target != this)
 		if( target.setPropertyValueFromPath(path, value) === true )

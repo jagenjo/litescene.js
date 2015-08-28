@@ -105,6 +105,17 @@ Object.defineProperty( Transform.prototype, 'z', {
 	enumerable: false
 });
 
+/*
+Object.defineProperty( Transform.prototype, 'pitch', {
+	get: function() { return 0; },
+	set: function(v) { 
+		this.rotateX(v);
+		this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+*/
+
 /**
 * The orientation relative to its parent in quaternion format
 * @property rotation {quat}
@@ -1130,6 +1141,20 @@ Transform.prototype.applyLocalTransformMatrix = function( M )
 	return;
 }
 
+//centers the node in the mesh bounding box center
+Transform.prototype.centerInMesh = function()
+{
+	var node = this._root;
+	if(!node)
+		return;
+	var mesh = node.getMesh();
+	if(!mesh || !mesh.bounding)
+		return;
+
+	var center = BBox.getCenter(mesh.bounding);
+	vec3.scale( this._position, center, -1 );
+	this._must_update_matrix = true;
+}
 
 
 /*

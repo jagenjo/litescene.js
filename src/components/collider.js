@@ -21,12 +21,14 @@ Collider["@shape"] = { widget:"combo", values: {"Box":1, "Sphere": 2, "Mesh":5 }
 
 Collider.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(scene, "collectPhysicInstances", this.onGetColliders, this);
+	LEvent.bind( scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
 Collider.prototype.onRemovedFromScene = function(node)
 {
-	LEvent.unbind(scene, "collectPhysicInstances", this.onGetColliders, this);
+	var scene = node.scene;
+	if(scene)
+		LEvent.unbind( scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
 Collider.prototype.getMesh = function() {
@@ -58,7 +60,8 @@ Collider.prototype.onGetColliders = function(e, colliders)
 	if(!PI)
 		this._PI = PI = new LS.PhysicsInstance(this._root, this);
 
-	PI.matrix.set( this._root.transform._global_matrix );
+	if(this._root.transform)
+		PI.matrix.set( this._root.transform._global_matrix );
 	PI.type = this.shape;
 
 	//get mesh

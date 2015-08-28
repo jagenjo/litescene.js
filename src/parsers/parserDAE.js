@@ -75,7 +75,138 @@ var parserDAE = {
 		}
 		data.meshes = newmeshes;
 
+		//check resources
+		for(var i in data.resources)
+		{
+			var res = data.resources[i];
+			if(res.object_type == "Animation")
+				this.processAnimation( res, renamed );
+		}
+
 		return data;
-	}
+	},
+
+	//depending on the 3D software used, animation tracks could be tricky to handle
+	processAnimation: function( animation, renamed )
+	{
+		for(var i in animation.takes)
+		{
+			var take = animation.takes[i];
+
+			//apply renaming
+			for(var j = 0; j < take.tracks.length; ++j)
+			{
+				var track = take.tracks[j];
+				var pos = track.property.indexOf("/");
+				if(!pos)
+					continue;
+				var nodename = track.property.substr(0,pos);
+				var extra = track.property.substr(pos);
+
+				if(!renamed[nodename])
+					continue;
+				nodename = renamed[nodename];
+				track.property = nodename + extra;
+			}
+
+			//rotations could come in different ways, some of them are accumulative, which doesnt work in litescene, so we have to accumulate them previously
+			var rotated_nodes = {};
+			for(var j = 0; j < take.tracks.length; ++j)
+			{
+				var track = take.tracks[j];
+				track.packed_data = true; //hack: this is how it works my loader
+				if(track.name == "rotateX.ANGLE" || track.name == "rotateY.ANGLE" || track.name == "rotateZ.ANGLE")
+				{
+					var nodename = track.property.split("/")[0];
+					if(!rotated_nodes[nodename])
+						rotated_nodes[nodename] = { tracks: [] };
+					rotated_nodes[nodename].tracks.push( track );
+				}
+			}
+
+			for(var j in rotated_nodes)
+			{
+				var info = rotated_nodes[j];
+				var newtrack = { data: [], type: "quat", value_size: 4, property: j + "/Transform/rotation", name: "rotation" };
+				var times = [];
+
+				//collect timestamps
+				for(var k = 0; k < info.tracks.length; ++k)
+				{
+					var track = info.tracks[k];
+					var data = track.data;
+					for(var w = 0; w < data.length; w+=2)
+						times.push( data[w] );
+				}
+
+				//create list of timestamps and remove repeated ones
+				times.sort();
+				var last_time = -1;
+				var final_times = [];
+				for(var k = 0; k < times.length; ++k)
+				{
+					if(times[k] == last_time)
+						continue;
+					final_times.push( times[k] );
+					last_time = times[k];
+				}
+				times = final_times;
+
+				//create samples
+				newtrack.data.length = times.length;
+				for(var k = 0; k < newtrack.data.length; ++k)
+				{
+					var time = times[k];
+					var value = quat.create();
+					//create keyframe
+					newtrack.data[k] = [time, value];
+
+					for(var w = 0; w < info.tracks.length; ++w)
+					{
+						var track = info.tracks[w];
+						var sample = getTrackSample( track, time );
+						if(!sample) //nothing to do if no sample or 0
+							continue;
+						sample *= 0.0174532925; //degrees to radians
+						switch( track.name )
+						{
+							case "rotateX.ANGLE": quat.rotateX( value, value, -sample ); break;
+							case "rotateY.ANGLE": quat.rotateY( value, value, sample ); break;
+							case "rotateZ.ANGLE": quat.rotateZ( value, value, sample ); break;
+						}
+					}
+				}
+
+				//add track
+				take.tracks.push( newtrack );
+
+				//remove old rotation tracks
+				for(var w = 0; w < info.tracks.length; ++w)
+				{
+					var track = info.tracks[w];
+					var pos = take.tracks.indexOf( track );
+					if(pos == -1)
+						continue;
+					take.tracks.splice(pos,1);
+				}
+
+			}
+
+		}//takes
+
+		function getTrackSample( track, time )
+		{
+			var data = track.data;
+			var l = data.length;
+			for(var t = 0; t < l; t+=2)
+			{
+				if(data[t] == time)
+					return data[t+1];
+				if(data[t] > time)
+					return null;
+			}
+			return null;
+		}
+	} //procesSAnimation
 };
 Parser.registerParser(parserDAE);

@@ -1,19 +1,6 @@
 //Global Scope
 var trace = window.console ? console.log.bind(console) : function() {};
 
-function toArray(v) { return Array.apply( [], v ); }
-
-Object.defineProperty(Object.prototype, "merge", { 
-    value: function(v) {
-        for(var i in v)
-			this[i] = v[i];
-		return this;
-    },
-    configurable: false,
-    writable: false,
-	enumerable: false  // uncomment to be explicit, though not necessary
-});
-
 //better array conversion to string for serializing
 var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
 typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
@@ -49,13 +36,14 @@ var LS = {
 
 	/**
 	* validates name string to ensure there is no forbidden characters
+	* valid characters are letters, numbers, spaces, dash, underscore and dot
 	* @method validateName
 	* @param {string} name
 	* @return {boolean} 
 	*/
 	validateName: function(v)
 	{
-		var exp = /^[a-z\s0-9-_]+$/i; //letters digits and dashes
+		var exp = /^[a-z\s0-9-_.]+$/i; //letters digits and dashes
 		return v.match(exp);
 	},
 
@@ -101,33 +89,6 @@ var LS = {
 		var name = this.getClassName( comp_class );
 		return !!this.Components[name];
 	},
-
-	/**
-	* Contains all the registered material classes
-	* 
-	* @property MaterialClasses
-	* @type {Object}
-	* @default {}
-	*/
-	MaterialClasses: {},
-
-	/**
-	* Register a Material class so it is listed when searching for new materials to attach
-	*
-	* @method registerMaterialClass
-	* @param {ComponentClass} comp component class to register
-	*/
-	registerMaterialClass: function(material_class) { 
-		//register
-		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
-
-		//add extra material methods
-		LS.extendClass( material_class, Material );
-
-		//event
-		LEvent.trigger(LS,"materialclass_registered",material_class);
-		material_class.resource_type = "Material";
-	},	
 
 	/**
 	* Is a wrapper for callbacks that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
@@ -454,8 +415,62 @@ var LS = {
 		//	prev.set( value ); //for typed-arrays
 		//else
 			obj[ name ] = value; //clone¿?
+	},
+
+	//solution from http://stackoverflow.com/questions/979975/how-to-get-the-value-from-the-url-parameter
+	queryString: function () {
+	  // This function is anonymous, is executed immediately and 
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split("&");
+	  for (var i=0;i<vars.length;i++) {
+		var pair = vars[i].split("=");
+			// If first entry with this name
+		if (typeof query_string[pair[0]] === "undefined") {
+		  query_string[pair[0]] = decodeURIComponent(pair[1]);
+			// If second entry with this name
+		} else if (typeof query_string[pair[0]] === "string") {
+		  var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
+		  query_string[pair[0]] = arr;
+			// If third or later entry with this name
+		} else {
+		  query_string[pair[0]].push(decodeURIComponent(pair[1]));
+		}
+	  } 
+		return query_string;
+	}(),
+
+	/**
+	* Contains all the registered material classes
+	* 
+	* @property MaterialClasses
+	* @type {Object}
+	* @default {}
+	*/
+	MaterialClasses: {},
+
+	/**
+	* Register a Material class so it is listed when searching for new materials to attach
+	*
+	* @method registerMaterialClass
+	* @param {ComponentClass} comp component class to register
+	*/
+	registerMaterialClass: function(material_class) { 
+		//register
+		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
+
+		//add extra material methods
+		LS.extendClass( material_class, Material );
+
+		//event
+		LEvent.trigger(LS,"materialclass_registered",material_class);
+		material_class.resource_type = "Material";
 	}
 }
+
+
+//MOVE SOMEWHERE ELSE
 
 /**
 * Samples a curve and returns the resulting value 
@@ -551,6 +566,21 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 	});
 }
 
+
+
+function toArray(v) { return Array.apply( [], v ); }
+
+Object.defineProperty(Object.prototype, "merge", { 
+    value: function(v) {
+        for(var i in v)
+			this[i] = v[i];
+		return this;
+    },
+    configurable: false,
+    writable: false,
+	enumerable: false  // uncomment to be explicit, though not necessary
+});
+
 //used for hashing keys:TODO move from here somewhere else
 String.prototype.hashCode = function(){
     var hash = 0, i, c, l;
@@ -562,4 +592,3 @@ String.prototype.hashCode = function(){
     }
     return hash;
 };
-
