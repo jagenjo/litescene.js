@@ -7,7 +7,7 @@ function ParticleEmissor(o)
 
 	this.emissor_type = ParticleEmissor.BOX_EMISSOR;
 	this.emissor_rate = 5; //particles per second
-	this.emissor_size = [10,10,10];
+	this.emissor_size = vec3.fromValues(10,10,10);
 	this.emissor_mesh = null;
 
 	this.particle_life = 5;
@@ -21,6 +21,8 @@ function ParticleEmissor(o)
 	this.particle_opacity_curve = [[0.5,1]];
 
 	this.texture_grid_size = 1;
+
+	this._custom_emissor_code = null;
 
 	//physics
 	this.physics_gravity = [0,0,0];
@@ -70,11 +72,32 @@ function ParticleEmissor(o)
 	*/
 }
 
-ParticleEmissor.icon = "mini-icon-particles.png";
-
 ParticleEmissor.BOX_EMISSOR = 1;
 ParticleEmissor.SPHERE_EMISSOR = 2;
 ParticleEmissor.MESH_EMISSOR = 3;
+ParticleEmissor.CUSTOM_EMISSOR = 10;
+
+ParticleEmissor["@emissor_type"] = { type:"enum", values:{ "Box":ParticleEmissor.BOX_EMISSOR, "Sphere":ParticleEmissor.SPHERE_EMISSOR, "Mesh":ParticleEmissor.MESH_EMISSOR, "Custom": ParticleEmissor.CUSTOM_EMISSOR }};
+ParticleEmissor.icon = "mini-icon-particles.png";
+
+Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
+	get: function() { return this._custom_emissor_code; },
+	set: function(v) { 
+		this._custom_emissor_code = v;
+		try
+		{
+			if(v)
+				this._custom_emissor_func = new Function("p",v);
+			else
+				this._custom_emissor_func = null;
+		}
+		catch (err)
+		{
+			console.error("Error in ParticleEmissor custom emissor code: ", err);
+		}
+	},
+	enumerable: true
+});
 
 ParticleEmissor.prototype.onAddedToNode = function(node)
 {
@@ -94,10 +117,7 @@ ParticleEmissor.prototype.onAddedToScene = function(scene)
 
 ParticleEmissor.prototype.oRemovedFromScene = function(scene)
 {
-	LEvent.unbind( scene, "update",this.onUpdate,this);
-	LEvent.unbind( scene, "start",this.onStart,this);
-	LEvent.unbind( scene, "collectRenderInstances", this.onCollectInstances, this);
-	LEvent.unbind( scene, "afterCameraEnabled",this.onAfterCamera, this);
+	LEvent.unbindAll( scene, this );
 }
 
 ParticleEmissor.prototype.getResources = function(res)
@@ -142,7 +162,7 @@ ParticleEmissor.prototype.createParticle = function(p)
 		case ParticleEmissor.MESH_EMISSOR: 
 			var mesh = this.emissor_mesh;
 			if(mesh && mesh.constructor == String)
-				mesh = ResourcesManager.getMesh(this.emissor_mesh);
+				mesh = LS.ResourcesManager.getMesh(this.emissor_mesh);
 			if(mesh && mesh.vertices)
 			{
 				var v = Math.floor(Math.random() * mesh.vertices.length / 3)*3;
@@ -151,12 +171,9 @@ ParticleEmissor.prototype.createParticle = function(p)
 			else
 				p.pos = vec3.create();		
 			break;
+		case ParticleEmissor.CUSTOM_EMISSOR: //done after the rest
 		default: p.pos = vec3.create();
 	}
-
-	//this._root.transform.transformPoint(p.pos, p.pos);
-	var pos = this.follow_emitter ? [0,0,0] : this._emissor_pos;
-	vec3.add(p.pos,p.pos,pos);
 
 	p.vel = vec3.fromValues( Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5 );
 	p.life = this.particle_life;
@@ -169,6 +186,15 @@ ParticleEmissor.prototype.createParticle = function(p)
 		p.c = vec3.clone( this.particle_start_color );
 
 	vec3.scale(p.vel, p.vel, this.particle_speed);
+
+	//after everything so the user can edit whatever he wants
+	if(this.emissor_type == ParticleEmissor.CUSTOM_EMISSOR && this._custom_emissor_func)
+		this._custom_emissor_func.call( this, p );
+
+	//this._root.transform.transformPoint(p.pos, p.pos);
+	if(this.follow_emitter)
+		vec3.add(p.pos, p.pos, this._emissor_pos);
+
 	return p;
 }
 
