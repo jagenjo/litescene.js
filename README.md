@@ -11,7 +11,7 @@ It comes with a realistic rendering pipeline and some interesting components to 
  * Parser for most common file formats
  * Easy to embed.
 
- It uses its own low-level library called [https://github.com/jagenjo/litegl.js](litegl)
+ It uses its own low-level library called [litegl.js](https://github.com/jagenjo/litegl.js)
 
 ### WebGLStudio ###
 
@@ -29,31 +29,30 @@ Include the library and dependencies
 
 Create the context
 ```js
-var context = new LS.Context({width:800, height:600});
+var player = new LS.Player({
+	width:800, height:600,
+	resources: "resources/",
+	shaders: "data/shaders.xml"
+});
 ```
 
 Attach to DOM
 ```js
-document.getElementById("mycontainer").appendChild( context.canvas )
+document.getElementById("mycontainer").appendChild( player.canvas )
 ```
 
-Set path to resources
-```js
-ResourcesManager.path = "assets/";
-Shaders.init("data/shaders.xml");
-```
 
 Load the scene
 ```js
-Scene.loadScene("scene.json");
+LS.GlobalScene.loadScene("scene.json");
 ```
 
 
 Documentation
 -------------
 The doc folder contains the documentation. 
-For info about [https://github.com/jagenjo/litegl.js](litegl) check the documentation in its repository.
-For info about [http://glmatrix.com](glMatrix) check the documentation in its website.
+For info about [litegl.js](https://github.com/jagenjo/litegl.js) check the documentation in its repository.
+For info about [glMatrix](http://glmatrix.com) check the documentation in its website.
 
 Utils
 -----
