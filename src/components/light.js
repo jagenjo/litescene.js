@@ -78,6 +78,8 @@ function Light(o)
 	this.offset = 0;
 	this.spot_cone = true;
 
+	this.projective_texture = null;
+
 	this._attenuation_info = new Float32Array([ this.att_start, this.att_end ]);
 
 	//use target (when attached to node)
@@ -111,6 +113,7 @@ function Light(o)
 	this.frustum_size = 50; //ortho
 
 	this.extra_light_shader_code = null;
+	this.extra_texture = null;
 
 	//vectors in world space
 	this._front = vec3.clone( Light.FRONT_VECTOR );
@@ -128,6 +131,9 @@ function Light(o)
 			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
 	}
 }
+
+Light["@projective_texture"] = { type:"Texture" };
+Light["@extra_texture"] = { type:"Texture" };
 
 Object.defineProperty( Light.prototype, 'position', {
 	get: function() { return this._position; },
@@ -292,9 +298,6 @@ Light.prototype.getLightCamera = function()
 
 Light.prototype.serialize = function()
 {
-	this.position = vec3.toArray(this.position);
-	this.target = vec3.toArray(this.target);
-	this.color = vec3.toArray(this.color);
 	return LS.cloneObject(this);
 }
 
@@ -417,7 +420,9 @@ Light.prototype.getLightRotationMatrix = function()
 Light.prototype.getResources = function (res)
 {
 	if(this.projective_texture)
-		res[ this.projective_texture ] = Texture;
+		res[ this.projective_texture ] = GL.Texture;
+	if(this.extra_texture)
+		res[ this.extra_texture ] = GL.Texture;
 	return res;
 }
 
@@ -425,6 +430,8 @@ Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 	if(this.projective_texture == old_name)
 		this.projective_texture = new_name;
+	if(this.extra_texture == old_name)
+		this.extra_texture = new_name;
 }
 
 //Layer stuff
@@ -493,6 +500,19 @@ Light.prototype.prepare = function( render_options )
 				macros.USE_LIGHT_TEXTURE = "";
 		}
 	}
+
+	if(this.extra_texture)
+	{
+		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
+		if(extra_texture)
+		{
+			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				macros.USE_EXTRA_LIGHT_CUBEMAP = "";
+			else
+				macros.USE_EXTRA_LIGHT_TEXTURE = "";
+		}
+	}
+
 
 	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
 	//	macros.USE_IGNORE_LIGHT = "";
@@ -569,8 +589,10 @@ Light.prototype.getMacros = function(instance, render_options)
 	else
 		delete macros["USE_SHADOW_MAP"];
 
-	if(this._last_processed_extra_light_shader_code)
+	if(this._last_processed_extra_light_shader_code && (!this.extra_texture || LS.ResourcesManager.getTexture(this.extra_texture)) )
 		macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
+	else
+		delete macros["USE_EXTRA_LIGHT_SHADER_CODE"];
 
 	return macros;
 }
@@ -610,8 +632,27 @@ Light.prototype.getUniforms = function( instance, render_options )
 	else
 	{
 		delete uniforms["light_texture"];
-		delete uniforms["light_texture"];
+		delete uniforms["light_cubemap"];
 	}
+
+	if(this.extra_texture)
+	{
+		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
+		if(extra_texture)
+		{
+			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				uniforms.extra_light_cubemap = extra_texture.bind(12); //fixed slot
+			else
+				uniforms.extra_light_texture = extra_texture.bind(12); //fixed slot
+			//	uniforms.light_rotation_matrix = 
+		}
+	}
+	else
+	{
+		delete uniforms["extra_light_texture"];
+		delete uniforms["extra_light_cubemap"];
+	}
+
 
 	//use shadows?
 	if(use_shadows)
