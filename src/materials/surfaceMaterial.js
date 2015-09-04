@@ -123,7 +123,7 @@ SurfaceMaterial.prototype.onModifyMacros = function(macros)
 	macros.USE_SURFACE_SHADER = this.surf_code;
 }
 
-SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+SurfaceMaterial.prototype.fillShaderMacros = function(scene)
 {
 	var macros = {};
 	this._macros = macros;
@@ -137,7 +137,7 @@ SurfaceMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 }
 
 
-SurfaceMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var samplers = {};
 

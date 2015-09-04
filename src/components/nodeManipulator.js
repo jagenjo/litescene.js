@@ -17,14 +17,14 @@ NodeManipulator.icon = "mini-icon-rotator.png";
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	node.flags.interactive = true;
 	LEvent.bind(node,"mousemove",this.onMouse,this);
 	LEvent.bind(node,"update",this.onUpdate,this);
 }
 
 NodeManipulator.prototype.onUpdate = function(e)
 {
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	if(!this._root.transform)
 		return;
@@ -32,7 +32,8 @@ NodeManipulator.prototype.onUpdate = function(e)
 
 NodeManipulator.prototype.onMouse = function(e, mouse_event)
 {
-	if(!this._root || !this._root.transform) return;
+	if(!this._root || !this._root.transform)
+		return;
 	
 	//regular mouse dragging
 	if(!mouse_event.dragging)

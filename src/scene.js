@@ -942,6 +942,18 @@ SceneTree.prototype.purgeResidualEvents = function()
 	}
 }
 
+SceneTree.prototype.getLayerNames = function(v)
+{
+	var r = [];
+
+	for(var i = 0; i < 32; ++i)
+	{
+		if( v === undefined || v & (1<<i) )
+			r.push( this.layer_names[i] || ("layer"+i) );
+	}
+	return r;
+}
+
 
 //****************************************************************************
 
@@ -959,7 +971,7 @@ function SceneNode( name )
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId("NODE-");
-	this.layers = 3; //32 bits for layers
+	this.layers = 3|0; //32 bits for layers (force to int)
 
 	this._classList = {};
 	//this.className = "";
@@ -1498,6 +1510,8 @@ SceneNode.prototype.configure = function(info)
 		this.setName(info.name);
 	else if (info.id)
 		this.setName(info.id);
+	if(info.layers !== undefined)
+		this.layers = info.layers;
 
 	if (info.uid)
 	{
@@ -1600,6 +1614,7 @@ SceneNode.prototype.serialize = function()
 		o.uid = this.uid;
 	if(this.className) 
 		o.className = this.className;
+	o.layers = this.layers;
 
 	//modules
 	if(this.mesh && typeof(this.mesh) == "string") 

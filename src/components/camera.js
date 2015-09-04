@@ -27,6 +27,7 @@ function Camera(o)
 	this._global_eye = vec3.fromValues(0,100,100);
 	this._global_center = vec3.fromValues(0,0,0);
 	this._global_up = vec3.fromValues(0,1,0);
+	this._global_front = vec3.fromValues(0,0,-1);
 
 	//clipping planes
 	this._near = 1;
@@ -42,7 +43,7 @@ function Camera(o)
 
 	//viewport in normalized coordinates: left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
-	this._viewport_in_pixels = vec4.create();
+	this._viewport_in_pixels = vec4.create(); //viewport in screen coordinates
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -63,6 +64,14 @@ function Camera(o)
 	if(o) 
 		this.configure(o);
 	//this.updateMatrices(); //done by configure
+
+	this._uniforms = {
+		u_viewprojection: this._viewprojection_matrix,
+		u_camera_eye: this._global_eye,
+		u_camera_front: this._global_front,
+		u_camera_planes: vec2.fromValues( this.near, this.far ),
+		u_camera_perspective: vec3.create()
+	};
 
 	//LEvent.bind(this,"cameraEnabled", this.onCameraEnabled.bind(this));
 }
@@ -254,7 +263,6 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 /**
 * The viewport in normalized coordinates (left,bottom, width, height)
 * @property viewport {vec4}
-* @default 50
 */
 Object.defineProperty( Camera.prototype, "viewport", {
 	get: function() {
@@ -265,6 +273,31 @@ Object.defineProperty( Camera.prototype, "viewport", {
 	}
 });
 
+/**
+* @property viewport_offset {vec2}
+*/
+Object.defineProperty( Camera.prototype, "viewport_offset", {
+	get: function() {
+		return this._viewport.subarray(0,2);
+	},
+	set: function(v) {
+		this._viewport.set(v);
+	},
+	enumerable: false
+});
+
+/**
+* @property viewport_size {vec2}
+*/
+Object.defineProperty( Camera.prototype, "viewport_size", {
+	get: function() {
+		return this._viewport.subarray(2,4);
+	},
+	set: function(v) {
+		this._viewport.set(v,2);
+	},
+	enumerable: false
+});
 
 Camera.prototype.onAddedToNode = function(node)
 {
@@ -876,7 +909,7 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {start, dir}
+* @return {Object} {start:vec3, dir:vec3}
 */
 Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 {
@@ -1109,6 +1142,22 @@ Camera.prototype.endFBO = function()
 	}
 }
 
+Camera.prototype.fillCameraShaderUniforms = function( scene )
+{
+	var uniforms = this._uniforms;
+	uniforms.u_camera_planes[0] = this.near;
+	uniforms.u_camera_planes[1] = this.far;
+	if(this.type == Camera.PERSPECTIVE)
+		uniforms.u_camera_perspective.set( [this.fov * DEG2RAD, 512 / Math.tan( this.fov * DEG2RAD ) ] );
+	else
+		uniforms.u_camera_perspective.set( [ this._frustum_size, 512 / this._frustum_size ] );
+	uniforms.u_camera_perspective[2] = this._projection_matrix[5]; //[1][1]
+
+	this.getEye( uniforms.u_camera_eye );
+	this.getFront( uniforms.u_camera_front );
+
+	return uniforms;
+},
 
 LS.registerComponent(Camera);
 LS.Camera = Camera;

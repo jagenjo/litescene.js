@@ -9,6 +9,7 @@ function SkinnedMeshRenderer(o)
 	this.submesh_id = -1;
 	this.material = null;
 	this._primitive = -1;
+	this.point_size = 0.1;
 	this.two_sided = false;
 	this.ignore_transform = true;
 	//this.factor = 1;
@@ -93,6 +94,8 @@ SkinnedMeshRenderer.prototype.configure = function(o)
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
 	this.two_sided = !!o.two_sided;
+	if(o.point_size !== undefined)
+		this.point_size = o.point_size;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
 }
@@ -110,31 +113,25 @@ SkinnedMeshRenderer.prototype.serialize = function()
 		cpu_skinning: this.cpu_skinning,
 		ignore_transform: this.ignore_transform,
 		mesh: this.mesh,
-		lod_mesh: this.lod_mesh
+		lod_mesh: this.lod_mesh,
+		primitive: this.primitive,
+		submesh_id: this.submesh_id,
+		two_sided: this.two_sided,
+		point_size: this.point_size
 	};
 
 	if(this.material)
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
 
-	if(this.primitive != null)
-		o.primitive = this.primitive;
-	if(this.submesh_id)
-		o.submesh_id = this.submesh_id;
-	if(this.two_sided)
-		o.two_sided = this.two_sided;
 	return o;
 }
 
 SkinnedMeshRenderer.prototype.getMesh = function() {
-	if(typeof(this.mesh) === "string")
-		return ResourcesManager.meshes[this.mesh];
-	return this.mesh;
+	return LS.ResourcesManager.getMesh(this.mesh);
 }
 
 SkinnedMeshRenderer.prototype.getLODMesh = function() {
-	if(typeof(this.lod_mesh) === "string")
-		return ResourcesManager.meshes[this.lod_mesh];
-	return this.low_mesh;
+	return LS.ResourcesManager.getMesh(this.lod_mesh);
 }
 
 SkinnedMeshRenderer.prototype.getResources = function(res)
@@ -219,7 +216,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 
 	//this mesh doesnt have skinning info
 	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
@@ -339,7 +336,13 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		RI.flags &= ~RI_CULL_FACE;
 
 	if( this.apply_skinning )
-		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test
+		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
+
+	if(this.primitive == gl.POINTS)
+	{
+		RI.uniforms.u_point_size = this.point_size;
+		RI.macros["USE_POINTS"] = "";
+	}
 
 	instances.push(RI);
 	//return RI;

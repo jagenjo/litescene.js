@@ -17,7 +17,9 @@ Collider.icon = "mini-icon-collider.png";
 Collider["@size"] = { type: "vec3", step: 0.01 };
 Collider["@center"] = { type: "vec3", step: 0.01 };
 Collider["@mesh"] = { type: "mesh" };
-Collider["@shape"] = { widget:"combo", values: {"Box":1, "Sphere": 2, "Mesh":5 }};
+Collider["@shape"] = { type:"enum", values: {"Box":1, "Sphere": 2, "Mesh":5 }};
+
+//Collider["@adjustToNodeBounding"] = { type:"action" };
 
 Collider.prototype.onAddedToScene = function(scene)
 {
@@ -51,6 +53,27 @@ Collider.prototype.onResourceRenamed = function (old_name, new_name, resource)
 		this.mesh = new_name;
 }
 
+/*
+Collider.prototype.adjustToNodeBounding = function()
+{
+	var final_bounding = BBox.create();
+	var components = this._root.getComponents();
+	for(var i = 0: i < components.length; ++i)
+	{
+		var component = components[i];
+		if(!component.getMesh)
+			continue;
+		var mesh = component.getMesh();
+		if(!mesh)
+			continue;
+		var bounding = mesh.getBoundingBox();
+		if(!bounding)
+			return;
+		//TODO: merge all the boundings
+	}
+}
+*/
+
 Collider.prototype.onGetColliders = function(e, colliders)
 {
 	if(!this.enabled)
@@ -63,6 +86,7 @@ Collider.prototype.onGetColliders = function(e, colliders)
 	if(this._root.transform)
 		PI.matrix.set( this._root.transform._global_matrix );
 	PI.type = this.shape;
+	PI.layers = this._root.layers;
 
 	//get mesh
 	var mesh = null;

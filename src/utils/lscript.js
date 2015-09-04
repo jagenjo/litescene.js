@@ -109,8 +109,33 @@ LScript.applyToConstructor = function(constructor, argArray) {
     return new factoryFunction();
 }
 
+//remove comments and trims empty lines
+LScript.cleanCode = function(code)
+{
+	if(!code)
+		return "";
+
+	var rx = /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/g;
+	var code = code.replace( rx ,"");
+	var lines = code.split("\n");
+	var result = [];
+	for(var i = 0; i < lines.length; ++i)
+	{
+		var line = lines[i]; 
+		var pos = line.indexOf("//");
+		if(pos != -1)
+			line = lines[i].substr(0,pos);
+		line = line.trim();
+		if(line.length)
+			result.push(line);
+	}
+	return result.join("\n");
+}
+
 LScript.expandCode = function(code)
 {
+	if(!code)
+		return "";
 
 	//allow support to multiline strings
 	if( code.indexOf("'''") != -1 )

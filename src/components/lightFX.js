@@ -169,7 +169,7 @@ LightFX.onGlarePreRender = function(render_options)
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = LS.Picking.raycast( scene, center, dir, dist );
+		coll = LS.Picking.raycast( center, dir, dist );
 
 	if(coll.length)
 	{

@@ -51,7 +51,7 @@ function Player(options)
 		options.canvas = canvas;
 	}
 
-	this.gl = GL.create(options);
+	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
 	this.render_options = new RenderOptions();
 	this.scene = LS.GlobalScene;
@@ -85,7 +85,6 @@ function Player(options)
 
 	//this will repaint every frame and send events when the mouse clicks objects
 	this.force_redraw = options.redraw || false;
-	this.interactive = true;
 	this.state = "playing";
 
 	if( this.gl.ondraw )
@@ -204,37 +203,11 @@ Player.prototype._onmouse = function(e)
 	if(this.state != "playing")
 		return;
 
-	//Intereactive: check which node was clicked (this is a mode that helps clicking stuff)
-	if(this.interactive && (e.eventType == "mousedown" || e.eventType == "mousewheel" ))
-	{
-		var node = LS.Picking.getNodeAtCanvasPosition( this.scene, null, e.canvasx, e.canvasy );
-		this._clicked_node = node;
-	}
-
-	var levent = null; //levent dispatched
-
-	//send event to clicked node
-	if(this._clicked_node) // && this._clicked_node.flags.interactive)
-	{
-		e.scene_node = this._clicked_node;
-		levent = LEvent.trigger(this._clicked_node,e.eventType,e);
-	}
-
-	//send event to scene (or to root?)
-	if(!levent || !levent.stop)
-		LEvent.trigger( this.scene, e.eventType, e );
-
-	if(e.eventType == "mouseup")
-		this._clicked_node = null;
+	LEvent.trigger( this.scene, e.eventType, e );
 
 	//hardcoded event handlers in the player
 	if(this.onMouse)
-	{
-		e.scene_node = this._clicked_node;
-		var r = this.onMouse(e);
-		if(r)
-			return;
-	}
+		this.onMouse(e);
 }
 
 Player.prototype._onkey = function(e)
@@ -249,7 +222,7 @@ Player.prototype._onkey = function(e)
 		if(r) return;
 	}
 
-	LEvent.trigger( this.scene,e.eventType,e);
+	LEvent.trigger( this.scene, e.eventType, e );
 }
 
 LS.Player = Player;

@@ -1,9 +1,34 @@
+function Particle()
+{
+	this.id = 0;
+	this._pos = vec3.fromValues(0,0,0);
+	this._vel = vec3.fromValues(0,0,0);
+	this.life = 1;
+	this.angle = 0;
+	this.size = 1;
+	this.rot = 0;
+}
+
+Object.defineProperty( Particle.prototype, 'pos', {
+	get: function() { return this._pos; },
+	set: function(v) { this._pos.set(v); },
+	enumerable: true
+});
+
+Object.defineProperty( Particle.prototype, 'vel', {
+	get: function() { return this._vel; },
+	set: function(v) { this._vel.set(v); },
+	enumerable: true
+});
+
+
 function ParticleEmissor(o)
 {
 	this.enabled = true;
 
 	this.max_particles = 1024;
 	this.warm_up_time = 0;
+	this.point_particles = false;
 
 	this.emissor_type = ParticleEmissor.BOX_EMISSOR;
 	this.emissor_rate = 5; //particles per second
@@ -23,6 +48,7 @@ function ParticleEmissor(o)
 	this.texture_grid_size = 1;
 
 	this._custom_emissor_code = null;
+	this._custom_update_code = null;
 
 	//physics
 	this.physics_gravity = [0,0,0];
@@ -83,10 +109,11 @@ ParticleEmissor.icon = "mini-icon-particles.png";
 Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
 	get: function() { return this._custom_emissor_code; },
 	set: function(v) { 
+		v = LScript.cleanCode(v);
 		this._custom_emissor_code = v;
 		try
 		{
-			if(v)
+			if(v && v.length)
 				this._custom_emissor_func = new Function("p",v);
 			else
 				this._custom_emissor_func = null;
@@ -99,13 +126,25 @@ Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
 	enumerable: true
 });
 
-ParticleEmissor.prototype.onAddedToNode = function(node)
-{
-}
-
-ParticleEmissor.prototype.onRemovedFromNode = function(node)
-{
-}
+Object.defineProperty( ParticleEmissor.prototype , 'custom_update_code', {
+	get: function() { return this._custom_update_code; },
+	set: function(v) { 
+		v = LScript.cleanCode(v);
+		this._custom_update_code = v;
+		try
+		{
+			if(v && v.length)
+				this._custom_update_func = new Function("p","dt",v);
+			else
+				this._custom_update_func = null;
+		}
+		catch (err)
+		{
+			console.error("Error in ParticleEmissor custom emissor code: ", err);
+		}
+	},
+	enumerable: true
+});
 
 ParticleEmissor.prototype.onAddedToScene = function(scene)
 {
@@ -115,7 +154,7 @@ ParticleEmissor.prototype.onAddedToScene = function(scene)
 	LEvent.bind( scene, "afterCameraEnabled",this.onAfterCamera, this);
 }
 
-ParticleEmissor.prototype.oRemovedFromScene = function(scene)
+ParticleEmissor.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
 }
@@ -147,15 +186,15 @@ ParticleEmissor.prototype.onAfterCamera = function(e,camera)
 
 ParticleEmissor.prototype.createParticle = function(p)
 {
-	p = p || {};
+	p = p || new Particle();
 	
 	switch(this.emissor_type)
 	{
-		case ParticleEmissor.BOX_EMISSOR: p.pos = vec3.fromValues( this.emissor_size[0] * ( Math.random() - 0.5), this.emissor_size[1] * ( Math.random() - 0.5 ), this.emissor_size[2] * (Math.random() - 0.5) ); break;
+		case ParticleEmissor.BOX_EMISSOR: p._pos.set( [this.emissor_size[0] * ( Math.random() - 0.5), this.emissor_size[1] * ( Math.random() - 0.5 ), this.emissor_size[2] * (Math.random() - 0.5) ]); break;
 		case ParticleEmissor.SPHERE_EMISSOR: 
 			var gamma = 2 * Math.PI * Math.random();
 			var theta = Math.acos(2 * Math.random() - 1);
-			p.pos = vec3.fromValues(Math.sin(theta) * Math.cos(gamma), Math.sin(theta) * Math.sin(gamma), Math.cos(theta));
+			p._pos.set( [Math.sin(theta) * Math.cos(gamma), Math.sin(theta) * Math.sin(gamma), Math.cos(theta) ]);
 			vec3.multiply( p.pos, p.pos, this.emissor_size); 
 			break;
 			//p.pos = vec3.multiply( vec3.normalize( vec3.create( [(Math.random() - 0.5), ( Math.random() - 0.5 ), (Math.random() - 0.5)])), this.emissor_size); break;
@@ -166,34 +205,35 @@ ParticleEmissor.prototype.createParticle = function(p)
 			if(mesh && mesh.vertices)
 			{
 				var v = Math.floor(Math.random() * mesh.vertices.length / 3)*3;
-				p.pos = vec3.fromValues(mesh.vertices[v], mesh.vertices[v+1], mesh.vertices[v+2]);
+				p._pos.set( [mesh.vertices[v], mesh.vertices[v+1], mesh.vertices[v+2]] );
 			}
 			else
-				p.pos = vec3.create();		
+				p._pos.set([0,0,0]);
 			break;
 		case ParticleEmissor.CUSTOM_EMISSOR: //done after the rest
-		default: p.pos = vec3.create();
+		default: 
 	}
 
-	p.vel = vec3.fromValues( Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5 );
+	p._vel.set( [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5 ] );
 	p.life = this.particle_life;
 	p.id = this._last_id;
 	p.angle = 0;
+	p.size = 1;
 	p.rot = this.particle_rotation + 0.25 * this.particle_rotation * Math.random();
 
 	this._last_id += 1;
 	if(this.independent_color)
 		p.c = vec3.clone( this.particle_start_color );
 
-	vec3.scale(p.vel, p.vel, this.particle_speed);
+	vec3.scale(p._vel, p._vel, this.particle_speed);
 
 	//after everything so the user can edit whatever he wants
 	if(this.emissor_type == ParticleEmissor.CUSTOM_EMISSOR && this._custom_emissor_func)
 		this._custom_emissor_func.call( this, p );
 
 	//this._root.transform.transformPoint(p.pos, p.pos);
-	if(this.follow_emitter)
-		vec3.add(p.pos, p.pos, this._emissor_pos);
+	if(!this.follow_emitter) //the transform will be applyed in the matrix
+		vec3.add(p._pos, p._pos, this._emissor_pos);
 
 	return p;
 }
@@ -237,7 +277,7 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 		{
 			var p = this._particles[i];
 
-			vec3.copy(vel, p.vel);
+			vec3.copy(vel, p._vel);
 			vec3.add(vel, gravity, vel);
 			vec3.scale(vel, vel, dt);
 
@@ -248,10 +288,13 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 				vel[2] -= vel[2] * friction;
 			}
 
-			vec3.add( p.pos, vel, p.pos);
+			vec3.add( p._pos, vel, p._pos);
 
 			p.angle += p.rot * dt;
 			p.life -= dt;
+
+			if(this._custom_update_func)
+				this._custom_update_func.call(this,p,dt);
 
 			if(p.life > 0) //keep alive
 				particles.push(p);
@@ -289,22 +332,29 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 
 ParticleEmissor.prototype.createMesh = function ()
 {
-	if( this._mesh_maxparticles == this.max_particles) return;
+	if( this._mesh_maxparticles == this.max_particles)
+		return;
 
 	this._vertices = new Float32Array(this.max_particles * 6 * 3); //6 vertex per particle x 3 floats per vertex
 	this._coords = new Float32Array(this.max_particles * 6 * 2);
 	this._colors = new Float32Array(this.max_particles * 6 * 4);
+	this._extra2 = new Float32Array(this.max_particles * 2);
+
+	var default_coords = [1,1, 0,1, 1,0,  0,1, 0,0, 1,0];
+	var default_color = [1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1];
 
 	for(var i = 0; i < this.max_particles; i++)
 	{
-		this._coords.set([1,1, 0,1, 1,0,  0,1, 0,0, 1,0] , i*6*2);
-		this._colors.set([1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1] , i*6*4);
+		this._coords.set( default_coords , i*6*2);
+		this._colors.set( default_color , i*6*4);
+		this._extra2[i*2] = 1;
+		this._extra2[i*2+1] = i;
 	}
 
 	this._computed_grid_size = 1;
 	//this._mesh = Mesh.load({ vertices:this._vertices, coords: this._coords, colors: this._colors, stream_type: gl.STREAM_DRAW });
 	this._mesh = new GL.Mesh();
-	this._mesh.addBuffers({ vertices:this._vertices, coords: this._coords, colors: this._colors}, null, gl.STREAM_DRAW);
+	this._mesh.addBuffers({ vertices:this._vertices, coords: this._coords, colors: this._colors, extra2: this._extra2 }, null, gl.STREAM_DRAW);
 	this._mesh_maxparticles = this.max_particles;
 }
 
@@ -358,9 +408,9 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	{
 		particles = this._particles.concat(); //copy
 		var plane = geo.createPlane(center, front); //compute camera plane
-		var den = Math.sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]); //delta
+		var den = 1 / Math.sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]); //delta
 		for(var i = 0; i < particles.length; ++i)
-			particles[i]._dist = Math.abs(vec3.dot(particles[i].pos,plane) + plane[3])/den;
+			particles[i]._dist = Math.abs(vec3.dot(particles[i]._pos,plane) + plane[3]) * den;
 			//particles[i]._dist = vec3.dist( center, particles[i].pos );
 		particles.sort(function(a,b) { return a._dist < b._dist ? 1 : (a._dist > b._dist ? -1 : 0); });
 		this._particles = particles;
@@ -375,15 +425,13 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 	//used for grid based textures
 	var recompute_coords = false;
-	if((this._computed_grid_size != this.texture_grid_size || this.texture_grid_size > 1) && !this.stop_update)
+	if((this._computed_grid_size != this.texture_grid_size || this.texture_grid_size > 1) || this.point_particles)
 	{
 		recompute_coords = true;
 		this._computed_grid_size = this.texture_grid_size;
 	}
 	var texture_grid_size = this.texture_grid_size;
 	var d_uvs = 1 / this.texture_grid_size;
-	//var base_uvs = new Float32Array([d_uvs,d_uvs, 0,d_uvs, d_uvs,0,  0,d_uvs, 0,0, d_uvs,0]);
-	//var temp_uvs = new Float32Array([d_uvs,d_uvs, 0,d_uvs, d_uvs,0,  0,d_uvs, 0,0, d_uvs,0]);
 	var offset_u = 0, offset_v = 0;
 	var grid_frames = this.texture_grid_size<<2;
 	var animated_texture = this.animated_texture;
@@ -394,6 +442,7 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	var recompute_colors = true;
 	var opacity_curve = new Float32Array((this.particle_life * 60)<<0);
 	var size_curve = new Float32Array((this.particle_life * 60)<<0);
+	var particle_size = this.particle_size;
 
 	var dI = 1 / (this.particle_life * 60);
 	for(var i = 0; i < opacity_curve.length; i += 1)
@@ -402,6 +451,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		size_curve[i] = LS.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
 	}
 
+	var points = this.point_particles;
+	
 	//used for rotations
 	var rot = quat.create();
 
@@ -435,9 +486,33 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 			if(a < 0.001) continue;
 		}
 
-		var s = this.particle_size * size_curve[(f*size_curve.length)<<0]; //getCurveValueAt(this.particle_size_curve,0,1,0,f);
+		var s = p.size * size_curve[(f*size_curve.length)<<0]; //getCurveValueAt(this.particle_size_curve,0,1,0,f);
 
-		if(Math.abs(s) < MIN_SIZE) continue; //ignore almost transparent particles
+		if(Math.abs(s * particle_size) < MIN_SIZE)
+			continue; //ignore almost transparent particles
+
+		if(points)
+		{
+			this._vertices.set(p._pos, i*3);
+			this._colors.set(color, i*4);
+			if(recompute_coords)
+			{
+				var iG = (animated_texture ? ((loop_animation?time:f)*grid_frames)<<0 : p.id) % grid_frames;
+				offset_u = iG * d_uvs;
+				offset_v = 1 - (offset_u<<0) * d_uvs - d_uvs;
+				offset_u = offset_u%1;
+				this._coords[i*2] = offset_u;
+				this._coords[i*2+1] = offset_v;
+			}
+			this._extra2[i*2] = s;
+			this._extra2[i*2+1] = i;
+			++i;
+			if(i*3 >= this._vertices.length)
+				break; //too many particles
+			continue;
+		}
+
+		s *= particle_size;
 
 		vec3.scale(s_bottomleft, bottomleft, s)
 		vec3.scale(s_topright, topright, s);
@@ -453,22 +528,22 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 			vec3.transformQuat(s_bottomright, s_bottomright, rot);
 		}
 
-		vec3.add(temp, p.pos, s_topright);
+		vec3.add(temp, p._pos, s_topright);
 		this._vertices.set(temp, i*6*3);
 
-		vec3.add(temp, p.pos, s_topleft);
+		vec3.add(temp, p._pos, s_topleft);
 		this._vertices.set(temp, i*6*3 + 3);
 
-		vec3.add(temp, p.pos, s_bottomright);
+		vec3.add(temp, p._pos, s_bottomright);
 		this._vertices.set(temp, i*6*3 + 3*2);
 
-		vec3.add(temp, p.pos, s_topleft);
+		vec3.add(temp, p._pos, s_topleft);
 		this._vertices.set(temp, i*6*3 + 3*3);
 
-		vec3.add(temp, p.pos, s_bottomleft);
+		vec3.add(temp, p._pos, s_bottomleft);
 		this._vertices.set(temp, i*6*3 + 3*4);
 
-		vec3.add(temp, p.pos, s_bottomright);
+		vec3.add(temp, p._pos, s_bottomright);
 		this._vertices.set(temp, i*6*3 + 3*5);
 
 		if(recompute_colors)
@@ -491,21 +566,25 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		}
 
 		++i;
-		if(i*6*3 >= this._vertices.length) break; //too many particles
+		if(i*6*3 >= this._vertices.length)
+			break; //too many particles
 	}
 	this._visible_particles = i;
 
 	//upload geometry
 	this._mesh.vertexBuffers["vertices"].data = this._vertices;
-	this._mesh.vertexBuffers["vertices"].upload();
+	this._mesh.vertexBuffers["vertices"].upload(gl.STREAM_DRAW);
 
 	this._mesh.vertexBuffers["colors"].data = this._colors;
-	this._mesh.vertexBuffers["colors"].upload();
+	this._mesh.vertexBuffers["colors"].upload(gl.STREAM_DRAW);
+
+	this._mesh.vertexBuffers["extra2"].data = this._extra2;
+	this._mesh.vertexBuffers["extra2"].upload(gl.STREAM_DRAW);
 
 	if(recompute_coords)
 	{
 		this._mesh.vertexBuffers["coords"].data = this._coords;
-		this._mesh.vertexBuffers["coords"].upload();
+		this._mesh.vertexBuffers["coords"].upload(gl.STREAM_DRAW);
 	}
 
 	//this._mesh.vertices = this._vertices;
@@ -520,7 +599,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	if(!this._root || !this.enabled)
 		return;
 
-	var camera = Renderer._current_camera;
+	var camera = LS.Renderer._current_camera;
 
 	if(!this._material)
 		this._material = new Material({ shader_name:"lowglobal" });
@@ -530,13 +609,14 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	this._material.soft_particles = this.soft_particles;
 	this._material.constant_diffuse = true;
+	this._material.uvs_matrix[0] = this._material.uvs_matrix[4] = 1 / this.texture_grid_size;
 
 	if(!this._mesh)
 		return null;
 
 	var RI = this._render_instance;
 	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
@@ -550,11 +630,28 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	RI.applyNodeFlags();
 
 	RI.setMaterial( material );
-	RI.setMesh( this._mesh, gl.TRIANGLES );
-	RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
+
+	if(this.point_particles)
+	{
+		RI.setMesh( this._mesh, gl.POINTS );
+		RI.uniforms.u_point_size = this.particle_size;
+		RI.macros["USE_POINTS"] = "";
+		RI.macros["USE_POINT_CLOUD"] = "";
+		RI.macros["USE_TEXTURED_POINTS"] = "";
+		RI.setRange(0, this._visible_particles);
+	}
+	else
+	{
+		RI.setMesh( this._mesh, gl.TRIANGLES );
+		RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
+		delete RI.macros["USE_POINTS"];
+		delete RI.macros["USE_POINT_CLOUD"];
+		delete RI.macros["USE_TEXTURED_POINTS"];
+		delete RI.uniforms["u_point_size"];
+	}
 
 	instances.push(RI);
 }
 
-
+LS.Particle = Particle;
 LS.registerComponent(ParticleEmissor);

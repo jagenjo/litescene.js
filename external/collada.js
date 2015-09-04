@@ -962,32 +962,32 @@ global.Collada = {
 		var mesh = null;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
 		if( xmlpolygons )
-			mesh = this.readTriangles( sources, xmlpolygons );
+			mesh = this.readTriangles( xmlpolygons, sources );
 
-		if(!xmlpolygons)
+		if(!mesh)
 		{
 			var xmltriangles = xmlmesh.querySelectorAll("triangles");
 			if(xmltriangles && xmltriangles.length)
-				mesh = this.readTriangles( sources, xmltriangles );
+				mesh = this.readTriangles( xmltriangles, sources );
 		}
 
 		if(!mesh)
 		{
-			if(xmlmesh.querySelector("polylist"))
-			{
-				console.warn("Polylist not supported, please be sure to enable TRIANGULATE option in your exporter.");
-				return null;
-			}
 			//polylist = true;
 			//var vcount = null;
 			//var xmlvcount = xmlpolygons.querySelector("vcount");
 			//var vcount = this.readContentAsUInt32( xmlvcount );
+			var xmlpolylist = xmlmesh.querySelector("polylist");
+			if(xmlpolylist)
+				mesh = this.readPolylist( xmlpolylist, sources );
+		}
 
+
+		if(!mesh)
+		{
 			var xmllinestrip = xmlmesh.querySelector("linestrips");
 			if(xmllinestrip)
-			{
 				mesh = this.readLineStrip( sources, xmllinestrip );
-			}
 		}
 
 		if(!mesh)
@@ -996,17 +996,6 @@ global.Collada = {
 			return null;
 		}
 	
-		/*
-		var xmltriangles = xmlmesh.querySelectorAll("triangles");
-		if(!xmltriangles.length)
-		{
-			console.error("no triangles in mesh: " + id);
-			return null;
-		}
-		//console.log(mesh);
-		*/
-
-
 		//swap coords (X,Y,Z) -> (X,Z,-Y)
 		if(flip && !this.no_flip)
 		{
@@ -1047,7 +1036,7 @@ global.Collada = {
 		return mesh;
 	},
 
-	readTriangles: function( sources, xmltriangles )
+	readTriangles: function( xmltriangles, sources )
 	{
 		var use_indices = false;
 
@@ -1070,22 +1059,9 @@ global.Collada = {
 			material_name = xml_shape_root.getAttribute("material");
 
 			//for each buffer (input) build the structure info
-			var xmlinputs = xml_shape_root.querySelectorAll("input");
-			if(tris == 0) //first iteration, create buffers
-				for(var i = 0; i < xmlinputs.length; i++)
-				{
-					var xmlinput = xmlinputs.item(i);
-					if(!xmlinput.getAttribute) 
-						continue;
-					var semantic = xmlinput.getAttribute("semantic").toUpperCase();
-					var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
-					var offset = parseInt( xmlinput.getAttribute("offset") );
-					var data_set = 0;
-					if(xmlinput.getAttribute("set"))
-						data_set = parseInt( xmlinput.getAttribute("set") );
+			if(tris == 0)
+				buffers = this.readShapeInputs( xml_shape_root, sources );
 
-					buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
-				}
 			//assuming buffers are ordered by offset
 
 			//iterate data
@@ -1171,6 +1147,118 @@ global.Collada = {
 		this.transformMeshInfo( mesh, buffers, indicesArray );
 
 		return mesh;
+	},
+
+	readPolylist: function( xml_shape_root, sources )
+	{
+		var use_indices = false;
+
+		var groups = [];
+		var buffers = [];
+		var last_index = 0;
+		var facemap = {};
+		var vertex_remap = [];
+		var indicesArray = [];
+		var last_start = 0;
+		var group_name = "";
+		var material_name = "";
+
+		material_name = xml_shape_root.getAttribute("material");
+		buffers = this.readShapeInputs( xml_shape_root, sources );
+
+		var xmlvcount = xml_shape_root.querySelector("vcount");
+		var vcount = this.readContentAsUInt32( xmlvcount );
+
+		var xmlp = xml_shape_root.querySelector("p");
+		var data = this.readContentAsUInt32( xmlp );
+
+		var num_data_vertex = buffers.length;
+
+		var pos = 0;
+		for(var i = 0; i < vcount.length; ++i)
+		{
+			var num_vertices = vcount[i];
+
+			var first_index = -1;
+			var current_index = -1;
+			var prev_index = -1;
+
+			for(var k = 0; k < num_vertices; ++k )
+			{
+				var vertex_id = data.subarray(pos,pos + num_data_vertex).join(" ");
+
+				prev_index = current_index;
+				if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
+					current_index = facemap[vertex_id];
+				else
+				{
+					for(var j = 0; j < buffers.length; ++j)
+					{
+						var buffer = buffers[j];
+						var index = parseInt( data[pos + j] );
+						var array = buffer[1]; //array with all the data
+						var source = buffer[3]; //where to read the data from
+						if(j == 0)
+							vertex_remap[ array.length / num_data_vertex ] = index;
+						index *= buffer[2]; //stride
+						for(var x = 0; x < buffer[2]; ++x)
+							array.push( source[index+x] );
+					}
+					
+					current_index = last_index;
+					last_index += 1;
+					facemap[vertex_id] = current_index;
+				}
+
+				if(num_vertices > 3) //split polygons then
+				{
+					if(k == 0)
+						first_index = current_index;
+					if(k > 2 * num_data_vertex) //triangulate polygons
+					{
+						indicesArray.push( first_index );
+						indicesArray.push( prev_index );
+					}
+				}
+
+				indicesArray.push( current_index );
+			}//per vertex
+
+			pos += num_vertices;
+		}//per polygon
+
+		var mesh = {
+			vertices: new Float32Array( buffers[0][1] ),
+			info: {},
+			_remap: new Uint32Array( vertex_remap )
+		};
+
+		this.transformMeshInfo( mesh, buffers, indicesArray );
+
+		return mesh;
+	},
+
+	readShapeInputs: function(xml_shape_root, sources)
+	{
+		var buffers = [];
+
+		var xmlinputs = xml_shape_root.querySelectorAll("input");
+		for(var i = 0; i < xmlinputs.length; i++)
+		{
+			var xmlinput = xmlinputs.item(i);
+			if(!xmlinput.getAttribute) 
+				continue;
+			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
+			var offset = parseInt( xmlinput.getAttribute("offset") );
+			var data_set = 0;
+			if(xmlinput.getAttribute("set"))
+				data_set = parseInt( xmlinput.getAttribute("set") );
+
+			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+		}
+
+		return buffers;
 	},
 
 	transformMeshInfo: function( mesh, buffers, indicesArray )

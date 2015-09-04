@@ -10,6 +10,7 @@ function GeometricPrimitive(o)
 	this.enabled = true;
 	this.size = 10;
 	this.subdivisions = 10;
+	this.point_size = 0.1;
 	this.geometry = GeometricPrimitive.CUBE;
 	this._primitive = -1;
 	this.align_z = false;
@@ -116,6 +117,12 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
 	RI.applyNodeFlags();
 	RI.setMaterial( this.material || this._root.getMaterial() );
+
+	if(this.primitive == gl.POINTS)
+	{
+		RI.uniforms.u_point_size = this.point_size;
+		RI.macros["USE_POINTS"] = "";
+	}
 
 	instances.push(RI);
 }

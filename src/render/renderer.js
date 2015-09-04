@@ -16,7 +16,7 @@ var Renderer = {
 	global_render_frame_containers: [],
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 
-	default_point_size: 5,
+	default_point_size: 1,
 
 	_full_viewport: vec4.create(), //contains info about the full viewport available to render (depends if using FBOs)
 
@@ -165,6 +165,13 @@ var Renderer = {
 		scene.triggerInNodes("afterRender", render_options ); //TODO: remove
 	},
 
+	/**
+	* Calls renderFrame of every camera in the cameras list (triggering the appropiate events)
+	*
+	* @method renderFrameCameras
+	* @param {Array} cameras
+	* @param {RenderOptions} render_options
+	*/
 	renderFrameCameras: function( cameras, render_options, global_render_frame )
 	{
 		var scene = this._current_scene;
@@ -231,7 +238,7 @@ var Renderer = {
 	},
 
 	/**
-	* Set camera as the main scene camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw
+	* Set camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw
 	*
 	* @method enableCamera
 	* @param {Camera} camera
@@ -286,6 +293,9 @@ var Renderer = {
 		if(render_options)
 			render_options.current_camera = camera;
 
+		//prepare camera
+		camera.fillCameraShaderUniforms( scene );
+
 		//Draw allows to render debug info easily
 		Draw.reset(); //clear 
 		Draw.setCameraPosition( camera.getEye() );
@@ -295,7 +305,12 @@ var Renderer = {
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 	},
 
-	
+	/**
+	* Calls the render method for every instance (it also takes into account events and frustrum culling 
+	*
+	* @method renderInstances
+	* @param {RenderOptions} render_options
+	*/
 	renderInstances: function( render_options )
 	{
 		var scene = this._current_scene;
@@ -306,6 +321,9 @@ var Renderer = {
 		var frustum_planes = geo.extractPlanes( this._viewprojection_matrix, this.frustum_planes );
 		this.frustum_planes = frustum_planes;
 		var apply_frustum_culling = render_options.frustum_culling;
+		var layers_filter = camera.layers;
+		if( render_options.layers )
+			layers_filter = render_options.layers;
 
 		LEvent.trigger(scene, "beforeRenderInstances", render_options);
 		scene.triggerInNodes("beforeRenderInstances", render_options);
@@ -363,7 +381,7 @@ var Renderer = {
 				continue;
 			if(node_flags.selectable == false && render_options.is_picking)
 				continue;
-			if( !camera.checkLayersVisibility( instance.layers ) )
+			if( (layers_filter & instance.layers) === 0 )
 				continue;
 
 			//done here because sometimes some nodes are moved in this action
@@ -472,7 +490,12 @@ var Renderer = {
 		this.resetGLState();
 	},
 
-	//to set gl state in a known and constant state in every render
+	/**
+	* To set gl state to a known and constant state in every render pass
+	*
+	* @method resetGLState
+	* @param {RenderOptions} render_options
+	*/
 	resetGLState: function()
 	{
 		gl.enable( gl.CULL_FACE );
@@ -540,36 +563,18 @@ var Renderer = {
 		return sampler_uniforms;
 	},
 
-	/*
-	computeShader: function( instance, light, render_options, macros )
-	{
-		var light_macros = light.getMacros( instance, render_options );
-
-		macros = macros || {};
-
-		if(iLight === 0)
-			macros.FIRST_PASS = "";
-		if(iLight === (num_lights-1))
-			macros.LAST_PASS = "";
-
-		macros.merge(scene._macros);
-		macros.merge(instance_final_macros); //contains node, material and instance macros
-		macros.merge(light_macros);
-
-		if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
-			macros.USE_CLIPPING_PLANE = "";
-
-		if( material.onModifyMacros )
-			material.onModifyMacros( macros );
-
-		shader = ShadersManager.get(shader_name, macros);
-	},
+	/**
+	* Renders this render instance taking into account all the lights that affect it
+	*
+	* @method renderColorPassInstance
+	* @param {RenderInstance} instance
+	* @param {Array} lights array containing al the lights affecting this RI
+	* @param {SceneTree} scene
+	* @param {RenderOptions} render_options
 	*/
-
-	//possible optimizations: bind the mesh once, bind the surface textures once
 	renderColorPassInstance: function(instance, lights, scene, render_options)
 	{
-
+		var camera = this._current_camera;
 		var node = instance.node;
 		var material = instance.material;
 
@@ -642,7 +647,7 @@ var Renderer = {
 			var shader = ShadersManager.get(shader_name, macros);
 
 			//assign uniforms
-			shader.uniformsArray( [sampler_uniforms, scene._uniforms, instance_final_uniforms] );
+			shader.uniformsArray( [sampler_uniforms, scene._uniforms, camera._uniforms, instance_final_uniforms] );
 
 			//render
 			instance.render( shader );
@@ -701,7 +706,7 @@ var Renderer = {
 				gl.depthFunc( gl[material.depth_func] );
 
 			//assign uniforms
-			shader.uniformsArray( [sampler_uniforms, scene._uniforms, instance_final_uniforms, light_uniforms] );
+			shader.uniformsArray( [sampler_uniforms, scene._uniforms, camera._uniforms, instance_final_uniforms, light_uniforms] );
 
 			//render the instance
 			instance.render( shader );
@@ -713,9 +718,17 @@ var Renderer = {
 		}
 	},
 
+	/**
+	* Renders this RenderInstance into the shadowmap
+	*
+	* @method renderShadowPassInstance
+	* @param {RenderInstance} instance
+	* @param {RenderOptions} render_options
+	*/
 	renderShadowPassInstance: function(instance, render_options)
 	{
 		var scene = this._current_scene;
+		var camera = this._current_camera;
 		var node = instance.node;
 		var material = instance.material;
 
@@ -789,13 +802,21 @@ var Renderer = {
 				sampler_uniforms[ i ] = samplers[i].bind( slot++ );
 		*/
 
-		shader.uniformsArray([ sampler_uniforms, scene._uniforms, instance._final_uniforms ]);
+		shader.uniformsArray([ sampler_uniforms, scene._uniforms, camera._uniforms, instance._final_uniforms ]);
 
 		instance.render(shader);
 		this._rendercalls += 1;
 	},
 
-	//renders using an orthographic projection
+	/**
+	* Special case of render instance that uses a 2D projection (used for GUIS)
+	* Will be refactored for a better system
+	*
+	* @method render2DInstance
+	* @param {RenderInstance} instance
+	* @param {SceneTree} scene
+	* @param {RenderOptions} render_options
+	*/
 	render2DInstance:  function(instance, scene, options)
 	{
 		var node = instance.node;
@@ -872,9 +893,17 @@ var Renderer = {
 		return;
 	},	
 
+	/**
+	* Render instance into the picking buffer
+	*
+	* @method renderPickingInstance
+	* @param {RenderInstance} instance
+	* @param {RenderOptions} render_options
+	*/
 	renderPickingInstance: function(instance, render_options)
 	{
 		var scene = this._current_scene;
+		var camera = this._current_camera;
 		var node = instance.node;
 		var model = instance.matrix;
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
@@ -894,8 +923,9 @@ var Renderer = {
 
 		var shader = ShadersManager.get("flat", macros);
 		shader.uniforms(scene._uniforms);
+		shader.uniforms(camera._uniforms);
 		shader.uniforms(instance.uniforms);
-		shader.uniforms({u_model: model, u_pointSize: this.default_point_size, u_mvp: this._mvp_matrix, u_material_color: pick_color });
+		shader.uniforms({u_model: model, u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
 		//hardcoded, ugly
 		/*
@@ -907,7 +937,14 @@ var Renderer = {
 		instance.render(shader);
 	},
 
-	//do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
+	/**
+	* Update the scene shader macros according to the render pass
+	* Do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
+	*
+	* @method fillSceneShaderMacros
+	* @param {SceneTree} scene
+	* @param {RenderOptions} render_options
+	*/
 	fillSceneShaderMacros: function( scene, render_options )
 	{
 		var macros = {};
@@ -930,24 +967,16 @@ var Renderer = {
 
 		LEvent.trigger(scene, "fillSceneMacros", macros );
 
-
-
 		scene._macros = macros;
 	},
 
-	//DO NOT CACHE, parameter can change between render passes
+	//Called at the beginning of renderInstances (once per renderFrame)
+	//DO NOT CACHE, parameters can change between render passes
 	fillSceneShaderUniforms: function( scene, render_options )
 	{
-		var camera = render_options.current_camera;
-
 		//global uniforms
 		var uniforms = {
-			u_camera_eye: camera.getEye(),
-			u_camera_front: camera.getFront(),
-			u_pointSize: this.default_point_size,
-			u_camera_planes: [camera.near, camera.far],
-			u_camera_perspective: camera.type == Camera.PERSPECTIVE ? [camera.fov * DEG2RAD, 512 / Math.tan( camera.fov * DEG2RAD ) ] : [ camera._frustum_size, 512 / camera._frustum_size ],
-			//u_viewprojection: this._viewprojection_matrix,
+			u_point_size: this.default_point_size,
 			u_time: scene._time || getTime() * 0.001,
 			u_brightness_factor: render_options.brightness_factor != null ? render_options.brightness_factor : 1,
 			u_colorclip_factor: render_options.colorclip_factor != null ? render_options.colorclip_factor : 0,
@@ -961,7 +990,6 @@ var Renderer = {
 
 		scene._uniforms = uniforms;
 		scene._samplers = {};
-
 
 		for(var i in scene.info.textures)
 		{
@@ -982,6 +1010,13 @@ var Renderer = {
 		LEvent.trigger(scene, "fillSceneUniforms", scene._uniforms );
 	},	
 
+	/**
+	* Switch flags according to the RenderInstance flags
+	*
+	* @method enableInstanceFlags
+	* @param {RenderInstance} instance
+	* @param {RenderOptions} render_options
+	*/
 	enableInstanceFlags: function(instance, render_options)
 	{
 		var flags = instance.flags;
@@ -1013,8 +1048,15 @@ var Renderer = {
 		gl.frontFace(order);
 	},
 
-	//collects and process the rendering instances, cameras and lights that are visible
-	//its like a prepass shared among all rendering passes
+
+	/**
+	* Collects and process the rendering instances, cameras and lights that are visible
+	* Its a prepass shared among all rendering passes
+	*
+	* @method processVisibleData
+	* @param {SceneTree} scene
+	* @param {RenderOptions} render_options
+	*/
 	processVisibleData: function(scene, render_options)
 	{
 		//options = options || {};
@@ -1166,8 +1208,8 @@ var Renderer = {
 				material._uniforms = {};
 				material._samplers = {};
 			}
-			material.fillSurfaceShaderMacros(scene); //update shader macros on this material
-			material.fillSurfaceUniforms(scene); //update uniforms
+			material.fillShaderMacros(scene); //update shader macros on this material
+			material.fillUniforms(scene); //update uniforms
 		}
 	},
 
@@ -1175,11 +1217,19 @@ var Renderer = {
 	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
 	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
 
-	//Renders the scene to an RT
+	/**
+	* Renders a frame into a texture (could be a cubemap, in which case does the six passes)
+	*
+	* @method renderInstancesToRT
+	* @param {Camera} cam
+	* @param {Texture} texture
+	* @param {RenderOptions} render_options
+	*/
 	renderInstancesToRT: function(cam, texture, render_options)
 	{
 		render_options = render_options || this.default_render_options;
 		this._current_target = texture;
+		var scene = LS.Renderer._current_scene;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -1192,7 +1242,6 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
-			var scene = Renderer._current_scene;
 			gl.clearColor(scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 			if(render_options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -1201,18 +1250,18 @@ var Renderer = {
 		}
 	},
 
-	/* reverse
-	cubemap_camera_parameters: [
-		{dir: [1,0,0], up:[0,1,0]}, //positive X
-		{dir: [-1,0,0], up:[0,1,0]}, //negative X
-		{dir: [0,-1,0], up:[0,0,-1]}, //positive Y
-		{dir: [0,1,0], up:[0,0,1]}, //negative Y
-		{dir: [0,0,-1], up:[0,1,0]}, //positive Z
-		{dir: [0,0,1], up:[0,1,0]} //negative Z
-	],
+	/**
+	* Renders the current scene to a cubemap centered in the given position
+	*
+	* @method renderToCubemap
+	* @param {vec3} position center of the camera where to render the cubemap
+	* @param {number} size texture size
+	* @param {Texture} texture to reuse the same texture
+	* @param {RenderOptions} render_options
+	* @param {number} near
+	* @param {number} far
+	* @return {Texture} the resulting texture
 	*/
-
-	//renders the current scene to a cubemap centered in the given position
 	renderToCubemap: function(position, size, texture, render_options, near, far)
 	{
 		size = size || 256;
@@ -1220,7 +1269,8 @@ var Renderer = {
 		far = far || 1000;
 
 		var eye = position;
-		if( !texture || texture.constructor != Texture) texture = null;
+		if( !texture || texture.constructor != Texture)
+			texture = null;
 
 		var scene = this._current_scene;
 
@@ -1245,6 +1295,15 @@ var Renderer = {
 		return texture;
 	},
 
+	/**
+	* Renders the material preview to an image
+	*
+	* @method renderMaterialPreview
+	* @param {Material} material
+	* @param {number} size image size
+	* @param {Object} options could be environment_texture
+	* @return {Image} the preview image (in canvas format)
+	*/
 	renderMaterialPreview: function( material, size, options )
 	{
 		options = options || {};
@@ -1274,6 +1333,33 @@ var Renderer = {
 		var canvas = tex.toCanvas(null, true);
 		//document.body.appendChild( canvas ); //debug
 		return canvas;
+	},
+
+	/**
+	* Returns the last camera that falls into a given screen position
+	*
+	* @method getCameraAtPosition
+	* @param {number} x
+	* @param {number} y
+	* @param {SceneTree} scene if not specified last rendered scene will be used
+	* @return {Camera} the camera
+	*/
+	getCameraAtPosition: function(x,y, cameras)
+	{
+		cameras = cameras || this._visible_cameras;
+		if(!cameras || !cameras.length)
+			return null;
+
+		for(var i = cameras.length - 1; i >= 0; --i)
+		{
+			var camera = cameras[i];
+			if(!camera.enabled || camera.render_to_texture)
+				continue;
+
+			if( camera.isPointInCamera(x,y) )
+				return camera;
+		}
+		return null;
 	}
 };
 

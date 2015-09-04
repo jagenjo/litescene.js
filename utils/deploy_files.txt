@@ -55,6 +55,9 @@
 ../src/components/VRCameraController.js
 ../src/components/poser.js
 
+../src/components/interactiveController.js
+
+
 ../src/graph/scene.js
 
 ../src/helpers/animation.js

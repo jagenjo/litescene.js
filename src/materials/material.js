@@ -143,7 +143,7 @@ Material.prototype.applyToRenderInstance = function(ri)
 }
 
 // RENDERING METHODS
-Material.prototype.fillSurfaceShaderMacros = function(scene)
+Material.prototype.fillShaderMacros = function(scene)
 {
 	var macros = {};
 
@@ -237,7 +237,7 @@ Material.prototype.getLightShaderMacros = function(light, node, scene, render_op
 }
 */
 
-Material.prototype.fillSurfaceUniforms = function( scene, options )
+Material.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = {};
 	var samplers = {};
@@ -497,6 +497,8 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 	var sampler = this.textures[channel];
 	if(!sampler)
 		this.textures[channel] = sampler = { texture: texture, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
+	else if(sampler.texture == texture)
+		return sampler;
 	else
 		sampler.texture = texture;
 

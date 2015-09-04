@@ -8,6 +8,7 @@ function MeshRenderer(o)
 	this.material = null;
 	this._primitive = -1;
 	this.two_sided = false;
+	this.point_size = 0.1;
 
 	if(o)
 		this.configure(o);
@@ -195,6 +196,13 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	}
 	else
 		RI.collision_mesh = mesh;
+
+	if(this.primitive == gl.POINTS)
+	{
+		RI.uniforms.u_point_size = this.point_size;
+		RI.macros["USE_POINTS"] = "";
+		//RI.macros["USE_CIRCLE_POINTS"] = "";
+	}
 
 	instances.push(RI);
 }

@@ -88,7 +88,7 @@ ComponentContainer.prototype.getComponents = function()
 * @param {Object} component
 * @return {Object} component added
 */
-ComponentContainer.prototype.addComponent = function(component)
+ComponentContainer.prototype.addComponent = function( component, index )
 {
 	if(!component)
 		return console.error("addComponent cannot receive null");
@@ -106,7 +106,11 @@ ComponentContainer.prototype.addComponent = function(component)
 		Object.defineProperty( this, "_components", { value: [], enumerable: false });
 	if(this._components.indexOf(component) != -1)
 		throw("inserting the same component twice");
-	this._components.push(component);
+
+	if(index !== undefined && index <= this._components.length )
+		this._components.splice(index,0,component);
+	else
+		this._components.push(component);
 	if( !component.hasOwnProperty("uid") )
 		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false, writable: true});
 		//component.uid = LS.generateUId("COMP-");

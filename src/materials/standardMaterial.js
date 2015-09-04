@@ -114,7 +114,7 @@ struct SurfaceOutput {\n\
 ";
 
 // RENDERING METHODS
-StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+StandardMaterial.prototype.fillShaderMacros = function(scene)
 {
 	var macros = {};
 
@@ -214,7 +214,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	this._macros = macros;
 }
 
-StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+StandardMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = {};
 	var samplers = {};

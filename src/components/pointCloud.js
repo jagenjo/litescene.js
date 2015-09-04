@@ -218,7 +218,10 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	if(!this._material)
 	{
 		this._material = new Material({ shader_name:"lowglobal" });
-		this._material.extra_macros = { USE_POINT_CLOUD: "" };
+		this._material.extra_macros = { 
+			USE_POINT_CLOUD: "", //for the stream with sizes
+			USE_TEXTURED_POINTS: "" //for texturing the points
+		};
 	}
 
 	var material = this._material;

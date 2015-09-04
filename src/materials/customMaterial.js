@@ -62,14 +62,14 @@ CustomMaterial.prototype.onModifyMacros = function(macros)
 		macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 }
 
-CustomMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+CustomMaterial.prototype.fillShaderMacros = function(scene)
 {
 	var macros = {};
 	this._macros = macros;
 }
 
 
-CustomMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+CustomMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var samplers = {};
 	for(var i in this.textures) 

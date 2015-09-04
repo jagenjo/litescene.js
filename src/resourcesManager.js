@@ -225,7 +225,7 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
-		var pos = url.indexOf(":");
+		var pos = url.indexOf("://");
 		var protocol = "";
 		if(pos != -1)
 			protocol = url.substr(0,pos);
@@ -251,10 +251,12 @@ var ResourcesManager = {
 					break;
 				case 'blob':
 					return url; //special case for local urls like URL.createObjectURL
-				case '': //local resource?
+				case '': //strange case
 					return url;
 					break;
 				default:
+					if(url[0] == ":") //local resource
+						return url;
 					//test for virtual file system address
 					var root_path = this.virtual_file_systems[ protocol ] || resources_path;
 					return root_path + "/" + url.substr(pos+1);
@@ -333,8 +335,6 @@ var ResourcesManager = {
 	*/
 	load: function(url, options, on_complete)
 	{
-		options = options || {};
-
 		//if we already have it, then nothing to do
 		if(this.resources[url] != null)
 		{
@@ -342,6 +342,8 @@ var ResourcesManager = {
 				on_complete(this.resources[url]);
 			return true;
 		}
+
+		options = options || {};
 
 		//extract the filename extension
 		var extension = this.getExtension(url);

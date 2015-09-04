@@ -243,9 +243,9 @@ Script.prototype.hookEvents = function()
 
 		if( context[name] && context[name].constructor === Function )
 		{
-			//remove
-			if( !LEvent.isBind( scene, event_name, this.onScriptEvent, this )  )
-				LEvent.bind( scene, event_name, this.onScriptEvent, this );
+			var target = event_name == "trigger" ? node : scene; //some events are triggered in the scene, others in the node
+			if( !LEvent.isBind( target, event_name, this.onScriptEvent, this )  )
+				LEvent.bind( target, event_name, this.onScriptEvent, this );
 		}
 		else
 			LEvent.unbind( scene, event_name, this.onScriptEvent, this );
