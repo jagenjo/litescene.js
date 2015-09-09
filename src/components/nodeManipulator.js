@@ -17,8 +17,14 @@ NodeManipulator.icon = "mini-icon-rotator.png";
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"mousemove",this.onMouse,this);
-	LEvent.bind(node,"update",this.onUpdate,this);
+	LEvent.bind( node, "mousemove",this.onMouse,this);
+	LEvent.bind( node, "update",this.onUpdate,this);
+}
+
+NodeManipulator.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind( node, "mousemove",this.onMouse,this);
+	LEvent.unbind( node, "update",this.onUpdate,this);
 }
 
 NodeManipulator.prototype.onUpdate = function(e)

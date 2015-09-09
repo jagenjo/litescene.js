@@ -59,21 +59,31 @@ var LS = {
 	Components: {},
 
 	/**
-	* Register a component so it is listed when searching for new components to attach
+	* Register a component (or several) so it is listed when searching for new components to attach
 	*
 	* @method registerComponent
-	* @param {ComponentClass} comp component class to register
+	* @param {ComponentClass} c component class to register
 	*/
-	registerComponent: function(comp) { 
+	registerComponent: function( c ) { 
+		//allows to register several at the same time
 		for(var i in arguments)
 		{
+			var component = arguments[i];
+			var name = LS.getClassName( component );
+
 			//register
-			this.Components[ LS.getClassName(arguments[i]) ] = arguments[i]; 
+			this.Components[ name ] = component; 
+
+			//checks for errors
+			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
+				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
+				console.warn("Component could have a bug, check events: " + name);
+
 			//add default methods
-			LS.extendClass(comp, LS.Component );
+			LS.extendClass( component, LS.Component );
 
 			//event
-			LEvent.trigger(LS,"component_registered",arguments[i]); 
+			LEvent.trigger(LS, "component_registered", component ); 
 		}
 	},
 

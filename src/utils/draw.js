@@ -308,7 +308,7 @@ var Draw = {
 
 		if(colors && colors.constructor != Float32Array)
 		{
-			if(colors.constructor === Array )
+			if(colors.constructor === Array && colors[0].constructor === Number)
 				colors = new Float32Array( colors );
 			else
 				colors = this.linearize(colors);

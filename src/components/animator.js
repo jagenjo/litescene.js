@@ -25,7 +25,7 @@ Rotator.prototype.onAddedToScene = function(scene)
 }
 
 
-Rotator.prototype.onRemoveFromScene = function(scene)
+Rotator.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind(scene,"update",this.onUpdate,this);
 }

@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -111,6 +113,10 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+            
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
@@ -172,6 +178,7 @@ function MeshRenderer(o)
 	this.material = null;
 	this._primitive = -1;
 	this.two_sided = false;
+	this.point_size = 0.1;
 
 	if(o)
 		this.configure(o);
@@ -359,6 +366,13 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	}
 	else
 		RI.collision_mesh = mesh;
+
+	if(this.primitive == gl.POINTS)
+	{
+		RI.uniforms.u_point_size = this.point_size;
+		RI.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
+		//RI.macros[&quot;USE_CIRCLE_POINTS&quot;] = &quot;&quot;;
+	}
 
 	instances.push(RI);
 }

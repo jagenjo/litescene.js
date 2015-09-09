@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -252,7 +258,7 @@ ComponentContainer.prototype.getComponents = function()
 * @param {Object} component
 * @return {Object} component added
 */
-ComponentContainer.prototype.addComponent = function(component)
+ComponentContainer.prototype.addComponent = function( component, index )
 {
 	if(!component)
 		return console.error(&quot;addComponent cannot receive null&quot;);
@@ -270,7 +276,11 @@ ComponentContainer.prototype.addComponent = function(component)
 		Object.defineProperty( this, &quot;_components&quot;, { value: [], enumerable: false });
 	if(this._components.indexOf(component) != -1)
 		throw(&quot;inserting the same component twice&quot;);
-	this._components.push(component);
+
+	if(index !== undefined &amp;&amp; index &lt;= this._components.length )
+		this._components.splice(index,0,component);
+	else
+		this._components.push(component);
 	if( !component.hasOwnProperty(&quot;uid&quot;) )
 		Object.defineProperty( component, &quot;uid&quot;, { value: LS.generateUId(&quot;COMP-&quot;), enumerable: false, writable: true});
 		//component.uid = LS.generateUId(&quot;COMP-&quot;);

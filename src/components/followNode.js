@@ -18,7 +18,12 @@ FollowNode.icon = "mini-icon-follow.png";
 
 FollowNode.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"computeVisibility",this.updatePosition,this);
+	LEvent.bind(node,"computeVisibility", this.updatePosition, this);
+}
+
+FollowNode.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node,"computeVisibility", this.updatePosition, this);
 }
 
 FollowNode.prototype.updatePosition = function(e,info)

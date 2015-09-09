@@ -32,7 +32,7 @@ Spherize.prototype.onAddedToNode = function(node)
 }
 
 
-Spherize.prototype.onRemoveFromNode = function(node)
+Spherize.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbindAll(node,this);
 }

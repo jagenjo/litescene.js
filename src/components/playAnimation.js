@@ -38,15 +38,15 @@ PlayAnimation.prototype.configure = function(o)
 
 PlayAnimation.icon = "mini-icon-clock.png";
 
-PlayAnimation.prototype.onAddedToNode = function(node)
+PlayAnimation.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind(node,"update",this.onUpdate, this);
+	LEvent.bind( scene, "update", this.onUpdate, this);
 }
 
 
-PlayAnimation.prototype.onRemoveFromNode = function(node)
+PlayAnimation.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(node,"update",this.onUpdate, this);
+	LEvent.unbind( scene, "update", this.onUpdate, this);
 }
 
 

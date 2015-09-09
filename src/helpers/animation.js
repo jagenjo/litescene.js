@@ -728,6 +728,7 @@ Track.prototype.findTimeIndex = function( time )
 	return -1;
 }
 
+//Warning: if no result is provided the same result is reused between samples.
 Track.prototype.getSample = function( time, interpolate, result )
 {
 	if(!this.data || this.data.length === 0)

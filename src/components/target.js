@@ -35,8 +35,14 @@ Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "
 
 Target.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node,"computeVisibility",this.updateOrientation,this);
+	LEvent.bind( node, "computeVisibility", this.updateOrientation, this);
 }
+
+Target.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind( node, "computeVisibility", this.updateOrientation, this);
+}
+
 
 Target.prototype.updateOrientation = function(e)
 {

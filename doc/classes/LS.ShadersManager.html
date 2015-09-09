@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.RenderInstance</title>
+    <title>LS.ShadersManager</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -164,7 +164,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.RenderInstance Class</h1>
+                        <h1>LS.ShadersManager Class</h1>
 <div class="box meta">
     
 
@@ -172,7 +172,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_render_renderInstance.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:1</code></a>
+            Defined in: <a href="../files/.._src_shadersManager.js.html#l7"><code>..&#x2F;src&#x2F;shadersManager.js:7</code></a>
         </div>
     
 
@@ -184,15 +184,15 @@
 
 
 <div class="box intro">
-    <p>RenderInstance contains info of one object to be rendered on the scene.</p>
+    <p>ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.</p>
 
 </div>
 
 
     <div class="constructor">
         <h2>Constructor</h2>
-        <div id="method_LS.RenderInstance" class="method item">
-    <h3 class="name"><code>LS.RenderInstance</code></h3>
+        <div id="method_LS.ShadersManager" class="method item">
+    <h3 class="name"><code>LS.ShadersManager</code></h3>
 
     
         <span class="paren">()</span>
@@ -223,7 +223,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:1</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l7"><code>..&#x2F;src&#x2F;shadersManager.js:7</code></a>
         
         </p>
 
@@ -270,98 +270,84 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_applyNodeFlags">applyNodeFlags</a>
+                                <a href="#method_compileShader">compileShader</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_computeNormalMatrix">computeNormalMatrix</a>
+                                <a href="#method_createDefaultShaders">createDefaultShaders</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
+                                <a href="#method_get">get</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
+                                <a href="#method_getGlobalShaderInfo">getGlobalShaderInfo</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_enableFlag">enableFlag</a>
+                                <a href="#method_getSnippet">getSnippet</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getProperties">getProperties</a>
+                                <a href="#method_init">init</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getProperty">getProperty</a>
+                                <a href="#method_loadFromXML">loadFromXML</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getResources">getResources</a>
+                                <a href="#method_processShadersXML">processShadersXML</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_onResourceRenamed">onResourceRenamed</a>
+                                <a href="#method_registerCompiledShader">registerCompiledShader</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_render">render</a>
+                                <a href="#method_registerGlobalShader">registerGlobalShader</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_setProperty">setProperty</a>
+                                <a href="#method_registerSnippet">registerSnippet</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_setTexture">setTexture</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_update">update</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
-                                <a href="#method_updateAABB">updateAABB</a>
+                                <a href="#method_reloadShaders">reloadShaders</a>
 
                                 
                                 
@@ -383,118 +369,8 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_applyNodeFlags" class="method item">
-    <h3 class="name"><code>applyNodeFlags</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l219"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:219</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>takes the flags on the node and update the render instance flags</p>
-
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_computeNormalMatrix" class="method item">
-    <h3 class="name"><code>computeNormalMatrix</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l111"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:111</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Updates the normal matrix using the matrix</p>
-
-    </div>
-
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
+                    <div id="method_compileShader" class="method item">
+    <h3 class="name"><code>compileShader</code></h3>
 
     
         <div class="args">
@@ -502,7 +378,19 @@
             
                 <li class="arg">
                     
-                        <code>flag</code>
+                        <code>vs_code</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>fs_code</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>name</code>
                     
                 </li>
             
@@ -512,7 +400,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">Boolean</span>
+            <span class="type">GL.Shader</span>
         </span>
     
 
@@ -539,7 +427,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l273"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:273</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l164"><code>..&#x2F;src&#x2F;shadersManager.js:164</code></a>
         
         </p>
 
@@ -550,7 +438,7 @@
     </div>
 
     <div class="description">
-        <p>Tells if a flag is enabled</p>
+        <p>Compiles a shader, the vertex and fragment shader are cached indepently to speed up compilations but a unique name must be provided</p>
 
     </div>
 
@@ -562,14 +450,46 @@
             
                 <li class="param">
                     
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
+                        <code class="param-name">vs_code</code>
+                        <span class="type">String</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>id</p>
+                        <p>the final source code for the vertex shader</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">fs_code</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the final source code for the fragment shader</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>an unique name that should be associated with this shader</p>
 
                     </div>
 
@@ -587,9 +507,9 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">Boolean</span>:
+                        <span class="type">GL.Shader</span>:
                     
-                    <p>flag value</p>
+                    <p>shader</p>
 
                 
             </div>
@@ -600,8 +520,8 @@
 </div>
 
                 
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
+                    <div id="method_createDefaultShaders" class="method item">
+    <h3 class="name"><code>createDefaultShaders</code></h3>
 
     
         <div class="args">
@@ -609,185 +529,17 @@
             
                 <li class="arg">
                     
-                        <code>flag</code>
+                        <code>id</code>
                     
                 </li>
             
             </ul><span class="paren">)</span>
         </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l262"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:262</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Disable flag in the flag bit field</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>id</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_enableFlag" class="method item">
-    <h3 class="name"><code>enableFlag</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>flag</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l251"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:251</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Enable flag in the flag bit field</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">flag</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>id</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_getProperties" class="method item">
-    <h3 class="name"><code>getProperties</code></h3>
-
-    
-        <span class="paren">()</span>
     
 
     
         <span class="returns-inline">
-            <span class="type">Object</span>
+            <span class="type">String</span>
         </span>
     
 
@@ -814,7 +566,7 @@
             
         
         
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l180"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:180</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l426"><code>..&#x2F;src&#x2F;shadersManager.js:426</code></a>
         
         </p>
 
@@ -825,163 +577,7 @@
     </div>
 
     <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>object with name:type</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getProperty" class="method item">
-    <h3 class="name"><code>getProperty</code></h3>
-
-    
-        <span class="paren">()</span>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l226"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:226</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Object</span>:
-                    
-                    <p>object with name:type</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getResources" class="method item">
-    <h3 class="name"><code>getResources</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>resources</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l370"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:370</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Collects all the resources needed by this material (textures)</p>
+        <p>Create some default shaders useful for generic situations (flat, texture and screenspace quad)</p>
 
     </div>
 
@@ -993,214 +589,8 @@
             
                 <li class="param">
                     
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Texture</span>:
-                    
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_onResourceRenamed" class="method item">
-    <h3 class="name"><code>onResourceRenamed</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>resources</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l205"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:205</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Event used to inform if one resource has changed its name</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Texture</span>:
-                    
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_render" class="method item">
-    <h3 class="name"><code>render</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>shader</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_render_renderInstance.js.html#l307"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:307</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Calls render taking into account primitive and range</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">shader</code>
-                        <span class="type">Shader</span>
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
                     
 
                     
@@ -1217,13 +607,27 @@
     
 
     
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>code</p>
+
+                
+            </div>
+        </div>
+    
 
     
 </div>
 
                 
-                    <div id="method_setProperty" class="method item">
-    <h3 class="name"><code>setProperty</code></h3>
+                    <div id="method_get" class="method item">
+    <h3 class="name"><code>get</code></h3>
 
     
         <div class="args">
@@ -1231,7 +635,13 @@
             
                 <li class="arg">
                     
-                        <code>object</code>
+                        <code>id</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>macros</code>
                     
                 </li>
             
@@ -1239,6 +649,10 @@
         </div>
     
 
+    
+        <span class="returns-inline">
+            <span class="type">GL.Shader</span>
+        </span>
     
 
     
@@ -1264,7 +678,7 @@
             
         
         
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l253"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:253</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l70"><code>..&#x2F;src&#x2F;shadersManager.js:70</code></a>
         
         </p>
 
@@ -1275,7 +689,7 @@
     </div>
 
     <div class="description">
-        <p>assign a value to a property in a safe way</p>
+        <p>Returns a compiled shader with this id and this macros</p>
 
     </div>
 
@@ -1287,102 +701,7 @@
             
                 <li class="param">
                     
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_setTexture" class="method item">
-    <h3 class="name"><code>setTexture</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>channel</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>texture</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l324"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:324</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Assigns a texture to a channel</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">channel</code>
+                        <code class="param-name">id</code>
                         <span class="type">String</span>
                     
 
@@ -1397,8 +716,566 @@
             
                 <li class="param">
                     
-                        <code class="param-name">texture</code>
-                        <span class="type">Texture</span>
+                        <code class="param-name">macros</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">GL.Shader</span>:
+                    
+                    <p>the shader, if not found the default shader is returned</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getGlobalShaderInfo" class="method item">
+    <h3 class="name"><code>getGlobalShaderInfo</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>id</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l152"><code>..&#x2F;src&#x2F;shadersManager.js:152</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the info of a global shader</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>shader info (code, macros supported, flags)</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_getSnippet" class="method item">
+    <h3 class="name"><code>getSnippet</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>id</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l402"><code>..&#x2F;src&#x2F;shadersManager.js:402</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the code of a snipper</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>code</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_init" class="method item">
+    <h3 class="name"><code>init</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l29"><code>..&#x2F;src&#x2F;shadersManager.js:29</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Initializes the shader manager</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>a url to a shaders.xml can be specified to load the shaders</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_loadFromXML" class="method item">
+    <h3 class="name"><code>loadFromXML</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>reset_old</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>ignore_cache</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>on_complete</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l250"><code>..&#x2F;src&#x2F;shadersManager.js:250</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Loads shaders code from an XML file</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to the shaders file</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">reset_old</code>
+                        <span class="type">Boolean</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>to reset all the existing shaders once loaded</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">ignore_cache</code>
+                        <span class="type">Boolean</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>force to ignore web cache</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">on_complete</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>callback once the file has been loaded and processed</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_processShadersXML" class="method item">
+    <h3 class="name"><code>processShadersXML</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>xml</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l284"><code>..&#x2F;src&#x2F;shadersManager.js:284</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>extracts all the shaders from the XML doc</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">xml</code>
+                        <span class="type">XMLDocument</span>
                     
 
                     
@@ -1420,11 +1297,178 @@
 </div>
 
                 
-                    <div id="method_update" class="method item">
-    <h3 class="name"><code>update</code></h3>
+                    <div id="method_registerCompiledShader" class="method item">
+    <h3 class="name"><code>registerCompiledShader</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>shader</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>key</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>id</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">GL.Shader</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l227"><code>..&#x2F;src&#x2F;shadersManager.js:227</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Stores a compiled shader program, so it can be reused</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">shader</code>
+                        <span class="type">GL.Shader</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the compiled shader</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">key</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>unique id</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the shader name</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">GL.Shader</span>:
+                    
+                    <p>shader</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_registerGlobalShader" class="method item">
+    <h3 class="name"><code>registerGlobalShader</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>vs_code</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>fs_code</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -1452,7 +1496,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l295"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:295</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l359"><code>..&#x2F;src&#x2F;shadersManager.js:359</code></a>
         
         </p>
 
@@ -1463,10 +1507,48 @@
     </div>
 
     <div class="description">
-        <p>Used to update the RI info without having to go through the collectData process, it is faster but some changes may take a while</p>
+        <p>extracts all the shaders from the XML doc</p>
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">vs_code</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">fs_code</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -1475,11 +1557,27 @@
 </div>
 
                 
-                    <div id="method_updateAABB" class="method item">
-    <h3 class="name"><code>updateAABB</code></h3>
+                    <div id="method_registerSnippet" class="method item">
+    <h3 class="name"><code>registerSnippet</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>id</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>code</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -1507,7 +1605,7 @@
             
         
         
-        <a href="../files/.._src_render_renderInstance.js.html#l285"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:285</code></a>
+        <a href="../files/.._src_shadersManager.js.html#l390"><code>..&#x2F;src&#x2F;shadersManager.js:390</code></a>
         
         </p>
 
@@ -1518,10 +1616,137 @@
     </div>
 
     <div class="description">
-        <p>Computes the instance bounding box in world space from the one in local space</p>
+        <p>Register a code snippet ready to be used by the #import clause in the shader</p>
 
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">code</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_reloadShaders" class="method item">
+    <h3 class="name"><code>reloadShaders</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>on_complete</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l59"><code>..&#x2F;src&#x2F;shadersManager.js:59</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Reloads the XML file with the shaders, useful when editing the file</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">on_complete</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>call when the shaders have been reloaded</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     

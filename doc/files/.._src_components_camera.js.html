@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -191,6 +197,7 @@ function Camera(o)
 	this._global_eye = vec3.fromValues(0,100,100);
 	this._global_center = vec3.fromValues(0,0,0);
 	this._global_up = vec3.fromValues(0,1,0);
+	this._global_front = vec3.fromValues(0,0,-1);
 
 	//clipping planes
 	this._near = 1;
@@ -199,14 +206,14 @@ function Camera(o)
 	//orthographics planes (near and far took from ._near and ._far)
 	this._ortho = new Float32Array([-1,1,-1,1]);
 
-	this._aspect = 1.0; //must be one, otherwise it gets deformed, the real one is inside real_aspect
+	this._aspect = 1.0; //must be one, otherwise it gets deformed, the final one used is in final_aspect
 	this._fov = 45; //persp
 	this._frustum_size = 50; //ortho
-	this._real_aspect = 1.0; //the one used when computing the projection matrix
+	this._final_aspect = 1.0; //the one used when computing the projection matrix
 
 	//viewport in normalized coordinates: left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
-	this._viewport_in_pixels = vec4.create();
+	this._viewport_in_pixels = vec4.create(); //viewport in screen coordinates
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -227,6 +234,14 @@ function Camera(o)
 	if(o) 
 		this.configure(o);
 	//this.updateMatrices(); //done by configure
+
+	this._uniforms = {
+		u_viewprojection: this._viewprojection_matrix,
+		u_camera_eye: this._global_eye,
+		u_camera_front: this._global_front,
+		u_camera_planes: vec2.fromValues( this.near, this.far ),
+		u_camera_perspective: vec3.create()
+	};
 
 	//LEvent.bind(this,&quot;cameraEnabled&quot;, this.onCameraEnabled.bind(this));
 }
@@ -418,7 +433,6 @@ Object.defineProperty( Camera.prototype, &quot;frustum_size&quot;, {
 /**
 * The viewport in normalized coordinates (left,bottom, width, height)
 * @property viewport {vec4}
-* @default 50
 */
 Object.defineProperty( Camera.prototype, &quot;viewport&quot;, {
 	get: function() {
@@ -429,6 +443,31 @@ Object.defineProperty( Camera.prototype, &quot;viewport&quot;, {
 	}
 });
 
+/**
+* @property viewport_offset {vec2}
+*/
+Object.defineProperty( Camera.prototype, &quot;viewport_offset&quot;, {
+	get: function() {
+		return this._viewport.subarray(0,2);
+	},
+	set: function(v) {
+		this._viewport.set(v);
+	},
+	enumerable: false
+});
+
+/**
+* @property viewport_size {vec2}
+*/
+Object.defineProperty( Camera.prototype, &quot;viewport_size&quot;, {
+	get: function() {
+		return this._viewport.subarray(2,4);
+	},
+	set: function(v) {
+		this._viewport.set(v,2);
+	},
+	enumerable: false
+});
 
 Camera.prototype.onAddedToNode = function(node)
 {
@@ -506,11 +545,11 @@ Camera.prototype.lookAt = function(eye,center,up)
 Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
-		mat4.ortho(this._projection_matrix, -this._frustum_size*this._real_aspect*0.5, this._frustum_size*this._real_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
+		mat4.ortho(this._projection_matrix, -this._frustum_size*this._final_aspect*0.5, this._frustum_size*this._final_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
 	else if (this.type == Camera.ORTHO2D)
 		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
-		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._real_aspect, this._near, this._far);
+		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._final_aspect, this._near, this._far);
 
 	//if (this.type != Camera.ORTHO2D)
 	if(this._root &amp;&amp; this._root._is_root) //in root node
@@ -1040,7 +1079,7 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {start, dir}
+* @return {Object} {start:vec3, dir:vec3}
 */
 Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 {
@@ -1087,7 +1126,7 @@ Camera.prototype.configure = function(o)
 	if(o.far !== undefined) this._far = o.far;
 	if(o.fov !== undefined) this._fov = o.fov;
 	if(o.aspect !== undefined) this._aspect = o.aspect;
-	if(o.real_aspect !== undefined) this._real_aspect = o.real_aspect;
+	if(o.final_aspect !== undefined) this._final_aspect = o.final_aspect;
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
 
@@ -1273,6 +1312,22 @@ Camera.prototype.endFBO = function()
 	}
 }
 
+Camera.prototype.fillCameraShaderUniforms = function( scene )
+{
+	var uniforms = this._uniforms;
+	uniforms.u_camera_planes[0] = this.near;
+	uniforms.u_camera_planes[1] = this.far;
+	if(this.type == Camera.PERSPECTIVE)
+		uniforms.u_camera_perspective.set( [this.fov * DEG2RAD, 512 / Math.tan( this.fov * DEG2RAD ) ] );
+	else
+		uniforms.u_camera_perspective.set( [ this._frustum_size, 512 / this._frustum_size ] );
+	uniforms.u_camera_perspective[2] = this._projection_matrix[5]; //[1][1]
+
+	this.getEye( uniforms.u_camera_eye );
+	this.getFront( uniforms.u_camera_front );
+
+	return uniforms;
+},
 
 LS.registerComponent(Camera);
 LS.Camera = Camera;

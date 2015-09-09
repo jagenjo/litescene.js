@@ -37,7 +37,7 @@ Cloner.prototype.onAddedToScene = function(scene)
 }
 
 
-Cloner.prototype.onRemovedFromNode = function(scene)
+Cloner.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind(scene, "collectRenderInstances", this.onCollectInstances, this);
 	LEvent.unbind(scene, "afterCollectData", this.onUpdateInstances, this);

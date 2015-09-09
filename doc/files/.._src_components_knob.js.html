@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -111,6 +113,10 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+            
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
@@ -165,7 +171,7 @@
 (function(){
 
 /**
-* Knob allows to rotate a mesh like a knob
+* Knob allows to rotate a mesh like a knob (rotate when dragging)
 * @class Knob
 * @constructor
 * @param {String} object to configure from
@@ -189,38 +195,21 @@ function Knob(o)
 
 Knob.icon = &quot;mini-icon-knob.png&quot;;
 
-/**
-* Configure the component getting the info from the object
-* @method configure
-* @param {Object} object to configure from
-*/
-
-Knob.prototype.configure = function(o)
+Knob.prototype.onAddedToScene = function(scene)
 {
-	cloneObject(o, this);
-}
-
-/**
-* Serialize this component)
-* @method serialize
-* @return {Object} object with the serialization info
-*/
-
-Knob.prototype.serialize = function()
-{
-	 var o = cloneObject(this);
-	 return o;
-}
-
-Knob.prototype.onAddedToNode = function(node)
-{
-	node.flags.interactive = true;
-	LEvent.bind(node,&quot;mousemove&quot;,this.onmousemove,this);
+	LEvent.bind( scene, &quot;mousemove&quot;, this.onmousemove, this );
 	this.updateKnob();
 }
 
+Knob.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbindAll( scene, this );
+}
+
+
 Knob.prototype.updateKnob = function() {
-	if(!this._root) return;
+	if(!this._root)
+		return;
 	var f = this.value / (this.max_value - this.min_value)
 	quat.setAxisAngle(this._root.transform._rotation,this.axis, (this.min_angle + (this.max_angle - this.min_angle) * f )* DEG2RAD);
 	this._root.transform._dirty = true;
@@ -236,12 +225,12 @@ Knob.prototype.onmousemove = function(e, mouse_event) {
 
 	LEvent.trigger( this, &quot;change&quot;, this.value);
 	if(this._root)
-		LEvent.trigger( this._root, &quot;knobChange&quot;, this.value);
+		LEvent.trigger( this._root, &quot;knobChange&quot;, this.value );
 
 	return false;
 };
 
-LS.registerComponent(Knob);
+LS.registerComponent( Knob );
 
 })();
     </pre>

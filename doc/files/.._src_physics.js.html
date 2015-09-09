@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -111,6 +113,10 @@
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
             
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+            
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
@@ -165,7 +171,35 @@
 /* This is in charge of basic physics actions like ray tracing against the colliders */
 
 /**
-* PhysicsInstance contains info of one object to test physics against
+* Contains information about the collision of a ray and the scene
+* - position: vec3
+* - node: SceneNode
+* - instance: could be a RenderInstance or a PhysicsInstance
+* - distance: number
+* @class Collision
+* @namespace LS
+* @constructor
+* @param {SceneNode} node
+* @param {PhysicsInstance|RenderInstance} instance
+* @param {vec3} position collision position
+* @param {number} distance
+*/
+function Collision( node, instance, position, distance )
+{
+	this.position = vec3.create();
+	if(position)
+		this.position.set(position);
+	this.node = node || null; //the node belonging to this colliding object
+	this.instance = instance || null; //could be a RenderInstance or a PhysicsInstance
+	this.distance = distance || 0; //distance from the ray start
+}
+
+Collision.isCloser = function(a,b) { return a.distance - b.distance; }
+
+LS.Collision = Collision;
+
+/**
+* PhysicsInstance contains info of a colliding object. Used to test collisions with the scene
 *
 * @class PhysicsInstance
 * @namespace LS
@@ -174,6 +208,7 @@
 function PhysicsInstance(node, component)
 {
 	this.uid = LS.generateUId(&quot;PHSX&quot;); //unique identifier for this RI
+	this.layers = 3|0;
 
 	this.type = PhysicsInstance.BOX;
 	this.mesh = null; 
@@ -227,8 +262,24 @@ LS.PhysicsInstance = PhysicsInstance;
 * @constructor
 */
 var Physics = {
-	raycast: function(scene, origin, direction)
+
+	/**
+	* Cast a ray that traverses the scene checking for collisions with Colliders
+	* @method raycast
+	* @param {vec3} origin in world space
+	* @param {vec3} direction in world space
+	* @param {number} max_dist maxium distance
+	* @param {number} layers which layers to check
+	* @param {SceneTree} scene
+	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form [SceneNode, Collider, collision point, distance]
+	*/
+	raycast: function( origin, direction, max_dist, layers, scene)
 	{
+		max_dist = max_dist || Number.MAX_VALUE;
+		if(layers === undefined)
+			layers = 0xFFFF;
+		scene = scene || LS.GlobalScene;
+
 		var colliders = scene._colliders;
 		var collisions = [];
 
@@ -240,9 +291,12 @@ var Physics = {
 		{
 			var instance = colliders[i];
 
+			if( (layers &amp; instance.layers) === 0 )
+				continue;
+
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point) )
+			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point, max_dist) )
 				continue;
 
 			var model = instance.matrix;
@@ -255,14 +309,14 @@ var Physics = {
 			//test in world space, is cheaper
 			if( instance.type == PhysicsInstance.SPHERE)
 			{
-				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point))
+				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point, max_dist))
 					continue;
 				vec3.transformMat4(collision_point, collision_point, model);
 			}
 			else //the rest test first with the local BBox
 			{
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point) )
+				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
 					continue;
 
 				if( instance.type == PhysicsInstance.MESH)
@@ -270,7 +324,7 @@ var Physics = {
 					var octree = instance.mesh.octree;
 					if(!octree)
 						octree = instance.mesh.octree = new Octree( instance.mesh );
-					var hit = octree.testRay( local_start, local_direction, 0.0, 10000 );
+					var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
 					if(!hit)
 						continue;
 
@@ -281,11 +335,11 @@ var Physics = {
 			}
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push([instance, collision_point, distance]);
+			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ));
 		}
 
 		//sort collisions by distance
-		collisions.sort( function(a,b) { return a[2] - b[2]; } );
+		collisions.sort( Collision.isCloser );
 		return collisions;
 	}
 }

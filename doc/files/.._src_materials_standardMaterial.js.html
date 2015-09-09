@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -278,7 +284,7 @@ struct SurfaceOutput {\n\
 &quot;;
 
 // RENDERING METHODS
-StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+StandardMaterial.prototype.fillShaderMacros = function(scene)
 {
 	var macros = {};
 
@@ -378,7 +384,7 @@ StandardMaterial.prototype.fillSurfaceShaderMacros = function(scene)
 	this._macros = macros;
 }
 
-StandardMaterial.prototype.fillSurfaceUniforms = function( scene, options )
+StandardMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = {};
 	var samplers = {};

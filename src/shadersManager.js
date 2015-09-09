@@ -3,7 +3,17 @@
 	- Allows to use a global shader
 */
 
+//************************************
+/**
+* ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.
+*
+* @class ShadersManager
+* @namespace LS
+* @constructor
+*/
+
 var ShadersManager = {
+
 	default_xml_url: "data/shaders.xml",
 
 	snippets: {},//to save source snippets
@@ -16,6 +26,12 @@ var ShadersManager = {
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
+	/**
+	* Initializes the shader manager
+	*
+	* @method init
+	* @param {string} url a url to a shaders.xml can be specified to load the shaders
+	*/
 	init: function(url, ignore_cache)
 	{
 		//set a default shader 
@@ -40,14 +56,29 @@ var ShadersManager = {
 		this.loadFromXML(url, false, ignore_cache);
 	},
 
+	/**
+	* Reloads the XML file with the shaders, useful when editing the file
+	*
+	* @method reloadShaders
+	* @param {function} on_complete call when the shaders have been reloaded
+	*/
 	reloadShaders: function(on_complete)
 	{
 		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
 	},
 
+	/**
+	* Returns a compiled shader with this id and this macros
+	*
+	* @method get
+	* @param {string} id
+	* @param {string} macros
+	* @return {GL.Shader} the shader, if not found the default shader is returned
+	*/
 	get: function( id, macros )
 	{
-		if(!id) return null;
+		if(!id)
+			return this.default_shader;
 
 		//if there is no macros, just get the old one
 		if(!macros)
@@ -87,7 +118,7 @@ var ShadersManager = {
 
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
-		var ps_code = extracode + global.ps_code;
+		var fs_code = extracode + global.fs_code;
 
 		//expand code
 		if(global.imports)
@@ -109,28 +140,48 @@ var ShadersManager = {
 
 			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
 			already_imported = {}; //clear
-			ps_code	= ps_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
+			fs_code	= fs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
 		}
 
-		var shader = this.compileShader( vs_code, ps_code, key );
+		var shader = this.compileShader( vs_code, fs_code, key );
 		if(shader)
 			shader.global = global;
 		return this.registerCompiledShader(shader, hashkey, id);
 	},
 
+	/**
+	* Returns the info of a global shader
+	*
+	* @method getGlobalShaderInfo
+	* @param {string} id
+	* @return {Object} shader info (code, macros supported, flags)
+	*/
 	getGlobalShaderInfo: function(id)
 	{
 		return this.global_shaders[id];
 	},
 
-	compileShader: function( vs_code, ps_code, name )
+	/**
+	* Compiles a shader, the vertex and fragment shader are cached indepently to speed up compilations but a unique name must be provided
+	*
+	* @method compileShader
+	* @param {string} vs_code the final source code for the vertex shader
+	* @param {string} fs_code the final source code for the fragment shader
+	* @param {string} name an unique name that should be associated with this shader
+	* @return {GL.Shader} shader
+	*/
+	compileShader: function( vs_code, fs_code, name )
 	{
-		if(!gl) return null;
+		if(!name)
+			throw("compileShader must have a name specified");
+
+		if(!gl)
+			return null;
 		var shader = null;
 		try
 		{
 			vs_code = this.global_extra_code + vs_code;
-			ps_code = this.global_extra_code + ps_code;
+			fs_code = this.global_extra_code + fs_code;
 
 			//speed up compilations by caching shaders compiled
 			var vs_shader = this.compiled_shaders[name + ":VS"];
@@ -138,9 +189,8 @@ var ShadersManager = {
 				vs_shader = this.compiled_shaders[name + ":VS"] = GL.Shader.compileSource(gl.VERTEX_SHADER, vs_code);
 			var fs_shader = this.compiled_shaders[name + ":FS"];
 			if(!fs_shader)
-				fs_shader = this.compiled_shaders[name + ":FS"] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, ps_code);
-
-			shader = new GL.Shader(vs_shader, fs_shader);
+				fs_shader = this.compiled_shaders[name + ":FS"] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, fs_code);
+			shader = new GL.Shader( vs_shader, fs_shader );
 			shader.name = name;
 			//console.log("Shader compiled: " + name);
 		}
@@ -158,8 +208,8 @@ var ShadersManager = {
 				console.groupEnd();
 
 				console.groupCollapsed("Fragment Shader Code");
-				//console.log("PS CODE\n************");
-				lines = (this.global_extra_code + ps_code).split("\n");
+				//console.log("FS CODE\n************");
+				lines = (this.global_extra_code + fs_code).split("\n");
 				for(var i in lines)
 					console.log(i + ": " + lines[i]);
 				console.groupEnd();
@@ -174,7 +224,15 @@ var ShadersManager = {
 		return shader;
 	},
 
-	// given a compiled shader it caches it for later reuse
+	/**
+	* Stores a compiled shader program, so it can be reused
+	*
+	* @method registerCompiledShader
+	* @param {GL.Shader} shader the compiled shader
+	* @param {string} key unique id 
+	* @param {string} id the shader name
+	* @return {GL.Shader} shader
+	*/
 	registerCompiledShader: function(shader, key, id)
 	{
 		if(shader == null)
@@ -189,7 +247,15 @@ var ShadersManager = {
 		return shader;
 	},
 
-	//loads some shaders from an XML
+	/**
+	* Loads shaders code from an XML file
+	*
+	* @method loadFromXML
+	* @param {string} url to the shaders file
+	* @param {boolean} reset_old to reset all the existing shaders once loaded
+	* @param {boolean} ignore_cache force to ignore web cache 
+	* @param {function} on_complete callback once the file has been loaded and processed
+	*/
 	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
 	{
 		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
@@ -215,7 +281,12 @@ var ShadersManager = {
 		});	
 	},
 
-	// process the XML to include the shaders
+	/**
+	* extracts all the shaders from the XML doc
+	*
+	* @method processShadersXML
+	* @param {XMLDocument} xml
+	*/
 	processShadersXML: function(xml)
 	{
 		//get shaders
@@ -231,7 +302,7 @@ var ShadersManager = {
 			id = id.value;
 
 			var vs_code = "";
-			var ps_code = "";
+			var fs_code = "";
 
 			//read all the supported macros
 			var macros_str = "";
@@ -250,9 +321,9 @@ var ShadersManager = {
 
 			//read the shaders code
 			vs_code = shader_element.querySelector("code[type='vertex_shader']").textContent;
-			ps_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
+			fs_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
 
-			if(!vs_code || !ps_code)
+			if(!vs_code || !fs_code)
 			{
 				console.log("no code in shader: " + id);
 				continue;
@@ -267,7 +338,7 @@ var ShadersManager = {
 			if(imports)
 				options.imports = (imports == "1" || imports == "true");
 
-			LS.ShadersManager.registerGlobalShader(vs_code, ps_code, id, macros, options );
+			LS.ShadersManager.registerGlobalShader(vs_code, fs_code, id, macros, options );
 		}
 
 		var snippets = xml.querySelectorAll('snippet');
@@ -285,30 +356,23 @@ var ShadersManager = {
 	//adds source code of a shader that could be compiled if needed
 	//id: name
 	//macros: supported macros by the shader
-	registerGlobalShader: function(vs_code, ps_code, id, macros, options )
+	/**
+	* extracts all the shaders from the XML doc
+	*
+	* @method registerGlobalShader
+	* @param {string} vs_code
+	* @param {string} fs_code
+	*/
+	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
 	{
 		var macros_found = {};
-		/*
-		//TODO: missing #ifndef and #define
-		//regexMap( /USE_\w+/g, vs_code + ps_code, function(v) {
-		regexMap( /#ifdef\s\w+/g, vs_code + ps_code, function(v) {
-			//console.log(v);
-			macros_found[v[0].split(' ')[1]] = true;
-		});
-		*/
-		/*
-		var m = /USE_\w+/g.exec(vs_code + ps_code);
-		if(m)
-			console.log(m);
-		*/
-
 		var num_macros = 0;
 		for(var i in macros)
 			num_macros += 1;
 
 		var global = { 
 			vs_code: vs_code, 
-			ps_code: ps_code,
+			fs_code: fs_code,
 			macros: macros,
 			num_macros: num_macros,
 			macros_found: macros_found
@@ -323,11 +387,25 @@ var ShadersManager = {
 		return global;
 	},
 
+	/**
+	* Register a code snippet ready to be used by the #import clause in the shader
+	*
+	* @method registerSnippet
+	* @param {string} id
+	* @param {string} code
+	*/
 	registerSnippet: function(id, code)
 	{
 		this.snippets[ id ] = { id: id, code: code };
 	},
 
+	/**
+	* Returns the code of a snipper
+	*
+	* @method getSnippet
+	* @param {string} id
+	* @return {string} code
+	*/
 	getSnippet: function(id)
 	{
 		return this.snippets[ id ];
@@ -341,11 +419,17 @@ var ShadersManager = {
 		attribute vec2 a_coord;\n\
 		uniform mat4 u_mvp;\n\
 	",
-	common_pscode: "\n\
+	common_fscode: "\n\
 		precision mediump float;\n\
 	",
 
-	//some shaders for starters
+	/**
+	* Create some default shaders useful for generic situations (flat, texture and screenspace quad)
+	*
+	* @method createDefaultShaders
+	* @param {string} id
+	* @return {string} code
+	*/
 	createDefaultShaders: function()
 	{
 		//flat
@@ -353,7 +437,7 @@ var ShadersManager = {
 			void main() {\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\
 			}\
-			', this.common_pscode + '\
+			', this.common_fscode + '\
 			uniform vec4 u_material_color;\
 			void main() {\
 			  gl_FragColor = vec4(u_material_color);\
@@ -367,7 +451,7 @@ var ShadersManager = {
 				v_uvs = a_coord;\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\
 			}\
-			', this.common_pscode + '\
+			', this.common_fscode + '\
 			uniform vec4 u_material_color;\
 			varying vec2 v_uvs;\
 			uniform sampler2D texture;\
@@ -382,7 +466,7 @@ var ShadersManager = {
 			coord = a_coord;\
 			gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);\
 		}\
-		', this.common_pscode + '\
+		', this.common_fscode + '\
 			uniform sampler2D texture;\
 			uniform vec4 color;\
 			varying vec2 coord;\
@@ -396,15 +480,19 @@ var ShadersManager = {
 LS.SM = LS.ShadersManager = ShadersManager;
 
 
-//TODO
+/**
+* ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.
+*
+* @class ShaderQuery
+* @namespace LS
+* @constructor
+*/
 function ShaderQuery()
 {
-	this.name = "global";
-	this.extra_streams = {};
-	this.extra_uniforms = {};
-	this.hooks = {};
+	this.hooks = {}; //represent points where this shader want to insert code
+	this.macros = {}; //macros to add
 }
 
-ShaderQuery.prototype.resolve = function()
-{
-}
+//ShaderQuery.prototype.addHook = function
+
+LS.ShaderQuery = ShaderQuery;

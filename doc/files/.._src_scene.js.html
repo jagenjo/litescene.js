@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -1106,6 +1112,18 @@ SceneTree.prototype.purgeResidualEvents = function()
 	}
 }
 
+SceneTree.prototype.getLayerNames = function(v)
+{
+	var r = [];
+
+	for(var i = 0; i &lt; 32; ++i)
+	{
+		if( v === undefined || v &amp; (1&lt;&lt;i) )
+			r.push( this.layer_names[i] || (&quot;layer&quot;+i) );
+	}
+	return r;
+}
+
 
 //****************************************************************************
 
@@ -1123,7 +1141,7 @@ function SceneNode( name )
 	//Generic
 	this._name = name || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
 	this.uid = LS.generateUId(&quot;NODE-&quot;);
-	this.layers = 3; //32 bits for layers
+	this.layers = 3|0; //32 bits for layers (force to int)
 
 	this._classList = {};
 	//this.className = &quot;&quot;;
@@ -1662,6 +1680,8 @@ SceneNode.prototype.configure = function(info)
 		this.setName(info.name);
 	else if (info.id)
 		this.setName(info.id);
+	if(info.layers !== undefined)
+		this.layers = info.layers;
 
 	if (info.uid)
 	{
@@ -1764,6 +1784,7 @@ SceneNode.prototype.serialize = function()
 		o.uid = this.uid;
 	if(this.className) 
 		o.className = this.className;
+	o.layers = this.layers;
 
 	//modules
 	if(this.mesh &amp;&amp; typeof(this.mesh) == &quot;string&quot;) 

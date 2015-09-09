@@ -13,12 +13,11 @@ var Renderer = {
 	default_render_options: new RenderOptions(),
 	default_material: new StandardMaterial(), //used for objects without material
 
-	global_render_frame_containers: [],
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 
-	default_point_size: 1,
+	default_point_size: 1, //point size in pixels (could be overwritte by render instances)
 
-	_full_viewport: vec4.create(), //contains info about the full viewport available to render (depends if using FBOs)
+	_full_viewport: vec4.create(), //contains info about the full viewport available to render (current texture size or canvas size)
 
 	_current_scene: null,
 	_current_render_options: null,
@@ -35,7 +34,7 @@ var Renderer = {
 	_frame: 0,
 
 	//settings
-	_collect_frequency: 1, //used to reuse info
+	_collect_frequency: 1, //used to reuse info (WIP)
 
 	//reusable locals
 	_view_matrix: mat4.create(),
@@ -56,19 +55,6 @@ var Renderer = {
 
 	reset: function()
 	{
-	},
-
-	/**
-	* Overwrites the default rendering to screen function, allowing to render to one or several textures
-	* The callback receives the camera, render_options and the output from the previous renderFrameCallback in case you want to chain them
-	* Callback must return the texture output or null
-	* Warning: this must be set before every frame, becaue this are cleared after rendering the frame
-	* @method assignGlobalRenderFrameContainer
-	* @param {RenderFrameContainer} callback function that will be called one one frame is needed, this function MUST call renderer.renderFrame( current_camera );
-	*/
-	assignGlobalRenderFrameContainer: function( render_frame_container )
-	{
-		this.global_render_frame_containers.push( render_frame_container );
 	},
 
 	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
@@ -107,6 +93,7 @@ var Renderer = {
 
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
+		gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 		this.setFullViewport(0, 0, gl.canvas.width, gl.canvas.height);
 
 		//Event: beforeRender used in actions that could affect which info is collected for the rendering
@@ -139,26 +126,16 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRenderMainPass", render_options );
 		scene.triggerInNodes("beforeRenderMainPass", render_options ); //TODO: remove
 
-		//global renderframe container: used when the whole scene (all cameras included) pass through some postfx)
-		if(render_options.render_fx && this.global_render_frame_containers.length)
-		{
-			var render_frame = this.global_render_frame_containers[0]; //ignore the rest: TODO, as some pipeline flow (I've failed too many times trying to do something here)
-			render_options.current_renderframe = render_frame;
+		//enable FX
+		if(render_options.render_fx)
+			LEvent.trigger( scene, "enableFrameBuffer", render_options );
 
-			if(	render_frame.preRender )
-				render_frame.preRender( cameras, render_options );
+		//render
+		this.renderFrameCameras( cameras, render_options );
 
-			//render all camera views
-			this.renderFrameCameras( cameras, render_options, render_frame );
-
-			if(	render_frame.postRender )
-				render_frame.postRender( cameras, render_options );
-		}
-		else //in case no FX is used
-			this.renderFrameCameras( cameras, render_options );
-
-		//clear render frame callbacks
-		this.global_render_frame_containers.length = 0; //clear
+		//disable and show FX
+		if(render_options.render_fx)
+			LEvent.trigger( scene, "showFrameBuffer", render_options );
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_options );
@@ -183,10 +160,12 @@ var Renderer = {
 
 			LEvent.trigger(scene, "beforeRenderFrame", render_options );
 			LEvent.trigger(current_camera, "beforeRenderFrame", render_options );
+			LEvent.trigger(current_camera, "enableFrameBuffer", render_options );
 
 			//main render
 			this.renderFrame( current_camera, render_options ); 
 
+			LEvent.trigger(current_camera, "showFrameBuffer", render_options );
 			LEvent.trigger(current_camera, "afterRenderFrame", render_options );
 			LEvent.trigger(scene, "afterRenderFrame", render_options );
 		}
@@ -267,12 +246,12 @@ var Renderer = {
 			//force fullscreen viewport?
 			if(render_options && render_options.ignore_viewports )
 			{
-				camera._real_aspect = this.global_aspect * camera._aspect * (width / height);
+				camera._final_aspect = this.global_aspect * camera._aspect * (width / height);
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			}
 			else
 			{
-				camera._real_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
+				camera._final_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
 				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}

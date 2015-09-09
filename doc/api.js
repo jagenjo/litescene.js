@@ -3,6 +3,7 @@ YUI.add("yuidoc-meta", function(Y) {
     "classes": [
         "LS.Animation",
         "LS.Animation.Track",
+        "LS.Collision",
         "LS.ComponentContainer",
         "LS.Components.Camera",
         "LS.Components.CameraController",
@@ -36,6 +37,8 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ResourcesManager",
         "LS.SceneNode",
         "LS.SceneTree",
+        "LS.ShaderQuery",
+        "LS.ShadersManager",
         "LS.StandardMaterial",
         "LS.WBin",
         "Rotator",

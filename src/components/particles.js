@@ -273,7 +273,7 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 		var vel = vec3.create();
 		var rot = this.particle_rotation * dt;
 
-		for(var i = 0; i < this._particles.length; ++i)
+		for(var i = 0, l = this._particles.length; i < l; ++i)
 		{
 			var p = this._particles[i];
 
@@ -451,14 +451,20 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		size_curve[i] = LS.getCurveValueAt(this.particle_size_curve,0,1,0, i * dI );
 	}
 
+	//references
 	var points = this.point_particles;
-	
+	var max_vertices = this._vertices.length;
+	var vertices = this._vertices;
+	var colors = this._colors;
+	var extra2 = this._extra2;
+	var coords = this._coords;
+
 	//used for rotations
 	var rot = quat.create();
 
 	//generate quads
 	var i = 0, f = 0;
-	for(var iParticle = 0; iParticle < particles.length; ++iParticle)
+	for( var iParticle = 0, l = particles.length; iParticle < l; ++iParticle )
 	{
 		var p = particles[iParticle];
 		if(p.life <= 0)
@@ -493,21 +499,21 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 
 		if(points)
 		{
-			this._vertices.set(p._pos, i*3);
-			this._colors.set(color, i*4);
+			vertices.set(p._pos, i*3);
+			colors.set(color, i*4);
 			if(recompute_coords)
 			{
 				var iG = (animated_texture ? ((loop_animation?time:f)*grid_frames)<<0 : p.id) % grid_frames;
 				offset_u = iG * d_uvs;
 				offset_v = 1 - (offset_u<<0) * d_uvs - d_uvs;
 				offset_u = offset_u%1;
-				this._coords[i*2] = offset_u;
-				this._coords[i*2+1] = offset_v;
+				coords[i*2] = offset_u;
+				coords[i*2+1] = offset_v;
 			}
-			this._extra2[i*2] = s;
-			this._extra2[i*2+1] = i;
+			extra2[i*2] = s;
+			extra2[i*2+1] = i;
 			++i;
-			if(i*3 >= this._vertices.length)
+			if(i*3 >= max_vertices)
 				break; //too many particles
 			continue;
 		}
@@ -529,31 +535,31 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		}
 
 		vec3.add(temp, p._pos, s_topright);
-		this._vertices.set(temp, i*6*3);
+		vertices.set(temp, i*6*3);
 
 		vec3.add(temp, p._pos, s_topleft);
-		this._vertices.set(temp, i*6*3 + 3);
+		vertices.set(temp, i*6*3 + 3);
 
 		vec3.add(temp, p._pos, s_bottomright);
-		this._vertices.set(temp, i*6*3 + 3*2);
+		vertices.set(temp, i*6*3 + 3*2);
 
 		vec3.add(temp, p._pos, s_topleft);
-		this._vertices.set(temp, i*6*3 + 3*3);
+		vertices.set(temp, i*6*3 + 3*3);
 
 		vec3.add(temp, p._pos, s_bottomleft);
-		this._vertices.set(temp, i*6*3 + 3*4);
+		vertices.set(temp, i*6*3 + 3*4);
 
 		vec3.add(temp, p._pos, s_bottomright);
-		this._vertices.set(temp, i*6*3 + 3*5);
+		vertices.set(temp, i*6*3 + 3*5);
 
 		if(recompute_colors)
 		{
-			this._colors.set(color, i*6*4);
-			this._colors.set(color, i*6*4 + 4);
-			this._colors.set(color, i*6*4 + 4*2);
-			this._colors.set(color, i*6*4 + 4*3);
-			this._colors.set(color, i*6*4 + 4*4);
-			this._colors.set(color, i*6*4 + 4*5);
+			colors.set(color, i*6*4);
+			colors.set(color, i*6*4 + 4);
+			colors.set(color, i*6*4 + 4*2);
+			colors.set(color, i*6*4 + 4*3);
+			colors.set(color, i*6*4 + 4*4);
+			colors.set(color, i*6*4 + 4*5);
 		}
 
 		if(recompute_coords)
@@ -562,11 +568,11 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 			offset_u = iG * d_uvs;
 			offset_v = 1 - (offset_u<<0) * d_uvs - d_uvs;
 			offset_u = offset_u%1;
-			this._coords.set([offset_u+d_uvs,offset_v+d_uvs, offset_u,offset_v+d_uvs, offset_u+d_uvs,offset_v,  offset_u,offset_v+d_uvs, offset_u,offset_v, offset_u+d_uvs,offset_v], i*6*2);
+			coords.set([offset_u+d_uvs,offset_v+d_uvs, offset_u,offset_v+d_uvs, offset_u+d_uvs,offset_v,  offset_u,offset_v+d_uvs, offset_u,offset_v, offset_u+d_uvs,offset_v], i*6*2);
 		}
 
 		++i;
-		if(i*6*3 >= this._vertices.length)
+		if(i*6*3 >= max_vertices)
 			break; //too many particles
 	}
 	this._visible_particles = i;
@@ -586,9 +592,6 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 		this._mesh.vertexBuffers["coords"].data = this._coords;
 		this._mesh.vertexBuffers["coords"].upload(gl.STREAM_DRAW);
 	}
-
-	//this._mesh.vertices = this._vertices;
-	//this._mesh.upload();
 }
 
 ParticleEmissor._identity = mat4.create();
@@ -650,7 +653,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		delete RI.uniforms["u_point_size"];
 	}
 
-	instances.push(RI);
+	instances.push( RI );
 }
 
 LS.Particle = Particle;

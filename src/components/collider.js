@@ -26,11 +26,9 @@ Collider.prototype.onAddedToScene = function(scene)
 	LEvent.bind( scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
-Collider.prototype.onRemovedFromScene = function(node)
+Collider.prototype.onRemovedFromScene = function(scene)
 {
-	var scene = node.scene;
-	if(scene)
-		LEvent.unbind( scene, "collectPhysicInstances", this.onGetColliders, this);
+	LEvent.unbind( scene, "collectPhysicInstances", this.onGetColliders, this);
 }
 
 Collider.prototype.getMesh = function() {

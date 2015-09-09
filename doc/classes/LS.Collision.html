@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Picking</title>
+    <title>LS.Collision</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -164,7 +164,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.Picking Class</h1>
+                        <h1>LS.Collision Class</h1>
 <div class="box meta">
     
 
@@ -172,7 +172,7 @@
 
     
         <div class="foundat">
-            Defined in: <a href="../files/.._src_picking.js.html#l2"><code>..&#x2F;src&#x2F;picking.js:2</code></a>
+            Defined in: <a href="../files/.._src_physics.js.html#l3"><code>..&#x2F;src&#x2F;physics.js:3</code></a>
         </div>
     
 
@@ -184,18 +184,50 @@
 
 
 <div class="box intro">
-    <p>Picking is used to detect which element is below one pixel (used the GPU) or using raycast</p>
+    <p>Contains information about the collision of a ray and the scene
+- position: vec3
+- node: SceneNode
+- instance: could be a RenderInstance or a PhysicsInstance
+- distance: number</p>
 
 </div>
 
 
     <div class="constructor">
         <h2>Constructor</h2>
-        <div id="method_LS.Picking" class="method item">
-    <h3 class="name"><code>LS.Picking</code></h3>
+        <div id="method_LS.Collision" class="method item">
+    <h3 class="name"><code>LS.Collision</code></h3>
 
     
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>node</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>instance</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>position</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>distance</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
     
 
     
@@ -223,7 +255,7 @@
             
         
         
-        <a href="../files/.._src_picking.js.html#l2"><code>..&#x2F;src&#x2F;picking.js:2</code></a>
+        <a href="../files/.._src_physics.js.html#l3"><code>..&#x2F;src&#x2F;physics.js:3</code></a>
         
         </p>
 
@@ -237,6 +269,75 @@
         
     </div>
 
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">node</code>
+                        <span class="type">SceneNode</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">instance</code>
+                        <span class="type">PhysicsInstance | RenderInstance</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">position</code>
+                        <span class="type">Vec3</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>collision position</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">distance</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
     
 
     
@@ -270,28 +371,28 @@
                     <ul class="index-list methods">
                         
                             <li class="index-item method">
-                                <a href="#method_getInstanceAtCanvasPosition">getInstanceAtCanvasPosition</a>
+                                <a href="#method_request">request</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getNextPickingColor">getNextPickingColor</a>
+                                <a href="#method_requestFile">requestFile</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_getNodeAtCanvasPosition">getNodeAtCanvasPosition</a>
+                                <a href="#method_requestJSON">requestJSON</a>
 
                                 
                                 
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_raycast">raycast</a>
+                                <a href="#method_requestText">requestText</a>
 
                                 
                                 
@@ -313,8 +414,8 @@
                 <h2 class="off-left">Methods</h2>
 
                 
-                    <div id="method_getInstanceAtCanvasPosition" class="method item">
-    <h3 class="name"><code>getInstanceAtCanvasPosition</code></h3>
+                    <div id="method_request" class="method item">
+    <h3 class="name"><code>request</code></h3>
 
     
         <div class="args">
@@ -322,31 +423,7 @@
             
                 <li class="arg">
                     
-                        <code>x</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>y</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>camera</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>layers</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>scene</code>
+                        <code>request</code>
                     
                 </li>
             
@@ -356,7 +433,7 @@
 
     
         <span class="returns-inline">
-            <span class="type">Object</span>
+            <span class="type">XMLHttpRequest</span>
         </span>
     
 
@@ -383,7 +460,7 @@
             
         
         
-        <a href="../files/.._src_picking.js.html#l38"><code>..&#x2F;src&#x2F;picking.js:38</code></a>
+        <a href="../files/.._src_network.js.html#l2"><code>..&#x2F;src&#x2F;network.js:2</code></a>
         
         </p>
 
@@ -394,7 +471,7 @@
     </div>
 
     <div class="description">
-        <p>Returns the instance under a screen position</p>
+        <p>A front-end for XMLHttpRequest so it is simpler and more cross-platform</p>
 
     </div>
 
@@ -406,77 +483,16 @@
             
                 <li class="param">
                     
-                        <code class="param-name">x</code>
-                        <span class="type">Number</span>
+                        <code class="param-name">request</code>
+                        <span class="type">Object</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>in canvas coordinates</p>
+                        <p>object with the fields for the request: 
+            dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}</p>
 
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">y</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>in canvas coordinates</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">camera</code>
-                        <span class="type">Camera</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">layers</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>default is 0xFFFF which is all</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
                     </div>
 
                     
@@ -493,9 +509,9 @@
             <div class="returns-description">
                 
                     
-                        <span class="type">Object</span>:
+                        <span class="type">XMLHttpRequest</span>:
                     
-                    <p>the info supplied by the picker (usually a SceneNode)</p>
+                    <p>the XMLHttpRequest of the petition</p>
 
                 
             </div>
@@ -506,8 +522,8 @@
 </div>
 
                 
-                    <div id="method_getNextPickingColor" class="method item">
-    <h3 class="name"><code>getNextPickingColor</code></h3>
+                    <div id="method_requestFile" class="method item">
+    <h3 class="name"><code>requestFile</code></h3>
 
     
         <div class="args">
@@ -515,138 +531,19 @@
             
                 <li class="arg">
                     
-                        <code>info</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-        <span class="returns-inline">
-            <span class="type">Vec3</span>
-        </span>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_picking.js.html#l148"><code>..&#x2F;src&#x2F;picking.js:148</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Returns a color you should use to paint this node during picking rendering
-you tell what info you want to retrieve associated with this object if it is clicked</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">info</code>
-                        <span class="type"></span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Vec3</span>:
-                    
-                    <p>array containing all the RenderInstances that collided with the ray</p>
-
-                
-            </div>
-        </div>
-    
-
-    
-</div>
-
-                
-                    <div id="method_getNodeAtCanvasPosition" class="method item">
-    <h3 class="name"><code>getNodeAtCanvasPosition</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>x</code>
+                        <code>url</code>
                     
                 </li>
             
                 <li class="arg">
                     
-                        <code>y</code>
+                        <code>params</code>
                     
                 </li>
             
                 <li class="arg">
                     
-                        <code>camera</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>layers</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>scene</code>
+                        <code>callback</code>
                     
                 </li>
             
@@ -679,7 +576,7 @@ you tell what info you want to retrieve associated with this object if it is cli
             
         
         
-        <a href="../files/.._src_picking.js.html#l11"><code>..&#x2F;src&#x2F;picking.js:11</code></a>
+        <a href="../files/.._src_network.js.html#l116"><code>..&#x2F;src&#x2F;network.js:116</code></a>
         
         </p>
 
@@ -690,7 +587,7 @@ you tell what info you want to retrieve associated with this object if it is cli
     </div>
 
     <div class="description">
-        <p>Renders the pixel and retrieves the color to detect which object it was, slow but accurate</p>
+        <p>retrieve a file from url (you can bind LEvents to done and fail)</p>
 
     </div>
 
@@ -702,14 +599,29 @@ you tell what info you want to retrieve associated with this object if it is cli
             
                 <li class="param">
                     
-                        <code class="param-name">x</code>
-                        <span class="type">Number</span>
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>in canvas coordinates</p>
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">params</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>form params</p>
 
                     </div>
 
@@ -718,63 +630,14 @@ you tell what info you want to retrieve associated with this object if it is cli
             
                 <li class="param">
                     
-                        <code class="param-name">y</code>
-                        <span class="type">Number</span>
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>in canvas coordinates</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">camera</code>
-                        <span class="type">Camera</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>default is all cameras</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">layers</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>default is 0xFFFF which is all</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>default is GlobalScene</p>
-
+                         
                     </div>
 
                     
@@ -790,8 +653,8 @@ you tell what info you want to retrieve associated with this object if it is cli
 </div>
 
                 
-                    <div id="method_raycast" class="method item">
-    <h3 class="name"><code>raycast</code></h3>
+                    <div id="method_requestJSON" class="method item">
+    <h3 class="name"><code>requestJSON</code></h3>
 
     
         <div class="args">
@@ -799,25 +662,19 @@ you tell what info you want to retrieve associated with this object if it is cli
             
                 <li class="arg">
                     
-                        <code>origin</code>
+                        <code>url</code>
                     
                 </li>
             
                 <li class="arg">
                     
-                        <code>direction</code>
+                        <code>params</code>
                     
                 </li>
             
                 <li class="arg">
                     
-                        <code>max_dist</code>
-                    
-                </li>
-            
-                <li class="arg">
-                    
-                        <code>scene</code>
+                        <code>callback</code>
                     
                 </li>
             
@@ -825,10 +682,6 @@ you tell what info you want to retrieve associated with this object if it is cli
         </div>
     
 
-    
-        <span class="returns-inline">
-            <span class="type">Array</span>
-        </span>
     
 
     
@@ -854,7 +707,7 @@ you tell what info you want to retrieve associated with this object if it is cli
             
         
         
-        <a href="../files/.._src_picking.js.html#l71"><code>..&#x2F;src&#x2F;picking.js:71</code></a>
+        <a href="../files/.._src_network.js.html#l133"><code>..&#x2F;src&#x2F;network.js:133</code></a>
         
         </p>
 
@@ -865,8 +718,7 @@ you tell what info you want to retrieve associated with this object if it is cli
     </div>
 
     <div class="description">
-        <p>Cast a ray that traverses the scene checking for collisions with RenderInstances
-Similar to Physics.raycast but using only the bounding boxes of the visible meshes</p>
+        <p>retrieve a JSON file from url (you can bind LEvents to done and fail)</p>
 
     </div>
 
@@ -878,14 +730,29 @@ Similar to Physics.raycast but using only the bounding boxes of the visible mesh
             
                 <li class="param">
                     
-                        <code class="param-name">origin</code>
-                        <span class="type">Vec3</span>
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
                     
 
                     
 
                     <div class="param-description">
-                        <p>in world space</p>
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">params</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>form params</p>
 
                     </div>
 
@@ -894,40 +761,8 @@ Similar to Physics.raycast but using only the bounding boxes of the visible mesh
             
                 <li class="param">
                     
-                        <code class="param-name">direction</code>
-                        <span class="type">Vec3</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>in world space</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">max_dist</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>maxium distance</p>
-
-                    </div>
-
-                    
-                </li>
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type">SceneTree</span>
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
                     
 
                     
@@ -944,19 +779,136 @@ Similar to Physics.raycast but using only the bounding boxes of the visible mesh
     
 
     
-        <div class="returns">
-            <h4>Returns:</h4>
 
-            <div class="returns-description">
-                
-                    
-                        <span class="type">Array</span>:
-                    
-                    <p>array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]</p>
+    
+</div>
 
                 
-            </div>
+                    <div id="method_requestText" class="method item">
+    <h3 class="name"><code>requestText</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>url</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>params</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>callback</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
         </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_network.js.html#l150"><code>..&#x2F;src&#x2F;network.js:150</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>retrieve a text file from url (you can bind LEvents to done and fail)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">params</code>
+                        <span class="type">Object</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>form params</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
     
 
     

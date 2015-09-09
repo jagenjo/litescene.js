@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -389,7 +395,7 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
-		var pos = url.indexOf(&quot;:&quot;);
+		var pos = url.indexOf(&quot;://&quot;);
 		var protocol = &quot;&quot;;
 		if(pos != -1)
 			protocol = url.substr(0,pos);
@@ -415,10 +421,12 @@ var ResourcesManager = {
 					break;
 				case &#x27;blob&#x27;:
 					return url; //special case for local urls like URL.createObjectURL
-				case &#x27;&#x27;: //local resource?
+				case &#x27;&#x27;: //strange case
 					return url;
 					break;
 				default:
+					if(url[0] == &quot;:&quot;) //local resource
+						return url;
 					//test for virtual file system address
 					var root_path = this.virtual_file_systems[ protocol ] || resources_path;
 					return root_path + &quot;/&quot; + url.substr(pos+1);
@@ -497,8 +505,6 @@ var ResourcesManager = {
 	*/
 	load: function(url, options, on_complete)
 	{
-		options = options || {};
-
 		//if we already have it, then nothing to do
 		if(this.resources[url] != null)
 		{
@@ -506,6 +512,8 @@ var ResourcesManager = {
 				on_complete(this.resources[url]);
 			return true;
 		}
+
+		options = options || {};
 
 		//extract the filename extension
 		var extension = this.getExtension(url);

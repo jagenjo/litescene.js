@@ -21,8 +21,8 @@ RenderFrameContainer.default_height = 512;
 
 RenderFrameContainer.prototype.useDefaultSize = function()
 {
-	this.width = RenderFrameContainer.default_width;
-	this.height = RenderFrameContainer.default_height;
+	this.width = LS.RenderFrameContainer.default_width;
+	this.height = LS.RenderFrameContainer.default_height;
 }
 
 RenderFrameContainer.prototype.useCanvasSize = function()
@@ -31,15 +31,28 @@ RenderFrameContainer.prototype.useCanvasSize = function()
 	this.height = gl.canvas.height;
 }
 
-RenderFrameContainer.prototype.preRender = function( cameras, render_options )
+RenderFrameContainer.prototype.setSize = function( width, height )
 {
+	if(width < 1)
+		width = 1;
+	if(height < 1)
+		height = 1;
+
+	this.width = width;
+	this.height = height;
+}
+
+
+RenderFrameContainer.prototype.preRender = function( render_options )
+{
+	var camera = LS.Renderer._current_camera;
+
 	this.startFBO();
 	//overwrite to create some buffers here attached to the current FBO
 
 	//set depth info inside the texture
-	if(this.depth_texture && cameras[0])
+	if(this.depth_texture && camera)
 	{
-		var camera = cameras[0];
 		if(!this.depth_texture.near_far_planes)
 			this.depth_texture.near_far_planes = vec2.create();
 		this.depth_texture.near_far_planes[0] = camera.near;
@@ -48,7 +61,7 @@ RenderFrameContainer.prototype.preRender = function( cameras, render_options )
 
 }
 
-RenderFrameContainer.prototype.postRender = function( cameras, render_options )
+RenderFrameContainer.prototype.postRender = function( render_options )
 {
 	this.endFBO();
 	//detach FBO and render to viewport
@@ -81,21 +94,17 @@ RenderFrameContainer.prototype.startFBO = function()
 	else if( !this.use_depth_texture )
 		this.depth_texture = null;
 
+	if( !this._fbo )
+		this._fbo = new GL.FBO();
+	this._fbo.setTextures( [this.color_texture], this.depth_texture, true );
 
-	//create render buffer for depth if there is no depth texture
-	var renderbuffer = null;
-	if(!this.depth_texture)
-	{
-		var renderbuffer = this._renderbuffer = this._renderbuffer || gl.createRenderbuffer();
-		renderbuffer.width = width;
-		renderbuffer.height = height;
-		gl.bindRenderbuffer( gl.RENDERBUFFER, renderbuffer );
-	}
+	this._fbo.bind(); //changes viewport to full FBO size (saves old)
 
-	var color_texture = this.color_texture;
-	var depth_texture = this.depth_texture;
-	var extra_texture = this.extra_texture;
+	LS.Renderer._full_viewport.set( gl.viewport_data );
+	this._old_aspect = LS.Renderer.global_aspect;
+	//LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (width / height);
 
+	/*
 	//Setup FBO
 	this._fbo = this._fbo || gl.createFramebuffer();
 	gl.bindFramebuffer( gl.FRAMEBUFFER, this._fbo );
@@ -130,16 +139,23 @@ RenderFrameContainer.prototype.startFBO = function()
 
 	if(ext && extra_texture)
 		ext.drawBuffersWEBGL( [ gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT0 + 1] );
+	*/
 }
 
 RenderFrameContainer.prototype.endFBO = function()
 {
+	this._fbo.unbind(); //restores viewport to old saved one
+	LS.Renderer._full_viewport.set( this._fbo._old_viewport );
+	LS.Renderer.global_aspect = this._old_aspect;
+
+	/*
 	//disable FBO
 	gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	LS.Renderer.global_aspect = 1.0;
 
 	gl.viewport( 0, 0, gl.canvas.width, gl.canvas.height );
 	LS.Renderer._full_viewport.set( gl.viewport_data );
+	*/
 }
 
 //Render this texture to viewport (allows to apply FXAA)

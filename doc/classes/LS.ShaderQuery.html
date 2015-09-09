@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/spherize.js</title>
+    <title>LS.ShaderQuery</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -164,142 +164,120 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/components/spherize.js</h1>
+                        <h1>LS.ShaderQuery Class</h1>
+<div class="box meta">
+    
 
-<div class="file">
-    <pre class="code prettyprint linenums">
-/**
-* Spherize deforms a mesh, it is an example of a deformer, a component that modifies the meshes of one node
-* @class Spherize
-* @constructor
-* @param {String} object to configure from
-*/
+    
 
-function Spherize(o)
-{
-	this.enabled = true;
-	this._num_id = LS._last_uid++;
-	this.radius = 10;
-	this.center = vec3.create();
-	this.factor = 0.5;
+    
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_shadersManager.js.html#l483"><code>..&#x2F;src&#x2F;shadersManager.js:483</code></a>
+        </div>
+    
 
-	this._uniforms_code = Spherize._uniforms_code.replaceAll({&quot;@&quot;: this._num_id});
-	this._code = Spherize._code.replaceAll({&quot;@&quot;: this._num_id});
-	
-	if(o)
-		this.configure(o);
-}
+    
 
-Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
-Spherize[&quot;@center&quot;] = { type: &quot;position&quot;, step: 0.001 };
-
-Spherize.icon = &quot;mini-icon-circle.png&quot;;
-
-Spherize.prototype.onAddedToNode = function(node)
-{
-	LEvent.bind(node,&quot;computingShaderMacros&quot;,this.onMacros,this);
-	LEvent.bind(node,&quot;computingShaderUniforms&quot;,this.onUniforms,this);
-}
+    
+</div>
 
 
-Spherize.prototype.onRemovedFromNode = function(node)
-{
-	LEvent.unbindAll(node,this);
-}
 
-Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;&quot;;
-Spherize._code = &quot;\
-	vec3 off@ = vertex4.xyz - u_spherize_center@;\
-    float dist@ = length(off@);\
-	vec3 vn@ = off@ / dist@;\
-	float factor@ = max(0.0, u_spherize_factor@ / dist@ );\
-	vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, factor@);\
-	v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,factor@)));\
-&quot;;
+<div class="box intro">
+    <p>ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.</p>
 
-Spherize.prototype.onMacros = function(e, macros)
-{
-	if(!this.enabled)
-		return;
+</div>
 
-	if(macros.USE_VERTEX_SHADER_UNIFORMS)
-		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
-	else
-		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
 
-	if(macros.USE_VERTEX_SHADER_CODE)
-		macros.USE_VERTEX_SHADER_CODE += this._code;
-	else
-		macros.USE_VERTEX_SHADER_CODE = this._code;
-}
+    <div class="constructor">
+        <h2>Constructor</h2>
+        <div id="method_LS.ShaderQuery" class="method item">
+    <h3 class="name"><code>LS.ShaderQuery</code></h3>
 
-Spherize.prototype.onUniforms = function(e, uniforms)
-{
-	if(!this.enabled)
-		return;
+    
+        <span class="paren">()</span>
+    
 
-	uniforms[&quot;u_spherize_center&quot; + this._num_id ] = this.center;
-	uniforms[&quot;u_spherize_radius&quot; + this._num_id ] = this.radius;
-	uniforms[&quot;u_spherize_factor&quot; + this._num_id ] = this.factor;
-}
+    
 
-Spherize.prototype.renderEditor = function(node_selected, component_selected)
-{
-	if(!this.enabled)
-		return;
+    
 
-	//if node is selected, render frustrum
-	if (node_selected &amp;&amp; this.enabled)
-	{
-		Draw.setPointSize(6);
-		Draw.setColor([0.33,0.874,0.56, component_selected ? 0.8 : 0.5 ]);
-		var pos = vec3.clone(this.center);
-		if(this._root &amp;&amp; this._root.transform)
-			vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
-		Draw.renderRoundPoints( pos );
-	}
-}
+    
 
-//Mostly used for gizmos
-Spherize.prototype.getTransformMatrix = function( element )
-{
-	if( !this._root || !this._root.transform )
-		return null; //use the node transform
+    
 
-	var p = null;
-	if (element == &quot;center&quot;)
-		p = this.center;
-	else
-		return false;
+    
 
-	var T = mat4.clone( this._root.transform._global_matrix );
-	mat4.translate( T, T, p );
-	return T;
-}
+    
 
-Spherize.prototype.renderPicking = function(ray)
-{
-	var pos = vec3.clone(this.center);
-	if(this._root &amp;&amp; this._root.transform)
-		vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
-	EditorView.addPickingPoint( pos, 4, { instance: this, info: &quot;center&quot; } );
-}
+    
 
-Spherize.prototype.applyTransformMatrix = function( matrix, center, element )
-{
-	if( !this._root || !this._root.transform )
-		return false; //ignore transform
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_shadersManager.js.html#l483"><code>..&#x2F;src&#x2F;shadersManager.js:483</code></a>
+        
+        </p>
 
-	if (element != &quot;center&quot;)
-		return false;
 
-	var p = this.center;
-	mat4.multiplyVec3( p, matrix, p );
-	return true;
-}
+        
 
-LS.registerComponent( Spherize );
-    </pre>
+        
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+    </div>
+
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+        
+        
+        
+        
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+            
+
+            
+
+            
+
+            
+        </div>
+
+        
+
+        
+
+        
+
+        
+    </div>
 </div>
 
                     </div>

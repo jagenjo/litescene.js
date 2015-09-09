@@ -41,9 +41,9 @@ RealtimeReflector.prototype.onAddedToScene = function(scene)
 }
 
 
-RealtimeReflector.prototype.onRemoveFromScene = function(scene)
+RealtimeReflector.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbindAll( scene, this);
+	LEvent.unbindAll( scene, this );
 	this._textures = {}; //clear textures
 }
 

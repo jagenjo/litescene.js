@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -181,14 +187,20 @@ NodeManipulator.icon = &quot;mini-icon-rotator.png&quot;;
 
 NodeManipulator.prototype.onAddedToNode = function(node)
 {
-	node.flags.interactive = true;
-	LEvent.bind(node,&quot;mousemove&quot;,this.onMouse,this);
-	LEvent.bind(node,&quot;update&quot;,this.onUpdate,this);
+	LEvent.bind( node, &quot;mousemove&quot;,this.onMouse,this);
+	LEvent.bind( node, &quot;update&quot;,this.onUpdate,this);
+}
+
+NodeManipulator.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind( node, &quot;mousemove&quot;,this.onMouse,this);
+	LEvent.unbind( node, &quot;update&quot;,this.onUpdate,this);
 }
 
 NodeManipulator.prototype.onUpdate = function(e)
 {
-	if(!this._root) return;
+	if(!this._root)
+		return;
 
 	if(!this._root.transform)
 		return;
@@ -196,7 +208,8 @@ NodeManipulator.prototype.onUpdate = function(e)
 
 NodeManipulator.prototype.onMouse = function(e, mouse_event)
 {
-	if(!this._root || !this._root.transform) return;
+	if(!this._root || !this._root.transform)
+		return;
 	
 	//regular mouse dragging
 	if(!mouse_event.dragging)

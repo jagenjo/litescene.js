@@ -8,6 +8,9 @@ var parserOBJ = {
 	{
 		options = options || {};
 
+		var support_uint = true;
+		var skip_indices = options.noindex ? options.noindex : false;
+
 		//final arrays (packed, lineal [ax,ay,az, bx,by,bz ...])
 		var positionsArray = [ ];
 		var texcoordsArray = [ ];
@@ -40,7 +43,6 @@ var parserOBJ = {
 		var negative_offset = -1; //used for weird objs with negative indices
 		var max_index = 0;
 
-		var skip_indices = options.noindex ? options.noindex : (text.length > 10000000 ? true : false);
 		//trace("SKIP INDICES: " + skip_indices);
 		var flip_axis = (Parser.flipAxis || options.flipAxis);
 		var flip_normals = (flip_axis || options.flipNormals);
@@ -142,6 +144,8 @@ var parserOBJ = {
 						z = 0.0;
 						if ((pos * 3 + 2) < positions.length) {
 							hasPos = true;
+							if(pos < 0) //negative indices are relative to the end
+								pos = positions.length / 3 + pos + 1;
 							x = positions[pos*3+0];
 							y = positions[pos*3+1];
 							z = positions[pos*3+2];
@@ -154,6 +158,8 @@ var parserOBJ = {
 						y = 0.0;
 						if ((tex * 2 + 1) < texcoords.length) {
 							hasTex = true;
+							if(tex < 0) //negative indices are relative to the end
+								tex = texcoords.length / 2 + tex + 1;
 							x = texcoords[tex*2+0];
 							y = texcoords[tex*2+1];
 						}
@@ -167,6 +173,9 @@ var parserOBJ = {
 						{
 							if ((nor * 3 + 2) < normals.length) {
 								hasNor = true;
+
+								if(nor < 0)
+									nor = normals.length / 3 + nor + 1;
 								x = normals[nor*3+0];
 								y = normals[nor*3+1];
 								z = normals[nor*3+2];
@@ -242,7 +251,7 @@ var parserOBJ = {
 		}
 
 		//deindex streams
-		if((max_index > 256*256 || skip_indices ) && indicesArray.length > 0)
+		if((max_index > 256*256 || skip_indices ) && indicesArray.length > 0 && !support_uint )
 		{
 			console.log("Deindexing mesh...")
 			var finalVertices = new Float32Array(indicesArray.length * 3);

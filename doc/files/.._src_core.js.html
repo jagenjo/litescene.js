@@ -45,6 +45,8 @@
             
                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
             
+                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -110,6 +112,10 @@
                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
             
                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+            
+                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+            
+                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
             
@@ -223,21 +229,31 @@ var LS = {
 	Components: {},
 
 	/**
-	* Register a component so it is listed when searching for new components to attach
+	* Register a component (or several) so it is listed when searching for new components to attach
 	*
 	* @method registerComponent
-	* @param {ComponentClass} comp component class to register
+	* @param {ComponentClass} c component class to register
 	*/
-	registerComponent: function(comp) { 
+	registerComponent: function( c ) { 
+		//allows to register several at the same time
 		for(var i in arguments)
 		{
+			var component = arguments[i];
+			var name = LS.getClassName( component );
+
 			//register
-			this.Components[ LS.getClassName(arguments[i]) ] = arguments[i]; 
+			this.Components[ name ] = component; 
+
+			//checks for errors
+			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
+				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
+				console.warn(&quot;Component could have a bug, check events: &quot; + name);
+
 			//add default methods
-			LS.extendClass(comp, LS.Component );
+			LS.extendClass( component, LS.Component );
 
 			//event
-			LEvent.trigger(LS,&quot;component_registered&quot;,arguments[i]); 
+			LEvent.trigger(LS, &quot;component_registered&quot;, component ); 
 		}
 	},
 

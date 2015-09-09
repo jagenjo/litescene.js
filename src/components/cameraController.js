@@ -33,12 +33,12 @@ CameraController["@mode"] = { type:"enum", values: { "Orbit": CameraController.O
 
 CameraController.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind(scene,"mousedown",this.onMouse,this);
-	LEvent.bind(scene,"mousemove",this.onMouse,this);
-	LEvent.bind(scene,"mousewheel",this.onMouse,this);
-	LEvent.bind(scene,"keydown",this.onKey,this);
-	LEvent.bind(scene,"keyup",this.onKey,this);
-	LEvent.bind(scene,"update",this.onUpdate,this);
+	LEvent.bind( scene, "mousedown",this.onMouse,this);
+	LEvent.bind( scene, "mousemove",this.onMouse,this);
+	LEvent.bind( scene, "mousewheel",this.onMouse,this);
+	LEvent.bind( scene, "keydown",this.onKey,this);
+	LEvent.bind( scene, "keyup",this.onKey,this);
+	LEvent.bind( scene, "update",this.onUpdate,this);
 }
 
 CameraController.prototype.onRemovedFromScene = function( scene )
@@ -108,7 +108,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(!mouse_event.dragging)
 		return;
 
-	if(this._root.transform)
+	var changed = false;
+
+	if( this._root.transform )
 	{
 		//TODO
 	}
@@ -121,6 +123,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			var right = cam.getLocalVector([1,0,0]);
 			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
 			cam.updateMatrices();
+			changed = true;
 		}
 		else if(this.mode == CameraController.ORBIT)
 		{
@@ -132,6 +135,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				cam.move( delta );
 				//vec3.copy(  this._collision, collision );
 				cam.updateMatrices();
+				changed = true;
 			}
 			else
 			{
@@ -139,7 +143,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				cam.updateMatrices();
 				var right = cam.getLocalVector([1,0,0]);
 				cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
-
+				changed = true;
 			}
 		}
 		else if(this.mode == CameraController.PLANE)
@@ -147,6 +151,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			if(this._button == 2)
 			{
 				cam.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], cam.target );
+				changed = true;
 			}
 			else
 			{
@@ -155,9 +160,13 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				var delta = vec3.sub( vec3.create(), this._collision, collision );
 				cam.move( delta );
 				cam.updateMatrices();
+				changed = true;
 			}
 		}
 	}
+
+	if(changed)
+		this._root.scene.refresh();
 }
 
 CameraController.prototype.testOriginPlane = function(x,y, result)

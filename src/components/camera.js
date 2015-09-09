@@ -36,10 +36,10 @@ function Camera(o)
 	//orthographics planes (near and far took from ._near and ._far)
 	this._ortho = new Float32Array([-1,1,-1,1]);
 
-	this._aspect = 1.0; //must be one, otherwise it gets deformed, the real one is inside real_aspect
+	this._aspect = 1.0; //must be one, otherwise it gets deformed, the final one used is in final_aspect
 	this._fov = 45; //persp
 	this._frustum_size = 50; //ortho
-	this._real_aspect = 1.0; //the one used when computing the projection matrix
+	this._final_aspect = 1.0; //the one used when computing the projection matrix
 
 	//viewport in normalized coordinates: left, bottom, width, height
 	this._viewport = new Float32Array([0,0,1,1]);
@@ -375,11 +375,11 @@ Camera.prototype.lookAt = function(eye,center,up)
 Camera.prototype.updateMatrices = function()
 {
 	if(this.type == Camera.ORTHOGRAPHIC)
-		mat4.ortho(this._projection_matrix, -this._frustum_size*this._real_aspect*0.5, this._frustum_size*this._real_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
+		mat4.ortho(this._projection_matrix, -this._frustum_size*this._final_aspect*0.5, this._frustum_size*this._final_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
 	else if (this.type == Camera.ORTHO2D)
 		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
 	else
-		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._real_aspect, this._near, this._far);
+		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._final_aspect, this._near, this._far);
 
 	//if (this.type != Camera.ORTHO2D)
 	if(this._root && this._root._is_root) //in root node
@@ -956,7 +956,7 @@ Camera.prototype.configure = function(o)
 	if(o.far !== undefined) this._far = o.far;
 	if(o.fov !== undefined) this._fov = o.fov;
 	if(o.aspect !== undefined) this._aspect = o.aspect;
-	if(o.real_aspect !== undefined) this._real_aspect = o.real_aspect;
+	if(o.final_aspect !== undefined) this._final_aspect = o.final_aspect;
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
 
