@@ -13,6 +13,7 @@ function ComponentContainer()
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
 	this._components = [];
+	//this._components_by_uid = {}; //TODO
 }
 
 
@@ -110,10 +111,11 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	if(index !== undefined && index <= this._components.length )
 		this._components.splice(index,0,component);
 	else
-		this._components.push(component);
-	if( !component.hasOwnProperty("uid") )
-		Object.defineProperty( component, "uid", { value: LS.generateUId("COMP-"), enumerable: false, writable: true});
-		//component.uid = LS.generateUId("COMP-");
+		this._components.push( component );
+
+	if( !component.uid )
+		component.uid = LS.generateUId("COMP-");
+
 	return component;
 }
 

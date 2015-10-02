@@ -155,19 +155,19 @@ Script.prototype.setPropertyValue = function( property, value )
 //used for animation tracks
 Script.prototype.getPropertyInfoFromPath = function( path )
 {
-	if(path[2] != "context")
+	if(path[0] != "context")
 		return;
 
 	var context = this.getContext();
 
-	if(path.length == 3)
+	if(path.length == 1)
 		return {
 			node: this._root,
 			target: context,
 			type: "object"
 		};
 
-	var varname = path[3];
+	var varname = path[1];
 	if(!context || context[ varname ] === undefined )
 		return;
 
@@ -202,14 +202,14 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 
 Script.prototype.setPropertyValueFromPath = function( path, value )
 {
-	if(path.length < 4)
+	if(path.length < 1)
 		return;
 
-	if(path[2] != "context" )
+	if(path[0] != "context" )
 		return;
 
 	var context = this.getContext();
-	var varname = path[3];
+	var varname = path[1];
 	if(!context || context[ varname ] === undefined )
 		return;
 
@@ -267,6 +267,10 @@ Script.prototype.onAddedToScene = function(scene)
 
 Script.prototype.onRemovedFromScene = function(scene)
 {
+	//ensures no binded events
+	if(this._context)
+		LEvent.unbindAll( scene, this._context, this );
+
 	//unbind evends
 	LEvent.unbindAll( scene, this );
 }

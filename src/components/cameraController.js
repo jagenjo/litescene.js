@@ -92,6 +92,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		var wheel = mouse_event.wheel > 0 ? 1 : -1;
 		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed, this.orbit_center);
 		cam.updateMatrices();
+		this._root.scene.refresh();
 		return;
 	}
 

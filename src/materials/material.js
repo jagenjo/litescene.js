@@ -34,6 +34,8 @@ function Material(o)
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 
+	this._query = new ShaderQuery();
+
 	//properties with special storage (multiple vars shared among single properties)
 
 	Object.defineProperty( this, 'color', {
@@ -143,9 +145,10 @@ Material.prototype.applyToRenderInstance = function(ri)
 }
 
 // RENDERING METHODS
-Material.prototype.fillShaderMacros = function(scene)
+Material.prototype.fillShaderQuery = function(scene)
 {
-	var macros = {};
+	var query = this._query;
+	query.clear();
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -159,7 +162,7 @@ Material.prototype.fillShaderMacros = function(scene)
 		if(!texture) //loading or non-existant
 			continue;
 
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + uvs;
+		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + uvs;
 	}
 
 	//if(this.reflection_factor > 0.0) 
@@ -168,9 +171,7 @@ Material.prototype.fillShaderMacros = function(scene)
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	this._macros = macros;
+			query.macros[im] = this.extra_macros[im];
 }
 
 //Fill with info about the light
@@ -281,43 +282,6 @@ Material.prototype.configure = function(o)
 {
 	for(var i in o)
 		this.setProperty( i, o[i] );
-
-	/*	//cloneObject(o, this);
-	for(var i in o)
-	{
-		var v = o[i];
-		var r = null;
-		switch(i)
-		{
-			//numbers
-			case "opacity": 
-			case "specular_factor":
-			case "specular_gloss":
-			case "reflection": 
-			case "blend_mode":
-			//strings
-			case "shader_name":
-			//bools
-				r = v; 
-				break;
-			//vectors
-			case "color": 
-				r = new Float32Array(v); 
-				break;
-			case "textures":
-				this.textures = o.textures;
-				continue;
-			case "transparency": //special cases
-				this.opacity = 1 - v;
-			default:
-				continue;
-		}
-		this[i] = r;
-	}
-
-	if(o.uvs_matrix && o.uvs_matrix.length == 9)
-		this.uvs_matrix = new Float32Array(o.uvs_matrix);
-	*/
 }
 
 /**

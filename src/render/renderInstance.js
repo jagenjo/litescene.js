@@ -77,13 +77,13 @@ function RenderInstance( node, component )
 	//this.materials = null; //for multimaterial rendering, LONG FUTURE...
 
 	//for extra data for the shader
-	this.macros = {};
+	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = {};
 
 	//for internal use
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
-	this._final_macros = {};
+	this._final_query = new LS.ShaderQuery();
 	this._final_uniforms = {};
 	this._final_samplers = {};
 }

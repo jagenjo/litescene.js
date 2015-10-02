@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -289,7 +291,7 @@ var ResourcesManager = {
 	* @param {String} fullpath
 	* @return {String} filename extension
 	*/
-	getFilename: function(fullpath)
+	getFilename: function( fullpath )
 	{
 		var pos = fullpath.lastIndexOf(&quot;/&quot;);
 		//if(pos == -1) return fullpath;
@@ -554,7 +556,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource(url, response, options, ResourcesManager._resourceLoadedSuccess );
+				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
 			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
 			progress: function(e) { LEvent.trigger( LS.ResourcesManager, &quot;resource_loading_progress&quot;, { url: url, event: e } ); }
@@ -571,7 +573,9 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Process resource: transform some data in an Object ready to use and stores it (in most cases uploads it to the GPU)
+	* Process resource get some form of data and transforms it to a resource (and Object ready to be used by the engine).
+	* In most cases the process involves parsing and uploading to the GPU
+	* It is called for every single resource that comes from an external source (URL) right after being loaded
 	*
 	* @method processResource
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
@@ -579,7 +583,7 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resource
 	*/
 
-	processResource: function(url, data, options, on_complete)
+	processResource: function( url, data, options, on_complete )
 	{
 		options = options || {};
 		if(!data) throw(&quot;No data found when processing resource: &quot; + url);
@@ -636,17 +640,18 @@ var ResourcesManager = {
 			inner_onResource(url, resource);
 
 		//callback when the resource is ready
-		function inner_onResource(filename, resource)
+		function inner_onResource( fullpath, resource )
 		{
-			resource.filename = filename;
+			resource.remote = true;
+			resource.filename = fullpath;
 			if(options.filename) //used to overwrite
 				resource.filename = options.filename;
 
-			if(!resource.fullpath)
-				resource.fullpath = url;
+			//if(!resource.fullpath) //why??
+			resource.fullpath = fullpath;
 
-			if(LS.ResourcesManager.resources_being_processed[filename])
-				delete LS.ResourcesManager.resources_being_processed[filename];
+			if( LS.ResourcesManager.resources_being_processed[ fullpath ] )
+				delete LS.ResourcesManager.resources_being_processed[ fullpath ];
 
 			//keep original file inside the resource
 			if(LS.ResourcesManager.keep_files &amp;&amp; (data.constructor == ArrayBuffer || data.constructor == String) )
@@ -657,11 +662,11 @@ var ResourcesManager = {
 				ResourcesManager.loadResources( resource.getResources({}) );
 
 			//register in the containers
-			LS.ResourcesManager.registerResource(url, resource);
+			LS.ResourcesManager.registerResource( fullpath, resource );
 
 			//callback 
 			if(on_complete)
-				on_complete(url, resource, options);
+				on_complete( fullpath, resource, options );
 		}
 	},
 
@@ -680,9 +685,8 @@ var ResourcesManager = {
 		if(this.resources[ filename ] == resource)
 			return; //already registered
 
-		//not sure about this, filename or fullpath
-		resource.filename = filename;
-		resource.fullpath = filename;
+		resource.filename = filename; //filename is a given name
+		//resource.fullpath = filename; //fullpath only if they are in the server
 
 		//get which kind of resource
 		if(!resource.object_type)
@@ -694,7 +698,7 @@ var ResourcesManager = {
 		//some resources could be postprocessed after being loaded
 		var post_callback = this.resource_post_callbacks[ type ];
 		if(post_callback)
-			post_callback(filename, resource);
+			post_callback( filename, resource );
 
 		//global container
 		this.resources[ filename ] = resource;
@@ -824,7 +828,9 @@ var ResourcesManager = {
 			return false;
 
 		res.filename = newname;
-		res.fullpath = newname;
+		if(res.fullpath)
+			res.fullpath = newname;
+
 		this.resources[newname] = res;
 		delete this.resources[ old ];
 
@@ -913,7 +919,6 @@ var ResourcesManager = {
 	* @param {String} filename 
 	* @return {Mesh}
 	*/
-
 	getMesh: function(name) {
 		if(!name)
 			return null;
@@ -931,7 +936,6 @@ var ResourcesManager = {
 	* @param {String} filename could be a texture itself in which case returns the same texture
 	* @return {Texture} 
 	*/
-
 	getTexture: function(name) {
 		if(!name)
 			return null;
@@ -966,13 +970,19 @@ var ResourcesManager = {
 		}
 	},
 
-	//used when waiting to something to be loaded
+	/**
+	* Binds a callback for when a resource is loaded (in case you need to do something special)
+	*
+	* @method onceLoaded
+	* @param {String} fullpath of the resource you want to get the notification once is loaded
+	* @param {Function} callback the function to call, it will be called as callback( fullpath, resource )
+	*/
 	onceLoaded: function( fullpath, callback )
 	{
 		var array = this.resource_once_callbacks[ fullpath ];
 		if(!array)
 		{
-			this.resource_once_callbacks = [ callback ];
+			this.resource_once_callbacks[ fullpath ] = [ callback ];
 			return;
 		}
 
@@ -1128,7 +1138,10 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;wbin&quot;, function(file
 
 LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(filename, data, options) {
 	var resource = data;
-	if(typeof(data) == &quot;object&quot; &amp;&amp; data.object_type &amp;&amp; window[ data.object_type ])
+	if( data.constructor === String )
+		data = JSON.parse(data);
+
+	if( data.object_type &amp;&amp; window[ data.object_type ] )
 	{
 		var ctor = window[ data.object_type ];
 		if(ctor.prototype.configure)
@@ -1194,17 +1207,17 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;jpg,jpeg,png,webp,gif&quo
 		mimetype = &quot;image/gif&quot;;
 
 	var blob = new Blob([data],{type: mimetype});
-	var objectURL = URL.createObjectURL(blob);
+	var objectURL = URL.createObjectURL( blob );
 	var image = new Image();
 	image.src = objectURL;
 	image.real_filename = filename; //hard to get the original name from the image
 	image.onload = function()
 	{
 		var filename = this.real_filename;
-		var texture = LS.ResourcesManager.processImage(filename, this, options);
+		var texture = LS.ResourcesManager.processImage( filename, this, options );
 		if(texture)
 		{
-			LS.ResourcesManager.registerResource(filename, texture);
+			//LS.ResourcesManager.registerResource( filename, texture ); //this is done already by processResource
 			if(LS.ResourcesManager.keep_files)
 				texture._original_data = data;
 		}
@@ -1269,7 +1282,7 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 	for(var i in scene_data.meshes)
 	{
 		var mesh = scene_data.meshes[i];
-		LS.ResourcesManager.processResource(i,mesh);
+		LS.ResourcesManager.processResource( i, mesh );
 	}
 
 	//used for anims mostly

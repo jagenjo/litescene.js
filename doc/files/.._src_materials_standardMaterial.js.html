@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -184,7 +186,7 @@
 
 function StandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the object
+	Material.call(this,null); //do not pass the object, it is called later
 
 	this.createProperty(&quot;ambient&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
 	this.createProperty(&quot;emissive&quot;, new Float32Array(3), &quot;color&quot; );
@@ -284,9 +286,10 @@ struct SurfaceOutput {\n\
 &quot;;
 
 // RENDERING METHODS
-StandardMaterial.prototype.fillShaderMacros = function(scene)
+StandardMaterial.prototype.fillShaderQuery = function( scene )
 {
-	var macros = {};
+	var query = this._query;
+	query.clear();
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -311,11 +314,11 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.normalmap_factor != 0.0 &amp;&amp; (!this.normalmap_tangent || (this.normalmap_tangent &amp;&amp; gl.derivatives_supported)) )
 			{
-				macros.USE_NORMAL_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				query.macros.USE_NORMAL_TEXTURE = &quot;uvs_&quot; + texture_uvs;
 				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = &quot;&quot;;
+					query.macros.USE_NORMALMAP_FACTOR = &quot;&quot;;
 				if(this.normalmap_tangent &amp;&amp; gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = &quot;&quot;;
+					query.macros.USE_TANGENT_NORMALMAP = &quot;&quot;;
 			}
 			continue;
 		}
@@ -323,9 +326,9 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.displacementmap_factor != 0.0 &amp;&amp; gl.derivatives_supported )
 			{
-				macros.USE_DISPLACEMENT_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				query.macros.USE_DISPLACEMENT_TEXTURE = &quot;uvs_&quot; + texture_uvs;
 				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = &quot;&quot;;
+					query.macros.USE_DISPLACEMENTMAP_FACTOR = &quot;&quot;;
 			}
 			continue;
 		}
@@ -333,33 +336,33 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.bump_factor != 0.0 &amp;&amp; gl.derivatives_supported )
 			{
-				macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				query.macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
 				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMP_FACTOR = &quot;&quot;;
+					query.macros.USE_BUMP_FACTOR = &quot;&quot;;
 			}
 			continue;
 		}
 
-		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
+		query.macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
 	}
 
 	if(this.velvet &amp;&amp; this.velvet_exp) //first light only
-		macros.USE_VELVET = &quot;&quot;;
+		query.macros.USE_VELVET = &quot;&quot;;
 	
 	if(this.emissive_material) //dont know whats this
-		macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
+		query.macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
 	
 	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = &quot;&quot;;
+		query.macros.USE_SPECULAR_ONTOP = &quot;&quot;;
 	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = &quot;&quot;;
+		query.macros.USE_SPECULAR_ON_ALPHA = &quot;&quot;;
 	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
+		query.macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
 	if(this.backlight_factor &gt; 0.001)
-		macros.USE_BACKLIGHT = &quot;&quot;;
+		query.macros.USE_BACKLIGHT = &quot;&quot;;
 
 	if(this.reflection_factor &gt; 0.0) 
-		macros.USE_REFLECTION = &quot;&quot;;
+		query.macros.USE_REFLECTION = &quot;&quot;;
 
 	//extra code
 	if(this.extra_surface_shader_code)
@@ -373,15 +376,13 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		else
 			code = this._last_processed_extra_surface_shader_code;
 		if(code)
-			macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
+			query.macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
 	}
 
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	this._macros = macros;
+			query.macros[im] = this.extra_macros[im];
 }
 
 StandardMaterial.prototype.fillUniforms = function( scene, options )

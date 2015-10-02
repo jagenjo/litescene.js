@@ -42,7 +42,7 @@ Transform.FRONT = vec3.fromValues(0,0,-1);
 Transform["@position"] = { type: "position"};
 Transform["@rotation"] = { type: "quat"};
 
-Transform.attributes = {
+Transform.properties = {
 	position:"vec3",
 	scaling:"vec3",
 	rotation:"quat"
@@ -187,7 +187,7 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 	enumerable: true
 });
 
-Transform.prototype.getAttributes = function(v)
+Transform.prototype.getProperties = function(v)
 {
 	if(v == "output")
 	{
@@ -1139,21 +1139,6 @@ Transform.prototype.applyLocalTransformMatrix = function( M )
 
 	this._must_update_matrix = true; //matrix must be redone?
 	return;
-}
-
-//centers the node in the mesh bounding box center
-Transform.prototype.centerInMesh = function()
-{
-	var node = this._root;
-	if(!node)
-		return;
-	var mesh = node.getMesh();
-	if(!mesh || !mesh.bounding)
-		return;
-
-	var center = BBox.getCenter(mesh.bounding);
-	vec3.scale( this._position, center, -1 );
-	this._must_update_matrix = true;
 }
 
 

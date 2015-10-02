@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -284,7 +286,7 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_fillSceneShaderMacros">fillSceneShaderMacros</a>
+                                <a href="#method_fillSceneShaderQuery">fillSceneShaderQuery</a>
 
                                 
                                 
@@ -561,7 +563,7 @@
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l992"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:992</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l979"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:979</code></a>
         
         </p>
 
@@ -622,8 +624,8 @@
 </div>
 
                 
-                    <div id="method_fillSceneShaderMacros" class="method item">
-    <h3 class="name"><code>fillSceneShaderMacros</code></h3>
+                    <div id="method_fillSceneShaderQuery" class="method item">
+    <h3 class="name"><code>fillSceneShaderQuery</code></h3>
 
     
         <div class="args">
@@ -670,7 +672,7 @@
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l919"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:919</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l906"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:906</code></a>
         
         </p>
 
@@ -681,8 +683,8 @@
     </div>
 
     <div class="description">
-        <p>Update the scene shader macros according to the render pass
-Do not reuse the macros, they change between rendering passes (shadows, reflections, etc)</p>
+        <p>Update the scene shader query according to the render pass
+Do not reuse the query, they change between rendering passes (shadows, reflections, etc)</p>
 
     </div>
 
@@ -790,7 +792,7 @@ Do not reuse the macros, they change between rendering passes (shadows, reflecti
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l1317"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1317</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1303"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1303</code></a>
         
         </p>
 
@@ -929,7 +931,7 @@ Do not reuse the macros, they change between rendering passes (shadows, reflecti
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l1031"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1031</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1018"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1018</code></a>
         
         </p>
 
@@ -1178,7 +1180,7 @@ Many steps are involved, from gathering info from the scene tree, generating sha
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l790"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:790</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l784"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:784</code></a>
         
         </p>
 
@@ -1315,7 +1317,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l545"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:545</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l550"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:550</code></a>
         
         </p>
 
@@ -1638,6 +1640,12 @@ Will be refactored for a better system</p>
                     
                 </li>
             
+                <li class="arg">
+                    
+                        <code>instances</code>
+                    
+                </li>
+            
             </ul><span class="paren">)</span>
         </div>
     
@@ -1698,6 +1706,22 @@ Will be refactored for a better system</p>
 
                     <div class="param-description">
                          
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">instances</code>
+                        <span class="type">Array</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>array of RIs, if not specified the last visible_instances are rendered</p>
+
                     </div>
 
                     
@@ -1767,7 +1791,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l1199"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1199</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1185"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1185</code></a>
         
         </p>
 
@@ -1901,7 +1925,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l1277"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1277</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1263"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1263</code></a>
         
         </p>
 
@@ -2041,7 +2065,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l875"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:875</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l869"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:869</code></a>
         
         </p>
 
@@ -2150,7 +2174,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l700"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:700</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l701"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:701</code></a>
         
         </p>
 
@@ -2287,7 +2311,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l1232"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1232</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l1218"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:1218</code></a>
         
         </p>
 
@@ -2467,7 +2491,7 @@ Will be refactored for a better system</p>
             
         
         
-        <a href="../files/.._src_render_renderer.js.html#l472"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:472</code></a>
+        <a href="../files/.._src_render_renderer.js.html#l477"><code>..&#x2F;src&#x2F;render&#x2F;renderer.js:477</code></a>
         
         </p>
 

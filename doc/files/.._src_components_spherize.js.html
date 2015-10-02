@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -195,10 +197,10 @@ Spherize[&quot;@center&quot;] = { type: &quot;position&quot;, step: 0.001 };
 
 Spherize.icon = &quot;mini-icon-circle.png&quot;;
 
-Spherize.prototype.onAddedToNode = function(node)
+Spherize.prototype.onAddedToNode = function( node )
 {
-	LEvent.bind(node,&quot;computingShaderMacros&quot;,this.onMacros,this);
-	LEvent.bind(node,&quot;computingShaderUniforms&quot;,this.onUniforms,this);
+	LEvent.bind( node, &quot;computingShaderQuery&quot;, this.onShaderQuery, this);
+	LEvent.bind( node, &quot;computingShaderUniforms&quot;, this.onUniforms, this);
 }
 
 
@@ -217,20 +219,20 @@ Spherize._code = &quot;\
 	v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,factor@)));\
 &quot;;
 
-Spherize.prototype.onMacros = function(e, macros)
+Spherize.prototype.onShaderQuery = function(e, query)
 {
 	if(!this.enabled)
 		return;
 
-	if(macros.USE_VERTEX_SHADER_UNIFORMS)
-		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
+	if(query.macros.USE_VERTEX_SHADER_UNIFORMS)
+		query.macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
 	else
-		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
+		query.macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
 
-	if(macros.USE_VERTEX_SHADER_CODE)
-		macros.USE_VERTEX_SHADER_CODE += this._code;
+	if(query.macros.USE_VERTEX_SHADER_CODE)
+		query.macros.USE_VERTEX_SHADER_CODE += this._code;
 	else
-		macros.USE_VERTEX_SHADER_CODE = this._code;
+		query.macros.USE_VERTEX_SHADER_CODE = this._code;
 }
 
 Spherize.prototype.onUniforms = function(e, uniforms)

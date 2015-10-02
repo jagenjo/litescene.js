@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -183,6 +185,7 @@ function ComponentContainer()
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
 	this._components = [];
+	//this._components_by_uid = {}; //TODO
 }
 
 
@@ -280,10 +283,11 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	if(index !== undefined &amp;&amp; index &lt;= this._components.length )
 		this._components.splice(index,0,component);
 	else
-		this._components.push(component);
-	if( !component.hasOwnProperty(&quot;uid&quot;) )
-		Object.defineProperty( component, &quot;uid&quot;, { value: LS.generateUId(&quot;COMP-&quot;), enumerable: false, writable: true});
-		//component.uid = LS.generateUId(&quot;COMP-&quot;);
+		this._components.push( component );
+
+	if( !component.uid )
+		component.uid = LS.generateUId(&quot;COMP-&quot;);
+
 	return component;
 }
 

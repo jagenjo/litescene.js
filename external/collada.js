@@ -70,13 +70,6 @@ global.Collada = {
 		temp_vec4 = vec3.create();
 		temp_quat = quat.create();
 
-		mat4.fromDAE = function(str)
-		{
-			var m = new Float32Array( JSON.parse("["+str.split(" ").join(",")+"]") );
-			mat4.transpose(m,m);
-			return m;
-		}
-
 		if( isWorker )
 			console.log("Collada worker ready");
 	},
@@ -95,6 +88,8 @@ global.Collada = {
 	_xmlroot: null,
 	_nodes_by_id: null,
 	_transferables: null,
+	_controllers_found: null,
+	_geometries_found: null,
 
 	safeString: function (str) { 
 		if(!str)
@@ -152,7 +147,7 @@ global.Collada = {
 			if(this.verbose)
 				console.log(" - XML parsed");			
 		}
-		else //USING JS XML PARSER IMPLEMENTATION
+		else //USING JS XML PARSER IMPLEMENTATION (much slower)
 		{
 			if(!global["DOMImplementation"] )
 				return Collada.throwException( Collada.NOXMLPARSER_ERROR );
@@ -269,6 +264,7 @@ global.Collada = {
 			this._current_DAE_version = xmlcollada.getAttribute("version");
 			console.log("DAE Version:" + this._current_DAE_version);
 		}
+
 		//var xmlvisual_scene = root.querySelector("visual_scene");
 		var xmlvisual_scene = root.getElementsByTagName("visual_scene").item(0);
 		if(!xmlvisual_scene)
@@ -276,7 +272,8 @@ global.Collada = {
 
 		//hack to avoid problems with bones with spaces in names
 		this._nodes_by_id = {}; //clear
-		//this.readAllNodeNames(xmlvisual_scene);
+		this._controllers_found = {};//we need to check what controllers had been found, in case we miss one at the end
+		this._geometries_found = {};
 
 		//Create a scene tree
 		var scene = { 
@@ -289,7 +286,12 @@ global.Collada = {
 			external_files: {} //store info about external files mentioned in this 
 		};
 
-		//parse nodes tree
+		//scene metadata (like author, tool, up vector, dates, etc)
+		var xmlasset = root.getElementsByTagName("asset")[0];
+		if(xmlasset)
+			scene.metadata = this.readAsset( xmlasset );
+
+		//parse nodes tree to extract names and ierarchy only
 		var xmlnodes = xmlvisual_scene.childNodes;
 		for(var i = 0; i < xmlnodes.length; i++)
 		{
@@ -301,7 +303,7 @@ global.Collada = {
 				scene.root.children.push(node);
 		}
 
-		//parse nodes info (two steps so we have first all the scene tree)
+		//parse nodes content (two steps so we have first all the scene tree info)
 		for(var i = 0; i < xmlnodes.length; i++)
 		{
 			if(xmlnodes.item(i).localName != "node")
@@ -309,6 +311,8 @@ global.Collada = {
 			this.readNodeInfo( xmlnodes.item(i), scene, 0, flip );
 		}
 
+		//read remaining controllers (in some cases some controllers are not linked from the nodes or the geometries)
+		this.readLibraryControllers( scene );
 
 		//read animations
 		var animations = this.readAnimations(root, scene);
@@ -321,6 +325,12 @@ global.Collada = {
 
 		//read external files (images)
 		scene.images = this.readImages(root);
+
+		//clear memory
+		this._nodes_by_id = {};
+		this._controllers_found = {};
+		this._geometries_found = {};
+		this._xmlroot = null;
 
 		//console.log(scene);
 		return scene;
@@ -351,6 +361,31 @@ global.Collada = {
 	},
 		*/
 
+	readAsset: function( xmlasset )
+	{
+		var metadata = {};
+
+		for( var i = 0; i < xmlasset.childNodes.length; i++ )
+		{
+			var xmlchild = xmlasset.childNodes.item(i);
+			if(xmlchild.nodeType != 1 ) //not tag
+				continue;
+			switch( xmlchild.localName )
+			{
+				case "contributor": 
+					var tool = xmlchild.querySelector("authoring_tool")[0];
+					if(tool)
+						metadata["authoring_tool"] = tool.textContext;
+					break;
+				case "unit": metadata["unit"] = xmlchild.getAttribute("name"); break;
+				default:
+					metadata[ xmlchild.localName ] = xmlchild.textContent; break;
+			}
+		}
+
+		return metadata;
+	},
+
 	readNodeTree: function(xmlnode, scene, level, flip)
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
@@ -375,6 +410,8 @@ global.Collada = {
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
 		{
 			var xmlchild = xmlnode.childNodes.item(i);
+			if(xmlchild.nodeType != 1 ) //not tag
+				continue;
 
 			//children
 			if(xmlchild.localName == "node")
@@ -403,6 +440,8 @@ global.Collada = {
 		for( var i = 0; i < xmlnode.childNodes.length; i++ )
 		{
 			var xmlchild = xmlnode.childNodes.item(i);
+			if(xmlchild.nodeType != 1 ) //not tag
+				continue;
 
 			//children
 			if(xmlchild.localName == "node")
@@ -465,29 +504,35 @@ global.Collada = {
 			}
 
 
-			//skinning, morph targets or even multimaterial
+			//this node has a controller: skinning, morph targets or even multimaterial are controllers
+			//warning: I detected that some nodes could have a controller but they are not referenced here.  ??
 			if(xmlchild.localName == "instance_controller")
 			{
 				var url = xmlchild.getAttribute("url");
-				var mesh_data = this.readController( url, flip, scene );
+				var xmlcontroller = this._xmlroot.querySelector("controller" + url);
 
-				//binded materials
-				var xmlbindmaterial = xmlchild.querySelector("bind_material");
-				if(xmlbindmaterial)
-					node.materials = this.readBindMaterials( xmlbindmaterial );
-
-				if(mesh_data)
+				if(xmlcontroller)
 				{
-					var mesh = mesh_data;
-					if( mesh_data.type == "morph" )
-					{
-						mesh = mesh_data.mesh;
-						node.morph_targets = mesh_data.morph_targets;
-					}
+					var mesh_data = this.readController( xmlcontroller, flip, scene );
 
-					mesh.name = url.toString();
-					node.mesh = url.toString();
-					scene.meshes[ url ] = mesh;
+					//binded materials
+					var xmlbindmaterial = xmlchild.querySelector("bind_material");
+					if(xmlbindmaterial)
+						node.materials = this.readBindMaterials( xmlbindmaterial );
+
+					if(mesh_data)
+					{
+						var mesh = mesh_data;
+						if( mesh_data.type == "morph" )
+						{
+							mesh = mesh_data.mesh;
+							node.morph_targets = mesh_data.morph_targets;
+						}
+
+						mesh.name = url.toString();
+						node.mesh = url.toString();
+						scene.meshes[ url ] = mesh;
+					}
 				}
 			}
 
@@ -548,12 +593,16 @@ global.Collada = {
 		return null;
 	},
 
-	getFirstChildElement: function(root)
+	//returns the first element that matches a tag name, if not tagname is specified then the first tag element
+	getFirstChildElement: function(root, localName)
 	{
 		var c = root.childNodes;
 		for(var i = 0; i < c.length; ++i)
-			if(c.item(i).localName)
-				return c.item(i);
+		{
+			var item = c.item(i);
+			if( (item.localName && !localName) || (localName && localName == item.localName) )
+				return item;
+		}
 		return null;
 	},
 
@@ -637,8 +686,18 @@ global.Collada = {
 	{
 		var light = {};
 
-		var xmlnode = this._xmlroot.querySelector("library_lights " + url);
-		if(!xmlnode) return null;
+		var xmlnode = null;
+		
+		if(url.length > 1) //weird cases with id == #
+			xmlnode = this._xmlroot.querySelector("library_lights " + url);
+		else
+		{
+			var xmlliblights = this._xmlroot.querySelector("library_lights");
+			xmlnode = this.getFirstChildElement( xmlliblights, "light" );
+		}
+
+		if(!xmlnode)
+			return null;
 
 		//pack
 		var children = [];
@@ -924,17 +983,44 @@ global.Collada = {
 		return matrix;
 	},
 
-	readGeometry: function(id, flip)
+	readGeometry: function(id, flip, scene)
 	{
+		//already read, could happend if several controllers point to the same mesh
+		if( this._geometries_found[ id ] !== undefined )
+			return this._geometries_found[ id ];
+
 		//var xmlgeometry = this._xmlroot.querySelector("geometry" + id);
 		var xmlgeometry = this._xmlroot.getElementById(id.substr(1));
 		if(!xmlgeometry) 
 		{
 			console.warn("readGeometry: geometry not found: " + id);
+			this._geometries_found[ id ] = null;
+			return null;
+		}
+
+		//if the geometry has morph targets then instead of storing it in a geometry, it is in a controller
+		if(xmlgeometry.localName == "controller") 
+		{
+			var geometry = this.readController( xmlgeometry, flip, scene );
+			this._geometries_found[ id ] = geometry;
+			return geometry;
+		}
+
+
+		if(xmlgeometry.localName != "geometry") 
+		{
+			console.warn("readGeometry: tag should be geometry, instead it was found: " + xmlgeometry.localName);
+			this._geometries_found[ id ] = null;
 			return null;
 		}
 
 		var xmlmesh = xmlgeometry.querySelector("mesh");
+		if(!xmlmesh)
+		{
+			console.warn("readGeometry: mesh not found in geometry: " + id);
+			this._geometries_found[ id ] = null;
+			return null;
+		}
 		
 		//get data sources
 		var sources = {};
@@ -993,6 +1079,7 @@ global.Collada = {
 		if(!mesh)
 		{
 			console.log("no polygons or triangles in mesh: " + id);
+			this._geometries_found[ id ] = null;
 			return null;
 		}
 	
@@ -1033,6 +1120,8 @@ global.Collada = {
 		//extra info
 		mesh.filename = id;
 		mesh.object_type = "Mesh";
+
+		this._geometries_found[ id ] = mesh;
 		return mesh;
 	},
 
@@ -1183,6 +1272,7 @@ global.Collada = {
 			var current_index = -1;
 			var prev_index = -1;
 
+			//iterate vertices of this polygon
 			for(var k = 0; k < num_vertices; ++k )
 			{
 				var vertex_id = data.subarray(pos,pos + num_data_vertex).join(" ");
@@ -1195,7 +1285,7 @@ global.Collada = {
 					for(var j = 0; j < buffers.length; ++j)
 					{
 						var buffer = buffers[j];
-						var index = parseInt( data[pos + j] );
+						var index = parseInt( data[pos + j] ); //p
 						var array = buffer[1]; //array with all the data
 						var source = buffer[3]; //where to read the data from
 						if(j == 0)
@@ -1222,9 +1312,9 @@ global.Collada = {
 				}
 
 				indicesArray.push( current_index );
+				pos += num_data_vertex;
 			}//per vertex
 
-			pos += num_vertices;
 		}//per polygon
 
 		var mesh = {
@@ -1522,7 +1612,7 @@ global.Collada = {
 
 		//sampler, is in charge of the interpolation
 		//var xmlsampler = xmlanimation.querySelector("sampler" + source);
-		xmlsampler = this.findXMLNodeById(xmlanimation, "sampler", source.substr(1) );
+		xmlsampler = this.findXMLNodeById( xmlanimation, "sampler", source.substr(1) );
 		if(!xmlsampler)
 		{
 			console.error("Error DAE: Sampler not found in " + source);
@@ -1536,11 +1626,13 @@ global.Collada = {
 
 		var time_data = null;
 
-		//iterate inputs
+		//iterate inputs: collada separates the keyframe info in independent streams, like time, interpolation method, value )
 		for(var j = 0; j < xmlinputs.length; j++)
 		{
 			var xmlinput = xmlinputs.item(j);
 			var source_name =  xmlinput.getAttribute("source");
+
+			//there are three 
 			var semantic = xmlinput.getAttribute("semantic");
 
 			//Search for source
@@ -1549,7 +1641,8 @@ global.Collada = {
 				continue;
 
 			var xmlparam = xmlsource.querySelector("param");
-			if(!xmlparam) continue;
+			if(!xmlparam)
+				continue;
 
 			var type = xmlparam.getAttribute("type");
 			inputs[ semantic ] = { source: source_name, type: type };
@@ -1570,7 +1663,7 @@ global.Collada = {
 			var param_name = xmlparam.getAttribute("name");
 			if(param_name == "TIME")
 				time_data = data_array;
-			params[ param_name || "OUTPUT" ] = type;
+			params[ semantic == "OUTPUT" ? semantic : param_name ] = type;
 		}
 
 		if(!time_data)
@@ -1648,32 +1741,61 @@ global.Collada = {
 		return null;
 	},
 
-	//used for skinning and morphing
-	readController: function(id, flip, scene)
+	readLibraryControllers: function( scene )
 	{
-		//get root
-		var xmlcontroller = this._xmlroot.querySelector("controller" + id);
-		if(!xmlcontroller) return null;
+		var xmllibrarycontrollers = this._xmlroot.querySelector("library_controllers");
+		if(!xmllibrarycontrollers)
+			return null;
+
+		var xmllibrarycontrollers_childs = xmllibrarycontrollers.childNodes;
+
+		for(var i = 0; i < xmllibrarycontrollers_childs.length; ++i)
+		{
+			var xmlcontroller = xmllibrarycontrollers_childs.item(i);
+			if(xmlcontroller.nodeType != 1 || xmlcontroller.localName != "controller") //no tag
+				continue;
+			var id = xmlcontroller.getAttribute("id");
+			//we have already processed this controller
+			if( this._controllers_found[ id ] )
+				continue;
+
+			//console.log("Controller missing!: " + id );
+			this.readController( xmlcontroller, null, scene );
+		}
+	},
+
+	//used for skinning and morphing
+	readController: function(xmlcontroller, flip, scene)
+	{
+		if(!xmlcontroller.localName == "controller")
+		{
+			console.warn("readController: not a controller: " + xmlcontroller.localName);
+			return null;
+		}
+
+		var id = xmlcontroller.getAttribute("id");
 
 		var use_indices = false;
 		var mesh = null;
 		var xmlskin = xmlcontroller.querySelector("skin");
 		if(xmlskin)
-			mesh = this.readSkinController(xmlskin, flip, scene);
+			mesh = this.readSkinController( xmlskin, flip, scene);
 
 		var xmlmorph = xmlcontroller.querySelector("morph");
 		if(xmlmorph)
-			mesh = this.readMorphController(xmlmorph, flip, scene, mesh );
+			mesh = this.readMorphController( xmlmorph, flip, scene, mesh );
+
+		this._controllers_found[ id ] = mesh;
 
 		return mesh;
 	},
 
 	//read this to more info about DAE and skinning https://collada.org/mediawiki/index.php/Skinning
-	readSkinController: function(xmlskin, flip, scene)
+	readSkinController: function( xmlskin, flip, scene )
 	{
 		//base geometry
 		var id_geometry = xmlskin.getAttribute("source");
-		var mesh = this.readGeometry( id_geometry, flip );
+		var mesh = this.readGeometry( id_geometry, flip, scene );
 		if(!mesh)
 			return null;
 
@@ -1886,7 +2008,7 @@ global.Collada = {
 	readMorphController: function(xmlmorph, flip, scene, mesh)
 	{
 		var id_geometry = xmlmorph.getAttribute("source");
-		var base_mesh = this.readGeometry( id_geometry, flip );
+		var base_mesh = this.readGeometry( id_geometry, flip, scene );
 		if(!base_mesh)
 			return null;
 
@@ -1906,8 +2028,9 @@ global.Collada = {
 
 		for(var i = 0; i < xmlinputs.length; i++)
 		{
-			var semantic = xmlinputs.item(i).getAttribute("semantic").toUpperCase();
-			var data = sources[ xmlinputs.item(i).getAttribute("source").substr(1) ];
+			var xmlinput = xmlinputs.item(i);
+			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
+			var data = sources[ xmlinput.getAttribute("source").substr(1) ];
 			if( semantic == "MORPH_TARGET" )
 				targets = data;
 			else if( semantic == "MORPH_WEIGHT" )
@@ -1915,15 +2038,18 @@ global.Collada = {
 		}
 
 		if(!targets || !weights)
+		{
+			console.warn("Morph controller without targets or weights. Skipping it.");
 			return null;
+		}
 
 		//get targets
 		for(var i in targets)
 		{
 			var id = "#" + targets[i];
-			var geometry = this.readGeometry( id, flip );
+			var geometry = this.readGeometry( id, flip, scene );
 			scene.meshes[ id ] = geometry;
-			morphs.push( [id, weights[i]] );
+			morphs.push( { mesh: id, weight: weights[i]} );
 		}
 
 		base_mesh.morph_targets = morphs;
@@ -1958,7 +2084,7 @@ global.Collada = {
 		for(var i = 0; i < xmlsources.length; i++)
 		{
 			var xmlsource = xmlsources.item(i);
-			if(!xmlsource.querySelector) 
+			if(!xmlsource.querySelector) //??
 				continue;
 
 			var float_array = xmlsource.querySelector("float_array");
@@ -1973,6 +2099,16 @@ global.Collada = {
 			if(name_array)
 			{
 				var names = this.readContentAsStringsArray( name_array );
+				if(!names)
+					continue;
+				sources[ xmlsource.getAttribute("id") ] = names;
+				continue;
+			}
+
+			var ref_array = xmlsource.querySelector("IDREF_array");
+			if(ref_array)
+			{
+				var names = this.readContentAsStringsArray( ref_array );
 				if(!names)
 					continue;
 				sources[ xmlsource.getAttribute("id") ] = names;
@@ -2096,12 +2232,6 @@ global.Collada = {
 
 		}
 		return matrix;
-	},
-
-	debugMatrix: function(str, first_level )
-	{
-		var m = new Float32Array( JSON.parse("["+str.split(" ").join(",")+"]") );
-		return this.transformMatrix(m, first_level );
 	}
 };
 

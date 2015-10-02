@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -185,6 +187,7 @@ function MeshRenderer(o)
 
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
+
 }
 
 Object.defineProperty( MeshRenderer.prototype, &#x27;primitive&#x27;, {
@@ -247,9 +250,6 @@ MeshRenderer.prototype.configure = function(o)
 	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == &quot;string&quot; ? o.material : new Material(o.material);
-
-	if(o.morph_targets)
-		this.morph_targets = o.morph_targets;
 }
 
 /**
@@ -292,9 +292,9 @@ MeshRenderer.prototype.getLODMesh = function() {
 MeshRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.mesh) == &quot;string&quot;)
-		res[this.mesh] = Mesh;
+		res[this.mesh] = GL.Mesh;
 	if(typeof(this.lod_mesh) == &quot;string&quot;)
-		res[this.lod_mesh] = Mesh;
+		res[this.lod_mesh] = GL.Mesh;
 	return res;
 }
 
@@ -304,6 +304,10 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 		this.mesh = new_name;
 	if(this.lod_mesh == old_name)
 		this.lod_mesh = new_name;
+	if(this.morph_targets)
+		for(var i in this.morph_targets)
+			if( this.morph_targets[i].mesh == old_name )
+				this.morph_targets[i].mesh = new_name;
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
@@ -370,12 +374,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
-		//RI.macros[&quot;USE_CIRCLE_POINTS&quot;] = &quot;&quot;;
+		RI.query.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
 	}
 
 	instances.push(RI);
 }
+
+
+
 
 LS.registerComponent( MeshRenderer );
 LS.MeshRenderer = MeshRenderer;

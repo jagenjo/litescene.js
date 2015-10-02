@@ -25,26 +25,27 @@ FogFX["@type"] = { type:"enum", values: {"linear": FogFX.LINEAR, "exponential": 
 FogFX.prototype.onAddedToNode = function(node)
 {
 	//LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.bind(Scene,"fillSceneMacros",this.fillSceneMacros,this);
+	LEvent.bind(Scene,"fillSceneQuery",this.fillSceneQuery,this);
 	LEvent.bind(Scene,"fillSceneUniforms",this.fillSceneUniforms,this);
 }
 
 FogFX.prototype.onRemovedFromNode = function(node)
 {
 	//LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.unbind(Scene,"fillSceneMacros",this.fillSceneMacros, this);
+	LEvent.unbind(Scene,"fillSceneQuery",this.fillSceneQuery, this);
 	LEvent.unbind(Scene,"fillSceneUniforms",this.fillSceneUniforms, this);
 }
 
-FogFX.prototype.fillSceneMacros = function(e, macros )
+FogFX.prototype.fillSceneQuery = function(e, query )
 {
-	if(!this.enabled) return;
+	if(!this.enabled)
+		return;
 
-	macros.USE_FOG = ""
+	query.macros.USE_FOG = ""
 	switch(this.type)
 	{
-		case FogFX.EXP:	macros.USE_FOG_EXP = ""; break;
-		case FogFX.EXP2: macros.USE_FOG_EXP2 = ""; break;
+		case FogFX.EXP:	query.macros.USE_FOG_EXP = ""; break;
+		case FogFX.EXP2: query.macros.USE_FOG_EXP2 = ""; break;
 	}
 }
 

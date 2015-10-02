@@ -1,7 +1,9 @@
 
 /**
-* A Prefab behaves as a container of something packed with resources. This allow to have in one single file
-* textures, meshes, etc.
+* Prefab work in two ways: 
+* - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)
+* - When a node in the scene was created from a Prefab, the prefab is loaded so the associated resources are recovered, but the node structure is not modified.
+* 
 * @class Prefab
 * @constructor
 */
@@ -56,9 +58,9 @@ Prefab.prototype.processResources = function()
 	//another one contained in this Prefab
 	for(var resname in resources)
 	{
-		if( LS.ResourcesManager.resources[resname] )
+		if( LS.ResourcesManager.resources[ resname ] )
 			continue; //already loaded
-		LS.ResourcesManager.resources_being_processes[resname] = true;
+		LS.ResourcesManager.resources_being_processed[ resname ] = true;
 	}
 
 	//process and store in ResourcesManager
@@ -68,7 +70,7 @@ Prefab.prototype.processResources = function()
 			continue; //already loaded
 
 		var resdata = resources[resname];
-		LS.ResourcesManager.processResource(resname,resdata);
+		LS.ResourcesManager.processResource( resname, resdata );
 	}
 }
 

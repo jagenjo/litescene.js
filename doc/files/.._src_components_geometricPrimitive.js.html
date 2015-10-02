@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -181,7 +183,7 @@ function GeometricPrimitive(o)
 	this.size = 10;
 	this.subdivisions = 10;
 	this.point_size = 0.1;
-	this.geometry = GeometricPrimitive.CUBE;
+	this._geometry = GeometricPrimitive.CUBE;
 	this._primitive = -1;
 	this.align_z = false;
 
@@ -200,6 +202,17 @@ Object.defineProperty( GeometricPrimitive.prototype, &#x27;primitive&#x27;, {
 	enumerable: true
 });
 
+Object.defineProperty( GeometricPrimitive.prototype, &#x27;geometry&#x27;, {
+	get: function() { return this._geometry; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v &lt; 0 || v &gt; 7)
+			return;
+		this._geometry = v;
+	},
+	enumerable: true
+});
+
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
@@ -207,6 +220,7 @@ GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
 GeometricPrimitive.HEMISPHERE = 6;
 GeometricPrimitive.ICOSAHEDRON = 7;
+//Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 
 GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
 GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER, &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Icosahedron&quot;:GeometricPrimitive.ICOSAHEDRON, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
@@ -291,7 +305,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
+		RI.query.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
 	}
 
 	instances.push(RI);

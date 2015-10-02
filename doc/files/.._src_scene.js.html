@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -243,6 +245,7 @@ SceneTree.prototype.init = function()
 
 	this._frame = 0;
 	this._last_collect_frame = -1; //force collect
+	this._state = LS.STOPPED;
 
 	this._time = 0;
 	this._global_time = 0; //in seconds
@@ -608,18 +611,31 @@ SceneTree.prototype.getNodes = function()
 }
 
 /**
-* retrieves a Node based on the name or uid
+* retrieves a Node based on the name, path ( name|childname|etc ) or uid
 *
 * @method getNode
-* @param {String} id node id
+* @param {String} name node name to search
 * @return {Object} the node or null if it didnt find it
 */
 SceneTree.prototype.getNode = function( name )
 {
+	if(name == &quot;&quot;)
+		return this.root;
 	if(!name)
 		return null;
 	if(name.charAt(0) == LS._uid_prefix)
 		return this._nodes_by_uid[ name ];
+
+	// the | char is used to specify a node child of another node
+	if( name.indexOf(&quot;|&quot;) != -1)
+	{
+		var tokens = name.split(&quot;|&quot;);
+		var node = this.root; //another option could be to start in this._nodes_by_name[ tokens[0] ]
+		for(var i = 0; i &lt; tokens.length &amp;&amp; node; ++i)
+			node = node.getChildByName( tokens[i] );
+		return node;
+	}
+
 	return this._nodes_by_name[ name ];
 }
 
@@ -631,11 +647,10 @@ SceneTree.prototype.getNode = function( name )
 * @param {String} name name of the node
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNodeByName = function(name)
+SceneTree.prototype.getNodeByName = function( name )
 {
 	return this._nodes_by_name[ name ];
 }
-
 
 /**
 * retrieves a Node based on a given uid. It is fast because they are stored in an object
@@ -644,7 +659,7 @@ SceneTree.prototype.getNodeByName = function(name)
 * @param {String} uid uid of the node
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNodeByUId = function(uid)
+SceneTree.prototype.getNodeByUId = function( uid )
 {
 	return this._nodes_by_uid[ uid ];
 }
@@ -713,7 +728,7 @@ SceneTree.prototype.getPropertyInfo = function( property_uid )
 	if(!node)
 		return null;
 
-	return node.getPropertyInfoFromPath( path );
+	return node.getPropertyInfoFromPath( path.slice(1) );
 }
 
 /**
@@ -729,7 +744,7 @@ SceneTree.prototype.getPropertyInfoFromPath = function( path )
 	var node = this.getNode( path[0] );
 	if(!node)
 		return null;
-	return node.getPropertyInfoFromPath( path );
+	return node.getPropertyInfoFromPath( path.slice(1) );
 }
 
 
@@ -752,8 +767,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value )
 	var node = this.getNode( path[0] );
 	if(!node)
 		return null;
-
-	return node.setPropertyValueFromPath( path, value );
+	return node.setPropertyValueFromPath( path.slice(1), value );
 }
 
 /**
@@ -772,7 +786,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( property_path, value )
 	if(!node)
 		return null;
 
-	return node.setPropertyValueFromPath( property_path, value );
+	return node.setPropertyValueFromPath( property_path.slice(1), value );
 }
 
 
@@ -836,9 +850,10 @@ SceneTree.prototype.loadResources = function(on_complete)
 */
 SceneTree.prototype.start = function()
 {
-	if(this._state == &quot;running&quot;) return;
+	if(this._state == LS.RUNNING)
+		return;
 
-	this._state = &quot;running&quot;;
+	this._state = LS.RUNNING;
 	this._start_time = getTime() * 0.001;
 	/**
 	 * Fired when the scene is starting to play
@@ -858,9 +873,10 @@ SceneTree.prototype.start = function()
 */
 SceneTree.prototype.stop = function()
 {
-	if(this._state == &quot;stopped&quot;) return;
+	if(this._state == LS.STOPPED)
+		return;
 
-	this._state = &quot;stopped&quot;;
+	this._state = LS.STOPPED;
 	/**
 	 * Fired when the scene stops playing
 	 *
@@ -910,16 +926,19 @@ SceneTree.prototype.collectData = function()
 
 		//special node deformers (done here because they are shared for every node)
 			//this should be moved to Renderer but not a clean way to do it
-			var node_macros = {};
-			LEvent.trigger(node, &quot;computingShaderMacros&quot;, node_macros );
+			var node_query = new ShaderQuery();
+			LEvent.trigger( node, &quot;computingShaderQuery&quot;, node_query );
 
 			var node_uniforms = {};
 			LEvent.trigger(node, &quot;computingShaderUniforms&quot;, node_uniforms );
 
 		//store info
-		node._macros = node_macros;
+		node._query = node_query;
 		node._uniforms = node_uniforms;
-		node._instances = [];
+		if(!node._instances)
+			node._instances = [];
+		else
+			node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
 		LEvent.trigger(node,&quot;collectRenderInstances&quot;, node._instances );
@@ -1124,6 +1143,32 @@ SceneTree.prototype.getLayerNames = function(v)
 	return r;
 }
 
+SceneTree.prototype.findNodeComponents = function( type )
+{
+	if(!type)
+		return;
+
+	var find_component = null;
+	if(type.constructor === String)
+		find_component = LS.Components[ type ];
+	else
+		find_component = type;
+	if(!find_component)
+		return;
+
+	var result = [];
+	var nodes = LS.GlobalScene._nodes;
+	for(var i = 0; i &lt; nodes.length; ++i)
+	{
+		var node = nodes[i];
+		var components = node._components;
+		for(var j = 0; j &lt; components.length; ++j)
+			if( components[j].constructor === find_component )
+				result.push( components[j] );
+	}
+	return result;
+}
+
 
 //****************************************************************************
 
@@ -1140,7 +1185,7 @@ function SceneNode( name )
 {
 	//Generic
 	this._name = name || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
-	this.uid = LS.generateUId(&quot;NODE-&quot;);
+	this._uid = LS.generateUId(&quot;NODE-&quot;);
 	this.layers = 3|0; //32 bits for layers (force to int)
 
 	this._classList = {};
@@ -1166,7 +1211,7 @@ function SceneNode( name )
 
 	//Basic components
 	this._components = []; //used for logic actions
-	this.addComponent( new Transform() );
+	this.addComponent( new LS.Transform() );
 
 	//material
 	this._material = null;
@@ -1175,8 +1220,8 @@ function SceneNode( name )
 }
 
 //get methods from other classes
-LS.extendClass(SceneNode, ComponentContainer); //container methods
-LS.extendClass(SceneNode, CompositePattern); //container methods
+LS.extendClass( SceneNode, ComponentContainer ); //container methods
+LS.extendClass( SceneNode, CompositePattern ); //container methods
 
 /**
 * changes the node name
@@ -1195,6 +1240,33 @@ Object.defineProperty( SceneNode.prototype, &#x27;name&#x27;, {
 	},
 	enumerable: true
 });
+
+Object.defineProperty( SceneNode.prototype, &#x27;uid&#x27;, {
+	set: function(uid)
+	{
+		if(!uid)
+			return;
+
+		if(uid[0] != LS._uid_prefix)
+		{
+			console.warn(&quot;Invalid UID, renaming it to: &quot; + uid );
+			uid = LS._uid_prefix + uid;
+		}
+
+		if(uid == this._uid)
+			return;
+		if( this._in_tree &amp;&amp; this._in_tree._nodes_by_uid[ this.uid ] )
+			delete this._in_tree._nodes_by_uid[ this.uid ];
+		this._uid = uid;
+		if( this._in_tree )
+			this._in_tree._nodes_by_uid[ this.uid ] = this;
+	},
+	get: function(){
+		return this._uid;
+	},
+	enumerable: true
+});
+
 
 Object.defineProperty( SceneNode.prototype, &#x27;visible&#x27;, {
 	set: function(v)
@@ -1299,79 +1371,119 @@ Object.defineProperty( SceneNode.prototype, &#x27;className&#x27;, {
 	enumerable: true
 });
 
+SceneNode.prototype.getLocator = function()
+{
+	return this.uid;
+}
+
+SceneNode.prototype.getPropertyInfo = function( locator )
+{
+	var path = locator.split(&quot;/&quot;);
+	return this.getPropertyInfoFromPath(path);
+}
+
 SceneNode.prototype.getPropertyInfoFromPath = function( path )
 {
 	var target = this;
-	var varname = path[1];
+	var varname = path[0];
 
-	if(path.length == 1)
+	if(path.length == 0)
+	{
 		return {
 			node: this,
 			target: null,
 			name: &quot;&quot;,
-			value: null,
+			value: this,
 			type: &quot;node&quot;
 		};
-    else if(path.length == 2) //compo/var
+	}
+    else if(path.length == 1) //compo or //var
 	{
-		if(path[1][0] == &quot;@&quot;)
+		if(path[0][0] == &quot;@&quot;)
 		{
-			target = this.getComponentByUId( path[1] );
+			target = this.getComponentByUId( path[0] );
 			return {
 				node: this,
 				target: target,
 				name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
-				type: &quot;component&quot;
+				type: &quot;component&quot;,
+				value: target
 			};
 		}
-		else if (path[1] == &quot;material&quot;)
+		else if (path[0] == &quot;material&quot;)
 		{
 			target = this.getMaterial();
 			return {
 				node: this,
 				target: target,
 				name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
-				type: &quot;material&quot;
+				type: &quot;material&quot;,
+				value: target
 			};
 		}
 
-		var target = this.getComponent( path[1] );
-		return {
-			node: this,
-			target: target,
-			name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
-			type: &quot;component&quot;
-		};
-	}
-    else if(path.length &gt; 2) //compo/var
-	{
-		if(path[1][0] == &quot;@&quot;)
+		var target = this.getComponent( path[0] );
+		if(target)
 		{
-			varname = path[2];
-			target = this.getComponentByUId( path[1] );
+			return {
+				node: this,
+				target: target,
+				name: target ? LS.getObjectClassName( target ) : &quot;&quot;,
+				type: &quot;component&quot;,
+				value: target
+			};
 		}
-		else if (path[1] == &quot;material&quot;)
+
+		switch(path[0])
+		{
+			case &quot;matrix&quot;:
+			case &quot;x&quot;: 
+			case &quot;y&quot;: 
+			case &quot;z&quot;: 
+				target = this.transform;
+				varname = path[0];
+				break;
+			default: 
+				target = this;
+				varname = path[0];
+			break;
+		}
+	}
+    else if(path.length &gt; 1) //compo/var
+	{
+		if(path[0][0] == &quot;@&quot;)
+		{
+			varname = path[1];
+			target = this.getComponentByUId( path[0] );
+		}
+		else if (path[0] == &quot;material&quot;)
 		{
 			target = this.getMaterial();
-			varname = path[2];
+			varname = path[1];
+		}
+		else if (path[0] == &quot;flags&quot;)
+		{
+			target = this.flags;
+			varname = path[1];
 		}
 		else
 		{
-			target = this.getComponent( path[1] );
-			varname = path[2];
+			target = this.getComponent( path[0] );
+			varname = path[1];
 		}
 
 		if(!target)
 			return null;
 	}
-	else if(path[1] == &quot;matrix&quot;) //special case
-		target = this.transform;
+	else //�?
+	{
+	}
 
 	var v = undefined;
 
 	if( target.getPropertyInfoFromPath &amp;&amp; target != this )
 	{
-		var r = target.getPropertyInfoFromPath( path );
+		var r = target.getPropertyInfoFromPath( path.slice(1) );
 		if(r)
 			return r;
 	}
@@ -1409,48 +1521,65 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
+SceneNode.prototype.setPropertyValue = function( locator, value )
+{
+	var path = locator.split(&quot;/&quot;);
+	return this.setPropertyValueFromPath(path, value);
+}
+
 SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 {
 	var target = null;
-	var varname = path[1];
+	var varname = path[0];
 
-	if(path.length &gt; 2)
+	if(path.length &gt; 1)
 	{
-		if(path[1][0] == &quot;@&quot;)
+		if(path[0][0] == &quot;@&quot;)
 		{
-			varname = path[2];
-			target = this.getComponentByUId( path[1] );
+			varname = path[1];
+			target = this.getComponentByUId( path[0] );
 		}
 		else if( path[1] == &quot;material&quot; )
 		{
 			target = this.getMaterial();
-			varname = path[2];
+			varname = path[1];
+		}
+		else if( path[1] == &quot;flags&quot; )
+		{
+			target = this.flags;
+			varname = path[1];
 		}
 		else 
 		{
-			target = this.getComponent( path[1] );
-			varname = path[2];
+			target = this.getComponent( path[0] );
+			varname = path[1];
 		}
 
 		if(!target)
 			return null;
 	}
-	else { //special cases usually after importing from collada
-		switch (path[1])
+	else { //special cases 
+		switch ( path[0] )
 		{
 			case &quot;matrix&quot;: target = this.transform; break;
+			case &quot;x&quot;:
 			case &quot;translate.X&quot;: target = this.transform; varname = &quot;x&quot;; break;
+			case &quot;y&quot;:
 			case &quot;translate.Y&quot;: target = this.transform; varname = &quot;y&quot;; break;
+			case &quot;z&quot;:
 			case &quot;translate.Z&quot;: target = this.transform; varname = &quot;z&quot;; break;
 			case &quot;rotateX.ANGLE&quot;: target = this.transform; varname = &quot;pitch&quot;; break;
 			case &quot;rotateY.ANGLE&quot;: target = this.transform; varname = &quot;yaw&quot;; break;
 			case &quot;rotateZ.ANGLE&quot;: target = this.transform; varname = &quot;roll&quot;; break;
-			default: target = null;
+			default: target = this; //null
 		}
 	}
 
+	if(!target)
+		return null;
+
 	if(target.setPropertyValueFromPath &amp;&amp; target != this)
-		if( target.setPropertyValueFromPath(path, value) === true )
+		if( target.setPropertyValueFromPath( path.slice(1), value ) === true )
 			return target;
 	
 	if(target.setPropertyValue)
@@ -1496,7 +1625,7 @@ SceneNode.prototype.getResources = function(res, include_children)
 
 	//prefab
 	if(this.prefab)
-		res[this.prefab] = LS.Prefab;
+		res[ this.prefab ] = LS.Prefab;
 
 	//propagate
 	if(include_children)
@@ -1552,14 +1681,14 @@ SceneNode.prototype.setMesh = function(mesh_name, submesh_id)
 			this.meshrenderer.mesh = mesh_name;
 	}
 	else
-		this.addComponent(new MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }));
+		this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
 }
 
 SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
 {
 	options = options || {};
 
-	if(LS.ResourcesManager.meshes[mesh_filename] || !mesh_filename )
+	if( LS.ResourcesManager.meshes[mesh_filename] || !mesh_filename )
 	{
 		this.setMesh( mesh_filename );
 		if(options.on_complete) options.on_complete( LS.ResourcesManager.meshes[mesh_filename] ,this);
@@ -1605,7 +1734,7 @@ SceneNode.prototype.getMaterial = function()
 SceneNode.prototype.setPrefab = function(prefab_name)
 {
 	this._prefab_name = prefab_name;
-	var prefab = LS.ResourcesManager.resources[prefab_name];
+	var prefab = LS.ResourcesManager.resources[ prefab_name ];
 	if(!prefab)
 		return;
 
@@ -1685,11 +1814,7 @@ SceneNode.prototype.configure = function(info)
 
 	if (info.uid)
 	{
-		if( this._in_tree &amp;&amp; this._in_tree._nodes_by_uid[ this.uid ] )
-			delete this._in_tree._nodes_by_uid[ this.uid ];
 		this.uid = info.uid;
-		if( this._in_tree )
-			this._in_tree._nodes_by_uid[ this.uid ] = this;
 	}
 	if (info.className &amp;&amp; info.className.constructor == String)	
 		this.className = info.className;
@@ -1708,11 +1833,7 @@ SceneNode.prototype.configure = function(info)
 		if(info.morph_targets !== undefined)
 			mesh_render_config.morph_targets = info.morph_targets;
 
-		var compo = null;
-		if(mesh &amp;&amp; mesh.bones)
-			compo = new LS.Components.SkinnedMeshRenderer(mesh_render_config);
-		else
-			compo = new LS.Components.MeshRenderer(mesh_render_config);
+		var compo = new LS.Components.MeshRenderer(mesh_render_config);
 
 		//parsed meshes have info about primitive
 		if( mesh.primitive === &quot;line_strip&quot; )
@@ -1721,7 +1842,22 @@ SceneNode.prototype.configure = function(info)
 			delete mesh.primitive;
 		}
 
+		//add MeshRenderer
 		this.addComponent( compo );
+
+		//skinning
+		if(mesh &amp;&amp; mesh.bones)
+		{
+			compo = new LS.Components.SkinDeformer();
+			this.addComponent( compo );
+		}
+
+		//morph
+		if( mesh &amp;&amp; mesh.morph_targets )
+		{
+			var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
+			this.addComponent( compo );
+		}
 	}
 
 	//transform in matrix format could come from importers so we leave it
@@ -1863,6 +1999,17 @@ SceneNode.prototype._onChildRemoved = function(node, recompute_transform)
 	}
 }
 
+//Computes the bounding box from the render instance of this node
+//doesnt take into account children
+SceneNode.prototype.getBoundingBox = function( bbox )
+{
+	bbox = bbox || BBox.create();
+	var render_instances = this._instances;
+	if(render_instances)
+		for(var i = 0; i &lt; render_instances.length; ++i)
+			BBox.merge( bbox, bbox, render_instances[i].aabb );
+	return bbox;
+}
 
 //***************************************************************************
 

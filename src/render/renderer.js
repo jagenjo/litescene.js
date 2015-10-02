@@ -289,8 +289,9 @@ var Renderer = {
 	*
 	* @method renderInstances
 	* @param {RenderOptions} render_options
+	* @param {Array} instances array of RIs, if not specified the last visible_instances are rendered
 	*/
-	renderInstances: function( render_options )
+	renderInstances: function( render_options, instances )
 	{
 		var scene = this._current_scene;
 		if(!scene)
@@ -303,16 +304,17 @@ var Renderer = {
 		var layers_filter = camera.layers;
 		if( render_options.layers )
 			layers_filter = render_options.layers;
+		var is_color_render = !render_options.is_shadowmap && !render_options.is_picking;
 
 		LEvent.trigger(scene, "beforeRenderInstances", render_options);
 		scene.triggerInNodes("beforeRenderInstances", render_options);
 
 		//compute global scene info
-		this.fillSceneShaderMacros( scene, render_options );
+		this.fillSceneShaderQuery( scene, render_options );
 		this.fillSceneShaderUniforms( scene, render_options );
 
 		//render background: maybe this should be moved to a component
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["background"])
+		if(is_color_render && scene.info.textures["background"])
 		{
 			var texture = scene.info.textures["background"];
 			if(texture)
@@ -334,9 +336,9 @@ var Renderer = {
 		//this.updateVisibleInstances(scene,options);
 		var lights = this._visible_lights;
 		var numLights = lights.length;
-		var render_instances = this._visible_instances;
+		var render_instances = instances || this._visible_instances;
 
-		LEvent.trigger(scene, "renderInstances", render_options);
+		LEvent.trigger( scene, "renderInstances", render_options );
 
 		//reset again!
 		this.resetGLState();
@@ -354,7 +356,7 @@ var Renderer = {
 				continue;
 			if(render_options.is_shadowmap && !(instance.flags & RI_CAST_SHADOWS))
 				continue;
-			if(node_flags.seen_by_camera == false && !render_options.is_shadowmap && !render_options.is_picking && !render_options.is_reflection)
+			if(node_flags.seen_by_camera == false && is_color_render && !render_options.is_reflection)
 				continue;
 			if(node_flags.seen_by_picking == false && render_options.is_picking)
 				continue;
@@ -411,19 +413,22 @@ var Renderer = {
 			else
 			{
 				//Compute lights affecting this RI (by proximity, only takes into account spherical bounding)
-				close_lights.length = 0;
-				for(var j = 0; j < numLights; j++)
+				if( is_color_render )
 				{
-					var light = lights[j];
-					if( (light._root.layers & instance.layers) == 0 || (light._root.layers & camera.layers) == 0)
-						continue;
-					var light_intensity = light.computeLightIntensity();
-					if(light_intensity < 0.0001)
-						continue;
-					var light_radius = light.computeLightRadius();
-					var light_pos = light.position;
-					if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
-						close_lights.push(light);
+					close_lights.length = 0;
+					for(var j = 0; j < numLights; j++)
+					{
+						var light = lights[j];
+						if( (light._root.layers & instance.layers) == 0 || (light._root.layers & camera.layers) == 0)
+							continue;
+						var light_intensity = light.computeLightIntensity();
+						if(light_intensity < 0.0001)
+							continue;
+						var light_radius = light.computeLightRadius();
+						var light_pos = light.position;
+						if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
+							close_lights.push(light);
+					}
 				}
 				//else //use all the lights
 				//	close_lights = lights;
@@ -439,7 +444,7 @@ var Renderer = {
 		LEvent.trigger(scene, "renderScreenSpace", render_options);
 
 		//foreground object
-		if(!render_options.is_shadowmap && !render_options.is_picking && scene.info.textures["foreground"])
+		if(is_color_render && scene.info.textures["foreground"])
 		{
 			var texture = scene.info.textures["foreground"];
 			if( texture )
@@ -565,7 +570,7 @@ var Renderer = {
 			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var instance_final_macros = instance._final_macros;
+		var instance_final_query = instance._final_query;
 		var instance_final_uniforms = instance._final_uniforms;
 		var instance_final_samplers = instance._final_samplers;
 
@@ -611,22 +616,23 @@ var Renderer = {
 		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || render_options.lights_disabled;
 		if(!num_lights || ignore_lights)
 		{
-			var macros = { FIRST_PASS:"", USE_AMBIENT_ONLY:"" };
-			macros.merge(scene._macros);
-			macros.merge(instance_final_macros); //contains node, material and instance macros
+			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:"", LAST_PASS:"", USE_AMBIENT_ONLY:"" });
+			query.add( scene._query );
+			query.add( instance_final_query ); //contains node, material and instance macros
 
 			if( ignore_lights )
-				macros.USE_IGNORE_LIGHTS = "";
+				query.setMacro( "USE_IGNORE_LIGHTS" );
 			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
-				macros.USE_CLIPPING_PLANE = "";
+				query.setMacro( "USE_CLIPPING_PLANE" );
 
-			if( material.onModifyMacros )
-				material.onModifyMacros( macros );
+			if( material.onModifyQuery )
+				material.onModifyQuery( query );
 
-			var shader = ShadersManager.get(shader_name, macros);
+			//resolve the shader
+			var shader = ShadersManager.resolve( query );
 
 			//assign uniforms
-			shader.uniformsArray( [sampler_uniforms, scene._uniforms, camera._uniforms, instance_final_uniforms] );
+			shader.uniformsArray( [ sampler_uniforms, scene._uniforms, camera._uniforms, instance_final_uniforms ] );
 
 			//render
 			instance.render( shader );
@@ -639,31 +645,26 @@ var Renderer = {
 		{
 			var light = lights[iLight];
 
-			//compute the  shader
-			var shader = null;
-			if(!shader)
-			{
-				var light_macros = light.getMacros( instance, render_options );
+			var query = new LS.ShaderQuery( shader_name );
 
-				var macros = {}; //wipeObject(macros);
+			var light_query = light.getQuery( instance, render_options );
 
-				if(iLight === 0)
-					macros.FIRST_PASS = "";
-				if(iLight === (num_lights-1))
-					macros.LAST_PASS = "";
+			if(iLight === 0)
+				query.setMacro("FIRST_PASS");
+			if(iLight === (num_lights-1))
+				query.setMacro("LAST_PASS");
 
-				macros.merge(scene._macros);
-				macros.merge(instance_final_macros); //contains node, material and instance macros
-				macros.merge(light_macros);
+			query.add( scene._query );
+			query.add( instance_final_query ); //contains node, material and instance macros
+			query.add( light_query );
 
-				if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
-					macros.USE_CLIPPING_PLANE = "";
+			if(render_options.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+				query.setMacro("USE_CLIPPING_PLANE");
 
-				if( material.onModifyMacros )
-					material.onModifyMacros( macros );
+			if( material.onModifyQuery )
+				material.onModifyQuery( query );
 
-				shader = ShadersManager.get(shader_name, macros);
-			}
+			var shader = LS.ShadersManager.resolve( query );
 
 			//fill shader data
 			var light_uniforms = light.getUniforms( instance, render_options );
@@ -716,7 +717,7 @@ var Renderer = {
 		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		//node matrix info
-		var instance_final_macros = instance._final_macros;
+		var instance_final_query = instance._final_query;
 		var instance_final_uniforms = instance._final_uniforms;
 		var instance_final_samplers = instance._final_samplers;
 
@@ -728,47 +729,40 @@ var Renderer = {
 		instance_final_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS
-		this.enableInstanceFlags(instance, render_options);
+		this.enableInstanceFlags( instance, render_options );
 
-		var macros = {};
-		macros.merge( scene._macros );
-		macros.merge( instance_final_macros );
+		var query = new ShaderQuery("depth");
+		query.add( scene._query );
+		query.add( instance_final_query );
 
-		if(this._current_target && this._current_target.texture_type === gl.TEXTURE_CUBE_MAP)
-			macros["USE_LINEAR_DISTANCE"] = "";
+		//if(this._current_target && this._current_target.texture_type === gl.TEXTURE_CUBE_MAP)
+		//	query.setMacro("USE_LINEAR_SHADOWMAP");
 
-		/*
+		//not fully supported yet
 		if(node.flags.alpha_shadows == true )
 		{
-			macros["USE_ALPHA_TEST"] = "0.5";
+			query.setMacro("USE_ALPHA_TEST","0.5");
 			var color = material.getTexture("color");
 			if(color)
 			{
 				var color_uvs = material.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
-				macros.USE_COLOR_TEXTURE = "uvs_" + color_uvs;
+				query.setMacro("USE_COLOR_TEXTURE","uvs_" + color_uvs);
 				color.bind(0);
 			}
 
 			var opacity = material.getTexture("opacity");
 			if(opacity)	{
 				var opacity_uvs = material.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
-				macros.USE_OPACITY_TEXTURE = "uvs_" + opacity_uvs;
+				query.setMacro("USE_OPACITY_TEXTURE","uvs_" + opacity_uvs);
 				opacity.bind(1);
 			}
-
-			shader = ShadersManager.get("depth", macros);
-			shader.uniforms({ texture: 0, opacity_texture: 1 });
+			//shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
-		else
-		{
-			shader = ShadersManager.get("depth", macros );
-		}
-		*/
 
 		if(node.flags.alpha_shadows == true )
-			macros["USE_ALPHA_TEST"] = "0.5";
+			query.setMacro("USE_ALPHA_TEST","0.5");
 
-		var shader = ShadersManager.get("depth", macros );
+		var shader = ShadersManager.resolve( query );
 
 		var samplers = {};
 		samplers.merge( scene._samplers );
@@ -856,7 +850,7 @@ var Renderer = {
 		*/
 
 		var shader_name = "flat_texture";
-		var shader = ShadersManager.get(shader_name);
+		var shader = ShadersManager.get( shader_name );
 
 		var samplers = {};
 		samplers.merge( scene._samplers );
@@ -879,7 +873,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderOptions} render_options
 	*/
-	renderPickingInstance: function(instance, render_options)
+	renderPickingInstance: function( instance, render_options )
 	{
 		var scene = this._current_scene;
 		var camera = this._current_camera;
@@ -896,57 +890,50 @@ var Renderer = {
 		this._picking_nodes[this._picking_next_color_id] = node;
 		*/
 
-		var macros = {};
-		macros.merge(scene._macros);
-		macros.merge(instance._final_macros);
+		var query = new LS.ShaderQuery("flat");
+		query.add( scene._query );
+		query.add( instance._final_query );
 
-		var shader = ShadersManager.get("flat", macros);
+		var shader = ShadersManager.resolve( query );
 		shader.uniforms(scene._uniforms);
 		shader.uniforms(camera._uniforms);
 		shader.uniforms(instance.uniforms);
 		shader.uniforms({u_model: model, u_mvp: this._mvp_matrix, u_material_color: pick_color });
 
-		//hardcoded, ugly
-		/*
-		if( macros["USE_SKINNING"] && instance.uniforms["u_bones"] )
-			if( macros["USE_SKINNING_TEXTURE"] )
-				shader.uniforms({ u_bones: });
-		*/
-
 		instance.render(shader);
 	},
 
 	/**
-	* Update the scene shader macros according to the render pass
-	* Do not reuse the macros, they change between rendering passes (shadows, reflections, etc)
+	* Update the scene shader query according to the render pass
+	* Do not reuse the query, they change between rendering passes (shadows, reflections, etc)
 	*
-	* @method fillSceneShaderMacros
+	* @method fillSceneShaderQuery
 	* @param {SceneTree} scene
 	* @param {RenderOptions} render_options
 	*/
-	fillSceneShaderMacros: function( scene, render_options )
+	fillSceneShaderQuery: function( scene, render_options )
 	{
-		var macros = {};
+		var query = new ShaderQuery();
 
-		if(render_options.current_camera.type == Camera.ORTHOGRAPHIC)
-			macros.USE_ORTHOGRAPHIC_CAMERA = "";
+		if( render_options.current_camera.type == Camera.ORTHOGRAPHIC )
+			query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
 
 		//camera info
 		if(render_options == "color")
 		{
 			if(render_options.brightness_factor && render_options.brightness_factor != 1)
-				macros.USE_BRIGHTNESS_FACTOR = "";
+				query.setMacro("USE_BRIGHTNESS_FACTOR");
 
 			if(render_options.colorclip_factor)
-				macros.USE_COLORCLIP_FACTOR = "";
+				query.setMacro("USE_COLORCLIP_FACTOR");
 		}
 
 		if(render_options.current_renderframe && render_options.current_renderframe.use_extra_texture)
-			macros["USE_DRAW_BUFFERS"] = "";
+			query.setMacro("USE_DRAW_BUFFERS");
 
-		LEvent.trigger(scene, "fillSceneMacros", macros );
+		LEvent.trigger( scene, "fillSceneQuery", query );
 
-		scene._macros = macros;
+		scene._query = query;
 	},
 
 	//Called at the beginning of renderInstances (once per renderFrame)
@@ -983,10 +970,10 @@ var Renderer = {
 				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
 			}
 			scene._samplers[i + type] = texture;
-			scene._macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
+			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
 
-		LEvent.trigger(scene, "fillSceneUniforms", scene._uniforms );
+		LEvent.trigger( scene, "fillSceneUniforms", scene._uniforms );
 	},	
 
 	/**
@@ -1100,23 +1087,23 @@ var Renderer = {
 				opaque_instances.push(instance);
 
 			//node & mesh constant information
-			var macros = instance.macros;
+			var query = instance.query;
 			if(instance.flags & RI_ALPHA_TEST)
-				macros.USE_ALPHA_TEST = "0.5";
-			else if(macros["USE_ALPHA_TEST"])
-				delete macros["USE_ALPHA_TEST"];
+				query.macros.USE_ALPHA_TEST = "0.5";
+			else if(query.macros["USE_ALPHA_TEST"])
+				delete query.macros["USE_ALPHA_TEST"];
 
 			var buffers = instance.vertex_buffers;
 			if(!("normals" in buffers))
-				macros.NO_NORMALS = "";
+				query.macros.NO_NORMALS = "";
 			if(!("coords" in buffers))
-				macros.NO_COORDS = "";
+				query.macros.NO_COORDS = "";
 			if(("coords1" in buffers))
-				macros.USE_COORDS1_STREAM = "";
+				query.macros.USE_COORDS1_STREAM = "";
 			if(("colors" in buffers))
-				macros.USE_COLOR_STREAM = "";
+				query.macros.USE_COLOR_STREAM = "";
 			if(("tangents" in buffers))
-				macros.USE_TANGENT_STREAM = "";
+				query.macros.USE_TANGENT_STREAM = "";
 		}
 
 		//Sorting
@@ -1132,7 +1119,7 @@ var Renderer = {
 
 		//update materials info only if they are in use
 		if(render_options.update_materials)
-			this._prepareMaterials(materials, scene);
+			this._prepareMaterials( materials, scene );
 
 		//pack all macros, uniforms, and samplers relative to this instance in single containers
 		for(var i = 0, l = instances.length; i < l; ++i)
@@ -1141,14 +1128,14 @@ var Renderer = {
 			var node = instance.node;
 			var material = instance.material;
 
-			var macros = instance._final_macros;
-			wipeObject(macros);
-			macros.merge(node._macros);
-			macros.merge(material._macros);
-			macros.merge(instance.macros);
+			var query = instance._final_query;
+			query.clear();
+			query.add( node._query );
+			query.add( material._query );
+			query.add( instance.query );
 
 			var uniforms = instance._final_uniforms;
-			wipeObject(uniforms);
+			wipeObject( uniforms );
 			uniforms.merge( node._uniforms );
 			uniforms.merge( material._uniforms );
 			uniforms.merge( instance.uniforms );
@@ -1172,7 +1159,7 @@ var Renderer = {
 
 		//prepare lights (collect data and generate shadowmaps)
 		for(var i = 0, l = lights.length; i < l; ++i)
-			lights[i].prepare(render_options);
+			lights[i].prepare( render_options );
 	},
 
 	//outside of processVisibleData to allow optimizations in processVisibleData
@@ -1181,13 +1168,12 @@ var Renderer = {
 		for(var i in materials)
 		{
 			var material = materials[i];
-			if(!material._macros)
+			if(!material._uniforms)
 			{
-				material._macros = {};
 				material._uniforms = {};
 				material._samplers = {};
 			}
-			material.fillShaderMacros(scene); //update shader macros on this material
+			material.fillShaderQuery(scene); //update shader macros on this material
 			material.fillUniforms(scene); //update uniforms
 		}
 	},
@@ -1225,7 +1211,7 @@ var Renderer = {
 			if(render_options.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
-			Renderer.renderInstances(render_options);
+			LS.Renderer.renderInstances( render_options );
 		}
 	},
 

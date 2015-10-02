@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -236,6 +238,7 @@ function Camera(o)
 	//this.updateMatrices(); //done by configure
 
 	this._uniforms = {
+		u_view: this._view_matrix,
 		u_viewprojection: this._viewprojection_matrix,
 		u_camera_eye: this._global_eye,
 		u_camera_front: this._global_front,
@@ -303,7 +306,7 @@ Object.defineProperty( Camera.prototype, &quot;type&quot;, {
 });
 
 /**
-* The position of the camera (in local space form the node)
+* The position of the camera (in local space, node space)
 * @property eye {vec3}
 * @default [0,100,100]
 */
@@ -318,7 +321,7 @@ Object.defineProperty( Camera.prototype, &quot;eye&quot;, {
 });
 
 /**
-* The center where the camera points (in node space)
+* The center where the camera points (in local space, node space)
 * @property center {vec3}
 * @default [0,0,0]
 */
@@ -333,7 +336,7 @@ Object.defineProperty( Camera.prototype, &quot;center&quot;, {
 });
 
 /**
-* The up vector of the camera (in node space)
+* The up vector of the camera (in local space, node space)
 * @property up {vec3}
 * @default [0,1,0]
 */
@@ -823,32 +826,23 @@ Camera.prototype.setCenter = function(v)
 	this._must_update_view_matrix = true;
 }
 
-/*
-//in global coordinates (when inside a node)
-Camera.prototype.getGlobalFront = function(dest)
-{
-	dest = dest || vec3.create();
-	vec3.subtract( dest, this._center, this._eye);
-	vec3.normalize(dest, dest);
-	if(this._root &amp;&amp; this._root.transform)
-		this._root.transform.transformVector(dest, dest);
-	return dest;
-}
-
-Camera.prototype.getGlobalTop = function(dest)
-{
-	dest = dest || vec3.create();
-	vec3.subtract( dest, this._center, this._eye);
-	vec3.normalize(dest, dest);
-	var right = vec3.cross( vec3.create(), dest, this._up );
-	vec3.cross( dest, dest, right );
-	vec3.scale( dest, dest, -1.0 );
-
-	if(this._root &amp;&amp; this._root.transform)
-		this._root.transform.transformVector(dest, dest);
-	return dest;
-}
+/**
+* set camera in perspective mode and sets the properties
+* @method setPerspective
+* @param {number} fov in degrees
+* @param {number} aspect the aspect modifier (not the real final aspect, leave it to one)
+* @param {number} near distance
+* @param {number} far distance
 */
+Camera.prototype.setPerspective = function( fov, aspect, near, far )
+{
+	this._fov = fov;
+	this._aspect = aspect;
+	this._near = near;
+	this._far = far;
+	this._type = Camera.PERSPECTIVE;
+	this._must_update_projection_matrix = true;
+}
 
 /**
 * set camera in orthographic mode and sets the planes
@@ -901,6 +895,13 @@ Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
 	this._must_update_view_matrix = true;
 }
 
+/**
+* Rotates the camera eye around a center
+* @method orbit
+* @param {number} angle_in_deg
+* @param {vec3} axis
+* @param {vec3} center optional
+*/
 Camera.prototype.orbit = function(angle_in_deg, axis, center)
 {
 	center = center || this._center;
@@ -911,6 +912,7 @@ Camera.prototype.orbit = function(angle_in_deg, axis, center)
 	this._must_update_view_matrix = true;
 }
 
+//this is too similar to setDistanceToCenter, must be removed
 Camera.prototype.orbitDistanceFactor = function(f, center)
 {
 	center = center || this._center;
@@ -920,7 +922,30 @@ Camera.prototype.orbitDistanceFactor = function(f, center)
 	this._must_update_view_matrix = true;
 }
 
-Camera.prototype.setOrientation = function(q, use_oculus)
+/**
+* changes the distance between eye and center ( it could move the center or the eye, depending on the parameters )
+* @method setDistanceToCenter
+* @param {number} new_distance
+* @param {boolean} move_eye if this is true it moves the eye closer, otherwise it moves the center closer to the eye
+*/
+Camera.prototype.setDistanceToCenter = function( new_distance, move_eye )
+{
+	if(this._root)
+	{
+		console.warn(&quot;cannot use setDistanceToCenter in a camera attached to a node&quot;);
+		return;
+	}
+
+	var front = vec3.sub( vec3.create(), this._center, this._eye );
+	var dist = vec3.length( front );
+	if(move_eye)
+		vec3.scaleAndAdd( this._eye, this._center, front, -new_distance / dist  );
+	else
+		vec3.scaleAndAdd( this._center, this._eye, front, new_distance / dist );
+	this._must_update_view_matrix = true;
+}
+
+Camera.prototype.setOrientation = function(q, use_vr)
 {
 	var center = this.getCenter();
 	var eye = this.getEye();
@@ -932,7 +957,7 @@ Camera.prototype.setOrientation = function(q, use_oculus)
 	var front = null;
 	front = vec3.fromValues(0,0,-dist);
 
-	if(use_oculus)
+	if(use_vr)
 	{
 		vec3.rotateY( front, front, Math.PI * -0.5 );
 		vec3.rotateY( up, up, Math.PI * -0.5 );
@@ -941,7 +966,7 @@ Camera.prototype.setOrientation = function(q, use_oculus)
 	vec3.transformQuat(front, front, q);
 	vec3.transformQuat(up, up, q);
 
-	if(use_oculus)
+	if(use_vr)
 	{
 		vec3.rotateY( front, front, Math.PI * 0.5 );
 		vec3.rotateY( up, up, Math.PI * 0.5 );
@@ -985,19 +1010,6 @@ Camera.prototype.setViewportInPixels = function(left,bottom,width,height)
 	this._viewport[3] = height / gl.canvas.height;
 }
 
-
-/**
-* Applies the camera transformation (from eye,center,up) to the node.
-* @method updateNodeTransform
-*/
-
-/* DEPRECATED
-Camera.prototype.updateNodeTransform = function()
-{
-	if(!this._root) return;
-	this._root.transform.fromMatrix( this.getModel() );
-}
-*/
 
 /**
 * Converts from 3D to 2D
@@ -1100,7 +1112,14 @@ Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 	return { start: eye, direction: dir };
 }
 
-
+/**
+* Returns true if the 2D point (in screen space coordinates) is inside the camera viewport area
+* @method isPointInCamera
+* @param {number} x
+* @param {number} y
+* @param {vec4} viewport viewport coordinates (if omited full viewport is used)
+* @return {boolean} 
+*/
 Camera.prototype.isPointInCamera = function( x, y, viewport )
 {
 	var v = this.getLocalViewport( viewport, this._viewport_in_pixels );
@@ -1227,6 +1246,8 @@ Camera.prototype.applyTransformMatrix = function( matrix, center, element )
 	mat4.multiplyVec3( p, matrix, p );
 	return true;
 }
+
+//Rendering stuff ******************************************
 
 //used when rendering to a texture
 Camera.prototype.startFBO = function()

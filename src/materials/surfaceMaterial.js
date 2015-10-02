@@ -1,6 +1,6 @@
-function SurfaceMaterial(o)
+function SurfaceMaterial( o )
 {
-	Material.call(this, null);
+	Material.call( this, null );
 
 	this.shader_name = "surface";
 
@@ -15,7 +15,6 @@ function SurfaceMaterial(o)
 	o.Alpha = IN.color.a;\n}\n";
 
 	this._uniforms = {};
-	this._macros = {};
 
 	this.properties = []; //array of configurable properties
 	if(o) 
@@ -94,45 +93,45 @@ SurfaceMaterial.prototype.computeCode = function()
 }
 
 // RENDERING METHODS
-SurfaceMaterial.prototype.onModifyMacros = function(macros)
+SurfaceMaterial.prototype.onModifyQuery = function( query )
 {
 	if(this._ps_uniforms_code)
 	{
-		if(macros.USE_PIXEL_SHADER_UNIFORMS)
-			macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
+		if(query.macros.USE_PIXEL_SHADER_UNIFORMS)
+			query.macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
 		else
-			macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
+			query.macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
 	}
 
 	if(this._ps_functions_code)
 	{
-		if(macros.USE_PIXEL_SHADER_FUNCTIONS)
-			macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
+		if(query.macros.USE_PIXEL_SHADER_FUNCTIONS)
+			query.macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
 		else
-			macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
+			query.macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
 	}
 
 	if(this._ps_code)
 	{
-		if(macros.USE_PIXEL_SHADER_CODE)
-			macros.USE_PIXEL_SHADER_CODE += this._ps_code;
+		if(query.macros.USE_PIXEL_SHADER_CODE)
+			query.macros.USE_PIXEL_SHADER_CODE += this._ps_code;
 		else
-			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
+			query.macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
 	}
 
-	macros.USE_SURFACE_SHADER = this.surf_code;
+	query.macros.USE_SURFACE_SHADER = this.surf_code;
 }
 
-SurfaceMaterial.prototype.fillShaderMacros = function(scene)
+SurfaceMaterial.prototype.fillShaderQuery = function(scene)
 {
-	var macros = {};
-	this._macros = macros;
+	var query = this._query;
+	query.clear();
 	if( this.textures["environment"] )
 	{
 		var sampler = this.textures["environment"];
 		var tex = LS.getTexture( sampler.texture );
 		if(tex)
-			this._macros[ "USE_ENVIRONMENT_" + (tex.type == gl.TEXTURE_2D ? "TEXTURE" : "CUBEMAP") ] = sampler.uvs;
+			query.macros[ "USE_ENVIRONMENT_" + (tex.type == gl.TEXTURE_2D ? "TEXTURE" : "CUBEMAP") ] = sampler.uvs;
 	}
 }
 
@@ -275,17 +274,17 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 
 SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value )
 {
-	if( path.length < 3)
+	if( path.length < 1)
 		return;
-	return this.setProperty( path[2], value );
+	return this.setProperty( path[0], value );
 }
 
 SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 {
-	if( path.length < 3)
+	if( path.length < 1)
 		return;
 
-	var varname = path[2];
+	var varname = path[0];
 
 	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{

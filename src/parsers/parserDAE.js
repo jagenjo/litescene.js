@@ -18,18 +18,50 @@ var parserDAE = {
 		}; //this is done to match LS specification
 
 		//parser moved to Collada.js library
-		var data = Collada.parse( data, options, filename );
-		console.log(data); 
+		var scene = Collada.parse( data, options, filename );
+		console.log( scene ); 
+
+		scene.root.name = filename;
+
+		//apply 90 degrees rotation to match the Y UP AXIS of the system
+		if(scene.metadata && scene.metadata.up_axis == "Z_UP")
+			scene.root.model = mat4.rotateX( mat4.create(), mat4.create(), -90 * 0.0174532925 );
 
 		//skip renaming ids (this is done to ensure no collision with names coming from other files)
 		if(options.skip_renaming)
-			return data;
+			return scene;
 
+		//rename meshes, nodes, etc
+		var renamed = {};
 		var basename = filename.substr(0, filename.indexOf("."));
 
+		//rename meshes names
+		var renamed_meshes = {};
+		for(var i in scene.meshes)
+		{
+			var newmeshname = basename + "__" + i;
+			newmeshname = newmeshname.replace(/[^a-z0-9]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
+			renamed[ i ] = newmeshname;
+			renamed_meshes[ newmeshname ] = scene.meshes[i];
+		}
+		scene.meshes = renamed_meshes;
+
+		//rename morph targets names
+		for(var i in scene.meshes)
+		{
+			var mesh = scene.meshes[i];
+			if(mesh.morph_targets)
+				for(var j = 0; j < mesh.morph_targets.length; ++j)
+				{
+					var morph = mesh.morph_targets[j];
+					if(morph.mesh && renamed[ morph.mesh ])
+						morph.mesh = renamed[ morph.mesh ];
+				}
+		}
+
+
 		//change local collada ids to valid uids 
-		var renamed = {};
-		replace_uids( data.root );
+		replace_uids( scene.root );
 
 		function replace_uids( node )
 		{
@@ -40,14 +72,9 @@ var parserDAE = {
 				renamed[ node.id ] = node.uid;
 			}
 
-			//change mesh names
-			if(node.mesh)
-			{
-				var newmeshname = basename + "__" + node.mesh;
-				newmeshname = newmeshname.replace(/[^a-z0-9]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
-				renamed[ node.mesh ] = newmeshname;
-				node.mesh = newmeshname;
-			}
+			//change mesh names to engine friendly ids
+			if(node.mesh && renamed[ node.mesh ])
+				node.mesh = renamed[ node.mesh ];
 
 			if(node.children)
 				for(var i in node.children)
@@ -55,11 +82,9 @@ var parserDAE = {
 		}
 
 		//replace skinning joint ids
-		var newmeshes = {};
-
-		for(var i in data.meshes)
+		for(var i in scene.meshes)
 		{
-			var mesh = data.meshes[i];
+			var mesh = scene.meshes[i];
 			if(mesh.bones)
 			{
 				for(var j in mesh.bones)
@@ -70,20 +95,17 @@ var parserDAE = {
 						mesh.bones[j][0] = uid;
 				}
 			}
-
-			newmeshes[ renamed[i] ] = mesh;
 		}
-		data.meshes = newmeshes;
 
 		//check resources
-		for(var i in data.resources)
+		for(var i in scene.resources)
 		{
-			var res = data.resources[i];
+			var res = scene.resources[i];
 			if(res.object_type == "Animation")
 				this.processAnimation( res, renamed );
 		}
 
-		return data;
+		return scene;
 	},
 
 	//depending on the 3D software used, animation tracks could be tricky to handle
@@ -102,10 +124,12 @@ var parserDAE = {
 					continue;
 				var nodename = track.property.substr(0,pos);
 				var extra = track.property.substr(pos);
+				if(extra == "/transform") //blender exports matrices as transform
+					extra = "/matrix";
 
-				if(!renamed[nodename])
+				if( !renamed[nodename] )
 					continue;
-				nodename = renamed[nodename];
+				nodename = renamed[ nodename ];
 				track.property = nodename + extra;
 			}
 

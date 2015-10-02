@@ -14,7 +14,7 @@
 
 function StandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the object
+	Material.call(this,null); //do not pass the object, it is called later
 
 	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty("emissive", new Float32Array(3), "color" );
@@ -114,9 +114,10 @@ struct SurfaceOutput {\n\
 ";
 
 // RENDERING METHODS
-StandardMaterial.prototype.fillShaderMacros = function(scene)
+StandardMaterial.prototype.fillShaderQuery = function( scene )
 {
-	var macros = {};
+	var query = this._query;
+	query.clear();
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -141,11 +142,11 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
 			{
-				macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
+				query.macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
 				if(this.normalmap_factor != 0.0)
-					macros.USE_NORMALMAP_FACTOR = "";
+					query.macros.USE_NORMALMAP_FACTOR = "";
 				if(this.normalmap_tangent && gl.derivatives_supported)
-					macros.USE_TANGENT_NORMALMAP = "";
+					query.macros.USE_TANGENT_NORMALMAP = "";
 			}
 			continue;
 		}
@@ -153,9 +154,9 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
 			{
-				macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
+				query.macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
 				if(this.displacementmap_factor != 1.0)
-					macros.USE_DISPLACEMENTMAP_FACTOR = "";
+					query.macros.USE_DISPLACEMENTMAP_FACTOR = "";
 			}
 			continue;
 		}
@@ -163,33 +164,33 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		{
 			if(this.bump_factor != 0.0 && gl.derivatives_supported )
 			{
-				macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
+				query.macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
 				if(this.bumpmap_factor != 1.0)
-					macros.USE_BUMP_FACTOR = "";
+					query.macros.USE_BUMP_FACTOR = "";
 			}
 			continue;
 		}
 
-		macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
 	}
 
 	if(this.velvet && this.velvet_exp) //first light only
-		macros.USE_VELVET = "";
+		query.macros.USE_VELVET = "";
 	
 	if(this.emissive_material) //dont know whats this
-		macros.USE_EMISSIVE_MATERIAL = "";
+		query.macros.USE_EMISSIVE_MATERIAL = "";
 	
 	if(this.specular_ontop)
-		macros.USE_SPECULAR_ONTOP = "";
+		query.macros.USE_SPECULAR_ONTOP = "";
 	if(this.specular_on_alpha)
-		macros.USE_SPECULAR_ON_ALPHA = "";
+		query.macros.USE_SPECULAR_ON_ALPHA = "";
 	if(this.reflection_specular)
-		macros.USE_SPECULAR_IN_REFLECTION = "";
+		query.macros.USE_SPECULAR_IN_REFLECTION = "";
 	if(this.backlight_factor > 0.001)
-		macros.USE_BACKLIGHT = "";
+		query.macros.USE_BACKLIGHT = "";
 
 	if(this.reflection_factor > 0.0) 
-		macros.USE_REFLECTION = "";
+		query.macros.USE_REFLECTION = "";
 
 	//extra code
 	if(this.extra_surface_shader_code)
@@ -203,15 +204,13 @@ StandardMaterial.prototype.fillShaderMacros = function(scene)
 		else
 			code = this._last_processed_extra_surface_shader_code;
 		if(code)
-			macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
+			query.macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
 	}
 
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	this._macros = macros;
+			query.macros[im] = this.extra_macros[im];
 }
 
 StandardMaterial.prototype.fillUniforms = function( scene, options )

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/materials/surfaceMaterial.js</title>
+    <title>../src/materials/customMaterial.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -166,15 +166,15 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/materials/surfaceMaterial.js</h1>
+                        <h1 class="file-heading">File: ../src/materials/customMaterial.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-function SurfaceMaterial( o )
+function CustomMaterial( o )
 {
 	Material.call( this, null );
 
-	this.shader_name = &quot;surface&quot;;
+	this.shader_name = &quot;base&quot;;
 
 	this.vs_code = &quot;&quot;;
 	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -197,8 +197,8 @@ function SurfaceMaterial( o )
 	this.computeCode();
 }
 
-SurfaceMaterial.icon = &quot;mini-icon-material.png&quot;;
-SurfaceMaterial.coding_help = &quot;\
+CustomMaterial.icon = &quot;mini-icon-material.png&quot;;
+CustomMaterial.coding_help = &quot;\
 struct Input {\n\
 	vec4 color;\n\
 	vec3 vertex;\n\
@@ -214,7 +214,7 @@ struct Input {\n\
 };\n\
 \n\
 struct SurfaceOutput {\n\
-	vec3 Albedo;\n\
+	vec3 Albedo; /*store the color output here*/\n\
 	vec3 Normal;\n\
 	vec3 Emission;\n\
 	float Specular;\n\
@@ -224,17 +224,17 @@ struct SurfaceOutput {\n\
 };\n\
 &quot;;
 
-SurfaceMaterial.prototype.onCodeChange = function()
+CustomMaterial.prototype.onCodeChange = function()
 {
 	this.computeCode();
 }
 
-SurfaceMaterial.prototype.getCode = function()
+CustomMaterial.prototype.getCode = function()
 {
 	return this.code;
 }
 
-SurfaceMaterial.prototype.computeCode = function()
+CustomMaterial.prototype.computeCode = function()
 {
 	var uniforms_code = &quot;&quot;;
 	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
@@ -265,7 +265,7 @@ SurfaceMaterial.prototype.computeCode = function()
 }
 
 // RENDERING METHODS
-SurfaceMaterial.prototype.onModifyQuery = function( query )
+CustomMaterial.prototype.onModifyQuery = function( query )
 {
 	if(this._ps_uniforms_code)
 	{
@@ -294,7 +294,7 @@ SurfaceMaterial.prototype.onModifyQuery = function( query )
 	query.macros.USE_SURFACE_SHADER = this.surf_code;
 }
 
-SurfaceMaterial.prototype.fillShaderQuery = function(scene)
+CustomMaterial.prototype.fillShaderQuery = function(scene)
 {
 	var query = this._query;
 	query.clear();
@@ -308,7 +308,7 @@ SurfaceMaterial.prototype.fillShaderQuery = function(scene)
 }
 
 
-SurfaceMaterial.prototype.fillUniforms = function( scene, options )
+CustomMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var samplers = {};
 
@@ -343,7 +343,7 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 	this._samplers = samplers;
 }
 
-SurfaceMaterial.prototype.configure = function(o) { 
+CustomMaterial.prototype.configure = function(o) { 
 	LS.cloneObject(o, this);
 	this.computeCode();
 }
@@ -353,7 +353,7 @@ SurfaceMaterial.prototype.configure = function(o) {
 * @method getProperties
 * @return {Object} object with name:type
 */
-SurfaceMaterial.prototype.getProperties = function()
+CustomMaterial.prototype.getProperties = function()
 {
 	var o = {
 		color:&quot;vec3&quot;,
@@ -379,7 +379,7 @@ SurfaceMaterial.prototype.getProperties = function()
 * @param {Object} resources object where all the resources are stored
 * @return {Texture}
 */
-SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+CustomMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 	//global
 	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
@@ -399,7 +399,7 @@ SurfaceMaterial.prototype.onResourceRenamed = function (old_name, new_name, reso
 * @method getProperty
 * @return {Object} object with name:type
 */
-SurfaceMaterial.prototype.getProperty = function( name )
+CustomMaterial.prototype.getProperty = function( name )
 {
 	if(this[name])
 		return this[name];
@@ -426,7 +426,7 @@ SurfaceMaterial.prototype.getProperty = function( name )
 * @method setProperty
 * @param {Object} object to configure from
 */
-SurfaceMaterial.prototype.setProperty = function(name, value)
+CustomMaterial.prototype.setProperty = function(name, value)
 {
 	//redirect to base material
 	if( Material.prototype.setProperty.call(this,name,value) )
@@ -444,14 +444,14 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	return false;
 }
 
-SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value )
+CustomMaterial.prototype.setPropertyValueFromPath = function( path, value )
 {
 	if( path.length &lt; 1)
 		return;
 	return this.setProperty( path[0], value );
 }
 
-SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+CustomMaterial.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( path.length &lt; 1)
 		return;
@@ -477,7 +477,7 @@ SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 }
 
 
-SurfaceMaterial.prototype.getTextureChannels = function()
+CustomMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];
 
@@ -498,9 +498,9 @@ SurfaceMaterial.prototype.getTextureChannels = function()
 * @param {String} channel 
 * @param {Texture} texture
 */
-SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
+CustomMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
 	if(!channel)
-		throw(&quot;SurfaceMaterial.prototype.setTexture channel must be specified&quot;);
+		throw(&quot;CustomMaterial.prototype.setTexture channel must be specified&quot;);
 
 	var sampler = null;
 
@@ -544,7 +544,7 @@ SurfaceMaterial.prototype.setTexture = function( channel, texture, sampler_optio
 * @param {Object} resources object where all the resources are stored
 * @return {Texture}
 */
-SurfaceMaterial.prototype.getResources = function (res)
+CustomMaterial.prototype.getResources = function (res)
 {
 	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
 	{
@@ -563,8 +563,8 @@ SurfaceMaterial.prototype.getResources = function (res)
 }
 
 
-LS.registerMaterialClass( SurfaceMaterial );
-LS.SurfaceMaterial = SurfaceMaterial;
+LS.registerMaterialClass( CustomMaterial );
+LS.CustomMaterial = CustomMaterial;
     </pre>
 </div>
 

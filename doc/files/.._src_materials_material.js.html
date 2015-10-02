@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -204,6 +206,8 @@ function Material(o)
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 
+	this._query = new ShaderQuery();
+
 	//properties with special storage (multiple vars shared among single properties)
 
 	Object.defineProperty( this, &#x27;color&#x27;, {
@@ -313,9 +317,10 @@ Material.prototype.applyToRenderInstance = function(ri)
 }
 
 // RENDERING METHODS
-Material.prototype.fillShaderMacros = function(scene)
+Material.prototype.fillShaderQuery = function(scene)
 {
-	var macros = {};
+	var query = this._query;
+	query.clear();
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -329,7 +334,7 @@ Material.prototype.fillShaderMacros = function(scene)
 		if(!texture) //loading or non-existant
 			continue;
 
-		macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + uvs;
+		query.macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + uvs;
 	}
 
 	//if(this.reflection_factor &gt; 0.0) 
@@ -338,9 +343,7 @@ Material.prototype.fillShaderMacros = function(scene)
 	//extra macros
 	if(this.extra_macros)
 		for(var im in this.extra_macros)
-			macros[im] = this.extra_macros[im];
-
-	this._macros = macros;
+			query.macros[im] = this.extra_macros[im];
 }
 
 //Fill with info about the light
@@ -451,43 +454,6 @@ Material.prototype.configure = function(o)
 {
 	for(var i in o)
 		this.setProperty( i, o[i] );
-
-	/*	//cloneObject(o, this);
-	for(var i in o)
-	{
-		var v = o[i];
-		var r = null;
-		switch(i)
-		{
-			//numbers
-			case &quot;opacity&quot;: 
-			case &quot;specular_factor&quot;:
-			case &quot;specular_gloss&quot;:
-			case &quot;reflection&quot;: 
-			case &quot;blend_mode&quot;:
-			//strings
-			case &quot;shader_name&quot;:
-			//bools
-				r = v; 
-				break;
-			//vectors
-			case &quot;color&quot;: 
-				r = new Float32Array(v); 
-				break;
-			case &quot;textures&quot;:
-				this.textures = o.textures;
-				continue;
-			case &quot;transparency&quot;: //special cases
-				this.opacity = 1 - v;
-			default:
-				continue;
-		}
-		this[i] = r;
-	}
-
-	if(o.uvs_matrix &amp;&amp; o.uvs_matrix.length == 9)
-		this.uvs_matrix = new Float32Array(o.uvs_matrix);
-	*/
 }
 
 /**

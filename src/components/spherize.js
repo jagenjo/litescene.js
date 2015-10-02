@@ -25,10 +25,10 @@ Spherize["@center"] = { type: "position", step: 0.001 };
 
 Spherize.icon = "mini-icon-circle.png";
 
-Spherize.prototype.onAddedToNode = function(node)
+Spherize.prototype.onAddedToNode = function( node )
 {
-	LEvent.bind(node,"computingShaderMacros",this.onMacros,this);
-	LEvent.bind(node,"computingShaderUniforms",this.onUniforms,this);
+	LEvent.bind( node, "computingShaderQuery", this.onShaderQuery, this);
+	LEvent.bind( node, "computingShaderUniforms", this.onUniforms, this);
 }
 
 
@@ -47,20 +47,20 @@ Spherize._code = "\
 	v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,factor@)));\
 ";
 
-Spherize.prototype.onMacros = function(e, macros)
+Spherize.prototype.onShaderQuery = function(e, query)
 {
 	if(!this.enabled)
 		return;
 
-	if(macros.USE_VERTEX_SHADER_UNIFORMS)
-		macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
+	if(query.macros.USE_VERTEX_SHADER_UNIFORMS)
+		query.macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
 	else
-		macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
+		query.macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
 
-	if(macros.USE_VERTEX_SHADER_CODE)
-		macros.USE_VERTEX_SHADER_CODE += this._code;
+	if(query.macros.USE_VERTEX_SHADER_CODE)
+		query.macros.USE_VERTEX_SHADER_CODE += this._code;
 	else
-		macros.USE_VERTEX_SHADER_CODE = this._code;
+		query.macros.USE_VERTEX_SHADER_CODE = this._code;
 }
 
 Spherize.prototype.onUniforms = function(e, uniforms)

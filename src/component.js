@@ -29,13 +29,24 @@ Component.prototype.configure = function(o)
 	if(!o)
 		return;
 	if(o.uid) 
+		this.uid = o.uid;
+	/*
 	{
 		//special case, uid must never be enumerable to avoid showing it in the editor
 		if(this.uid === undefined && !Object.hasOwnProperty(this, "uid"))
-			Object.defineProperty(this, "uid", { value: o.uid, enumerable: false, writable: true });
+		{
+			this._uid = o.uid;
+
+			Object.defineProperty(this, "uid", { 
+				set: o.uid, 
+				enumerable: false,
+				writable: true
+			});
+		}
 		else
 			this.uid = o.uid;
 	}
+	*/
 	LS.cloneObject(o, this); 
 }
 

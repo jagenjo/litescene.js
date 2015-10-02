@@ -5,10 +5,10 @@
 ../src/utils/lscript.js
 
 ../src/core.js
+../src/defines.js
 ../src/network.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
-../src/render/defines.js
 
 ../src/materials/material.js
 ../src/materials/standardMaterial.js
@@ -26,6 +26,8 @@
 ../src/components/lightFX.js
 ../src/components/meshRenderer.js
 ../src/components/skinnedMeshRenderer.js
+../src/components/morphDeformer.js
+../src/components/skinDeformer.js
 ../src/components/spriteRenderer.js
 ../src/components/skybox.js
 ../src/components/background.js
@@ -62,6 +64,7 @@
 
 ../src/helpers/animation.js
 ../src/helpers/path.js
+../src/helpers/prefab.js
 
 ../src/render/renderOptions.js
 ../src/render/renderInstance.js
@@ -82,8 +85,8 @@
 ../src/parsers/parserTGA.js
 
 ../src/scene.js
-../src/prefab.js
 
 ../src/player.js
 
+../src/utils.js
 ../src/outro.js

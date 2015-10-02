@@ -74,6 +74,33 @@ var LS = {
 			//register
 			this.Components[ name ] = component; 
 
+			//add uid property
+			Object.defineProperty( component.prototype, 'uid', {
+				set: function( uid )
+				{
+					if(!uid)
+						return;
+
+					if(uid[0] != LS._uid_prefix)
+					{
+						console.warn("Invalid UID, renaming it to: " + uid );
+						uid = LS._uid_prefix + uid;
+					}
+
+					if(uid == this._uid)
+						return;
+					//if( this._root && this._root._components_by_uid[ this.uid ] )
+					//	delete this._root && this._root._components_by_uid[ this.uid ];
+					this._uid = uid;
+					//if( this._root )
+					//	this._root && this._root._components_by_uid[ this.uid ] = this;
+				},
+				get: function(){
+					return this._uid;
+				},
+				enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
+			});
+
 			//checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
 				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
@@ -227,7 +254,7 @@ var LS = {
 				o[i] = null;			
 			else if ( isFunction(v) ) //&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
 				continue;//o[i] = v;
-			else if (typeof(v) == "number" || typeof(v) == "string")
+			else if (v.constructor === Number || v.constructor === String || v.constructor === Boolean )
 				o[i] = v;
 			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
 				o[i] = Array.apply( [], v ); //clone
@@ -351,19 +378,19 @@ var LS = {
 	},
 
 	/**
-	* Returns the attributes of one object and the type
-	* @method getObjectAttributes
+	* Returns the public properties of one object and the type
+	* @method getObjectProperties
 	* @param {Object} object
 	* @return {Object} returns object with attribute name and its type
 	*/
 	//TODO: merge this with the locator stuff
-	getObjectAttributes: function(object)
+	getObjectProperties: function( object )
 	{
-		if(object.getAttributes)
-			return object.getAttributes();
+		if(object.getProperties)
+			return object.getProperties();
 		var class_object = object.constructor;
-		if(class_object.attributes)
-			return class_object.attributes;
+		if(class_object.properties)
+			return class_object.properties;
 
 		var o = {};
 		for(var i in object)
@@ -415,10 +442,10 @@ var LS = {
 	},
 
 	//TODO: merge this with the locator stuff
-	setObjectAttribute: function(obj, name, value)
+	setObjectProperty: function(obj, name, value)
 	{
-		if(obj.setAttribute)
-			return obj.setAttribute(name, value);
+		if(obj.setProperty)
+			return obj.setProperty(name, value);
 
 		//var prev = obj[ name ];
 		//if(prev && prev.set)
@@ -479,126 +506,76 @@ var LS = {
 	}
 }
 
-
-//MOVE SOMEWHERE ELSE
-
 /**
-* Samples a curve and returns the resulting value 
+* LSQ allows to set or get values easily from the global scene, using short strings as identifiers
 *
-* @class LS
-* @method getCurveValueAt
-* @param {Array} values 
-* @param {number} minx min x value
-* @param {number} maxx max x value
-* @param {number} defaulty default y value
-* @param {number} x the position in the curve to sample
-* @return {number}
+* @class  LSQ
 */
-LS.getCurveValueAt = function(values,minx,maxx,defaulty, x)
-{
-	if(x < minx || x > maxx)
-		return defaulty;
-
-	var last = [ minx, defaulty ];
-	var f = 0;
-	for(var i = 0; i < values.length; i += 1)
+var LSQ = {
+	/**
+	* Assigns a value to a property of one node in the scene, just by using a string identifier
+	* Example:  LSQ.set("mynode|a_child/MeshRenderer/enabled",false);
+	*
+	* @method set
+	* @param {String} locator the locator string identifying the property
+	* @param {*} value value to assign to property
+	*/
+	set: function( locator, value )
 	{
-		var v = values[i];
-		if(x == v[0]) return v[1];
-		if(x < v[0])
+		LS.GlobalScene.setPropertyValue( locator, value );
+		LS.GlobalScene.refresh();
+	},
+
+	/**
+	* Retrieves the value of a property of one node in the scene, just by using a string identifier
+	* Example: var value = LSQ.get("mynode|a_child/MeshRenderer/enabled");
+	*
+	* @method get
+	* @param {String} locator the locator string identifying the property
+	* @return {*} value of the property
+	*/
+	get: function( locator )
+	{
+		var info = LS.GlobalScene.getPropertyInfo( locator );
+		if(info)
+			return info.value;
+	},
+
+	/**
+	* Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property
+	* Example: "@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size" -> "node|child/Collider/size"
+	*
+	* @method shortify
+	* @param {String} locator the locator string to shortify
+	* @return {String} the locator using names instead of UIDs
+	*/
+	shortify: function( locator )
+	{
+		if(!locator)
+			return;
+
+		var t = locator.split("/");
+		var node = null;
+
+		//already short
+		if( t[0][0] != LS._uid_prefix )
+			return locator;
+
+		node = LS.GlobalScene._nodes_by_uid[ t[0] ];
+		if(!node) //node not found
+			return locator;
+
+		t[0] = node.getPathName();
+		if(t[1])
 		{
-			f = (x - last[0]) / (v[0] - last[0]);
-			return last[1] * (1-f) + v[1] * f;
-		}
-		last = v;
-	}
-
-	v = [ maxx, defaulty ];
-	f = (x - last[0]) / (v[0] - last[0]);
-	return last[1] * (1-f) + v[1] * f;
-}
-
-/**
-* Resamples a full curve in values (useful to upload to GPU array)
-*
-* @method resampleCurve
-* @param {Array} values 
-* @param {number} minx min x value
-* @param {number} maxx max x value
-* @param {number} defaulty default y value
-* @param {number} numsamples
-* @return {Array}
-*/
-
-LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
-{
-	var result = [];
-	result.length = samples;
-	var delta = (maxx - minx) / samples;
-	for(var i = 0; i < samples; i++)
-		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
-	return result;
-}
-
-//work in progress to create a new kind of property called attribute which comes with extra info
-//valid options are { type: "number"|"string"|"vec2"|"vec3"|"color"|"Texture"...  , min, max, step }
-if( !Object.prototype.hasOwnProperty("defineAttribute") )
-{
-	Object.defineProperty( Object.prototype, "defineAttribute", {
-		value: function( name, value, options ) {
-			if(options && typeof(options) == "string")
-				options = { type: options };
-
-			var root = this;
-			if(typeof(this) != "function")
+			if( t[1][0] == LS._uid_prefix )
 			{
-				this[name] = value;
-				root = this.constructor;
+				var compo = node.getComponentByUId(t[1]);
+				if(compo)
+					t[1] = LS.getObjectClassName( compo );
 			}
-			Object.defineProperty( root, "@" + name, {
-				value: options || {},
-				enumerable: false
-			});
-		},
-		enumerable: false
-	});
-
-	Object.defineProperty( Object.prototype, "getAttribute", {
-		value: function( name ) {
-			var v = "@" + name;
-			if(this.hasOwnProperty(v))
-				return this[v];
-			if(this.constructor && this.constructor.hasOwnProperty(v))
-				return this.constructor[v];
-			return null;
-		},
-		enumerable: false
-	});
-}
-
-
-
-function toArray(v) { return Array.apply( [], v ); }
-
-Object.defineProperty(Object.prototype, "merge", { 
-    value: function(v) {
-        for(var i in v)
-			this[i] = v[i];
-		return this;
-    },
-    configurable: false,
-    writable: false,
-	enumerable: false  // uncomment to be explicit, though not necessary
-});
-
-//used for hashing keys:TODO move from here somewhere else
-String.prototype.hashCode = function(){
-    var hash = 0, i, c, l;
-    if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; ++i) {
-        c  = this.charCodeAt(i);
-        hash  = ((hash<<5)-hash)+c;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
+		}
+		return t.join("/");
+	}
 };
+

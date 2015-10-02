@@ -195,7 +195,7 @@ var Picking = {
 			//camera._real_aspect = viewport[2] / viewport[3];
 			//gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
 
-			LS.Renderer.enableCamera(camera, that._picking_render_options);
+			LS.Renderer.enableCamera( camera, that._picking_render_options );
 
 			if(small_area)
 			{
@@ -209,7 +209,11 @@ var Picking = {
 			//gl.viewport(x-20,y-20,40,40);
 			that._picking_render_options.current_pass = "picking";
 			that._picking_render_options.layers = layers;
-			LS.Renderer.renderInstances( that._picking_render_options );
+
+			//check instances colliding with cursor using a ray against AABBs
+			//TODO
+
+			LS.Renderer.renderInstances( that._picking_render_options )//, cursor_instances );
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			LEvent.trigger( scene, "renderPicking", [x,y] );

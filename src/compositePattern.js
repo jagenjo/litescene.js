@@ -228,6 +228,46 @@ CompositePattern.prototype.getChildren = function()
 	return this._children || [];
 }
 
+CompositePattern.prototype.getChildIndex = function( child )
+{
+	return this._children ? this._children.indexOf( child ) : -1;
+}
+
+CompositePattern.prototype.getChildByIndex = function( index )
+{
+	return this._children && this._children.length > index ? this._children[ index ] : null;
+}
+
+CompositePattern.prototype.getChildByName = function( name )
+{
+	if(!this._children)
+		return null;
+
+	for(var i = 0; i < this._children.length; ++i)
+		if(this._children[i].name == name )
+			return this._children[i];
+}
+
+CompositePattern.prototype.getPathName = function()
+{
+	if(!this._in_tree)
+		return null;
+
+	if(this === this._in_tree.root )
+		return "";
+
+	var path = this.name;
+	var parent = this.parentNode;
+	while(parent)
+	{
+		if(parent === this._in_tree.root )
+			return path;
+		path = parent.name + "|" + path;
+		parent = parent.parentNode;
+	}
+	return null;
+}
+
 /*
 CompositePattern.prototype.childNodes = function()
 {
@@ -280,6 +320,23 @@ CompositePattern.prototype.getDescendants = function()
 	for(var i = 0;  i < this._children.length; ++i)
 		r = r.concat( this._children[i].getDescendants() );
 	return r;
+}
+
+CompositePattern.prototype.findChildNodeByName = function( name )
+{
+	if(!name)
+		return null;
+
+	if(this.name == name)
+		return this;
+
+	var nodes = this.getDescendants();
+	for(var i = 0; i < nodes.length; i++)
+	{
+		var node = nodes[i];
+		if( node.name == name )
+			return node;
+	}
 }
 
 

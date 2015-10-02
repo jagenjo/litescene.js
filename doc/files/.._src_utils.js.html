@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.Target</title>
+    <title>../src/utils.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -166,154 +166,166 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1>LS.Components.Target Class</h1>
-<div class="box meta">
-    
+                        <h1 class="file-heading">File: ../src/utils.js</h1>
 
-    
+<div class="file">
+    <pre class="code prettyprint linenums">
+/**
+* Samples a curve and returns the resulting value 
+*
+* @class LS
+* @method getCurveValueAt
+* @param {Array} values 
+* @param {number} minx min x value
+* @param {number} maxx max x value
+* @param {number} defaulty default y value
+* @param {number} x the position in the curve to sample
+* @return {number}
+*/
+LS.getCurveValueAt = function(values,minx,maxx,defaulty, x)
+{
+	if(x &lt; minx || x &gt; maxx)
+		return defaulty;
 
-    
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_target.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;target.js:1</code></a>
-        </div>
-    
+	var last = [ minx, defaulty ];
+	var f = 0;
+	for(var i = 0; i &lt; values.length; i += 1)
+	{
+		var v = values[i];
+		if(x == v[0]) return v[1];
+		if(x &lt; v[0])
+		{
+			f = (x - last[0]) / (v[0] - last[0]);
+			return last[1] * (1-f) + v[1] * f;
+		}
+		last = v;
+	}
 
-    
+	v = [ maxx, defaulty ];
+	f = (x - last[0]) / (v[0] - last[0]);
+	return last[1] * (1-f) + v[1] * f;
+}
 
-    
-</div>
+/**
+* Resamples a full curve in values (useful to upload to GPU array)
+*
+* @method resampleCurve
+* @param {Array} values 
+* @param {number} minx min x value
+* @param {number} maxx max x value
+* @param {number} defaulty default y value
+* @param {number} numsamples
+* @return {Array}
+*/
 
+LS.resampleCurve = function(values,minx,maxx,defaulty, samples)
+{
+	var result = [];
+	result.length = samples;
+	var delta = (maxx - minx) / samples;
+	for(var i = 0; i &lt; samples; i++)
+		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
+	return result;
+}
 
+//work in progress to create a new kind of property called attribute which comes with extra info
+//valid options are { type: &quot;number&quot;|&quot;string&quot;|&quot;vec2&quot;|&quot;vec3&quot;|&quot;color&quot;|&quot;Texture&quot;...  , min, max, step }
+if( !Object.prototype.hasOwnProperty(&quot;defineAttribute&quot;) )
+{
+	Object.defineProperty( Object.prototype, &quot;defineAttribute&quot;, {
+		value: function( name, value, options ) {
+			if(options &amp;&amp; typeof(options) == &quot;string&quot;)
+				options = { type: options };
 
-<div class="box intro">
-    <p>Target rotate a mesh to look at the camera or another object</p>
+			var root = this;
+			if(typeof(this) != &quot;function&quot;)
+			{
+				this[name] = value;
+				root = this.constructor;
+			}
+			Object.defineProperty( root, &quot;@&quot; + name, {
+				value: options || {},
+				enumerable: false
+			});
+		},
+		enumerable: false
+	});
 
-</div>
-
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-        <div id="method_LS.Components.Target" class="method item">
-    <h3 class="name"><code>LS.Components.Target</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>object</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_components_target.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;target.js:1</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-    </div>
+	Object.defineProperty( Object.prototype, &quot;getAttribute&quot;, {
+		value: function( name ) {
+			var v = &quot;@&quot; + name;
+			if(this.hasOwnProperty(v))
+				return this[v];
+			if(this.constructor &amp;&amp; this.constructor.hasOwnProperty(v))
+				return this.constructor[v];
+			return null;
+		},
+		enumerable: false
+	});
+}
 
 
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
 
-        
-        
-        
-        
-    </ul>
+function toArray(v) { return Array.apply( [], v ); }
 
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
+Object.defineProperty(Object.prototype, &quot;merge&quot;, { 
+    value: function(v) {
+        for(var i in v)
+			this[i] = v[i];
+		return this;
+    },
+    configurable: false,
+    writable: false,
+	enumerable: false  // uncomment to be explicit, though not necessary
+});
 
-            
+//used for hashing keys:TODO move from here somewhere else
+String.prototype.hashCode = function(){
+    var hash = 0, i, c, l;
+    if (this.length == 0) return hash;
+    for (i = 0, l = this.length; i &lt; l; ++i) {
+        c  = this.charCodeAt(i);
+        hash  = ((hash&lt;&lt;5)-hash)+c;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
 
-            
+Object.equals = function( x, y ) {
+  if ( x === y ) return true;
+    // if both x and y are null or undefined and exactly the same
 
-            
+  if ( ! ( x instanceof Object ) || ! ( y instanceof Object ) ) return false;
+    // if they are not strictly equal, they both need to be Objects
 
-            
-        </div>
+  if ( x.constructor !== y.constructor ) return false;
+    // they must have the exact same prototype chain, the closest we can do is
+    // test there constructor.
 
-        
+  for ( var p in x ) {
+    if ( ! x.hasOwnProperty( p ) ) continue;
+      // other properties were tested using x.constructor === y.constructor
 
-        
+    if ( ! y.hasOwnProperty( p ) ) return false;
+      // allows to compare x[ p ] and y[ p ] when set to undefined
 
-        
+    if ( x[ p ] === y[ p ] ) continue;
+      // if they have the same strict value or identity then they are equal
 
-        
-    </div>
+    if ( typeof( x[ p ] ) !== &quot;object&quot; ) return false;
+      // Numbers, Strings, Functions, Booleans must be strictly equal
+
+    if ( ! Object.equals( x[ p ],  y[ p ] ) ) return false;
+      // Objects and Arrays must be tested recursively
+  }
+
+  for ( p in y ) {
+    if ( y.hasOwnProperty( p ) &amp;&amp; ! x.hasOwnProperty( p ) ) return false;
+      // allows x[ p ] to be set to undefined
+  }
+  return true;
+}
+    </pre>
 </div>
 
                     </div>

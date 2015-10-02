@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -383,6 +385,13 @@ It also contains the parsers and methods in charge of processing them</p>
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_onceLoaded">onceLoaded</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_processResource">processResource</a>
 
                                 
@@ -620,7 +629,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l562"><code>..&#x2F;src&#x2F;resourcesManager.js:562</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l564"><code>..&#x2F;src&#x2F;resourcesManager.js:564</code></a>
         
         </p>
 
@@ -1286,7 +1295,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l739"><code>..&#x2F;src&#x2F;resourcesManager.js:739</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l743"><code>..&#x2F;src&#x2F;resourcesManager.js:743</code></a>
         
         </p>
 
@@ -1586,7 +1595,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l757"><code>..&#x2F;src&#x2F;resourcesManager.js:757</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l760"><code>..&#x2F;src&#x2F;resourcesManager.js:760</code></a>
         
         </p>
 
@@ -1691,7 +1700,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l623"><code>..&#x2F;src&#x2F;resourcesManager.js:623</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l625"><code>..&#x2F;src&#x2F;resourcesManager.js:625</code></a>
         
         </p>
 
@@ -1787,7 +1796,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l687"><code>..&#x2F;src&#x2F;resourcesManager.js:687</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l691"><code>..&#x2F;src&#x2F;resourcesManager.js:691</code></a>
         
         </p>
 
@@ -1858,7 +1867,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l676"><code>..&#x2F;src&#x2F;resourcesManager.js:676</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l680"><code>..&#x2F;src&#x2F;resourcesManager.js:680</code></a>
         
         </p>
 
@@ -2141,6 +2150,117 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
 </div>
 
                 
+                    <div id="method_onceLoaded" class="method item">
+    <h3 class="name"><code>onceLoaded</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>fullpath</code>
+                    
+                </li>
+            
+                <li class="arg">
+                    
+                        <code>callback</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l801"><code>..&#x2F;src&#x2F;resourcesManager.js:801</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Binds a callback for when a resource is loaded (in case you need to do something special)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">fullpath</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>of the resource you want to get the notification once is loaded</p>
+
+                    </div>
+
+                    
+                </li>
+            
+                <li class="param">
+                    
+                        <code class="param-name">callback</code>
+                        <span class="type">Function</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>the function to call, it will be called as callback( fullpath, resource )</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_processResource" class="method item">
     <h3 class="name"><code>processResource</code></h3>
 
@@ -2206,7 +2326,9 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     </div>
 
     <div class="description">
-        <p>Process resource: transform some data in an Object ready to use and stores it (in most cases uploads it to the GPU)</p>
+        <p>Process resource get some form of data and transforms it to a resource (and Object ready to be used by the engine).
+In most cases the process involves parsing and uploading to the GPU
+It is called for every single resource that comes from an external source (URL) right after being loaded</p>
 
     </div>
 
@@ -2436,7 +2558,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l498"><code>..&#x2F;src&#x2F;resourcesManager.js:498</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l501"><code>..&#x2F;src&#x2F;resourcesManager.js:501</code></a>
         
         </p>
 
@@ -2556,7 +2678,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l642"><code>..&#x2F;src&#x2F;resourcesManager.js:642</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l644"><code>..&#x2F;src&#x2F;resourcesManager.js:644</code></a>
         
         </p>
 
@@ -3103,7 +3225,7 @@ request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&g
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l537"><code>..&#x2F;src&#x2F;resourcesManager.js:537</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l539"><code>..&#x2F;src&#x2F;resourcesManager.js:539</code></a>
         
         </p>
 

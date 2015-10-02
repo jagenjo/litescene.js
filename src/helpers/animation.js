@@ -835,11 +835,12 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 	var index_a = index;
 	var index_b = index + 1;
 	var data = this.data;
+	var num_keyframes = data.length / offset;
 
 	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this.type ] );
 
-	if( !interpolate || (data.length == offset) || index_b*offset == data.length || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
-		return this.getKeyframe(index)[1];
+	if( !interpolate || num_keyframes == 1 || index_b == num_keyframes || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
+		return this.getKeyframe( index )[1];
 
 	var a = data.subarray( index_a * offset, (index_a + 1) * offset );
 	var b = data.subarray( index_b * offset, (index_b + 1) * offset );
@@ -877,10 +878,10 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 			return a[1];
 
 		var pre_a = index > 0 ? data.subarray( (index-1) * offset, (index) * offset ) : a;
-		var post_b = index < (data.length - offset*2) ? data.subarray( (index+1) * offset, (index+2) * offset ) : b;
+		var post_b = index_b < (num_keyframes - 1) ? data.subarray( (index_b+1) * offset, (index_b+2) * offset ) : b;
 
 		if(this.value_size === 1)
-			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
+			return Animation.EvaluateHermiteSpline( a[1], b[1], pre_a[1], post_b[1], 1 - t );
 
 		result = result || this._result;
 
@@ -889,7 +890,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 			result = this._result = new Float32Array( this.value_size );
 
 		result = result || this._result;
-		result = Animation.EvaluateHermiteSplineVector(a.subarray(1,offset),b.subarray(1,offset), pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
+		result = Animation.EvaluateHermiteSplineVector( a.subarray(1,offset), b.subarray(1,offset), pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
 
 		if(this.type == "quat")
 			quat.normalize(result, result);

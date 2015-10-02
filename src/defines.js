@@ -22,3 +22,7 @@ LS.BlendFunctions = {
 	"custom": 	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA]
 }
 
+//used to know the state of the application
+LS.STOPPED = 0;
+LS.RUNNING = 1;
+LS.PAUSED = 2;

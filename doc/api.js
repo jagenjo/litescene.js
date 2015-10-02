@@ -24,6 +24,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.Transform",
         "LS.CompositePattern",
         "LS.LS",
+        "LS.LSQ",
         "LS.LScript",
         "LS.Material",
         "LS.Physics",

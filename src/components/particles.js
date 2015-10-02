@@ -638,18 +638,18 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	{
 		RI.setMesh( this._mesh, gl.POINTS );
 		RI.uniforms.u_point_size = this.particle_size;
-		RI.macros["USE_POINTS"] = "";
-		RI.macros["USE_POINT_CLOUD"] = "";
-		RI.macros["USE_TEXTURED_POINTS"] = "";
+		RI.query.macros["USE_POINTS"] = "";
+		RI.query.macros["USE_POINT_CLOUD"] = "";
+		RI.query.macros["USE_TEXTURED_POINTS"] = "";
 		RI.setRange(0, this._visible_particles);
 	}
 	else
 	{
 		RI.setMesh( this._mesh, gl.TRIANGLES );
 		RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
-		delete RI.macros["USE_POINTS"];
-		delete RI.macros["USE_POINT_CLOUD"];
-		delete RI.macros["USE_TEXTURED_POINTS"];
+		delete RI.query.macros["USE_POINTS"];
+		delete RI.query.macros["USE_POINT_CLOUD"];
+		delete RI.query.macros["USE_TEXTURED_POINTS"];
 		delete RI.uniforms["u_point_size"];
 	}
 

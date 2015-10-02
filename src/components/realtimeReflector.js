@@ -160,9 +160,10 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 			//LS.ResourcesManager.registerResource(":BLUR" + camera.uid, blur_texture);//debug
 		}
 
-		if(this.generate_mipmaps && isPowerOfTwo(texture_width) && isPowerOfTwo(texture_height) )
+		if(this.generate_mipmaps && isPowerOfTwo( texture_width ) && isPowerOfTwo( texture_height ) )
 		{
 			texture.bind();
+			gl.texParameteri( texture.texture_type, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			gl.generateMipmap(texture.texture_type);
 			texture.unbind();
 		}

@@ -450,7 +450,7 @@ if(typeof(LiteGraph) != "undefined")
 			var v = this.getInputData(i);
 			if(v === undefined)
 				continue;
-			LS.setObjectAttribute( compo, input.name, v );
+			LS.setObjectProperty( compo, input.name, v );
 		}
 
 		//write outputs
@@ -509,17 +509,17 @@ if(typeof(LiteGraph) != "undefined")
 		return compo;
 	}
 
-	LGraphComponent.prototype.getComponentAttributes = function( v )
+	LGraphComponent.prototype.getComponentProperties = function( v )
 	{
 		var compo = this.getComponent();
 		if(!compo)
 			return null;
 
 		var attrs = null;
-		if(compo.getAttributes)
-			attrs = compo.getAttributes( v );
+		if(compo.getProperties)
+			attrs = compo.getProperties( v );
 		else
-			attrs = LS.getObjectAttributes( compo );
+			attrs = LS.getObjectProperties( compo );
 
 		var result = [];
 		for(var i in attrs)
@@ -527,8 +527,8 @@ if(typeof(LiteGraph) != "undefined")
 		return result;
 	}
 
-	LGraphComponent.prototype.onGetInputs = function() { return this.getComponentAttributes("input"); }
-	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentAttributes("output"); }
+	LGraphComponent.prototype.onGetInputs = function() { return this.getComponentProperties("input"); }
+	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentProperties("output"); }
 
 	LiteGraph.registerNodeType("scene/component", LGraphComponent );
 	window.LGraphComponent = LGraphComponent;

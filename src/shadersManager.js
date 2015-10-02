@@ -68,6 +68,29 @@ var ShadersManager = {
 	},
 
 	/**
+	* Resolves a shader query, returns the shader
+	*
+	* @method resolve
+	* @param {ShaderQuery} query
+	* @return {GL.Shader} the shader, if not found the default shader is returned
+	*/
+	resolve: function( query )
+	{
+		return this.get( query.name, query.macros );
+	},
+
+	/**
+	* Clears all the compiled shaders
+	*
+	* @method clearCache
+	*/
+	clearCache: function()
+	{
+		this.compiled_programs = {};
+		this.compiled_shaders = {};
+	},
+
+	/**
 	* Returns a compiled shader with this id and this macros
 	*
 	* @method get
@@ -337,8 +360,11 @@ var ShadersManager = {
 			var imports = shader_element.getAttribute("imports");
 			if(imports)
 				options.imports = (imports == "1" || imports == "true");
+			var events = shader_element.getAttribute("events");
+			if(events)
+				options.events = (events == "1" || events == "true");
 
-			LS.ShadersManager.registerGlobalShader(vs_code, fs_code, id, macros, options );
+			LS.ShadersManager.registerGlobalShader( vs_code, fs_code, id, macros, options );
 		}
 
 		var snippets = xml.querySelectorAll('snippet');
@@ -365,7 +391,11 @@ var ShadersManager = {
 	*/
 	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
 	{
+		//detect macros
 		var macros_found = {};
+		//TO DO using a regexp
+
+		//count macros
 		var num_macros = 0;
 		for(var i in macros)
 			num_macros += 1;
@@ -374,13 +404,30 @@ var ShadersManager = {
 			vs_code: vs_code, 
 			fs_code: fs_code,
 			macros: macros,
-			num_macros: num_macros,
-			macros_found: macros_found
+			num_macros: num_macros
 		};
 
+		//add options
 		if(options)
+		{
 			for(var i in options)
 				global[i] = options[i];
+
+			//process code
+			if(options.events)
+			{
+				var replace_events = function(v)
+				{
+					var token = v.split("\"");
+					var id = token[1];
+					//console.log("Event: ",id);
+					return "";
+				}
+
+				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
+				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
+			}
+		}
 
 		this.global_shaders[id] = global;
 		LEvent.trigger(ShadersManager,"newShader");
@@ -487,10 +534,43 @@ LS.SM = LS.ShadersManager = ShadersManager;
 * @namespace LS
 * @constructor
 */
-function ShaderQuery()
+function ShaderQuery( name, macros )
 {
-	this.hooks = {}; //represent points where this shader want to insert code
+	this.name = name;
 	this.macros = {}; //macros to add
+	this.hooks = {}; //represent points where this shader want to insert code
+
+	if(macros)
+		for(var i in macros)
+			this.macros[i] = macros[i];
+}
+
+ShaderQuery.prototype.clear = function()
+{
+	this.macros = {};
+	this.hooks = {};
+}
+
+ShaderQuery.prototype.add = function( query )
+{
+	if(!query)
+		return;
+
+	//add macros
+	for(var i in query.macros )
+		this.macros[i] = query.macros[i];
+
+	//add hooks
+}
+
+ShaderQuery.prototype.setMacro = function( name, value )
+{
+	this.macros[name] = name || "";
+}
+
+ShaderQuery.prototype.resolve = function()
+{
+	return LS.ShadersManager.query(this);
 }
 
 //ShaderQuery.prototype.addHook = function

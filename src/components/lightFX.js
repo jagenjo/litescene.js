@@ -20,7 +20,6 @@ function LightFX(o)
 	this.glare_texture = null;
 
 	//for caching purposes
-	this._macros = {};
 	this._uniforms = {};
 
 	if(o) 

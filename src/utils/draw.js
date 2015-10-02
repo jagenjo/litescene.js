@@ -248,6 +248,7 @@ var Draw = {
 	setCamera: function(camera)
 	{
 		this.camera = camera;
+		camera.updateMatrices();
 		vec3.copy( this.camera_position, camera.getEye() );	
 		mat4.copy( this.view_matrix, camera._view_matrix );
 		mat4.copy( this.projection_matrix, camera._projection_matrix );

@@ -15,6 +15,7 @@ function MeshRenderer(o)
 
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
+
 }
 
 Object.defineProperty( MeshRenderer.prototype, 'primitive', {
@@ -77,9 +78,6 @@ MeshRenderer.prototype.configure = function(o)
 	this.two_sided = !!o.two_sided;
 	if(o.material)
 		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
-
-	if(o.morph_targets)
-		this.morph_targets = o.morph_targets;
 }
 
 /**
@@ -122,9 +120,9 @@ MeshRenderer.prototype.getLODMesh = function() {
 MeshRenderer.prototype.getResources = function(res)
 {
 	if(typeof(this.mesh) == "string")
-		res[this.mesh] = Mesh;
+		res[this.mesh] = GL.Mesh;
 	if(typeof(this.lod_mesh) == "string")
-		res[this.lod_mesh] = Mesh;
+		res[this.lod_mesh] = GL.Mesh;
 	return res;
 }
 
@@ -134,6 +132,10 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 		this.mesh = new_name;
 	if(this.lod_mesh == old_name)
 		this.lod_mesh = new_name;
+	if(this.morph_targets)
+		for(var i in this.morph_targets)
+			if( this.morph_targets[i].mesh == old_name )
+				this.morph_targets[i].mesh = new_name;
 }
 
 //MeshRenderer.prototype.getRenderInstance = function(options)
@@ -200,12 +202,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.macros["USE_POINTS"] = "";
-		//RI.macros["USE_CIRCLE_POINTS"] = "";
+		RI.query.macros["USE_POINTS"] = "";
 	}
 
 	instances.push(RI);
 }
+
+
+
 
 LS.registerComponent( MeshRenderer );
 LS.MeshRenderer = MeshRenderer;

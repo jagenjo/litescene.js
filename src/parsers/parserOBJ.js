@@ -10,6 +10,7 @@ var parserOBJ = {
 
 		var support_uint = true;
 		var skip_indices = options.noindex ? options.noindex : false;
+		//skip_indices = true;
 
 		//final arrays (packed, lineal [ax,ay,az, bx,by,bz ...])
 		var positionsArray = [ ];
@@ -49,7 +50,9 @@ var parserOBJ = {
 
 		//used for mesh groups (submeshes)
 		var group = null;
+		var group_id = 0;
 		var groups = [];
+		var groups_by_name = {};
 		var materials_found = {};
 
 		var lines = text.split("\n");
@@ -88,13 +91,15 @@ var parserOBJ = {
 			else if (tokens[0] == "f") {
 				parsingFaces = true;
 
-				if (tokens.length < 4) continue; //faces with less that 3 vertices? nevermind
+				if (tokens.length < 4)
+					continue; //faces with less that 3 vertices? nevermind
 
 				//for every corner of this polygon
 				var polygon_indices = [];
 				for (var i=1; i < tokens.length; ++i) 
 				{
-					if (!(tokens[i] in facemap) || skip_indices) 
+					var faceid = group_id + ":" + tokens[i];
+					if (  !(faceid in facemap) || skip_indices )
 					{
 						f = tokens[i].split("/");
 
@@ -114,7 +119,7 @@ var parserOBJ = {
 							nor = parseInt(f[2]) - 1;
 						}
 						else {
-							trace("Problem parsing: unknown number of values per face");
+							console.log("Problem parsing: unknown number of values per face");
 							return false;
 						}
 
@@ -142,7 +147,8 @@ var parserOBJ = {
 						x = 0.0;
 						y = 0.0;
 						z = 0.0;
-						if ((pos * 3 + 2) < positions.length) {
+						if ((pos * 3 + 2) < positions.length)
+						{
 							hasPos = true;
 							if(pos < 0) //negative indices are relative to the end
 								pos = positions.length / 3 + pos + 1;
@@ -156,7 +162,8 @@ var parserOBJ = {
 
 						x = 0.0;
 						y = 0.0;
-						if ((tex * 2 + 1) < texcoords.length) {
+						if ((tex * 2 + 1) < texcoords.length)
+						{
 							hasTex = true;
 							if(tex < 0) //negative indices are relative to the end
 								tex = texcoords.length / 2 + tex + 1;
@@ -171,7 +178,8 @@ var parserOBJ = {
 						z = 1.0;
 						if(nor != -1)
 						{
-							if ((nor * 3 + 2) < normals.length) {
+							if ((nor * 3 + 2) < normals.length)
+							{
 								hasNor = true;
 
 								if(nor < 0)
@@ -187,14 +195,14 @@ var parserOBJ = {
 
 						//Save the string "10/10/10" and tells which index represents it in the arrays
 						if(!skip_indices)
-							facemap[tokens[i]] = index++;
+							facemap[ faceid ] = index++;
 					}//end of 'if this token is new (store and index for later reuse)'
 
 					//store key for this triplet
 					if(!skip_indices)
 					{
-						var final_index = facemap[tokens[i]];
-						polygon_indices.push(final_index);
+						var final_index = facemap[ faceid ];
+						polygon_indices.push( final_index );
 						if(max_index < final_index)
 							max_index = final_index;
 					}
@@ -210,7 +218,8 @@ var parserOBJ = {
 					}
 				}
 			}
-			else if (tokens[0] == "g" || tokens[0] == "usemtl") {
+			else if (tokens[0] == "g")
+			{
 				negative_offset = positions.length / 3 - 1;
 
 				if(tokens.length > 1)
@@ -219,16 +228,33 @@ var parserOBJ = {
 					if(group != null)
 					{
 						group.length = group_pos - group.start;
-						if(group.length > 0)
+						if(group.length > 0) //there are triangles...
+						{
+							groups_by_name[ group_name ] = group;
 							groups.push(group);
+							group_id++;
+						}
 					}
 
+					var group_name = tokens[1];
+					if(groups_by_name[group_name])
+						group_name = group_name + "." + group_id;
+
 					group = {
-						name: tokens[1],
+						name: group_name,
 						start: group_pos,
 						length: -1,
 						material: ""
 					};
+
+					/*
+					if(tokens[0] == "g")
+					{
+						group_vertex_start = positions.length / 3;
+						group_normal_start = normals.length / 3;
+						group_coord_start = texcoords.length / 2;
+					}
+					*/
 				}
 			}
 			else if (tokens[0] == "usemtl") {

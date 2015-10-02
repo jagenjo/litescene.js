@@ -11,7 +11,7 @@ function GeometricPrimitive(o)
 	this.size = 10;
 	this.subdivisions = 10;
 	this.point_size = 0.1;
-	this.geometry = GeometricPrimitive.CUBE;
+	this._geometry = GeometricPrimitive.CUBE;
 	this._primitive = -1;
 	this.align_z = false;
 
@@ -30,6 +30,17 @@ Object.defineProperty( GeometricPrimitive.prototype, 'primitive', {
 	enumerable: true
 });
 
+Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
+	get: function() { return this._geometry; },
+	set: function(v) { 
+		v = (v === undefined || v === null ? -1 : v|0);
+		if(v < 0 || v > 7)
+			return;
+		this._geometry = v;
+	},
+	enumerable: true
+});
+
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
@@ -37,6 +48,7 @@ GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
 GeometricPrimitive.HEMISPHERE = 6;
 GeometricPrimitive.ICOSAHEDRON = 7;
+//Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
@@ -121,7 +133,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.macros["USE_POINTS"] = "";
+		RI.query.macros["USE_POINTS"] = "";
 	}
 
 	instances.push(RI);

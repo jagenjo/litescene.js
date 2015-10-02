@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -277,7 +279,7 @@ function Light(o)
 	* @default false
 	*/
 	this.cast_shadows = false;
-	this.shadow_bias = 0.005;
+	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
@@ -291,7 +293,7 @@ function Light(o)
 	this._top = vec3.clone( Light.UP_VECTOR );
 
 	//for caching purposes
-	this._macros = {};
+	this._query = new ShaderQuery();
 	this._uniforms = {};
 
 	if(o) 
@@ -627,8 +629,8 @@ Light.prototype.isInLayer = function(num)
 Light.prototype.prepare = function( render_options )
 {
 	var uniforms = this._uniforms;
-	var macros = this._macros;
-	wipeObject(macros); //delete all properties (I dont like to generate garbage)
+	var query = this._query;
+	query.clear(); //delete all properties (I dont like to generate garbage)
 
 	//projective texture needs the light matrix to compute projection
 	if(this.projective_texture || this.cast_shadows)
@@ -644,20 +646,20 @@ Light.prototype.prepare = function( render_options )
 
 	//PREPARE MACROS
 	if(this.type == Light.DIRECTIONAL)
-		macros.USE_DIRECTIONAL_LIGHT = &quot;&quot;;
+		query.macros.USE_DIRECTIONAL_LIGHT = &quot;&quot;;
 	else if(this.type == Light.SPOT)
-		macros.USE_SPOT_LIGHT = &quot;&quot;;
+		query.macros.USE_SPOT_LIGHT = &quot;&quot;;
 	else //omni
-		macros.USE_OMNI_LIGHT = &quot;&quot;;
+		query.macros.USE_OMNI_LIGHT = &quot;&quot;;
 
 	if(this.spot_cone)
-		macros.USE_SPOT_CONE = &quot;&quot;;
+		query.macros.USE_SPOT_CONE = &quot;&quot;;
 	if(this.linear_attenuation)
-		macros.USE_LINEAR_ATTENUATION = &quot;&quot;;
+		query.macros.USE_LINEAR_ATTENUATION = &quot;&quot;;
 	if(this.range_attenuation)
-		macros.USE_RANGE_ATTENUATION = &quot;&quot;;
+		query.macros.USE_RANGE_ATTENUATION = &quot;&quot;;
 	if(this.offset &gt; 0.001)
-		macros.USE_LIGHT_OFFSET = &quot;&quot;;
+		query.macros.USE_LIGHT_OFFSET = &quot;&quot;;
 
 	if(this.projective_texture)
 	{
@@ -665,9 +667,9 @@ Light.prototype.prepare = function( render_options )
 		if(light_projective_texture)
 		{
 			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				macros.USE_LIGHT_CUBEMAP = &quot;&quot;;
+				query.macros.USE_LIGHT_CUBEMAP = &quot;&quot;;
 			else
-				macros.USE_LIGHT_TEXTURE = &quot;&quot;;
+				query.macros.USE_LIGHT_TEXTURE = &quot;&quot;;
 		}
 	}
 
@@ -677,9 +679,9 @@ Light.prototype.prepare = function( render_options )
 		if(extra_texture)
 		{
 			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				macros.USE_EXTRA_LIGHT_CUBEMAP = &quot;&quot;;
+				query.macros.USE_EXTRA_LIGHT_CUBEMAP = &quot;&quot;;
 			else
-				macros.USE_EXTRA_LIGHT_TEXTURE = &quot;&quot;;
+				query.macros.USE_EXTRA_LIGHT_TEXTURE = &quot;&quot;;
 		}
 	}
 
@@ -725,46 +727,46 @@ Light.prototype.prepare = function( render_options )
 }
 
 /**
-* Collects and returns the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
-* @method getMacros
+* Collects and returns the shader query of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
+* @method getQuery
 * @param {RenderInstance} instance the render instance where this light will be applied
 * @param {Object} render_options info about how the scene will be rendered
-* @return {Object} the macros
+* @return {ShaderQuery} the macros
 */
-Light.prototype.getMacros = function(instance, render_options)
+Light.prototype.getQuery = function(instance, render_options)
 {
-	var macros = this._macros;
+	var query = this._query;
 
 	var use_shadows = this.cast_shadows &amp;&amp; this._shadowmap &amp;&amp; this._light_matrix != null &amp;&amp; !render_options.shadows_disabled;
 
 	if(!this.constant_diffuse &amp;&amp; !instance.material.constant_diffuse)
-		macros.USE_DIFFUSE_LIGHT = &quot;&quot;;
+		query.macros.USE_DIFFUSE_LIGHT = &quot;&quot;;
 	else
-		delete macros[&quot;USE_DIFFUSE_LIGHT&quot;];
+		delete query.macros[&quot;USE_DIFFUSE_LIGHT&quot;];
 
 	if(this.use_specular &amp;&amp; instance.material.specular_factor &gt; 0)
-		macros.USE_SPECULAR_LIGHT = &quot;&quot;;	
+		query.macros.USE_SPECULAR_LIGHT = &quot;&quot;;	
 	else
-		delete macros[&quot;USE_SPECULAR_LIGHT&quot;];
+		delete query.macros[&quot;USE_SPECULAR_LIGHT&quot;];
 
 	if(use_shadows &amp;&amp; instance.flags &amp; RI_RECEIVE_SHADOWS)
 	{
-		macros.USE_SHADOW_MAP = &quot;&quot;;
+		query.macros.USE_SHADOW_MAP = &quot;&quot;;
 		if(this._shadowmap &amp;&amp; this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
-			macros.USE_SHADOW_CUBEMAP = &quot;&quot;;
+			query.macros.USE_SHADOW_CUBEMAP = &quot;&quot;;
 		if(this.hard_shadows)// || macros.USE_SHADOW_CUBEMAP != null)
-			macros.USE_HARD_SHADOWS = &quot;&quot;;
-		macros.SHADOWMAP_OFFSET = &quot;&quot;;
+			query.macros.USE_HARD_SHADOWS = &quot;&quot;;
+		query.macros.SHADOWMAP_OFFSET = &quot;&quot;;
 	}
 	else
-		delete macros[&quot;USE_SHADOW_MAP&quot;];
+		delete query.macros[&quot;USE_SHADOW_MAP&quot;];
 
 	if(this._last_processed_extra_light_shader_code &amp;&amp; (!this.extra_texture || LS.ResourcesManager.getTexture(this.extra_texture)) )
-		macros[&quot;USE_EXTRA_LIGHT_SHADER_CODE&quot;] = this._last_processed_extra_light_shader_code;
+		query.macros[&quot;USE_EXTRA_LIGHT_SHADER_CODE&quot;] = this._last_processed_extra_light_shader_code;
 	else
-		delete macros[&quot;USE_EXTRA_LIGHT_SHADER_CODE&quot;];
+		delete query.macros[&quot;USE_EXTRA_LIGHT_SHADER_CODE&quot;];
 
-	return macros;
+	return query;
 }
 
 /**

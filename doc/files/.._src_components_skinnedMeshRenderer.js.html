@@ -89,6 +89,8 @@
             
                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
             
+                <li><a href="../classes/LS.LSQ.html">LS.LSQ</a></li>
+            
                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
             
                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -396,8 +398,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	{
 		RI.setMesh( mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
-		delete RI.macros[&quot;USE_SKINNING&quot;]; 
-		delete RI.macros[&quot;USE_SKINNING_TEXTURE&quot;];
+		delete RI.query.macros[&quot;USE_SKINNING&quot;]; 
+		delete RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;];
 		delete RI.samplers[&quot;u_bones&quot;];
 	}
 	else if( SkinnedMeshRenderer.gpu_skinning_supported &amp;&amp; !this.cpu_skinning ) 
@@ -405,7 +407,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		RI.setMesh(mesh, this.primitive);
 
 		//add skinning
-		RI.macros[&quot;USE_SKINNING&quot;] = &quot;&quot;;
+		RI.query.macros[&quot;USE_SKINNING&quot;] = &quot;&quot;;
 		
 		//retrieve all the bones
 		var bones = this.getBoneMatrices(mesh);
@@ -428,7 +430,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms[&quot;u_bones&quot;] = u_bones;
 			if(bones.length &gt; SkinnedMeshRenderer.MAX_BONES)
-				RI.macros[&quot;MAX_BONES&quot;] = bones.length.toString();
+				RI.query.macros[&quot;MAX_BONES&quot;] = bones.length.toString();
 			delete RI.samplers[&quot;u_bones&quot;]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures &gt; 0 ) //upload the bones as a float texture (slower)
@@ -443,7 +445,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[&quot;:bones&quot;] = texture; //debug
-			RI.macros[&quot;USE_SKINNING_TEXTURE&quot;] = &quot;&quot;;
+			RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;] = &quot;&quot;;
 			RI.samplers[&quot;u_bones&quot;] = texture;
 			delete RI.uniforms[&quot;u_bones&quot;]; //use samplers, not uniforms
 		}
@@ -476,8 +478,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		this.applySkin( mesh, this._skinned_mesh );
 		RI.setMesh(this._skinned_mesh, this.primitive);
 		//remove the flags to avoid recomputing shaders
-		delete RI.macros[&quot;USE_SKINNING&quot;]; 
-		delete RI.macros[&quot;USE_SKINNING_TEXTURE&quot;];
+		delete RI.query.macros[&quot;USE_SKINNING&quot;]; 
+		delete RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;];
 		delete RI.samplers[&quot;u_bones&quot;];
 	}
 
@@ -511,7 +513,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	if(this.primitive == gl.POINTS)
 	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
+		RI.query.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
 	}
 
 	instances.push(RI);

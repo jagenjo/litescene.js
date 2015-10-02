@@ -107,7 +107,7 @@ function Light(o)
 	* @default false
 	*/
 	this.cast_shadows = false;
-	this.shadow_bias = 0.005;
+	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 1024;
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
@@ -121,7 +121,7 @@ function Light(o)
 	this._top = vec3.clone( Light.UP_VECTOR );
 
 	//for caching purposes
-	this._macros = {};
+	this._query = new ShaderQuery();
 	this._uniforms = {};
 
 	if(o) 
@@ -457,8 +457,8 @@ Light.prototype.isInLayer = function(num)
 Light.prototype.prepare = function( render_options )
 {
 	var uniforms = this._uniforms;
-	var macros = this._macros;
-	wipeObject(macros); //delete all properties (I dont like to generate garbage)
+	var query = this._query;
+	query.clear(); //delete all properties (I dont like to generate garbage)
 
 	//projective texture needs the light matrix to compute projection
 	if(this.projective_texture || this.cast_shadows)
@@ -474,20 +474,20 @@ Light.prototype.prepare = function( render_options )
 
 	//PREPARE MACROS
 	if(this.type == Light.DIRECTIONAL)
-		macros.USE_DIRECTIONAL_LIGHT = "";
+		query.macros.USE_DIRECTIONAL_LIGHT = "";
 	else if(this.type == Light.SPOT)
-		macros.USE_SPOT_LIGHT = "";
+		query.macros.USE_SPOT_LIGHT = "";
 	else //omni
-		macros.USE_OMNI_LIGHT = "";
+		query.macros.USE_OMNI_LIGHT = "";
 
 	if(this.spot_cone)
-		macros.USE_SPOT_CONE = "";
+		query.macros.USE_SPOT_CONE = "";
 	if(this.linear_attenuation)
-		macros.USE_LINEAR_ATTENUATION = "";
+		query.macros.USE_LINEAR_ATTENUATION = "";
 	if(this.range_attenuation)
-		macros.USE_RANGE_ATTENUATION = "";
+		query.macros.USE_RANGE_ATTENUATION = "";
 	if(this.offset > 0.001)
-		macros.USE_LIGHT_OFFSET = "";
+		query.macros.USE_LIGHT_OFFSET = "";
 
 	if(this.projective_texture)
 	{
@@ -495,9 +495,9 @@ Light.prototype.prepare = function( render_options )
 		if(light_projective_texture)
 		{
 			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				macros.USE_LIGHT_CUBEMAP = "";
+				query.macros.USE_LIGHT_CUBEMAP = "";
 			else
-				macros.USE_LIGHT_TEXTURE = "";
+				query.macros.USE_LIGHT_TEXTURE = "";
 		}
 	}
 
@@ -507,9 +507,9 @@ Light.prototype.prepare = function( render_options )
 		if(extra_texture)
 		{
 			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				macros.USE_EXTRA_LIGHT_CUBEMAP = "";
+				query.macros.USE_EXTRA_LIGHT_CUBEMAP = "";
 			else
-				macros.USE_EXTRA_LIGHT_TEXTURE = "";
+				query.macros.USE_EXTRA_LIGHT_TEXTURE = "";
 		}
 	}
 
@@ -555,46 +555,46 @@ Light.prototype.prepare = function( render_options )
 }
 
 /**
-* Collects and returns the macros of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
-* @method getMacros
+* Collects and returns the shader query of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
+* @method getQuery
 * @param {RenderInstance} instance the render instance where this light will be applied
 * @param {Object} render_options info about how the scene will be rendered
-* @return {Object} the macros
+* @return {ShaderQuery} the macros
 */
-Light.prototype.getMacros = function(instance, render_options)
+Light.prototype.getQuery = function(instance, render_options)
 {
-	var macros = this._macros;
+	var query = this._query;
 
 	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_options.shadows_disabled;
 
 	if(!this.constant_diffuse && !instance.material.constant_diffuse)
-		macros.USE_DIFFUSE_LIGHT = "";
+		query.macros.USE_DIFFUSE_LIGHT = "";
 	else
-		delete macros["USE_DIFFUSE_LIGHT"];
+		delete query.macros["USE_DIFFUSE_LIGHT"];
 
 	if(this.use_specular && instance.material.specular_factor > 0)
-		macros.USE_SPECULAR_LIGHT = "";	
+		query.macros.USE_SPECULAR_LIGHT = "";	
 	else
-		delete macros["USE_SPECULAR_LIGHT"];
+		delete query.macros["USE_SPECULAR_LIGHT"];
 
 	if(use_shadows && instance.flags & RI_RECEIVE_SHADOWS)
 	{
-		macros.USE_SHADOW_MAP = "";
+		query.macros.USE_SHADOW_MAP = "";
 		if(this._shadowmap && this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
-			macros.USE_SHADOW_CUBEMAP = "";
+			query.macros.USE_SHADOW_CUBEMAP = "";
 		if(this.hard_shadows)// || macros.USE_SHADOW_CUBEMAP != null)
-			macros.USE_HARD_SHADOWS = "";
-		macros.SHADOWMAP_OFFSET = "";
+			query.macros.USE_HARD_SHADOWS = "";
+		query.macros.SHADOWMAP_OFFSET = "";
 	}
 	else
-		delete macros["USE_SHADOW_MAP"];
+		delete query.macros["USE_SHADOW_MAP"];
 
 	if(this._last_processed_extra_light_shader_code && (!this.extra_texture || LS.ResourcesManager.getTexture(this.extra_texture)) )
-		macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
+		query.macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
 	else
-		delete macros["USE_EXTRA_LIGHT_SHADER_CODE"];
+		delete query.macros["USE_EXTRA_LIGHT_SHADER_CODE"];
 
-	return macros;
+	return query;
 }
 
 /**
