@@ -1,6 +1,7 @@
 function SkinDeformer(o)
 {
 	this.enabled = true;
+	this.search_bones_in_parent = false;
 	this.skeleton_root_node = null;
 	this.cpu_skinning = false;
 	this.ignore_transform = true;
@@ -44,7 +45,8 @@ SkinDeformer.prototype.onRemovedFromNode = function(node)
 
 SkinDeformer.prototype.getBoneNode = function( name )
 {
-	var scene = this._root.scene;
+	var root_node = this._root;
+	var scene = root_node.scene;
 	if(!scene)
 		return null;
 
@@ -52,9 +54,13 @@ SkinDeformer.prototype.getBoneNode = function( name )
 
 	if( this.skeleton_root_node )
 	{
-		var root_node = scene.getNode( this.skeleton_root_node );
+		root_node = scene.getNode( this.skeleton_root_node );
 		if(root_node)
 			return root_node.findChildNodeByName( name );
+	}
+	else if(this.search_bones_in_parent)
+	{
+		return root_node.parentNode.findChildNodeByName( name );
 	}
 	else
 		return scene.getNode( name );

@@ -186,6 +186,8 @@ var Draw = {
 			}\
 		');
 
+		this.shader_phong.uniforms({u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] });
+
 		//create shaders
 		this.shader_depth = new Shader('\
 			precision mediump float;\n\

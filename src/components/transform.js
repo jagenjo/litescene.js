@@ -1,7 +1,7 @@
 /** Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * @class Transform
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Transform(o)
@@ -60,6 +60,10 @@ Transform.prototype.onRemovedFromNode = function(node)
 		delete node["transform"];
 }
 
+/**
+* Force object to update matrices
+* @method mustUpdate
+*/
 Transform.prototype.mustUpdate = function()
 {
 	this._must_update_matrix = true;
@@ -1034,7 +1038,10 @@ Transform.prototype.globalVectorToLocal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, Q );
 }
 
-
+/**
+* Apply a transform to this transform
+* @method applyTransform
+*/
 Transform.prototype.applyTransform = function( transform, center, is_global )
 {
 	//is local

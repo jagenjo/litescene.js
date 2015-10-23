@@ -76,6 +76,8 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		this.size = [100,20];
 
+		this.addInput("node_id", "string", { locked: true });
+
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
 	}
@@ -85,12 +87,25 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.getNode = function()
 	{
+		var node_id = null;
+
+		//first check input
+		if(this.inputs && this.inputs[0])
+			node_id = this.getInputData(0);
+		if(node_id)
+			this.properties.node_id = node_id;
+
 		var scene = this.graph.getScene();
+		var node = null;
 
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
+		//then check properties
+		if(	!node_id && this.properties.node_id )
+			node_id = this.properties.node_id;
 
+		if(node_id)
+			node = scene.getNode( node_id );
+
+		//otherwise use the graph node
 		if(!node)
 			node = this.graph._scenenode;
 		return node;
@@ -99,20 +114,25 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphSceneNode.prototype.onExecute = function()
 	{
 		var node = this.getNode();
-	
+
 		//read inputs
-		if(this.inputs)
-		for(var i = 0; i < this.inputs.length; ++i)
+		if(this.inputs) //there must be inputs always but just in case
 		{
-			var input = this.inputs[i];
-			var v = this.getInputData(i);
-			if(v === undefined)
-				continue;
-			switch( input.name )
+			for(var i = 1; i < this.inputs.length; ++i)
 			{
-				case "Transform": node.transform.copyFrom(v); break;
-				case "Material": node.material = v;	break;
-				case "Visible": node.flags.visible = v; break;
+				var input = this.inputs[i];
+				var v = this.getInputData(i);
+				if(v === undefined)
+					continue;
+				switch( input.name )
+				{
+					case "Transform": node.transform.copyFrom(v); break;
+					case "Material": node.material = v;	break;
+					case "Visible": node.flags.visible = v; break;
+					default:
+
+						break;
+				}
 			}
 		}
 
@@ -125,11 +145,25 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( output.name )
 			{
-				case "Material": this.setOutputData(i, node.getMaterial() ); break;
+				case "Material": this.setOutputData( i, node.getMaterial() ); break;
+				case "Transform": this.setOutputData( i, node.transform ); break;
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
 				case "Visible": this.setOutputData(i, node.flags.visible ); break;
 				default:
 					var compo = node.getComponentByUId( output.name );
+					if(!compo)
+					{
+						//SPECIAL CASE: maybe the node id changed so the output.name contains the uid of another node, in that case replace it
+						var old_compo = node.scene.findComponentByUId( output.name );
+						if(old_compo)
+						{
+							var class_name = LS.getObjectClassName( old_compo );
+							compo = node.getComponent( class_name );
+							if( compo )
+								output.name = compo.uid; //replace the uid
+						}
+					}
+
 					this.setOutputData(i, compo );
 					break;
 			}
@@ -157,14 +191,14 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
-		var result = [["Visible","boolean"]];
+		var result = [["Visible","boolean"],["Material","Material"]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"]];
+		var result = [["Visible","boolean"],["Material","Material"]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
@@ -207,7 +241,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
-		this.addInput("Transform","Transform");
+		this.addInput("Transform", "Transform", { locked: true });
 		this.addOutput("Position","vec3");
 	}
 
@@ -216,20 +250,33 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onExecute = function()
 	{
-		var scene = this.graph.getScene();
-		if(!scene)
+		var transform = null;
+
+		if(this.inputs && this.inputs[0])
+			transform = this.getInputData(0);
+
+		if(!transform)
+		{
+			var scene = this.graph.getScene();
+			if(!scene)
+				return;
+
+			var node = this._node;
+			if(	this.properties.node_id )
+				node = scene.getNode( this.properties.node_id );
+
+			if(!node)
+				node = this.graph._scenenode;
+
+			transform = node.transform;
+		}
+
+		if(!transform)
 			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
 
 		//read inputs
 		if(this.inputs)
-		for(var i = 0; i < this.inputs.length; ++i)
+		for(var i = 1; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -237,9 +284,13 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( input.name )
 			{
-				case "Position": node.transform.setPosition(v); break;
-				case "Rotation": node.transform.setRotation(v); break;
-				case "Scale": node.transform.setScale(v); break;
+				case "x": transform.x = v; break;
+				case "y": transform.y = v; break;
+				case "z": transform.z = v; break;
+				case "Position": transform.setPosition(v); break;
+				case "Rotation": transform.setRotation(v); break;
+				case "Scale": transform.setScale(v); break;
+				case "Matrix": transform.fromMatrix(v); break;
 			}
 		}
 
@@ -251,25 +302,35 @@ if(typeof(LiteGraph) != "undefined")
 			if(!output.links || !output.links.length)
 				continue;
 
+			var value = undefined;
 			switch( output.name )
 			{
-				case "Position": this.setOutputData(i, node.transform.getPosition()); break;
-				case "Rotation": this.setOutputData(i, node.transform.getRotation()); break;
-				case "Scale": this.setOutputData(i, node.transform.getScale(scale)); break;
+				case "x": value = transform.x; break;
+				case "y": value = transform.y; break;
+				case "z": value = transform.z; break;
+				case "Position": value = transform.position; break;
+				case "Global Position": value = transform.getGlobalPosition(); break;
+				case "Rotation": value = transform.rotation; break;
+				case "Global Rotation": value = transform.getGlobalRotation(); break;
+				case "Scale": value = transform.scaling; break;
+				case "Matrix": value = transform.getMatrix(); break;
+				default:
+					break;
 			}
-		}
 
-		//this.setOutputData(0, parseFloat( this.properties["value"] ) );
+			if(value !== undefined)
+				this.setOutputData( i, value );
+		}
 	}
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["Enabled","boolean"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["Enabled","boolean"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"]];
 	}
 
 	LiteGraph.registerNodeType("scene/transform", LGraphTransform );
@@ -356,28 +417,15 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.getMaterial = function()
 	{
-		var scene = this.graph.getScene();
-		if(!scene)
-			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-		if(!node)
-			node = this.graph._scenenode; //use the attached node
-
-		if(!node) 
-			return null;
-
-		var mat = null;
-
 		//if it has an input material, use that one
 		var slot = this.findInputSlot("Material");
 		if( slot != -1)
-			return this.getInputData(slot);
+			return this.getInputData( slot );
 
-		//otherwise return the node material
-		return node.getMaterial();
+		if(	this.properties.mat_name )
+			return LS.RM.materials[ this.properties.mat_name ];
+
+		return null;
 	}
 
 	LGraphMaterial.prototype.onGetInputs = function()
@@ -429,7 +477,7 @@ if(typeof(LiteGraph) != "undefined")
 			component: ""
 		};
 
-		this.addInput("Component");
+		this.addInput("Component", undefined, { locked: true });
 
 		this._component = null;
 	}
@@ -627,7 +675,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphGlobal.title = "Global";
 	LGraphGlobal.desc = "Global var for the graph";
-	LGraphGlobal["@type"] = { type:"enum", values:["number","string","vec2","vec3","vec4","color","texture"]};
+	LGraphGlobal["@type"] = { type:"enum", values:["number","string","node","vec2","vec3","vec4","color","texture"]};
 
 	LGraphGlobal.prototype.onExecute = function()
 	{

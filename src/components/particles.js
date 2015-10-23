@@ -40,8 +40,9 @@ function ParticleEmissor(o)
 	this.particle_size = 5;
 	this.particle_rotation = 0;
 	this.particle_size_curve = [[1,1]];
-	this.particle_start_color = [1,1,1];
-	this.particle_end_color = [1,1,1];
+
+	this._particle_start_color = vec3.fromValues(1,1,1);
+	this._particle_end_color = vec3.fromValues(1,1,1);
 
 	this.particle_opacity_curve = [[0.5,1]];
 
@@ -106,6 +107,25 @@ ParticleEmissor.CUSTOM_EMISSOR = 10;
 ParticleEmissor["@emissor_type"] = { type:"enum", values:{ "Box":ParticleEmissor.BOX_EMISSOR, "Sphere":ParticleEmissor.SPHERE_EMISSOR, "Mesh":ParticleEmissor.MESH_EMISSOR, "Custom": ParticleEmissor.CUSTOM_EMISSOR }};
 ParticleEmissor.icon = "mini-icon-particles.png";
 
+Object.defineProperty( ParticleEmissor.prototype, 'particle_start_color', {
+	get: function() { return this._particle_start_color; },
+	set: function(v) { 
+		if(v)
+			this._particle_start_color.set(v); 
+	},
+	enumerable: true
+});
+
+Object.defineProperty( ParticleEmissor.prototype, 'particle_end_color', {
+	get: function() { return this._particle_end_color; },
+	set: function(v) { 
+		if(v)
+			this._particle_end_color.set(v); 
+	},
+	enumerable: true
+});
+
+
 Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
 	get: function() { return this._custom_emissor_code; },
 	set: function(v) { 
@@ -145,6 +165,7 @@ Object.defineProperty( ParticleEmissor.prototype , 'custom_update_code', {
 	},
 	enumerable: true
 });
+
 
 ParticleEmissor.prototype.onAddedToScene = function(scene)
 {
@@ -420,8 +441,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	if(this.particle_life == 0) this.particle_life = 0.0001;
 
 	var color = new Float32Array([1,1,1,1]);
-	var particle_start_color = new Float32Array(this.particle_start_color);
-	var particle_end_color = new Float32Array(this.particle_end_color);
+	var particle_start_color = this._particle_start_color;
+	var particle_end_color = this._particle_end_color;
 
 	//used for grid based textures
 	var recompute_coords = false;

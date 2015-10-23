@@ -632,6 +632,8 @@ var Draw = {
 			}\
 		');
 
+		this.shader_phong.uniforms({u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] });
+
 		//create shaders
 		this.shader_depth = new Shader('\
 			precision mediump float;\n\
@@ -2878,7 +2880,12 @@ var ResourcesManager = {
 			encoding = "base64";
 		}
 		else if(resource.serialize) //a json object
-			data = JSON.stringify( resource.serialize() );
+		{
+			var obj = resource.serialize();
+			if(obj.preview_url) //special case...
+				delete obj.preview_url;
+			data = JSON.stringify( obj );
+		}
 		else if(resource.data) //regular string data
 			data = resource.data;
 		else
@@ -6559,6 +6566,24 @@ CompositePattern.prototype.findChildNodeByName = function( name )
 	if(this.name == name)
 		return this;
 
+	var children = this._children;
+
+	if(children)
+		for(var i = 0; i < children.length; ++i)
+		{
+			var node = children[i];
+			if( node.name == name )
+				return node;
+			if(node._children)
+			{
+				var r = node.findChildNodeByName(name);
+				if(r)
+					return r;
+			}
+		}
+	return null;
+
+	/* slow
 	var nodes = this.getDescendants();
 	for(var i = 0; i < nodes.length; i++)
 	{
@@ -6566,6 +6591,7 @@ CompositePattern.prototype.findChildNodeByName = function( name )
 		if( node.name == name )
 			return node;
 	}
+	*/
 }
 
 
@@ -6668,7 +6694,7 @@ LS.Component = Component;
 /** Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * @class Transform
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Transform(o)
@@ -6727,6 +6753,10 @@ Transform.prototype.onRemovedFromNode = function(node)
 		delete node["transform"];
 }
 
+/**
+* Force object to update matrices
+* @method mustUpdate
+*/
 Transform.prototype.mustUpdate = function()
 {
 	this._must_update_matrix = true;
@@ -7701,7 +7731,10 @@ Transform.prototype.globalVectorToLocal = function(vec, dest) {
 	return vec3.transformQuat(dest || vec3.create(), vec, Q );
 }
 
-
+/**
+* Apply a transform to this transform
+* @method applyTransform
+*/
 Transform.prototype.applyTransform = function( transform, center, is_global )
 {
 	//is local
@@ -9766,17 +9799,6 @@ Light.prototype.getLightCamera = function()
 	return this._light_camera;
 }
 
-Light.prototype.serialize = function()
-{
-	return LS.cloneObject(this);
-}
-
-Light.prototype.configure = function(o)
-{
-	LS.cloneObject(o,this);
-}
-
-
 /**
 * updates all the important vectors (target, position, etc) according to the node parent of the light
 * @method updateVectors
@@ -11368,6 +11390,7 @@ LS.MorphDeformer = MorphDeformer;
 function SkinDeformer(o)
 {
 	this.enabled = true;
+	this.search_bones_in_parent = false;
 	this.skeleton_root_node = null;
 	this.cpu_skinning = false;
 	this.ignore_transform = true;
@@ -11411,7 +11434,8 @@ SkinDeformer.prototype.onRemovedFromNode = function(node)
 
 SkinDeformer.prototype.getBoneNode = function( name )
 {
-	var scene = this._root.scene;
+	var root_node = this._root;
+	var scene = root_node.scene;
 	if(!scene)
 		return null;
 
@@ -11419,9 +11443,13 @@ SkinDeformer.prototype.getBoneNode = function( name )
 
 	if( this.skeleton_root_node )
 	{
-		var root_node = scene.getNode( this.skeleton_root_node );
+		root_node = scene.getNode( this.skeleton_root_node );
 		if(root_node)
 			return root_node.findChildNodeByName( name );
+	}
+	else if(this.search_bones_in_parent)
+	{
+		return root_node.parentNode.findChildNodeByName( name );
 	}
 	else
 		return scene.getNode( name );
@@ -12148,6 +12176,56 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 
 LS.registerComponent( Collider );
+/** 
+* This module allows to store custom data inside a node
+* @class CustomData
+* @constructor
+* @param {Object} object to configure from
+*/
+
+function CustomData(o)
+{
+	this.properties = [];
+
+	if(o)
+		this.configure(o);
+}
+
+
+CustomData.icon = "mini-icon-bg.png";
+
+CustomData.prototype.getResources = function(res)
+{
+	return res;
+}
+
+CustomData.prototype.getProperties = function()
+{
+	var result = {};
+	//TODO
+	return result;
+}
+
+CustomData.prototype.setProperty = function( name, value )
+{
+}
+
+//used for animation tracks
+CustomData.prototype.getPropertyInfoFromPath = function( path )
+{
+}
+
+CustomData.prototype.setPropertyValueFromPath = function( path, value )
+{
+}
+
+
+CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+}
+
+LS.registerComponent( CustomData );
+LS.CustomData = CustomData;
 function AnnotationComponent(o)
 {
 	this.text = "";
@@ -12745,8 +12823,9 @@ Target.prototype.updateOrientation = function(e)
 	else if( this.face_camera )
 	{
 		var camera = LS.Renderer._main_camera ||  LS.Renderer._current_camera;
-		if(camera)
-			target_position = camera.getEye();
+		if(!camera)
+			return;
+		target_position = camera.getEye();
 	}
 	else
 		return;
@@ -13165,7 +13244,7 @@ if(typeof(LGraphTexture) != "undefined")
 function GraphComponent(o)
 {
 	this.enabled = true;
-	this.force_redraw = true;
+	this.force_redraw = false;
 
 	this.on_event = "update";
 
@@ -13269,11 +13348,12 @@ GraphComponent.prototype.trigger = function(e)
 
 GraphComponent.prototype.runGraph = function()
 {
-	if(!this._root._in_tree || !this.enabled) return;
+	if(!this._root._in_tree || !this.enabled)
+		return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(this._root._in_tree, "change");
+		this._root.scene.refresh();
 }
 
 GraphComponent.prototype.getGraph = function()
@@ -13859,8 +13939,9 @@ function ParticleEmissor(o)
 	this.particle_size = 5;
 	this.particle_rotation = 0;
 	this.particle_size_curve = [[1,1]];
-	this.particle_start_color = [1,1,1];
-	this.particle_end_color = [1,1,1];
+
+	this._particle_start_color = vec3.fromValues(1,1,1);
+	this._particle_end_color = vec3.fromValues(1,1,1);
 
 	this.particle_opacity_curve = [[0.5,1]];
 
@@ -13925,6 +14006,25 @@ ParticleEmissor.CUSTOM_EMISSOR = 10;
 ParticleEmissor["@emissor_type"] = { type:"enum", values:{ "Box":ParticleEmissor.BOX_EMISSOR, "Sphere":ParticleEmissor.SPHERE_EMISSOR, "Mesh":ParticleEmissor.MESH_EMISSOR, "Custom": ParticleEmissor.CUSTOM_EMISSOR }};
 ParticleEmissor.icon = "mini-icon-particles.png";
 
+Object.defineProperty( ParticleEmissor.prototype, 'particle_start_color', {
+	get: function() { return this._particle_start_color; },
+	set: function(v) { 
+		if(v)
+			this._particle_start_color.set(v); 
+	},
+	enumerable: true
+});
+
+Object.defineProperty( ParticleEmissor.prototype, 'particle_end_color', {
+	get: function() { return this._particle_end_color; },
+	set: function(v) { 
+		if(v)
+			this._particle_end_color.set(v); 
+	},
+	enumerable: true
+});
+
+
 Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
 	get: function() { return this._custom_emissor_code; },
 	set: function(v) { 
@@ -13964,6 +14064,7 @@ Object.defineProperty( ParticleEmissor.prototype , 'custom_update_code', {
 	},
 	enumerable: true
 });
+
 
 ParticleEmissor.prototype.onAddedToScene = function(scene)
 {
@@ -14239,8 +14340,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	if(this.particle_life == 0) this.particle_life = 0.0001;
 
 	var color = new Float32Array([1,1,1,1]);
-	var particle_start_color = new Float32Array(this.particle_start_color);
-	var particle_end_color = new Float32Array(this.particle_end_color);
+	var particle_start_color = this._particle_start_color;
+	var particle_end_color = this._particle_end_color;
 
 	//used for grid based textures
 	var recompute_coords = false;
@@ -16680,6 +16781,8 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		this.size = [100,20];
 
+		this.addInput("node_id", "string", { locked: true });
+
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
 	}
@@ -16689,12 +16792,25 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.getNode = function()
 	{
+		var node_id = null;
+
+		//first check input
+		if(this.inputs && this.inputs[0])
+			node_id = this.getInputData(0);
+		if(node_id)
+			this.properties.node_id = node_id;
+
 		var scene = this.graph.getScene();
+		var node = null;
 
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
+		//then check properties
+		if(	!node_id && this.properties.node_id )
+			node_id = this.properties.node_id;
 
+		if(node_id)
+			node = scene.getNode( node_id );
+
+		//otherwise use the graph node
 		if(!node)
 			node = this.graph._scenenode;
 		return node;
@@ -16703,20 +16819,25 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphSceneNode.prototype.onExecute = function()
 	{
 		var node = this.getNode();
-	
+
 		//read inputs
-		if(this.inputs)
-		for(var i = 0; i < this.inputs.length; ++i)
+		if(this.inputs) //there must be inputs always but just in case
 		{
-			var input = this.inputs[i];
-			var v = this.getInputData(i);
-			if(v === undefined)
-				continue;
-			switch( input.name )
+			for(var i = 1; i < this.inputs.length; ++i)
 			{
-				case "Transform": node.transform.copyFrom(v); break;
-				case "Material": node.material = v;	break;
-				case "Visible": node.flags.visible = v; break;
+				var input = this.inputs[i];
+				var v = this.getInputData(i);
+				if(v === undefined)
+					continue;
+				switch( input.name )
+				{
+					case "Transform": node.transform.copyFrom(v); break;
+					case "Material": node.material = v;	break;
+					case "Visible": node.flags.visible = v; break;
+					default:
+
+						break;
+				}
 			}
 		}
 
@@ -16729,11 +16850,25 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( output.name )
 			{
-				case "Material": this.setOutputData(i, node.getMaterial() ); break;
+				case "Material": this.setOutputData( i, node.getMaterial() ); break;
+				case "Transform": this.setOutputData( i, node.transform ); break;
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
 				case "Visible": this.setOutputData(i, node.flags.visible ); break;
 				default:
 					var compo = node.getComponentByUId( output.name );
+					if(!compo)
+					{
+						//SPECIAL CASE: maybe the node id changed so the output.name contains the uid of another node, in that case replace it
+						var old_compo = node.scene.findComponentByUId( output.name );
+						if(old_compo)
+						{
+							var class_name = LS.getObjectClassName( old_compo );
+							compo = node.getComponent( class_name );
+							if( compo )
+								output.name = compo.uid; //replace the uid
+						}
+					}
+
 					this.setOutputData(i, compo );
 					break;
 			}
@@ -16761,14 +16896,14 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
-		var result = [["Visible","boolean"]];
+		var result = [["Visible","boolean"],["Material","Material"]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"]];
+		var result = [["Visible","boolean"],["Material","Material"]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
@@ -16811,7 +16946,7 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
 			this.properties.node_id = LGraphSceneNode._current_node_id;
-		this.addInput("Transform","Transform");
+		this.addInput("Transform", "Transform", { locked: true });
 		this.addOutput("Position","vec3");
 	}
 
@@ -16820,20 +16955,33 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onExecute = function()
 	{
-		var scene = this.graph.getScene();
-		if(!scene)
+		var transform = null;
+
+		if(this.inputs && this.inputs[0])
+			transform = this.getInputData(0);
+
+		if(!transform)
+		{
+			var scene = this.graph.getScene();
+			if(!scene)
+				return;
+
+			var node = this._node;
+			if(	this.properties.node_id )
+				node = scene.getNode( this.properties.node_id );
+
+			if(!node)
+				node = this.graph._scenenode;
+
+			transform = node.transform;
+		}
+
+		if(!transform)
 			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-
-		if(!node)
-			node = this.graph._scenenode;
 
 		//read inputs
 		if(this.inputs)
-		for(var i = 0; i < this.inputs.length; ++i)
+		for(var i = 1; i < this.inputs.length; ++i)
 		{
 			var input = this.inputs[i];
 			var v = this.getInputData(i);
@@ -16841,9 +16989,13 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( input.name )
 			{
-				case "Position": node.transform.setPosition(v); break;
-				case "Rotation": node.transform.setRotation(v); break;
-				case "Scale": node.transform.setScale(v); break;
+				case "x": transform.x = v; break;
+				case "y": transform.y = v; break;
+				case "z": transform.z = v; break;
+				case "Position": transform.setPosition(v); break;
+				case "Rotation": transform.setRotation(v); break;
+				case "Scale": transform.setScale(v); break;
+				case "Matrix": transform.fromMatrix(v); break;
 			}
 		}
 
@@ -16855,25 +17007,35 @@ if(typeof(LiteGraph) != "undefined")
 			if(!output.links || !output.links.length)
 				continue;
 
+			var value = undefined;
 			switch( output.name )
 			{
-				case "Position": this.setOutputData(i, node.transform.getPosition()); break;
-				case "Rotation": this.setOutputData(i, node.transform.getRotation()); break;
-				case "Scale": this.setOutputData(i, node.transform.getScale(scale)); break;
+				case "x": value = transform.x; break;
+				case "y": value = transform.y; break;
+				case "z": value = transform.z; break;
+				case "Position": value = transform.position; break;
+				case "Global Position": value = transform.getGlobalPosition(); break;
+				case "Rotation": value = transform.rotation; break;
+				case "Global Rotation": value = transform.getGlobalRotation(); break;
+				case "Scale": value = transform.scaling; break;
+				case "Matrix": value = transform.getMatrix(); break;
+				default:
+					break;
 			}
-		}
 
-		//this.setOutputData(0, parseFloat( this.properties["value"] ) );
+			if(value !== undefined)
+				this.setOutputData( i, value );
+		}
 	}
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["Enabled","boolean"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["Enabled","boolean"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"]];
 	}
 
 	LiteGraph.registerNodeType("scene/transform", LGraphTransform );
@@ -16960,28 +17122,15 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphMaterial.prototype.getMaterial = function()
 	{
-		var scene = this.graph.getScene();
-		if(!scene)
-			return;
-
-		var node = this._node;
-		if(	this.properties.node_id )
-			node = scene.getNode( this.properties.node_id );
-		if(!node)
-			node = this.graph._scenenode; //use the attached node
-
-		if(!node) 
-			return null;
-
-		var mat = null;
-
 		//if it has an input material, use that one
 		var slot = this.findInputSlot("Material");
 		if( slot != -1)
-			return this.getInputData(slot);
+			return this.getInputData( slot );
 
-		//otherwise return the node material
-		return node.getMaterial();
+		if(	this.properties.mat_name )
+			return LS.RM.materials[ this.properties.mat_name ];
+
+		return null;
 	}
 
 	LGraphMaterial.prototype.onGetInputs = function()
@@ -17033,7 +17182,7 @@ if(typeof(LiteGraph) != "undefined")
 			component: ""
 		};
 
-		this.addInput("Component");
+		this.addInput("Component", undefined, { locked: true });
 
 		this._component = null;
 	}
@@ -17231,7 +17380,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphGlobal.title = "Global";
 	LGraphGlobal.desc = "Global var for the graph";
-	LGraphGlobal["@type"] = { type:"enum", values:["number","string","vec2","vec3","vec4","color","texture"]};
+	LGraphGlobal["@type"] = { type:"enum", values:["number","string","node","vec2","vec3","vec4","color","texture"]};
 
 	LGraphGlobal.prototype.onExecute = function()
 	{
@@ -26284,7 +26433,12 @@ SceneNode.prototype.getBoundingBox = function( bbox )
 	var render_instances = this._instances;
 	if(render_instances)
 		for(var i = 0; i < render_instances.length; ++i)
-			BBox.merge( bbox, bbox, render_instances[i].aabb );
+		{
+			if(i == 0)
+				bbox.set( render_instances[i].aabb );
+			else
+				BBox.merge( bbox, bbox, render_instances[i].aabb );
+		}
 	return bbox;
 }
 

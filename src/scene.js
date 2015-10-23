@@ -1835,7 +1835,12 @@ SceneNode.prototype.getBoundingBox = function( bbox )
 	var render_instances = this._instances;
 	if(render_instances)
 		for(var i = 0; i < render_instances.length; ++i)
-			BBox.merge( bbox, bbox, render_instances[i].aabb );
+		{
+			if(i == 0)
+				bbox.set( render_instances[i].aabb );
+			else
+				BBox.merge( bbox, bbox, render_instances[i].aabb );
+		}
 	return bbox;
 }
 

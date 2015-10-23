@@ -330,6 +330,24 @@ CompositePattern.prototype.findChildNodeByName = function( name )
 	if(this.name == name)
 		return this;
 
+	var children = this._children;
+
+	if(children)
+		for(var i = 0; i < children.length; ++i)
+		{
+			var node = children[i];
+			if( node.name == name )
+				return node;
+			if(node._children)
+			{
+				var r = node.findChildNodeByName(name);
+				if(r)
+					return r;
+			}
+		}
+	return null;
+
+	/* slow
 	var nodes = this.getDescendants();
 	for(var i = 0; i < nodes.length; i++)
 	{
@@ -337,6 +355,7 @@ CompositePattern.prototype.findChildNodeByName = function( name )
 		if( node.name == name )
 			return node;
 	}
+	*/
 }
 
 

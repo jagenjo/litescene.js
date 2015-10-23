@@ -296,17 +296,6 @@ Light.prototype.getLightCamera = function()
 	return this._light_camera;
 }
 
-Light.prototype.serialize = function()
-{
-	return LS.cloneObject(this);
-}
-
-Light.prototype.configure = function(o)
-{
-	LS.cloneObject(o,this);
-}
-
-
 /**
 * updates all the important vectors (target, position, etc) according to the node parent of the light
 * @method updateVectors

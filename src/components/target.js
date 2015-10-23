@@ -88,8 +88,9 @@ Target.prototype.updateOrientation = function(e)
 	else if( this.face_camera )
 	{
 		var camera = LS.Renderer._main_camera ||  LS.Renderer._current_camera;
-		if(camera)
-			target_position = camera.getEye();
+		if(!camera)
+			return;
+		target_position = camera.getEye();
 	}
 	else
 		return;

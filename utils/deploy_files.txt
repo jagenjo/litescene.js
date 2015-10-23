@@ -32,6 +32,7 @@
 ../src/components/skybox.js
 ../src/components/background.js
 ../src/components/collider.js
+../src/components/customData.js
 
 ../src/components/annotations.js
 ../src/components/animator.js

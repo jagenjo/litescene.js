@@ -16,7 +16,7 @@ if(typeof(LGraphTexture) != "undefined")
 function GraphComponent(o)
 {
 	this.enabled = true;
-	this.force_redraw = true;
+	this.force_redraw = false;
 
 	this.on_event = "update";
 
@@ -120,11 +120,12 @@ GraphComponent.prototype.trigger = function(e)
 
 GraphComponent.prototype.runGraph = function()
 {
-	if(!this._root._in_tree || !this.enabled) return;
+	if(!this._root._in_tree || !this.enabled)
+		return;
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		LEvent.trigger(this._root._in_tree, "change");
+		this._root.scene.refresh();
 }
 
 GraphComponent.prototype.getGraph = function()
