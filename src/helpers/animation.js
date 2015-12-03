@@ -143,8 +143,7 @@ Animation.prototype.toBinary = function()
 	return bin;
 }
 
-
-LS.Animation = Animation;
+LS.Classes["Animation"] = LS.Animation = Animation;
 
 /** Represents a set of animations **/
 function Take(o)

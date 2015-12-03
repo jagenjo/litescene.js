@@ -1,3 +1,5 @@
+//WORK IN PROGRESS: NOT FINISHED
+
 /**
 * This component allow to integrate with WebVR to use VR Headset
 * @class VRCameraController
@@ -21,7 +23,7 @@ VRCameraController.prototype.onAddedToNode = function(node)
 	var scene = node.scene;
 
 	LEvent.bind(scene,"start", this.onStart, this );
-	LEvent.bind(scene,"stop", this.onStop, this );
+	LEvent.bind(scene,"finish", this.onStop, this );
 	LEvent.bind(scene,"beforeRender", this.onBeforeRender, this );
 	LEvent.bind(scene,"afterRender", this.onAfterRender, this );
 	LEvent.bind(node, "collectCameras", this.onCollectCameras, this );
@@ -32,7 +34,7 @@ VRCameraController.prototype.onRemovedFromNode = function(node)
 	var scene = this._root.scene;
 
 	LEvent.unbind(scene,"start", this.onStart, this );
-	LEvent.unbind(scene,"stoo", this.onStop, this );
+	LEvent.unbind(scene,"finish", this.onStop, this );
 	LEvent.unbind(scene,"beforeRender", this.onBeforeRender, this );
 	LEvent.unbind(scene,"afterRender", this.onAfterRender, this );
 	LEvent.unbind(node, "collectCameras", this.onCollectCameras, this );
@@ -126,7 +128,7 @@ VRCameraController.prototype.onBeforeRender = function(e,dt)
 
 	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height)
 	{
-		this._color_texture = new GL.Texture(width,height,{ format: gl.RGB, filter: gl.LINEAR });
+		this._color_texture = new GL.Texture( width, height,{ format: gl.RGB, filter: gl.LINEAR });
 		LS.ResourcesManager.textures[":vr_color_buffer"] = this._color_texture;
 	}
 

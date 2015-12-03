@@ -43,7 +43,7 @@ RenderFrameContainer.prototype.setSize = function( width, height )
 }
 
 
-RenderFrameContainer.prototype.preRender = function( render_options )
+RenderFrameContainer.prototype.preRender = function( render_settings )
 {
 	var camera = LS.Renderer._current_camera;
 
@@ -61,7 +61,7 @@ RenderFrameContainer.prototype.preRender = function( render_options )
 
 }
 
-RenderFrameContainer.prototype.postRender = function( render_options )
+RenderFrameContainer.prototype.postRender = function( render_settings )
 {
 	this.endFBO();
 	//detach FBO and render to viewport

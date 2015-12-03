@@ -31,7 +31,8 @@ var ResourcesManager = {
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
 	meshes: {}, //loadead meshes
 	textures: {}, //loadead textures
-	materials: {}, //shared materials
+	materials: {}, //shared materials (indexed by name)
+	materials_by_uid: {}, //shared materials (indexed by uid)
 
 	resources_not_found: {}, //resources that will be skipped because they werent found
 	resources_being_loaded: {}, //resources waiting to be loaded
@@ -39,13 +40,12 @@ var ResourcesManager = {
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
-	formats: {"js":"text", "json":"json", "xml":"xml"},
-	formats_resource: {},	//tells which resource expect from this file format
 	resource_pre_callbacks: {}, //used to extract resource info from a file ->  "obj":callback
 	resource_post_callbacks: {}, //used to post process a resource type -> "Mesh":callback
 	resource_once_callbacks: {}, //callback called once
 
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
+	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -69,25 +69,35 @@ var ResourcesManager = {
 		this.textures = {};
 	},
 
-	registerFileFormat: function(extension, data_type)
-	{
-		this.formats[extension.toLowerCase()] = data_type;
-	},	
-
-	registerResourcePreProcessor: function(fileformats, callback, data_type, resource_type)
+	/**
+	* Resources need to be parsed once the data has been received, some formats could be parsed using native functions (like images) others 
+	* require to pass the data through a function.
+	* Registering a resource preprocessor the data will be converted once it is in memory 
+	*
+	* @method registerResourcePreProcessor
+	* @param {String} fileformats the extension of the formats that this function will parse
+	* @param {Function} callback the function to call once the data must be processed, if the process is async it must return true
+	* @param {string} data_type 
+	* @param {string} resource_type 
+	*/
+	registerResourcePreProcessor: function( fileformats, callback, data_type, resource_type )
 	{
 		var ext = fileformats.split(",");
 		for(var i in ext)
 		{
 			var extension = ext[i].toLowerCase();
 			this.resource_pre_callbacks[ extension ] = callback;
-			if(data_type)
-				this.formats[ extension ] = data_type;
-			if(resource_type)
-				this.formats_resource[ extension ] = resource_type;
 		}
 	},
 
+	/**
+	* Some resources require to be processed right after being parsed to ensure they are ready (meshes need to have the AABB computed...)
+	* This job could be done inside the parser but it is better to do it separatedly.
+	*
+	* @method registerResourcePostProcessor
+	* @param {String} resource_type the name of the class of the resource
+	* @param {Function} callback the function to call once the data has been processed
+	*/
 	registerResourcePostProcessor: function(resource_type, callback)
 	{
 		this.resource_post_callbacks[ resource_type ] = callback;
@@ -184,8 +194,11 @@ var ResourcesManager = {
 		{
 			if( typeof(i) != "string" || i[0] == ":" )
 				continue;
-			this.load(i, options );
+			this.load( i, options );
 		}
+
+		this._total_resources_to_load = this.num_resources_being_loaded;
+		LEvent.trigger( this, "start_loading_resources", this._total_resources_to_load );
 	},	
 
 	/**
@@ -242,10 +255,12 @@ var ResourcesManager = {
 		{
 			switch(protocol)
 			{
+				//external urls
 				case 'http':
 				case 'https':
 					full_url = url;
-					if(this.proxy) //proxy external files
+					var extension = this.getExtension( url ).toLowerCase();
+					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 ) //proxy external files
 						return this.proxy + url.substr(pos+3); //"://"
 					return full_url;
 					break;
@@ -277,7 +292,7 @@ var ResourcesManager = {
 	*/
 	registerFileSystem: function(name, url)
 	{
-		this.virtual_file_systems[name] = url;
+		this.virtual_file_systems[ name ] = url;
 	},
 
 	/**
@@ -369,8 +384,8 @@ var ResourcesManager = {
 
 		LEvent.trigger( LS.ResourcesManager, "resource_loading", url );
 		//send an event if we are starting to load (used for loading icons)
-		if(this.num_resources_being_loaded == 0)
-			LEvent.trigger( LS.ResourcesManager,"start_loading_resources", url );
+		//if(this.num_resources_being_loaded == 0)
+		//	LEvent.trigger( LS.ResourcesManager,"start_loading_resources", url );
 		this.num_resources_being_loaded++;
 
 		var full_url = this.getFullURL(url);
@@ -387,16 +402,22 @@ var ResourcesManager = {
 				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess );
 			},
 			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
-			progress: function(e) { LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e } ); }
+			progress: function(e) { 
+				if( LEvent.hasBind(  LS.ResourcesManager, "resource_loading_progress" ) ) //used to avoid creating objects during loading
+					LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e, progress: e.loaded / e.total } );
+				if( LEvent.hasBind(  LS.ResourcesManager, "loading_resources_progress" ) ) //used to avoid creating objects during loading
+					LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - (LS.ResourcesManager.num_resources_being_loaded - e.loaded / e.total) / LS.ResourcesManager._total_resources_to_load );
+
+			}
 		};
 
 		//in case we need to force a response format 
-		var file_format = this.formats[ extension ];
-		if(file_format) //if not it will be set by http server
-			settings.dataType = file_format;
+		var format_info = LS.Formats.supported[ extension ];
+		if( format_info && format_info.dataType ) //force dataType, otherwise it will be set by http server
+			settings.dataType = format_info.dataType;
 
 		//send the REQUEST
-		LS.Network.request(settings); //ajax call
+		LS.Network.request( settings ); //ajax call
 		return false;
 	},
 
@@ -409,6 +430,7 @@ var ResourcesManager = {
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
 	* @param {*} data the data of the resource (could be string, arraybuffer, image... )
 	* @param {Object}[options={}] options to apply to the loaded resource
+	* @param {Function} on_complete once the resource is ready
 	*/
 
 	processResource: function( url, data, options, on_complete )
@@ -455,17 +477,23 @@ var ResourcesManager = {
 			}
 		}
 
-		var callback = this.resource_pre_callbacks[extension.toLowerCase()];
-		if(!callback)
+		var callback = this.resource_pre_callbacks[ extension.toLowerCase() ];
+		if(callback)
 		{
-			console.log("Resource format unknown: " + extension)
-			return false;
+			//this callback should return the resource or true if it is processing it
+			var resource = callback( url, data, options, inner_onResource );
+			if(resource === true)
+				return;
+			if(resource)
+				inner_onResource(url, resource);
+			else //resource is null
+			{
+				this._resourceLoadedError( url, "Resource couldnt be processed" );
+				return;
+			}
 		}
-
-		//parse
-		var resource = callback(url, data, options, inner_onResource);
-		if(resource)
-			inner_onResource(url, resource);
+		else //unknown resource: convert to object
+			inner_onResource( url, { data: data } );
 
 		//callback when the resource is ready
 		function inner_onResource( fullpath, resource )
@@ -548,6 +576,7 @@ var ResourcesManager = {
 		if(!this.resources[filename])
 			return false; //not found
 
+		var resource = this.resources[filename];
 		delete this.resources[filename];
 
 		//ugly: too hardcoded
@@ -579,7 +608,8 @@ var ResourcesManager = {
 	*/
 	computeResourceInternalData: function(resource)
 	{
-		if(!resource) throw("Resource is null");
+		if(!resource)
+			throw("Resource is null");
 
 		var data = null;
 		var encoding = "text";
@@ -704,46 +734,11 @@ var ResourcesManager = {
 		this.resources_not_found = {};
 	},
 
-	processScene: function(filename, data, options)
-	{
-		var scene_data = Parser.parse(filename, data, options);
-
-		//register meshes
-		if(scene_data.meshes)
-		{
-			for (var i in scene_data.meshes)
-			{
-				var mesh_data = scene_data.meshes[i];
-				var mesh = GL.Mesh.load(mesh_data);
-				/*
-				var morphs = [];
-				if(mesh.morph_targets)
-					for(var j in mesh.morph_targets)
-					{
-
-					}
-				*/
-
-				LS.ResourcesManager.registerResource(i,mesh);
-			}
-		}
-
-		//Build the scene tree
-		var scene = new LS.SceneTree();
-		scene.configure(scene_data);
-
-		//load from the internet associated resources 
-		scene.loadResources();
-
-		return scene;
-	},
-
 	computeImageMetadata: function(texture)
 	{
 		var metadata = { width: texture.width, height: texture.height };
 		return metadata;
 	},
-
 
 	/**
 	* returns a mesh resource if it is loaded
@@ -855,14 +850,16 @@ var ResourcesManager = {
 			delete LS.ResourcesManager.resources_being_loaded[url];
 			LS.ResourcesManager.num_resources_being_loaded--;
 			LEvent.trigger( LS.ResourcesManager, "resource_loaded", url );
+			LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - LS.ResourcesManager.num_resources_being_loaded / LS.ResourcesManager._total_resources_to_load );
 			if( LS.ResourcesManager.num_resources_being_loaded == 0)
 			{
 				LEvent.trigger( LS.ResourcesManager, "end_loading_resources", true);
+				LS.ResourcesManager._total_resources_to_load = 0;
 			}
 		}
 	},
 
-	_resourceLoadedError: function(url, error)
+	_resourceLoadedError: function( url, error )
 	{
 		console.log("Error loading " + url);
 		delete LS.ResourcesManager.resources_being_loaded[url];
@@ -918,11 +915,10 @@ var ResourcesManager = {
 	_waiting_callbacks: {}
 };
 
-LS.ResourcesManager = ResourcesManager;
-LS.RM = ResourcesManager;
+LS.RM = LS.ResourcesManager = ResourcesManager;
 
-LS.getTexture = function(name_or_texture) {
-	return LS.ResourcesManager.getTexture(name_or_texture);
+LS.getTexture = function( name_or_texture ) {
+	return LS.ResourcesManager.getTexture( name_or_texture );
 }	
 
 
@@ -958,6 +954,7 @@ LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, 
 LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
 	//store
 	LS.ResourcesManager.materials[filename] = material;
+	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
 });
 
 
@@ -965,25 +962,33 @@ LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename,
 //Resources readers *********
 //global formats: take a file and extract info
 LS.ResourcesManager.registerResourcePreProcessor("wbin", function(filename, data, options) {
-	var data = new WBin.load(data);
+
+	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
+	var data = WBin.load(data);
+	//data could be anything at this point
 	return data;
 },"binary");
 
 LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {
 	var resource = data;
 	if( data.constructor === String )
-		data = JSON.parse(data);
+		data = JSON.parse( data );
 
-	if( data.object_type && window[ data.object_type ] )
+	if( data.object_type )
 	{
-		var ctor = window[ data.object_type ];
-		if(ctor.prototype.configure)
+		var ctor = LS.Classes[ data.object_type ] || window[ data.object_type ];
+		if(ctor)
 		{
-			resource = new ctor();
-			resource.configure(data);
+			if(ctor.prototype.configure)
+			{
+				resource = new ctor();
+				resource.configure( data );
+			}
+			else
+				resource = new ctor( data );
 		}
 		else
-			resource = new ctor(data);
+			console.warn( "JSON object_type class not found: " + data.object_type );
 	}
 	return resource;
 });
@@ -1016,9 +1021,9 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 
 		//from TGAs...
 		if(img.pixels) //not a real image, just an object with width,height and a buffer with all the pixels
-			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
+			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), no_flip: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
-			texture = GL.Texture.fromImage(img, { format: gl.RGBA, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
+			texture = GL.Texture.fromImage(img, { format: gl.RGBA,  wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
 		texture.img = img;
 	}
 
@@ -1028,7 +1033,7 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 }
 
 //basic formats
-LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", function(filename, data, options, callback) {
+LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", function( filename, data, options, callback ) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
 	var mimetype = 'image/png';
@@ -1061,15 +1066,22 @@ LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", functi
 		if(callback)
 			callback(filename,texture,options);
 	}
+	image.onerror = function(err){
+		URL.revokeObjectURL(objectURL); //free memory
+		if(callback)
+			callback( filename, null, options );
+		throw("Error loading image: " + filename); //error if image is not an image I guess
+	}
 
+	return true;
 },"binary","Texture");
 
 //special formats parser inside the system
-LS.ResourcesManager.registerResourcePreProcessor("dds,tga", function(filename, data, options) {
+LS.ResourcesManager.registerResourcePreProcessor( "dds,tga", function(filename, data, options) {
 
 	//clone because DDS changes the original data
 	var cloned_data = new Uint8Array(data).buffer;
-	var texture_data = Parser.parse(filename, cloned_data, options);	
+	var texture_data = LS.Formats.parse( filename, cloned_data, options );
 
 	if(texture_data.constructor == Texture)
 	{
@@ -1078,15 +1090,15 @@ LS.ResourcesManager.registerResourcePreProcessor("dds,tga", function(filename, d
 		return texture;
 	}
 
-	var texture = LS.ResourcesManager.processImage(filename, texture_data);
+	var texture = LS.ResourcesManager.processImage( filename, texture_data );
 	return texture;
-}, "binary","Texture");
+});
 
 
 //Meshes ********
 LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 
-	var mesh_data = Parser.parse(filename, data, options);
+	var mesh_data = LS.Formats.parse( filename, data, options );
 
 	if(mesh_data == null)
 	{
@@ -1103,7 +1115,7 @@ LS.ResourcesManager.registerResourcePreProcessor("stl", LS.ResourcesManager.proc
 
 LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 
-	var scene_data = Parser.parse(filename, data, options);
+	var scene_data = LS.Formats.parse(filename, data, options);
 
 	if(scene_data == null)
 	{
@@ -1133,11 +1145,6 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 }
 
 LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.processASCIIScene, "text","Scene");
-
-
-
-
-
 
 
 GL.Mesh.fromBinary = function( data_array )

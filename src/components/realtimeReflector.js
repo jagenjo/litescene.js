@@ -23,6 +23,7 @@ function RealtimeReflector(o)
 	this.ignore_this_mesh = true;
 	this.high_precision = false;
 	this.refresh_rate = 1; //in frames
+	this.layers = 0xFF;
 
 	this._textures = {};
 
@@ -33,6 +34,7 @@ function RealtimeReflector(o)
 RealtimeReflector.icon = "mini-icon-reflector.png";
 
 RealtimeReflector["@texture_size"] = { type:"enum", values:["viewport",64,128,256,512,1024,2048] };
+RealtimeReflector["@layers"] = { type:"layers" };
 
 RealtimeReflector.prototype.onAddedToScene = function(scene)
 {
@@ -44,11 +46,13 @@ RealtimeReflector.prototype.onAddedToScene = function(scene)
 RealtimeReflector.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
+	for(var i in this._textures)
+		LS.ResourcesManager.unregisterResource( ":reflection_" + i );
 	this._textures = {}; //clear textures
 }
 
 
-RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
+RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 {
 	if(!this.enabled || !this._root)
 		return;
@@ -70,16 +74,16 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		this._root.flags.seen_by_reflections = false;
 
 	//add flags
-	render_options.is_rt = true;
-	render_options.is_reflection = true;
-	render_options.brightness_factor = this.brightness_factor;
-	render_options.colorclip_factor = this.colorclip_factor;
+	LS.Renderer._is_reflection = true;
+	render_settings.brightness_factor = this.brightness_factor;
+	render_settings.colorclip_factor = this.colorclip_factor;
+	var old_layers = render_settings.layers;
+	render_settings.layers = this.layers;
 
 	var cameras = LS.Renderer._visible_cameras;
 
 	for(var i = 0; i < cameras.length; i++)
 	{
-		//var camera = render_options.main_camera;
 		var camera = cameras[i];
 
 		if( isNaN( texture_size ) && this.texture_size == "viewport")
@@ -97,10 +101,10 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 
 		var texture = this._textures[ camera.uid ];
-		if(!texture || texture.width != texture_width || texture.height != texture_height || texture.type != type || texture.texture_type != texture_type || texture.mipmaps != this.generate_mipmaps)
+		if(!texture || texture.width != texture_width || texture.height != texture_height || texture.type != type || texture.texture_type != texture_type || texture.minFilter != (this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR) )
 		{
-			texture = new GL.Texture(texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
-			texture.mipmaps = this.generate_mipmaps;
+			texture = new GL.Texture( texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+			texture.has_mipmaps = this.generate_mipmaps;
 			this._textures[ camera.uid ] = texture;
 		}
 
@@ -141,29 +145,28 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 			//little offset
 			vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 			var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
-			render_options.clipping_plane = clipping_plane;
-			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_options);
+			render_settings.clipping_plane = clipping_plane;
+			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_settings);
 		}
 		else //spherical reflection
 		{
 			reflected_camera.eye = plane_center;
-			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_options );
+			LS.Renderer.renderInstancesToRT( reflected_camera, texture, render_settings );
 		}
 
 		if(this.blur)
 		{
 			var blur_texture = this._textures[ "blur_" + camera.uid ];
-			if( blur_texture && !GL.Texture.compareFormats( blur_texture, texture) )
-				blur_texture = null;	 //remove old one
+			if( blur_texture && ( Texture.compareFormats( texture, blur_texture ) ||  blur_texture.minFilter != texture.minFilter ))
+				blur_texture = null; //remove old one
 			blur_texture = texture.applyBlur( this.blur, this.blur, 1, blur_texture );
-			this._textures[ "blur_" + camera.uid ] = blur_texture;
+			//this._textures[ "blur_" + camera.uid ] = blur_texture;
 			//LS.ResourcesManager.registerResource(":BLUR" + camera.uid, blur_texture);//debug
 		}
 
 		if(this.generate_mipmaps && isPowerOfTwo( texture_width ) && isPowerOfTwo( texture_height ) )
 		{
-			texture.bind();
-			gl.texParameteri( texture.texture_type, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			gl.generateMipmap(texture.texture_type);
 			texture.unbind();
 		}
@@ -177,11 +180,11 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 	}
 
 	//remove flags
-	delete render_options.clipping_plane;
-	delete render_options.is_rt;
-	delete render_options.is_reflection;
-	delete render_options.brightness_factor;
-	delete render_options.colorclip_factor;
+	LS.Renderer._is_reflection = false;
+	render_settings.clipping_plane = null;
+	render_settings.layers = old_layers;
+	delete render_settings.brightness_factor;
+	delete render_settings.colorclip_factor;
 
 	//make it visible again
 	this._root.flags.visible = visible;

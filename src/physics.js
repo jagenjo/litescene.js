@@ -40,7 +40,7 @@ function PhysicsInstance(node, component)
 	this.uid = LS.generateUId("PHSX"); //unique identifier for this RI
 	this.layers = 3|0;
 
-	this.type = PhysicsInstance.BOX;
+	this.type = PhysicsInstance.BOX; //SPHERE, MESH
 	this.mesh = null; 
 
 	//where does it come from
@@ -98,20 +98,24 @@ var Physics = {
 	* @method raycast
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
-	* @param {number} max_dist maxium distance
-	* @param {number} layers which layers to check
-	* @param {SceneTree} scene
+	* @param {Object} options ( max_dist maxium distance, layers which layers to check, scene, first_collision )
 	* @return {Array} Array of Collision objects containing all the nodes that collided with the ray or null in the form [SceneNode, Collider, collision point, distance]
 	*/
-	raycast: function( origin, direction, max_dist, layers, scene)
+	raycast: function( origin, direction, options )
 	{
-		max_dist = max_dist || Number.MAX_VALUE;
+		options = options || {};
+		var layers = options.layers;
 		if(layers === undefined)
 			layers = 0xFFFF;
-		scene = scene || LS.GlobalScene;
+		var max_distance = options.max_distance || Number.MAX_VALUE;
+		var scene = options.scene || LS.GlobalScene;
+		var first_collision = options.first_collision;
 
-		var colliders = scene._colliders;
+		var colliders = options.colliders || scene._colliders;
 		var collisions = [];
+
+		if(!colliders)
+			return null;
 
 		var local_start = vec3.create();
 		var local_direction = vec3.create();
@@ -126,7 +130,7 @@ var Physics = {
 
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point, max_dist) )
+			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point, max_distance) )
 				continue;
 
 			var model = instance.matrix;
@@ -137,39 +141,174 @@ var Physics = {
 			mat4.rotateVec3( local_direction, inv, direction);
 
 			//test in world space, is cheaper
-			if( instance.type == PhysicsInstance.SPHERE)
+			if( instance.type == PhysicsInstance.SPHERE )
 			{
-				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point, max_dist))
+				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point, max_distance))
 					continue;
 				vec3.transformMat4(collision_point, collision_point, model);
 			}
 			else //the rest test first with the local BBox
 			{
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
+				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point, max_distance) )
 					continue;
 
 				if( instance.type == PhysicsInstance.MESH)
 				{
 					var octree = instance.mesh.octree;
 					if(!octree)
-						octree = instance.mesh.octree = new Octree( instance.mesh );
-					var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
+						octree = instance.mesh.octree = new GL.Octree( instance.mesh );
+					var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
 					if(!hit)
 						continue;
 
-					mat4.multiplyVec3(collision_point, model, hit.pos);
+					mat4.multiplyVec3( collision_point, model, hit.pos );
 				}
 				else
-					vec3.transformMat4(collision_point, collision_point, model);
+					vec3.transformMat4( collision_point, collision_point, model );
 			}
 
 			var distance = vec3.distance( origin, collision_point );
 			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ));
+
+			if(first_collision)
+				return collisions;
 		}
 
 		//sort collisions by distance
 		collisions.sort( Collision.isCloser );
+		return collisions;
+	},
+
+	/**
+	* Test if a sphere collides with any of the colliders in the scene
+	* @method testSphere
+	* @param {vec3} origin in world space
+	* @param {radius} radius
+	* @param {Object} options layers, colliders, scene
+	* @return {PhysicsInstance} the first PhysicsObject that collided with, otherwise null
+	*/
+	testSphere: function( origin, radius, options )
+	{
+		options = options || {};
+		var layers = options.layers;
+		if(layers === undefined)
+			layers = 0xFFFF;
+		var scene = options.scene || LS.GlobalScene;
+
+		var colliders = options.colliders || scene._colliders;
+		var collisions = [];
+
+		var local_start = vec3.create();
+
+		if(!colliders)
+			return null;
+
+		//for every instance
+		for(var i = 0; i < colliders.length; ++i)
+		{
+			var instance = colliders[i];
+
+			if( (layers & instance.layers) === 0 )
+				continue;
+
+			//test against AABB
+			if( !geo.testSphereBBox( origin, radius, instance.aabb ) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			mat4.multiplyVec3( local_start, inv, origin);
+
+			//test in world space, is cheaper
+			if( instance.type == LS.PhysicsInstance.SPHERE)
+			{
+				if( vec3.distance( origin, local_start ) > (radius + BBox.getRadius(instance.oobb)) )
+					continue;
+			}
+			else //the rest test first with the local BBox
+			{
+				//test against OOBB (a little bit more expensive)
+				if( !geo.testSphereBBox( local_start, radius, instance.oobb) )
+					continue;
+
+				if( instance.type == LS.PhysicsInstance.MESH )
+				{
+					var octree = instance.mesh.octree;
+					if(!octree)
+						octree = instance.mesh.octree = new GL.Octree( instance.mesh );
+					if( !octree.testSphere( local_start, radius ) )
+						continue;
+				}
+			}
+
+			return instance;
+		}
+
+		return null;
+	},
+
+	testCollision: function( A, B )
+	{
+		//test AABBs
+		if( !geo.testBBoxBBox( A.aabb, B.aabb ) )
+			return false;
+
+		return true; //TODO
+
+		//conver A to B local Space
+
+		//test box box
+
+		//test box sphere
+
+		//test box mesh
+
+		//test sphere box
+
+		//test sphere sphere
+
+		//mesh mesh not supported
+
+		return true;
+	},
+
+	testAllCollisions: function( on_collision, layers, scene )
+	{
+		if(layers === undefined)
+			layers = 0xFFFF;
+		scene = scene || LS.GlobalScene;
+
+		var colliders = scene._colliders;
+		var l = colliders.length;
+
+		var collisions = false;
+
+		for(var i = 0; i < l; ++i)
+		{
+			var instance_A = colliders[i];
+
+			if( (layers & instance_A.layers) === 0 )
+				continue;
+
+			for(var j = i+1; j < l; ++j)
+			{
+				var instance_B = colliders[j];
+
+				if( (layers & instance_B.layers) === 0 )
+					continue;
+
+				if( this.testCollision( instance_A, instance_B ) )
+				{
+					if(on_collision)
+						on_collision( instance_A, instance_B );
+					collisions = true;
+				}
+			}
+		}
+
 		return collisions;
 	}
 }

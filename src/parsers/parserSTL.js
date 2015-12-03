@@ -2,7 +2,7 @@
 //based on https://github.com/tonylukasavage/jsstl
 var parserSTL = {
 	extension: 'stl',
-	data_type: 'mesh',
+	type: 'mesh',
 	format: 'binary',
 	
 	parse: function( data, options )
@@ -78,8 +78,9 @@ var parserSTL = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//extra info
-		mesh.bounding = Parser.computeMeshBounding( mesh.vertices );
+		mesh.bounding = LS.Formats.computeMeshBounding( mesh.vertices );
 		return mesh;
 	}
 };
-Parser.registerParser( parserSTL );
+
+LS.Formats.registerParser( parserSTL );

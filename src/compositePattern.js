@@ -111,10 +111,11 @@ CompositePattern.prototype.addChild = function(node, index, options)
 *
 * @method removeChild
 * @param {Node} node this child to remove
-* @param {Object} options 
+* @param1 {*} param1 data passed to onChildRemoved
+* @param2 {*} param2 data passed to onChildRemoved as second parameter
 * @return {Boolean} returns true if it was found and removed
 */
-CompositePattern.prototype.removeChild = function(node, options)
+CompositePattern.prototype.removeChild = function(node, param1, param2)
 {
 	if(!this._children || node._parentNode != this)
 		return false;
@@ -126,7 +127,7 @@ CompositePattern.prototype.removeChild = function(node, options)
 	this._children.splice(pos,1);
 
 	if(this._onChildRemoved)
-		this._onChildRemoved(node, options);
+		this._onChildRemoved(node, param1, param2);
 
 	LEvent.trigger(this,"childRemoved", node);
 

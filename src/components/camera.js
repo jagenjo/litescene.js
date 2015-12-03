@@ -54,6 +54,8 @@ function Camera(o)
 	this._must_update_view_matrix = true;
 	this._must_update_projection_matrix = true;
 
+	this._rendering_index = -1; //tells the number of this camera in the rendering process
+
 	//render to texture
 	this.render_to_texture = false;
 	this.texture_name = ""; //name
@@ -74,6 +76,9 @@ function Camera(o)
 		u_camera_perspective: vec3.create()
 	};
 
+	this.updateMatrices();
+	this._frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
+
 	//LEvent.bind(this,"cameraEnabled", this.onCameraEnabled.bind(this));
 }
 
@@ -84,8 +89,8 @@ Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
 
 Camera["@type"] = { type: "enum", values: { "perspective": Camera.PERSPECTIVE, "orthographic": Camera.ORTHOGRAPHIC, "ortho2D": Camera.ORTHO2D } };
-Camera["@eye"] = { type: "position" };
-Camera["@center"] = { type: "position" };
+Camera["@eye"] = { type: "vec3", widget: "position" };
+Camera["@center"] = { type: "vec3", widget: "position" };
 Camera["@texture_name"] = { type: "texture" };
 Camera["@layers"] = { type: "layers" };
 
@@ -130,7 +135,8 @@ Object.defineProperty( Camera.prototype, "type", {
 			this._must_update_projection_matrix = true;
 		}
 		this._type = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -145,7 +151,8 @@ Object.defineProperty( Camera.prototype, "eye", {
 	set: function(v) {
 		this._eye.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -160,7 +167,8 @@ Object.defineProperty( Camera.prototype, "center", {
 	set: function(v) {
 		this._center.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -175,7 +183,8 @@ Object.defineProperty( Camera.prototype, "up", {
 	set: function(v) {
 		this._up.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -191,7 +200,8 @@ Object.defineProperty( Camera.prototype, "near", {
 		if(	this._near != v)
 			this._must_update_projection_matrix = true;
 		this._near = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -207,7 +217,8 @@ Object.defineProperty( Camera.prototype, "far", {
 		if(	this._far != v)
 			this._must_update_projection_matrix = true;
 		this._far = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -223,7 +234,8 @@ Object.defineProperty( Camera.prototype, "aspect", {
 		if(	this._aspect != v)
 			this._must_update_projection_matrix = true;
 		this._aspect = v;
-	}
+	},
+	enumerable: true
 });
 /**
 * The field of view in degrees
@@ -238,7 +250,8 @@ Object.defineProperty( Camera.prototype, "fov", {
 		if(	this._fov != v)
 			this._must_update_projection_matrix = true;
 		this._fov  = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -258,7 +271,8 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 			this._must_update_projection_matrix = true;
 		}
 		this._frustum_size  = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -271,7 +285,8 @@ Object.defineProperty( Camera.prototype, "viewport", {
 	},
 	set: function(v) {
 		this._viewport.set(v);
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -284,7 +299,7 @@ Object.defineProperty( Camera.prototype, "viewport_offset", {
 	set: function(v) {
 		this._viewport.set(v);
 	},
-	enumerable: false
+	enumerable: true
 });
 
 /**
@@ -297,7 +312,7 @@ Object.defineProperty( Camera.prototype, "viewport_size", {
 	set: function(v) {
 		this._viewport.set(v,2);
 	},
-	enumerable: false
+	enumerable: true
 });
 
 Camera.prototype.onAddedToNode = function(node)
@@ -401,6 +416,17 @@ Camera.prototype.updateMatrices = function()
 
 	this._must_update_view_matrix = false;
 	this._must_update_projection_matrix = false;
+}
+
+/**
+* Update the frustum planes according to viewprojection_matrix, used for visibility testing
+* @method updateFrustumPlanes
+* @return {Float32Array} planes
+*/
+Camera.prototype.updateFrustumPlanes = function()
+{
+	geo.extractPlanes( this._viewprojection_matrix, this._frustum_planes );
+	return this._frustum_planes;
 }
 
 /**

@@ -2,16 +2,30 @@
 //it works over litegl (no need of scene)
 //carefull, it is very slow
 
+/**
+* LS.Draw allows to render basic primitives, similar to the OpenGL Fixed pipeline.
+* It reuses local meshes when possible to avoid fragmenting the VRAM.
+* @class Draw
+* @constructor
+*/
+
 var Draw = {
 	ready: false,
 	images: {},
+	image_last_id: 1,
 
 	onRequestFrame: null,
 
+	/**
+	* Sets up everything (prepare meshes, shaders, and so)
+	* @method init
+	*/
 	init: function()
 	{
-		if(this.ready) return;
-		if(!gl) return;
+		if(this.ready)
+			return;
+		if(!gl)
+			return;
 
 		this.color = new Float32Array(4);
 		this.color[3] = 1;
@@ -98,7 +112,7 @@ var Draw = {
 		';
 
 		//create shaders
-		this.shader = new Shader(vertex_shader,pixel_shader);
+		this.shader = new Shader( vertex_shader, pixel_shader );
 
 		this.shader_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":""});
 		this.shader_texture = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":""});
@@ -222,32 +236,108 @@ var Draw = {
 		this.ready = true;
 	},
 
-	reset: function()
+	/**
+	* A helper to create shaders when you only want to specify some basic shading
+	* @method createSurfaceShader
+	* @params {string} surface_function GLSL code like: "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
+	* @params {object} macros [optional] object containing the macros
+	* @return {GL.Shader} the resulting shader
+	*/
+	createSurfaceShader: function( surface_function, macros )
+	{
+		//"vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
+
+		if( surface_function.indexOf("surface_function") == -1 )
+			surface_function = "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { " + surface_function + "\n } ";
+
+		var vertex_shader = "\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec3 a_normal;\n\
+			attribute vec2 a_coord;\n\
+			varying vec2 v_coord;\n\
+			varying vec3 v_pos;\n\
+			varying vec3 v_normal;\n\
+			uniform mat4 u_mvp;\n\
+			uniform mat4 u_model;\n\
+			void main() {\n\
+				v_coord = a_coord;\n\
+				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;\n\
+				v_normal = (u_model * vec4(a_normal,0.0)).xyz;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			";
+
+		var pixel_shader = "\
+			precision mediump float;\n\
+			varying vec2 v_coord;\n\
+			varying vec3 v_pos;\n\
+			varying vec3 v_normal;\n\
+			uniform vec4 u_color;\n\
+			uniform vec3 u_camera_position;\n\
+			uniform sampler2D u_texture;\n\
+			"+ surface_function +"\n\
+			void main() {\n\
+				gl_FragColor = surface_function(v_pos,v_normal,v_coord);\n\
+			}\
+		";	
+
+		return new GL.Shader( vertex_shader, pixel_shader, macros );
+	},
+
+	/**
+	* clears the stack
+	* @method reset
+	*/
+	reset: function( reset_memory )
 	{
 		if(!this.ready)
 			this.init();
+
+		if( reset_memory )
+			this.images = {}; //clear images
 
 		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
 		mat4.identity( this.model_matrix );
 	},
 
+	/**
+	* Sets the color used to paint primitives
+	* @method setColor
+	* @params {vec3|vec4} color
+	*/
 	setColor: function(color)
 	{
 		for(var i = 0; i < color.length; i++)
 			this.color[i] = color[i];
 	},
 
+	/**
+	* Sets the alpha used to paint primitives
+	* @method setAlpha
+	* @params {number} alpha
+	*/
 	setAlpha: function(alpha)
 	{
 		this.color[3] = alpha;
 	},
 
+	/**
+	* Sets the point size
+	* @method setPointSize
+	* @params {number} v
+	*/
 	setPointSize: function(v)
 	{
 		this.point_size = v;
 	},
 
-	setCamera: function(camera)
+	/**
+	* Sets the camera to use during the rendering, this is already done by LS.Renderer
+	* @method setCamera
+	* @params {LS.Camera} camera
+	*/
+	setCamera: function( camera )
 	{
 		this.camera = camera;
 		camera.updateMatrices();
@@ -257,11 +347,35 @@ var Draw = {
 		mat4.copy( this.viewprojection_matrix, camera._viewprojection_matrix );
 	},
 
+	/**
+	* Specifies the camera position (used to compute point size)
+	* @method setCameraPosition
+	* @params {vec3} center
+	*/
 	setCameraPosition: function(center)
 	{
 		vec3.copy( this.camera_position, center);
 	},
 
+	pushCamera: function()
+	{
+		this.camera_stack.push( mat4.create( this.viewprojection_matrix ) );
+	},
+
+	popCamera: function()
+	{
+		if(this.camera_stack.length == 0)
+			throw("too many pops");
+		this.viewprojection_matrix.set( this.camera_stack.pop() );
+	},
+
+	/**
+	* Specifies the camera view and projection matrices
+	* @method setViewProjectionMatrix
+	* @params {mat4} view
+	* @params {mat4} projection
+	* @params {mat4} vp viewprojection matrix [optional]
+	*/
 	setViewProjectionMatrix: function(view, projection, vp)
 	{
 		mat4.copy( this.view_matrix, view);
@@ -272,16 +386,33 @@ var Draw = {
 			mat4.multiply( this.viewprojection_matrix, view, vp);
 	},
 
+	/**
+	* Specifies the transformation matrix to apply to the mesh
+	* @method setMatrix
+	* @params {mat4} matrix
+	*/
 	setMatrix: function(matrix)
 	{
 		mat4.copy(this.model_matrix, matrix);
 	},
 
+	/**
+	* Multiplies the current matrix by a given one
+	* @method multMatrix
+	* @params {mat4} matrix
+	*/
 	multMatrix: function(matrix)
 	{
 		mat4.multiply(this.model_matrix, matrix, this.model_matrix);
 	},
 
+	/**
+	* Render lines given a set of points
+	* @method renderLines
+	* @params {Float32Array|Array} points
+	* @params {Float32Array|Array} colors [optional]
+	* @params {bool} strip [optional] if the lines are a line strip (one consecutive line)
+	*/
 	renderLines: function(lines, colors, strip)
 	{
 		if(!lines || !lines.length) return;
@@ -293,10 +424,17 @@ var Draw = {
 		if(colors && (colors.length/4) != (vertices.length/3))
 			colors = null;
 
-		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
-		return this.renderMesh(mesh, strip ? gl.LINE_STRIP : gl.LINES, colors ? this.shader_color : this.shader );
+		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors});
+		return this.renderMesh(mesh, strip ? gl.LINE_STRIP : gl.LINES, colors ? this.shader_color : this.shader, undefined, 0, vertices.length / 3 );
 	},
 
+	/**
+	* Render points given a set of positions (and colors)
+	* @method renderPoints
+	* @params {Float32Array|Array} points
+	* @params {Float32Array|Array} colors [optional]
+	* @params {GL.Shader} shader [optional]
+	*/
 	renderPoints: function(points, colors, shader)
 	{
 		if(!points || !points.length) return;
@@ -317,16 +455,25 @@ var Draw = {
 				colors = this.linearize(colors);
 		}
 
-		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
+		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors});
 		if(!shader)
 			shader = colors ? this.shader_color : this.shader;
 
-		return this.renderMesh(mesh, gl.POINTS, shader );
+		return this.renderMesh(mesh, gl.POINTS, shader, undefined, 0, vertices.length / 3 );
 	},
 
+	/**
+	* Render round points given a set of positions (and colors)
+	* @method renderRoundPoints
+	* @params {Float32Array|Array} points
+	* @params {Float32Array|Array} colors [optional]
+	* @params {GL.Shader} shader [optional]
+	*/
 	renderRoundPoints: function(points, colors, shader)
 	{
-		if(!points || !points.length) return;
+		if(!points || !points.length)
+			return;
+
 		var vertices = null;
 
 		if(points.constructor == Float32Array)
@@ -339,13 +486,21 @@ var Draw = {
 		if(colors)
 			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
 
-		var mesh = GL.Mesh.load({vertices: vertices, colors: colors});
+		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors});
 		if(!shader)
 			shader = colors ? this.shader_points_color : this.shader_points;
-		return this.renderMesh(mesh, gl.POINTS, shader );
+		return this.renderMesh( mesh, gl.POINTS, shader, undefined, 0, vertices.length / 3 );
 	},
 
-	//paints points with color, size, and texture binded in 0
+	/**
+	* Render points with color, size, and texture binded in 0
+	* @method renderPointsWithSize
+	* @params {Float32Array|Array} points
+	* @params {Float32Array|Array} colors [optional]
+	* @params {Float32Array|Array} sizes [optional]
+	* @params {GL.Texture} texture [optional]
+	* @params {GL.Shader} shader [optional]
+	*/
 	renderPointsWithSize: function(points, colors, sizes, texture, shader)
 	{
 		if(!points || !points.length) return;
@@ -365,13 +520,13 @@ var Draw = {
 			throw("sizes required in Draw.renderPointsWithSize");
 		sizes = sizes.constructor == Float32Array ? sizes : this.linearize(sizes);
 
-		var mesh = GL.Mesh.load({vertices: vertices, colors: colors, extra: sizes});
+		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors, extra: sizes});
 		shader = shader || (texture ? this.shader_points_color_texture_size : this.shader_points_color_size);
 		
-		return this.renderMesh(mesh, gl.POINTS, shader );
+		return this.renderMesh(mesh, gl.POINTS, shader, undefined, 0, vertices.length / 3 );
 	},
 
-	createRectangleMesh: function(width, height, in_z)
+	createRectangleMesh: function(width, height, in_z, use_global)
 	{
 		var vertices = new Float32Array(4 * 3);
 		if(in_z)
@@ -379,16 +534,26 @@ var Draw = {
 		else
 			vertices.set([-width*0.5,height*0.5,0, width*0.5,height*0.5,0, width*0.5,-height*0.5,0, -width*0.5,-height*0.5,0]);
 
+		if(use_global)
+			return this.toGlobalMesh( {vertices: vertices} );
+
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Render points with color, size, and texture binded in 0
+	* @method renderRectangle
+	* @params {number} width
+	* @params {number} height
+	* @params {boolean} in_z [optional] if the plane is aligned with the z plane
+	*/
 	renderRectangle: function(width, height, in_z)
 	{
-		var mesh = this.createRectangleMesh(width, height, in_z);
-		return this.renderMesh(mesh, gl.LINE_LOOP);
+		var mesh = this.createRectangleMesh(width, height, in_z, true);
+		return this.renderMesh( mesh, gl.LINE_LOOP, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
-	createCircleMesh: function(radius, segments, in_z)
+	createCircleMesh: function(radius, segments, in_z, use_global)
 	{
 		segments = segments || 32;
 		var axis = [0,1,0];
@@ -416,21 +581,39 @@ var Draw = {
 			vertices.set(temp, i*3);
 		}
 
+		if(use_global)
+			return this.toGlobalMesh({vertices: vertices});
+
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Renders a circle 
+	* @method renderCircle
+	* @params {number} radius
+	* @params {number} segments
+	* @params {boolean} in_z [optional] if the circle is aligned with the z plane
+	* @params {boolean} filled [optional] renders the interior
+	*/
 	renderCircle: function(radius, segments, in_z, filled)
 	{
-		var mesh = this.createCircleMesh(radius, segments, in_z);
-		return this.renderMesh(mesh, filled ? gl.TRIANGLE_FAN : gl.LINE_LOOP);
+		var mesh = this.createCircleMesh(radius, segments, in_z, true);
+		return this.renderMesh(mesh, filled ? gl.TRIANGLE_FAN : gl.LINE_LOOP, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
+	/**
+	* Render a filled circle
+	* @method renderSolidCircle
+	* @params {number} radius
+	* @params {number} segments
+	* @params {boolean} in_z [optional] if the circle is aligned with the z plane
+	*/
 	renderSolidCircle: function(radius, segments, in_z)
 	{
 		return this.renderCircle(radius, segments, in_z, true);
 	},
 
-	createSphereMesh: function(radius, segments)
+	createSphereMesh: function(radius, segments, use_global )
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -457,16 +640,26 @@ var Draw = {
 			temp.set([ 0, Math.sin( (i+1) * delta) * radius, Math.cos( (i+1) * delta) * radius ]);
 			vertices.set(temp, i*18 + 15);
 		}
+
+		if(use_global)
+			return this.toGlobalMesh({vertices: vertices});
+		
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Renders three circles to form a simple spherical shape
+	* @method renderWireSphere
+	* @params {number} radius
+	* @params {number} segments
+	*/
 	renderWireSphere: function(radius, segments)
 	{
-		var mesh = this.createSphereMesh(radius, segments);
-		return this.renderMesh(mesh, gl.LINES);
+		var mesh = this.createSphereMesh( radius, segments, true );
+		return this.renderMesh( mesh, gl.LINES, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
-	createWireBoxMesh: function(sizex,sizey,sizez)
+	createWireBoxMesh: function( sizex, sizey, sizez, use_global )
 	{
 		sizex = sizex*0.5;
 		sizey = sizey*0.5;
@@ -474,28 +667,50 @@ var Draw = {
 		var vertices = new Float32Array([-sizex,sizey,sizez , -sizex,sizey,-sizez, sizex,sizey,-sizez, sizex,sizey,sizez,
 						-sizex,-sizey,sizez, -sizex,-sizey,-sizez, sizex,-sizey,-sizez, sizex,-sizey,sizez]);
 		var triangles = new Uint16Array([0,1, 0,4, 0,3, 1,2, 1,5, 2,3, 2,6, 3,7, 4,5, 4,7, 6,7, 5,6   ]);
+
+		if(use_global)
+			return this.toGlobalMesh( {vertices: vertices}, triangles );
+
 		return GL.Mesh.load({vertices: vertices, lines:triangles });
 	},
 
+	/**
+	* Renders a wire box (box made of lines, not filled)
+	* @method renderWireBox
+	* @params {number} sizex
+	* @params {number} sizey
+	* @params {number} sizez
+	*/
 	renderWireBox: function(sizex,sizey,sizez)
 	{
-		var mesh = this.createWireBoxMesh(sizex,sizey,sizez);
-		return this.renderMesh(mesh, gl.LINES);
+		var mesh = this.createWireBoxMesh(sizex,sizey,sizez, true);
+		return this.renderMesh( mesh, gl.LINES, undefined, "indices", 0, this._global_mesh_last_size );
 	},
 
-	createSolidBoxMesh: function(sizex,sizey,sizez)
+	createSolidBoxMesh: function( sizex,sizey,sizez, use_global)
 	{
 		sizex = sizex*0.5;
 		sizey = sizey*0.5;
 		sizez = sizez*0.5;
-		var vertices = [[-sizex,sizey,-sizez],[-sizex,-sizey,+sizez],[-sizex,sizey,sizez],[-sizex,sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,-sizey,+sizez],[sizex,-sizey,-sizez],[-sizex,sizey,sizez],[sizex,-sizey,sizez],[sizex,sizey,sizez],[-sizex,sizey,sizez],[-sizex,-sizey,sizez],[sizex,-sizey,sizez],[-sizex,sizey,-sizez],[sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,sizey,-sizez],[-sizex,sizey,-sizez],[-sizex,sizey,sizez],[sizex,sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,sizez]];
+		//var vertices = [[-sizex,sizey,-sizez],[-sizex,-sizey,+sizez],[-sizex,sizey,sizez],[-sizex,sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,-sizey,+sizez],[sizex,sizey,-sizez],[sizex,-sizey,+sizez],[sizex,-sizey,-sizez],[-sizex,sizey,sizez],[sizex,-sizey,sizez],[sizex,sizey,sizez],[-sizex,sizey,sizez],[-sizex,-sizey,sizez],[sizex,-sizey,sizez],[-sizex,sizey,-sizez],[sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,-sizey,-sizez],[-sizex,-sizey,-sizez],[-sizex,sizey,-sizez],[sizex,sizey,sizez],[sizex,sizey,-sizez],[-sizex,sizey,-sizez],[-sizex,sizey,sizez],[sizex,sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,-sizez],[sizex,-sizey,sizez],[-sizex,-sizey,sizez]];
+		var vertices = [-sizex,sizey,-sizez,-sizex,-sizey,+sizez,-sizex,sizey,sizez,-sizex,sizey,-sizez,-sizex,-sizey,-sizez,-sizex,-sizey,+sizez,sizex,sizey,-sizez,sizex,sizey,sizez,sizex,-sizey,+sizez,sizex,sizey,-sizez,sizex,-sizey,+sizez,sizex,-sizey,-sizez,-sizex,sizey,sizez,sizex,-sizey,sizez,sizex,sizey,sizez,-sizex,sizey,sizez,-sizex,-sizey,sizez,sizex,-sizey,sizez,-sizex,sizey,-sizez,sizex,sizey,-sizez,sizex,-sizey,-sizez,-sizex,sizey,-sizez,sizex,-sizey,-sizez,-sizex,-sizey,-sizez,-sizex,sizey,-sizez,sizex,sizey,sizez,sizex,sizey,-sizez,-sizex,sizey,-sizez,-sizex,sizey,sizez,sizex,sizey,sizez,-sizex,-sizey,-sizez,sizex,-sizey,-sizez,sizex,-sizey,sizez,-sizex,-sizey,-sizez,sizex,-sizey,sizez,-sizex,-sizey,sizez];
+		if(use_global)
+			return this.toGlobalMesh( {vertices: vertices} );
+
 		return GL.Mesh.load({vertices: vertices });
 	},
 
+	/**
+	* Renders a solid box 
+	* @method renderSolidBox
+	* @params {number} sizex
+	* @params {number} sizey
+	* @params {number} sizez
+	*/
 	renderSolidBox: function(sizex,sizey,sizez)
 	{
-		var mesh = this.createSolidBoxMesh(sizex,sizey,sizez);
-		return this.renderMesh(mesh, gl.TRIANGLES);
+		var mesh = this.createSolidBoxMesh(sizex,sizey,sizez, true);
+		return this.renderMesh( mesh, gl.TRIANGLES, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
 	renderWireCube: function(size)
@@ -550,7 +765,7 @@ var Draw = {
 		return this.renderMesh(mesh, gl.LINES);
 	},
 
-	createConeMesh: function(radius, height, segments, in_z)
+	createConeMesh: function(radius, height, segments, in_z, use_global )
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -568,16 +783,27 @@ var Draw = {
 			vertices.set(temp, i*3+3);
 		}
 
+		if(use_global)
+			return this.toGlobalMesh( {vertices: vertices} );
+
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Renders a cone 
+	* @method renderCone
+	* @params {number} radius
+	* @params {number} height
+	* @params {number} segments
+	* @params {boolean} in_z aligned with z axis
+	*/
 	renderCone: function(radius, height, segments, in_z)
 	{
-		var mesh = this.createConeMesh(radius, height, segments, in_z);
-		return this.renderMesh(mesh, gl.TRIANGLE_FAN);
+		var mesh = this.createConeMesh(radius, height, segments, in_z, true);
+		return this.renderMesh(mesh, gl.TRIANGLE_FAN, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
-	createCylinderMesh: function(radius, height, segments, in_z)
+	createCylinderMesh: function( radius, height, segments, in_z, use_global )
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -594,15 +820,34 @@ var Draw = {
 			vertices.set(temp, i*3*2);
 		}
 
+		if(use_global)
+			return this.toGlobalMesh( {vertices: vertices} );
+
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Renders a cylinder
+	* @method renderCylinder
+	* @params {number} radius
+	* @params {number} height
+	* @params {number} segments
+	* @params {boolean} in_z aligned with z axis
+	*/
 	renderCylinder: function(radius, height, segments, in_z)
 	{
-		var mesh = this.createCylinderMesh(radius, height, segments, in_z);
-		return this.renderMesh(mesh, gl.TRIANGLE_STRIP);
+		var mesh = this.createCylinderMesh(radius, height, segments, in_z, true);
+		return this.renderMesh( mesh, gl.TRIANGLE_STRIP, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
+	/**
+	* Renders an image
+	* @method renderImage
+	* @params {vec3} position
+	* @params {Image|Texture|String} image from an URL, or a texture
+	* @params {number} size [optional=10]
+	* @params {boolean} fixed_size [optional=false] (camera distance do not affect size)
+	*/
 	renderImage: function(position, image, size, fixed_size )
 	{
 		size = size || 10;
@@ -629,10 +874,17 @@ var Draw = {
 			else if(texture == 1)
 				return; //loading
 		}
+		else if(image.constructor == Image)
+		{
+			if(!image.texture)
+				image.texture = GL.Texture.fromImage( this );
+			texture = image.texture;
+		}
 		else if(image.constructor == Texture)
 			texture = image;
 
-		if(!texture) return;
+		if(!texture)
+			return;
 
 		if(fixed_size)
 		{
@@ -652,11 +904,25 @@ var Draw = {
 		}
 	},
 
-	renderMesh: function(mesh, primitive, shader, indices )
+	/**
+	* Renders a given mesh applyting the stack transformations
+	* @method renderMesh
+	* @params {GL.Mesh} mesh
+	* @params {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
+	* @params {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
+	* @params {number} range_start [optional] in case of rendering a range, the start primitive
+	* @params {number} range_length [optional] in case of rendering a range, the number of primitives
+	*/
+	renderMesh: function( mesh, primitive, shader, indices, range_start, range_length )
 	{
 		if(!this.ready) throw ("Draw.js not initialized, call Draw.init()");
 		if(!shader)
-			shader = mesh.vertexBuffers["colors"] ? this.shader_color : this.shader;
+		{
+			if(mesh === this._global_mesh && this._global_mesh_ignore_colors )
+				shader = this.shader;
+			else
+				shader = mesh.vertexBuffers["colors"] ? this.shader_color : this.shader;
+		}
 
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
@@ -664,14 +930,40 @@ var Draw = {
 				u_model: this.model_matrix,
 				u_mvp: this.mvp_matrix,
 				u_color: this.color,
+				u_camera_position: this.camera_position,
 				u_point_size: this.point_size,
 				u_texture: 0
-		}).draw(mesh, primitive === undefined ? gl.LINES : primitive, indices );
+		});
+				
+		if( range_start === undefined )
+			shader.draw(mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices );
+		else
+			shader.drawRange(mesh, primitive === undefined ? gl.TRIANGLES : primitive, range_start, range_length, indices );
+
+		//used for repeating render 
+		this._last_mesh = mesh;
+		this._last_primitive = primitive;
+		this._last_shader = shader;
+		this._last_indices = indices;
+		this._last_range_start = range_start;
+		this._last_range_length = range_length;
+
 		this.last_mesh = mesh;
 		return mesh;
 	},
 
-	renderText: function(text)
+	//used in some special cases
+	repeatLastRender: function()
+	{
+		this.renderMesh( this._last_mesh, this._last_primitive, this._last_shader, this._last_indices, this._last_range_start, this._last_range_length );
+	},
+
+	/**
+	* Renders a text in the current matrix position
+	* @method renderText
+	* @params {string} text
+	*/
+	renderText: function( text )
 	{
 		if(!Draw.font_atlas)
 			this.createFontAtlas();
@@ -723,9 +1015,9 @@ var Draw = {
 			x+= spacing;
 			++pos;
 		}
-		var mesh = GL.Mesh.load({vertices: vertices, coords: coords});
+		var mesh = this.toGlobalMesh({vertices: vertices, coords: coords});
 		atlas.bind(0);
-		return this.renderMesh(mesh, gl.TRIANGLES, this.shader_texture );
+		return this.renderMesh( mesh, gl.TRIANGLES, this.shader_texture, undefined, 0, vertices.length / 3 );
 	},
 
 
@@ -773,6 +1065,10 @@ var Draw = {
 		return result;
 	},
 
+	/**
+	* pushes the transform matrix into the stack to save the state
+	* @method push
+	*/
 	push: function()
 	{
 		if(this.model_matrix.byteOffset >= (this.stack.byteLength - 16*4))
@@ -783,6 +1079,10 @@ var Draw = {
 		mat4.copy(this.model_matrix, old);
 	},
 
+	/**
+	* takes the matrix from the top position of the stack to restore the last saved state
+	* @method push
+	*/
 	pop: function()
 	{
 		if(this.model_matrix.byteOffset == 0)
@@ -790,32 +1090,39 @@ var Draw = {
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16);
 	},
 
-
-	pushCamera: function()
-	{
-		this.camera_stack.push( mat4.create( this.viewprojection_matrix ) );
-	},
-
-	popCamera: function()
-	{
-		if(this.camera_stack.length == 0)
-			throw("too many pops");
-		this.viewprojection_matrix.set( this.camera_stack.pop() );
-	},
-
+	/**
+	* clears the transform matrix setting it to an identity
+	* @method identity
+	*/
 	identity: function()
 	{
 		mat4.identity(this.model_matrix);
 	},
 
+	/**
+	* changes the scale of the transform matrix. The parameters could be a vec3, a single number (then the scale is uniform in all axis) or three numbers
+	* @method scale
+	* @param {vec3|array|number} x could be an array of 3, one value (if no other values are specified then it is an uniform scaling)
+	* @param {number} y
+	* @param {number} z
+	*/
 	scale: function(x,y,z)
 	{
 		if(arguments.length == 3)
 			mat4.scale(this.model_matrix,this.model_matrix,[x,y,z]);
-		else //one argument: x-> vec3
+		else if(x.length)//one argument: x is vec3
 			mat4.scale(this.model_matrix,this.model_matrix,x);
+		else //is number
+			mat4.scale(this.model_matrix,this.model_matrix,[x,x,x]);
 	},
 
+	/**
+	* applies a translation to the transform matrix
+	* @method translate
+	* @param {vec3|number} x could be an array of 3 or the x transform
+	* @param {number} y
+	* @param {number} z
+	*/
 	translate: function(x,y,z)
 	{
 		if(arguments.length == 3)
@@ -824,6 +1131,14 @@ var Draw = {
 			mat4.translate(this.model_matrix,this.model_matrix,x);
 	},
 
+	/**
+	* applies a translation to the transform matrix
+	* @method rotate
+	* @param {number} angle in degrees
+	* @param {number|vec3} x could be the x component or the full axis
+	* @param {number} y
+	* @param {number} z
+	*/
 	rotate: function(angle, x,y,z)
 	{
 		if(arguments.length == 4)
@@ -832,10 +1147,18 @@ var Draw = {
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, x);
 	},
 
+	/**
+	* moves an object to a given position and forces it to look to another direction
+	* Warning: it doesnt changes the camera in any way, only the transform matrix
+	* @method lookAt
+	* @param {vec3} position
+	* @param {vec3} target
+	* @param {vec3} up
+	*/
 	lookAt: function(position, target, up)
 	{
-		mat4.lookAt(this.model_matrix, position, target, up);
-		mat4.invert(this.model_matrix, this.model_matrix);
+		mat4.lookAt( this.model_matrix, position, target, up );
+		mat4.invert( this.model_matrix, this.model_matrix );
 	},
 
 	billboard: function(position)
@@ -849,6 +1172,13 @@ var Draw = {
 		mat4.fromTranslationFrontTop(this.model_matrix, position, front, top);
 	},
 
+	/**
+	* projects a point from 3D space to 2D space (multiply by MVP)
+	* @method project
+	* @param {vec3} position
+	* @param {vec3} dest [optional]
+	* @return {vec3} the point in screen space (in normalized coordinates)
+	*/
 	project: function( position, dest )
 	{
 		dest = dest || vec3.create();
@@ -864,6 +1194,85 @@ var Draw = {
 	getDepthShader: function()
 	{
 		return this.shader_depth;
+	},
+
+	//reuses a global mesh to avoid fragmenting the VRAM 
+	toGlobalMesh: function( buffers, indices )
+	{
+		if(!this._global_mesh)
+		{
+			//global mesh: to reuse memory and save fragmentation
+			this._global_mesh_max_vertices = 1024;
+			this._global_mesh = new GL.Mesh({
+				vertices: new Float32Array(this._global_mesh_max_vertices * 3),
+				normals: new Float32Array(this._global_mesh_max_vertices * 3),
+				coords: new Float32Array(this._global_mesh_max_vertices * 2),
+				colors: new Float32Array(this._global_mesh_max_vertices * 4),
+				extra: new Float32Array(this._global_mesh_max_vertices * 1)
+			},{
+				indices: new Uint16Array(this._global_mesh_max_vertices * 3)
+			}, { stream_type: gl.DYNAMIC_STREAM });
+		}
+
+		//take every stream and store it inside the mesh buffers
+		for(var i in buffers)
+		{
+			var mesh_buffer = this._global_mesh.getBuffer( i );
+			if(!mesh_buffer)
+			{
+				console.warn("Draw: global mesh lacks one buffer: " + i );
+				continue;
+			}
+
+			var buffer_data = buffers[i];
+			if(!buffer_data)
+				continue;
+			if(!buffer_data.buffer)
+				buffer_data = new Float32Array( buffer_data ); //force typed arrays
+
+			//some data would be lost here
+			if(buffer_data.length > mesh_buffer.data.length)
+			{
+				console.warn("Draw: data is too big, resizing" );
+				this.resizeGlobalMesh();
+				mesh_buffer = this._global_mesh.getBuffer( i );
+				buffer_data = buffer_data.subarray(0,mesh_buffer.data.length);
+			}
+
+			mesh_buffer.setData( buffer_data ); //set and upload
+		}
+
+		this._global_mesh_ignore_colors = !(buffers.colors);
+
+		if(indices)
+		{
+			var mesh_buffer = this._global_mesh.getIndexBuffer("indices");			
+			mesh_buffer.setData( indices );
+			this._global_mesh_last_size = indices.length;
+		}
+		else
+			this._global_mesh_last_size = buffers["vertices"].length / 3;
+		return this._global_mesh;
+	},
+
+	resizeGlobalMesh: function()
+	{
+		if(!this._global_mesh)
+			throw("No global mesh to resize");
+
+		//global mesh: to reuse memory and save fragmentation
+		this._global_mesh_max_vertices = this._global_mesh_max_vertices * 2;
+		this._global_mesh.deleteBuffers();
+
+		this._global_mesh = new GL.Mesh({
+			vertices: new Float32Array(this._global_mesh_max_vertices * 3),
+			normals: new Float32Array(this._global_mesh_max_vertices * 3),
+			coords: new Float32Array(this._global_mesh_max_vertices * 2),
+			colors: new Float32Array(this._global_mesh_max_vertices * 4),
+			extra: new Float32Array(this._global_mesh_max_vertices * 1)
+		},{
+			indices: new Uint16Array(this._global_mesh_max_vertices * 3)
+		}, { stream_type: gl.DYNAMIC_STREAM });
 	}
 
 };

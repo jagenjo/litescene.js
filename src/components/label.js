@@ -1,4 +1,3 @@
-(function(){
 
 function Label(o)
 {
@@ -12,10 +11,10 @@ function Label(o)
 Label.icon = "mini-icon-text.png";
 Label.CSS_classname = "LS3D_label";
 
-Label.prototype.onAddedToNode = function(node)
+Label.prototype.onAddedToScene = function( scene )
 {
 	//events
-	LEvent.bind(Scene,"beforeRender",this.render,this);
+	LEvent.bind( scene,"beforeRender",this.render,this);
 
 	//create html
 	var elem = document.createElement("div");
@@ -38,9 +37,9 @@ Label.prototype.onAddedToNode = function(node)
 	this._element = elem;
 }
 
-Label.prototype.onRemovedFromNode = function(node)
+Label.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(Scene,"beforeRender",this.render, this);
+	LEvent.unbind( scene, "beforeRender", this.render, this);
 
 	if(this._element)
 	{
@@ -51,7 +50,7 @@ Label.prototype.onRemovedFromNode = function(node)
 }
 
 
-Label.prototype.render = function(e, render_options)
+Label.prototype.render = function(e, render_settings)
 {
 	if(!this._element)
 		return;
@@ -73,7 +72,7 @@ Label.prototype.render = function(e, render_options)
 	if(this._element.className != classname)
 		this._element.className = classname;
 
-	var camera = render_options.main_camera;
+	var camera = LS.Renderer._main_camera;
 	node.transform.getGlobalPosition(this._world_pos);
 	camera.project(this._world_pos, null, this._screen_pos );
 
@@ -81,8 +80,5 @@ Label.prototype.render = function(e, render_options)
 	this._element.style.top = (gl.canvas.height - (this._screen_pos[1]|0) - 10) + "px";
 }
 
-
-
 LS.registerComponent(Label);
 
-})();

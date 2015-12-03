@@ -1,15 +1,15 @@
 var parserTGA = { 
 	extension: 'tga',
-	data_type: 'image',
+	type: 'image',
+	dataType:"arraybuffer",
 	format: 'binary',
 
 	parse: function(data, options)
 	{
-		if (typeof(data) == "string")
-			data = Parser.stringToTypedArray(data);
-		else 
-			data = new Uint8Array(data);
+		if(!data || data.constructor !== ArrayBuffer)
+			throw( "ParserTGA: data must be ArrayBuffer");
 
+		data = new Uint8Array(data);
 		var TGAheader = new Uint8Array( [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0] );
 		var TGAcompare = data.subarray(0,12);
 		for(var i = 0; i < TGAcompare.length; i++)
@@ -44,4 +44,5 @@ var parserTGA = {
 		return img;
 	}
 };
-Parser.registerParser( parserTGA );
+
+LS.Formats.registerParser( parserTGA );

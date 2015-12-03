@@ -1,6 +1,6 @@
 /*
 	A component container is someone who could have components attached to it.
-	Mostly used for SceneNodes but it could be used for other classes too.
+	Mostly used for SceneNodes but it could be used for other classes (like SceneTree or Project).
 */
 
 /**
@@ -96,11 +96,13 @@ ComponentContainer.prototype.addComponent = function( component, index )
 
 	//link component with container
 	component._root = this;
-	if(component.onAddedToNode)
+
+	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	if(this.constructor == LS.SceneNode && component.onAddedToNode)
 		component.onAddedToNode(this);
 
-	if(this._in_tree && component.onAddedToScene)
-		component.onAddedToScene(this._in_tree);
+	if( (this._in_tree || this.constructor == LS.SceneTree) && component.onAddedToScene)
+		component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
 
 	//link node with component
 	if(!this._components) 
@@ -131,11 +133,13 @@ ComponentContainer.prototype.removeComponent = function(component)
 
 	//unlink component with container
 	component._root = null;
-	if(component.onRemovedFromNode)
+
+	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	if(this.constructor == LS.SceneNode && component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
-	if(this._in_tree && component.onRemovedFromScene)
-		component.onRemovedFromScene(this._in_tree);
+	if((this._in_tree || this.constructor == LS.SceneTree) && component.onRemovedFromScene)
+		component.onRemovedFromScene( this.constructor == LS.SceneTree ? this : this._in_tree );
 
 	//remove all events
 	LEvent.unbindAll(this,component);
@@ -235,7 +239,7 @@ ComponentContainer.prototype.getIndexOfComponent = function(component)
 {
 	if(!this._components)
 		return -1;
-	return this._components.indexOf(component);
+	return this._components.indexOf( component );
 }
 
 /**
@@ -249,6 +253,35 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 		return null;
 	return this._components[index];
 }
+
+/**
+* Changes the order of a component
+* @method setComponentIndex
+* @param {Object} component
+*/
+ComponentContainer.prototype.setComponentIndex = function( component, index )
+{
+	if(!this._components)
+		return null;
+	if(index < 0)
+		index = 0;
+	var old_index = this._components.indexOf( component );
+	if (old_index == -1)
+		return;
+
+	this._components.splice( old_index, 1 );
+
+	/*
+	if(index >= old_index)
+		index--; 
+	*/
+	if(index >= this._components.length)
+		this._components.push( component );
+	else
+		this._components.splice( index, 0, component );
+
+}
+
 
 /**
 * executes the method with a given name in all the components

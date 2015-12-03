@@ -4,6 +4,8 @@ function GlobalInfo(o)
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
 	this.createProperty( "background_color", GlobalInfo.DEFAULT_BACKGROUND_COLOR, "color" );
 
+	this.render_settings = new LS.RenderSettings();
+
 	this._textures = {};
 
 	if(o)
@@ -58,7 +60,8 @@ GlobalInfo.prototype.getProperties = function()
 		"textures/background": "texture",
 		"textures/foreground": "texture",
 		"textures/environment": "texture",
-		"textures/irradiance": "texture"
+		"textures/irradiance": "texture",
+		"render_settings":"RenderSettings"
 	};
 }
 

@@ -35,10 +35,37 @@ function LineCloud(o)
 LineCloud.icon = "mini-icon-lines.png";
 LineCloud["@color"] = { widget: "color" };
 
+Object.defineProperty( LineCloud.prototype, "num_lines", {
+	set: function(v) {},
+	get: function() { return this._lines.length; },
+	enumerable: true
+});
 
 LineCloud.prototype.clear = function()
 {
 	this._lines.length = 0;
+}
+
+LineCloud.prototype.reset = LineCloud.prototype.clear;
+
+//Adds a point connect to the last one
+LineCloud.prototype.addPoint = function( point, color )
+{
+	//last
+	var start = null;
+	var start_color = null;
+	if(this._lines.length)
+	{
+		var last = this._lines[ this._lines.length - 1 ];
+		start = new Float32Array( last.subarray(3,6) );
+		start_color = new Float32Array( last.subarray(10,14) );
+	}
+	else
+	{
+		start = point;
+		start_color = color;
+	}
+	this.addLine( start, point, start_color, color );
 }
 
 LineCloud.prototype.addLine = function( start, end, start_color, end_color )
@@ -179,7 +206,7 @@ LineCloud.prototype.onCollectInstances = function(e, instances, options)
 	if(!RI)
 		this._render_instance = RI = new RenderInstance(this._root, this);
 
-	if(this.in_world_coordinates)
+	if(this.in_world_coordinates && this._root.transform )
 		RI.matrix.set( this._root.transform._global_matrix );
 	else
 		mat4.copy( RI.matrix, LineCloud._identity );
@@ -201,4 +228,4 @@ LineCloud.prototype.onCollectInstances = function(e, instances, options)
 }
 
 
-LS.registerComponent(LineCloud);
+LS.registerComponent( LineCloud );

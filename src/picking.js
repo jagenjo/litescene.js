@@ -74,16 +74,19 @@ var Picking = {
 	* @method raycast
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
-	* @param {number} max_dist maxium distance
-	* @param {SceneTree} scene
+	* @param {Object} options ( max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
 	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
 	*/
-	raycast: function( origin, direction, max_dist, layers, scene )
+	raycast: function( origin, direction, options )
 	{
-		max_dist = max_dist || Number.MAX_VALUE;
+		options = options || {};
+		var layers = options.layers;
 		if(layers === undefined)
 			layers = 0xFFFF;
-		scene = scene || LS.GlobalScene;
+		var max_distance = options.max_distance || Number.MAX_VALUE;
+		var scene = options.scene || LS.GlobalScene;
+		var triangle_collision = options.triangle_collision;
+		var first_collision = options.first_collision;
 
 		var instances = scene._instances;
 		if(!instances || !instances.length)
@@ -107,7 +110,7 @@ var Picking = {
 
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_distance ) )
 				continue;
 
 			var model = instance.matrix;
@@ -118,17 +121,22 @@ var Picking = {
 			mat4.rotateVec3( local_direction, inv, direction );
 
 			//test against OOBB (a little bit more expensive)
-			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_distance) )
 				continue;
 
 			//test against mesh
-			if( instance.collision_mesh )
+			var collision_mesh = instance.collision_mesh;
+			
+			if(triangle_collision)
+				collision_mesh = instance.lod_mesh || instance.mesh;
+
+			if( collision_mesh )
 			{
-				var mesh = instance.collision_mesh;
+				var mesh = collision_mesh;
 				var octree = mesh.octree;
 				if(!octree)
-					octree = mesh.octree = new Octree( mesh );
-				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
+					octree = mesh.octree = new GL.Octree( mesh );
+				var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;
 				mat4.multiplyVec3(collision_point, model, hit.pos);
@@ -137,11 +145,14 @@ var Picking = {
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
-			if(distance < max_dist)
+			if(distance < max_distance)
 				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ) );
+
+			if(first_collision)
+				return collisions;
 		}
 
-		collisions.sort( Collision.isCloser );
+		collisions.sort( LS.Collision.isCloser );
 		return collisions;
 	},
 
@@ -170,7 +181,7 @@ var Picking = {
 	_picking_depth: 0,
 	_picking_next_color_id: 0,
 	_picking_nodes: {},
-	_picking_render_options: new RenderOptions({is_picking: true}),
+	_picking_render_settings: new RenderSettings({is_picking: true}),
 
 	renderPickingBuffer: function( scene, camera, x, y, layers )
 	{
@@ -188,14 +199,14 @@ var Picking = {
 		var small_area = true;
 		this._picking_next_color_id = 0;
 
-		this._current_target = this._pickingMap;
+		LS.Renderer._current_target = this._pickingMap;
 
 		this._pickingMap.drawTo(function() {
 			//var viewport = camera.getLocalViewport();
 			//camera._real_aspect = viewport[2] / viewport[3];
 			//gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
 
-			LS.Renderer.enableCamera( camera, that._picking_render_options );
+			LS.Renderer.enableCamera( camera, that._picking_render_settings );
 
 			if(small_area)
 			{
@@ -207,23 +218,29 @@ var Picking = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//gl.viewport(x-20,y-20,40,40);
-			that._picking_render_options.current_pass = "picking";
-			that._picking_render_options.layers = layers;
+			LS.Renderer._current_pass = "picking";
+			LS.Renderer._is_picking = true;
+			that._picking_render_settings.layers = layers;
 
 			//check instances colliding with cursor using a ray against AABBs
 			//TODO
 
-			LS.Renderer.renderInstances( that._picking_render_options )//, cursor_instances );
+			LS.Renderer.renderInstances( that._picking_render_settings )//, cursor_instances );
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			LEvent.trigger( scene, "renderPicking", [x,y] );
+			LEvent.trigger( LS.Renderer, "renderPicking", [x,y] );
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, that._picking_color );
 
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
+
+			LS.Renderer._is_picking = false;
+			LS.Renderer._current_pass = "picking";
 		});
-		this._current_target = null;
+
+		LS.Renderer._current_target = null;
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		//trace(" END Rendering: ", this._picking_color );

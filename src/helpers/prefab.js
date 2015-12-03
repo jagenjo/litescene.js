@@ -14,6 +14,8 @@ function Prefab(o)
 		this.configure(o);
 }
 
+Prefab.version = "0.1"; //used to know where the file comes from 
+
 /**
 * configure the prefab
 * @method configure
@@ -24,6 +26,7 @@ Prefab.prototype.configure = function(data)
 {
 	var prefab_json = data["@json"];
 	var resources_names = data["@resources_name"];
+	var version = data["@version"];
 	this.prefab_json = prefab_json;
 
 	//extract resource names
@@ -31,7 +34,12 @@ Prefab.prototype.configure = function(data)
 	{
 		var resources = {};
 		for(var i in resources_names)
-			resources[ resources_names[i] ] = data[ resources_names[i] ];
+		{
+			if(!version) //legacy
+				resources[ resources_names[i] ] = data[ resources_names[i] ];
+			else
+				resources[ resources_names[i] ] = data[ "@RES_" + i ];
+		}
 		this.resources = resources;
 	}
 
@@ -44,9 +52,10 @@ Prefab.fromBinary = function(data)
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
 
-	return new Prefab(data);
+	return new LS.Prefab(data);
 }
 
+//given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
 Prefab.prototype.processResources = function()
 {
 	if(!this.resources)
@@ -70,6 +79,11 @@ Prefab.prototype.processResources = function()
 			continue; //already loaded
 
 		var resdata = resources[resname];
+		if(!resdata)
+		{
+			console.warn("resource data in prefab is undefined, skipping it:" + resname);
+			continue;
+		}
 		LS.ResourcesManager.processResource( resname, resdata );
 	}
 }
@@ -99,13 +113,13 @@ Prefab.prototype.createObject = function()
 
 /**
 * to create a new prefab, it packs all the data an instantiates the resource
-* @method createPrefab
-* @return object contained 
+* @method Prefab.createPrefab
+* @return object containing the prefab data ready to be converted to WBin
 **/
-
-Prefab.createPrefab = function(filename, node_data, resources)
+Prefab.createPrefab = function( filename, node_data, resources)
 {
-	if(!filename) return;
+	if(!filename)
+		return;
 
 	filename = filename.replace(/ /gi,"_");
 	resources = resources || {};
@@ -113,29 +127,35 @@ Prefab.createPrefab = function(filename, node_data, resources)
 	node_data.id = null; //remove the id
 	node_data.object_type = "SceneNode";
 
-	var prefab = new Prefab();
+	var prefab = new LS.Prefab();
 	filename += ".wbin";
+
+	//checkfilenames and rename them to short names
+	
 
 	prefab.filename = filename;
 	prefab.resources = resources;
 	prefab.prefab_json = JSON.stringify( node_data );
 
-	//get all the resources and store them
-	var bindata = Prefab.packResources(resources, { "@json": prefab.prefab_json });
-	prefab._original_file = bindata;
+	//get all the resources and store them in a WBin
+	var bindata = Prefab.packResources( resources, { "@json": prefab.prefab_json, "@version": Prefab.version } );
+	prefab._original_data = bindata;
 
 	return prefab;
 }
 
-Prefab.packResources = function(resources, base_data)
+//adds resources to the Prefab
+Prefab.packResources = function( resources, base_data )
 {
 	var to_binary = base_data || {};
 	var resources_name = [];
+
 	for(var i in resources)
 	{
 		var res_name = resources[i];
-		var resource = LS.ResourcesManager.resources[res_name];
-		if(!resource) continue;
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
 
 		var data = null;
 		if(resource._original_data) //must be string or bytes
@@ -152,12 +172,13 @@ Prefab.packResources = function(resources, base_data)
 			continue;
 		}
 
-		resources_name.push(res_name);
-		to_binary[res_name] = data;
+		to_binary["@RES_" + resources_name.length ] = data;
+		resources_name.push( res_name );
+		//to_binary[res_name] = data;
 	}
 
 	to_binary["@resources_name"] = resources_name;
 	return WBin.create( to_binary, "Prefab" );
 }
 
-LS.Prefab = Prefab;
+LS.Classes["Prefab"] = LS.Prefab = Prefab;

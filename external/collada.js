@@ -1576,7 +1576,8 @@ global.Collada = {
 			else //no nested (DAE 1.4)
 			{
 				var anim = this.readAnimationTrack( xmlanimation );
-				tracks.push( anim );
+				if(anim)
+					tracks.push( anim );
 			}
 		}
 

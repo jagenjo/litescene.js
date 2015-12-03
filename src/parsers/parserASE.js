@@ -1,10 +1,11 @@
 //***** ASE Parser *****************
 var parserASE = {
-	extension: 'ase',
-	data_type: 'mesh',
+	extension: "ase",
+	type: "mesh",
+	resource: "Mesh",
 	format: 'text',
 	
-	parse: function(text, options)
+	parse: function( text, options, filename )
 	{
 		options = options || {};
 
@@ -41,7 +42,7 @@ var parserASE = {
 		var group = null;
 		var groups = [];
 
-		var flip_axis = Parser.flipAxis;
+		var flip_axis = this.flipAxis;
 		if(options.flipAxis != null) flip_axis = options.flipAxis;
 		var flip_normals = (flip_axis || options.flipNormals);
 
@@ -140,10 +141,11 @@ var parserASE = {
 			mesh.coords = new Float32Array(texcoordsArray);
 
 		//extra info
-		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = LS.Formats.computeMeshBounding( mesh.vertices );
 		if(groups.length > 1)
 			mesh.info.groups = groups;
 		return mesh;
 	}
 };
-Parser.registerParser( parserASE );
+
+LS.Formats.registerParser( parserASE );

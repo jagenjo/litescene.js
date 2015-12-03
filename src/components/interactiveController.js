@@ -45,7 +45,7 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 			return null;
 
 		var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
-		var collisions = LS.Picking.raycast( ray.start, ray.direction, null, layers );
+		var collisions = LS.Picking.raycast( ray.start, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
 		return collisions[0].node;
@@ -57,7 +57,7 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 		if(!camera)
 			return null;
 		var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
-		var collisions = LS.Physics.raycast( ray.start, ray.direction, null, layers );
+		var collisions = LS.Physics.raycast( ray.start, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
 		return collisions[0].node;

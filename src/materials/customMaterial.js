@@ -177,6 +177,27 @@ CustomMaterial.prototype.configure = function(o) {
 }
 
 /**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+CustomMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	//global
+	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
+
+	//specific
+	for(var i = 0, l = this.properties.length; i < l; ++i )
+	{
+		var prop = this.properties[i];
+		if( prop.value == old_name)
+			prop.value = new_name;
+	}
+}
+
+
+/**
 * gets all the properties and its types
 * @method getProperties
 * @return {Object} object with name:type
@@ -200,27 +221,6 @@ CustomMaterial.prototype.getProperties = function()
 
 	return o;
 }
-
-/**
-* Event used to inform if one resource has changed its name
-* @method onResourceRenamed
-* @param {Object} resources object where all the resources are stored
-* @return {Texture}
-*/
-CustomMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-	//global
-	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
-
-	//specific
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if( prop.value == old_name)
-			prop.value = new_name;
-	}
-}
-
 
 /**
 * gets all the properties and its types

@@ -380,5 +380,55 @@ StandardMaterial.prototype.getProperties = function()
 	return o;
 }
 
+SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length < 1)
+		return;
+
+	var info = Material.prototype.getPropertyInfoFromPath.call(this,path);
+	if(info)
+		return info;
+
+	var varname = path[0];
+
+	switch(varname)
+	{
+		case "backlight_factor":
+		case "reflection_factor":
+		case "reflection_fresnel":
+		case "velvet_exp":
+		case "normalmap_factor":
+		case "displacementmap_factor":
+		case "extra_factor":
+		case "detail_factor":
+			type = "number"; break;
+		case "extra_surface_shader_code":
+			type = "string"; break;
+		case "ambient":
+		case "emissive":
+		case "velvet":
+		case "extra_color":
+			type = "vec3"; break;
+		case "detail_scale":
+			type = "vec2"; break;
+		case "specular_ontop":
+		case "normalmap_tangent":
+		case "reflection_specular":
+		case "use_scene_ambient":
+		case "velvet_additive":
+			type = "boolean"; break;
+		default:
+			return null;
+	}
+
+	return {
+		node: this._root,
+		target: this,
+		name: varname,
+		value: this[varname],
+		type: type
+	};
+}
+
 LS.registerMaterialClass( StandardMaterial );
 LS.StandardMaterial = StandardMaterial;

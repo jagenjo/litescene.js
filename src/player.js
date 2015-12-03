@@ -12,6 +12,8 @@
 	- filesystems: object that contains the virtual file systems info { "VFS":"http://litefileserver.com/" } ...
 	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
 	- autoresize: boolean to automatically resize the canvas when the window is resized
+	- autoplay: boolean to automatically start playing the scene once the load is completed
+	- loadingbar: boolean to show a loading bar
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -28,6 +30,7 @@
 function Player(options)
 {
 	options = options || {};
+	this.options = options;
 
 	if(!options.canvas)
 	{
@@ -53,8 +56,9 @@ function Player(options)
 
 	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
-	this.render_options = new RenderOptions();
+	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
 	this.scene = LS.GlobalScene;
+	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
 
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
@@ -79,6 +83,16 @@ function Player(options)
 			this.canvas.width = canvas.parentNode.offsetWidth;
 			this.canvas.height = canvas.parentNode.offsetHeight;
 		}).bind(this));
+	}
+
+	if(options.loadingbar)
+	{
+		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ this.loading_bar = 0.0; }).bind(this) );
+		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
+			if( this.loading_bar < v )
+				this.loading_bar = v;
+		}).bind(this) );
+		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ this.loading_bar = this._total_loading = undefined; }).bind(this) );
 	}
 
 	LS.Renderer.init();
@@ -116,15 +130,18 @@ function Player(options)
 */
 Player.prototype.loadScene = function(url, on_complete)
 {
+	var that = this;
 	var scene = this.scene;
-	scene.load(url, inner_start);
+	scene.load( url, inner_start );
 
 	function inner_start()
 	{
-		scene.start();
+		//start playing once loaded the json
+		if(that.autoplay)
+			that.play();
+		console.log("Scene playing");
 		if(on_complete)
 			on_complete();
-		console.log("Scene playing");
 	}
 }
 
@@ -134,8 +151,9 @@ Player.prototype.loadScene = function(url, on_complete)
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.setScene = function(scene_info, on_complete)
+Player.prototype.setScene = function( scene_info, on_complete )
 {
+	var that = this;
 	var scene = this.scene;
 	if(typeof(scene_info) == "string")
 		scene_info = JSON.parse(scene_info);
@@ -144,11 +162,12 @@ Player.prototype.setScene = function(scene_info, on_complete)
 
 	function inner_all_loaded()
 	{
-		scene.start();
-		if(on_complete)
-			on_complete();
+		if(that.autoplay)
+			that.play();
 		scene._must_redraw = true;
 		console.log("Scene playing");
+		if(on_complete)
+			on_complete();
 	}
 }
 
@@ -161,6 +180,13 @@ Player.prototype.pause = function()
 Player.prototype.play = function()
 {
 	this.state = "playing";
+	this.scene.start();
+}
+
+Player.prototype.stop = function()
+{
+	this.state = "stopped";
+	this.scene.finish();
 }
 
 Player.prototype._ondraw = function()
@@ -175,11 +201,14 @@ Player.prototype._ondraw = function()
 
 	if(scene._must_redraw || this.force_redraw )
 	{
-		scene.render( this.render_options );
+		scene.render( scene.info ? scene.info.render_settings : this.render_settings );
 	}
 
 	if(this.onDraw)
 		this.onDraw();
+
+	if(this.loading_bar !== undefined )
+		this.renderLoadingBar();
 }
 
 Player.prototype._onupdate = function(dt)
@@ -223,6 +252,23 @@ Player.prototype._onkey = function(e)
 	}
 
 	LEvent.trigger( this.scene, e.eventType, e );
+}
+
+Player.prototype.renderLoadingBar = function()
+{
+	if(!window.enableWebGLCanvas)
+		return;
+
+	if( gl.canvas.canvas2DtoWebGL_enabled )
+		enableWebGLCanvas( gl.canvas );
+
+	gl.start2D();
+	var y = 0;//gl.drawingBufferHeight - 6;
+	gl.fillStyle = [0,0,0,0.5];
+	gl.fillRect( 0, y, gl.drawingBufferWidth, 6);
+	gl.fillColor = this.loadingbar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect(0,y,gl.drawingBufferWidth * this.loading_bar,6);
+	gl.finish2D();
 }
 
 LS.Player = Player;

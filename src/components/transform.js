@@ -365,7 +365,7 @@ Transform.prototype.getScale = function(out)
 }
 
 /**
-* Returns a copy of the global scale
+* Returns a copy of the global scale (this is not correct, there is no global_scale factor, because due to rotations the axis could change)
 * @method getGlobalScale
 * @param {vec3} out [optional] where to store the result, otherwise one vec3 is created and returned
 * @return {vec3} the scale
@@ -722,13 +722,13 @@ Transform.prototype.translate = function(x,y,z)
 
 /**
 * NOT TESTED
-* translates object in global coordinates (using the rotation and the scale)
-* @method translateGlobal
+* translates object in object coordinates (using the rotation and the scale)
+* @method translateLocal
 * @param {number} x 
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translateGlobal = function(x,y,z)
+Transform.prototype.translateLocal = function(x,y,z)
 {
 	if(arguments.length == 3)
 		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
@@ -1067,58 +1067,64 @@ Transform.prototype.applyTransform = function( transform, center, is_global )
 * @param {vec3} center different pivot [optional] if omited 0,0,0 will be used
 * @param {bool} is_global (optional) tells if the transformation should be applied in global space or local space
 */
-Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
-{
-	var M = matrix;
-
-	if(center)
+Transform.prototype.applyTransformMatrix = (function(){ 
+	var T = mat4.create();
+	var inv_center = vec3.create();
+	var iT = mat4.create();
+	var M = mat4.create();
+	var temp = mat4.create();
+	
+	return function(matrix, center, is_global)
 	{
-		var T = mat4.setTranslation( mat4.create(), center);
-		var inv_center = vec3.scale( vec3.create(), center, -1 );
-		var iT = mat4.setTranslation( mat4.create(), inv_center);
+		var M = matrix;
 
-		M = mat4.create();
-		mat4.multiply( M, T, matrix );
-		mat4.multiply( M, M, iT );
-	}
-
-
-	if(!this._parent)
-	{
-		if(is_global)
+		if(center)
 		{
+			mat4.setTranslation( T, center);
+			vec3.scale( inv_center, center, -1 );
+			mat4.setTranslation( iT, inv_center);
+
+			mat4.multiply( M, T, matrix );
+			mat4.multiply( M, M, iT );
+		}
+
+
+		if(!this._parent)
+		{
+			if(is_global)
+			{
+				this.applyLocalTransformMatrix( M );
+				return;
+			}
+
+			//is local
 			this.applyLocalTransformMatrix( M );
 			return;
 		}
 
-		//is local
-		this.applyLocalTransformMatrix( M );
-		return;
-	}
+		/*
+		//convert transform to local coordinates
+		var GM = this.getGlobalMatrix();
+		var temp_mat = mat4.multiply( mat4.create(), M, GM );
 
-	/*
-	//convert transform to local coordinates
-	var GM = this.getGlobalMatrix();
-	var temp_mat = mat4.multiply( mat4.create(), M, GM );
+		var PGM = this._parent._global_matrix;
+		var inv_pgm = mat4.invert( mat4.create(), PGM );
 
-	var PGM = this._parent._global_matrix;
-	var inv_pgm = mat4.invert( mat4.create(), PGM );
+		mat4.multiply(temp_mat, inv_pgm, temp_mat );
+		this.applyLocalTransformMatrix( temp_mat );
+		//*/
 
-	mat4.multiply(temp_mat, inv_pgm, temp_mat );
-	this.applyLocalTransformMatrix( temp_mat );
-	//*/
+		//*
+		var GM = this.getGlobalMatrix();
+		var PGM = this._parent._global_matrix;
+		mat4.multiply( this._global_matrix, M, GM );
 
-	//*
-	var GM = this.getGlobalMatrix();
-	var PGM = this._parent._global_matrix;
-	var temp = mat4.create();
-	mat4.multiply( this._global_matrix, M, GM );
-
-	mat4.invert(temp,PGM);
-	mat4.multiply(this._local_matrix, temp, this._global_matrix );
-	this.fromMatrix(this._local_matrix);
-	//*/
-}
+		mat4.invert(temp,PGM);
+		mat4.multiply( this._local_matrix, temp, this._global_matrix );
+		this.fromMatrix( this._local_matrix );
+		//*/
+	};
+})();
 
 //applies matrix to position, rotation and scale individually, doesnt take into account parents
 Transform.prototype.applyLocalTransformMatrix = function( M )
@@ -1187,5 +1193,5 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 }
 */
 
-LS.registerComponent(Transform);
+LS.registerComponent( Transform );
 LS.Transform = Transform;

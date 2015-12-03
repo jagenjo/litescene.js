@@ -81,6 +81,9 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = {};
 
+	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
+	this._is_visible = false; //used during the rendering
+
 	//for internal use
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
@@ -336,6 +339,20 @@ RenderInstance.prototype.overlapsSphere = function(center, radius)
 	if(this.flags & RI_IGNORE_FRUSTUM)
 		return true;
 	return geo.testSphereBBox( center, radius, this.aabb );
+}
+
+/**
+* Checks if this object was visible by a camera during the last frame
+*
+* @method wasVisibleByCamera
+* @param {LS.Camera} camera [optional] if a camera is supplied it checks if it was visible by that camera, otherwise tells you if it was visible by any camera
+* @return {Boolean} true if it was visible by the camera (or any camera if no camera supplied), false otherwise
+*/
+RenderInstance.prototype.wasVisibleByCamera = function( camera )
+{
+	if(!camera)
+		return this._camera_visibility != 0;
+	return (this._camera_visibility | (1<<(camera._rendering_index))) ? true : false;
 }
 
 

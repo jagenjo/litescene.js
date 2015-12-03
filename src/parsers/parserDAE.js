@@ -1,13 +1,18 @@
 
 var parserDAE = {
-	extension: 'dae',
-	data_type: 'scene',
-	format: 'text',
-
-	no_flip: true,
+	extension: "dae",
+	type: "scene",
+	resource: "SceneTree",
+	format: "text",
 
 	parse: function( data, options, filename )
 	{
+		if(!data || data.constructor !== String)
+		{
+			console.error("DAE parser requires string");
+			return null;
+		}
+
 		Collada.material_translate_table = {
 			transparency: "opacity",
 			reflectivity: "reflection_factor",
@@ -24,7 +29,7 @@ var parserDAE = {
 		scene.root.name = filename;
 
 		//apply 90 degrees rotation to match the Y UP AXIS of the system
-		if(scene.metadata && scene.metadata.up_axis == "Z_UP")
+		if( scene.metadata && scene.metadata.up_axis == "Z_UP" )
 			scene.root.model = mat4.rotateX( mat4.create(), mat4.create(), -90 * 0.0174532925 );
 
 		//skip renaming ids (this is done to ensure no collision with names coming from other files)
@@ -233,4 +238,5 @@ var parserDAE = {
 		}
 	} //procesSAnimation
 };
-Parser.registerParser(parserDAE);
+
+LS.Formats.registerParser( parserDAE );

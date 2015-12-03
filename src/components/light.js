@@ -108,7 +108,7 @@ function Light(o)
 	*/
 	this.cast_shadows = false;
 	this.shadow_bias = 0.05;
-	this.shadowmap_resolution = 1024;
+	this.shadowmap_resolution = 0; //use automatic shadowmap size
 	this.type = Light.OMNI;
 	this.frustum_size = 50; //ortho
 
@@ -127,7 +127,7 @@ function Light(o)
 	if(o) 
 	{
 		this.configure(o);
-		if(o.shadowmap_resolution)
+		if(o.shadowmap_resolution !== undefined)
 			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
 	}
 }
@@ -439,11 +439,11 @@ Light.prototype.isInLayer = function(num)
 }
 
 /**
-* This method is called by the Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
+* This method is called by the LS.Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)
 * @method prepare
-* @param {Object} render_options info about how the scene will be rendered
+* @param {Object} render_settings info about how the scene will be rendered
 */
-Light.prototype.prepare = function( render_options )
+Light.prototype.prepare = function( render_settings )
 {
 	var uniforms = this._uniforms;
 	var query = this._query;
@@ -453,7 +453,7 @@ Light.prototype.prepare = function( render_options )
 	if(this.projective_texture || this.cast_shadows)
 		this.updateLightCamera();
 
-	if(!this.cast_shadows && this._shadowmap)
+	if( (!render_settings.shadows_enabled || !this.cast_shadows) && this._shadowmap)
 	{
 		this._shadowmap = null;
 		delete LS.ResourcesManager.textures[":shadowmap_" + this.uid ];
@@ -535,9 +535,33 @@ Light.prototype.prepare = function( render_options )
 		this._last_processed_extra_light_shader_code = null;
 
 	//generate shadowmaps
-	if( render_options.update_shadowmaps && !render_options.shadows_disabled && !render_options.lights_disabled && !render_options.low_quality )
-		this.generateShadowmap( render_options );
-	if(this._shadowmap && !this.cast_shadows)
+	var must_update_shadowmap = render_settings.update_shadowmaps && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
+
+	if(must_update_shadowmap)
+	{
+		var cameras = LS.Renderer._visible_cameras;
+		var is_inside_one_camera = false;
+
+		if( !render_settings.update_all_shadowmaps && cameras && this.type == Light.OMNI && this.range_attenuation )
+		{
+			var closest_far = this.computeShadowmapFar();
+			for(var i = 0; i < cameras.length; i++)
+			{
+				if( geo.frustumTestSphere( cameras[i]._frustum_planes, this.position, closest_far ) != CLIP_OUTSIDE )
+				{
+					is_inside_one_camera = true;
+					break;
+				}
+			}
+		}
+		else //we only check for omnis, cone frustum collision not developed yet
+			is_inside_one_camera = true;
+
+		if( is_inside_one_camera )
+			this.generateShadowmap( render_settings );
+	}
+
+	if( this._shadowmap && !this.cast_shadows )
 		this._shadowmap = null; //remove shadowmap
 
 	this._uniforms = uniforms;
@@ -547,14 +571,14 @@ Light.prototype.prepare = function( render_options )
 * Collects and returns the shader query of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)
 * @method getQuery
 * @param {RenderInstance} instance the render instance where this light will be applied
-* @param {Object} render_options info about how the scene will be rendered
+* @param {Object} render_settings info about how the scene will be rendered
 * @return {ShaderQuery} the macros
 */
-Light.prototype.getQuery = function(instance, render_options)
+Light.prototype.getQuery = function(instance, render_settings)
 {
 	var query = this._query;
 
-	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_options.shadows_disabled;
+	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_settings.shadows_disabled;
 
 	if(!this.constant_diffuse && !instance.material.constant_diffuse)
 		query.macros.USE_DIFFUSE_LIGHT = "";
@@ -590,16 +614,16 @@ Light.prototype.getQuery = function(instance, render_options)
 * Collects and returns the uniforms for the light (some uniforms have to be computed now because they depend not only on the light, also on the node or material)
 * @method getUniforms
 * @param {RenderInstance} instance the render instance where this light will be applied
-* @param {Object} render_options info about how the scene will be rendered
+* @param {Object} render_settings info about how the scene will be rendered
 * @return {Object} the uniforms
 */
-Light.prototype.getUniforms = function( instance, render_options )
+Light.prototype.getUniforms = function( instance, render_settings )
 {
 	var uniforms = this._uniforms;
 	var use_shadows = this.cast_shadows && 
 					instance.flags & RI_RECEIVE_SHADOWS && 
 					this._shadowmap && this._light_matrix != null && 
-					!render_options.shadows_disabled;
+					!render_settings.shadows_disabled;
 
 	//compute the light mvp
 	if(this._light_matrix)
@@ -672,7 +696,9 @@ Light.prototype.computeShadowmapFar = function()
 	{
 		//Math.SQRT2 because in a 45º triangle the hypotenuse is sqrt(1+1) * side
 		if( this.range_attenuation && (this.att_end * Math.SQRT2) < closest_far)
-			closest_far = this.att_end * Math.SQRT2;
+			closest_far = this.att_end / Math.SQRT2;
+
+		//TODO, if no range_attenuation but linear_attenuation also check intensity to reduce the far
 	}
 	else 
 	{
@@ -713,9 +739,9 @@ Light.prototype.computeLightRadius = function()
 /**
 * Generates the shadowmap for this light
 * @method generateShadowmap
-* @return {Object} render_options
+* @return {Object} render_settings
 */
-Light.prototype.generateShadowmap = function (render_options)
+Light.prototype.generateShadowmap = function (render_settings)
 {
 	if(!this.cast_shadows)
 		return;
@@ -724,12 +750,10 @@ Light.prototype.generateShadowmap = function (render_options)
 	if( light_intensity < 0.0001 )
 		return;
 
-	var renderer = render_options.current_renderer;
-
 	//create the texture
 	var shadowmap_resolution = this.shadowmap_resolution;
-	if(!shadowmap_resolution)
-		shadowmap_resolution = Light.DEFAULT_SHADOWMAP_RESOLUTION;
+	if(shadowmap_resolution == 0)
+		shadowmap_resolution = render_settings.default_shadowmap_resolution;
 
 	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
@@ -743,35 +767,38 @@ Light.prototype.generateShadowmap = function (render_options)
 	{
 		var closest_far = this.computeShadowmapFar();
 
-		render_options.current_pass = "shadow";
-		render_options.is_shadowmap = true;
+		LS.Renderer._current_pass = "shadow";
+		LS.Renderer._is_shadowmap = true;
 		this._shadowmap.unbind(); 
-		renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_options, this.near, closest_far );
-		render_options.is_shadowmap = false;
+		LS.Renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_settings, this.near, closest_far );
+		LS.Renderer._is_shadowmap = false;
 	}
 	else //DIRECTIONAL and SPOTLIGHT
 	{
 		var shadow_camera = this.getLightCamera();
-		renderer.enableCamera( shadow_camera, render_options, true );
+		LS.Renderer.enableCamera( shadow_camera, render_settings, true );
 
 		// Render the object viewed from the light using a shader that returns the
 		// fragment depth.
 		this._shadowmap.unbind(); 
-		renderer._current_target = this._shadowmap;
+		LS.Renderer._current_target = this._shadowmap;
 		this._shadowmap.drawTo(function() {
 
 			gl.clearColor(0, 0, 0, 0);
 			//gl.clearColor(1, 1, 1, 1);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			render_options.current_pass = "shadow";
-			render_options.is_shadowmap = true;
+			LS.Renderer._current_pass = "shadow";
+			LS.Renderer._is_shadowmap = true;
 
 			//RENDER INSTANCES in the shadowmap
-			renderer.renderInstances( render_options );
-			render_options.is_shadowmap = false;
+			LS.Renderer.renderInstances( render_settings );
+
+			//restore
+			LS.Renderer._current_pass = "color";
+			LS.Renderer._is_shadowmap = false;
 		});
-		renderer._current_target = null;
+		LS.Renderer._current_target = null;
 	}
 }
 

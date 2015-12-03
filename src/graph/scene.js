@@ -189,6 +189,16 @@ if(typeof(LiteGraph) != "undefined")
 		return result;
 	}
 
+	LGraphSceneNode.prototype.onDropItem = function( event )
+	{
+		var node_id = event.dataTransfer.getData("node_id");
+		if(!node_id)
+			return;
+		this.properties.node_id = node_id;
+		this.onExecute();
+		return true;
+	}
+
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
 		var result = [["Visible","boolean"],["Material","Material"]];
@@ -240,7 +250,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
-			this.properties.node_id = LGraphSceneNode._current_node_id;
+			this.properties.node = LGraphSceneNode._current_node_id;
 		this.addInput("Transform", "Transform", { locked: true });
 		this.addOutput("Position","vec3");
 	}
@@ -262,8 +272,12 @@ if(typeof(LiteGraph) != "undefined")
 				return;
 
 			var node = this._node;
-			if(	this.properties.node_id )
-				node = scene.getNode( this.properties.node_id );
+			if(	this.properties.node )
+			{
+				node = scene.getNode( this.properties.node );
+				if(!node)
+					return;
+			}
 
 			if(!node)
 				node = this.graph._scenenode;
@@ -291,6 +305,9 @@ if(typeof(LiteGraph) != "undefined")
 				case "Rotation": transform.setRotation(v); break;
 				case "Scale": transform.setScale(v); break;
 				case "Matrix": transform.fromMatrix(v); break;
+				case "Translate": transform.translate(v); break;
+				case "Translate Local": transform.translateLocal(v); break;
+				case "RotateY": transform.rotateY(v); break;
 			}
 		}
 
@@ -325,7 +342,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Local","vec3"],["RotateY","number"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()
@@ -485,6 +502,12 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphComponent.title = "Component";
 	LGraphComponent.desc = "A component from a node";
 
+	LGraphComponent.prototype.onConnectInput = function( slot, type )
+	{
+		if (slot == 0 && !LS.Components[type])
+			return false;
+	}
+
 	LGraphComponent.prototype.onExecute = function()
 	{
 		var compo = this.getComponent();
@@ -535,11 +558,7 @@ if(typeof(LiteGraph) != "undefined")
 			return;
 
 		//find node
-		var node = null;
-		if(node_id.charAt(0) == "@")
-			node = scene.getNodeByUId( node_id.substr(1) );
-		else
-			node = scene.getNode( node_id );
+		var node = scene.getNode( node_id );
 		if(!node)
 			return null;
 
@@ -547,10 +566,13 @@ if(typeof(LiteGraph) != "undefined")
 		var compo_id = this.properties.component;
 		var compo = null;
 		if(compo_id.charAt(0) == "@")
-			compo = node.getComponentByUId( compo_id.substr(1) );
+			compo = node.getComponentByUId( compo_id );
 		else if( LS.Components[ compo_id ] )
 			compo = node.getComponent( LS.Components[ compo_id ] );
 		else
+			return null;
+
+		if(compo && !compo.constructor.is_component)
 			return null;
 
 		this._component = compo;
@@ -695,4 +717,78 @@ if(typeof(LiteGraph) != "undefined")
 	window.LGraphGlobal = LGraphGlobal;
 
 	//************************************
+
+	//************************************
+
+	function LGraphFrame()
+	{
+		this.addOutput("Color","Texture");
+		this.addOutput("Depth","Texture");
+		this.addOutput("Extra","Texture");
+		this.addOutput("Camera","Camera");
+		this.properties = {};
+	}
+
+	LGraphFrame.title = "Frame";
+	LGraphFrame.desc = "One frame rendered from the scene renderer";
+
+	LGraphFrame.prototype.onExecute = function()
+	{
+		this.setOutputData(0, LGraphTexture.getTexture( this._color_texture ) );
+		this.setOutputData(1, LGraphTexture.getTexture( this._depth_texture ) );
+		this.setOutputData(2, LGraphTexture.getTexture( this._extra_texture ) );
+		this.setOutputData(3, this._camera );
+	}
+
+	LGraphFrame.prototype.onDrawBackground = function( ctx )
+	{
+		if( this.flags.collapsed || this.size[1] <= 20 )
+			return;
+
+		if(!this._color_texture)
+			return;
+
+		//Different texture? then get it from the GPU
+		if(this._last_preview_tex != this._last_tex || !this._last_preview_tex)
+		{
+			if( ctx.webgl && this._canvas && this._canvas.constructor === GL.Texture )
+			{
+				this._canvas = this._last_tex;
+			}
+			else
+			{
+				var texture = LGraphTexture.getTexture( this._color_texture );
+				if(!texture)
+					return;
+
+				var tex_canvas = LGraphTexture.generateLowResTexturePreview( texture );
+				if(!tex_canvas) 
+					return;
+				this._last_preview_tex = this._last_tex;
+				this._canvas = cloneCanvas( tex_canvas );
+			}
+		}
+
+		if(!this._canvas)
+			return;
+
+		//render to graph canvas
+		ctx.save();
+		if(!ctx.webgl) //reverse image
+		{
+			if( this._canvas.constructor === GL.Texture )
+			{
+				this._canvas = null;
+				return;
+			}
+
+			ctx.translate( 0,this.size[1] );
+			ctx.scale(1,-1);
+		}
+		ctx.drawImage( this._canvas, 0, 0, this.size[0], this.size[1] );
+		ctx.restore();
+	}
+
+	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
+	window.LGraphFrame = LGraphFrame;
 };

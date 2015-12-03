@@ -1,8 +1,11 @@
 //***** OBJ parser adapted from SpiderGL implementation *****************
 var parserOBJ = {
 	extension: 'obj',
-	data_type: 'mesh',
+	type: 'mesh',
+	resource: 'Mesh',
 	format: 'text',
+
+	flipAxis: false,
 
 	parse: function(text, options)
 	{
@@ -45,7 +48,7 @@ var parserOBJ = {
 		var max_index = 0;
 
 		//trace("SKIP INDICES: " + skip_indices);
-		var flip_axis = (Parser.flipAxis || options.flipAxis);
+		var flip_axis = (this.flipAxis || options.flipAxis);
 		var flip_normals = (flip_axis || options.flipNormals);
 
 		//used for mesh groups (submeshes)
@@ -218,7 +221,7 @@ var parserOBJ = {
 					}
 				}
 			}
-			else if (tokens[0] == "g")
+			else if (tokens[0] == "g" || tokens[0] == "o")
 			{
 				negative_offset = positions.length / 3 - 1;
 
@@ -323,4 +326,5 @@ var parserOBJ = {
 		return mesh;
 	}
 };
-Parser.registerParser(parserOBJ);
+
+LS.Formats.registerParser( parserOBJ );

@@ -9,8 +9,9 @@
 function LScript()
 {
 	this.code = "function update(dt) {\n\n}";
-	this.exported_callbacks = ["start","update"]; //detects if there is a function with this name and exports it as a property
+	this.exported_callbacks = []; //detects if there is a function with this name and exports it as a property
 	this.extracode = "";
+	this.extra_methods = null; //add object with methods here to attach methods
 	this.catch_exceptions = true;
 }
 
@@ -18,7 +19,7 @@ LScript.onerror = null; //global used to catch errors in scripts
 
 LScript.show_errors_in_console = true;
 
-LScript.prototype.compile = function( arg_vars )
+LScript.prototype.compile = function( arg_vars, save_context_vars )
 {
 	var argv_names = [];
 	var argv_values = [];
@@ -43,11 +44,14 @@ LScript.prototype.compile = function( arg_vars )
 	}
 	code += extra_code;
 	this._last_executed_code = code;
+
+	var old_context = this._context;
 	
 	try
 	{
 		this._class = new Function(argv_names, code);
-		this._context = LScript.applyToConstructor( this._class, argv_values );
+		var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
+		this._context = new context_function(); //<-- EXECUTION POINT HERE ***************************************
 	}
 	catch (err)
 	{
@@ -64,6 +68,15 @@ LScript.prototype.compile = function( arg_vars )
 			LScript.onerror(err, this._last_executed_code, this);
 		return false;
 	}
+
+
+	if(save_context_vars && old_context)
+	{
+		for(var i in old_context)
+			if( this._context[i] !== undefined && old_context[i] && old_context[i].constructor !== Function && (!this._context[i] || this._context[i].constructor !== Function) )
+				this._context[i] = old_context[i];
+	}
+
 	return true;
 }
 
@@ -102,11 +115,14 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	}
 }
 
-//from kybernetikos in stackoverflow
-LScript.applyToConstructor = function(constructor, argArray) {
+//Given a constructor, it attaches several global arguments and methods (from kybernetikos in stackoverflow)
+LScript.applyToConstructor = function(constructor, argArray, methods) {
     var args = [null].concat(argArray);
+	if(methods)
+		for(var i in methods)
+			Object.defineProperty( constructor.prototype, i, { value: methods[i], enumerable: true });
     var factoryFunction = constructor.bind.apply(constructor, args);
-    return new factoryFunction();
+    return factoryFunction;
 }
 
 //remove comments and trims empty lines
@@ -169,4 +185,6 @@ LScript.expandCode = function(code)
 
 	return code;
 }
+
+global.LScript = LScript;
 

@@ -72,7 +72,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 
 	var RI = this._volumetric_render_instance;
 	if(!RI)
-		this._volumetric_render_instance = RI = new RenderInstance(this._root, this);
+		this._volumetric_render_instance = RI = new LS.RenderInstance(this._root, this);
 
 	RI.flags = RenderInstance.ALPHA; //reset and set
 	
@@ -145,9 +145,9 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 }
 
 //render on RenderInstance
-LightFX.onGlarePreRender = function(render_options)
+LightFX.onGlarePreRender = function( render_settings )
 {
-	if(render_options.current_pass != "color")
+	if( LS.Renderer._current_pass != "color" )
 		return; 
 
 	//project point to 2D in normalized space
@@ -158,8 +158,8 @@ LightFX.onGlarePreRender = function(render_options)
 	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
 
 	var center = this.center;
-	var eye = Renderer._current_camera.getEye();
-	var scene = Renderer._current_scene;
+	var eye = LS.Renderer._current_camera.getEye();
+	var scene = LS.Renderer._current_scene;
 	var dir = vec3.sub(vec3.create(), eye, center );
 	var dist = vec3.length(dir);
 	vec3.scale(dir,dir,1/dist);
@@ -168,7 +168,7 @@ LightFX.onGlarePreRender = function(render_options)
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = LS.Picking.raycast( center, dir, dist );
+		coll = LS.Picking.raycast( center, dir, { max_distance: dist } );
 
 	if(coll.length)
 	{

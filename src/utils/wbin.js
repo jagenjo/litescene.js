@@ -32,6 +32,8 @@ function WBin()
 {
 }
 
+WBin.classes = {};//if the WBin contains a class it will be seaerch here first (otherwise it will search in the global scope)
+
 WBin.HEADER_SIZE = 64; //num bytes per header, some are free to future improvements
 WBin.FOUR_CC = "WBIN";
 WBin.VERSION = 0.3; //use numbers, never strings, fixed size in binary
@@ -215,6 +217,9 @@ WBin.create = function( origin, origin_class_name )
 */
 WBin.load = function( data_array, skip_classname )
 {
+	if(!data_array || ( data_array.constructor !== Uint8Array && data_array.constructor !== ArrayBuffer ) )
+		throw("WBin data must be ArrayBuffer or Uint8Array");
+
 	//clone to avoid possible memory aligment problems
 	data_array = new Uint8Array(data_array);
 
@@ -228,10 +233,14 @@ WBin.load = function( data_array, skip_classname )
 	if(header.version > (new Float32Array([WBin.VERSION])[0]) ) //all this because sometimes there are precission problems
 		console.log("ALERT: WBin version is higher that code version");
 
+	var object = null;
+
 	//lump unpacking
-	var object = {};
 	for(var i in header.lumps)
 	{
+		if(!object) //we do not create the object unless there is a lump
+			object = {};
+
 		var lump = header.lumps[i];
 		var lump_data = header.lump_data.subarray( lump.start, lump.start + lump.size );
 
@@ -258,9 +267,9 @@ WBin.load = function( data_array, skip_classname )
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
-				var ctor = window[data_class_name];
-				if(!ctor) throw("ctor not found in WBin: " + data_class_name );
-
+				var ctor = WBin.classes[ data_class_name ] || window[ data_class_name ];
+				if(!ctor)
+					throw("WBin referenced class not found: " + data_class_name );
 				if( (lump_data.length / ctor.BYTES_PER_ELEMENT)%1 != 0)
 					throw("WBin: size do not match type");
 				lump_final = new ctor(lump_data.buffer);
@@ -271,7 +280,7 @@ WBin.load = function( data_array, skip_classname )
 	//check if className exists, if it does use internal class parser
 	if(!skip_classname && header.classname)
 	{
-		var ctor = window[ header.classname ];
+		var ctor = WBin.classes[ header.classname ] || window[ header.classname ];
 		if(ctor && ctor.fromBinary)
 			return ctor.fromBinary(object);
 		else if(ctor && ctor.prototype.fromBinary)

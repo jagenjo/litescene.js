@@ -221,12 +221,13 @@ ParticleEmissor.prototype.createParticle = function(p)
 			//p.pos = vec3.multiply( vec3.normalize( vec3.create( [(Math.random() - 0.5), ( Math.random() - 0.5 ), (Math.random() - 0.5)])), this.emissor_size); break;
 		case ParticleEmissor.MESH_EMISSOR: 
 			var mesh = this.emissor_mesh;
-			if(mesh && mesh.constructor == String)
+			if(mesh && mesh.constructor === String)
 				mesh = LS.ResourcesManager.getMesh(this.emissor_mesh);
-			if(mesh && mesh.vertices)
+			if(mesh && mesh.getBuffer("vertices") )
 			{
-				var v = Math.floor(Math.random() * mesh.vertices.length / 3)*3;
-				p._pos.set( [mesh.vertices[v], mesh.vertices[v+1], mesh.vertices[v+2]] );
+				var vertices = mesh.getBuffer("vertices").data;				
+				var v = Math.floor(Math.random() * vertices.length / 3)*3;
+				p._pos.set( [vertices[v] + Math.random() * 0.001, vertices[v+1] + Math.random() * 0.001, vertices[v+2] + Math.random() * 0.001] );
 			}
 			else
 				p._pos.set([0,0,0]);

@@ -21,15 +21,27 @@ CustomData.prototype.getResources = function(res)
 	return res;
 }
 
-CustomData.prototype.getProperties = function()
+CustomData.prototype.addProperties = function( property )
 {
-	var result = {};
-	//TODO
-	return result;
+	this.properties.push( property );
 }
 
-CustomData.prototype.setProperty = function( name, value )
+CustomData.prototype.getProperty = function( name )
 {
+	for(var i = 0; i < this.properties.length; i++)
+		if(this.properties[i].name == name)
+			return this.properties[i];
+	return null;
+}
+
+CustomData.prototype.getProperties = function()
+{
+	return this.properties;
+}
+
+CustomData.prototype.updateProperty = function( p )
+{
+	//TODO
 }
 
 //used for animation tracks

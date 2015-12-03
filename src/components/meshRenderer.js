@@ -9,6 +9,7 @@ function MeshRenderer(o)
 	this._primitive = -1;
 	this.two_sided = false;
 	this.point_size = 0.1;
+	this.textured_points = false;
 
 	if(o)
 		this.configure(o);
@@ -76,8 +77,11 @@ MeshRenderer.prototype.configure = function(o)
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
 	this.two_sided = !!o.two_sided;
+	if(o.point_size !== undefined) //legacy
+		this.point_size = o.point_size;
+	this.textured_points = !!o.textured_points;
 	if(o.material)
-		this.material = typeof(o.material) == "string" ? o.material : new Material(o.material);
+		this.material = typeof(o.material) == "string" ? o.material : new LS.Material(o.material);
 }
 
 /**
@@ -102,6 +106,8 @@ MeshRenderer.prototype.serialize = function()
 		o.submesh_id = this.submesh_id;
 	if(this.two_sided)
 		o.two_sided = this.two_sided;
+	o.point_size = this.point_size;
+	o.textured_points = this.textured_points;
 	return o;
 }
 
@@ -203,9 +209,14 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	{
 		RI.uniforms.u_point_size = this.point_size;
 		RI.query.macros["USE_POINTS"] = "";
+		if(this.textured_points)
+			RI.query.macros["USE_TEXTURED_POINTS"] = "";
 	}
+	
+	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
+		delete RI.query.macros["USE_TEXTURED_POINTS"];
 
-	instances.push(RI);
+	instances.push( RI );
 }
 
 

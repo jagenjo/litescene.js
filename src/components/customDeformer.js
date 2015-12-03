@@ -48,6 +48,23 @@ CustomDeformer.prototype.applyDeformer = function( RI )
 	//TODO
 }
 
+CustomDeformer.prototype.onShaderQuery = function(e, query)
+{
+	if(!this.enabled)
+		return;
+
+	if(query.macros.USE_VERTEX_SHADER_UNIFORMS)
+		query.macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
+	else
+		query.macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
+
+	if(query.macros.USE_VERTEX_SHADER_CODE)
+		query.macros.USE_VERTEX_SHADER_CODE += this._code;
+	else
+		query.macros.USE_VERTEX_SHADER_CODE = this._code;
+}
+
+
 CustomDeformer.prototype.disableDeformer = function( RI )
 {
 	if( RI.query && RI.query.macros["USE_MORPHING"] !== undefined )

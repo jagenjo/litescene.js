@@ -162,6 +162,46 @@ var Network = {
 			callback = data;
 		}
 		return LS.Network.request({url:url, dataType:"txt", success: callback, success: callback, error: callback_error});
+	},
+
+	/**
+	* Request script and inserts it in the DOM
+	* @method requireScript
+	* @param {String} url could be an array with urls to load in order
+	* @param {Function} on_complete
+	* @param {Function} on_error
+	* @param {Function} on_progress (if several files are required, on_progress is called after every file is added to the DOM)
+	**/
+	requestScript: function(url, on_complete, on_error, on_progress )
+	{
+		if(typeof(url)=="string")
+			url = [url];
+
+		var total = url.length;
+		var size = total;
+		for(var i in url)
+		{
+			var script = document.createElement('script');
+			script.num = i;
+			script.type = 'text/javascript';
+			script.src = url[i];
+			script.async = false;
+			script.onload = function(e) { 
+				total--;
+				if(total)
+				{
+					if(on_progress)
+						on_progress(this.src, this.num);
+				}
+				else if(on_complete)
+					on_complete();
+			};
+			if(on_error)
+				script.onerror = function(err) { 
+					on_error(err, this.src, this.num );
+				}
+			document.getElementsByTagName('head')[0].appendChild( script );
+		}
 	}
 };
 

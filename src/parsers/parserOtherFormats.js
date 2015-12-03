@@ -3,7 +3,7 @@
 
 var parserCGArtMesh = { 
 	extension: 'cgart',
-	data_type: 'mesh',
+	type: 'mesh',
 	format: 'text',
 
 	parse: function(data,options)
@@ -157,7 +157,7 @@ var parserCGArtMesh = {
 		//if(m.faces) mesh.triangles = new Uint16Array( m.faces );
 
 		//extra info
-		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = LS.Formats.computeMeshBounding(mesh.vertices);
 		mesh.info = {};
 		if(groups.length > 1)
 			mesh.info.groups = groups;
@@ -168,7 +168,8 @@ var parserCGArtMesh = {
 		return mesh;
 	}
 };
-Parser.registerParser(parserCGArtMesh);
+
+LS.Formats.registerParser( parserCGArtMesh );
 
 
 
@@ -176,7 +177,7 @@ Parser.registerParser(parserCGArtMesh);
 //GR2
 var parserGR2 = { 
 	extension: 'gr2',
-	data_type: 'mesh',
+	type: 'mesh',
 	format: 'text',
 
 	parse: function(data, options)
@@ -191,8 +192,9 @@ var parserGR2 = {
 		  normals: data[0][2][1],
 		  triangles: data[0][3]
 		};
-		mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+		mesh.bounding = LS.Formats.computeMeshBounding(mesh.vertices);
 		return mesh;
 	}
 };
-Parser.registerParser( parserGR2 );
+
+LS.Formats.registerParser( parserGR2 );

@@ -1,7 +1,6 @@
 ../src/intro.js
 
 ../src/utils/wbin.js
-../src/utils/draw.js
 ../src/utils/lscript.js
 
 ../src/core.js
@@ -9,6 +8,8 @@
 ../src/network.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
+
+../src/utils/draw.js
 
 ../src/materials/material.js
 ../src/materials/standardMaterial.js
@@ -60,14 +61,14 @@
 
 ../src/components/interactiveController.js
 
-
 ../src/graph/scene.js
 
 ../src/helpers/animation.js
 ../src/helpers/path.js
 ../src/helpers/prefab.js
+../src/helpers/textureFX.js
 
-../src/render/renderOptions.js
+../src/render/renderSettings.js
 ../src/render/renderInstance.js
 ../src/render/renderFrameContainer.js
 ../src/render/renderer.js
@@ -75,7 +76,7 @@
 ../src/picking.js
 ../src/physics.js
 
-../src/parsers/parser.js
+../src/formats.js
 ../src/parsers/parserASE.js
 ../src/parsers/collada.js
 ../src/parsers/parserDAE.js
@@ -84,8 +85,10 @@
 ../src/parsers/parserOBJ.js
 ../src/parsers/parserSTL.js
 ../src/parsers/parserTGA.js
+../src/parsers/parserOtherFormats.js
 
 ../src/scene.js
+../src/sceneNode.js
 
 ../src/player.js
 

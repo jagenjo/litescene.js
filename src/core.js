@@ -18,6 +18,8 @@ var LS = {
 	_last_uid: 1,
 	_uid_prefix: "@", //WARNING: must be one character long
 
+	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
+
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
@@ -73,41 +75,20 @@ var LS = {
 
 			//register
 			this.Components[ name ] = component; 
+			component.is_component = true;			
 
-			//add uid property
-			Object.defineProperty( component.prototype, 'uid', {
-				set: function( uid )
-				{
-					if(!uid)
-						return;
-
-					if(uid[0] != LS._uid_prefix)
-					{
-						console.warn("Invalid UID, renaming it to: " + uid );
-						uid = LS._uid_prefix + uid;
-					}
-
-					if(uid == this._uid)
-						return;
-					//if( this._root && this._root._components_by_uid[ this.uid ] )
-					//	delete this._root && this._root._components_by_uid[ this.uid ];
-					this._uid = uid;
-					//if( this._root )
-					//	this._root && this._root._components_by_uid[ this.uid ] = this;
-				},
-				get: function(){
-					return this._uid;
-				},
-				enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
-			});
-
-			//checks for errors
+			//Helper: checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
 				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
-				console.warn("Component could have a bug, check events: " + name);
+				console.warn("%c Component could have a bug, check events: " + name , "font-size: 2em");
+
+			//add stuff to the class
+			if(!component.actions)
+				component.actions = {};
 
 			//add default methods
 			LS.extendClass( component, LS.Component );
+			Component.addExtraMethods( component );
 
 			//event
 			LEvent.trigger(LS, "component_registered", component ); 
@@ -341,6 +322,9 @@ var LS = {
 		if (!obj)
 			return;
 
+		if(obj.constructor.fullname) //this is to overwrite the common name "Prefab" for a global name "LS.Prefab"
+			return obj.constructor.fullname;
+
 		if(obj.constructor.name)
 			return obj.constructor.name;
 
@@ -494,15 +478,74 @@ var LS = {
 	* @param {ComponentClass} comp component class to register
 	*/
 	registerMaterialClass: function(material_class) { 
+
+		var class_name = LS.getClassName( material_class );
+
 		//register
-		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
+		this.MaterialClasses[ class_name ] = material_class;
+		this.Classes[ class_name ] = material_class;
 
 		//add extra material methods
 		LS.extendClass( material_class, Material );
 
 		//event
-		LEvent.trigger(LS,"materialclass_registered",material_class);
+		LEvent.trigger( LS, "materialclass_registered", material_class );
 		material_class.resource_type = "Material";
+	},
+
+	/**
+	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.
+	*
+	* @method getGUIElement
+	* @return {HTMLElement} 
+	*/
+	getGUIElement: function()
+	{
+		if( LS._gui_element )
+			return LS._gui_element;
+
+		var gui = document.createElement("div");
+		gui.className = "litescene-gui";
+		gui.style.position = "absolute";
+		gui.style.top = "0";
+		gui.style.left = "0";
+		gl.canvas.parentNode.appendChild( gui );
+		
+		LS._gui_element = gui;
+		return gui;
+	},
+
+	/**
+	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	*
+	* @method getScript
+	* @param {String} name the name of the script according to the Script component.
+	* @return {Object} the context of the script.
+	*/
+	removeGUIElement: function()
+	{
+		if( !LS._gui_element )
+			return;
+
+		if(LS._gui_element.parentNode)
+			LS._gui_element.parentNode.removeChild( LS._gui_element );
+		LS._gui_element = null;
+		return;
+	},
+
+	/**
+	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	*
+	* @method getScript
+	* @param {String} name the name of the script according to the Script component.
+	* @return {Object} the context of the script.
+	*/
+	getScript: function( name )
+	{
+		var script = LS.Script.active_scripts[name];
+		if(script)
+			return script.context;
+		return null;
 	}
 }
 
@@ -579,3 +622,5 @@ var LSQ = {
 	}
 };
 
+global.LSQ = LSQ;
+global.trace = trace;

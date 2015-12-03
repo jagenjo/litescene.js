@@ -138,13 +138,27 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				cam.updateMatrices();
 				changed = true;
 			}
-			else
+			else //regular orbit
 			{
-				cam.orbit(-mouse_event.deltax * this.rot_speed,[0,1,0], this.orbit_center);
-				cam.updateMatrices();
-				var right = cam.getLocalVector([1,0,0]);
-				cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
-				changed = true;
+				var yaw = mouse_event.deltax * this.rot_speed;
+				var pitch = -mouse_event.deltay * this.rot_speed;
+
+				if( Math.abs(yaw) > 0.0001 )
+				{
+					cam.orbit( -yaw, [0,1,0], this.orbit_center );
+					cam.updateMatrices();
+					changed = true;
+				}
+
+				var right = cam.getRight();
+				var front = cam.getFront();
+				var up = cam.getUp();
+				var problem_angle = vec3.dot( up, front );
+				if( !(problem_angle > 0.99 && pitch > 0 || problem_angle < -0.99 && pitch < 0)) //avoid strange behaviours
+				{
+					cam.orbit( -pitch, right, this.orbit_center );
+					changed = true;
+				}
 			}
 		}
 		else if(this.mode == CameraController.PLANE)

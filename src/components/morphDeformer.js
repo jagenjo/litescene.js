@@ -13,6 +13,7 @@ function MorphDeformer(o)
 }
 
 MorphDeformer.icon = "mini-icon-teapot.png";
+MorphDeformer.force_apply = true; //used to avoid to recompile the shader when all morphs are 0
 
 MorphDeformer.prototype.onAddedToNode = function(node)
 {
@@ -63,7 +64,7 @@ MorphDeformer.prototype.applyMorphTargets = function( RI )
 {
 	var base_mesh = RI.mesh;
 
-	if( this.morph_targets.length && RI.mesh )
+	if( (this.morph_targets.length || MorphDeformer.force_apply) && RI.mesh )
 	{
 		var base_vertices_buffer = base_mesh.vertexBuffers["vertices"];
 		var streams_code = "";
@@ -110,7 +111,7 @@ MorphDeformer.prototype.applyMorphTargets = function( RI )
 				break;
 		}
 
-		if(num_morphs)
+		if(num_morphs || MorphDeformer.force_apply)
 		{
 			RI.vertex_buffers = {};
 			for(var i in base_mesh.vertexBuffers)
@@ -199,6 +200,43 @@ MorphDeformer.prototype.setPropertyValueFromPath = function( path, value )
 	var varname = path[2];
 	this.morph_targets[num][ varname ] = value;
 }
+
+//used for graphs
+MorphDeformer.prototype.setProperty = function(name, value)
+{
+	if( name == "enabled" )
+		this.enabled = value;
+	else if( name.substr(0,5) == "morph" )
+	{
+		name = name.substr(5);
+		var t = name.split("_");
+		var num = parseInt( t[0] );
+		if( num < this.morph_targets.length )
+		{
+			if( t[1] == "weight" )
+				this.morph_targets[ num ].weight = value;
+			else if( t[1] == "mesh" )
+				this.morph_targets[ num ].mesh = value;
+		}
+	}
+}
+
+
+MorphDeformer.prototype.getProperties = function()
+{
+	var properties = {
+		enabled: "boolean"
+	};
+
+	for(var i = 0; i < this.morph_targets.length; i++)
+	{
+		properties[ "morph" + i + "_weight" ] = "number";
+		properties[ "morph" + i + "_mesh" ] = "Mesh";
+	}
+
+	return properties;
+}
+
 
 LS.registerComponent( MorphDeformer );
 LS.MorphDeformer = MorphDeformer;

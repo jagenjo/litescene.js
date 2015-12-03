@@ -1,10 +1,14 @@
 var parserDDS = { 
-	extension: 'dds',
-	data_type: 'image',
-	format: 'binary',
+	extension: "dds",
+	type: "image",
+	dataType:"arraybuffer",
+	resource: "Texture",
+	format: "binary",
 
 	parse: function(data, options)
 	{
+		if(!data || data.constructor !== ArrayBuffer)
+			throw( "ParserDDS: data must be ArrayBuffer");
 		var ext = gl.getExtension("WEBKIT_WEBGL_compressed_texture_s3tc");
 		var texture = new GL.Texture(0,0, options);
 		if(!window.DDS)
@@ -18,4 +22,5 @@ var parserDDS = {
 		return texture;
 	}
 };
-Parser.registerParser( parserDDS );
+
+LS.Formats.registerParser( parserDDS );

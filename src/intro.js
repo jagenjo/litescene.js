@@ -4,3 +4,5 @@
 //Here goes the licence and some info
 //************************************************
 //and the commonJS header...
+
+(function(global){

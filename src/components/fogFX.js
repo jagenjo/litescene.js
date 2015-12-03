@@ -22,18 +22,18 @@ FogFX["@density"] = { type: "number", min: 0, max:1, step:0.0001, precision: 4 }
 FogFX["@type"] = { type:"enum", values: {"linear": FogFX.LINEAR, "exponential": FogFX.EXP, "exponential 2": FogFX.EXP2 }};
 
 
-FogFX.prototype.onAddedToNode = function(node)
+FogFX.prototype.onAddedToScene = function(scene)
 {
-	//LEvent.bind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.bind(Scene,"fillSceneQuery",this.fillSceneQuery,this);
-	LEvent.bind(Scene,"fillSceneUniforms",this.fillSceneUniforms,this);
+	//LEvent.bind( scene,"fillLightUniforms",this.fillUniforms,this);
+	LEvent.bind( scene, "fillSceneQuery",this.fillSceneQuery,this);
+	LEvent.bind( scene, "fillSceneUniforms",this.fillSceneUniforms,this);
 }
 
-FogFX.prototype.onRemovedFromNode = function(node)
+FogFX.prototype.onRemovedFromScene = function(scene)
 {
 	//LEvent.unbind(Scene,"fillLightUniforms",this.fillUniforms,this);
-	LEvent.unbind(Scene,"fillSceneQuery",this.fillSceneQuery, this);
-	LEvent.unbind(Scene,"fillSceneUniforms",this.fillSceneUniforms, this);
+	LEvent.unbind( scene, "fillSceneQuery",this.fillSceneQuery, this);
+	LEvent.unbind( scene, "fillSceneUniforms",this.fillSceneUniforms, this);
 }
 
 FogFX.prototype.fillSceneQuery = function(e, query )

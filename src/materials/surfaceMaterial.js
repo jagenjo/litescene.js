@@ -284,6 +284,10 @@ SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 	if( path.length < 1)
 		return;
 
+	var info = Material.prototype.getPropertyInfoFromPath.call(this,path);
+	if(info)
+		return info;
+
 	var varname = path[0];
 
 	for(var i = 0, l = this.properties.length; i < l; ++i )

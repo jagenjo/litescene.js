@@ -1,7 +1,7 @@
 //legacy format
 var parserJSMesh = { 
 	extension: 'jsmesh',
-	data_type: 'mesh',
+	type: 'mesh',
 	format: 'text',
 
 	parse: function(data,options)
@@ -27,8 +27,9 @@ var parserJSMesh = {
 		}
 
 		if(!mesh.bounding)
-			mesh.bounding = Parser.computeMeshBounding(mesh.vertices);
+			mesh.bounding = LS.Formats.computeMeshBounding(mesh.vertices);
 		return mesh;
 	}
 };
-Parser.registerParser(parserJSMesh);
+
+LS.Formats.registerParser(parserJSMesh);

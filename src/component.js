@@ -17,6 +17,14 @@
 *
 */
 
+/**
+* This is an example class for a component, should never be instantiated by itself, 
+* instead components get all the methods from this class attached when the component is registered.
+* Components can overwrite this methods if they want.
+*
+* @class  Component
+* @namespace  LS
+*/
 function Component(o)
 {
 	if(o)
@@ -58,38 +66,220 @@ Component.prototype.serialize = function()
 	return o;
 }
 
-Component.prototype.createProperty = function( name, value, type )
+/**
+* Create a clone of this node (the UID is removed to avoid collisions)
+* @method clone
+**/
+Component.prototype.clone = function()
+{
+	var data = this.serialize();
+	data.uid = null; //remove id when cloning
+	var new_component = new this.constructor( data );
+	return new_component;
+}
+
+/**
+* To create a new property for this component adding some extra useful info to help the editor
+* @method createProperty
+* @param {String} name the name of the property as it will be accessed
+* @param {*} value the value to assign by default to this property
+* @param {String|Object} type [optional] an string identifying the type of the variable, could be "number","string","Texture","vec3","mat4", or an object with all the info
+* @param {Function} setter [optional] setter function, otherwise one will be created
+* @param {Function} getter [optional] getter function, otherwise one will be created
+**/
+Component.prototype.createProperty = function( name, value, type, setter, getter )
 {
 	if(type)
-		this.constructor[ "@" + name ] = { type: type };
+	{
+		//control errors
+		if(type == "String" || type == "Number" || type == "Boolean")
+		{
+			console.warn("createProperty: Basic types must be in lowercase -> " + type );
+			type = type.toLowerCase();
+		}
+
+		if( typeof(type) == "object" )
+			this.constructor[ "@" + name ] = type;
+		else
+			this.constructor[ "@" + name ] = { type: type };
+	}
 
 	//basic type
-	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
+	if( (value.constructor === Number || value.constructor === String || value.constructor === Boolean) && !setter && !getter )
 	{
 		this[ name ] = value;
 		return;
 	}
 
-	//vector type
+	var private_name = "_" + name;
+
+	//vector type has special type with setters and getters to avoid overwritting
 	if(value.constructor === Float32Array)
 	{
-		var private_name = "_" + name;
 		value = new Float32Array( value ); //clone
 		this[ private_name ] = value; //this could be removed...
 
+		//create setter
 		Object.defineProperty( this, name, {
-			get: function() { return value; },
-			set: function(v) { value.set( v ); },
+			get: getter || function() { return value; },
+			set: setter || function(v) { value.set( v ); },
+			enumerable: true
+		});
+	}
+	else
+	{
+		//define private
+		Object.defineProperty( this, private_name, { 
+			value: value, 
+			enumerable: false
+		});
+
+		//define public
+		Object.defineProperty( this, name, {
+			get: getter || function() { return this[ private_name ]; },
+			set: setter || function(v) { this[ private_name ] = v; },
 			enumerable: true
 		});
 	}
 }
 
+/**
+* Returns the locator string of this component
+* @method getLocator
+* @return {String} the locator string of this component
+**/
 Component.prototype.getLocator = function()
 {
 	if(!this._root)
 		return "";
 	return this._root.uid + "/" + this.uid;
 }
+
+/**
+* Bind one object event to a method in this component
+* @method bind
+* @param {*} object the dispatcher of the event you want to react to
+* @param {String} event the name of the event to bind to
+* @param {Function} callback the callback to call
+* @param {String|Object} type [optional] an string identifying the type of the variable, could be "number","string","Texture","vec3","mat4", or an object with all the info
+* @param {Function} setter [optional] setter function, otherwise one will be created
+* @param {Function} getter [optional] getter function, otherwise one will be created
+**/
+Component.prototype.bind = function( object, method, callback )
+{
+	var instance = this;
+
+	if(!object)
+	{
+		console.error("Cannot bind to null.");
+		return;
+	}
+
+	if(!callback)
+	{
+		console.error("You cannot bind a method before defining it.");
+		return;
+	}
+
+	/*
+	var found = false;
+	for(var i in this)
+	{
+		if(this[i] == callback)
+		{
+			found = true;
+			break;
+		}
+	}
+	if(!found)
+		console.warn("Callback function not found in this object, this is dangerous, remember to unbind it manually or use LEvent instead.");
+	*/
+
+	//store info about which objects have events pointing to this instance
+	if(!this.__targeted_instances)
+		Object.defineProperty( this,"__targeted_instances", { value: [], enumerable: false });
+	var index = this.__targeted_instances.indexOf( object );
+	if(index == -1)
+		this.__targeted_instances.push( object );
+
+	return LEvent.bind( object, method, callback, instance );
+}
+
+Component.prototype.unbind = function( object, method, callback )
+{
+	var instance = this;
+
+	var r = LEvent.unbind( object, method, callback, instance );
+
+	//erase from targeted instances
+	if( this.__targeted_instances )
+	{
+		if( !LEvent.hasBindTo( object, this ) )
+			return r;
+
+		var index = this.__targeted_instances.indexOf( object );
+		if(index == -1)
+			this.__targeted_instances.splice( index, 1 );
+		if(this.__targeted_instances.length == 0)
+			delete this.__targeted_instances;
+	}
+
+	return r;
+}
+
+Component.prototype.unbindAll = function()
+{
+	if( !this.__targeted_instances )
+		return;
+
+	for( var i = 0; i < this.__targeted_instances.length; ++i )
+		LEvent.unbindAll( this.__targeted_instances[i], this );
+	delete this.__targeted_instances;
+}
+
+//called by register component to add setters and getters to registered Component Classes
+Component.addExtraMethods = function( component )
+{
+	//add uid property
+	Object.defineProperty( component.prototype, 'uid', {
+		set: function( uid )
+		{
+			if(!uid)
+				return;
+
+			if(uid[0] != LS._uid_prefix)
+			{
+				console.warn("Invalid UID, renaming it to: " + uid );
+				uid = LS._uid_prefix + uid;
+			}
+
+			if(uid == this._uid)
+				return;
+			//if( this._root && this._root._components_by_uid[ this.uid ] )
+			//	delete this._root && this._root._components_by_uid[ this.uid ];
+			this._uid = uid;
+			//if( this._root )
+			//	this._root && this._root._components_by_uid[ this.uid ] = this;
+		},
+		get: function(){
+			return this._uid;
+		},
+		enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
+	});
+
+	Object.defineProperty( component.prototype, 'root', {
+		set: function( uid )
+		{
+			throw("root cannot be set, call addComponent to the root");
+		},
+		get: function(){
+			return this._root;
+		},
+		enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
+	});
+};
+
+
+
 
 LS.Component = Component;

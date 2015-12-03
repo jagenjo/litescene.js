@@ -178,11 +178,11 @@ Material.prototype.fillShaderQuery = function(scene)
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
 /*
-Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
+Material.prototype.getLightShaderMacros = function(light, node, scene, render_settings)
 {
 	var macros = {};
 
-	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !render_options.shadows_disabled;
+	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !render_settings.shadows_disabled;
 
 	//light macros
 	if(light.use_diffuse && !this.constant_diffuse)
@@ -360,7 +360,7 @@ Material.prototype.getProperties = function()
 
 	var textures = this.getTextureChannels();
 	for(var i in textures)
-		o["tex_" + textures[i]] = "Sampler";
+		o["tex_" + textures[i]] = "Texture"; //changed from Sampler
 	return o;
 }
 
@@ -386,7 +386,8 @@ Material.prototype.setProperty = function(name, value)
 {
 	if(name.substr(0,4) == "tex_")
 	{
-		this.textures[ name.substr(4) ] = value;
+		if( (value && (value.constructor === String || value.constructor === GL.Texture)) || !value)
+			this.setTexture( name.substr(4), value );
 		return true;
 	}
 
@@ -427,6 +428,47 @@ Material.prototype.setProperty = function(name, value)
 			return false;
 	}
 	return true;
+}
+
+Material.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length < 1)
+		return;
+
+	var varname = path[0];
+	var type = null;
+
+	switch(varname)
+	{
+		case "opacity": 
+		case "transparency":
+		case "specular_factor":
+		case "specular_gloss":
+		case "reflection": 
+		case "blend_mode":
+			type = "number"; break;
+		//strings
+		case "shader_name":
+		//bools
+			type = "string"; break;
+		//vectors
+		case "uvs_matrix":
+			type = "mat3"; break;
+		case "color": 
+			type = "vec3"; break;
+		case "textures":
+			type = "Texture"; break;
+		default:
+			return null;
+	}
+
+	return {
+		node: this._root,
+		target: this,
+		name: varname,
+		value: this[varname],
+		type: type
+	};
 }
 
 /**
@@ -555,6 +597,8 @@ Material.getTextureFromSampler = function(sampler)
 * @param {Object} sampler { texture, uvs, wrap, filter }
 */
 Material.prototype.setTextureSampler = function(channel, sampler) {
+	if(!channel)
+		throw("Cannot call Material setTextureSampler without channel");
 	if(!sampler)
 		delete this.textures[ channel ];
 	else

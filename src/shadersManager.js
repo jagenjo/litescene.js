@@ -139,6 +139,10 @@ var ShadersManager = {
 		if (this.compiled_programs[hashkey] != null)
 			return this.compiled_programs[hashkey];
 
+		var start_time = 0;
+		if (this.debug)
+			start_time = getTime();
+
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
 		var fs_code = extracode + global.fs_code;
@@ -169,6 +173,10 @@ var ShadersManager = {
 		var shader = this.compileShader( vs_code, fs_code, key );
 		if(shader)
 			shader.global = global;
+
+		if(this.debug)
+			console.log("Time creating shader:", (getTime() - start_time).toFixed(3), "ms");
+
 		return this.registerCompiledShader(shader, hashkey, id);
 	},
 
@@ -213,7 +221,11 @@ var ShadersManager = {
 			var fs_shader = this.compiled_shaders[name + ":FS"];
 			if(!fs_shader)
 				fs_shader = this.compiled_shaders[name + ":FS"] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, fs_code);
+
+			var old = getTime();
 			shader = new GL.Shader( vs_shader, fs_shader );
+			if(this.debug)
+				console.log("Shader compile time: ", (getTime() - old).toFixed(3), "ms");
 			shader.name = name;
 			//console.log("Shader compiled: " + name);
 		}
@@ -430,9 +442,50 @@ var ShadersManager = {
 		}
 
 		this.global_shaders[id] = global;
+		LEvent.trigger( LS.ShadersManager, "newShader" );
+		return global;
+	},
+
+	/*
+	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
+	{
+		//detect macros
+		var macros_found = {};
+		//TO DO using a regexp
+
+		//count macros
+		var num_macros = 0;
+		for(var i in macros)
+			num_macros += 1;
+
+		var global = { 
+			vs_code: vs_code, 
+			fs_code: fs_code,
+			macros: macros,
+			num_macros: num_macros
+		};
+
+		//add options
+		if(options)
+		{
+			for(var i in options)
+				global[i] = options[i];
+
+				var vs_areas = vs_code.split("#pragma");
+				var fs_areas = fs_code.split("#pragma");
+				
+
+				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
+				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
+			}
+		}
+
+		this.global_shaders[id] = global;
 		LEvent.trigger(ShadersManager,"newShader");
 		return global;
 	},
+	*/
+
 
 	/**
 	* Register a code snippet ready to be used by the #import clause in the shader
@@ -576,3 +629,22 @@ ShaderQuery.prototype.resolve = function()
 //ShaderQuery.prototype.addHook = function
 
 LS.ShaderQuery = ShaderQuery;
+
+
+//work in progress
+//shaders should 
+
+function ShaderPart()
+{
+	this.uid = 0// generate uid?
+
+	this.imports = null; //snippets to import
+
+	this.vertex_uniforms = null; //string like  uniform float u_data@;
+	this.vertex_code = null; //string
+
+	this.fragment_uniforms = null; //string like  uniform float u_data@;
+	this.fragment_code = null; //string
+}
+
+LS.ShaderPart = ShaderPart;
