@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -226,6 +240,8 @@ function Camera(o)
 	this._must_update_view_matrix = true;
 	this._must_update_projection_matrix = true;
 
+	this._rendering_index = -1; //tells the number of this camera in the rendering process
+
 	//render to texture
 	this.render_to_texture = false;
 	this.texture_name = &quot;&quot;; //name
@@ -246,6 +262,9 @@ function Camera(o)
 		u_camera_perspective: vec3.create()
 	};
 
+	this.updateMatrices();
+	this._frustum_planes = geo.extractPlanes( this._viewprojection_matrix );
+
 	//LEvent.bind(this,&quot;cameraEnabled&quot;, this.onCameraEnabled.bind(this));
 }
 
@@ -256,8 +275,8 @@ Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
 
 Camera[&quot;@type&quot;] = { type: &quot;enum&quot;, values: { &quot;perspective&quot;: Camera.PERSPECTIVE, &quot;orthographic&quot;: Camera.ORTHOGRAPHIC, &quot;ortho2D&quot;: Camera.ORTHO2D } };
-Camera[&quot;@eye&quot;] = { type: &quot;position&quot; };
-Camera[&quot;@center&quot;] = { type: &quot;position&quot; };
+Camera[&quot;@eye&quot;] = { type: &quot;vec3&quot;, widget: &quot;position&quot; };
+Camera[&quot;@center&quot;] = { type: &quot;vec3&quot;, widget: &quot;position&quot; };
 Camera[&quot;@texture_name&quot;] = { type: &quot;texture&quot; };
 Camera[&quot;@layers&quot;] = { type: &quot;layers&quot; };
 
@@ -302,7 +321,8 @@ Object.defineProperty( Camera.prototype, &quot;type&quot;, {
 			this._must_update_projection_matrix = true;
 		}
 		this._type = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -317,7 +337,8 @@ Object.defineProperty( Camera.prototype, &quot;eye&quot;, {
 	set: function(v) {
 		this._eye.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -332,7 +353,8 @@ Object.defineProperty( Camera.prototype, &quot;center&quot;, {
 	set: function(v) {
 		this._center.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -347,7 +369,8 @@ Object.defineProperty( Camera.prototype, &quot;up&quot;, {
 	set: function(v) {
 		this._up.set(v);
 		this._must_update_view_matrix = true;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -363,7 +386,8 @@ Object.defineProperty( Camera.prototype, &quot;near&quot;, {
 		if(	this._near != v)
 			this._must_update_projection_matrix = true;
 		this._near = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -379,7 +403,8 @@ Object.defineProperty( Camera.prototype, &quot;far&quot;, {
 		if(	this._far != v)
 			this._must_update_projection_matrix = true;
 		this._far = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -395,7 +420,8 @@ Object.defineProperty( Camera.prototype, &quot;aspect&quot;, {
 		if(	this._aspect != v)
 			this._must_update_projection_matrix = true;
 		this._aspect = v;
-	}
+	},
+	enumerable: true
 });
 /**
 * The field of view in degrees
@@ -410,7 +436,8 @@ Object.defineProperty( Camera.prototype, &quot;fov&quot;, {
 		if(	this._fov != v)
 			this._must_update_projection_matrix = true;
 		this._fov  = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -430,7 +457,8 @@ Object.defineProperty( Camera.prototype, &quot;frustum_size&quot;, {
 			this._must_update_projection_matrix = true;
 		}
 		this._frustum_size  = v;
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -443,7 +471,8 @@ Object.defineProperty( Camera.prototype, &quot;viewport&quot;, {
 	},
 	set: function(v) {
 		this._viewport.set(v);
-	}
+	},
+	enumerable: true
 });
 
 /**
@@ -456,7 +485,7 @@ Object.defineProperty( Camera.prototype, &quot;viewport_offset&quot;, {
 	set: function(v) {
 		this._viewport.set(v);
 	},
-	enumerable: false
+	enumerable: true
 });
 
 /**
@@ -469,7 +498,7 @@ Object.defineProperty( Camera.prototype, &quot;viewport_size&quot;, {
 	set: function(v) {
 		this._viewport.set(v,2);
 	},
-	enumerable: false
+	enumerable: true
 });
 
 Camera.prototype.onAddedToNode = function(node)
@@ -573,6 +602,17 @@ Camera.prototype.updateMatrices = function()
 
 	this._must_update_view_matrix = false;
 	this._must_update_projection_matrix = false;
+}
+
+/**
+* Update the frustum planes according to viewprojection_matrix, used for visibility testing
+* @method updateFrustumPlanes
+* @return {Float32Array} planes
+*/
+Camera.prototype.updateFrustumPlanes = function()
+{
+	geo.extractPlanes( this._viewprojection_matrix, this._frustum_planes );
+	return this._frustum_planes;
 }
 
 /**

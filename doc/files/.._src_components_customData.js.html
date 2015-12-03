@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/render/renderOptions.js</title>
+    <title>../src/components/customData.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -166,59 +180,72 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-                        <h1 class="file-heading">File: ../src/render/renderOptions.js</h1>
+                        <h1 class="file-heading">File: ../src/components/customData.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/** RenderOptions contains info about how to render the FULL scene (not just a render pass)
-* It is used to store info about which passes should be applied, and what actions performed
-* It could occasionally contain info about the current pass
-* it should not be associated with an scene (the same RenderOptions could be used with different scenes)
-* @class RenderOptions
+/** 
+* This module allows to store custom data inside a node
+* @class CustomData
 * @constructor
-**/
+* @param {Object} object to configure from
+*/
 
-function RenderOptions(o)
+function CustomData(o)
 {
-	//this.renderer = null; //which renderer is in use
+	this.properties = [];
 
-	//info
-	this.main_camera = null; //this camera is the primary camera, some actions require to know the primary user point of view
-	this.current_camera = null; //this camera is the one being rendered at this moment
-	this.current_pass = null; //name of the current pass (&quot;color&quot;,&quot;shadow&quot;,&quot;depth&quot;,&quot;picking&quot;)
-	this.current_renderer = null; //current renderer being used
-
-	//rendering properties
-	this.ignore_viewports = false;
-	this.ignore_clear = false;
-
-	this.force_wireframe = false;	//render everything in wireframe
-	this.shadows_disabled = false; //no shadows on the render
-	this.lights_disabled = false; //flat lighting
-	this.low_quality = false;	//try to use low quality shaders
-
-	this.update_shadowmaps = true; //automatically update shadowmaps in every frame (enable if there are dynamic objects)
-	this.update_materials = true; //update info in materials in every frame
-	this.render_all_cameras = true; //render secundary cameras too
-	this.render_fx = true; //postprocessing fx
-	this.in_player = true; //is in the player (not in the editor)
-
-	this.sort_instances_by_distance = true;
-	this.sort_instances_by_priority = true;
-	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
-	this.frustum_culling = true;
-
-	//this should change one day...
-	this.default_shader_id = &quot;global&quot;;
-	this.default_low_shader_id = &quot;lowglobal&quot;;
-
-	//copy
 	if(o)
-		for(var i in o)
-			this[i] = o[i];
+		this.configure(o);
 }
 
-LS.RenderOptions = RenderOptions;
+
+CustomData.icon = &quot;mini-icon-bg.png&quot;;
+
+CustomData.prototype.getResources = function(res)
+{
+	return res;
+}
+
+CustomData.prototype.addProperties = function( property )
+{
+	this.properties.push( property );
+}
+
+CustomData.prototype.getProperty = function( name )
+{
+	for(var i = 0; i &lt; this.properties.length; i++)
+		if(this.properties[i].name == name)
+			return this.properties[i];
+	return null;
+}
+
+CustomData.prototype.getProperties = function()
+{
+	return this.properties;
+}
+
+CustomData.prototype.updateProperty = function( p )
+{
+	//TODO
+}
+
+//used for animation tracks
+CustomData.prototype.getPropertyInfoFromPath = function( path )
+{
+}
+
+CustomData.prototype.setPropertyValueFromPath = function( path, value )
+{
+}
+
+
+CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+}
+
+LS.registerComponent( CustomData );
+LS.CustomData = CustomData;
     </pre>
 </div>
 

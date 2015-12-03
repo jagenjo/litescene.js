@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -184,6 +198,8 @@
 	- filesystems: object that contains the virtual file systems info { &quot;VFS&quot;:&quot;http://litefileserver.com/&quot; } ...
 	- redraw: boolean to force to render the scene constantly (useful for animated scenes)
 	- autoresize: boolean to automatically resize the canvas when the window is resized
+	- autoplay: boolean to automatically start playing the scene once the load is completed
+	- loadingbar: boolean to show a loading bar
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -200,6 +216,7 @@
 function Player(options)
 {
 	options = options || {};
+	this.options = options;
 
 	if(!options.canvas)
 	{
@@ -225,8 +242,9 @@ function Player(options)
 
 	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
-	this.render_options = new RenderOptions();
+	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
 	this.scene = LS.GlobalScene;
+	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
 
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
@@ -251,6 +269,16 @@ function Player(options)
 			this.canvas.width = canvas.parentNode.offsetWidth;
 			this.canvas.height = canvas.parentNode.offsetHeight;
 		}).bind(this));
+	}
+
+	if(options.loadingbar)
+	{
+		LEvent.bind( LS.ResourcesManager, &quot;start_loading_resources&quot;, (function(e,v){ this.loading_bar = 0.0; }).bind(this) );
+		LEvent.bind( LS.ResourcesManager, &quot;loading_resources_progress&quot;, (function(e,v){ 
+			if( this.loading_bar &lt; v )
+				this.loading_bar = v;
+		}).bind(this) );
+		LEvent.bind( LS.ResourcesManager, &quot;end_loading_resources&quot;, (function(e,v){ this.loading_bar = this._total_loading = undefined; }).bind(this) );
 	}
 
 	LS.Renderer.init();
@@ -288,15 +316,18 @@ function Player(options)
 */
 Player.prototype.loadScene = function(url, on_complete)
 {
+	var that = this;
 	var scene = this.scene;
-	scene.load(url, inner_start);
+	scene.load( url, inner_start );
 
 	function inner_start()
 	{
-		scene.start();
+		//start playing once loaded the json
+		if(that.autoplay)
+			that.play();
+		console.log(&quot;Scene playing&quot;);
 		if(on_complete)
 			on_complete();
-		console.log(&quot;Scene playing&quot;);
 	}
 }
 
@@ -306,8 +337,9 @@ Player.prototype.loadScene = function(url, on_complete)
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.setScene = function(scene_info, on_complete)
+Player.prototype.setScene = function( scene_info, on_complete )
 {
+	var that = this;
 	var scene = this.scene;
 	if(typeof(scene_info) == &quot;string&quot;)
 		scene_info = JSON.parse(scene_info);
@@ -316,11 +348,12 @@ Player.prototype.setScene = function(scene_info, on_complete)
 
 	function inner_all_loaded()
 	{
-		scene.start();
-		if(on_complete)
-			on_complete();
+		if(that.autoplay)
+			that.play();
 		scene._must_redraw = true;
 		console.log(&quot;Scene playing&quot;);
+		if(on_complete)
+			on_complete();
 	}
 }
 
@@ -333,6 +366,13 @@ Player.prototype.pause = function()
 Player.prototype.play = function()
 {
 	this.state = &quot;playing&quot;;
+	this.scene.start();
+}
+
+Player.prototype.stop = function()
+{
+	this.state = &quot;stopped&quot;;
+	this.scene.finish();
 }
 
 Player.prototype._ondraw = function()
@@ -347,11 +387,14 @@ Player.prototype._ondraw = function()
 
 	if(scene._must_redraw || this.force_redraw )
 	{
-		scene.render( this.render_options );
+		scene.render( scene.info ? scene.info.render_settings : this.render_settings );
 	}
 
 	if(this.onDraw)
 		this.onDraw();
+
+	if(this.loading_bar !== undefined )
+		this.renderLoadingBar();
 }
 
 Player.prototype._onupdate = function(dt)
@@ -395,6 +438,23 @@ Player.prototype._onkey = function(e)
 	}
 
 	LEvent.trigger( this.scene, e.eventType, e );
+}
+
+Player.prototype.renderLoadingBar = function()
+{
+	if(!window.enableWebGLCanvas)
+		return;
+
+	if( gl.canvas.canvas2DtoWebGL_enabled )
+		enableWebGLCanvas( gl.canvas );
+
+	gl.start2D();
+	var y = 0;//gl.drawingBufferHeight - 6;
+	gl.fillStyle = [0,0,0,0.5];
+	gl.fillRect( 0, y, gl.drawingBufferWidth, 6);
+	gl.fillColor = this.loadingbar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect(0,y,gl.drawingBufferWidth * this.loading_bar,6);
+	gl.finish2D();
 }
 
 LS.Player = Player;

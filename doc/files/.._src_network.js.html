@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -334,6 +348,46 @@ var Network = {
 			callback = data;
 		}
 		return LS.Network.request({url:url, dataType:&quot;txt&quot;, success: callback, success: callback, error: callback_error});
+	},
+
+	/**
+	* Request script and inserts it in the DOM
+	* @method requireScript
+	* @param {String} url could be an array with urls to load in order
+	* @param {Function} on_complete
+	* @param {Function} on_error
+	* @param {Function} on_progress (if several files are required, on_progress is called after every file is added to the DOM)
+	**/
+	requestScript: function(url, on_complete, on_error, on_progress )
+	{
+		if(typeof(url)==&quot;string&quot;)
+			url = [url];
+
+		var total = url.length;
+		var size = total;
+		for(var i in url)
+		{
+			var script = document.createElement(&#x27;script&#x27;);
+			script.num = i;
+			script.type = &#x27;text/javascript&#x27;;
+			script.src = url[i];
+			script.async = false;
+			script.onload = function(e) { 
+				total--;
+				if(total)
+				{
+					if(on_progress)
+						on_progress(this.src, this.num);
+				}
+				else if(on_complete)
+					on_complete();
+			};
+			if(on_error)
+				script.onerror = function(err) { 
+					on_error(err, this.src, this.num );
+				}
+			document.getElementsByTagName(&#x27;head&#x27;)[0].appendChild( script );
+		}
 	}
 };
 

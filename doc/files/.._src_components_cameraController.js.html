@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -310,13 +324,27 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				cam.updateMatrices();
 				changed = true;
 			}
-			else
+			else //regular orbit
 			{
-				cam.orbit(-mouse_event.deltax * this.rot_speed,[0,1,0], this.orbit_center);
-				cam.updateMatrices();
-				var right = cam.getLocalVector([1,0,0]);
-				cam.orbit(-mouse_event.deltay * this.rot_speed,right, this.orbit_center);
-				changed = true;
+				var yaw = mouse_event.deltax * this.rot_speed;
+				var pitch = -mouse_event.deltay * this.rot_speed;
+
+				if( Math.abs(yaw) &gt; 0.0001 )
+				{
+					cam.orbit( -yaw, [0,1,0], this.orbit_center );
+					cam.updateMatrices();
+					changed = true;
+				}
+
+				var right = cam.getRight();
+				var front = cam.getFront();
+				var up = cam.getUp();
+				var problem_angle = vec3.dot( up, front );
+				if( !(problem_angle &gt; 0.99 &amp;&amp; pitch &gt; 0 || problem_angle &lt; -0.99 &amp;&amp; pitch &lt; 0)) //avoid strange behaviours
+				{
+					cam.orbit( -pitch, right, this.orbit_center );
+					changed = true;
+				}
 			}
 		}
 		else if(this.mode == CameraController.PLANE)
@@ -418,6 +446,7 @@ CameraController.prototype.onKey = function(e, key_event)
 }
 
 LS.registerComponent( CameraController );
+
     </pre>
 </div>
 

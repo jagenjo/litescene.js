@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -186,6 +200,8 @@ function Prefab(o)
 		this.configure(o);
 }
 
+Prefab.version = &quot;0.1&quot;; //used to know where the file comes from 
+
 /**
 * configure the prefab
 * @method configure
@@ -196,6 +212,7 @@ Prefab.prototype.configure = function(data)
 {
 	var prefab_json = data[&quot;@json&quot;];
 	var resources_names = data[&quot;@resources_name&quot;];
+	var version = data[&quot;@version&quot;];
 	this.prefab_json = prefab_json;
 
 	//extract resource names
@@ -203,7 +220,12 @@ Prefab.prototype.configure = function(data)
 	{
 		var resources = {};
 		for(var i in resources_names)
-			resources[ resources_names[i] ] = data[ resources_names[i] ];
+		{
+			if(!version) //legacy
+				resources[ resources_names[i] ] = data[ resources_names[i] ];
+			else
+				resources[ resources_names[i] ] = data[ &quot;@RES_&quot; + i ];
+		}
 		this.resources = resources;
 	}
 
@@ -216,9 +238,10 @@ Prefab.fromBinary = function(data)
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
 
-	return new Prefab(data);
+	return new LS.Prefab(data);
 }
 
+//given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
 Prefab.prototype.processResources = function()
 {
 	if(!this.resources)
@@ -242,6 +265,11 @@ Prefab.prototype.processResources = function()
 			continue; //already loaded
 
 		var resdata = resources[resname];
+		if(!resdata)
+		{
+			console.warn(&quot;resource data in prefab is undefined, skipping it:&quot; + resname);
+			continue;
+		}
 		LS.ResourcesManager.processResource( resname, resdata );
 	}
 }
@@ -271,13 +299,13 @@ Prefab.prototype.createObject = function()
 
 /**
 * to create a new prefab, it packs all the data an instantiates the resource
-* @method createPrefab
-* @return object contained 
+* @method Prefab.createPrefab
+* @return object containing the prefab data ready to be converted to WBin
 **/
-
-Prefab.createPrefab = function(filename, node_data, resources)
+Prefab.createPrefab = function( filename, node_data, resources)
 {
-	if(!filename) return;
+	if(!filename)
+		return;
 
 	filename = filename.replace(/ /gi,&quot;_&quot;);
 	resources = resources || {};
@@ -285,29 +313,35 @@ Prefab.createPrefab = function(filename, node_data, resources)
 	node_data.id = null; //remove the id
 	node_data.object_type = &quot;SceneNode&quot;;
 
-	var prefab = new Prefab();
+	var prefab = new LS.Prefab();
 	filename += &quot;.wbin&quot;;
+
+	//checkfilenames and rename them to short names
+	
 
 	prefab.filename = filename;
 	prefab.resources = resources;
 	prefab.prefab_json = JSON.stringify( node_data );
 
-	//get all the resources and store them
-	var bindata = Prefab.packResources(resources, { &quot;@json&quot;: prefab.prefab_json });
-	prefab._original_file = bindata;
+	//get all the resources and store them in a WBin
+	var bindata = Prefab.packResources( resources, { &quot;@json&quot;: prefab.prefab_json, &quot;@version&quot;: Prefab.version } );
+	prefab._original_data = bindata;
 
 	return prefab;
 }
 
-Prefab.packResources = function(resources, base_data)
+//adds resources to the Prefab
+Prefab.packResources = function( resources, base_data )
 {
 	var to_binary = base_data || {};
 	var resources_name = [];
+
 	for(var i in resources)
 	{
 		var res_name = resources[i];
-		var resource = LS.ResourcesManager.resources[res_name];
-		if(!resource) continue;
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
 
 		var data = null;
 		if(resource._original_data) //must be string or bytes
@@ -324,15 +358,16 @@ Prefab.packResources = function(resources, base_data)
 			continue;
 		}
 
-		resources_name.push(res_name);
-		to_binary[res_name] = data;
+		to_binary[&quot;@RES_&quot; + resources_name.length ] = data;
+		resources_name.push( res_name );
+		//to_binary[res_name] = data;
 	}
 
 	to_binary[&quot;@resources_name&quot;] = resources_name;
 	return WBin.create( to_binary, &quot;Prefab&quot; );
 }
 
-LS.Prefab = Prefab;
+LS.Classes[&quot;Prefab&quot;] = LS.Prefab = Prefab;
 
     </pre>
 </div>

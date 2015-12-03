@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -311,6 +325,10 @@ var ShadersManager = {
 		if (this.compiled_programs[hashkey] != null)
 			return this.compiled_programs[hashkey];
 
+		var start_time = 0;
+		if (this.debug)
+			start_time = getTime();
+
 		//compile and store it
 		var vs_code = extracode + global.vs_code;
 		var fs_code = extracode + global.fs_code;
@@ -341,6 +359,10 @@ var ShadersManager = {
 		var shader = this.compileShader( vs_code, fs_code, key );
 		if(shader)
 			shader.global = global;
+
+		if(this.debug)
+			console.log(&quot;Time creating shader:&quot;, (getTime() - start_time).toFixed(3), &quot;ms&quot;);
+
 		return this.registerCompiledShader(shader, hashkey, id);
 	},
 
@@ -385,7 +407,11 @@ var ShadersManager = {
 			var fs_shader = this.compiled_shaders[name + &quot;:FS&quot;];
 			if(!fs_shader)
 				fs_shader = this.compiled_shaders[name + &quot;:FS&quot;] = GL.Shader.compileSource(gl.FRAGMENT_SHADER, fs_code);
+
+			var old = getTime();
 			shader = new GL.Shader( vs_shader, fs_shader );
+			if(this.debug)
+				console.log(&quot;Shader compile time: &quot;, (getTime() - old).toFixed(3), &quot;ms&quot;);
 			shader.name = name;
 			//console.log(&quot;Shader compiled: &quot; + name);
 		}
@@ -602,9 +628,50 @@ var ShadersManager = {
 		}
 
 		this.global_shaders[id] = global;
+		LEvent.trigger( LS.ShadersManager, &quot;newShader&quot; );
+		return global;
+	},
+
+	/*
+	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
+	{
+		//detect macros
+		var macros_found = {};
+		//TO DO using a regexp
+
+		//count macros
+		var num_macros = 0;
+		for(var i in macros)
+			num_macros += 1;
+
+		var global = { 
+			vs_code: vs_code, 
+			fs_code: fs_code,
+			macros: macros,
+			num_macros: num_macros
+		};
+
+		//add options
+		if(options)
+		{
+			for(var i in options)
+				global[i] = options[i];
+
+				var vs_areas = vs_code.split(&quot;#pragma&quot;);
+				var fs_areas = fs_code.split(&quot;#pragma&quot;);
+				
+
+				global.vs_code = vs_code.replace(/#event\s+\&quot;(\w+)\&quot;\s*\n/g, replace_events );
+				global.fs_code = fs_code.replace(/#event\s+\&quot;(\w+)\&quot;\s*\n/g, replace_events);
+			}
+		}
+
+		this.global_shaders[id] = global;
 		LEvent.trigger(ShadersManager,&quot;newShader&quot;);
 		return global;
 	},
+	*/
+
 
 	/**
 	* Register a code snippet ready to be used by the #import clause in the shader
@@ -748,6 +815,25 @@ ShaderQuery.prototype.resolve = function()
 //ShaderQuery.prototype.addHook = function
 
 LS.ShaderQuery = ShaderQuery;
+
+
+//work in progress
+//shaders should 
+
+function ShaderPart()
+{
+	this.uid = 0// generate uid?
+
+	this.imports = null; //snippets to import
+
+	this.vertex_uniforms = null; //string like  uniform float u_data@;
+	this.vertex_code = null; //string
+
+	this.fragment_uniforms = null; //string like  uniform float u_data@;
+	this.fragment_code = null; //string
+}
+
+LS.ShaderPart = ShaderPart;
 
     </pre>
 </div>

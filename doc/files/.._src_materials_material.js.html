@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -350,11 +364,11 @@ Material.prototype.fillShaderQuery = function(scene)
 // This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
 // and on the light itself
 /*
-Material.prototype.getLightShaderMacros = function(light, node, scene, render_options)
+Material.prototype.getLightShaderMacros = function(light, node, scene, render_settings)
 {
 	var macros = {};
 
-	var use_shadows = light.cast_shadows &amp;&amp; light._shadowmap &amp;&amp; light._light_matrix != null &amp;&amp; !render_options.shadows_disabled;
+	var use_shadows = light.cast_shadows &amp;&amp; light._shadowmap &amp;&amp; light._light_matrix != null &amp;&amp; !render_settings.shadows_disabled;
 
 	//light macros
 	if(light.use_diffuse &amp;&amp; !this.constant_diffuse)
@@ -532,7 +546,7 @@ Material.prototype.getProperties = function()
 
 	var textures = this.getTextureChannels();
 	for(var i in textures)
-		o[&quot;tex_&quot; + textures[i]] = &quot;Sampler&quot;;
+		o[&quot;tex_&quot; + textures[i]] = &quot;Texture&quot;; //changed from Sampler
 	return o;
 }
 
@@ -558,7 +572,8 @@ Material.prototype.setProperty = function(name, value)
 {
 	if(name.substr(0,4) == &quot;tex_&quot;)
 	{
-		this.textures[ name.substr(4) ] = value;
+		if( (value &amp;&amp; (value.constructor === String || value.constructor === GL.Texture)) || !value)
+			this.setTexture( name.substr(4), value );
 		return true;
 	}
 
@@ -599,6 +614,47 @@ Material.prototype.setProperty = function(name, value)
 			return false;
 	}
 	return true;
+}
+
+Material.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length &lt; 1)
+		return;
+
+	var varname = path[0];
+	var type = null;
+
+	switch(varname)
+	{
+		case &quot;opacity&quot;: 
+		case &quot;transparency&quot;:
+		case &quot;specular_factor&quot;:
+		case &quot;specular_gloss&quot;:
+		case &quot;reflection&quot;: 
+		case &quot;blend_mode&quot;:
+			type = &quot;number&quot;; break;
+		//strings
+		case &quot;shader_name&quot;:
+		//bools
+			type = &quot;string&quot;; break;
+		//vectors
+		case &quot;uvs_matrix&quot;:
+			type = &quot;mat3&quot;; break;
+		case &quot;color&quot;: 
+			type = &quot;vec3&quot;; break;
+		case &quot;textures&quot;:
+			type = &quot;Texture&quot;; break;
+		default:
+			return null;
+	}
+
+	return {
+		node: this._root,
+		target: this,
+		name: varname,
+		value: this[varname],
+		type: type
+	};
 }
 
 /**
@@ -727,6 +783,8 @@ Material.getTextureFromSampler = function(sampler)
 * @param {Object} sampler { texture, uvs, wrap, filter }
 */
 Material.prototype.setTextureSampler = function(channel, sampler) {
+	if(!channel)
+		throw(&quot;Cannot call Material setTextureSampler without channel&quot;);
 	if(!sampler)
 		delete this.textures[ channel ];
 	else

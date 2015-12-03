@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -195,6 +209,7 @@ function RealtimeReflector(o)
 	this.ignore_this_mesh = true;
 	this.high_precision = false;
 	this.refresh_rate = 1; //in frames
+	this.layers = 0xFF;
 
 	this._textures = {};
 
@@ -205,6 +220,7 @@ function RealtimeReflector(o)
 RealtimeReflector.icon = &quot;mini-icon-reflector.png&quot;;
 
 RealtimeReflector[&quot;@texture_size&quot;] = { type:&quot;enum&quot;, values:[&quot;viewport&quot;,64,128,256,512,1024,2048] };
+RealtimeReflector[&quot;@layers&quot;] = { type:&quot;layers&quot; };
 
 RealtimeReflector.prototype.onAddedToScene = function(scene)
 {
@@ -216,11 +232,13 @@ RealtimeReflector.prototype.onAddedToScene = function(scene)
 RealtimeReflector.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
+	for(var i in this._textures)
+		LS.ResourcesManager.unregisterResource( &quot;:reflection_&quot; + i );
 	this._textures = {}; //clear textures
 }
 
 
-RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
+RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 {
 	if(!this.enabled || !this._root)
 		return;
@@ -242,16 +260,16 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		this._root.flags.seen_by_reflections = false;
 
 	//add flags
-	render_options.is_rt = true;
-	render_options.is_reflection = true;
-	render_options.brightness_factor = this.brightness_factor;
-	render_options.colorclip_factor = this.colorclip_factor;
+	LS.Renderer._is_reflection = true;
+	render_settings.brightness_factor = this.brightness_factor;
+	render_settings.colorclip_factor = this.colorclip_factor;
+	var old_layers = render_settings.layers;
+	render_settings.layers = this.layers;
 
 	var cameras = LS.Renderer._visible_cameras;
 
 	for(var i = 0; i &lt; cameras.length; i++)
 	{
-		//var camera = render_options.main_camera;
 		var camera = cameras[i];
 
 		if( isNaN( texture_size ) &amp;&amp; this.texture_size == &quot;viewport&quot;)
@@ -269,10 +287,10 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 		var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 
 		var texture = this._textures[ camera.uid ];
-		if(!texture || texture.width != texture_width || texture.height != texture_height || texture.type != type || texture.texture_type != texture_type || texture.mipmaps != this.generate_mipmaps)
+		if(!texture || texture.width != texture_width || texture.height != texture_height || texture.type != type || texture.texture_type != texture_type || texture.minFilter != (this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR) )
 		{
-			texture = new GL.Texture(texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
-			texture.mipmaps = this.generate_mipmaps;
+			texture = new GL.Texture( texture_width, texture_height, { type: type, texture_type: texture_type, minFilter: this.generate_mipmaps ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR });
+			texture.has_mipmaps = this.generate_mipmaps;
 			this._textures[ camera.uid ] = texture;
 		}
 
@@ -313,29 +331,28 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 			//little offset
 			vec3.add(plane_center, plane_center,vec3.scale(vec3.create(), plane_normal, -this.clip_offset));
 			var clipping_plane = [plane_normal[0], plane_normal[1], plane_normal[2], vec3.dot(plane_center, plane_normal)  ];
-			render_options.clipping_plane = clipping_plane;
-			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_options);
+			render_settings.clipping_plane = clipping_plane;
+			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_settings);
 		}
 		else //spherical reflection
 		{
 			reflected_camera.eye = plane_center;
-			LS.Renderer.renderInstancesToRT(reflected_camera, texture, render_options );
+			LS.Renderer.renderInstancesToRT( reflected_camera, texture, render_settings );
 		}
 
 		if(this.blur)
 		{
 			var blur_texture = this._textures[ &quot;blur_&quot; + camera.uid ];
-			if( blur_texture &amp;&amp; !GL.Texture.compareFormats( blur_texture, texture) )
-				blur_texture = null;	 //remove old one
+			if( blur_texture &amp;&amp; ( Texture.compareFormats( texture, blur_texture ) ||  blur_texture.minFilter != texture.minFilter ))
+				blur_texture = null; //remove old one
 			blur_texture = texture.applyBlur( this.blur, this.blur, 1, blur_texture );
-			this._textures[ &quot;blur_&quot; + camera.uid ] = blur_texture;
+			//this._textures[ &quot;blur_&quot; + camera.uid ] = blur_texture;
 			//LS.ResourcesManager.registerResource(&quot;:BLUR&quot; + camera.uid, blur_texture);//debug
 		}
 
 		if(this.generate_mipmaps &amp;&amp; isPowerOfTwo( texture_width ) &amp;&amp; isPowerOfTwo( texture_height ) )
 		{
-			texture.bind();
-			gl.texParameteri( texture.texture_type, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR );
 			gl.generateMipmap(texture.texture_type);
 			texture.unbind();
 		}
@@ -349,11 +366,11 @@ RealtimeReflector.prototype.onRenderReflection = function(e, render_options)
 	}
 
 	//remove flags
-	delete render_options.clipping_plane;
-	delete render_options.is_rt;
-	delete render_options.is_reflection;
-	delete render_options.brightness_factor;
-	delete render_options.colorclip_factor;
+	LS.Renderer._is_reflection = false;
+	render_settings.clipping_plane = null;
+	render_settings.layers = old_layers;
+	delete render_settings.brightness_factor;
+	delete render_settings.colorclip_factor;
 
 	//make it visible again
 	this._root.flags.visible = visible;

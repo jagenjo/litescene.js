@@ -198,9 +198,11 @@ SceneTree.prototype.configure = function(scene_info)
 	}
 
 	//TODO
+	/*
 	if( scene_info.local_resources )
 	{
 	}
+	*/
 
 	if( scene_info.external_scripts )
 		this.external_scripts = scene_info.external_scripts;

@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -281,6 +295,13 @@
                             </li>
                         
                             <li class="index-item method">
+                                <a href="#method_collectData">collectData</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
                                 <a href="#method_configure">configure</a>
 
                                 
@@ -296,6 +317,20 @@
                         
                             <li class="index-item method">
                                 <a href="#method_findComponentByUId">findComponentByUId</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_findMaterialByUId">findMaterialByUId</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_finish">finish</a>
 
                                 
                                 
@@ -400,13 +435,6 @@
                             </li>
                         
                             <li class="index-item method">
-                                <a href="#method_stop">stop</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item method">
                                 <a href="#method_triggerInNodes">triggerInNodes</a>
 
                                 
@@ -463,6 +491,13 @@
                             </li>
                         
                             <li class="index-item event">
+                                <a href="#event_finish">finish</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item event">
                                 <a href="#event_load">load</a>
 
                                 
@@ -499,13 +534,6 @@
                         
                             <li class="index-item event">
                                 <a href="#event_start">start</a>
-
-                                
-                                
-                            </li>
-                        
-                            <li class="index-item event">
-                                <a href="#event_stop">stop</a>
 
                                 
                                 
@@ -560,7 +588,7 @@
             
         
         
-        <a href="../files/.._src_scene.js.html#l95"><code>..&#x2F;src&#x2F;scene.js:95</code></a>
+        <a href="../files/.._src_scene.js.html#l102"><code>..&#x2F;src&#x2F;scene.js:102</code></a>
         
         </p>
 
@@ -573,6 +601,62 @@
     <div class="description">
         <p>Clears the scene using the init function
 and trigger a &quot;clear&quot; LEvent</p>
+
+    </div>
+
+    
+
+    
+
+    
+</div>
+
+                
+                    <div id="method_collectData" class="method item">
+    <h3 class="name"><code>collectData</code></h3>
+
+    
+        <span class="paren">()</span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l818"><code>..&#x2F;src&#x2F;scene.js:818</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
+Mostly rendering stuff but also some collision info.</p>
 
     </div>
 
@@ -626,7 +710,7 @@ and trigger a &quot;clear&quot; LEvent</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l121"><code>..&#x2F;src&#x2F;scene.js:121</code></a>
+        <a href="../files/.._src_scene.js.html#l128"><code>..&#x2F;src&#x2F;scene.js:128</code></a>
         
         </p>
 
@@ -721,7 +805,7 @@ Destroys previously existing info</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l510"><code>..&#x2F;src&#x2F;scene.js:510</code></a>
+        <a href="../files/.._src_scene.js.html#l541"><code>..&#x2F;src&#x2F;scene.js:541</code></a>
         
         </p>
 
@@ -828,7 +912,7 @@ Destroys previously existing info</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l526"><code>..&#x2F;src&#x2F;scene.js:526</code></a>
+        <a href="../files/.._src_scene.js.html#l557"><code>..&#x2F;src&#x2F;scene.js:557</code></a>
         
         </p>
 
@@ -889,6 +973,202 @@ Destroys previously existing info</p>
 </div>
 
                 
+                    <div id="method_findMaterialByUId" class="method item">
+    <h3 class="name"><code>findMaterialByUId</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>uid</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l575"><code>..&#x2F;src&#x2F;scene.js:575</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>searches the material with this uid, it iterates through all the nodes (slow)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">uid</code>
+                        <span class="type">String</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>uid of the material</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">Object</span>:
+                    
+                    <p>Material or null</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
+                    <div id="method_finish" class="method item">
+    <h3 class="name"><code>finish</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>dt</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l784"><code>..&#x2F;src&#x2F;scene.js:784</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>stop the scene (triggers an &quot;finish&quot; event)</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">dt</code>
+                        <span class="type">Number</span>
+                    
+
+                    
+
+                    <div class="param-description">
+                        <p>delta time</p>
+
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+
+    
+</div>
+
+                
                     <div id="method_getNode" class="method item">
     <h3 class="name"><code>getNode</code></h3>
 
@@ -935,7 +1215,7 @@ Destroys previously existing info</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l441"><code>..&#x2F;src&#x2F;scene.js:441</code></a>
+        <a href="../files/.._src_scene.js.html#l472"><code>..&#x2F;src&#x2F;scene.js:472</code></a>
         
         </p>
 
@@ -1042,7 +1322,7 @@ Destroys previously existing info</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l495"><code>..&#x2F;src&#x2F;scene.js:495</code></a>
+        <a href="../files/.._src_scene.js.html#l526"><code>..&#x2F;src&#x2F;scene.js:526</code></a>
         
         </p>
 
@@ -1149,7 +1429,7 @@ Destroys previously existing info</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l470"><code>..&#x2F;src&#x2F;scene.js:470</code></a>
+        <a href="../files/.._src_scene.js.html#l501"><code>..&#x2F;src&#x2F;scene.js:501</code></a>
         
         </p>
 
@@ -1257,7 +1537,7 @@ If more than one object has the same name, the first one added to the tree is re
             
         
         
-        <a href="../files/.._src_scene.js.html#l483"><code>..&#x2F;src&#x2F;scene.js:483</code></a>
+        <a href="../files/.._src_scene.js.html#l514"><code>..&#x2F;src&#x2F;scene.js:514</code></a>
         
         </p>
 
@@ -1364,7 +1644,7 @@ If more than one object has the same name, the first one added to the tree is re
             
         
         
-        <a href="../files/.._src_scene.js.html#l544"><code>..&#x2F;src&#x2F;scene.js:544</code></a>
+        <a href="../files/.._src_scene.js.html#l598"><code>..&#x2F;src&#x2F;scene.js:598</code></a>
         
         </p>
 
@@ -1472,7 +1752,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l562"><code>..&#x2F;src&#x2F;scene.js:562</code></a>
+        <a href="../files/.._src_scene.js.html#l626"><code>..&#x2F;src&#x2F;scene.js:626</code></a>
         
         </p>
 
@@ -1569,7 +1849,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l46"><code>..&#x2F;src&#x2F;scene.js:46</code></a>
+        <a href="../files/.._src_scene.js.html#l53"><code>..&#x2F;src&#x2F;scene.js:53</code></a>
         
         </p>
 
@@ -1661,7 +1941,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l269"><code>..&#x2F;src&#x2F;scene.js:269</code></a>
+        <a href="../files/.._src_scene.js.html#l287"><code>..&#x2F;src&#x2F;scene.js:287</code></a>
         
         </p>
 
@@ -1774,7 +2054,7 @@ Call it to clear the scene content</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l621"><code>..&#x2F;src&#x2F;scene.js:621</code></a>
+        <a href="../files/.._src_scene.js.html#l709"><code>..&#x2F;src&#x2F;scene.js:709</code></a>
         
         </p>
 
@@ -1831,7 +2111,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l720"><code>..&#x2F;src&#x2F;scene.js:720</code></a>
+        <a href="../files/.._src_scene.js.html#l808"><code>..&#x2F;src&#x2F;scene.js:808</code></a>
         
         </p>
 
@@ -1890,7 +2170,7 @@ and load them in bulk using the ResourceManager</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l216"><code>..&#x2F;src&#x2F;scene.js:216</code></a>
+        <a href="../files/.._src_scene.js.html#l231"><code>..&#x2F;src&#x2F;scene.js:231</code></a>
         
         </p>
 
@@ -1987,7 +2267,7 @@ It calls the serialize method in every node</p>
             
         
         
-        <a href="../files/.._src_scene.js.html#l580"><code>..&#x2F;src&#x2F;scene.js:580</code></a>
+        <a href="../files/.._src_scene.js.html#l652"><code>..&#x2F;src&#x2F;scene.js:652</code></a>
         
         </p>
 
@@ -2133,7 +2413,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l601"><code>..&#x2F;src&#x2F;scene.js:601</code></a>
+        <a href="../files/.._src_scene.js.html#l681"><code>..&#x2F;src&#x2F;scene.js:681</code></a>
         
         </p>
 
@@ -2253,7 +2533,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l673"><code>..&#x2F;src&#x2F;scene.js:673</code></a>
+        <a href="../files/.._src_scene.js.html#l761"><code>..&#x2F;src&#x2F;scene.js:761</code></a>
         
         </p>
 
@@ -2264,96 +2544,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     </div>
 
     <div class="description">
-        <p>start the scene (triggers and start event)</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">dt</code>
-                        <span class="type">Number</span>
-                    
-
-                    
-
-                    <div class="param-description">
-                        <p>delta time</p>
-
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-    
-
-    
-</div>
-
-                
-                    <div id="method_stop" class="method item">
-    <h3 class="name"><code>stop</code></h3>
-
-    
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-            
-                <li class="arg">
-                    
-                        <code>dt</code>
-                    
-                </li>
-            
-            </ul><span class="paren">)</span>
-        </div>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l696"><code>..&#x2F;src&#x2F;scene.js:696</code></a>
-        
-        </p>
-
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>stop the scene (triggers and start event)</p>
+        <p>start the scene (triggers an &quot;start&quot; event)</p>
 
     </div>
 
@@ -2437,7 +2628,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l885"><code>..&#x2F;src&#x2F;scene.js:885</code></a>
+        <a href="../files/.._src_scene.js.html#l985"><code>..&#x2F;src&#x2F;scene.js:985</code></a>
         
         </p>
 
@@ -2535,7 +2726,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l877"><code>..&#x2F;src&#x2F;scene.js:877</code></a>
+        <a href="../files/.._src_scene.js.html#l977"><code>..&#x2F;src&#x2F;scene.js:977</code></a>
         
         </p>
 
@@ -2579,7 +2770,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l294"><code>..&#x2F;src&#x2F;scene.js:294</code></a>
+        <a href="../files/.._src_scene.js.html#l311"><code>..&#x2F;src&#x2F;scene.js:311</code></a>
         
         </p>
 
@@ -2623,7 +2814,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l856"><code>..&#x2F;src&#x2F;scene.js:856</code></a>
+        <a href="../files/.._src_scene.js.html#l956"><code>..&#x2F;src&#x2F;scene.js:956</code></a>
         
         </p>
 
@@ -2690,7 +2881,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l112"><code>..&#x2F;src&#x2F;scene.js:112</code></a>
+        <a href="../files/.._src_scene.js.html#l119"><code>..&#x2F;src&#x2F;scene.js:119</code></a>
         
         </p>
 
@@ -2734,7 +2925,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l207"><code>..&#x2F;src&#x2F;scene.js:207</code></a>
+        <a href="../files/.._src_scene.js.html#l222"><code>..&#x2F;src&#x2F;scene.js:222</code></a>
         
         </p>
 
@@ -2779,6 +2970,73 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 </div>
 
                 
+                    <div id="event_finish" class="events item">
+    <h3 class="name"><code>finish</code></h3>
+    <span class="type"></span>
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_scene.js.html#l796"><code>..&#x2F;src&#x2F;scene.js:796</code></a>
+        
+        </p>
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Fired when the scene stops playing</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Event Payload:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">scene</code>
+                        <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+
+    
+</div>
+
+                
                     <div id="event_load" class="events item">
     <h3 class="name"><code>load</code></h3>
     <span class="type"></span>
@@ -2802,7 +3060,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l305"><code>..&#x2F;src&#x2F;scene.js:305</code></a>
+        <a href="../files/.._src_scene.js.html#l331"><code>..&#x2F;src&#x2F;scene.js:331</code></a>
         
         </p>
 
@@ -2846,7 +3104,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l316"><code>..&#x2F;src&#x2F;scene.js:316</code></a>
+        <a href="../files/.._src_scene.js.html#l342"><code>..&#x2F;src&#x2F;scene.js:342</code></a>
         
         </p>
 
@@ -2890,7 +3148,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l399"><code>..&#x2F;src&#x2F;scene.js:399</code></a>
+        <a href="../files/.._src_scene.js.html#l430"><code>..&#x2F;src&#x2F;scene.js:430</code></a>
         
         </p>
 
@@ -2957,7 +3215,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l424"><code>..&#x2F;src&#x2F;scene.js:424</code></a>
+        <a href="../files/.._src_scene.js.html#l455"><code>..&#x2F;src&#x2F;scene.js:455</code></a>
         
         </p>
 
@@ -3024,7 +3282,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l259"><code>..&#x2F;src&#x2F;scene.js:259</code></a>
+        <a href="../files/.._src_scene.js.html#l277"><code>..&#x2F;src&#x2F;scene.js:277</code></a>
         
         </p>
 
@@ -3092,7 +3350,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l686"><code>..&#x2F;src&#x2F;scene.js:686</code></a>
+        <a href="../files/.._src_scene.js.html#l774"><code>..&#x2F;src&#x2F;scene.js:774</code></a>
         
         </p>
 
@@ -3103,73 +3361,6 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
     <div class="description">
         <p>Fired when the scene is starting to play</p>
-
-    </div>
-
-    
-        <div class="params">
-            <h4>Event Payload:</h4>
-
-            <ul class="params-list">
-            
-                <li class="param">
-                    
-                        <code class="param-name">scene</code>
-                        <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
-                    
-
-                    
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                    
-                </li>
-            
-            </ul>
-        </div>
-    
-
-
-    
-</div>
-
-                
-                    <div id="event_stop" class="events item">
-    <h3 class="name"><code>stop</code></h3>
-    <span class="type"></span>
-
-    
-
-    
-
-    
-
-    
-
-    <div class="meta">
-        
-            
-                
-                <p>
-                
-                Defined in
-                
-            
-        
-        
-        <a href="../files/.._src_scene.js.html#l708"><code>..&#x2F;src&#x2F;scene.js:708</code></a>
-        
-        </p>
-
-        
-
-        
-    </div>
-
-    <div class="description">
-        <p>Fired when the scene stops playing</p>
 
     </div>
 
@@ -3226,7 +3417,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
             
         
         
-        <a href="../files/.._src_scene.js.html#l868"><code>..&#x2F;src&#x2F;scene.js:868</code></a>
+        <a href="../files/.._src_scene.js.html#l968"><code>..&#x2F;src&#x2F;scene.js:968</code></a>
         
         </p>
 

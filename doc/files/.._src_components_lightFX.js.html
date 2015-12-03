@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -244,7 +258,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 
 	var RI = this._volumetric_render_instance;
 	if(!RI)
-		this._volumetric_render_instance = RI = new RenderInstance(this._root, this);
+		this._volumetric_render_instance = RI = new LS.RenderInstance(this._root, this);
 
 	RI.flags = RenderInstance.ALPHA; //reset and set
 	
@@ -317,9 +331,9 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 }
 
 //render on RenderInstance
-LightFX.onGlarePreRender = function(render_options)
+LightFX.onGlarePreRender = function( render_settings )
 {
-	if(render_options.current_pass != &quot;color&quot;)
+	if( LS.Renderer._current_pass != &quot;color&quot; )
 		return; 
 
 	//project point to 2D in normalized space
@@ -330,8 +344,8 @@ LightFX.onGlarePreRender = function(render_options)
 	//this.material.opacity = 1 / (2*vec3.distance(this.pos2D, [0,0,0])); //attenuate by distance
 
 	var center = this.center;
-	var eye = Renderer._current_camera.getEye();
-	var scene = Renderer._current_scene;
+	var eye = LS.Renderer._current_camera.getEye();
+	var scene = LS.Renderer._current_scene;
 	var dir = vec3.sub(vec3.create(), eye, center );
 	var dist = vec3.length(dir);
 	vec3.scale(dir,dir,1/dist);
@@ -340,7 +354,7 @@ LightFX.onGlarePreRender = function(render_options)
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = LS.Picking.raycast( center, dir, dist );
+		coll = LS.Picking.raycast( center, dir, { max_distance: dist } );
 
 	if(coll.length)
 	{

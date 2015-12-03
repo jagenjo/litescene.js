@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -181,8 +195,9 @@
 function LScript()
 {
 	this.code = &quot;function update(dt) {\n\n}&quot;;
-	this.exported_callbacks = [&quot;start&quot;,&quot;update&quot;]; //detects if there is a function with this name and exports it as a property
+	this.exported_callbacks = []; //detects if there is a function with this name and exports it as a property
 	this.extracode = &quot;&quot;;
+	this.extra_methods = null; //add object with methods here to attach methods
 	this.catch_exceptions = true;
 }
 
@@ -190,7 +205,7 @@ LScript.onerror = null; //global used to catch errors in scripts
 
 LScript.show_errors_in_console = true;
 
-LScript.prototype.compile = function( arg_vars )
+LScript.prototype.compile = function( arg_vars, save_context_vars )
 {
 	var argv_names = [];
 	var argv_values = [];
@@ -215,11 +230,14 @@ LScript.prototype.compile = function( arg_vars )
 	}
 	code += extra_code;
 	this._last_executed_code = code;
+
+	var old_context = this._context;
 	
 	try
 	{
 		this._class = new Function(argv_names, code);
-		this._context = LScript.applyToConstructor( this._class, argv_values );
+		var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
+		this._context = new context_function(); //&lt;-- EXECUTION POINT HERE ***************************************
 	}
 	catch (err)
 	{
@@ -236,6 +254,15 @@ LScript.prototype.compile = function( arg_vars )
 			LScript.onerror(err, this._last_executed_code, this);
 		return false;
 	}
+
+
+	if(save_context_vars &amp;&amp; old_context)
+	{
+		for(var i in old_context)
+			if( this._context[i] !== undefined &amp;&amp; old_context[i] &amp;&amp; old_context[i].constructor !== Function &amp;&amp; (!this._context[i] || this._context[i].constructor !== Function) )
+				this._context[i] = old_context[i];
+	}
+
 	return true;
 }
 
@@ -274,11 +301,14 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	}
 }
 
-//from kybernetikos in stackoverflow
-LScript.applyToConstructor = function(constructor, argArray) {
+//Given a constructor, it attaches several global arguments and methods (from kybernetikos in stackoverflow)
+LScript.applyToConstructor = function(constructor, argArray, methods) {
     var args = [null].concat(argArray);
+	if(methods)
+		for(var i in methods)
+			Object.defineProperty( constructor.prototype, i, { value: methods[i], enumerable: true });
     var factoryFunction = constructor.bind.apply(constructor, args);
-    return new factoryFunction();
+    return factoryFunction;
 }
 
 //remove comments and trims empty lines
@@ -341,6 +371,8 @@ LScript.expandCode = function(code)
 
 	return code;
 }
+
+global.LScript = LScript;
 
 
     </pre>

@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -190,6 +204,8 @@ var LS = {
 	_last_uid: 1,
 	_uid_prefix: &quot;@&quot;, //WARNING: must be one character long
 
+	Classes: {}, //maps classes name like &quot;Prefab&quot; or &quot;Animation&quot; to its namespace &quot;LS.Prefab&quot;. Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
+
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
@@ -245,41 +261,20 @@ var LS = {
 
 			//register
 			this.Components[ name ] = component; 
+			component.is_component = true;			
 
-			//add uid property
-			Object.defineProperty( component.prototype, &#x27;uid&#x27;, {
-				set: function( uid )
-				{
-					if(!uid)
-						return;
-
-					if(uid[0] != LS._uid_prefix)
-					{
-						console.warn(&quot;Invalid UID, renaming it to: &quot; + uid );
-						uid = LS._uid_prefix + uid;
-					}
-
-					if(uid == this._uid)
-						return;
-					//if( this._root &amp;&amp; this._root._components_by_uid[ this.uid ] )
-					//	delete this._root &amp;&amp; this._root._components_by_uid[ this.uid ];
-					this._uid = uid;
-					//if( this._root )
-					//	this._root &amp;&amp; this._root._components_by_uid[ this.uid ] = this;
-				},
-				get: function(){
-					return this._uid;
-				},
-				enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
-			});
-
-			//checks for errors
+			//Helper: checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
 				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
-				console.warn(&quot;Component could have a bug, check events: &quot; + name);
+				console.warn(&quot;%c Component could have a bug, check events: &quot; + name , &quot;font-size: 2em&quot;);
+
+			//add stuff to the class
+			if(!component.actions)
+				component.actions = {};
 
 			//add default methods
 			LS.extendClass( component, LS.Component );
+			Component.addExtraMethods( component );
 
 			//event
 			LEvent.trigger(LS, &quot;component_registered&quot;, component ); 
@@ -513,6 +508,9 @@ var LS = {
 		if (!obj)
 			return;
 
+		if(obj.constructor.fullname) //this is to overwrite the common name &quot;Prefab&quot; for a global name &quot;LS.Prefab&quot;
+			return obj.constructor.fullname;
+
 		if(obj.constructor.name)
 			return obj.constructor.name;
 
@@ -666,15 +664,74 @@ var LS = {
 	* @param {ComponentClass} comp component class to register
 	*/
 	registerMaterialClass: function(material_class) { 
+
+		var class_name = LS.getClassName( material_class );
+
 		//register
-		this.MaterialClasses[ LS.getClassName(material_class) ] = material_class;
+		this.MaterialClasses[ class_name ] = material_class;
+		this.Classes[ class_name ] = material_class;
 
 		//add extra material methods
 		LS.extendClass( material_class, Material );
 
 		//event
-		LEvent.trigger(LS,&quot;materialclass_registered&quot;,material_class);
+		LEvent.trigger( LS, &quot;materialclass_registered&quot;, material_class );
 		material_class.resource_type = &quot;Material&quot;;
+	},
+
+	/**
+	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.
+	*
+	* @method getGUIElement
+	* @return {HTMLElement} 
+	*/
+	getGUIElement: function()
+	{
+		if( LS._gui_element )
+			return LS._gui_element;
+
+		var gui = document.createElement(&quot;div&quot;);
+		gui.className = &quot;litescene-gui&quot;;
+		gui.style.position = &quot;absolute&quot;;
+		gui.style.top = &quot;0&quot;;
+		gui.style.left = &quot;0&quot;;
+		gl.canvas.parentNode.appendChild( gui );
+		
+		LS._gui_element = gui;
+		return gui;
+	},
+
+	/**
+	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	*
+	* @method getScript
+	* @param {String} name the name of the script according to the Script component.
+	* @return {Object} the context of the script.
+	*/
+	removeGUIElement: function()
+	{
+		if( !LS._gui_element )
+			return;
+
+		if(LS._gui_element.parentNode)
+			LS._gui_element.parentNode.removeChild( LS._gui_element );
+		LS._gui_element = null;
+		return;
+	},
+
+	/**
+	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	*
+	* @method getScript
+	* @param {String} name the name of the script according to the Script component.
+	* @return {Object} the context of the script.
+	*/
+	getScript: function( name )
+	{
+		var script = LS.Script.active_scripts[name];
+		if(script)
+			return script.context;
+		return null;
 	}
 }
 
@@ -751,6 +808,8 @@ var LSQ = {
 	}
 };
 
+global.LSQ = LSQ;
+global.trace = trace;
 
     </pre>
 </div>

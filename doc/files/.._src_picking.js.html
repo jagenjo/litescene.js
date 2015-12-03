@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -246,16 +260,19 @@ var Picking = {
 	* @method raycast
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
-	* @param {number} max_dist maxium distance
-	* @param {SceneTree} scene
+	* @param {Object} options ( max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
 	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
 	*/
-	raycast: function( origin, direction, max_dist, layers, scene )
+	raycast: function( origin, direction, options )
 	{
-		max_dist = max_dist || Number.MAX_VALUE;
+		options = options || {};
+		var layers = options.layers;
 		if(layers === undefined)
 			layers = 0xFFFF;
-		scene = scene || LS.GlobalScene;
+		var max_distance = options.max_distance || Number.MAX_VALUE;
+		var scene = options.scene || LS.GlobalScene;
+		var triangle_collision = options.triangle_collision;
+		var first_collision = options.first_collision;
 
 		var instances = scene._instances;
 		if(!instances || !instances.length)
@@ -279,7 +296,7 @@ var Picking = {
 
 			//test against AABB
 			var collision_point = vec3.create();
-			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_dist) )
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_distance ) )
 				continue;
 
 			var model = instance.matrix;
@@ -290,17 +307,22 @@ var Picking = {
 			mat4.rotateVec3( local_direction, inv, direction );
 
 			//test against OOBB (a little bit more expensive)
-			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_dist) )
+			if( !geo.testRayBBox(local_start, local_direction, instance.oobb, null, collision_point, max_distance) )
 				continue;
 
 			//test against mesh
-			if( instance.collision_mesh )
+			var collision_mesh = instance.collision_mesh;
+			
+			if(triangle_collision)
+				collision_mesh = instance.lod_mesh || instance.mesh;
+
+			if( collision_mesh )
 			{
-				var mesh = instance.collision_mesh;
+				var mesh = collision_mesh;
 				var octree = mesh.octree;
 				if(!octree)
-					octree = mesh.octree = new Octree( mesh );
-				var hit = octree.testRay( local_start, local_direction, 0.0, max_dist );
+					octree = mesh.octree = new GL.Octree( mesh );
+				var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;
 				mat4.multiplyVec3(collision_point, model, hit.pos);
@@ -309,11 +331,14 @@ var Picking = {
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
-			if(distance &lt; max_dist)
+			if(distance &lt; max_distance)
 				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ) );
+
+			if(first_collision)
+				return collisions;
 		}
 
-		collisions.sort( Collision.isCloser );
+		collisions.sort( LS.Collision.isCloser );
 		return collisions;
 	},
 
@@ -342,7 +367,7 @@ var Picking = {
 	_picking_depth: 0,
 	_picking_next_color_id: 0,
 	_picking_nodes: {},
-	_picking_render_options: new RenderOptions({is_picking: true}),
+	_picking_render_settings: new RenderSettings({is_picking: true}),
 
 	renderPickingBuffer: function( scene, camera, x, y, layers )
 	{
@@ -360,14 +385,14 @@ var Picking = {
 		var small_area = true;
 		this._picking_next_color_id = 0;
 
-		this._current_target = this._pickingMap;
+		LS.Renderer._current_target = this._pickingMap;
 
 		this._pickingMap.drawTo(function() {
 			//var viewport = camera.getLocalViewport();
 			//camera._real_aspect = viewport[2] / viewport[3];
 			//gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
 
-			LS.Renderer.enableCamera( camera, that._picking_render_options );
+			LS.Renderer.enableCamera( camera, that._picking_render_settings );
 
 			if(small_area)
 			{
@@ -379,23 +404,29 @@ var Picking = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//gl.viewport(x-20,y-20,40,40);
-			that._picking_render_options.current_pass = &quot;picking&quot;;
-			that._picking_render_options.layers = layers;
+			LS.Renderer._current_pass = &quot;picking&quot;;
+			LS.Renderer._is_picking = true;
+			that._picking_render_settings.layers = layers;
 
 			//check instances colliding with cursor using a ray against AABBs
 			//TODO
 
-			LS.Renderer.renderInstances( that._picking_render_options )//, cursor_instances );
+			LS.Renderer.renderInstances( that._picking_render_settings )//, cursor_instances );
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			LEvent.trigger( scene, &quot;renderPicking&quot;, [x,y] );
+			LEvent.trigger( LS.Renderer, &quot;renderPicking&quot;, [x,y] );
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, that._picking_color );
 
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
+
+			LS.Renderer._is_picking = false;
+			LS.Renderer._current_pass = &quot;picking&quot;;
 		});
-		this._current_target = null;
+
+		LS.Renderer._current_target = null;
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		//trace(&quot; END Rendering: &quot;, this._picking_color );

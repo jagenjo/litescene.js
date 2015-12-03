@@ -47,6 +47,8 @@
             
                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
             
+                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+            
                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
             
                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
@@ -54,6 +56,8 @@
                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
             
                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+            
+                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
             
                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
             
@@ -77,6 +81,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+            
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
             
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -84,6 +90,10 @@
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+            
+                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+            
+                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
             
                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
             
@@ -103,11 +113,13 @@
             
                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
             
+                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+            
                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
             
                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
             
-                <li><a href="../classes/LS.RenderOptions.html">LS.RenderOptions</a></li>
+                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
             
                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
             
@@ -120,6 +132,8 @@
                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
             
                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+            
+                <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
             
@@ -172,7 +186,7 @@
     <pre class="code prettyprint linenums">
 /*
 	A component container is someone who could have components attached to it.
-	Mostly used for SceneNodes but it could be used for other classes too.
+	Mostly used for SceneNodes but it could be used for other classes (like SceneTree or Project).
 */
 
 /**
@@ -268,11 +282,13 @@ ComponentContainer.prototype.addComponent = function( component, index )
 
 	//link component with container
 	component._root = this;
-	if(component.onAddedToNode)
+
+	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	if(this.constructor == LS.SceneNode &amp;&amp; component.onAddedToNode)
 		component.onAddedToNode(this);
 
-	if(this._in_tree &amp;&amp; component.onAddedToScene)
-		component.onAddedToScene(this._in_tree);
+	if( (this._in_tree || this.constructor == LS.SceneTree) &amp;&amp; component.onAddedToScene)
+		component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
 
 	//link node with component
 	if(!this._components) 
@@ -303,11 +319,13 @@ ComponentContainer.prototype.removeComponent = function(component)
 
 	//unlink component with container
 	component._root = null;
-	if(component.onRemovedFromNode)
+
+	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
+	if(this.constructor == LS.SceneNode &amp;&amp; component.onRemovedFromNode)
 		component.onRemovedFromNode(this);
 
-	if(this._in_tree &amp;&amp; component.onRemovedFromScene)
-		component.onRemovedFromScene(this._in_tree);
+	if((this._in_tree || this.constructor == LS.SceneTree) &amp;&amp; component.onRemovedFromScene)
+		component.onRemovedFromScene( this.constructor == LS.SceneTree ? this : this._in_tree );
 
 	//remove all events
 	LEvent.unbindAll(this,component);
@@ -407,7 +425,7 @@ ComponentContainer.prototype.getIndexOfComponent = function(component)
 {
 	if(!this._components)
 		return -1;
-	return this._components.indexOf(component);
+	return this._components.indexOf( component );
 }
 
 /**
@@ -421,6 +439,35 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 		return null;
 	return this._components[index];
 }
+
+/**
+* Changes the order of a component
+* @method setComponentIndex
+* @param {Object} component
+*/
+ComponentContainer.prototype.setComponentIndex = function( component, index )
+{
+	if(!this._components)
+		return null;
+	if(index &lt; 0)
+		index = 0;
+	var old_index = this._components.indexOf( component );
+	if (old_index == -1)
+		return;
+
+	this._components.splice( old_index, 1 );
+
+	/*
+	if(index &gt;= old_index)
+		index--; 
+	*/
+	if(index &gt;= this._components.length)
+		this._components.push( component );
+	else
+		this._components.splice( index, 0, component );
+
+}
+
 
 /**
 * executes the method with a given name in all the components
