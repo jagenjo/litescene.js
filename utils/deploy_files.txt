@@ -23,6 +23,7 @@
 ../src/components/transform.js
 ../src/components/camera.js
 ../src/components/cameraFX.js
+../src/components/globalFX.js
 ../src/components/light.js
 ../src/components/lightFX.js
 ../src/components/meshRenderer.js
@@ -56,8 +57,10 @@
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
 ../src/components/spherize.js
+../src/components/sprite.js
 ../src/components/VRCameraController.js
 ../src/components/poser.js
+../src/components/threeJS.js
 
 ../src/components/interactiveController.js
 
