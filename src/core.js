@@ -49,7 +49,7 @@ var LS = {
 		return v.match(exp);
 	},
 
-	catch_errors: false, //used to try/catch all possible callbacks (used mostly during development inside an editor)
+	_catch_exceptions: false, //used to try/catch all possible callbacks (used mostly during development inside an editor) It is linked to LScript too
 
 	/**
 	* Contains all the registered components
@@ -75,7 +75,8 @@ var LS = {
 
 			//register
 			this.Components[ name ] = component; 
-			component.is_component = true;			
+			component.is_component = true;	
+			component.resource_type = "Component";
 
 			//Helper: checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
@@ -117,7 +118,7 @@ var LS = {
 	*/
 	safeCall: function(callback, params, instance)
 	{
-		if(!LS.catch_errors)
+		if(!LS.catch_exceptions)
 			return callback.apply( instance, params );
 
 		try
@@ -126,7 +127,7 @@ var LS = {
 		}
 		catch (err)
 		{
-			LEvent.trigger(LS,"code_error",err);
+			LEvent.trigger(LS,"exception",err);
 			//test this
 			//throw new Error( err.stack );
 			console.error( err.stack );
@@ -142,7 +143,7 @@ var LS = {
 	*/
 	setTimeout: function(callback, time)
 	{
-		if(!LS.catch_errors)
+		if(!LS.catch_exceptions)
 			return setTimeout( callback,time );
 
 		try
@@ -151,7 +152,7 @@ var LS = {
 		}
 		catch (err)
 		{
-			LEvent.trigger(LS,"code_error",err);
+			LEvent.trigger(LS,"exception",err);
 		}
 	},
 
@@ -164,7 +165,7 @@ var LS = {
 	*/
 	setInterval: function(callback, time)
 	{
-		if(!LS.catch_errors)
+		if(!LS.catch_exceptions)
 			return setInterval( callback,time );
 
 		try
@@ -173,7 +174,7 @@ var LS = {
 		}
 		catch (err)
 		{
-			LEvent.trigger(LS,"code_error",err);
+			LEvent.trigger(LS,"exception",err);
 		}
 	},
 
@@ -235,16 +236,18 @@ var LS = {
 				o[i] = null;			
 			else if ( isFunction(v) ) //&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
 				continue;//o[i] = v;
-			else if (v.constructor === Number || v.constructor === String || v.constructor === Boolean )
+			else if (v.constructor === Number || v.constructor === String || v.constructor === Boolean ) //elemental types
 				o[i] = v;
-			else if( v.constructor == Float32Array ) //typed arrays are ugly when serialized
-				o[i] = Array.apply( [], v ); //clone
-			else if ( isArray(v) )
+			else if( v.buffer && v.byteLength && v.buffer.constructor === ArrayBuffer ) //typed arrays are ugly when serialized
+			{
+				o[i] = new v.constructor(v); //clone typed array
+			}
+			else if ( v.constructor === Array ) //clone regular array (container and content!)
 			{
 				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
 					o[i].set(v);
 				else
-					o[i] = JSON.parse( JSON.stringify(v) ); //v.slice(0); //not safe using slice because it doesnt clone content, only container
+					o[i] = JSON.parse( JSON.stringify(v) ); //not safe to use concat or slice(0) because it doesnt clone content, only container
 			}
 			else //object: 
 			{
@@ -252,7 +255,7 @@ var LS = {
 					o[i] = v.toJSON();
 				else if(recursive)
 					o[i] = LS.cloneObject( v, null, true );
-				else if(LS.catch_errors)
+				else if(LS.catch_exceptions)
 				{
 					try
 					{
@@ -430,12 +433,9 @@ var LS = {
 	{
 		if(obj.setProperty)
 			return obj.setProperty(name, value);
-
-		//var prev = obj[ name ];
-		//if(prev && prev.set)
-		//	prev.set( value ); //for typed-arrays
-		//else
-			obj[ name ] = value; //clone¿?
+		obj[ name ] = value; //clone¿?
+		if(obj.onPropertyChanged)
+			obj.onPropertyChanged( name, value );
 	},
 
 	//solution from http://stackoverflow.com/questions/979975/how-to-get-the-value-from-the-url-parameter
@@ -477,8 +477,8 @@ var LS = {
 	* @method registerMaterialClass
 	* @param {ComponentClass} comp component class to register
 	*/
-	registerMaterialClass: function(material_class) { 
-
+	registerMaterialClass: function( material_class )
+	{ 
 		var class_name = LS.getClassName( material_class );
 
 		//register
@@ -491,6 +491,7 @@ var LS = {
 		//event
 		LEvent.trigger( LS, "materialclass_registered", material_class );
 		material_class.resource_type = "Material";
+		material_class.is_material = true;
 	},
 
 	/**
@@ -548,6 +549,12 @@ var LS = {
 		return null;
 	}
 }
+
+Object.defineProperty( LS, "catch_exceptions", { 
+	set: function(v){ this._catch_exceptions = v; LScript.catch_exceptions = v; },
+	get: function() { return this._catch_exceptions; },
+	enumerable: true
+});
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers
@@ -619,8 +626,43 @@ var LSQ = {
 			}
 		}
 		return t.join("/");
+	},
+
+	setFromInfo: function( info, value )
+	{
+		if(!info || !info.target)
+			return;
+		var target = info.target;
+		if( target.setPropertyValue  )
+			if( target.setPropertyValue( info.name, value ) === true )
+				return target;
+		if( target[ info.name ] === undefined )
+			return;
+		target[ info.name ] = value;	
+	},
+
+	getFromInfo: function( info )
+	{
+		if(!info || !info.target)
+			return;
+		var target = info.target;
+		var varname = info.name;
+		var v = undefined;
+		if( target.getPropertyValue )
+			v = target.getPropertyValue( varname );
+		if( v === undefined && target[ varname ] === undefined )
+			return null;
+		return v !== undefined ? v : target[ varname ];
 	}
 };
+
+//register classes
+if(global.GL)
+{
+	LS.Classes["Mesh"] = GL.Mesh;
+	LS.Classes["Texture"] = GL.Texture;
+}
+
 
 global.LSQ = LSQ;
 global.trace = trace;

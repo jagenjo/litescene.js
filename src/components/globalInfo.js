@@ -4,7 +4,7 @@ function GlobalInfo(o)
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
 	this.createProperty( "background_color", GlobalInfo.DEFAULT_BACKGROUND_COLOR, "color" );
 
-	this.render_settings = new LS.RenderSettings();
+	this._render_settings = new LS.RenderSettings();
 
 	this._textures = {};
 
@@ -27,6 +27,19 @@ Object.defineProperty( GlobalInfo.prototype, 'textures', {
 	enumerable: true
 });
 
+Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
+	set: function( v )
+	{
+		if(typeof(v) != "object")
+			return;
+		this._render_settings.configure(v);
+	},
+	get: function(){
+		return this._render_settings;
+	},
+	enumerable: true
+});
+
 GlobalInfo.icon = "mini-icon-bg.png";
 GlobalInfo.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
@@ -40,7 +53,6 @@ GlobalInfo.prototype.onRemovedFromScene = function(scene)
 {
 	//scene.info = null;
 }
-
 
 GlobalInfo.prototype.getResources = function(res)
 {
@@ -57,8 +69,6 @@ GlobalInfo.prototype.getProperties = function()
 	return {
 		"ambient_color":"color",
 		"background_color":"color",
-		"textures/background": "texture",
-		"textures/foreground": "texture",
 		"textures/environment": "texture",
 		"textures/irradiance": "texture",
 		"render_settings":"RenderSettings"
@@ -116,7 +126,7 @@ GlobalInfo.prototype.onResourceRenamed = function (old_name, new_name, resource)
 	for(var i in this._textures)
 	{
 		if(this._textures[i] == old_name)
-			this._texture[i] = new_name;
+			this._textures[i] = new_name;
 	}
 }
 

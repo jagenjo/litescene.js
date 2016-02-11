@@ -14,7 +14,6 @@ var parserDAE = {
 		}
 
 		Collada.material_translate_table = {
-			transparency: "opacity",
 			reflectivity: "reflection_factor",
 			specular: "specular_factor",
 			shininess: "specular_gloss",
@@ -101,6 +100,10 @@ var parserDAE = {
 				}
 			}
 		}
+
+		//Materials need some renames
+		for(var i in scene.materials)
+			this.processMaterial( scene.materials[i] );
 
 		//check resources
 		for(var i in scene.resources)
@@ -236,7 +239,15 @@ var parserDAE = {
 			}
 			return null;
 		}
-	} //procesSAnimation
+	},
+
+	processMaterial: function(material)
+	{
+		if(material.transparency)
+		{
+			material.opacity = 1.0 - parseFloat( material.transparency );
+		}
+	}
 };
 
 LS.Formats.registerParser( parserDAE );

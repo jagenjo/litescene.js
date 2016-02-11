@@ -985,7 +985,7 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 }
 
 /**
-* convert from local coordinates to global coordinates
+* convert from local coordinates to global coordinates (it is the same as transformPointGlobal)
 * If no destination is specified a new vector is created
 * @method localToGlobal
 * @param {vec3} point
@@ -996,7 +996,7 @@ Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
 /**
 * convert from global coordinates to local coordinates
 * If no destination is specified a new vector is created
-* @method transformPoint
+* @method globalToLocal
 * @param {vec3} point
 * @param {vec3} destination (optional)
 */

@@ -11,10 +11,11 @@ function PlayAnimation(o)
 	this.animation = "";
 	this.take = "default";
 	this.playback_speed = 1.0;
-	this.mode = "loop";
-	this.play = true;
+	this.mode = PlayAnimation.LOOP;
+	this.playing = true;
 	this.current_time = 0;
 	this._last_time = 0;
+	this.range = null;
 
 	this.disabled_tracks = {};
 
@@ -22,11 +23,21 @@ function PlayAnimation(o)
 		this.configure(o);
 }
 
+PlayAnimation.LOOP = 1;
+PlayAnimation.PINGPONG = 2;
+PlayAnimation.ONCE = 3;
+
+PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE };
+
 PlayAnimation["@animation"] = { widget: "resource" };
-PlayAnimation["@mode"] = { type:"enum", values: ["loop","pingpong","once"] };
+PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 
 PlayAnimation.prototype.configure = function(o)
 {
+	if(o.play) //LEGACY
+		delete o.play;
+	if(o.range) 
+		this.range = o.range.concat();
 	if(o.animation)
 		this.animation = o.animation;
 	if(o.take)
@@ -64,7 +75,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		return;
 
 	//var time = Scene.getTime() * this.playback_speed;
-	if(this.play)
+	if(this.playing)
 		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
@@ -73,17 +84,32 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 
 	var time = this.current_time;
 
-	if(time > take.duration)
+	var start_time = 0;
+	var duration = take.duration;
+	var end_time = duration;
+
+	if(this.range)
+	{
+		start_time = this.range[0];
+		end_time = this.range[1];
+		duration = end_time - start_time;
+	}
+
+	if(time > end_time)
 	{
 		switch( this.mode )
 		{
-			case "once": time = take.duration; break;
-			case "loop": time = this.current_time % take.duration; break;
-			case "pingpong": if( ((time / take.duration)|0) % 2 == 0 )
-								time = this.current_time % take.duration; 
-							else
-								time = take.duration - (this.current_time % take.duration);
-						break;
+			case PlayAnimation.ONCE: 
+					time = end_time; 
+					this.playing = false;
+				break;
+			case PlayAnimation.LOOP: time = ((this.current_time - start_time) % duration) + start_time; break;
+			case PlayAnimation.PINGPONG:
+					if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
+						time = this.current_time % duration; 
+					else
+						time = duration - (this.current_time % duration);
+					break;
 			default: break;
 		}
 	}
@@ -97,6 +123,25 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(scene)
 		scene.refresh();
 }
+
+
+PlayAnimation.prototype.play = function()
+{
+	this.playing = true;
+}
+
+PlayAnimation.prototype.stop = function()
+{
+	this.playing = false;
+}
+
+PlayAnimation.prototype.playRange = function( start, end )
+{
+	this.playing = true;
+	this.current_time = start;
+	this.range = [ start, end ];
+}
+
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
 {

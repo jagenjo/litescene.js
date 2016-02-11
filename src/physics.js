@@ -14,7 +14,7 @@
 * @param {vec3} position collision position
 * @param {number} distance
 */
-function Collision( node, instance, position, distance )
+function Collision( node, instance, position, distance, normal )
 {
 	this.position = vec3.create();
 	if(position)
@@ -22,6 +22,7 @@ function Collision( node, instance, position, distance )
 	this.node = node || null; //the node belonging to this colliding object
 	this.instance = instance || null; //could be a RenderInstance or a PhysicsInstance
 	this.distance = distance || 0; //distance from the ray start
+	this.normal = normal;
 }
 
 Collision.isCloser = function(a,b) { return a.distance - b.distance; }
@@ -52,8 +53,8 @@ function PhysicsInstance(node, component)
 	this.center = vec3.create();
 
 	//for visibility computation
-	this.oobb = BBox.create(); //object space bounding box
-	this.aabb = BBox.create(); //axis aligned bounding box
+	this.oobb = BBox.create(); //local object oriented bounding box
+	this.aabb = BBox.create(); //world axis aligned bounding box
 }
 
 PhysicsInstance.BOX = 1;
@@ -114,6 +115,8 @@ var Physics = {
 		var colliders = options.colliders || scene._colliders;
 		var collisions = [];
 
+		var compute_normal = !!options.normal;
+
 		if(!colliders)
 			return null;
 
@@ -130,30 +133,33 @@ var Physics = {
 
 			//test against AABB
 			var collision_point = vec3.create();
+			var collision_normal = null;
 			if( !geo.testRayBBox(origin, direction, instance.aabb, null, collision_point, max_distance) )
 				continue;
 
 			var model = instance.matrix;
 
-			//ray to local
-			var inv = mat4.invert( mat4.create(), model );
-			mat4.multiplyVec3( local_start, inv, origin);
-			mat4.rotateVec3( local_direction, inv, direction);
-
-			//test in world space, is cheaper
+			//spheres are tested in world space, is cheaper (if no non-uniform scales...)
 			if( instance.type == PhysicsInstance.SPHERE )
 			{
-				if(!geo.testRaySphere( local_start, local_direction, instance.center, instance.oobb[3], collision_point, max_distance))
+				if(!geo.testRaySphere( origin, direction, instance.center, instance.oobb[3], collision_point, max_distance))
 					continue;
-				vec3.transformMat4(collision_point, collision_point, model);
+				if(compute_normal)
+					collision_normal = vec3.sub( vec3.create(), collision_point, instance.center );
 			}
 			else //the rest test first with the local BBox
 			{
+				//ray to local instance coordinates
+				var inv = mat4.invert( mat4.create(), model );
+				mat4.multiplyVec3( local_start, inv, origin);
+				mat4.rotateVec3( local_direction, inv, direction);
+
 				//test against OOBB (a little bit more expensive)
 				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point, max_distance) )
 					continue;
 
-				if( instance.type == PhysicsInstance.MESH)
+				//if mesh use Octree
+				if( instance.type == PhysicsInstance.MESH )
 				{
 					var octree = instance.mesh.octree;
 					if(!octree)
@@ -163,13 +169,17 @@ var Physics = {
 						continue;
 
 					mat4.multiplyVec3( collision_point, model, hit.pos );
+					if(compute_normal)
+						collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
 				}
-				else
+				else //if just a BBox collision
+				{
 					vec3.transformMat4( collision_point, collision_point, model );
+				}
 			}
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ));
+			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ));
 
 			if(first_collision)
 				return collisions;

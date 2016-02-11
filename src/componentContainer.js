@@ -78,8 +78,22 @@ ComponentContainer.prototype.serializeComponents = function(o)
 * @method getComponents
 * @return {Array} all the components
 */
-ComponentContainer.prototype.getComponents = function()
+ComponentContainer.prototype.getComponents = function( class_type )
 {
+	if(class_type)
+	{
+		var result = [];
+		if(class_type.constructor === String)
+			class_type = LS.Components[class_type];
+		for(var i = 0, l = this._components.length; i < l; ++i)
+		{
+			var compo = this._components[i];
+			if( compo.constructor === class_type )
+				result.push( compo );
+		}
+		return result;
+	}
+
 	return this._components;
 }
 
@@ -192,26 +206,33 @@ ComponentContainer.prototype.hasComponent = function(component_class) //class, n
 /**
 * Returns the first component of this container that is of the same class
 * @method getComponent
-* @param {Object} component_class the class to search a component from (not the name of the class)
+* @param {Object|String} component_class the class to search a component from (could be the class or the name)
+* @param {Number} index [optional] if you want the Nth component of this class
 */
-ComponentContainer.prototype.getComponent = function(component_class)
+ComponentContainer.prototype.getComponent = function( component_class, index )
 {
-	if(!this._components)
+	if(!this._components || !component_class)
 		return null;
 
-	//string
 	if( component_class.constructor === String )
 	{
-		for(var i = 0, l = this._components.length; i < l; ++i)
-			if( this._components[i].constructor.name == component_class )
-				return this._components[i];
-		return null;
+		component_class = LS.Components[ component_class ];
+		if(!component_class)
+			return;
 	}
 
-	//class
 	for(var i = 0, l = this._components.length; i < l; ++i)
-		if( this._components[i].constructor == component_class )
-		return this._components[i];
+	{
+		if( this._components[i].constructor === component_class )
+		{
+			if(index !== undefined && index > 0)
+			{
+				index--;
+				continue;
+			}
+			return this._components[i];
+		}
+	}
 	return null;
 }
 

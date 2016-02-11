@@ -74,7 +74,6 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 		this._root.flags.seen_by_reflections = false;
 
 	//add flags
-	LS.Renderer._is_reflection = true;
 	render_settings.brightness_factor = this.brightness_factor;
 	render_settings.colorclip_factor = this.colorclip_factor;
 	var old_layers = render_settings.layers;
@@ -180,7 +179,6 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 	}
 
 	//remove flags
-	LS.Renderer._is_reflection = false;
 	render_settings.clipping_plane = null;
 	render_settings.layers = old_layers;
 	delete render_settings.brightness_factor;

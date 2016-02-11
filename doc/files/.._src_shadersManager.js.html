@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -207,6 +211,7 @@ var ShadersManager = {
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
 	global_shaders: {}, //shader codes to be compiled using some macros
+	templates: {}, //WIP
 
 	default_shader: null, //a default shader to rely when a shader is not found
 	dump_compile_errors: true, //dump errors in console
@@ -574,6 +579,26 @@ var ShadersManager = {
 			this.registerSnippet( id, code );
 		}
 
+		var templates = xml.querySelectorAll(&#x27;template&#x27;);
+		for(var i = 0; i &lt; templates.length; ++i)
+		{
+			var template = templates[i];
+			var id = template.getAttribute(&quot;id&quot;);
+			var vs_code = template.querySelector(&quot;code[type=&#x27;vertex_shader&#x27;]&quot;).textContent;
+			var fs_code = template.querySelector(&quot;code[type=&#x27;fragment_shader&#x27;]&quot;).textContent;
+
+			var vs_info = this.processTemplateCode( vs_code );
+			var fs_info = this.processTemplateCode( fs_code );
+
+			template[id] = {
+				id: id,
+				vs_info: vs_info,
+				fs_info: fs_info
+			}
+
+			console.log( template[id] );
+		}
+
 		this.ready = true;
 	},
 	
@@ -760,6 +785,64 @@ var ShadersManager = {
 			gl_FragColor = texture2D(texture, coord) * color;\
 			}\
 		&#x27;,&quot;screen&quot;);
+	},
+
+	processTemplateCode: function( code )
+	{
+		//remove comments
+		code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, &#x27;&#x27;);
+
+		var hooks = {};
+		var parts = [];
+		var current_part = [];
+
+		var lines = code.split(&quot;\n&quot;);
+		for(var i = 0; i &lt; lines.length; i++)
+		{
+			var line = lines[i].trim();
+			if(!line.length)
+				continue;//empty line
+			if(line[0] != &quot;#&quot;)
+			{
+				current_part.push(line);
+				continue;
+			}
+
+			var t = line.split(&quot; &quot;);
+			if(t[0] == &quot;#pragma&quot;)
+			{
+				switch(t[1])
+				{
+					case &quot;import&quot;:
+						if( current_part.length )
+						{
+							parts.push( [ &quot;code&quot;, current_part.join(&quot;\n&quot;) ] );
+							current_part = [];
+						}
+						parts.push( [ &quot;import&quot;, t[3] ] );
+						break;
+					case &quot;hook&quot;: 
+						if( current_part.length )
+						{
+							parts.push( [ &quot;code&quot;, current_part.join(&quot;\n&quot;) ] );
+							current_part = [];
+						}
+						parts.push( [ &quot;hook&quot;, t[3] ] );
+						hooks[ t[3] ] = true;
+						break;
+					default:
+						current_part.push(line); //unknown pragma, pass it
+				}
+			}
+			else
+				current_part.push(line); //unknown macro, pass it
+		}
+
+		return {
+			code: code,
+			parts: parts,
+			hooks: hooks
+		};
 	}
 };
 

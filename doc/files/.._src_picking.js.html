@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -283,6 +287,8 @@ var Picking = {
 		var local_start = vec3.create();
 		var local_direction = vec3.create();
 
+		var compute_normal = !!options.normal;
+
 		//for every instance
 		for(var i = 0; i &lt; instances.length; ++i)
 		{
@@ -312,6 +318,7 @@ var Picking = {
 
 			//test against mesh
 			var collision_mesh = instance.collision_mesh;
+			var collision_normal = null;
 			
 			if(triangle_collision)
 				collision_mesh = instance.lod_mesh || instance.mesh;
@@ -325,14 +332,16 @@ var Picking = {
 				var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;
-				mat4.multiplyVec3(collision_point, model, hit.pos);
+				mat4.multiplyVec3( collision_point, model, hit.pos );
+				if(compute_normal)
+					collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
 			}
 			else
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
 			if(distance &lt; max_distance)
-				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ) );
+				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ) );
 
 			if(first_collision)
 				return collisions;

@@ -240,15 +240,25 @@ var Draw = {
 	* A helper to create shaders when you only want to specify some basic shading
 	* @method createSurfaceShader
 	* @params {string} surface_function GLSL code like: "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
-	* @params {object} macros [optional] object containing the macros
+	* @params {object} macros [optional] object containing the macros and value
+	* @params {object} uniforms [optional] object with name and type
 	* @return {GL.Shader} the resulting shader
 	*/
-	createSurfaceShader: function( surface_function, macros )
+	createSurfaceShader: function( surface_function, uniforms, macros )
 	{
 		//"vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
 
 		if( surface_function.indexOf("surface_function") == -1 )
 			surface_function = "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { " + surface_function + "\n } ";
+
+		if(uniforms)
+		{
+			if (uniforms.constructor === String)
+				surface_function = uniforms + ";\n" + surface_function;
+			else
+				for(var i in uniforms)
+					surface_function += "uniform " + uniforms[i] + " " + i + ";\n";
+		}
 
 		var vertex_shader = "\
 			precision mediump float;\n\

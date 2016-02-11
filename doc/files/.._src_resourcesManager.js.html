@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -338,7 +342,7 @@ var ResourcesManager = {
 	},	
 
 	/**
-	* Returns the filename without the extension
+	* Returns the filename without the folder or the extension
 	*
 	* @method getBasename
 	* @param {String} fullpath
@@ -496,6 +500,24 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns the resource type (&quot;Mesh&quot;,&quot;Texture&quot;,&quot;Material&quot;,&quot;SceneNode&quot;,...) of a given resource
+	*
+	* @method getResourceType
+	* @param {*} resource
+	* @return {String} the type in string format
+	*/
+	getResourceType: function( resource )
+	{
+		if(!resource)
+			return null;
+		if(resource.object_type)
+			return resource.object_type;
+		if(resource.constructor.resource_type)
+			return resource.constructor.resource_type;
+		return LS.getObjectClassName( resource );
+	},
+
+	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
 	* @method resourceModified
@@ -534,24 +556,25 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resource when processing it
 	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
 	*/
-	load: function(url, options, on_complete)
+	load: function( url, options, on_complete )
 	{
 		//if we already have it, then nothing to do
-		if(this.resources[url] != null)
+		var resource = this.resources[url];
+		if( resource != null &amp;&amp; !resource.is_preview )
 		{
 			if(on_complete)
-				on_complete(this.resources[url]);
+				on_complete(resource);
 			return true;
 		}
 
 		options = options || {};
 
 		//extract the filename extension
-		var extension = this.getExtension(url);
+		var extension = this.getExtension( url );
 		if(!extension) //unknown file type
 			return false;
 
-		if(this.resources_not_found[url])
+		if( this.resources_not_found[url] )
 			return;
 
 		//if it is already being loaded, then add the callback and wait
@@ -573,8 +596,12 @@ var ResourcesManager = {
 		//if(this.num_resources_being_loaded == 0)
 		//	LEvent.trigger( LS.ResourcesManager,&quot;start_loading_resources&quot;, url );
 		this.num_resources_being_loaded++;
-
 		var full_url = this.getFullURL(url);
+
+		//which type?
+		var format_info = LS.Formats.getFileFormatInfo( extension );
+		if(format_info &amp;&amp; format_info.has_preview &amp;&amp; !options.is_preview )
+			LEvent.trigger( this, &quot;load_resource_preview&quot;, url );
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
@@ -691,6 +718,8 @@ var ResourcesManager = {
 
 			//if(!resource.fullpath) //why??
 			resource.fullpath = fullpath;
+			if(options.is_preview)
+				resource.is_preview = true;
 
 			if( LS.ResourcesManager.resources_being_processed[ fullpath ] )
 				delete LS.ResourcesManager.resources_being_processed[ fullpath ];
@@ -699,12 +728,14 @@ var ResourcesManager = {
 			if(LS.ResourcesManager.keep_files &amp;&amp; (data.constructor == ArrayBuffer || data.constructor == String) )
 				resource._original_data = data;
 
-			//load associated resources
+			//load associated resources (some resources like prefabs have other resources associated that must be loaded too)
 			if(resource.getResources)
 				ResourcesManager.loadResources( resource.getResources({}) );
 
 			//register in the containers
 			LS.ResourcesManager.registerResource( fullpath, resource );
+			if(options.preview_of)
+				LS.ResourcesManager.registerResource( options.preview_of, resource );
 
 			//callback 
 			if(on_complete)
@@ -746,7 +777,9 @@ var ResourcesManager = {
 		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
-		LEvent.trigger(this,&quot;resource_registered&quot;, resource);
+		if(!resource.is_preview)
+			LEvent.trigger(this,&quot;resource_registered&quot;, resource);
+
 		LS.GlobalScene.refresh(); //render scene
 	},	
 
@@ -1188,9 +1221,10 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 		var cubemap_options = { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR };
 		if( filename.indexOf(&quot;CUBECROSSL&quot;) != -1 )
 			cubemap_options.is_cross = 1;
-		var texture = Texture.cubemapFromImage(img, cubemap_options);
+		var texture = GL.Texture.cubemapFromImage( img, cubemap_options );
+		if(!texture) //happens if the image is not a cubemap
+			return;
 		texture.img = img;
-		console.log(&quot;Cubemap created&quot;);
 	}
 	else //regular texture
 	{
@@ -1210,6 +1244,8 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), no_flip: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
 			texture = GL.Texture.fromImage(img, { format: gl.RGBA,  wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
+		if(!texture)
+			return;
 		texture.img = img;
 	}
 

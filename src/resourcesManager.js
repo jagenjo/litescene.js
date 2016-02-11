@@ -152,7 +152,7 @@ var ResourcesManager = {
 	},	
 
 	/**
-	* Returns the filename without the extension
+	* Returns the filename without the folder or the extension
 	*
 	* @method getBasename
 	* @param {String} fullpath
@@ -310,6 +310,24 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns the resource type ("Mesh","Texture","Material","SceneNode",...) of a given resource
+	*
+	* @method getResourceType
+	* @param {*} resource
+	* @return {String} the type in string format
+	*/
+	getResourceType: function( resource )
+	{
+		if(!resource)
+			return null;
+		if(resource.object_type)
+			return resource.object_type;
+		if(resource.constructor.resource_type)
+			return resource.constructor.resource_type;
+		return LS.getObjectClassName( resource );
+	},
+
+	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
 	* @method resourceModified
@@ -348,24 +366,25 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resource when processing it
 	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
 	*/
-	load: function(url, options, on_complete)
+	load: function( url, options, on_complete )
 	{
 		//if we already have it, then nothing to do
-		if(this.resources[url] != null)
+		var resource = this.resources[url];
+		if( resource != null && !resource.is_preview )
 		{
 			if(on_complete)
-				on_complete(this.resources[url]);
+				on_complete(resource);
 			return true;
 		}
 
 		options = options || {};
 
 		//extract the filename extension
-		var extension = this.getExtension(url);
+		var extension = this.getExtension( url );
 		if(!extension) //unknown file type
 			return false;
 
-		if(this.resources_not_found[url])
+		if( this.resources_not_found[url] )
 			return;
 
 		//if it is already being loaded, then add the callback and wait
@@ -387,8 +406,12 @@ var ResourcesManager = {
 		//if(this.num_resources_being_loaded == 0)
 		//	LEvent.trigger( LS.ResourcesManager,"start_loading_resources", url );
 		this.num_resources_being_loaded++;
-
 		var full_url = this.getFullURL(url);
+
+		//which type?
+		var format_info = LS.Formats.getFileFormatInfo( extension );
+		if(format_info && format_info.has_preview && !options.is_preview )
+			LEvent.trigger( this, "load_resource_preview", url );
 
 		//avoid the cache (if you want)
 		var nocache = this.getNoCache();
@@ -436,7 +459,9 @@ var ResourcesManager = {
 	processResource: function( url, data, options, on_complete )
 	{
 		options = options || {};
-		if(!data) throw("No data found when processing resource: " + url);
+		if( data === null || data === undefined )
+			throw("No data found when processing resource: " + url);
+
 		var resource = null;
 		var extension = this.getExtension(url);
 
@@ -457,23 +482,26 @@ var ResourcesManager = {
 			}
 			else
 			{
-				var type = data.object_type;
-				if(type && window[type])
+				var class_name = data.object_type;
+				if(class_name && LS.Classes[class_name] )
 				{
-					var ctor = window[type];
+					var ctor = LS.Classes[class_name];
 					var resource = null;
 					if(ctor.prototype.configure)
 					{
-						resource = new window[type]();
+						resource = new LS.Classes[class_name]();
 						resource.configure( data );
 					}
 					else
-						resource = new window[type]( data );
+						resource = new LS.Classes[class_name]( data );
 					inner_onResource(url, resource);
 					return;
 				}
 				else
+				{
+					console.warn("Resource Class name unknown: " + class_name );
 					return false;
+				}
 			}
 		}
 
@@ -484,7 +512,7 @@ var ResourcesManager = {
 			var resource = callback( url, data, options, inner_onResource );
 			if(resource === true)
 				return;
-			if(resource)
+			if( resource )
 				inner_onResource(url, resource);
 			else //resource is null
 			{
@@ -493,11 +521,22 @@ var ResourcesManager = {
 			}
 		}
 		else //unknown resource: convert to object
-			inner_onResource( url, { data: data } );
+		{
+			var resource = new LS.Resource();
+			resource.filename = resource.fullpath = url;
+			resource.data = data;
+			inner_onResource( url, resource );
+		}
 
 		//callback when the resource is ready
 		function inner_onResource( fullpath, resource )
 		{
+			if(!resource)
+			{
+				LS.ResourcesManager._resourceLoadedError( fullpath, "error processing the resource" );
+				return;
+			}
+
 			resource.remote = true;
 			resource.filename = fullpath;
 			if(options.filename) //used to overwrite
@@ -505,6 +544,8 @@ var ResourcesManager = {
 
 			//if(!resource.fullpath) //why??
 			resource.fullpath = fullpath;
+			if(options.is_preview)
+				resource.is_preview = true;
 
 			if( LS.ResourcesManager.resources_being_processed[ fullpath ] )
 				delete LS.ResourcesManager.resources_being_processed[ fullpath ];
@@ -513,12 +554,14 @@ var ResourcesManager = {
 			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) )
 				resource._original_data = data;
 
-			//load associated resources
+			//load associated resources (some resources like prefabs have other resources associated that must be loaded too)
 			if(resource.getResources)
 				ResourcesManager.loadResources( resource.getResources({}) );
 
 			//register in the containers
 			LS.ResourcesManager.registerResource( fullpath, resource );
+			if(options.preview_of)
+				LS.ResourcesManager.registerResource( options.preview_of, resource );
 
 			//callback 
 			if(on_complete)
@@ -535,6 +578,8 @@ var ResourcesManager = {
 	*/
 	registerResource: function( filename, resource )
 	{
+		if(!filename || !resource)
+			throw("registerResource missing filename or resource");
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
@@ -560,7 +605,9 @@ var ResourcesManager = {
 		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
-		LEvent.trigger(this,"resource_registered", resource);
+		if(!resource.is_preview)
+			LEvent.trigger(this,"resource_registered", resource);
+
 		LS.GlobalScene.refresh(); //render scene
 	},	
 
@@ -590,22 +637,7 @@ var ResourcesManager = {
 		return true;
 	},
 
-	/**
-	* Returns an object with a representation of the resource internal data
-	* The order to obtain that object is:
-	* 1. test for _original_file (File or Blob)
-	* 2. test for _original_data (ArrayBuffer)
-	* 3. toBinary() (ArrayBuffer)
-	* 4. toBlob() (Blob)
-	* 5. toBase64() (String)
-	* 6. serialize() (Object in JSON format)
-	* 7. data property 
-	* 8. JSON.stringify(...)
-	*
-	* @method computeResourceInternalData
-	* @param {Object} resource 
-	* @return {Object} it has two fields: data and encoding
-	*/
+	/* moved to LS.Resource as getDataToStore
 	computeResourceInternalData: function(resource)
 	{
 		if(!resource)
@@ -616,7 +648,13 @@ var ResourcesManager = {
 		var extension = "";
 
 		//get the data
-		if (resource._original_file) //file
+		if (resource.getStoringData) //function
+		{
+			data = resource.getDataToStore();
+			if(data && data.constructor == ArrayBuffer)
+				encoding = "binary";
+		}
+		else if (resource._original_file) //file
 		{
 			data = resource._original_file;
 			encoding = "file";
@@ -656,6 +694,7 @@ var ResourcesManager = {
 
 		return {data:data, encoding: encoding, extension: extension};
 	},
+	*/
 		
 	/**
 	* Used to load files and get them as File (or Blob)
@@ -772,6 +811,15 @@ var ResourcesManager = {
 		if(name.constructor === GL.Texture)
 			return name;
 		return null;
+	},
+
+	getMaterial: function( name_or_id )
+	{
+		if(!name_or_id)
+			return;
+		if(name_or_id[0] == "@")
+			return this.materials_by_uid[ name_or_id ];
+		return this.materials[ name_or_id ];
 	},
 
 	//tells to all the components, nodes, materials, etc, that one resource has changed its name
@@ -1002,9 +1050,10 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 		var cubemap_options = { wrapS: gl.MIRROR, wrapT: gl.MIRROR, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR };
 		if( filename.indexOf("CUBECROSSL") != -1 )
 			cubemap_options.is_cross = 1;
-		var texture = Texture.cubemapFromImage(img, cubemap_options);
+		var texture = GL.Texture.cubemapFromImage( img, cubemap_options );
+		if(!texture) //happens if the image is not a cubemap
+			return;
 		texture.img = img;
-		console.log("Cubemap created");
 	}
 	else //regular texture
 	{
@@ -1024,6 +1073,8 @@ LS.ResourcesManager.processImage = function(filename, img, options)
 			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), no_flip: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
 			texture = GL.Texture.fromImage(img, { format: gl.RGBA,  wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
+		if(!texture)
+			return;
 		texture.img = img;
 	}
 
@@ -1060,8 +1111,8 @@ LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", functi
 				texture._original_data = data;
 		}
 		URL.revokeObjectURL(objectURL); //free memory
-		if(!texture)
-			return;
+		//if(!texture)
+		//	return; //we want the error 
 
 		if(callback)
 			callback(filename,texture,options);
@@ -1137,11 +1188,18 @@ LS.ResourcesManager.processASCIIScene = function(filename, data, options) {
 		LS.ResourcesManager.processResource(i,res);
 	}
 
+	for(var i in scene_data.materials)
+	{
+		var material = scene_data.materials[i];
+		LS.ResourcesManager.processResource(i,material);
+	}
+
 	var node = new LS.SceneNode();
 	node.configure(scene_data.root);
 
 	LS.GlobalScene.root.addChild(node);
-	return node;
+
+	return true;
 }
 
 LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.processASCIIScene, "text","Scene");

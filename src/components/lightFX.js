@@ -1,3 +1,4 @@
+//TODO
 
 /**
 * LightFX create volumetric and flare effects to the light
@@ -118,7 +119,7 @@ LightFX.prototype.getGlareRenderInstance = function(light)
 		RI.onPreRender = LightFX.onGlarePreRender;
 	}
 	
-	RI.flags = RI_2D_FLAGS;
+	//RI.flags = RI_2D_FLAGS;
 	if(light)
 		vec3.copy( RI.center, light.getPosition() );
 	else
@@ -197,5 +198,5 @@ LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
 		this.glare_texture = new_name;
 }
 
-LS.registerComponent(LightFX);
-LS.LightFX = LightFX;
+//LS.registerComponent(LightFX);
+

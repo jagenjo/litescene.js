@@ -5,7 +5,7 @@
 * @param {String} object to configure from
 */
 
-function GeometricPrimitive(o)
+function GeometricPrimitive( o )
 {
 	this.enabled = true;
 	this.size = 10;
@@ -54,15 +54,17 @@ GeometricPrimitive.icon = "mini-icon-cube.png";
 GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive["@primitive"] = {widget:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 GeometricPrimitive["@subdivisions"] = { type:"number", step:1, min:0 };
+GeometricPrimitive["@point_size"] = { type:"number", step:0.001 };
 
-GeometricPrimitive.prototype.onAddedToNode = function(node)
+//we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
+GeometricPrimitive.prototype.onAddedToNode = function( node )
 {
-	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
-GeometricPrimitive.prototype.onRemovedFromNode = function(node)
+GeometricPrimitive.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
 GeometricPrimitive.prototype.updateMesh = function()

@@ -143,6 +143,14 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 	}
 }
 
+//not finished
+Component.prototype.createAction = function( name, callback, options )
+{
+	this[name] = callback;
+	this.constructor["@" + name ] = options || { button_text:"trigger", type:"button", callback: callback };
+}
+
+
 /**
 * Returns the locator string of this component
 * @method getLocator

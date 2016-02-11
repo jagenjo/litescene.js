@@ -398,10 +398,13 @@ Material.prototype.setProperty = function(name, value)
 		case "specular_factor":
 		case "specular_gloss":
 		case "reflection": 
-		case "blend_mode":
-		//strings
-		case "shader_name":
+			if(value.constructor === Number)
+				this[name] = value; 
+			break;
 		//bools
+		//strings
+		case "blend_mode":
+		case "shader_name":
 			this[name] = value; 
 			break;
 		//vectors

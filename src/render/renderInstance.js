@@ -20,7 +20,7 @@ var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
 var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
 var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
 var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
-var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
+//var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
 var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
 var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
 
@@ -31,7 +31,7 @@ var RI_IGNORE_AUTOUPDATE = 1 << 17; //if it could update matrix from scene
 
 //default flags for any instance
 var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
-var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
+//var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
 
 function RenderInstance( node, component )
 {
@@ -40,7 +40,7 @@ function RenderInstance( node, component )
 	this.layers = 3;
 
 	//info about the mesh
-	this.vertex_buffers = null;
+	this.vertex_buffers = {};
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
@@ -51,7 +51,7 @@ function RenderInstance( node, component )
 
 	//used in case the object has a secondary mesh
 	this.lod_mesh = null;
-	this.lod_vertex_buffers = null;
+	this.lod_vertex_buffers = {};
 	this.lod_index_buffer = null;
 
 	//where does it come from
@@ -136,10 +136,16 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 {
 	if( primitive == -1 || primitive === undefined )
 		primitive = gl.TRIANGLES;
-
-	this.mesh = mesh;
 	this.primitive = primitive;
-	this.vertex_buffers = mesh.vertexBuffers;
+
+	if(mesh != this.mesh)
+	{
+		this.mesh = mesh;
+		this.vertex_buffers = {};
+	}
+	//this.vertex_buffers = mesh.vertexBuffers;
+	for(var i in mesh.vertexBuffers)
+		this.vertex_buffers[i] = mesh.vertexBuffers[i];
 
 	switch(primitive)
 	{
@@ -186,8 +192,14 @@ RenderInstance.prototype.setLODMesh = function(lod_mesh)
 		return;
 	}
 
-	this.lod_mesh = lod_mesh;
-	this.lod_vertex_buffers = lod_mesh.vertexBuffers;
+	if(lod_mesh != this.lod_mesh)
+	{
+		this.lod_mesh = lod_mesh;
+		this.lod_vertex_buffers = {};
+	}
+	//this.vertex_buffers = mesh.vertexBuffers;
+	for(var i in lod_mesh.vertexBuffers)
+		this.lod_vertex_buffers[i] = lod_mesh.vertexBuffers[i];
 
 	switch(this.primitive)
 	{

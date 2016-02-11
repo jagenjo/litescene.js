@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -351,6 +355,13 @@ It also contains the parsers and methods in charge of processing them</p>
                         
                             <li class="index-item method">
                                 <a href="#method_getResource">getResource</a>
+
+                                
+                                
+                            </li>
+                        
+                            <li class="index-item method">
+                                <a href="#method_getResourceType">getResourceType</a>
 
                                 
                                 
@@ -657,7 +668,7 @@ It also contains the parsers and methods in charge of processing them</p>
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l593"><code>..&#x2F;src&#x2F;resourcesManager.js:593</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l622"><code>..&#x2F;src&#x2F;resourcesManager.js:622</code></a>
         
         </p>
 
@@ -783,7 +794,7 @@ The order to obtain that object is:
     </div>
 
     <div class="description">
-        <p>Returns the filename without the extension</p>
+        <p>Returns the filename without the folder or the extension</p>
 
     </div>
 
@@ -1323,7 +1334,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l743"><code>..&#x2F;src&#x2F;resourcesManager.js:743</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l772"><code>..&#x2F;src&#x2F;resourcesManager.js:772</code></a>
         
         </p>
 
@@ -1577,6 +1588,112 @@ The order to obtain that object is:
 </div>
 
                 
+                    <div id="method_getResourceType" class="method item">
+    <h3 class="name"><code>getResourceType</code></h3>
+
+    
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+            
+                <li class="arg">
+                    
+                        <code>resource</code>
+                    
+                </li>
+            
+            </ul><span class="paren">)</span>
+        </div>
+    
+
+    
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    <div class="meta">
+        
+            
+                
+                <p>
+                
+                Defined in
+                
+            
+        
+        
+        <a href="../files/.._src_resourcesManager.js.html#l312"><code>..&#x2F;src&#x2F;resourcesManager.js:312</code></a>
+        
+        </p>
+
+
+        
+
+        
+    </div>
+
+    <div class="description">
+        <p>Returns the resource type (&quot;Mesh&quot;,&quot;Texture&quot;,&quot;Material&quot;,&quot;SceneNode&quot;,...) of a given resource</p>
+
+    </div>
+
+    
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+            
+                <li class="param">
+                    
+                        <code class="param-name">resource</code>
+                        <span class="type"></span>
+                    
+
+                    
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                    
+                </li>
+            
+            </ul>
+        </div>
+    
+
+    
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                
+                    
+                        <span class="type">String</span>:
+                    
+                    <p>the type in string format</p>
+
+                
+            </div>
+        </div>
+    
+
+    
+</div>
+
+                
                     <div id="method_getTexture" class="method item">
     <h3 class="name"><code>getTexture</code></h3>
 
@@ -1623,7 +1740,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l760"><code>..&#x2F;src&#x2F;resourcesManager.js:760</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l789"><code>..&#x2F;src&#x2F;resourcesManager.js:789</code></a>
         
         </p>
 
@@ -1728,7 +1845,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l660"><code>..&#x2F;src&#x2F;resourcesManager.js:660</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l689"><code>..&#x2F;src&#x2F;resourcesManager.js:689</code></a>
         
         </p>
 
@@ -1824,7 +1941,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l726"><code>..&#x2F;src&#x2F;resourcesManager.js:726</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l755"><code>..&#x2F;src&#x2F;resourcesManager.js:755</code></a>
         
         </p>
 
@@ -1895,7 +2012,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l715"><code>..&#x2F;src&#x2F;resourcesManager.js:715</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l744"><code>..&#x2F;src&#x2F;resourcesManager.js:744</code></a>
         
         </p>
 
@@ -1984,7 +2101,7 @@ The order to obtain that object is:
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l342"><code>..&#x2F;src&#x2F;resourcesManager.js:342</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l360"><code>..&#x2F;src&#x2F;resourcesManager.js:360</code></a>
         
         </p>
 
@@ -2226,7 +2343,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l801"><code>..&#x2F;src&#x2F;resourcesManager.js:801</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l830"><code>..&#x2F;src&#x2F;resourcesManager.js:830</code></a>
         
         </p>
 
@@ -2349,7 +2466,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l424"><code>..&#x2F;src&#x2F;resourcesManager.js:424</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l447"><code>..&#x2F;src&#x2F;resourcesManager.js:447</code></a>
         
         </p>
 
@@ -2608,7 +2725,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l529"><code>..&#x2F;src&#x2F;resourcesManager.js:529</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l556"><code>..&#x2F;src&#x2F;resourcesManager.js:556</code></a>
         
         </p>
 
@@ -2995,7 +3112,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l679"><code>..&#x2F;src&#x2F;resourcesManager.js:679</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l708"><code>..&#x2F;src&#x2F;resourcesManager.js:708</code></a>
         
         </p>
 
@@ -3184,7 +3301,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l312"><code>..&#x2F;src&#x2F;resourcesManager.js:312</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l330"><code>..&#x2F;src&#x2F;resourcesManager.js:330</code></a>
         
         </p>
 
@@ -3272,7 +3389,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l328"><code>..&#x2F;src&#x2F;resourcesManager.js:328</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l346"><code>..&#x2F;src&#x2F;resourcesManager.js:346</code></a>
         
         </p>
 
@@ -3542,7 +3659,7 @@ request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&g
             
         
         
-        <a href="../files/.._src_resourcesManager.js.html#l567"><code>..&#x2F;src&#x2F;resourcesManager.js:567</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l596"><code>..&#x2F;src&#x2F;resourcesManager.js:596</code></a>
         
         </p>
 

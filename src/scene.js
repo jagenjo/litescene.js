@@ -18,9 +18,10 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
+	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
+	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
 	//FEATURES NOT YET FULLY IMPLEMENTED
-	this.external_scripts = [];
 	this._paths = []; //FUTURE FEATURE: to store splines I think
 	this._local_resources = {}; //used to store resources that go with the scene
 	this.animation = null;
@@ -62,6 +63,8 @@ SceneTree.prototype.init = function()
 	this.id = "";
 	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
 	this.local_repository = null;
+	this.external_scripts = [];
+	this.preloaded_resources = {};
 
 	this._root.removeAllComponents();
 	this._root.uid = LS.generateUId("NODE-");
@@ -205,10 +208,13 @@ SceneTree.prototype.configure = function(scene_info)
 	*/
 
 	if( scene_info.external_scripts )
-		this.external_scripts = scene_info.external_scripts;
+		this.external_scripts = scene_info.external_scripts.concat();
+
+	if( scene_info.preloaded_resources )
+		this.preloaded_resources = LS.cloneObject( scene_info.preloaded_resources );
 
 	if( scene_info.layer_names )
-		this.layer_names = scene_info.layer_names;
+		this.layer_names = scene_info.layer_names.concat();
 
 	if(scene_info.animation)
 		this.animation = new LS.Animation( scene_info.animation );
@@ -258,6 +264,7 @@ SceneTree.prototype.serialize = function()
 
 	o.layer_names = this.layer_names.concat();
 	o.external_scripts = this.external_scripts.concat();
+	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
 
 	this.serializeComponents( o );
 
@@ -587,7 +594,7 @@ SceneTree.prototype.findMaterialByUId = function(uid)
 	for(var i = 0; i < this._nodes.length; ++i)
 	{
 		var material = this._nodes[i].getMaterial();
-		if(material.uid == uid)
+		if(material && material.uid == uid)
 			return material;
 	}
 
@@ -707,27 +714,44 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value )
 
 
 /**
-* loads all the resources of all the nodes in this scene
-* it sends a signal to every node to get all the resources info
-* and load them in bulk using the ResourceManager
+* Returns the resources used by the scene
+* includes the nodes, components and preloads
 *
-* @method loadResources
+* @method getResources
+* @param {Object} resources [optional] object with resources
 */
-
-SceneTree.prototype.loadResources = function(on_complete)
+SceneTree.prototype.getResources = function( resources )
 {
-	var res = {};
+	resources = resources || {};
 
 	//scene resources
 	for(var i in this.textures)
 		if(this.textures[i])
-			res[ this.textures[i] ] = Texture;
+			resources[ this.textures[i] ] = GL.Texture;
 
-	if(this.light) this.light.getResources(res);
+	//resources that must be preloaded (because they will be used in the future)
+	if(this.preloaded_resources)
+		for(var i in this.preloaded_resources)
+			resources[ this.preloaded_resources[i] ] = true;
 
 	//resources from nodes
 	for(var i in this._nodes)
-		this._nodes[i].getResources(res);
+		this._nodes[i].getResources( resources );
+
+	return resources;
+}
+
+/**
+* Loads all the resources of all the nodes in this scene
+* it sends a signal to every node to get all the resources info
+* and load them in bulk using the ResourceManager
+*
+* @method loadResources
+* @param {Function} on_complete called when the load of all the resources is complete
+*/
+SceneTree.prototype.loadResources = function( on_complete )
+{
+	var resources = this.getResources();
 
 	//used for scenes with special repository folders
 	var options = {};
@@ -736,7 +760,7 @@ SceneTree.prototype.loadResources = function(on_complete)
 
 	//count resources
 	var num_resources = 0;
-	for(var i in res)
+	for(var i in resources)
 		++num_resources;
 
 	//load them
@@ -748,7 +772,7 @@ SceneTree.prototype.loadResources = function(on_complete)
 	}
 
 	LEvent.bind( LS.ResourcesManager, "end_loading_resources", on_loaded );
-	LS.ResourcesManager.loadResources( res );
+	LS.ResourcesManager.loadResources( resources );
 
 	function on_loaded()
 	{
@@ -1100,7 +1124,6 @@ SceneTree.prototype.findNodeComponents = function( type )
 	return result;
 }
 
-
-
 LS.SceneTree = SceneTree;
+LS.Classes.SceneTree = SceneTree;
 

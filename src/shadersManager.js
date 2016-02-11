@@ -21,6 +21,7 @@ var ShadersManager = {
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
 	global_shaders: {}, //shader codes to be compiled using some macros
+	templates: {}, //WIP
 
 	default_shader: null, //a default shader to rely when a shader is not found
 	dump_compile_errors: true, //dump errors in console
@@ -388,6 +389,26 @@ var ShadersManager = {
 			this.registerSnippet( id, code );
 		}
 
+		var templates = xml.querySelectorAll('template');
+		for(var i = 0; i < templates.length; ++i)
+		{
+			var template = templates[i];
+			var id = template.getAttribute("id");
+			var vs_code = template.querySelector("code[type='vertex_shader']").textContent;
+			var fs_code = template.querySelector("code[type='fragment_shader']").textContent;
+
+			var vs_info = this.processTemplateCode( vs_code );
+			var fs_info = this.processTemplateCode( fs_code );
+
+			template[id] = {
+				id: id,
+				vs_info: vs_info,
+				fs_info: fs_info
+			}
+
+			console.log( template[id] );
+		}
+
 		this.ready = true;
 	},
 	
@@ -574,6 +595,66 @@ var ShadersManager = {
 			gl_FragColor = texture2D(texture, coord) * color;\
 			}\
 		',"screen");
+	},
+
+	processTemplateCode: function( code )
+	{
+		//remove comments
+		code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
+
+		var hooks = {};
+		var parts = [];
+		var current_part = [];
+
+		var lines = code.split("\n");
+		for(var i = 0; i < lines.length; i++)
+		{
+			var line = lines[i].trim();
+			if(!line.length)
+				continue;//empty line
+			if(line[0] != "#")
+			{
+				current_part.push(line);
+				continue;
+			}
+
+			var t = line.split(" ");
+			if(t[0] == "#pragma")
+			{
+				switch(t[1])
+				{
+					case "import":
+						if( current_part.length )
+						{
+							parts.push( [ "code", current_part.join("\n") ] );
+							current_part = [];
+						}
+						parts.push( [ "import", t[3] ] );
+						break;
+					case "hook": 
+						if( current_part.length )
+						{
+							parts.push( [ "code", current_part.join("\n") ] );
+							current_part = [];
+						}
+						if( hooks[ t[3] ] !== undefined )
+							console.warn("Hook already found in shader: " + t[3] );
+						hooks[ t[3] ] = parts.length;
+						parts.push( [ "hook", t[3] ] );
+						break;
+					default:
+						current_part.push(line); //unknown pragma, pass it
+				}
+			}
+			else
+				current_part.push(line); //unknown macro, pass it
+		}
+
+		return {
+			code: code,
+			parts: parts,
+			hooks: hooks
+		};
 	}
 };
 

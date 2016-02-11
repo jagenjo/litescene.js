@@ -3,6 +3,7 @@
 /**
 * This component allow to integrate with WebVR to use VR Headset
 * @class VRCameraController
+* @namespace LS.Components
 * @param {Object} o object with the serialized info
 */
 function VRCameraController(o)

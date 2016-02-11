@@ -758,20 +758,26 @@ Light.prototype.generateShadowmap = function (render_settings)
 	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
 	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
 	{
-		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: gl.RGBA, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		var format = gl.RGBA; //gl.extensions.WEBGL_depth_texture ? gl.DEPTH_COMPONENT16 : gl.RGBA;
+		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 		LS.ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
+		if( this._shadowmap.texture_type == gl.TEXTURE_2D )
+		{
+			if(format == gl.RGBA)
+				this._fbo = new GL.FBO( [this._shadowmap] );
+			else
+				this._fbo = new GL.FBO( null, this._shadowmap );
+		}
 	}
+
+	LS.Renderer.setRenderPass("shadow");
 
 	//render the scene inside the texture
 	if(this.type == Light.OMNI) //render to cubemap
 	{
 		var closest_far = this.computeShadowmapFar();
-
-		LS.Renderer._current_pass = "shadow";
-		LS.Renderer._is_shadowmap = true;
 		this._shadowmap.unbind(); 
 		LS.Renderer.renderToCubemap( this.getPosition(), shadowmap_resolution, this._shadowmap, render_settings, this.near, closest_far );
-		LS.Renderer._is_shadowmap = false;
 	}
 	else //DIRECTIONAL and SPOTLIGHT
 	{
@@ -782,24 +788,20 @@ Light.prototype.generateShadowmap = function (render_settings)
 		// fragment depth.
 		this._shadowmap.unbind(); 
 		LS.Renderer._current_target = this._shadowmap;
-		this._shadowmap.drawTo(function() {
+		this._fbo.bind();
 
-			gl.clearColor(0, 0, 0, 0);
-			//gl.clearColor(1, 1, 1, 1);
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		gl.clearColor(0, 0, 0, 0);
+		//gl.clearColor(1, 1, 1, 1);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-			LS.Renderer._current_pass = "shadow";
-			LS.Renderer._is_shadowmap = true;
+		//RENDER INSTANCES in the shadowmap
+		LS.Renderer.renderInstances( render_settings );
 
-			//RENDER INSTANCES in the shadowmap
-			LS.Renderer.renderInstances( render_settings );
-
-			//restore
-			LS.Renderer._current_pass = "color";
-			LS.Renderer._is_shadowmap = false;
-		});
+		this._fbo.unbind();
 		LS.Renderer._current_target = null;
 	}
+
+	LS.Renderer.setRenderPass("color");
 }
 
 /**
@@ -847,7 +849,6 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 	mat4.multiplyVec3( p, matrix, p );
 	return true;
 }
-
 
 LS.registerComponent(Light);
 LS.Light = Light;

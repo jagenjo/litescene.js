@@ -12,11 +12,11 @@ function LScript()
 	this.exported_callbacks = []; //detects if there is a function with this name and exports it as a property
 	this.extracode = "";
 	this.extra_methods = null; //add object with methods here to attach methods
-	this.catch_exceptions = true;
 }
 
 LScript.onerror = null; //global used to catch errors in scripts
 
+LScript.catch_exceptions = false;
 LScript.show_errors_in_console = true;
 
 LScript.prototype.compile = function( arg_vars, save_context_vars )
@@ -59,8 +59,16 @@ LScript.prototype.compile = function( arg_vars, save_context_vars )
 		this._context = null;
 		if(LScript.show_errors_in_console)
 		{
+			var error_line = LScript.computeLineFromError(err);
 			console.error("Error in script\n" + err);
-			console.error(this._last_executed_code );
+			if( console.groupCollapsed )
+			{
+				console.groupCollapsed("Error line: " + error_line + " Watch code");
+				LScript.showCodeInConsole( this._last_executed_code, error_line );
+				console.groupEnd();
+			}
+			else
+				console.error("Error line: " + error_line);
 		}
 		if(this.onerror)
 			this.onerror(err, this._last_executed_code);
@@ -93,7 +101,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	if(!this._context || !this._context[name]) 
 		return;
 
-	if(!this.catch_exceptions)
+	if(!LScript.catch_exceptions)
 	{
 		if(argv && argv.constructor === Array && expand_parameters)
 			return this._context[name].apply(this._context, argv);
@@ -108,7 +116,16 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	}
 	catch(err)
 	{
+		var error_line = LScript.computeLineFromError(err);
 		console.error("Error in function\n" + err);
+		if( console.groupCollapsed )
+		{
+			console.groupCollapsed("Error line: " + error_line + " Watch code");
+			LScript.showCodeInConsole( this._last_executed_code, error_line );
+			console.groupEnd();
+		}
+		else
+			console.error("Error line: " + error_line);
 		if(this.onerror)
 			this.onerror(err);
 		//throw new Error( err.stack ); //TEST THIS
@@ -123,6 +140,19 @@ LScript.applyToConstructor = function(constructor, argArray, methods) {
 			Object.defineProperty( constructor.prototype, i, { value: methods[i], enumerable: true });
     var factoryFunction = constructor.bind.apply(constructor, args);
     return factoryFunction;
+}
+
+LScript.showCodeInConsole = function( code, error_line)
+{
+	if(!code)
+		return;
+	var lines = code.split("\n");
+	var gutter_style = "display: inline-block; width: 40px; background-color:#999; color: white;";
+	for(var i = 0; i < lines.length; i++ )
+		if(i == error_line)
+			console.log("%c "+i+". " + lines[i], "background-color: #A33; color: #FAA;" );
+		else
+			console.log("%c "+i+". ", gutter_style, lines[i] );
 }
 
 //remove comments and trims empty lines
@@ -185,6 +215,33 @@ LScript.expandCode = function(code)
 
 	return code;
 }
+
+LScript.computeLineFromError = function( err )
+{
+	if(err.lineNumber !== undefined)
+	{
+		return err.lineNumber;
+	}
+	else if(err.stack)
+	{
+		var lines = err.stack.split("\n");
+		var line = lines[1].trim();
+		if(line.indexOf("(native)") != -1)
+			return -1;
+		var tokens = line.split(" ");
+		var pos = line.lastIndexOf(":");
+		var pos2 = line.lastIndexOf(":",pos-1);
+		var num = parseInt( line.substr(pos2+1,pos-pos2-1) );
+		var ch = parseInt( line.substr(pos+1, line.length - 2 - pos) );
+		if(tokens[1] == "Object.CodingModule.eval")
+			return -1;
+		if (line.indexOf("LScript") != -1 || line.indexOf("<anonymous>") != -1 )
+			num -= 3; //ignore the header lines of the LScript class
+		return num;
+	}
+	return -1;
+}
+
 
 global.LScript = LScript;
 

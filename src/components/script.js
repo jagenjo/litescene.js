@@ -19,12 +19,12 @@ function Script(o)
 		getComponent: (function() { return this; }).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
 		createProperty: LS.Component.prototype.createProperty,
+		createAction: LS.Component.prototype.createAction,
 		bind: LS.Component.prototype.bind,
 		unbind: LS.Component.prototype.unbind,
 		unbindAll: LS.Component.prototype.unbindAll
 	};
 
-	this._script.catch_exceptions = false; //during execution
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
 	this._last_error = null;
@@ -413,9 +413,9 @@ Script.prototype.onError = function(err)
 	if(!scene)
 		return;
 
-	LEvent.trigger(this,"code_error",err);
-	LEvent.trigger(scene,"code_error",[this,err]);
-	LEvent.trigger(Script,"code_error",[this,err]);
+	LEvent.trigger( this, "code_error",err);
+	LEvent.trigger( scene, "code_error",[this,err]);
+	LEvent.trigger( Script, "code_error",[this,err]);
 	console.log("app finishing due to error in script");
 	scene.finish();
 }

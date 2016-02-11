@@ -34,7 +34,7 @@ if(typeof(LiteGraph) != "undefined")
 		if(this.inputs)
 		for(var i = 0; i < this.inputs.length; ++i)
 		{
-			var input = this.inputs[i];
+			var input = this.inputs[i]; //??
 			var v = this.getInputData(i);
 			if(v === undefined)
 				continue;
@@ -718,6 +718,37 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
+	function LGraphLocatorProperty()
+	{
+		this.addInput("in");
+		this.addOutput("out");
+		this.size = [80,20];
+		this.properties = {locator:""};
+	}
+
+	LGraphLocatorProperty.title = "Property";
+	LGraphLocatorProperty.desc = "A property of a node or component of the scene specified by its locator string";
+
+	LGraphLocatorProperty.prototype.onExecute = function()
+	{
+		var locator = this.properties.locator;
+		if(!this.properties.locator)
+			return;
+
+		var info = this._locator_info = LS.GlobalScene.getPropertyInfo( locator );
+
+		if(info && info.target)
+		{
+			this.title = info.name;
+			if( this.inputs.length && this.inputs[0].link !== null )
+				LSQ.setFromInfo( info, this.getInputData(0) );
+			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
+				this.setOutputData( 0, LSQ.getFromInfo( info ));
+		}
+	}
+
+	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
+
 	//************************************
 
 	function LGraphFrame()
@@ -747,6 +778,9 @@ if(typeof(LiteGraph) != "undefined")
 
 		if(!this._color_texture)
 			return;
+
+		if( !ctx.webgl )
+			return; //is not working well
 
 		//Different texture? then get it from the GPU
 		if(this._last_preview_tex != this._last_tex || !this._last_preview_tex)

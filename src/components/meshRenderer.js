@@ -1,14 +1,57 @@
 
+/**
+* Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh
+* @class MeshRenderer
+* @namespace LS.Components
+* @constructor
+* @param {String} object to configure from
+*/
 function MeshRenderer(o)
 {
 	this.enabled = true;
+
+	/**
+	* The name of the mesh to render
+	* @property mesh {string}
+	* @default null;
+	*/
 	this.mesh = null;
+	/**
+	* The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances
+	* @property lod_mesh {string}
+	* @default null;
+	*/
 	this.lod_mesh = null;
+	/**
+	* The id of the submesh group to render, if the id is -1 then all the mesh is rendered.
+	* @property submesh_id {number}
+	* @default -1;
+	*/
 	this.submesh_id = -1;
 	this.material = null;
+	/**
+	* The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe
+	* @property primitive {number}
+	* @default -1;
+	*/
 	this._primitive = -1;
+	/**
+	* If faces are two sided
+	* @property two_sided {boolean}
+	* @default -1;
+	*/
 	this.two_sided = false;
+	/**
+	* When rendering points the point size, if positive is in world space, if negative is in screen space
+	* @property point_size {number}
+	* @default -1;
+	*/
 	this.point_size = 0.1;
+	/**
+	* When rendering points tells if you want to use for every point the texture coordinates of the vertex or the point texture coordinates
+	* @property textured_points {boolean}
+	* @default false;
+	*/
 	this.textured_points = false;
 
 	if(o)
@@ -49,6 +92,7 @@ MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	return t;
 }};
 
+//we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
 MeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
@@ -112,15 +156,26 @@ MeshRenderer.prototype.serialize = function()
 }
 
 MeshRenderer.prototype.getMesh = function() {
-	if(typeof(this.mesh) === "string")
+	if(!this.mesh)
+		return null;
+
+	if( this.mesh.constructor === String )
 		return LS.ResourcesManager.meshes[this.mesh];
 	return this.mesh;
 }
 
 MeshRenderer.prototype.getLODMesh = function() {
-	if(typeof(this.lod_mesh) === "string")
-		return LS.ResourcesManager.meshes[this.lod_mesh];
-	return this.low_mesh;
+	if(!this.lod_mesh)
+		return null;
+
+	if( this.lod_mesh.constructor === String )
+		return LS.ResourcesManager.meshes[ this.lod_mesh ];
+
+	return null;
+}
+
+MeshRenderer.prototype.getAnyMesh = function() {
+	return (this.getMesh() || this.getLODMesh());
 }
 
 MeshRenderer.prototype.getResources = function(res)
@@ -150,7 +205,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.enabled)
 		return;
 
-	var mesh = this.getMesh();
+	var mesh = this.getAnyMesh();
 	if(!mesh)
 		return null;
 
@@ -160,7 +215,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._RI;
 	if(!RI)
-		this._RI = RI = new LS.RenderInstance(this._root, this);
+		this._RI = RI = new LS.RenderInstance( this._root, this );
 
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
@@ -196,7 +251,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//used for raycasting
 	if(this.lod_mesh)
 	{
-		if(typeof(this.lod_mesh) === "string")
+		if( this.lod_mesh.constructor === String )
 			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;

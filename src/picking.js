@@ -97,6 +97,8 @@ var Picking = {
 		var local_start = vec3.create();
 		var local_direction = vec3.create();
 
+		var compute_normal = !!options.normal;
+
 		//for every instance
 		for(var i = 0; i < instances.length; ++i)
 		{
@@ -126,6 +128,7 @@ var Picking = {
 
 			//test against mesh
 			var collision_mesh = instance.collision_mesh;
+			var collision_normal = null;
 			
 			if(triangle_collision)
 				collision_mesh = instance.lod_mesh || instance.mesh;
@@ -139,14 +142,16 @@ var Picking = {
 				var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;
-				mat4.multiplyVec3(collision_point, model, hit.pos);
+				mat4.multiplyVec3( collision_point, model, hit.pos );
+				if(compute_normal)
+					collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
 			}
 			else
 				vec3.transformMat4(collision_point, collision_point, model);
 
 			var distance = vec3.distance( origin, collision_point );
 			if(distance < max_distance)
-				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance ) );
+				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ) );
 
 			if(first_collision)
 				return collisions;
@@ -181,7 +186,7 @@ var Picking = {
 	_picking_depth: 0,
 	_picking_next_color_id: 0,
 	_picking_nodes: {},
-	_picking_render_settings: new RenderSettings({is_picking: true}),
+	_picking_render_settings: new RenderSettings(),
 
 	renderPickingBuffer: function( scene, camera, x, y, layers )
 	{
@@ -192,7 +197,7 @@ var Picking = {
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
-			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug
+			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
 		//y = gl.canvas.height - y; //reverse Y
@@ -200,6 +205,7 @@ var Picking = {
 		this._picking_next_color_id = 0;
 
 		LS.Renderer._current_target = this._pickingMap;
+		var picking_render_settings = this._picking_render_settings;
 
 		this._pickingMap.drawTo(function() {
 			//var viewport = camera.getLocalViewport();
@@ -218,26 +224,25 @@ var Picking = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 			//gl.viewport(x-20,y-20,40,40);
-			LS.Renderer._current_pass = "picking";
-			LS.Renderer._is_picking = true;
-			that._picking_render_settings.layers = layers;
+			LS.Renderer.setRenderPass("picking");
+			picking_render_settings.layers = layers;
 
 			//check instances colliding with cursor using a ray against AABBs
 			//TODO
 
-			LS.Renderer.renderInstances( that._picking_render_settings )//, cursor_instances );
+			LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
 			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
 
 			LEvent.trigger( scene, "renderPicking", [x,y] );
 			LEvent.trigger( LS.Renderer, "renderPicking", [x,y] );
+
+			LS.Renderer.setRenderPass("color");
 
 			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, that._picking_color );
 
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 
-			LS.Renderer._is_picking = false;
-			LS.Renderer._current_pass = "picking";
 		});
 
 		LS.Renderer._current_target = null;

@@ -373,7 +373,7 @@ global.Collada = {
 			switch( xmlchild.localName )
 			{
 				case "contributor": 
-					var tool = xmlchild.querySelector("authoring_tool")[0];
+					var tool = xmlchild.querySelector("authoring_tool");
 					if(tool)
 						metadata["authoring_tool"] = tool.textContext;
 					break;
@@ -815,6 +815,8 @@ global.Collada = {
 		for(var i = 0; i < xmlnode.childNodes.length; i++)
 		{
 			var xml = xmlnode.childNodes.item(i);
+			if( !xml || xml.nodeType != 1 ) //tag
+				continue;
 
 			if(xml.localName == "matrix")
 			{
@@ -1206,7 +1208,8 @@ global.Collada = {
 					{
 						if(k == 0)
 							first_index = current_index;
-						if(k > 2 * num_data_vertex) //triangulate polygons
+						//if(k > 2 * num_data_vertex) //not sure if use this or the next line, the next one works in some DAEs but not sure if it works in all
+						if(k > 2) //triangulate polygons: ensure this works
 						{
 							indicesArray.push( first_index );
 							indicesArray.push( prev_index );
@@ -1264,7 +1267,7 @@ global.Collada = {
 		var num_data_vertex = buffers.length;
 
 		var pos = 0;
-		for(var i = 0; i < vcount.length; ++i)
+		for(var i = 0, l = vcount.length; i < l; ++i)
 		{
 			var num_vertices = vcount[i];
 
@@ -1304,7 +1307,8 @@ global.Collada = {
 				{
 					if(k == 0)
 						first_index = current_index;
-					if(k > 2 * num_data_vertex) //triangulate polygons
+					//if(k > 2 * num_data_vertex) //not sure if use this or the next line, the next one works in some DAEs but not sure if it works in all
+					if(k > 2) //triangulate polygons: tested, this works
 					{
 						indicesArray.push( first_index );
 						indicesArray.push( prev_index );
@@ -1888,7 +1892,7 @@ global.Collada = {
 			var remap = mesh._remap;
 			var max_bone = 0; //max bone affected
 
-			for(var i = 0; i < vcount.length; ++i)
+			for(var i = 0, l = vcount.length; i < l; ++i)
 			{
 				var num_bones = vcount[i]; //num bones influencing this vertex
 
@@ -2139,7 +2143,8 @@ global.Collada = {
 		if(!xmlnode) return null;
 		var text = xmlnode.textContent;
 		text = text.replace(/\n/gi, " "); //remove line breaks
-		text = text.replace(/\s\s/gi, " ");
+		text = text.replace(/\s\s+/gi, " ");
+		text = text.replace(/\t/gi, "");
 		text = text.trim(); //remove empty spaces
 		var numbers = text.split(" "); //create array
 		var count = xmlnode.getAttribute("count");

@@ -6,6 +6,7 @@
 ../src/core.js
 ../src/defines.js
 ../src/network.js
+../src/resource.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
 
@@ -30,11 +31,12 @@
 ../src/components/skinnedMeshRenderer.js
 ../src/components/morphDeformer.js
 ../src/components/skinDeformer.js
-../src/components/spriteRenderer.js
 ../src/components/skybox.js
 ../src/components/background.js
 ../src/components/collider.js
 ../src/components/customData.js
+../src/components/sprite.js
+../src/components/spriteAtlas.js
 
 ../src/components/annotations.js
 ../src/components/animator.js
@@ -57,7 +59,6 @@
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
 ../src/components/spherize.js
-../src/components/sprite.js
 ../src/components/VRCameraController.js
 ../src/components/poser.js
 ../src/components/threeJS.js
@@ -70,6 +71,7 @@
 ../src/helpers/path.js
 ../src/helpers/prefab.js
 ../src/helpers/textureFX.js
+../src/helpers/tween.js
 
 ../src/render/renderSettings.js
 ../src/render/renderInstance.js

@@ -8,9 +8,18 @@
 * @constructor
 */
 
+//passes
+var COLOR_PASS = 1;
+var SHADOW_PASS = 2;
+var PICKING_PASS = 3;
+
 var Renderer = {
+
 	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
 	default_material: new StandardMaterial(), //used for objects without material
+
+	render_passes: {}, //used to specify the render function for every kind of render pass (color, shadow, picking, etc)
+	renderPassFunction: null, //function to call when rendering instances
 
 	global_aspect: 1, //used when rendering to a texture that doesnt have the same aspect as the screen
 
@@ -19,6 +28,7 @@ var Renderer = {
 	_global_viewport: vec4.create(), //the viewport we have available to render the full frame (including subviewports), usually is the 0,0,gl.canvas.width,gl.canvas.height
 	_full_viewport: vec4.create(), //contains info about the full viewport available to render (current texture size or canvas size)
 
+	//temporal info
 	_current_scene: null,
 	_current_render_settings: null,
 	_current_camera: null,
@@ -48,12 +58,18 @@ var Renderer = {
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
 
+	_close_lights: [],
+
 	//called from...
 	init: function()
 	{
 		this._missing_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		LS.Draw.init();
 		LS.Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
+
+		this.registerRenderPass( "color", { id: COLOR_PASS, render_instance: this.renderColorPassInstance } );
+		this.registerRenderPass( "shadow", { id: SHADOW_PASS, render_instance: this.renderShadowPassInstance } );
+		this.registerRenderPass( "picking", { id: PICKING_PASS, render_instance: this.renderPickingPassInstance } );
 	},
 
 	reset: function()
@@ -152,7 +168,8 @@ var Renderer = {
 		if(render_settings.render_fx)
 			LEvent.trigger( scene, "showFrameBuffer", render_settings );
 
-		LEvent.trigger( scene, "renderGUI", render_settings );
+		if(render_settings.render_gui)
+			LEvent.trigger( scene, "renderGUI", render_settings );
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_settings );
@@ -223,7 +240,6 @@ var Renderer = {
 		gl.disable(gl.SCISSOR_TEST);
 
 		//render scene
-		this._current_pass = "color";
 
 		LEvent.trigger(scene, "beforeRenderScene", camera );
 		scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
@@ -302,9 +318,32 @@ var Renderer = {
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 	},
+	
+	/**
+	* To set gl state to a known and constant state in every render pass
+	*
+	* @method resetGLState
+	* @param {RenderSettings} render_settings
+	*/
+	resetGLState: function( render_settings )
+	{
+		render_settings = render_settings || this._current_render_settings;
+
+		gl.enable( gl.CULL_FACE );
+		if(render_settings.depth_test)
+			gl.enable( gl.DEPTH_TEST );
+		else
+			gl.disable( gl.DEPTH_TEST );
+		gl.disable( gl.BLEND );
+		gl.depthFunc( gl.LESS );
+		gl.depthMask(true);
+		gl.frontFace(gl.CCW);
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		//gl.lineWidth(1);
+	},
 
 	/**
-	* Calls the render method for every instance (it also takes into account events and frustrum culling 
+	* Calls the render method for every instance (it also takes into account events and frustrum culling)
 	*
 	* @method renderInstances
 	* @param {RenderSettings} render_settings
@@ -316,6 +355,7 @@ var Renderer = {
 		if(!scene)
 			return console.warn("Renderer.renderInstances: no scene found");
 
+		var pass = this._current_pass;
 		var camera = this._current_camera;
 		var camera_index_flag = camera._rendering_index != -1 ? (1<<(camera._rendering_index)) : 0;
 		var apply_frustum_culling = render_settings.frustum_culling;
@@ -323,7 +363,6 @@ var Renderer = {
 		var layers_filter = camera.layers;
 		if( render_settings.layers !== undefined )
 			layers_filter = render_settings.layers;
-		var is_color_render = !this._is_shadowmap && !this._is_picking;
 
 		LEvent.trigger( scene, "beforeRenderInstances", render_settings );
 		scene.triggerInNodes( "beforeRenderInstances", render_settings );
@@ -332,36 +371,21 @@ var Renderer = {
 		this.fillSceneShaderQuery( scene, render_settings );
 		this.fillSceneShaderUniforms( scene, render_settings );
 
-		//render background: maybe this should be moved to a component
-		if(is_color_render && scene.info.textures["background"])
-		{
-			var texture = scene.info.textures["background"];
-			if(texture)
-			{
-				if( texture.constructor === String)
-					texture = LS.ResourcesManager.textures[ scene.info.textures["background"] ];
-				if( texture && texture.constructor === GL.Texture )
-				{
-					gl.disable( gl.BLEND );
-					gl.disable( gl.DEPTH_TEST );
-					texture.toViewport();
-				}
-			}
-		}
-
 		//reset state of everything!
-		this.resetGLState();
+		this.resetGLState( render_settings );
 
 		//this.updateVisibleInstances(scene,options);
-		var lights = this._visible_lights;
-		var numLights = lights.length;
 		var render_instances = instances || this._visible_instances;
 
 		LEvent.trigger( scene, "renderInstances", render_settings );
 		LEvent.trigger( this, "renderInstances", render_settings );
 
 		//reset again!
-		this.resetGLState();
+		this.resetGLState( render_settings );
+
+		var render_instance_func = pass.render_instance;
+		if(!render_instance_func)
+			return;
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -372,15 +396,9 @@ var Renderer = {
 			instance._is_visible = false;
 
 			//hidden nodes
-			if( this._is_reflection && node_flags.seen_by_reflections == false)
+			if( pass.id == SHADOW_PASS && !(instance.flags & RI_CAST_SHADOWS) )
 				continue;
-			if( this._is_shadowmap && !(instance.flags & RI_CAST_SHADOWS) )
-				continue;
-			if( node_flags.seen_by_camera == false && is_color_render && !this._is_reflection )
-				continue;
-			if( node_flags.seen_by_picking == false && this._is_picking )
-				continue;
-			if( node_flags.selectable == false && this._is_picking )
+			if( pass.id == PICKING_PASS && node_flags.selectable === false )
 				continue;
 			if( (layers_filter & instance.layers) === 0 )
 				continue;
@@ -406,179 +424,74 @@ var Renderer = {
 				instance._camera_visibility |= camera_index_flag;
 		}
 
-		var close_lights = [];
-
 		//for each render instance
 		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
 			//render instance
 			var instance = render_instances[i];
 
-			if(!instance._is_visible)
+			if(!instance._is_visible || !instance.mesh)
 				continue;
-
-			if(instance.flags & RI_RENDER_2D)
-			{
-				this.render2DInstance(instance, scene, render_settings );
-				if(instance.onPostRender)
-					instance.onPostRender(render_settings);
-				continue;
-			}
 
 			this._rendered_instances += 1;
 
 			//choose the appropiate render pass
-			if(this._is_shadowmap)
-				this.renderShadowPassInstance( instance, render_settings );
-			else if(this._is_picking)
-				this.renderPickingInstance( instance, render_settings );
-			else
-			{
-				//Compute lights affecting this RI (by proximity, only takes into account spherical bounding)
-				if( is_color_render )
-				{
-					close_lights.length = 0;
-					for(var j = 0; j < numLights; j++)
-					{
-						var light = lights[j];
-						if( (light._root.layers & instance.layers) == 0 || (light._root.layers & camera.layers) == 0)
-							continue;
-						var light_intensity = light.computeLightIntensity();
-						if(light_intensity < 0.0001)
-							continue;
-						var light_radius = light.computeLightRadius();
-						var light_pos = light.position;
-						if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
-							close_lights.push(light);
-					}
-				}
-				//else //use all the lights
-				//	close_lights = lights;
+			render_instance_func.call( this, instance, render_settings ); //by default calls renderColorInstance but it could call renderShadowPassInstance
 
-				//render multipass
-				this.renderColorPassInstance( instance, close_lights, scene, render_settings );
-			}
-
+			//some instances do a post render action
 			if(instance.onPostRender)
-				instance.onPostRender(render_settings);
+				instance.onPostRender( render_settings );
 		}
 
-		LEvent.trigger(scene, "renderScreenSpace", render_settings);
-
-		//foreground object
-		if(is_color_render && scene.info.textures["foreground"])
-		{
-			var texture = scene.info.textures["foreground"];
-			if( texture )
-			{
-				if (texture.constructor === String )
-					texture = LS.ResourcesManager.textures[ scene.info.textures["foreground"] ];
-
-				if(texture && texture.constructor === GL.Texture )
-				{
-					gl.enable( gl.BLEND );
-					gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-					gl.disable( gl.DEPTH_TEST );
-					texture.toViewport();
-					gl.disable( gl.BLEND );
-					gl.enable( gl.DEPTH_TEST );
-				}
-			}
-		}
+		LEvent.trigger( scene, "renderScreenSpace", render_settings);
 
 		//restore state
-		this.resetGLState();
+		this.resetGLState( render_settings );
 
-		LEvent.trigger(scene, "afterRenderInstances", render_settings);
+		LEvent.trigger( scene, "afterRenderInstances", render_settings);
 		scene.triggerInNodes("afterRenderInstances", render_settings);
 
 		//and finally again
-		this.resetGLState();
+		this.resetGLState( render_settings );
 	},
 
-	/**
-	* To set gl state to a known and constant state in every render pass
-	*
-	* @method resetGLState
-	* @param {RenderSettings} render_settings
-	*/
-	resetGLState: function()
+	//this function is in charge of rendering the regular color pass (used also for reflections)
+	renderColorPassInstance: function( instance, render_settings )
 	{
-		gl.enable( gl.CULL_FACE );
-		gl.enable( gl.DEPTH_TEST );
-		gl.disable( gl.BLEND );
-		gl.depthFunc( gl.LESS );
-		gl.depthMask(true);
-		gl.frontFace(gl.CCW);
-		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		//gl.lineWidth(1);
-	},
+		var lights = this._visible_lights;
+		var numLights = lights.length;
+		var close_lights = this._close_lights;
 
-	bindSamplers: function(samplers, shader)
-	{
-		var sampler_uniforms = {};
-		var slot = 0;
-		for(var i in samplers)
+		//Compute lights affecting this RI (by proximity, only takes into account spherical bounding)
+		close_lights.length = 0;
+		for(var j = 0; j < numLights; j++)
 		{
-			var sampler = samplers[i];
-			if(!sampler) //weird case
-			{
-				throw("Samplers should always be valid values"); //assert
-			}
-
-			//if(shader && !shader[i]) continue; ¿?
-
-			//REFACTOR THIS
-			var tex = null;
-			if(sampler.constructor === String || sampler.constructor === Texture) //old way
-			{
-				tex = sampler;
-				sampler = null;
-			}
-			else if(sampler.texture)
-				tex = sampler.texture;
-			else
+			var light = lights[j];
+			if( (light._root.layers & instance.layers) == 0 || (light._root.layers & this._current_camera.layers) == 0)
 				continue;
-
-			if(tex.constructor === String)
-				tex = LS.ResourcesManager.textures[ tex ];
-			if(!tex)
-			{
-				tex = this._missing_texture;
-				//continue;
-			}
-
-			//bind
-			sampler_uniforms[ i ] = tex.bind( slot++ );
-
-			//texture properties
-			if(sampler)
-			{
-				if(sampler.minFilter)
-					gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
-				if(sampler.magFilter)
-					gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
-				if(sampler.wrap)
-				{
-					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
-					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
-				}
-			}
+			var light_intensity = light.computeLightIntensity();
+			if(light_intensity < 0.0001)
+				continue;
+			var light_radius = light.computeLightRadius();
+			var light_pos = light.position;
+			if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
+				close_lights.push( light );
 		}
 
-		return sampler_uniforms;
+		//render multipass
+		this.renderColorMultiPassLightingInstance( instance, close_lights, this._current_scene, render_settings );
 	},
 
 	/**
-	* Renders this render instance taking into account all the lights that affect it
+	* Renders this render instance taking into account all the lights that affect it and doing a render for every light
 	*
-	* @method renderColorPassInstance
+	* @method renderColorMultiPassLightingInstance
 	* @param {RenderInstance} instance
 	* @param {Array} lights array containing al the lights affecting this RI
 	* @param {SceneTree} scene
 	* @param {RenderSettings} render_settings
 	*/
-	renderColorPassInstance: function( instance, lights, scene, render_settings )
+	renderColorMultiPassLightingInstance: function( instance, lights, scene, render_settings )
 	{
 		var camera = this._current_camera;
 		var node = instance.node;
@@ -611,7 +524,8 @@ var Renderer = {
 		if(material.blend_mode !== Blend.NORMAL)
 		{
 			gl.enable( gl.BLEND );
-			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
+			if(instance.blend_func)
+				gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
 		}
 		else
 			gl.disable( gl.BLEND );
@@ -699,12 +613,15 @@ var Renderer = {
 			{
 				gl.enable(gl.BLEND);
 				gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
-				gl.depthFunc( gl.LEQUAL );
-				//gl.depthMask(true);
-				if(node.flags.depth_test)
-					gl.enable(gl.DEPTH_TEST);
-				else
-					gl.disable( gl.DEPTH_TEST );
+				if(render_settings.depth_test)
+				{
+					gl.depthFunc( gl.LEQUAL );
+					//gl.depthMask(true);
+					if( node.flags.depth_test )
+						gl.enable( gl.DEPTH_TEST );
+					else
+						gl.disable( gl.DEPTH_TEST );
+				}
 			}
 			//set depth func
 			if(material.depth_func)
@@ -807,98 +724,13 @@ var Renderer = {
 	},
 
 	/**
-	* Special case of render instance that uses a 2D projection (used for GUIS)
-	* Will be refactored for a better system
-	*
-	* @method render2DInstance
-	* @param {RenderInstance} instance
-	* @param {SceneTree} scene
-	* @param {RenderSettings} render_settings
-	*/
-	render2DInstance:  function(instance, scene, options)
-	{
-		var node = instance.node;
-		var material = instance.material;
-
-		//compute matrices
-		var model = this._temp_matrix;
-		mat4.identity(model);
-
-		//project from 3D to 2D
-		var pos = vec3.create();
-
-		if(instance.pos2D)
-			pos.set(instance.pos2D);
-		else
-		{
-			mat4.projectVec3( pos, this._viewprojection_matrix, instance.center );
-			if(pos[2] < 0) return;
-			pos[2] = 0;
-		}
-
-		mat4.translate( model, model, pos );
-		var aspect = gl.canvas.clientWidth / gl.canvas.clientHeight; //gl.drawingBufferWidth / gl.drawingBufferHeight;
-		var scale = vec3.fromValues(1, aspect ,1);
-		if(instance.scale_2D)
-		{
-			scale[0] *= instance.scale_2D[0];
-			scale[1] *= instance.scale_2D[1];
-		}
-		mat4.scale( model, model, scale );
-		mat4.multiply(this._mvp_matrix, this._2Dviewprojection_matrix, model );
-
-		var node_uniforms = node._uniforms;
-		node_uniforms.u_mvp = this._mvp_matrix;
-		node_uniforms.u_model = model;
-		node_uniforms.u_normal_model = this._identity_matrix;
-
-		//FLAGS
-		this.enableInstanceFlags(instance, options);
-
-		//blend flags
-		if(material.blend_mode != Blend.NORMAL)
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
-		}
-		else
-		{
-			gl.enable( gl.BLEND );
-			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-		}
-
-		//assign material samplers (maybe they are not used...)
-		/*
-		var slot = 0;
-		for(var i in material._samplers )
-			material._uniforms[ i ] = material._samplers[i].bind( slot++ );
-		*/
-
-		var shader_name = "flat_texture";
-		var shader = ShadersManager.get( shader_name );
-
-		var samplers = {};
-		samplers.merge( scene._samplers );
-		samplers.merge( instance._final_samplers );
-		var sampler_uniforms = this.bindSamplers( samplers, shader );
-
-		//assign uniforms
-		shader.uniformsArray( [ sampler_uniforms, node_uniforms, material._uniforms, instance.uniforms ]);
-
-		//render
-		instance.render( shader );
-		this._rendercalls += 1;
-		return;
-	},	
-
-	/**
 	* Render instance into the picking buffer
 	*
 	* @method renderPickingInstance
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
-	renderPickingInstance: function( instance, render_settings )
+	renderPickingPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
 		var camera = this._current_camera;
@@ -928,6 +760,61 @@ var Renderer = {
 		instance.render(shader);
 	},
 
+	bindSamplers: function(samplers, shader)
+	{
+		var sampler_uniforms = {};
+		var slot = 0;
+		for(var i in samplers)
+		{
+			var sampler = samplers[i];
+			if(!sampler) //weird case
+			{
+				throw("Samplers should always be valid values"); //assert
+			}
+
+			//if(shader && !shader[i]) continue; ¿?
+
+			//REFACTOR THIS
+			var tex = null;
+			if(sampler.constructor === String || sampler.constructor === Texture) //old way
+			{
+				tex = sampler;
+				sampler = null;
+			}
+			else if(sampler.texture)
+				tex = sampler.texture;
+			else
+				continue;
+
+			if(tex.constructor === String)
+				tex = LS.ResourcesManager.textures[ tex ];
+			if(!tex)
+			{
+				tex = this._missing_texture;
+				//continue;
+			}
+
+			//bind
+			sampler_uniforms[ i ] = tex.bind( slot++ );
+
+			//texture properties
+			if(sampler)
+			{
+				if(sampler.minFilter)
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+				if(sampler.magFilter)
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
+				if(sampler.wrap)
+				{
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
+					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
+				}
+			}
+		}
+
+		return sampler_uniforms;
+	},
+
 	/**
 	* Update the scene shader query according to the render pass
 	* Do not reuse the query, they change between rendering passes (shadows, reflections, etc)
@@ -944,7 +831,7 @@ var Renderer = {
 			query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
 
 		//camera info
-		if(this._current_pass == "color")
+		if( this._current_pass.id == COLOR_PASS )
 		{
 			if(render_settings.linear_pipeline)
 				query.setMacro("USE_LINEAR_PIPELINE");
@@ -982,7 +869,7 @@ var Renderer = {
 		if(render_settings.clipping_plane)
 			uniforms.u_clipping_plane = render_settings.clipping_plane;
 
-		if(this._current_pass == "color" && render_settings.linear_pipeline)
+		if( this._current_pass.id == COLOR_PASS && render_settings.linear_pipeline )
 			uniforms.u_gamma = 2.2;
 
 		scene._uniforms = uniforms;
@@ -1025,16 +912,19 @@ var Renderer = {
 			gl.disable( gl.CULL_FACE );
 
 		//  depth
-		gl.depthFunc( gl.LEQUAL );
-		if(flags & RI_DEPTH_TEST)
-			gl.enable( gl.DEPTH_TEST );
-		else
-			gl.disable( gl.DEPTH_TEST );
+		if(render_settings.depth_test)
+		{
+			gl.depthFunc( gl.LEQUAL );
+			if( flags & RI_DEPTH_TEST )
+				gl.enable( gl.DEPTH_TEST );
+			else
+				gl.disable( gl.DEPTH_TEST );
 
-		if(flags & RI_DEPTH_WRITE)
-			gl.depthMask(true);
-		else
-			gl.depthMask(false);
+			if(flags & RI_DEPTH_WRITE)
+				gl.depthMask(true);
+			else
+				gl.depthMask(false);
+		}
 
 		//when to reverse the normals?
 		var order = gl.CCW;
@@ -1065,7 +955,7 @@ var Renderer = {
 			scene.collectData();
 		else
 			scene.updateCollectedData();
-		LEvent.trigger(scene, "afterCollectData", scene );
+		LEvent.trigger( scene, "afterCollectData", scene );
 
 		cameras = cameras || scene._cameras;
 
@@ -1101,6 +991,12 @@ var Renderer = {
 			if(!instance)
 				continue;
 			var node_flags = instance.node.flags;
+
+			if(!instance.mesh)
+			{
+				console.warn("RenderInstance must have mesh");
+				continue;
+			}
 
 			//materials
 			if(!instance.material)
@@ -1246,7 +1142,7 @@ var Renderer = {
 			texture.drawTo( inner_draw_2d );
 		}
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
-			this.renderToCubemap(cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far);
+			this.renderToCubemap( cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far );
 		this._current_target = null;
 
 		function inner_draw_2d()
@@ -1287,14 +1183,14 @@ var Renderer = {
 		this._current_target = texture;
 		texture.drawTo( function(texture, side) {
 
-			var cams = Camera.cubemap_camera_parameters;
+			var info = LS.Camera.cubemap_camera_parameters[side];
 			if(this._is_shadowmap || !scene.info )
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + cams[side].dir[0], eye[1] + cams[side].dir[1], eye[2] + cams[side].dir[2]], up: cams[side].up, fov: 90, aspect: 1.0, near: near, far: far });
+			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 
 			Renderer.enableCamera( cubemap_cam, render_settings, true );
 			Renderer.renderInstances( render_settings );
@@ -1369,6 +1265,32 @@ var Renderer = {
 				return camera;
 		}
 		return null;
+	},
+
+	/**
+	* Sets the render pass to use, this allow to change between "color","shadow","picking",etc
+	*
+	* @method setRenderPass
+	* @param {String} name name of the render pass as in render_passes
+	*/
+	setRenderPass: function( name )
+	{
+		this._current_pass = this.render_passes[ name ] || this.render_passes[ "color" ];
+	},
+
+	/**
+	* Register a render pass to be used during the rendering
+	*
+	* @method registerRenderPass
+	* @param {String} name name of the render pass as in render_passes
+	* @param {Object} info render pass info, { render_instance: Function( instance, render_settings ) }
+	*/
+	registerRenderPass: function( name, info )
+	{
+		info.name = name;
+		this.render_passes[ name ] = info;
+		if(!this._current_pass)
+			this._current_pass = info;
 	}
 };
 

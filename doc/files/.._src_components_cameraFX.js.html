@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -197,7 +201,7 @@ function CameraFX(o)
 
 	this.use_viewport_size = true;
 	this.use_high_precision = false;
-	this.use_node_camera = false;
+	this.camera_uid = null;
 	this.use_antialiasing = false;
 
 	if(o)
@@ -205,6 +209,7 @@ function CameraFX(o)
 }
 
 CameraFX.icon = &quot;mini-icon-fx.png&quot;;
+CameraFX[&quot;@camera_uid&quot;] = { type: &quot;String&quot; };
 
 Object.defineProperty( CameraFX.prototype, &quot;use_antialiasing&quot;, { 
 	set: function(v) { this.fx.apply_fxaa = v; },
@@ -217,7 +222,7 @@ CameraFX.prototype.configure = function(o)
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
-	this.use_node_camera = !!o.use_node_camera;
+	this.camera_uid = o.camera_uid;
 	if(o.fx)
 		this.fx.configure(o.fx);
 }
@@ -228,7 +233,7 @@ CameraFX.prototype.serialize = function()
 		enabled: this.enabled,
 		use_high_precision: this.use_high_precision,
 		use_viewport_size: this.use_viewport_size,
-		use_node_camera: this.use_node_camera,
+		camera_uid: this.camera_uid,
 		fx: this.fx.serialize()
 	};
 }
@@ -269,6 +274,12 @@ CameraFX.prototype.onRemovedFromScene = function( scene )
 {
 	LEvent.unbind( scene, &quot;enableFrameBuffer&quot;, this.onBeforeRender, this );
 	LEvent.unbind( scene, &quot;showFrameBuffer&quot;, this.onAfterRender, this );
+
+	if( this._binded_camera )
+	{
+		LEvent.unbindAll( this._binded_camera, this );
+		this._binded_camera = null;
+	}
 }
 
 //hook the RFC
@@ -285,37 +296,42 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 	}
 
 	//FBO for one camera
-	if(this.use_node_camera)
+	var camera = this._root.camera;
+	if(this.camera_uid)
 	{
-		var camera = this._root.camera;
-		if(camera &amp;&amp; camera != this._binded_camera)
+		if( !this._binded_camera || this._binded_camera.uid != this.camera_uid )
+			camera = this._binded_camera;
+		else
+			camera = LS.GlobalScene.findComponentByUId( this.camera_uid );
+	}
+
+	if(!camera)
+	{
+		if( this._binded_camera )
 		{
-			if(this._binded_camera)
-				LEvent.unbindAll( this._binded_camera, this );
-			LEvent.bind( camera, &quot;enableFrameBuffer&quot;, this.enableCameraFBO, this );
-			LEvent.bind( camera, &quot;showFrameBuffer&quot;, this.showCameraFBO, this );
+			LEvent.unbindAll( this._binded_camera, this );
+			this._binded_camera = null;
 		}
-		this._binded_camera = camera;
 		return;
 	}
-	else if( this._binded_camera )
-	{
-		LEvent.unbindAll( this._binded_camera, this );
-		this._binded_camera = null;
-	}
 
-	this.enableGlobalFBO( render_settings );
+	if(camera &amp;&amp; camera != this._binded_camera)
+	{
+		if(this._binded_camera)
+			LEvent.unbindAll( this._binded_camera, this );
+		LEvent.bind( camera, &quot;enableFrameBuffer&quot;, this.enableCameraFBO, this );
+		LEvent.bind( camera, &quot;showFrameBuffer&quot;, this.showCameraFBO, this );
+	}
+	this._binded_camera = camera;
+
+	//this.enableGlobalFBO( render_settings );
 }
 
-CameraFX.prototype.onAfterRender = function(e, render_settings )
+CameraFX.prototype.onAfterRender = function( e, render_settings )
 {
 	if(!this.enabled)
 		return;
-
-	if(this.use_node_camera)
-		return;
-
-	this.showFBO();
+	//this.showFBO();
 }
 
 CameraFX.prototype.enableCameraFBO = function(e, render_settings )
@@ -344,6 +360,7 @@ CameraFX.prototype.showCameraFBO = function(e, render_settings )
 	this.showFBO();
 }
 
+/*
 CameraFX.prototype.enableGlobalFBO = function( render_settings )
 {
 	if(!this.enabled)
@@ -360,6 +377,7 @@ CameraFX.prototype.enableGlobalFBO = function( render_settings )
 
 	RFC.preRender( render_settings );
 }
+*/
 
 CameraFX.prototype.showFBO = function()
 {
@@ -368,7 +386,7 @@ CameraFX.prototype.showFBO = function()
 
 	this._renderFrameContainer.endFBO();
 
-	if(this.use_node_camera &amp;&amp; this._viewport)
+	if( this._viewport )
 	{
 		gl.setViewport( this._viewport );
 		this.applyFX();
@@ -377,6 +395,7 @@ CameraFX.prototype.showFBO = function()
 	else
 		this.applyFX();
 }
+
 
 CameraFX.prototype.applyFX = function()
 {

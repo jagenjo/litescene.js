@@ -26,11 +26,13 @@ function RenderSettings( o )
 	this.update_materials = true; //update info in materials in every frame
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
+	this.render_gui = true; //render gui
 
 	this.sort_instances_by_distance = true; //sort render instances by distance 
 	this.sort_instances_by_priority = true; //sort render instances by priority
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility
+	this.depth_test = true;	//do depth test when rendering
 
 	this.clipping_plane = null;
 
@@ -41,17 +43,24 @@ function RenderSettings( o )
 	this.default_shader_id = "global";
 	this.default_low_shader_id = "lowglobal";
 
-	//copy
+	if(o)
+		this.configure(o);
+}
+
+RenderSettings["@default_shadowmap_resolution"] = { widget: "combo", values: [0,256,512,1024,2048,4096] };
+
+RenderSettings.prototype.serialize = function()
+{
+	return LS.cloneObject(this);
+}
+
+RenderSettings.prototype.configure = function(o)
+{
 	if(o)
 		for(var i in o)
 			this[i] = o[i];
 }
 
-RenderSettings["@default_shadowmap_resolution"] = { widget: "combo", values: [0,256,512,1024,2048,4096] };
-
-RenderSettings.prototype.toJSON = function()
-{
-		
-}
+RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;
 
 LS.RenderSettings = RenderSettings;

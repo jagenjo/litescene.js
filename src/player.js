@@ -60,6 +60,8 @@ function Player(options)
 	this.scene = LS.GlobalScene;
 	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
 
+	LS.catch_exceptions = true;
+
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
 	else
@@ -157,8 +159,20 @@ Player.prototype.setScene = function( scene_info, on_complete )
 	var scene = this.scene;
 	if(typeof(scene_info) == "string")
 		scene_info = JSON.parse(scene_info);
-	scene.configure( scene_info );
-	scene.loadResources( inner_all_loaded );
+
+	if( scene_info.external_scripts && scene_info.external_scripts.length )
+	{
+		scene.clear();
+		scene.loadExternalScripts( scene_info.external_scripts, inner_external_ready );
+	}
+	else
+		inner_external_ready();
+
+	function inner_external_ready()
+	{
+		scene.configure( scene_info );
+		scene.loadResources( inner_all_loaded );
+	}
 
 	function inner_all_loaded()
 	{
@@ -216,6 +230,8 @@ Player.prototype._onupdate = function(dt)
 	if(this.state != "playing")
 		return;
 
+	LS.Tween.update(dt);
+
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
 
@@ -223,6 +239,7 @@ Player.prototype._onupdate = function(dt)
 
 	if(this.onUpdate)
 		this.onUpdate(dt);
+
 }
 
 //input

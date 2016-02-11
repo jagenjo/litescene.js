@@ -28,6 +28,7 @@ Prefab.prototype.configure = function(data)
 	var resources_names = data["@resources_name"];
 	var version = data["@version"];
 	this.prefab_json = prefab_json;
+	this.prefab_data = JSON.parse( prefab_json );
 
 	//extract resource names
 	if(resources_names)

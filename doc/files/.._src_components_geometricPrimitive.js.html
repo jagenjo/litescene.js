@@ -65,6 +65,8 @@
             
                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
             
+                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
+            
                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
             
                 <li><a href="../classes/LS.Components.Knob.html">LS.Components.Knob</a></li>
@@ -72,6 +74,8 @@
                 <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
             
                 <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+            
+                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
             
                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
             
@@ -81,6 +85,8 @@
             
                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
             
+                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+            
                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
             
                 <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
@@ -88,6 +94,8 @@
                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
             
                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+            
+                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
             
                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
             
@@ -136,10 +144,6 @@
                 <li><a href="../classes/LS.TextureFX.html">LS.TextureFX</a></li>
             
                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-            
-                <li><a href="../classes/Rotator.html">Rotator</a></li>
-            
-                <li><a href="../classes/VRCameraController.html">VRCameraController</a></li>
             
             </ul>
 
@@ -191,7 +195,7 @@
 * @param {String} object to configure from
 */
 
-function GeometricPrimitive(o)
+function GeometricPrimitive( o )
 {
 	this.enabled = true;
 	this.size = 10;
@@ -240,15 +244,17 @@ GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
 GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER, &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Icosahedron&quot;:GeometricPrimitive.ICOSAHEDRON, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
 GeometricPrimitive[&quot;@subdivisions&quot;] = { type:&quot;number&quot;, step:1, min:0 };
+GeometricPrimitive[&quot;@point_size&quot;] = { type:&quot;number&quot;, step:0.001 };
 
-GeometricPrimitive.prototype.onAddedToNode = function(node)
+//we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
+GeometricPrimitive.prototype.onAddedToNode = function( node )
 {
-	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	LEvent.bind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
 }
 
-GeometricPrimitive.prototype.onRemovedFromNode = function(node)
+GeometricPrimitive.prototype.onRemovedFromNode = function( node )
 {
-	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	LEvent.unbind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
 }
 
 GeometricPrimitive.prototype.updateMesh = function()

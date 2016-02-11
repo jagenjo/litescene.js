@@ -11,7 +11,7 @@ function CameraFX(o)
 
 	this.use_viewport_size = true;
 	this.use_high_precision = false;
-	this.use_node_camera = false;
+	this.camera_uid = null;
 	this.use_antialiasing = false;
 
 	if(o)
@@ -19,6 +19,7 @@ function CameraFX(o)
 }
 
 CameraFX.icon = "mini-icon-fx.png";
+CameraFX["@camera_uid"] = { type: "String" };
 
 Object.defineProperty( CameraFX.prototype, "use_antialiasing", { 
 	set: function(v) { this.fx.apply_fxaa = v; },
@@ -31,7 +32,7 @@ CameraFX.prototype.configure = function(o)
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
 	this.use_high_precision = !!o.use_high_precision;
-	this.use_node_camera = !!o.use_node_camera;
+	this.camera_uid = o.camera_uid;
 	if(o.fx)
 		this.fx.configure(o.fx);
 }
@@ -42,7 +43,7 @@ CameraFX.prototype.serialize = function()
 		enabled: this.enabled,
 		use_high_precision: this.use_high_precision,
 		use_viewport_size: this.use_viewport_size,
-		use_node_camera: this.use_node_camera,
+		camera_uid: this.camera_uid,
 		fx: this.fx.serialize()
 	};
 }
@@ -83,6 +84,12 @@ CameraFX.prototype.onRemovedFromScene = function( scene )
 {
 	LEvent.unbind( scene, "enableFrameBuffer", this.onBeforeRender, this );
 	LEvent.unbind( scene, "showFrameBuffer", this.onAfterRender, this );
+
+	if( this._binded_camera )
+	{
+		LEvent.unbindAll( this._binded_camera, this );
+		this._binded_camera = null;
+	}
 }
 
 //hook the RFC
@@ -99,37 +106,42 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 	}
 
 	//FBO for one camera
-	if(this.use_node_camera)
+	var camera = this._root.camera;
+	if(this.camera_uid)
 	{
-		var camera = this._root.camera;
-		if(camera && camera != this._binded_camera)
+		if( !this._binded_camera || this._binded_camera.uid != this.camera_uid )
+			camera = this._binded_camera;
+		else
+			camera = LS.GlobalScene.findComponentByUId( this.camera_uid );
+	}
+
+	if(!camera)
+	{
+		if( this._binded_camera )
 		{
-			if(this._binded_camera)
-				LEvent.unbindAll( this._binded_camera, this );
-			LEvent.bind( camera, "enableFrameBuffer", this.enableCameraFBO, this );
-			LEvent.bind( camera, "showFrameBuffer", this.showCameraFBO, this );
+			LEvent.unbindAll( this._binded_camera, this );
+			this._binded_camera = null;
 		}
-		this._binded_camera = camera;
 		return;
 	}
-	else if( this._binded_camera )
-	{
-		LEvent.unbindAll( this._binded_camera, this );
-		this._binded_camera = null;
-	}
 
-	this.enableGlobalFBO( render_settings );
+	if(camera && camera != this._binded_camera)
+	{
+		if(this._binded_camera)
+			LEvent.unbindAll( this._binded_camera, this );
+		LEvent.bind( camera, "enableFrameBuffer", this.enableCameraFBO, this );
+		LEvent.bind( camera, "showFrameBuffer", this.showCameraFBO, this );
+	}
+	this._binded_camera = camera;
+
+	//this.enableGlobalFBO( render_settings );
 }
 
-CameraFX.prototype.onAfterRender = function(e, render_settings )
+CameraFX.prototype.onAfterRender = function( e, render_settings )
 {
 	if(!this.enabled)
 		return;
-
-	if(this.use_node_camera)
-		return;
-
-	this.showFBO();
+	//this.showFBO();
 }
 
 CameraFX.prototype.enableCameraFBO = function(e, render_settings )
@@ -158,6 +170,7 @@ CameraFX.prototype.showCameraFBO = function(e, render_settings )
 	this.showFBO();
 }
 
+/*
 CameraFX.prototype.enableGlobalFBO = function( render_settings )
 {
 	if(!this.enabled)
@@ -174,6 +187,7 @@ CameraFX.prototype.enableGlobalFBO = function( render_settings )
 
 	RFC.preRender( render_settings );
 }
+*/
 
 CameraFX.prototype.showFBO = function()
 {
@@ -182,7 +196,7 @@ CameraFX.prototype.showFBO = function()
 
 	this._renderFrameContainer.endFBO();
 
-	if(this.use_node_camera && this._viewport)
+	if( this._viewport )
 	{
 		gl.setViewport( this._viewport );
 		this.applyFX();
@@ -191,6 +205,7 @@ CameraFX.prototype.showFBO = function()
 	else
 		this.applyFX();
 }
+
 
 CameraFX.prototype.applyFX = function()
 {

@@ -5,19 +5,23 @@
             "name": "../src/components/VRCameraController.js",
             "modules": {},
             "classes": {
-                "VRCameraController": 1
+                "LS.Components.VRCameraController": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/animator.js": {
             "name": "../src/components/animator.js",
             "modules": {},
             "classes": {
-                "Rotator": 1
+                "LS.Components.Rotator": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/camera.js": {
             "name": "../src/components/camera.js",
@@ -75,6 +79,15 @@
             "fors": {},
             "namespaces": {}
         },
+        "../src/components/globalFX.js": {
+            "name": "../src/components/globalFX.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.GlobalFX": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        },
         "../src/components/graphComponents.js": {
             "name": "../src/components/graphComponents.js",
             "modules": {},
@@ -115,9 +128,13 @@
         "../src/components/meshRenderer.js": {
             "name": "../src/components/meshRenderer.js",
             "modules": {},
-            "classes": {},
+            "classes": {
+                "LS.Components.MeshRenderer": 1
+            },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/nodeManipulator.js": {
             "name": "../src/components/nodeManipulator.js",
@@ -480,14 +497,15 @@
     },
     "modules": {},
     "classes": {
-        "VRCameraController": {
-            "name": "VRCameraController",
-            "shortname": "VRCameraController",
+        "LS.Components.VRCameraController": {
+            "name": "LS.Components.VRCameraController",
+            "shortname": "LS.Components.VRCameraController",
             "classitems": [],
             "plugins": [],
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
+            "namespace": "LS.Components",
             "file": "../src/components/VRCameraController.js",
             "line": 3,
             "description": "This component allow to integrate with WebVR to use VR Headset",
@@ -499,14 +517,15 @@
                 }
             ]
         },
-        "Rotator": {
-            "name": "Rotator",
-            "shortname": "Rotator",
+        "LS.Components.Rotator": {
+            "name": "LS.Components.Rotator",
+            "shortname": "LS.Components.Rotator",
             "classitems": [],
             "plugins": [],
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
+            "namespace": "LS.Components",
             "file": "../src/components/animator.js",
             "line": 1,
             "description": "Rotator rotate a mesh over time",
@@ -644,6 +663,26 @@
                 }
             ]
         },
+        "LS.Components.GlobalFX": {
+            "name": "LS.Components.GlobalFX",
+            "shortname": "GlobalFX",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/globalFX.js",
+            "line": 1,
+            "description": "This component allow to create basic FX applied to the whole scene",
+            "params": [
+                {
+                    "name": "o",
+                    "description": "object with the serialized info",
+                    "type": "Object"
+                }
+            ]
+        },
         "LS.Components.GraphComponent": {
             "name": "LS.Components.GraphComponent",
             "shortname": "GraphComponent",
@@ -744,6 +783,27 @@
                     "name": "object",
                     "description": "to configure from",
                     "type": "Object"
+                }
+            ]
+        },
+        "LS.Components.MeshRenderer": {
+            "name": "LS.Components.MeshRenderer",
+            "shortname": "LS.Components.MeshRenderer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "namespace": "LS.Components",
+            "file": "../src/components/meshRenderer.js",
+            "line": 2,
+            "description": "Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "String"
                 }
             ]
         },
@@ -1190,7 +1250,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/core.js",
-            "line": 552,
+            "line": 554,
             "description": "LSQ allows to set or get values easily from the global scene, using short strings as identifiers"
         },
         "LS.Formats": {
@@ -1260,7 +1320,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/physics.js",
-            "line": 31,
+            "line": 32,
             "description": "PhysicsInstance contains info of a colliding object. Used to test collisions with the scene",
             "is_constructor": 1
         },
@@ -1274,7 +1334,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/physics.js",
-            "line": 87,
+            "line": 88,
             "description": "Physics is in charge of all physics testing methods",
             "is_constructor": 1
         },
@@ -1400,7 +1460,7 @@
             "extension_for": [],
             "namespace": "LS",
             "file": "../src/shadersManager.js",
-            "line": 583,
+            "line": 662,
             "description": "ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.",
             "is_constructor": 1
         }
@@ -2651,7 +2711,84 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 66,
+            "line": 13,
+            "description": "The name of the mesh to render",
+            "itemtype": "property",
+            "name": "mesh",
+            "type": "String",
+            "default": "null;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 19,
+            "description": "The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances",
+            "itemtype": "property",
+            "name": "lod_mesh",
+            "type": "String",
+            "default": "null;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 25,
+            "description": "The id of the submesh group to render, if the id is -1 then all the mesh is rendered.",
+            "itemtype": "property",
+            "name": "submesh_id",
+            "type": "Number",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 32,
+            "description": "The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe",
+            "itemtype": "property",
+            "name": "primitive",
+            "type": "Number",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 38,
+            "description": "If faces are two sided",
+            "itemtype": "property",
+            "name": "two_sided",
+            "type": "Boolean",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 44,
+            "description": "When rendering points the point size, if positive is in world space, if negative is in screen space",
+            "itemtype": "property",
+            "name": "point_size",
+            "type": "Number",
+            "default": "-1;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 50,
+            "description": "When rendering points tells if you want to use for every point the texture coordinates of the vertex or the point texture coordinates",
+            "itemtype": "property",
+            "name": "textured_points",
+            "type": "Boolean",
+            "default": "false;",
+            "class": "LS.Components.MeshRenderer",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/meshRenderer.js",
+            "line": 110,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -2662,12 +2799,12 @@
                     "type": "Object"
                 }
             ],
-            "class": "LS.Components.NodeManipulator",
+            "class": "LS.Components.MeshRenderer",
             "namespace": "LS.Components"
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 87,
+            "line": 131,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -2675,7 +2812,7 @@
                 "description": "object with the serialized info",
                 "type": "Object"
             },
-            "class": "LS.Components.NodeManipulator",
+            "class": "LS.Components.MeshRenderer",
             "namespace": "LS.Components"
         },
         {
@@ -4668,7 +4805,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 499,
+            "line": 461,
             "description": "To set gl state to a known and constant state in every render pass",
             "itemtype": "method",
             "name": "resetGLState",
@@ -4684,7 +4821,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 572,
+            "line": 534,
             "description": "Renders this render instance taking into account all the lights that affect it",
             "itemtype": "method",
             "name": "renderColorPassInstance",
@@ -4715,7 +4852,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 726,
+            "line": 688,
             "description": "Renders this RenderInstance into the shadowmap",
             "itemtype": "method",
             "name": "renderShadowPassInstance",
@@ -4736,7 +4873,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 809,
+            "line": 771,
             "description": "Special case of render instance that uses a 2D projection (used for GUIS)\nWill be refactored for a better system",
             "itemtype": "method",
             "name": "render2DInstance",
@@ -4762,7 +4899,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 894,
+            "line": 856,
             "description": "Render instance into the picking buffer",
             "itemtype": "method",
             "name": "renderPickingInstance",
@@ -4783,7 +4920,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 931,
+            "line": 893,
             "description": "Update the scene shader query according to the render pass\nDo not reuse the query, they change between rendering passes (shadows, reflections, etc)",
             "itemtype": "method",
             "name": "fillSceneShaderQuery",
@@ -4804,7 +4941,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1010,
+            "line": 972,
             "description": "Switch flags according to the RenderInstance flags",
             "itemtype": "method",
             "name": "enableInstanceFlags",
@@ -4825,7 +4962,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1049,
+            "line": 1011,
             "description": "Collects and process the rendering instances, cameras and lights that are visible\nIts a prepass shared among all rendering passes",
             "itemtype": "method",
             "name": "processVisibleData",
@@ -4851,7 +4988,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1229,
+            "line": 1197,
             "description": "Renders a frame into a texture (could be a cubemap, in which case does the six passes)",
             "itemtype": "method",
             "name": "renderInstancesToRT",
@@ -4877,7 +5014,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1262,
+            "line": 1230,
             "description": "Renders the current scene to a cubemap centered in the given position",
             "itemtype": "method",
             "name": "renderToCubemap",
@@ -4922,7 +5059,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1307,
+            "line": 1275,
             "description": "Renders the material preview to an image",
             "itemtype": "method",
             "name": "renderMaterialPreview",
@@ -4952,7 +5089,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1347,
+            "line": 1315,
             "description": "Returns the last camera that falls into a given screen position",
             "itemtype": "method",
             "name": "getCameraAtPosition",
@@ -6311,7 +6448,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 98,
+            "line": 99,
             "description": "Tells you if one class is a registered component class",
             "itemtype": "method",
             "name": "isClassComponent",
@@ -6331,7 +6468,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 111,
+            "line": 112,
             "description": "Is a wrapper for callbacks that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "safeCall",
@@ -6357,7 +6494,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 136,
+            "line": 137,
             "description": "Is a wrapper for setTimeout that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setTimeout",
@@ -6383,7 +6520,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 158,
+            "line": 159,
             "description": "Is a wrapper for setInterval that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setInterval",
@@ -6409,7 +6546,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 180,
+            "line": 181,
             "description": "copy the properties (methods and properties) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -6430,7 +6567,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 215,
+            "line": 216,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -6455,7 +6592,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 274,
+            "line": 275,
             "description": "Clears all the uids inside this object and children (it also works with serialized object)",
             "itemtype": "method",
             "name": "clearUIds",
@@ -6471,7 +6608,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 314,
+            "line": 315,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -6491,7 +6628,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 339,
+            "line": 340,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -6511,7 +6648,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 364,
+            "line": 365,
             "description": "Returns the public properties of one object and the type",
             "itemtype": "method",
             "name": "getObjectProperties",
@@ -6531,7 +6668,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 465,
+            "line": 466,
             "description": "Contains all the registered material classes",
             "itemtype": "property",
             "name": "MaterialClasses",
@@ -6542,7 +6679,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 474,
+            "line": 475,
             "description": "Register a Material class so it is listed when searching for new materials to attach",
             "itemtype": "method",
             "name": "registerMaterialClass",
@@ -6558,7 +6695,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 496,
+            "line": 498,
             "description": "Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.",
             "itemtype": "method",
             "name": "getGUIElement",
@@ -6571,7 +6708,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 518,
+            "line": 520,
             "description": "Returns an script context using the script name (not the node name), usefull to pass data between scripts.",
             "itemtype": "method",
             "name": "getScript",
@@ -6591,7 +6728,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 536,
+            "line": 538,
             "description": "Returns an script context using the script name (not the node name), usefull to pass data between scripts.",
             "itemtype": "method",
             "name": "getScript",
@@ -6611,7 +6748,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 558,
+            "line": 560,
             "description": "Assigns a value to a property of one node in the scene, just by using a string identifier\nExample:  LSQ.set(\"mynode|a_child/MeshRenderer/enabled\",false);",
             "itemtype": "method",
             "name": "set",
@@ -6632,7 +6769,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 572,
+            "line": 574,
             "description": "Retrieves the value of a property of one node in the scene, just by using a string identifier\nExample: var value = LSQ.get(\"mynode|a_child/MeshRenderer/enabled\");",
             "itemtype": "method",
             "name": "get",
@@ -6652,7 +6789,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 587,
+            "line": 589,
             "description": "Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property\nExample: \"@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size\" -> \"node|child/Collider/size\"",
             "itemtype": "method",
             "name": "shortify",
@@ -6840,7 +6977,7 @@
         },
         {
             "file": "../src/physics.js",
-            "line": 66,
+            "line": 67,
             "description": "Computes the instance bounding box in world space from the one in local space",
             "itemtype": "method",
             "name": "updateAABB",
@@ -6849,7 +6986,7 @@
         },
         {
             "file": "../src/physics.js",
-            "line": 96,
+            "line": 97,
             "description": "Cast a ray that traverses the scene checking for collisions with Colliders",
             "itemtype": "method",
             "name": "raycast",
@@ -6879,7 +7016,7 @@
         },
         {
             "file": "../src/physics.js",
-            "line": 183,
+            "line": 193,
             "description": "Test if a sphere collides with any of the colliders in the scene",
             "itemtype": "method",
             "name": "testSphere",
@@ -7015,7 +7152,7 @@
         },
         {
             "file": "../src/picking.js",
-            "line": 159,
+            "line": 164,
             "description": "Returns a color you should use to paint this node during picking rendering\nyou tell what info you want to retrieve associated with this object if it is clicked",
             "itemtype": "method",
             "name": "getNextPickingColor",
@@ -7219,7 +7356,7 @@
         {
             "file": "../src/resourcesManager.js",
             "line": 154,
-            "description": "Returns the filename without the extension",
+            "description": "Returns the filename without the folder or the extension",
             "itemtype": "method",
             "name": "getBasename",
             "params": [
@@ -7376,6 +7513,26 @@
         {
             "file": "../src/resourcesManager.js",
             "line": 312,
+            "description": "Returns the resource type (\"Mesh\",\"Texture\",\"Material\",\"SceneNode\",...) of a given resource",
+            "itemtype": "method",
+            "name": "getResourceType",
+            "params": [
+                {
+                    "name": "resource",
+                    "description": "",
+                    "type": "*"
+                }
+            ],
+            "return": {
+                "description": "the type in string format",
+                "type": "String"
+            },
+            "class": "LS.ResourcesManager",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resourcesManager.js",
+            "line": 330,
             "description": "Marks the resource as modified, used in editor to know when a resource data should be updated",
             "itemtype": "method",
             "name": "resourceModified",
@@ -7391,7 +7548,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 328,
+            "line": 346,
             "description": "Unmarks the resource as modified",
             "itemtype": "method",
             "name": "resourceSaved",
@@ -7407,7 +7564,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 342,
+            "line": 360,
             "description": "Loads a generic resource, the type will be infered from the extension, if it is json or wbin it will be processed\nDo not use to load regular files (txts, csv, etc), instead use the LS.Network methods",
             "itemtype": "method",
             "name": "load",
@@ -7437,7 +7594,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 424,
+            "line": 447,
             "description": "Process resource get some form of data and transforms it to a resource (and Object ready to be used by the engine).\nIn most cases the process involves parsing and uploading to the GPU\nIt is called for every single resource that comes from an external source (URL) right after being loaded",
             "itemtype": "method",
             "name": "processResource",
@@ -7470,7 +7627,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 529,
+            "line": 556,
             "description": "Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.",
             "itemtype": "method",
             "name": "registerResource",
@@ -7491,7 +7648,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 567,
+            "line": 596,
             "description": "removes the resources from all the containers",
             "itemtype": "method",
             "name": "unregisterResource",
@@ -7511,7 +7668,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 593,
+            "line": 622,
             "description": "Returns an object with a representation of the resource internal data\nThe order to obtain that object is:\n1. test for _original_file (File or Blob)\n2. test for _original_data (ArrayBuffer)\n3. toBinary() (ArrayBuffer)\n4. toBlob() (Blob)\n5. toBase64() (String)\n6. serialize() (Object in JSON format)\n7. data property \n8. JSON.stringify(...)",
             "itemtype": "method",
             "name": "computeResourceInternalData",
@@ -7531,7 +7688,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 660,
+            "line": 689,
             "description": "Used to load files and get them as File (or Blob)",
             "itemtype": "method",
             "name": "getURLasFile",
@@ -7551,7 +7708,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 679,
+            "line": 708,
             "description": "Changes the name of a resource and sends an event to all components to change it accordingly",
             "itemtype": "method",
             "name": "renameResource",
@@ -7583,7 +7740,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 715,
+            "line": 744,
             "description": "Tells if it is loading resources",
             "itemtype": "method",
             "name": "isLoading",
@@ -7596,7 +7753,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 726,
+            "line": 755,
             "description": "forces to try to reload again resources not found",
             "itemtype": "method",
             "name": "isLoading",
@@ -7609,7 +7766,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 743,
+            "line": 772,
             "description": "returns a mesh resource if it is loaded",
             "itemtype": "method",
             "name": "getMesh",
@@ -7629,7 +7786,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 760,
+            "line": 789,
             "description": "returns a texture resource if it is loaded",
             "itemtype": "method",
             "name": "getTexture",
@@ -7649,7 +7806,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 801,
+            "line": 830,
             "description": "Binds a callback for when a resource is loaded (in case you need to do something special)",
             "itemtype": "method",
             "name": "onceLoaded",
@@ -8284,7 +8441,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 572,
+            "line": 578,
             "description": "Assigns this node to one layer",
             "itemtype": "method",
             "name": "setLayer",
@@ -8305,7 +8462,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 605,
+            "line": 611,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -8318,7 +8475,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 628,
+            "line": 634,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -8334,7 +8491,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 735,
+            "line": 741,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",
@@ -8347,7 +8504,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 29,
+            "line": 30,
             "description": "Initializes the shader manager",
             "itemtype": "method",
             "name": "init",
@@ -8363,7 +8520,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 59,
+            "line": 60,
             "description": "Reloads the XML file with the shaders, useful when editing the file",
             "itemtype": "method",
             "name": "reloadShaders",
@@ -8379,7 +8536,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 70,
+            "line": 71,
             "description": "Resolves a shader query, returns the shader",
             "itemtype": "method",
             "name": "resolve",
@@ -8399,7 +8556,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 82,
+            "line": 83,
             "description": "Clears all the compiled shaders",
             "itemtype": "method",
             "name": "clearCache",
@@ -8408,7 +8565,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 93,
+            "line": 94,
             "description": "Returns a compiled shader with this id and this macros",
             "itemtype": "method",
             "name": "get",
@@ -8433,7 +8590,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 183,
+            "line": 184,
             "description": "Returns the info of a global shader",
             "itemtype": "method",
             "name": "getGlobalShaderInfo",
@@ -8453,7 +8610,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 195,
+            "line": 196,
             "description": "Compiles a shader, the vertex and fragment shader are cached indepently to speed up compilations but a unique name must be provided",
             "itemtype": "method",
             "name": "compileShader",
@@ -8483,7 +8640,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 262,
+            "line": 263,
             "description": "Stores a compiled shader program, so it can be reused",
             "itemtype": "method",
             "name": "registerCompiledShader",
@@ -8513,7 +8670,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 285,
+            "line": 286,
             "description": "Loads shaders code from an XML file",
             "itemtype": "method",
             "name": "loadFromXML",
@@ -8544,7 +8701,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 319,
+            "line": 320,
             "description": "extracts all the shaders from the XML doc",
             "itemtype": "method",
             "name": "processShadersXML",
@@ -8560,7 +8717,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 397,
+            "line": 418,
             "description": "extracts all the shaders from the XML doc",
             "itemtype": "method",
             "name": "registerGlobalShader",
@@ -8581,7 +8738,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 490,
+            "line": 511,
             "description": "Register a code snippet ready to be used by the #import clause in the shader",
             "itemtype": "method",
             "name": "registerSnippet",
@@ -8602,7 +8759,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 502,
+            "line": 523,
             "description": "Returns the code of a snipper",
             "itemtype": "method",
             "name": "getSnippet",
@@ -8622,7 +8779,7 @@
         },
         {
             "file": "../src/shadersManager.js",
-            "line": 526,
+            "line": 547,
             "description": "Create some default shaders useful for generic situations (flat, texture and screenspace quad)",
             "itemtype": "method",
             "name": "createDefaultShaders",

@@ -14,11 +14,15 @@ function SceneNode( name )
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId("NODE-");
+	this.init();
+}
+
+SceneNode.prototype.init = function( keep_components )
+{
 	this.layers = 3|0; //32 bits for layers (force to int)
 
 	this._classList = {};
 	//this.className = "";
-	//this.mesh = "";
 
 	//flags
 	this.flags = {
@@ -26,8 +30,6 @@ function SceneNode( name )
 		selectable: true,
 		two_sided: false,
 		flip_normals: false,
-		//seen_by_camera: true,
-		//seen_by_reflections: true,
 		cast_shadows: true,
 		receive_shadows: true,
 		ignore_lights: false, //not_affected_by_lights
@@ -38,12 +40,16 @@ function SceneNode( name )
 	};
 
 	//Basic components
-	this._components = []; //used for logic actions
-	this.addComponent( new LS.Transform() );
+	if(!keep_components)
+	{
+		if( this._components && this._components.length )
+			console.warn("SceneNode.init() should not be called if it contains components, call clear instead");
+		this._components = []; //used for logic actions
+		this.addComponent( new LS.Transform() );
+	}
 
 	//material
 	this._material = null;
-	//this.material = new Material();
 	this.extra = {}; //for extra info
 }
 
@@ -125,7 +131,13 @@ Object.defineProperty( SceneNode.prototype, 'material', {
 	},
 	enumerable: true
 });
-	
+
+SceneNode.prototype.clear = function()
+{
+	this.removeAllComponents();
+	this.removeAllChildren();
+	this.init();
+}
 
 SceneNode.prototype.setName = function(new_name)
 {
@@ -554,20 +566,33 @@ SceneNode.prototype.getMaterial = function()
 	if (!this.material)
 		return null;
 	if(this.material.constructor === String)
-		return this._in_tree ? LS.ResourcesManager.materials[ this.material ] : null;
+	{
+		if( !this._in_tree )
+			return null;
+		if( this.material[0] == "@" )//uid
+			return LS.ResourcesManager.materials_by_uid[ this.material ];
+		return LS.ResourcesManager.materials[ this.material ];
+	}
 	return this.material;
 }
 
-
-SceneNode.prototype.setPrefab = function(prefab_name)
+SceneNode.prototype.reloadFromPrefab = function()
 {
-	this._prefab_name = prefab_name;
-	var prefab = LS.ResourcesManager.resources[ prefab_name ];
+	if(!this.prefab)
+		return;
+
+	var prefab = LS.ResourcesManager.resources[ this.prefab ];
 	if(!prefab)
 		return;
 
-
+	//apply info
+	this.removeAllChildren();
+	this.init( true );
+	var data = LS.cloneObject( prefab.prefab_data );
+	delete data.components;
+	this.configure( data );
 }
+
 
 /**
 * Assigns this node to one layer
@@ -652,39 +677,46 @@ SceneNode.prototype.configure = function(info)
 	if(info.mesh)
 	{
 		var mesh_id = info.mesh;
-
 		var mesh = LS.ResourcesManager.meshes[ mesh_id ];
-		var mesh_render_config = { mesh: mesh_id };
 
-		if(info.submesh_id !== undefined)
-			mesh_render_config.submesh_id = info.submesh_id;
-		if(info.morph_targets !== undefined)
-			mesh_render_config.morph_targets = info.morph_targets;
-
-		var compo = new LS.Components.MeshRenderer(mesh_render_config);
-
-		//parsed meshes have info about primitive
-		if( mesh.primitive === "line_strip" )
+		if(mesh)
 		{
-			compo.primitive = 3;
-			delete mesh.primitive;
-		}
+			var mesh_render_config = { mesh: mesh_id };
 
-		//add MeshRenderer
-		this.addComponent( compo );
+			if(info.submesh_id !== undefined)
+				mesh_render_config.submesh_id = info.submesh_id;
+			if(info.morph_targets !== undefined)
+				mesh_render_config.morph_targets = info.morph_targets;
 
-		//skinning
-		if(mesh && mesh.bones)
-		{
-			compo = new LS.Components.SkinDeformer();
+			var compo = new LS.Components.MeshRenderer(mesh_render_config);
+
+			//parsed meshes have info about primitive
+			if( mesh.primitive === "line_strip" )
+			{
+				compo.primitive = 3;
+				delete mesh.primitive;
+			}
+
+			//add MeshRenderer
 			this.addComponent( compo );
-		}
 
-		//morph
-		if( mesh && mesh.morph_targets )
+			//skinning
+			if(mesh && mesh.bones)
+			{
+				compo = new LS.Components.SkinDeformer();
+				this.addComponent( compo );
+			}
+
+			//morph
+			if( mesh && mesh.morph_targets )
+			{
+				var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
+				this.addComponent( compo );
+			}
+		}
+		else
 		{
-			var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
-			this.addComponent( compo );
+			console.warn( "SceneNode mesh not found: " + mesh_id );
 		}
 	}
 
@@ -855,3 +887,4 @@ SceneNode.prototype.getBoundingBox = function( bbox, only_instances )
 }
 
 LS.SceneNode = SceneNode;
+LS.Classes.SceneNode = SceneNode;

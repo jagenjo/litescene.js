@@ -1,6 +1,7 @@
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -58,4 +59,4 @@ Rotator.prototype.onUpdate = function(e,dt)
 		scene.refresh();
 }
 
-LS.registerComponent(Rotator);
+LS.registerComponent( Rotator );
