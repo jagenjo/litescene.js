@@ -27,6 +27,7 @@ function RenderSettings( o )
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
 	this.render_gui = true; //render gui
+	this.render_helpers = true; //render helpers (for the editor)
 
 	this.sort_instances_by_distance = true; //sort render instances by distance 
 	this.sort_instances_by_priority = true; //sort render instances by priority

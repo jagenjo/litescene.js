@@ -5,6 +5,7 @@ var parserCGArtMesh = {
 	extension: 'cgart',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data,options)
 	{
@@ -179,6 +180,7 @@ var parserGR2 = {
 	extension: 'gr2',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data, options)
 	{

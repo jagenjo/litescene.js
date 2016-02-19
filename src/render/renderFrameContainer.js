@@ -89,7 +89,7 @@ RenderFrameContainer.prototype.startFBO = function()
 		this.extra_texture = null;
 
 	//for the depth
-	if( this.use_depth_texture && (!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
+	if( this.use_depth_texture && (!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && gl.extensions["WEBGL_depth_texture"] )
 		this.depth_texture = new GL.Texture( width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 	else if( !this.use_depth_texture )
 		this.depth_texture = null;

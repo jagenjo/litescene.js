@@ -10,10 +10,22 @@
 
 function Resource()
 {
-	this.filename = null;
-	this.fullpath = null;
-	this.data = null;
+	this.filename = null; //name of file without folder or path
+	this.fullpath = null; //contains the unique name as is to be used to fetch it by the resources manager
+	this.remotepath = null; //the string to fetch this resource in internet (local resources do not have this name)
+	this._data = null;
 }
+
+Object.defineProperty( Resource.prototype, "data", {
+	set: function(v){ 
+		this._data = v;
+		this._resource_modified = true;
+	},
+	get: function() { 
+		return this._data;
+	},
+	enumerable: true
+});
 
 //makes this resource available 
 Resource.prototype.register = function()
@@ -101,15 +113,17 @@ Resource.getDataToStore = function( resource )
 //used in the coding pad to assign content to generic text files
 Resource.prototype.getData = function()
 {
-	return this.data;
+	return this._data;
 }
 
-Resource.prototype.setData = function(v)
+Resource.prototype.setData = function( v, skip_modified_flag )
 {
 	//remove old file
 	if( this._original_data )
 		this._original_data = null;
-	this.data = v;
+	this._data = v;
+	if(!skip_modified_flag)
+		this._resource_modified = true;
 }
 
 Resource.prototype.getDataToStore = function()

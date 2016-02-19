@@ -251,6 +251,9 @@ var Renderer = {
 		LEvent.trigger(scene, "afterRenderScene", camera );
 		scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "afterRenderScene", camera );
+
+		if(render_settings.render_helpers)
+			LEvent.trigger(this, "renderHelpers", camera );
 	},
 
 	/**
@@ -353,7 +356,7 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		if(!scene)
-			return console.warn("Renderer.renderInstances: no scene found");
+			return console.warn("LS.Renderer.renderInstances: no scene found");
 
 		var pass = this._current_pass;
 		var camera = this._current_camera;
@@ -843,7 +846,7 @@ var Renderer = {
 				query.setMacro("USE_COLORCLIP_FACTOR");
 		}
 
-		if(this._current_renderframe && this._current_renderframe.use_extra_texture )
+		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
 			query.setMacro("USE_DRAW_BUFFERS");
 
 		LEvent.trigger( scene, "fillSceneQuery", query );
@@ -1184,7 +1187,7 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
-			if(this._is_shadowmap || !scene.info )
+			if(texture._is_shadowmap || !scene.info )
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
@@ -1192,8 +1195,8 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 
-			Renderer.enableCamera( cubemap_cam, render_settings, true );
-			Renderer.renderInstances( render_settings );
+			LS.Renderer.enableCamera( cubemap_cam, render_settings, true );
+			LS.Renderer.renderInstances( render_settings );
 		});
 
 		this._current_target = null;
@@ -1229,10 +1232,15 @@ var Renderer = {
 		var node = scene.getNode( "sphere") ;
 		node.material = material;
 
-		var tex = new GL.Texture(size,size);
+		var tex = this._material_preview_texture || new GL.Texture(size,size);
+		if(!this._material_preview_texture)
+			this._material_preview_texture = tex;
+
 		tex.drawTo( function()
 		{
-			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true }, scene );
+			//it already clears everything
+			//just render
+			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true, render_helpers: false }, scene );
 		});
 
 		var canvas = tex.toCanvas(null, true);

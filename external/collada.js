@@ -1044,7 +1044,7 @@ global.Collada = {
 
 		//get streams
 		var xmlvertices = xmlmesh.querySelector("vertices input");
-		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
+		var vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var mesh = null;
@@ -1617,7 +1617,7 @@ global.Collada = {
 
 		//sampler, is in charge of the interpolation
 		//var xmlsampler = xmlanimation.querySelector("sampler" + source);
-		xmlsampler = this.findXMLNodeById( xmlanimation, "sampler", source.substr(1) );
+		var xmlsampler = this.findXMLNodeById( xmlanimation, "sampler", source.substr(1) );
 		if(!xmlsampler)
 		{
 			console.error("Error DAE: Sampler not found in " + source);

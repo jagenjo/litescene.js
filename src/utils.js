@@ -108,16 +108,22 @@ Object.defineProperty(Object.prototype, "merge", {
 });
 
 //used for hashing keys:TODO move from here somewhere else
-String.prototype.hashCode = function(){
-    var hash = 0, i, c, l;
-    if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; ++i) {
-        c  = this.charCodeAt(i);
-        hash  = ((hash<<5)-hash)+c;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};
+if( !String.prototype.hasOwnProperty( "hashCode" ) )
+{
+	Object.defineProperty( String.prototype, "hashCode", {
+		value: function(){
+			var hash = 0, i, c, l;
+			if (this.length == 0) return hash;
+			for (i = 0, l = this.length; i < l; ++i) {
+				c  = this.charCodeAt(i);
+				hash  = ((hash<<5)-hash)+c;
+				hash |= 0; // Convert to 32bit integer
+			}
+			return hash;
+		},
+		enumerable: false
+	});
+}
 
 Object.equals = function( x, y ) {
   if ( x === y ) return true;

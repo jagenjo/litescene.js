@@ -258,7 +258,7 @@ var ResourcesManager = {
 				//external urls
 				case 'http':
 				case 'https':
-					full_url = url;
+					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
 					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 ) //proxy external files
 						return this.proxy + url.substr(pos+3); //"://"
@@ -364,16 +364,23 @@ var ResourcesManager = {
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
 	* @param {Object}[options={}] options to apply to the loaded resource when processing it
-	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
+	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( resource, url  ) //( url, resource, options )
 	*/
 	load: function( url, options, on_complete )
 	{
+		//parameter swap...
+		if(options && options.constructor === Function && !on_complete )
+		{
+			on_complete = options;
+			options = null;
+		}
+
 		//if we already have it, then nothing to do
 		var resource = this.resources[url];
 		if( resource != null && !resource.is_preview )
 		{
 			if(on_complete)
-				on_complete(resource);
+				on_complete(resource,url);
 			return true;
 		}
 
@@ -422,7 +429,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess );
+				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess, true );
 			},
 			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
 			progress: function(e) { 
@@ -456,7 +463,7 @@ var ResourcesManager = {
 	* @param {Function} on_complete once the resource is ready
 	*/
 
-	processResource: function( url, data, options, on_complete )
+	processResource: function( url, data, options, on_complete, was_loaded )
 	{
 		options = options || {};
 		if( data === null || data === undefined )
@@ -524,7 +531,7 @@ var ResourcesManager = {
 		{
 			var resource = new LS.Resource();
 			resource.filename = resource.fullpath = url;
-			resource.data = data;
+			resource._data = data;
 			inner_onResource( url, resource );
 		}
 
@@ -541,9 +548,13 @@ var ResourcesManager = {
 			resource.filename = fullpath;
 			if(options.filename) //used to overwrite
 				resource.filename = options.filename;
+			if(!options.is_local)
+				resource.fullpath = fullpath;
+			if(options.from_prefab)
+				resource.from_prefab = options.from_prefab;
+			if(was_loaded)
+				resource.remotepath = url;
 
-			//if(!resource.fullpath) //why??
-			resource.fullpath = fullpath;
 			if(options.is_preview)
 				resource.is_preview = true;
 
@@ -637,65 +648,6 @@ var ResourcesManager = {
 		return true;
 	},
 
-	/* moved to LS.Resource as getDataToStore
-	computeResourceInternalData: function(resource)
-	{
-		if(!resource)
-			throw("Resource is null");
-
-		var data = null;
-		var encoding = "text";
-		var extension = "";
-
-		//get the data
-		if (resource.getStoringData) //function
-		{
-			data = resource.getDataToStore();
-			if(data && data.constructor == ArrayBuffer)
-				encoding = "binary";
-		}
-		else if (resource._original_file) //file
-		{
-			data = resource._original_file;
-			encoding = "file";
-		}
-		else if(resource._original_data) //file in ArrayBuffer format
-			data = resource._original_data;
-		else if(resource.toBinary) //a function to compute the ArrayBuffer format
-		{
-			data = resource.toBinary();
-			encoding = "binary";
-			extension = "wbin";
-		}
-		else if(resource.toBlob) //a blob (Canvas should have this)
-		{
-			data = resource.toBlob();
-			encoding = "file";
-		}
-		else if(resource.toBase64) //a base64 string
-		{
-			data = resource.toBase64();
-			encoding = "base64";
-		}
-		else if(resource.serialize) //a json object
-		{
-			var obj = resource.serialize();
-			if(obj.preview_url) //special case...
-				delete obj.preview_url;
-			data = JSON.stringify( obj );
-		}
-		else if(resource.data) //regular string data
-			data = resource.data;
-		else
-			data = JSON.stringify( resource );
-
-		if(data.buffer && data.buffer.constructor == ArrayBuffer)
-			data = data.buffer; //store the data in the arraybuffer
-
-		return {data:data, encoding: encoding, extension: extension};
-	},
-	*/
-		
 	/**
 	* Used to load files and get them as File (or Blob)
 	* @method getURLasFile
@@ -880,7 +832,7 @@ var ResourcesManager = {
 		for(var i in LS.ResourcesManager.resources_being_loaded[url])
 		{
 			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-				LS.ResourcesManager.resources_being_loaded[url][i].callback(res);
+				LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
 		}
 
 		//triggers 'once' callbacks

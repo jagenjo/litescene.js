@@ -4,6 +4,7 @@ var parserDAE = {
 	type: "scene",
 	resource: "SceneTree",
 	format: "text",
+	dataType:'string',
 
 	parse: function( data, options, filename )
 	{

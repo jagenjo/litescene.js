@@ -68,7 +68,7 @@ var LS = {
 	*/
 	registerComponent: function( c ) { 
 		//allows to register several at the same time
-		for(var i in arguments)
+		for(var i = 0; i < arguments.length; ++i)
 		{
 			var component = arguments[i];
 			var name = LS.getClassName( component );

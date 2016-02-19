@@ -167,8 +167,9 @@ CompositePattern.prototype.removeChild = function(node, param1, param2)
 */
 CompositePattern.prototype.removeAllChildren = function(param1, param2)
 {
-	while( this._children.length )
-		this.removeChild( this._children[0], param1, param2 );
+	if(this._children)
+		while( this._children.length )
+			this.removeChild( this._children[0], param1, param2 );
 }
 
 

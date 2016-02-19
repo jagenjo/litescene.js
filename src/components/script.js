@@ -31,21 +31,6 @@ function Script(o)
 
 	if(o)
 		this.configure(o);
-
-	/* code must not be executed if it is not attached to the scene
-	if(this.code)
-	{
-		try
-		{
-			//just in case the script saved had an error, do not block the flow
-			this.processCode();
-		}
-		catch (err)
-		{
-			console.error(err);
-		}
-	}
-	*/
 }
 
 Script.secure_module = false; //this module is not secure (it can execute code)
@@ -113,7 +98,7 @@ Object.defineProperty( Script.prototype, "context", {
 Script.prototype.getContext = function()
 {
 	if(this._script)
-			return this._script._context;
+		return this._script._context;
 	return null;
 }
 
@@ -144,14 +129,6 @@ Script.prototype.processCode = function( skip_events )
 
 		//compiles and executes the context
 		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
-		/*
-		if(	this._script._context )
-		{
-			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);
-			this._script._context.__proto__.getLocator = function() { return this.getComponent().getLocator() + "/context"; };
-			this._script._context.__proto__.createProperty = LS.Component.prototype.createProperty;
-		}
-		*/
 		if(!skip_events)
 			this.hookEvents();
 		return ret;
@@ -317,7 +294,7 @@ Script.prototype.hookEvents = function()
 
 Script.prototype.onAddedToNode = function( node )
 {
-	if(node.script)
+	if(!node.script)
 		node.script = this;
 }
 
@@ -438,4 +415,163 @@ Script.prototype.getResources = function(res)
 
 LS.registerComponent( Script );
 LS.Script = Script;
+
+//*****************
+
+function ScriptFromFile(o)
+{
+	this.enabled = true;
+	this._filename = "";
+
+	this._script = new LScript();
+
+	this._script.extra_methods = {
+		getComponent: (function() { return this; }).bind(this),
+		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
+		createProperty: LS.Component.prototype.createProperty,
+		createAction: LS.Component.prototype.createAction,
+		bind: LS.Component.prototype.bind,
+		unbind: LS.Component.prototype.unbind,
+		unbindAll: LS.Component.prototype.unbindAll
+	};
+
+	this._script.onerror = this.onError.bind(this);
+	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
+	this._last_error = null;
+
+	if(o)
+		this.configure(o);
+}
+
+Object.defineProperty( ScriptFromFile.prototype, "filename", {
+	set: function(v){ 
+		this._filename = v;
+		this.processCode();
+	},
+	get: function() { 
+		return this._filename;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( ScriptFromFile.prototype, "context", {
+	set: function(v){ 
+		console.error("ScriptFromFile: context cannot be assigned");
+	},
+	get: function() { 
+		if(this._script)
+				return this._script._context;
+		return null;
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
+ScriptFromFile.prototype.onAddedToScene = function( scene )
+{
+	if( !this.constructor.catch_important_exceptions )
+	{
+		this.processCode();
+		return;
+	}
+
+	//catch
+	try
+	{
+		//careful, if the code saved had an error, do not block the flow of the configure or the rest will be lost
+		this.processCode();
+	}
+	catch (err)
+	{
+		console.error(err);
+	}
+}
+
+ScriptFromFile.prototype.processCode = function( skip_events )
+{
+	var that = this;
+	if(!this.filename)
+		return;
+
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+	{
+		LS.ResourcesManager.load( this.filename, null, function( res, url ){
+			if( url != that.filename )
+				return;
+			that.processCode( skip_events );
+		});
+		return;
+	}
+
+	var code = script_resource.data;
+	if( code === undefined || this._script.code == code )
+		return;
+
+	if(this._root && !LS.Script.block_execution )
+	{
+		//assigned inside because otherwise if it gets modified before it is attached to the scene tree then it wont be compiled
+		this._script.code = code;
+
+		//unbind old stuff
+		if( this._script && this._script._context )
+			this._script._context.unbindAll();
+
+		//compiles and executes the context
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		if(!skip_events)
+			this.hookEvents();
+		return ret;
+	}
+	return true;
+}
+
+ScriptFromFile.prototype.getResources = function(res)
+{
+	
+	if(this.filename)
+		res[this.filename] = LS.Resource;
+
+	//script resources
+	var ctx = this.getContext();
+	if(!ctx || !ctx.getResources )
+		return;
+	ctx.getResources( res );
+}
+
+ScriptFromFile.prototype.getCode = function()
+{
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+		return "";
+	return script_resource.data;
+}
+
+ScriptFromFile.prototype.setCode = function( code, skip_events )
+{
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+		return "";
+	script_resource.data = code;
+	this.processCode( skip_events );
+}
+
+ScriptFromFile.updateComponents = function( script, skip_events )
+{
+	if(!script)
+		return;
+	var filename = script.filename;
+	var components = LS.GlobalScene.findNodeComponents( LS.ScriptFromFile );
+	for(var i = 0; i < components.length; ++i)
+	{
+		var compo = components[i];
+		var filename = script.fullpath || script.filename;
+		if( compo.filename == filename )
+			compo.processCode(skip_events);
+	}
+}
+
+LS.extendClass( ScriptFromFile, Script );
+
+LS.registerComponent( ScriptFromFile );
+LS.ScriptFromFile = ScriptFromFile;
 

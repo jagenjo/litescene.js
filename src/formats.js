@@ -98,6 +98,18 @@ LS.Formats = {
 		return this.supported[ extension ];
 	},
 
+	guessType: function( filename )
+	{
+		if(!filename)
+			return null;
+
+		var ext = LS.RM.getExtension( filename ).toLowerCase();
+		var info = this.supported[ ext ];
+		if(!info)
+			return null;
+		return info.resource;
+	},
+
 	//Helpers ******************************
 
 	//gets raw image information {width,height,pixels:ArrayBuffer} and create a dataurl to use in images
@@ -169,6 +181,7 @@ LS.Formats = {
 //native formats do not need parser
 LS.Formats.addSupportedFormat( "png,jpg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
 LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
+LS.Formats.addSupportedFormat( "json,js,txt,csv", { dataType: "string" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
 
 /*

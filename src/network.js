@@ -161,7 +161,7 @@ var Network = {
 			data = null;
 			callback = data;
 		}
-		return LS.Network.request({url:url, dataType:"txt", success: callback, success: callback, error: callback_error});
+		return LS.Network.request({url:url, dataType:"txt", success: callback, error: callback_error});
 	},
 
 	/**

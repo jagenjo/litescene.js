@@ -2,7 +2,7 @@ if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
 
-	function LGraphScene()
+	global.LGraphScene = function()
 	{
 		this.addOutput("Time","number");
 	}
@@ -67,11 +67,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/scene", LGraphScene );
-	window.LGraphScene = LGraphScene;
 
 	//********************************************************
 
-	function LGraphSceneNode()
+	global.LGraphSceneNode = function()
 	{
 		this.properties = {node_id:""};
 		this.size = [100,20];
@@ -239,14 +238,12 @@ if(typeof(LiteGraph) != "undefined")
 	*/
 
 	LiteGraph.registerNodeType("scene/node", LGraphSceneNode );
-	window.LGraphSceneNode = LGraphSceneNode;
-
 
 	//********************************************************
 
 	/* LGraphNode representing an object in the Scene */
 
-	function LGraphTransform()
+	global.LGraphTransform = function()
 	{
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
@@ -351,11 +348,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/transform", LGraphTransform );
-	window.LGraphTransform = LGraphTransform;
 
 	//***********************************************************************
 
-	function LGraphMaterial()
+	global.LGraphMaterial = function()
 	{
 		this.properties = {mat_name:""};
 		this.addInput("Material","Material");
@@ -482,12 +478,11 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
-	window.LGraphMaterial = LGraphMaterial;
+	global.LGraphMaterial = LGraphMaterial;
 
 	//********************************************************
 
-
-	function LGraphComponent()
+	global.LGraphComponent = function()
 	{
 		this.properties = {
 			node: "",
@@ -601,11 +596,10 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentProperties("output"); }
 
 	LiteGraph.registerNodeType("scene/component", LGraphComponent );
-	window.LGraphComponent = LGraphComponent;
 
 	//************************************************************
 
-	function LGraphLight()
+	global.LGraphLight = function()
 	{
 		this.properties = {mat_name:""};
 		this.addInput("Light","Light");
@@ -685,11 +679,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/light", LGraphLight );
-	window.LGraphLight = LGraphLight;
 
 	//************************************
 
-	function LGraphGlobal()
+	global.LGraphGlobal = function()
 	{
 		this.addOutput("Value");
 		this.properties = {name:"myvar", value: 0, type: "number", min:0, max:1 };
@@ -714,11 +707,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/global", LGraphGlobal );
-	window.LGraphGlobal = LGraphGlobal;
 
 	//************************************
 
-	function LGraphLocatorProperty()
+	global.LGraphLocatorProperty = function()
 	{
 		this.addInput("in");
 		this.addOutput("out");
@@ -751,7 +743,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	function LGraphFrame()
+	global.LGraphFrame = function()
 	{
 		this.addOutput("Color","Texture");
 		this.addOutput("Depth","Texture");
@@ -824,5 +816,4 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
-	window.LGraphFrame = LGraphFrame;
 };

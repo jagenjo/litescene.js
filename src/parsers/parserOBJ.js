@@ -4,6 +4,7 @@ var parserOBJ = {
 	type: 'mesh',
 	resource: 'Mesh',
 	format: 'text',
+	dataType:'string',
 
 	flipAxis: false,
 

@@ -5,6 +5,7 @@
 //Here goes the licence and some info
 //************************************************
 //and the commonJS header...
+'use strict';
 
 (function(global){
 
@@ -773,7 +774,7 @@ var LS = {
 	*/
 	registerComponent: function( c ) { 
 		//allows to register several at the same time
-		for(var i in arguments)
+		for(var i = 0; i < arguments.length; ++i)
 		{
 			var component = arguments[i];
 			var name = LS.getClassName( component );
@@ -1564,7 +1565,7 @@ var Network = {
 			data = null;
 			callback = data;
 		}
-		return LS.Network.request({url:url, dataType:"txt", success: callback, success: callback, error: callback_error});
+		return LS.Network.request({url:url, dataType:"txt", success: callback, error: callback_error});
 	},
 
 	/**
@@ -1621,10 +1622,22 @@ LS.Network = Network;
 
 function Resource()
 {
-	this.filename = null;
-	this.fullpath = null;
-	this.data = null;
+	this.filename = null; //name of file without folder or path
+	this.fullpath = null; //contains the unique name as is to be used to fetch it by the resources manager
+	this.remotepath = null; //the string to fetch this resource in internet (local resources do not have this name)
+	this._data = null;
 }
+
+Object.defineProperty( Resource.prototype, "data", {
+	set: function(v){ 
+		this._data = v;
+		this._resource_modified = true;
+	},
+	get: function() { 
+		return this._data;
+	},
+	enumerable: true
+});
 
 //makes this resource available 
 Resource.prototype.register = function()
@@ -1712,15 +1725,17 @@ Resource.getDataToStore = function( resource )
 //used in the coding pad to assign content to generic text files
 Resource.prototype.getData = function()
 {
-	return this.data;
+	return this._data;
 }
 
-Resource.prototype.setData = function(v)
+Resource.prototype.setData = function( v, skip_modified_flag )
 {
 	//remove old file
 	if( this._original_data )
 		this._original_data = null;
-	this.data = v;
+	this._data = v;
+	if(!skip_modified_flag)
+		this._resource_modified = true;
 }
 
 Resource.prototype.getDataToStore = function()
@@ -1991,7 +2006,7 @@ var ResourcesManager = {
 				//external urls
 				case 'http':
 				case 'https':
-					full_url = url;
+					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
 					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 ) //proxy external files
 						return this.proxy + url.substr(pos+3); //"://"
@@ -2097,16 +2112,23 @@ var ResourcesManager = {
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
 	* @param {Object}[options={}] options to apply to the loaded resource when processing it
-	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( url, resource, options )
+	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( resource, url  ) //( url, resource, options )
 	*/
 	load: function( url, options, on_complete )
 	{
+		//parameter swap...
+		if(options && options.constructor === Function && !on_complete )
+		{
+			on_complete = options;
+			options = null;
+		}
+
 		//if we already have it, then nothing to do
 		var resource = this.resources[url];
 		if( resource != null && !resource.is_preview )
 		{
 			if(on_complete)
-				on_complete(resource);
+				on_complete(resource,url);
 			return true;
 		}
 
@@ -2155,7 +2177,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess );
+				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess, true );
 			},
 			error: function(err) { 	LS.ResourcesManager._resourceLoadedError(url,err); },
 			progress: function(e) { 
@@ -2189,7 +2211,7 @@ var ResourcesManager = {
 	* @param {Function} on_complete once the resource is ready
 	*/
 
-	processResource: function( url, data, options, on_complete )
+	processResource: function( url, data, options, on_complete, was_loaded )
 	{
 		options = options || {};
 		if( data === null || data === undefined )
@@ -2257,7 +2279,7 @@ var ResourcesManager = {
 		{
 			var resource = new LS.Resource();
 			resource.filename = resource.fullpath = url;
-			resource.data = data;
+			resource._data = data;
 			inner_onResource( url, resource );
 		}
 
@@ -2274,9 +2296,13 @@ var ResourcesManager = {
 			resource.filename = fullpath;
 			if(options.filename) //used to overwrite
 				resource.filename = options.filename;
+			if(!options.is_local)
+				resource.fullpath = fullpath;
+			if(options.from_prefab)
+				resource.from_prefab = options.from_prefab;
+			if(was_loaded)
+				resource.remotepath = url;
 
-			//if(!resource.fullpath) //why??
-			resource.fullpath = fullpath;
 			if(options.is_preview)
 				resource.is_preview = true;
 
@@ -2370,65 +2396,6 @@ var ResourcesManager = {
 		return true;
 	},
 
-	/* moved to LS.Resource as getDataToStore
-	computeResourceInternalData: function(resource)
-	{
-		if(!resource)
-			throw("Resource is null");
-
-		var data = null;
-		var encoding = "text";
-		var extension = "";
-
-		//get the data
-		if (resource.getStoringData) //function
-		{
-			data = resource.getDataToStore();
-			if(data && data.constructor == ArrayBuffer)
-				encoding = "binary";
-		}
-		else if (resource._original_file) //file
-		{
-			data = resource._original_file;
-			encoding = "file";
-		}
-		else if(resource._original_data) //file in ArrayBuffer format
-			data = resource._original_data;
-		else if(resource.toBinary) //a function to compute the ArrayBuffer format
-		{
-			data = resource.toBinary();
-			encoding = "binary";
-			extension = "wbin";
-		}
-		else if(resource.toBlob) //a blob (Canvas should have this)
-		{
-			data = resource.toBlob();
-			encoding = "file";
-		}
-		else if(resource.toBase64) //a base64 string
-		{
-			data = resource.toBase64();
-			encoding = "base64";
-		}
-		else if(resource.serialize) //a json object
-		{
-			var obj = resource.serialize();
-			if(obj.preview_url) //special case...
-				delete obj.preview_url;
-			data = JSON.stringify( obj );
-		}
-		else if(resource.data) //regular string data
-			data = resource.data;
-		else
-			data = JSON.stringify( resource );
-
-		if(data.buffer && data.buffer.constructor == ArrayBuffer)
-			data = data.buffer; //store the data in the arraybuffer
-
-		return {data:data, encoding: encoding, extension: extension};
-	},
-	*/
-		
 	/**
 	* Used to load files and get them as File (or Blob)
 	* @method getURLasFile
@@ -2613,7 +2580,7 @@ var ResourcesManager = {
 		for(var i in LS.ResourcesManager.resources_being_loaded[url])
 		{
 			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-				LS.ResourcesManager.resources_being_loaded[url][i].callback(res);
+				LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
 		}
 
 		//triggers 'once' callbacks
@@ -3463,6 +3430,10 @@ var ShadersManager = {
 		var num_macros = 0;
 		for(var i in macros)
 			num_macros += 1;
+
+		//HACK for IE
+		if(gl && !gl.extensions["WEBGL_draw_buffers"])
+			fs_code = fs_code.replace("#extension GL_EXT_draw_buffers : enable", '');
 
 		var global = { 
 			vs_code: vs_code, 
@@ -4755,7 +4726,7 @@ var Draw = {
 		var coords = new Float32Array( num_valid_chars * 6 * 2);
 
 		var pos = 0;
-		var x = 0; y = 0;
+		var x = 0, y = 0;
 		for(var i = 0; i < l; ++i)
 		{
 			var c = atlas.atlas[ text.charCodeAt(i) ];
@@ -7530,8 +7501,9 @@ CompositePattern.prototype.removeChild = function(node, param1, param2)
 */
 CompositePattern.prototype.removeAllChildren = function(param1, param2)
 {
-	while( this._children.length )
-		this.removeChild( this._children[0], param1, param2 );
+	if(this._children)
+		while( this._children.length )
+			this.removeChild( this._children[0], param1, param2 );
 }
 
 
@@ -9328,17 +9300,7 @@ Camera["@layers"] = { type: "layers" };
 
 // used when rendering a cubemap to set the camera view direction (crossx and crossy are for when generating a CROSS cubemap image)
 
-//*
-Camera.cubemap_camera_parameters = [
-	{ name: "posx", dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,1,0), right: vec3.fromValues(0,0,-1), crossx:0, crossy:1 },
-	{ name: "negx", dir: vec3.fromValues(1,0,0), up: vec3.fromValues(0,1,0), right: vec3.fromValues(0,0,1), crossx:2, crossy:1 },
-	{ name: "posy", dir: vec3.fromValues(0,-1,0), up: vec3.fromValues(0,0,-1), right: vec3.fromValues(1,0,0), crossx:1, crossy:2 },
-	{ name: "negy", dir: vec3.fromValues(0,1,0), up: vec3.fromValues(0,0,1), right: vec3.fromValues(-1,0,0), crossx:1, crossy:0 },
-	{ name: "posz", dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,1,0), right: vec3.fromValues(1,0,0), crossx:1, crossy:1 },
-	{ name: "negz", dir: vec3.fromValues(0,0,1), up: vec3.fromValues(0,1,0), right: vec3.fromValues(-1,0,0), crossx:3, crossy:1 }
-];
-//*/
-/*
+//OLD VERSION
 Camera.cubemap_camera_parameters = [
 	{ name: "posx", dir: vec3.fromValues(1,0,0), up: vec3.fromValues(0,-1,0), crossx:2, crossy:1 },
 	{ name: "negx", dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,-1,0), crossx:0, crossy:1 },
@@ -9347,6 +9309,17 @@ Camera.cubemap_camera_parameters = [
 	{ name: "posz", dir: vec3.fromValues(0,0,1), up: vec3.fromValues(0,-1,0), crossx:1, crossy:1 },
 	{ name: "negz", dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,-1,0), crossx:3, crossy:1 }
 ];
+//*/
+/*
+Camera.cubemap_camera_parameters = [
+	{ name: "posx", dir: vec3.fromValues(-1,0,0), up: vec3.fromValues(0,1,0), right: vec3.fromValues(0,0,-1), crossx:0, crossy:1 },
+	{ name: "negx", dir: vec3.fromValues(1,0,0), up: vec3.fromValues(0,1,0), right: vec3.fromValues(0,0,1), crossx:2, crossy:1 },
+	{ name: "posy", dir: vec3.fromValues(0,-1,0), up: vec3.fromValues(0,0,-1), right: vec3.fromValues(1,0,0), crossx:1, crossy:2 },
+	{ name: "negy", dir: vec3.fromValues(0,1,0), up: vec3.fromValues(0,0,1), right: vec3.fromValues(-1,0,0), crossx:1, crossy:0 },
+	{ name: "posz", dir: vec3.fromValues(0,0,-1), up: vec3.fromValues(0,1,0), right: vec3.fromValues(1,0,0), crossx:1, crossy:1 },
+	{ name: "negz", dir: vec3.fromValues(0,0,1), up: vec3.fromValues(0,1,0), right: vec3.fromValues(-1,0,0), crossx:3, crossy:1 }
+];
+
 //*/
 
 /*
@@ -17921,21 +17894,6 @@ function Script(o)
 
 	if(o)
 		this.configure(o);
-
-	/* code must not be executed if it is not attached to the scene
-	if(this.code)
-	{
-		try
-		{
-			//just in case the script saved had an error, do not block the flow
-			this.processCode();
-		}
-		catch (err)
-		{
-			console.error(err);
-		}
-	}
-	*/
 }
 
 Script.secure_module = false; //this module is not secure (it can execute code)
@@ -18003,7 +17961,7 @@ Object.defineProperty( Script.prototype, "context", {
 Script.prototype.getContext = function()
 {
 	if(this._script)
-			return this._script._context;
+		return this._script._context;
 	return null;
 }
 
@@ -18034,14 +17992,6 @@ Script.prototype.processCode = function( skip_events )
 
 		//compiles and executes the context
 		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
-		/*
-		if(	this._script._context )
-		{
-			this._script._context.__proto__.getComponent = (function() { return this; }).bind(this);
-			this._script._context.__proto__.getLocator = function() { return this.getComponent().getLocator() + "/context"; };
-			this._script._context.__proto__.createProperty = LS.Component.prototype.createProperty;
-		}
-		*/
 		if(!skip_events)
 			this.hookEvents();
 		return ret;
@@ -18207,7 +18157,7 @@ Script.prototype.hookEvents = function()
 
 Script.prototype.onAddedToNode = function( node )
 {
-	if(node.script)
+	if(!node.script)
 		node.script = this;
 }
 
@@ -18328,6 +18278,165 @@ Script.prototype.getResources = function(res)
 
 LS.registerComponent( Script );
 LS.Script = Script;
+
+//*****************
+
+function ScriptFromFile(o)
+{
+	this.enabled = true;
+	this._filename = "";
+
+	this._script = new LScript();
+
+	this._script.extra_methods = {
+		getComponent: (function() { return this; }).bind(this),
+		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
+		createProperty: LS.Component.prototype.createProperty,
+		createAction: LS.Component.prototype.createAction,
+		bind: LS.Component.prototype.bind,
+		unbind: LS.Component.prototype.unbind,
+		unbindAll: LS.Component.prototype.unbindAll
+	};
+
+	this._script.onerror = this.onError.bind(this);
+	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
+	this._last_error = null;
+
+	if(o)
+		this.configure(o);
+}
+
+Object.defineProperty( ScriptFromFile.prototype, "filename", {
+	set: function(v){ 
+		this._filename = v;
+		this.processCode();
+	},
+	get: function() { 
+		return this._filename;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( ScriptFromFile.prototype, "context", {
+	set: function(v){ 
+		console.error("ScriptFromFile: context cannot be assigned");
+	},
+	get: function() { 
+		if(this._script)
+				return this._script._context;
+		return null;
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
+ScriptFromFile.prototype.onAddedToScene = function( scene )
+{
+	if( !this.constructor.catch_important_exceptions )
+	{
+		this.processCode();
+		return;
+	}
+
+	//catch
+	try
+	{
+		//careful, if the code saved had an error, do not block the flow of the configure or the rest will be lost
+		this.processCode();
+	}
+	catch (err)
+	{
+		console.error(err);
+	}
+}
+
+ScriptFromFile.prototype.processCode = function( skip_events )
+{
+	var that = this;
+	if(!this.filename)
+		return;
+
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+	{
+		LS.ResourcesManager.load( this.filename, null, function( res, url ){
+			if( url != that.filename )
+				return;
+			that.processCode( skip_events );
+		});
+		return;
+	}
+
+	var code = script_resource.data;
+	if( code === undefined || this._script.code == code )
+		return;
+
+	if(this._root && !LS.Script.block_execution )
+	{
+		//assigned inside because otherwise if it gets modified before it is attached to the scene tree then it wont be compiled
+		this._script.code = code;
+
+		//unbind old stuff
+		if( this._script && this._script._context )
+			this._script._context.unbindAll();
+
+		//compiles and executes the context
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		if(!skip_events)
+			this.hookEvents();
+		return ret;
+	}
+	return true;
+}
+
+ScriptFromFile.prototype.getResources = function(res)
+{
+	
+	if(this.filename)
+		res[this.filename] = LS.Resource;
+
+	//script resources
+	var ctx = this.getContext();
+	if(!ctx || !ctx.getResources )
+		return;
+	ctx.getResources( res );
+}
+
+ScriptFromFile.prototype.getCode = function()
+{
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+		return "";
+	return script_resource.data;
+}
+
+ScriptFromFile.prototype.setCode = function( code, skip_events )
+{
+	var script_resource = LS.ResourcesManager.getResource( this.filename );
+	if(!script_resource)
+		return "";
+	script_resource.data = code;
+	this.processCode( skip_events );
+}
+
+ScriptFromFile.updateComponents = function( script, skip_events )
+{
+	if(!script)
+		return;
+	var filename = script.filename;
+	var components = LS.GlobalScene.findNodeComponents( LS.ScriptFromFile );
+	for(var i = 0; i < components.length; ++i)
+	{
+		var compo = components[i];
+		var filename = script.fullpath || script.filename;
+		if( compo.filename == filename )
+			compo.processCode(skip_events);
+	}
+}
+
+LS.extendClass( ScriptFromFile, Script );
+
+LS.registerComponent( ScriptFromFile );
+LS.ScriptFromFile = ScriptFromFile;
 
 
 function TerrainRenderer(o)
@@ -19446,7 +19555,7 @@ if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
 
-	function LGraphScene()
+	global.LGraphScene = function()
 	{
 		this.addOutput("Time","number");
 	}
@@ -19511,11 +19620,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/scene", LGraphScene );
-	window.LGraphScene = LGraphScene;
 
 	//********************************************************
 
-	function LGraphSceneNode()
+	global.LGraphSceneNode = function()
 	{
 		this.properties = {node_id:""};
 		this.size = [100,20];
@@ -19683,14 +19791,12 @@ if(typeof(LiteGraph) != "undefined")
 	*/
 
 	LiteGraph.registerNodeType("scene/node", LGraphSceneNode );
-	window.LGraphSceneNode = LGraphSceneNode;
-
 
 	//********************************************************
 
 	/* LGraphNode representing an object in the Scene */
 
-	function LGraphTransform()
+	global.LGraphTransform = function()
 	{
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
@@ -19795,11 +19901,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/transform", LGraphTransform );
-	window.LGraphTransform = LGraphTransform;
 
 	//***********************************************************************
 
-	function LGraphMaterial()
+	global.LGraphMaterial = function()
 	{
 		this.properties = {mat_name:""};
 		this.addInput("Material","Material");
@@ -19926,12 +20031,11 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
-	window.LGraphMaterial = LGraphMaterial;
+	global.LGraphMaterial = LGraphMaterial;
 
 	//********************************************************
 
-
-	function LGraphComponent()
+	global.LGraphComponent = function()
 	{
 		this.properties = {
 			node: "",
@@ -20045,11 +20149,10 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentProperties("output"); }
 
 	LiteGraph.registerNodeType("scene/component", LGraphComponent );
-	window.LGraphComponent = LGraphComponent;
 
 	//************************************************************
 
-	function LGraphLight()
+	global.LGraphLight = function()
 	{
 		this.properties = {mat_name:""};
 		this.addInput("Light","Light");
@@ -20129,11 +20232,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/light", LGraphLight );
-	window.LGraphLight = LGraphLight;
 
 	//************************************
 
-	function LGraphGlobal()
+	global.LGraphGlobal = function()
 	{
 		this.addOutput("Value");
 		this.properties = {name:"myvar", value: 0, type: "number", min:0, max:1 };
@@ -20158,11 +20260,10 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/global", LGraphGlobal );
-	window.LGraphGlobal = LGraphGlobal;
 
 	//************************************
 
-	function LGraphLocatorProperty()
+	global.LGraphLocatorProperty = function()
 	{
 		this.addInput("in");
 		this.addOutput("out");
@@ -20195,7 +20296,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	function LGraphFrame()
+	global.LGraphFrame = function()
 	{
 		this.addOutput("Color","Texture");
 		this.addOutput("Depth","Texture");
@@ -20268,7 +20369,6 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
-	window.LGraphFrame = LGraphFrame;
 };
 
 //Interpolation methods
@@ -21509,6 +21609,10 @@ LS.Path = Path;
 
 function Prefab(o)
 {
+	this.resources = {}; 
+	this.prefab_json = null;
+	this.prefab_data = null;
+
 	if(o)
 		this.configure(o);
 }
@@ -21584,7 +21688,7 @@ Prefab.prototype.processResources = function()
 			console.warn("resource data in prefab is undefined, skipping it:" + resname);
 			continue;
 		}
-		LS.ResourcesManager.processResource( resname, resdata );
+		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: true } );
 	}
 }
 
@@ -21603,7 +21707,7 @@ Prefab.prototype.createObject = function()
 
 	var node = new LS.SceneNode();
 	node.configure(conf_data);
-	ResourcesManager.loadResources( node.getResources({},true) );
+	LS.ResourcesManager.loadResources( node.getResources({},true) );
 
 	if(this.fullpath)
 		node.prefab = this.fullpath;
@@ -21662,7 +21766,7 @@ Prefab.packResources = function( resources, base_data )
 			data = resource._original_data;
 		else
 		{
-			var data_info = LS.ResourcesManager.computeResourceInternalData(resource);
+			var data_info = LS.ResourcesManager.computeResourceInternalData( resource );
 			data = data_info.data;
 		}
 
@@ -22492,6 +22596,7 @@ function RenderSettings( o )
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
 	this.render_gui = true; //render gui
+	this.render_helpers = true; //render helpers (for the editor)
 
 	this.sort_instances_by_distance = true; //sort render instances by distance 
 	this.sort_instances_by_priority = true; //sort render instances by priority
@@ -22999,7 +23104,7 @@ RenderFrameContainer.prototype.startFBO = function()
 		this.extra_texture = null;
 
 	//for the depth
-	if( this.use_depth_texture && (!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) )
+	if( this.use_depth_texture && (!this.depth_texture || this.depth_texture.width != width || this.depth_texture.height != height) && gl.extensions["WEBGL_depth_texture"] )
 		this.depth_texture = new GL.Texture( width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 	else if( !this.use_depth_texture )
 		this.depth_texture = null;
@@ -23340,6 +23445,9 @@ var Renderer = {
 		LEvent.trigger(scene, "afterRenderScene", camera );
 		scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "afterRenderScene", camera );
+
+		if(render_settings.render_helpers)
+			LEvent.trigger(this, "renderHelpers", camera );
 	},
 
 	/**
@@ -23442,7 +23550,7 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		if(!scene)
-			return console.warn("Renderer.renderInstances: no scene found");
+			return console.warn("LS.Renderer.renderInstances: no scene found");
 
 		var pass = this._current_pass;
 		var camera = this._current_camera;
@@ -23932,7 +24040,7 @@ var Renderer = {
 				query.setMacro("USE_COLORCLIP_FACTOR");
 		}
 
-		if(this._current_renderframe && this._current_renderframe.use_extra_texture )
+		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
 			query.setMacro("USE_DRAW_BUFFERS");
 
 		LEvent.trigger( scene, "fillSceneQuery", query );
@@ -24273,7 +24381,7 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
-			if(this._is_shadowmap || !scene.info )
+			if(texture._is_shadowmap || !scene.info )
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
@@ -24281,8 +24389,8 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 
-			Renderer.enableCamera( cubemap_cam, render_settings, true );
-			Renderer.renderInstances( render_settings );
+			LS.Renderer.enableCamera( cubemap_cam, render_settings, true );
+			LS.Renderer.renderInstances( render_settings );
 		});
 
 		this._current_target = null;
@@ -24318,10 +24426,15 @@ var Renderer = {
 		var node = scene.getNode( "sphere") ;
 		node.material = material;
 
-		var tex = new GL.Texture(size,size);
+		var tex = this._material_preview_texture || new GL.Texture(size,size);
+		if(!this._material_preview_texture)
+			this._material_preview_texture = tex;
+
 		tex.drawTo( function()
 		{
-			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true }, scene );
+			//it already clears everything
+			//just render
+			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true, render_helpers: false }, scene );
 		});
 
 		var canvas = tex.toCanvas(null, true);
@@ -25069,6 +25182,18 @@ LS.Formats = {
 		return this.supported[ extension ];
 	},
 
+	guessType: function( filename )
+	{
+		if(!filename)
+			return null;
+
+		var ext = LS.RM.getExtension( filename ).toLowerCase();
+		var info = this.supported[ ext ];
+		if(!info)
+			return null;
+		return info.resource;
+	},
+
 	//Helpers ******************************
 
 	//gets raw image information {width,height,pixels:ArrayBuffer} and create a dataurl to use in images
@@ -25140,6 +25265,7 @@ LS.Formats = {
 //native formats do not need parser
 LS.Formats.addSupportedFormat( "png,jpg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
 LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
+LS.Formats.addSupportedFormat( "json,js,txt,csv", { dataType: "string" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
 
 /*
@@ -25182,6 +25308,7 @@ var parserASE = {
 	type: "mesh",
 	resource: "Mesh",
 	format: 'text',
+	dataType:'string',
 	
 	parse: function( text, options, filename )
 	{
@@ -26374,7 +26501,7 @@ global.Collada = {
 
 		//get streams
 		var xmlvertices = xmlmesh.querySelector("vertices input");
-		vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
+		var vertices_source = sources[ xmlvertices.getAttribute("source").substr(1) ];
 		sources[ xmlmesh.querySelector("vertices").getAttribute("id") ] = vertices_source;
 
 		var mesh = null;
@@ -26947,7 +27074,7 @@ global.Collada = {
 
 		//sampler, is in charge of the interpolation
 		//var xmlsampler = xmlanimation.querySelector("sampler" + source);
-		xmlsampler = this.findXMLNodeById( xmlanimation, "sampler", source.substr(1) );
+		var xmlsampler = this.findXMLNodeById( xmlanimation, "sampler", source.substr(1) );
 		if(!xmlsampler)
 		{
 			console.error("Error DAE: Sampler not found in " + source);
@@ -27717,6 +27844,7 @@ var parserDAE = {
 	type: "scene",
 	resource: "SceneTree",
 	format: "text",
+	dataType:'string',
 
 	parse: function( data, options, filename )
 	{
@@ -27996,6 +28124,7 @@ var parserJSMesh = {
 	extension: 'jsmesh',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data,options)
 	{
@@ -28033,6 +28162,7 @@ var parserOBJ = {
 	type: 'mesh',
 	resource: 'Mesh',
 	format: 'text',
+	dataType:'string',
 
 	flipAxis: false,
 
@@ -28500,6 +28630,7 @@ var parserCGArtMesh = {
 	extension: 'cgart',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data,options)
 	{
@@ -28674,6 +28805,7 @@ var parserGR2 = {
 	extension: 'gr2',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data, options)
 	{
@@ -31116,16 +31248,22 @@ Object.defineProperty(Object.prototype, "merge", {
 });
 
 //used for hashing keys:TODO move from here somewhere else
-String.prototype.hashCode = function(){
-    var hash = 0, i, c, l;
-    if (this.length == 0) return hash;
-    for (i = 0, l = this.length; i < l; ++i) {
-        c  = this.charCodeAt(i);
-        hash  = ((hash<<5)-hash)+c;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};
+if( !String.prototype.hasOwnProperty( "hashCode" ) )
+{
+	Object.defineProperty( String.prototype, "hashCode", {
+		value: function(){
+			var hash = 0, i, c, l;
+			if (this.length == 0) return hash;
+			for (i = 0, l = this.length; i < l; ++i) {
+				c  = this.charCodeAt(i);
+				hash  = ((hash<<5)-hash)+c;
+				hash |= 0; // Convert to 32bit integer
+			}
+			return hash;
+		},
+		enumerable: false
+	});
+}
 
 Object.equals = function( x, y ) {
   if ( x === y ) return true;

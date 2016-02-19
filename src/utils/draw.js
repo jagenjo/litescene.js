@@ -992,7 +992,7 @@ var Draw = {
 		var coords = new Float32Array( num_valid_chars * 6 * 2);
 
 		var pos = 0;
-		var x = 0; y = 0;
+		var x = 0, y = 0;
 		for(var i = 0; i < l; ++i)
 		{
 			var c = atlas.atlas[ text.charCodeAt(i) ];

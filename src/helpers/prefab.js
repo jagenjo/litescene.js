@@ -10,6 +10,10 @@
 
 function Prefab(o)
 {
+	this.resources = {}; 
+	this.prefab_json = null;
+	this.prefab_data = null;
+
 	if(o)
 		this.configure(o);
 }
@@ -85,7 +89,7 @@ Prefab.prototype.processResources = function()
 			console.warn("resource data in prefab is undefined, skipping it:" + resname);
 			continue;
 		}
-		LS.ResourcesManager.processResource( resname, resdata );
+		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: true } );
 	}
 }
 
@@ -104,7 +108,7 @@ Prefab.prototype.createObject = function()
 
 	var node = new LS.SceneNode();
 	node.configure(conf_data);
-	ResourcesManager.loadResources( node.getResources({},true) );
+	LS.ResourcesManager.loadResources( node.getResources({},true) );
 
 	if(this.fullpath)
 		node.prefab = this.fullpath;
@@ -163,7 +167,7 @@ Prefab.packResources = function( resources, base_data )
 			data = resource._original_data;
 		else
 		{
-			var data_info = LS.ResourcesManager.computeResourceInternalData(resource);
+			var data_info = LS.ResourcesManager.computeResourceInternalData( resource );
 			data = data_info.data;
 		}
 

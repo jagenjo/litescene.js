@@ -4,6 +4,7 @@ var parserASE = {
 	type: "mesh",
 	resource: "Mesh",
 	format: 'text',
+	dataType:'string',
 	
 	parse: function( text, options, filename )
 	{

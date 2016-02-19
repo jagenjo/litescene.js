@@ -3,6 +3,7 @@ var parserJSMesh = {
 	extension: 'jsmesh',
 	type: 'mesh',
 	format: 'text',
+	dataType:'string',
 
 	parse: function(data,options)
 	{
