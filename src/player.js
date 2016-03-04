@@ -54,6 +54,8 @@ function Player(options)
 		options.canvas = canvas;
 	}
 
+	this.debug = false;
+
 	this.gl = GL.create(options); //create or reuse
 	this.canvas = this.gl.canvas;
 	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
@@ -193,6 +195,8 @@ Player.prototype.pause = function()
 
 Player.prototype.play = function()
 {
+	if(this.debug)
+		console.log("Start");
 	this.state = "playing";
 	this.scene.start();
 }
@@ -286,6 +290,12 @@ Player.prototype.renderLoadingBar = function()
 	gl.fillColor = this.loadingbar_color || [0.9,0.5,1.0,1.0];
 	gl.fillRect(0,y,gl.drawingBufferWidth * this.loading_bar,6);
 	gl.finish2D();
+}
+
+Player.prototype.enableDebug = function()
+{
+	LS.Script.catch_important_exceptions = false;
+	LS.catch_exceptions = false;
 }
 
 LS.Player = Player;

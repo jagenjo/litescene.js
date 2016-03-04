@@ -4,7 +4,7 @@ var parserOBJ = {
 	type: 'mesh',
 	resource: 'Mesh',
 	format: 'text',
-	dataType:'string',
+	dataType:'text',
 
 	flipAxis: false,
 
@@ -62,10 +62,12 @@ var parserOBJ = {
 		var lines = text.split("\n");
 		var length = lines.length;
 		for (var lineIndex = 0;  lineIndex < length; ++lineIndex) {
-			line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //trim
+			line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
 
-			if (line[0] == "#") continue;
-			if(line == "") continue;
+			if (line[0] == "#")
+				continue;
+			if(line == "")
+				continue;
 
 			tokens = line.split(" ");
 
@@ -270,7 +272,7 @@ var parserOBJ = {
 			}
 			else
 			{
-				trace("unknown code: " + line);
+				console.warn("unknown code: " + line);
 			}
 		}
 
@@ -317,7 +319,7 @@ var parserOBJ = {
 			mesh.triangles = new Uint16Array(indicesArray);
 
 		//extra info
-		mesh.bounding = Mesh.computeBounding(mesh.vertices);
+		mesh.bounding = GL.Mesh.computeBounding(mesh.vertices);
 		var info = {};
 		if(groups.length > 1)
 			info.groups = groups;
@@ -329,3 +331,87 @@ var parserOBJ = {
 };
 
 LS.Formats.registerParser( parserOBJ );
+
+
+
+
+//***** MTL parser *****************
+//info from: http://paulbourke.net/dataformats/mtl/
+var parserMTL = {
+	extension: 'mtl',
+	type: 'material',
+	resource: 'StandardMaterial',
+	format: 'text',
+	dataType:'text',
+
+	parse: function( text, options )
+	{
+		var lines = text.split("\n");
+		var length = lines.length;
+
+		var materials = {};
+		var current_material = null;
+
+		for (var lineIndex = 0;  lineIndex < length; ++lineIndex)
+		{
+			var line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //trim
+
+			if (line[0] == "#" || line == "")
+				continue;
+
+			var tokens = line.split(" ");
+			var c = tokens[0];
+			switch(c)
+			{
+				case "newmtl":
+					current_material = { filename: tokens[1], textures: {} };
+					materials[ tokens[1] ] = current_material;
+					break;
+				case "Ka":
+					current_material.ambient = readVector3(tokens);
+					break;
+				case "Kd":
+					current_material.color = readVector3(tokens);
+					break;
+				case "Ks":
+					current_material.specular_factor = parseFloat(tokens[1]); //readVector3(tokens);
+					break;
+				case "Ns": //glossiness
+					current_material.specular_gloss = parseFloat(tokens[1]);
+					break;
+				case "map_Kd":
+					current_material.textures["color"] = tokens[1];
+					break;
+				case "map_Ka":
+					current_material.textures["ambient"] = tokens[1];
+					break;
+				case "map_Ks":
+					current_material.textures["specular"] = tokens[1];
+					break;
+				case "d": //disolve is like transparency
+					current_material.opacity = parseFloat( tokens[1] );
+					break;
+				//Not supported stuff
+				case "illum": //illumination model (raytrace related)
+				case "Ni": //refraction coefficient
+					break;
+			}
+		}
+
+		for(var i in materials)
+		{
+			var material_info = materials[i];
+			var material = new LS.StandardMaterial(material_info);
+			LS.RM.registerResource( material_info.filename, material );
+		}
+
+		return null;
+
+		function readVector3(v)
+		{
+			return [ parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3]) ];
+		}
+	}
+};
+
+LS.Formats.registerParser( parserMTL );

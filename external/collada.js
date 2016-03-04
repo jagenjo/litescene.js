@@ -394,8 +394,17 @@ global.Collada = {
 		if(!node_id && !node_sid)
 			return null;
 
-		var node = { id: node_sid || node_id, children:[], _depth: level };
+		//here we create the node
+		var node = { 
+			id: node_sid || node_id, 
+			children:[], 
+			_depth: level 
+		};
+
 		var node_type = xmlnode.getAttribute("type");
+		if(node_type)
+			node.type = node_type;
+
 		var node_name = xmlnode.getAttribute("name");
 		if( node_name)
 			node.name = node_name;
@@ -1135,7 +1144,7 @@ global.Collada = {
 		var buffers = [];
 		var last_index = 0;
 		var facemap = {};
-		var vertex_remap = [];
+		var vertex_remap = []; //maps DAE vertex index to Mesh vertex index (because when meshes are triangulated indices are changed
 		var indicesArray = [];
 		var last_start = 0;
 		var group_name = "";
@@ -1173,8 +1182,9 @@ global.Collada = {
 				var current_index = -1;
 				var prev_index = -1;
 
-				if(use_indices && last_index >= 256*256)
-					break;
+				//discomment to force 16bits indices
+				//if(use_indices && last_index >= 256*256)
+				//	break;
 
 				//for every pack of indices in the polygon (vertex, normal, uv, ... )
 				for(var k = 0, l = data.length; k < l; k += num_data_vertex)
@@ -1186,14 +1196,16 @@ global.Collada = {
 						current_index = facemap[vertex_id];
 					else
 					{
+						//for every data buffer associated to this vertex
 						for(var j = 0; j < buffers.length; ++j)
 						{
 							var buffer = buffers[j];
 							var index = parseInt(data[k + j]);
-							var array = buffer[1]; //array with all the data
+							var array = buffer[1]; //array where we accumulate the final data as we extract if from sources
 							var source = buffer[3]; //where to read the data from
 							if(j == 0)
-								vertex_remap[ array.length / num_data_vertex ] = index;
+								vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
+//								vertex_remap[ array.length / num_data_vertex ] = index;
 							index *= buffer[2]; //stride
 							for(var x = 0; x < buffer[2]; ++x)
 								array.push( source[index+x] );
@@ -1204,7 +1216,7 @@ global.Collada = {
 						facemap[vertex_id] = current_index;
 					}
 
-					if(!triangles) //split polygons then
+					if(!triangles) //the xml element is not triangles? then split polygons in triangles
 					{
 						if(k == 0)
 							first_index = current_index;
@@ -1439,8 +1451,8 @@ global.Collada = {
 			var current_index = -1;
 			var prev_index = -1;
 
-			if(use_indices && last_index >= 256*256)
-				break;
+			//if(use_indices && last_index >= 256*256)
+			//	break;
 
 			//for every pack of indices in the polygon (vertex, normal, uv, ... )
 			for(var k = 0, l = data.length; k < l; k += num_data_vertex)
@@ -1930,6 +1942,7 @@ global.Collada = {
 			var final_bone_indices = new Uint8Array(4 * num_vertices); //4 bones per vertex
 			var used_joints = [];
 
+			//for every vertex in the mesh, process bone indices and weights
 			for(var i = 0; i < num_vertices; ++i)
 			{
 				var p = remap[ i ] * 4;

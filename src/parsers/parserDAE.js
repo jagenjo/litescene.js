@@ -4,7 +4,7 @@ var parserDAE = {
 	type: "scene",
 	resource: "SceneTree",
 	format: "text",
-	dataType:'string',
+	dataType:'text',
 
 	parse: function( data, options, filename )
 	{
@@ -75,6 +75,13 @@ var parserDAE = {
 			{
 				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
+			}
+
+			
+			if(node.type)
+			{
+				node.node_type = node.type;
+				delete node.type; //to be sure it doesnt overlaps with some existing var
 			}
 
 			//change mesh names to engine friendly ids

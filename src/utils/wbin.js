@@ -380,6 +380,7 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 			break;
 		else
 			r += String.fromCharCode( typed_array[i] );
+	//return String.fromCharCode.apply(null,typed_array)
 	return r;
 }
 
@@ -444,3 +445,6 @@ WBin.progressiveLoad = function(url, on_header, on_lump, on_complete, on_error)
     xhr.send();
 }
 */
+
+//WBin is not registered in LS here, because WBin is included before LS
+//IT is done from LS

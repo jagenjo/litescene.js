@@ -56,11 +56,11 @@ SkinDeformer.prototype.getBoneNode = function( name )
 	{
 		root_node = scene.getNode( this.skeleton_root_node );
 		if(root_node)
-			return root_node.findChildNodeByName( name );
+			return root_node.findNodeByName( name );
 	}
 	else if(this.search_bones_in_parent)
 	{
-		return root_node.parentNode.findChildNodeByName( name );
+		return root_node.parentNode.findNodeByName( name );
 	}
 	else
 		return scene.getNode( name );

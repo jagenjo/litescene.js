@@ -336,7 +336,19 @@ CompositePattern.prototype.getDescendants = function()
 	return r;
 }
 
-CompositePattern.prototype.findChildNodeByName = function( name )
+//search for a node using a string that could be a name, a fullname or a uid
+CompositePattern.prototype.findNode = function( name_or_uid )
+{
+	if(name_or_uid == "")
+		return this;
+	if(!name_or_uid)
+		return null;
+	if(name_or_uid.charAt(0) == LS._uid_prefix)
+		return this.findNodeByName( name_or_uid );
+	return this.findNodeByUId( name_or_uid );
+}
+
+CompositePattern.prototype.findNodeByName = function( name )
 {
 	if(!name)
 		return null;
@@ -354,22 +366,39 @@ CompositePattern.prototype.findChildNodeByName = function( name )
 				return node;
 			if(node._children)
 			{
-				var r = node.findChildNodeByName(name);
+				var r = node.findNodeByName(name);
 				if(r)
 					return r;
 			}
 		}
 	return null;
-
-	/* slow
-	var nodes = this.getDescendants();
-	for(var i = 0; i < nodes.length; i++)
-	{
-		var node = nodes[i];
-		if( node.name == name )
-			return node;
-	}
-	*/
 }
+
+CompositePattern.prototype.findNodeByUId = function( uid )
+{
+	if(!uid)
+		return null;
+
+	if(this.uid == uid)
+		return this;
+
+	var children = this._children;
+
+	if(children)
+		for(var i = 0; i < children.length; ++i)
+		{
+			var node = children[i];
+			if( node.uid == uid )
+				return node;
+			if(node._children)
+			{
+				var r = node.findNodeByUId(uid);
+				if(r)
+					return r;
+			}
+		}
+	return null;
+}
+
 
 

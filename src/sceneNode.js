@@ -24,6 +24,8 @@ SceneNode.prototype.init = function( keep_components )
 	this._classList = {};
 	//this.className = "";
 
+	this.node_type = null;
+
 	//flags
 	this.flags = {
 		visible: true,
@@ -73,6 +75,17 @@ Object.defineProperty( SceneNode.prototype, 'name', {
 		return this._name;
 	},
 	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'fullname', {
+	set: function(name)
+	{
+		throw("You cannot set fullname, it depends on the parent nodes");
+	},
+	get: function(){
+		return this.getPathName();
+	},
+	enumerable: false
 });
 
 Object.defineProperty( SceneNode.prototype, 'uid', {
@@ -277,9 +290,13 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 		switch(path[0])
 		{
 			case "matrix":
-			case "x": 
+			case "x":
 			case "y": 
 			case "z": 
+			case "position":
+			case "rotX":
+			case "rotY":
+			case "rotZ":
 				target = this.transform;
 				varname = path[0];
 				break;
@@ -403,10 +420,16 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		{
 			case "matrix": target = this.transform; break;
 			case "x":
-			case "translate.X": target = this.transform; varname = "x"; break;
 			case "y":
-			case "translate.Y": target = this.transform; varname = "y"; break;
 			case "z":
+			case "xrotation": 
+			case "yrotation": 
+			case "zrotation": 
+				target = this.transform; 
+				varname = path[0];
+				break;
+			case "translate.X": target = this.transform; varname = "x"; break;
+			case "translate.Y": target = this.transform; varname = "y"; break;
 			case "translate.Z": target = this.transform; varname = "z"; break;
 			case "rotateX.ANGLE": target = this.transform; varname = "pitch"; break;
 			case "rotateY.ANGLE": target = this.transform; varname = "yaw"; break;
@@ -672,6 +695,13 @@ SceneNode.prototype.configure = function(info)
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 
+	if(info.node_type)
+	{
+		this.node_type = info.node_type;
+		if(info.node_type == "JOINT")
+			this._is_bone = true;
+	}
+
 	//TO DO: Change this to more generic stuff
 	//some helpers (mostly for when loading from js object that come from importers
 	if(info.mesh)
@@ -721,8 +751,12 @@ SceneNode.prototype.configure = function(info)
 	}
 
 	//transform in matrix format could come from importers so we leave it
+	if(info.position) 
+		this.transform.position = info.position;
 	if(info.model) 
 		this.transform.fromMatrix( info.model ); 
+	if(info.transform) 
+		this.transform.configure( info.transform ); 
 
 	//first the no components
 	if(info.material)
@@ -781,6 +815,10 @@ SceneNode.prototype.serialize = function()
 	if(this.className) 
 		o.className = this.className;
 	o.layers = this.layers;
+
+	//work in progress
+	if(this.node_type)
+		o.node_type = this.node_type;
 
 	//modules
 	if(this.mesh && typeof(this.mesh) == "string") 

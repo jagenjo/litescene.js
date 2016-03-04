@@ -66,8 +66,13 @@ Animation.prototype.configure = function(data)
 		for(var i in data.takes)
 		{
 			var take = new LS.Animation.Take( data.takes[i] );
-			this.addTake( take );
-			take.loadResources(); //load associated resources
+			if(!take.name)
+				console.warn("Take without name");
+			else
+			{
+				this.addTake( take );
+				take.loadResources(); //load associated resources
+			}
 		}
 	}
 }
@@ -143,6 +148,19 @@ Animation.prototype.toBinary = function()
 	return bin;
 }
 
+//Used when the animation tracks use UIDs instead of node names
+//to convert the track locator to node names, so they can be reused between nodes in the same scene
+Animation.prototype.convertIDstoNames = function( use_basename, root )
+{
+	var num = 0;
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		num += take.convertIDstoNames( use_basename, root );
+	}
+	return num;
+}
+
 LS.Classes["Animation"] = LS.Animation = Animation;
 
 /** Represents a set of animations **/
@@ -193,7 +211,18 @@ Take.prototype.createTrack = function( data )
 	return track;
 }
 
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation )
+/**
+* Assigns a value to the property of a component in a node based on the locator of that property
+* Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
+*
+* @method applyTracks
+* @param {number} current_time the time of the anim to sample
+* @param {number} last_time this is used for events, we need to know where you were before
+* @param {boolean} ignore_interpolation in case you want to sample the nearest one
+* @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
+* @return {Component} the target where the action was performed
+*/
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node )
 {
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
@@ -217,9 +246,10 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 		}
 		else
 		{
+			//read from the animation
 			var sample = track.getSample( current_time, !ignore_interpolation );
-			if( sample !== undefined )
-				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample );
+			if( sample !== undefined ) //apply to node
+				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample, root_node );
 		}
 	}
 }
@@ -291,6 +321,18 @@ Take.prototype.loadResources = function()
 			}
 		}
 	}
+}
+
+Take.prototype.convertIDstoNames = function( use_basename, root )
+{
+	var num = 0;
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if( track.convertIDtoName( use_basename, root ) )
+			num += 1;
+	}
+	return num;
 }
 
 Animation.Take = Take;
@@ -431,6 +473,43 @@ Track.prototype.clear = function()
 	this.packed_data = false;
 }
 
+
+//used to change every track so instead of using UIDs for properties it uses node names
+//this is used when you want to apply the same animation to different nodes in the scene
+Track.prototype.convertIDtoName = function( use_basename, root )
+{
+	if( !this._property_path || !this._property_path.length )
+		return false;
+
+	if(this._property_path[0][0] !== LS._uid_prefix)
+		return false; //is already using names
+
+	var node = LSQ.get( this._property_path[0], root );
+	if(!node)
+	{
+		console.warn("convertIDtoName: node not found in LS.GlobalScene: " + this._property_path[0] );
+		return false;
+	}
+
+	if(!node.name)
+	{
+		console.warn("convertIDtoName: node without name?");
+		return false;
+	}
+
+	if(use_basename)
+	{
+		this._property_path[0] = node.name;
+		this._property = this._property_path.join("/");
+	}
+	else
+	{
+		this._property_path[0] = node.fullname;
+		this._property = this._property_path.join("/");
+	}
+
+	return true;
+}
 
 Track.prototype.addKeyframe = function( time, value, skip_replace )
 {
@@ -924,6 +1003,7 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 
 	return samples;
 }
+
 
 Animation.Track = Track;
 

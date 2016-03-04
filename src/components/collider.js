@@ -4,8 +4,8 @@ function Collider(o)
 	this.enabled = true;
 	this.shape = 1;
 	this.mesh = null;
-	this.size = vec3.fromValues(0.5,0.5,0.5);
-	this.center = vec3.create();
+	this.size = vec3.fromValues(0.5,0.5,0.5); //in local space?
+	this.center = vec3.create(); //in local space?
 	this.use_mesh_bounding = false;
 	if(o)
 		this.configure(o);
@@ -83,6 +83,7 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 	if(this._root.transform)
 		PI.matrix.set( this._root.transform._global_matrix );
+
 	PI.type = this.shape;
 	PI.layers = this._root.layers;
 
@@ -111,6 +112,9 @@ Collider.prototype.onGetColliders = function(e, colliders)
 		vec3.copy( PI.center, BBox.getCenter( mesh.bounding ) );
 	else
 		vec3.copy( PI.center, this.center );
+
+	//convert center from local to world space
+	vec3.transformMat4( PI.center, PI.center, PI.matrix );
 
 	if(PI.type === LS.PhysicsInstance.MESH)
 	{

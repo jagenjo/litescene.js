@@ -136,14 +136,12 @@ Prefab.createPrefab = function( filename, node_data, resources)
 	filename += ".wbin";
 
 	//checkfilenames and rename them to short names
-	
-
 	prefab.filename = filename;
 	prefab.resources = resources;
 	prefab.prefab_json = JSON.stringify( node_data );
 
 	//get all the resources and store them in a WBin
-	var bindata = Prefab.packResources( resources, { "@json": prefab.prefab_json, "@version": Prefab.version } );
+	var bindata = LS.Prefab.packResources( resources, { "@json": prefab.prefab_json, "@version": Prefab.version } );
 	prefab._original_data = bindata;
 
 	return prefab;
@@ -167,7 +165,7 @@ Prefab.packResources = function( resources, base_data )
 			data = resource._original_data;
 		else
 		{
-			var data_info = LS.ResourcesManager.computeResourceInternalData( resource );
+			var data_info = LS.Resource.getDataToStore( resource );
 			data = data_info.data;
 		}
 

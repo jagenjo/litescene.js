@@ -70,6 +70,7 @@
 ../src/helpers/animation.js
 ../src/helpers/path.js
 ../src/helpers/prefab.js
+../src/helpers/pack.js
 ../src/helpers/textureFX.js
 ../src/helpers/tween.js
 
@@ -83,6 +84,7 @@
 
 ../src/formats.js
 ../src/parsers/parserASE.js
+../src/parsers/parserBVH.js
 ../src/parsers/collada.js
 ../src/parsers/parserDAE.js
 ../src/parsers/parserDDS.js

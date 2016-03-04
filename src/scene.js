@@ -46,6 +46,26 @@ Object.defineProperty( SceneTree.prototype, "root", {
 	}
 });
 
+Object.defineProperty( SceneTree.prototype, "time", {
+	enumerable: true,
+	get: function() {
+		return this._time;
+	},
+	set: function(v) {
+		throw("Cannot set time directly");
+	}
+});
+
+Object.defineProperty( SceneTree.prototype, "globalTime", {
+	enumerable: true,
+	get: function() {
+		return this._global_time;
+	},
+	set: function(v) {
+		throw("Cannot set global_time directly");
+	}
+});
+
 //Some useful events
 SceneTree.supported_events = ["start","update","finish","clear","beforeReload","change","afterRender","configure","nodeAdded","nodeChangeParent","nodeComponentRemoved","reload","renderPicking","scene_loaded","serialize"];
 
@@ -292,7 +312,8 @@ SceneTree.prototype.serialize = function()
 }
 
 /**
-* loads a scene from a JSON description
+* Loads a scene from a relative url pointing to a JSON description
+* Warning: this url is not passed through the LS.ResourcesManager so the url is absolute
 *
 * @method load
 * @param {String} url where the JSON object containing the scene is stored
@@ -663,10 +684,10 @@ SceneTree.prototype.getPropertyInfoFromPath = function( path )
 * @method setPropertyValue
 * @param {String} locator locator of the property
 * @param {*} value the value to assign
-* @param {Component} target [Optional] used to avoid searching for the component every time
+* @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.setPropertyValue = function( locator, value )
+SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 {
 	var path = locator.split("/");
 
@@ -679,7 +700,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value )
 	}
 
 	//get node
-	var node = this.getNode( path[0] );
+	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 	return node.setPropertyValueFromPath( path.slice(1), value );
@@ -694,7 +715,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value )
 * @param {*} value the value to assign
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.setPropertyValueFromPath = function( path, value )
+SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node )
 {
 	if(path[0].substr(0,5) == "@MAT-")
 	{
@@ -705,7 +726,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value )
 	}
 
 	//get node
-	var node = this.getNode( path[0] );
+	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 
@@ -732,7 +753,7 @@ SceneTree.prototype.getResources = function( resources )
 	//resources that must be preloaded (because they will be used in the future)
 	if(this.preloaded_resources)
 		for(var i in this.preloaded_resources)
-			resources[ this.preloaded_resources[i] ] = true;
+			resources[ i ] = true;
 
 	//resources from nodes
 	for(var i in this._nodes)
@@ -781,6 +802,29 @@ SceneTree.prototype.loadResources = function( on_complete )
 			on_complete();
 	}
 }
+
+/**
+* Adds a resource that must be loaded when the scene is loaded
+*
+* @method addPreloadResource
+* @param {String} fullpath the name of the resource
+*/
+SceneTree.prototype.addPreloadResource = function( fullpath )
+{
+	this.preloaded_resources[ fullpath ] = true;
+}
+
+/**
+* Remove a resource from the list of resources to preload
+*
+* @method removePreloadResource
+* @param {String} fullpath the name of the resource
+*/
+SceneTree.prototype.removePreloadResource = function( fullpath )
+{
+	delete this.preloaded_resources[ fullpath ];
+}
+
 
 /**
 * start the scene (triggers an "start" event)

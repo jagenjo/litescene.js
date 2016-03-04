@@ -29,6 +29,10 @@ Collision.isCloser = function(a,b) { return a.distance - b.distance; }
 
 LS.Collision = Collision;
 
+
+
+
+
 /**
 * PhysicsInstance contains info of a colliding object. Used to test collisions with the scene
 *
@@ -50,7 +54,7 @@ function PhysicsInstance(node, component)
 
 	//transformation
 	this.matrix = mat4.create();
-	this.center = vec3.create();
+	this.center = vec3.create(); //in world space
 
 	//for visibility computation
 	this.oobb = BBox.create(); //local object oriented bounding box
@@ -71,7 +75,7 @@ PhysicsInstance.FUNCTION = 6; //used to test against a internal function
 */
 PhysicsInstance.prototype.updateAABB = function()
 {
-	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+	BBox.transformMat4( this.aabb, this.oobb, this.matrix );
 }
 
 PhysicsInstance.prototype.setMesh = function(mesh)

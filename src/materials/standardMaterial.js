@@ -34,6 +34,7 @@ function StandardMaterial(o)
 	this._extra_data = vec4.create();
 
 	this.normalmap_factor = 1.0;
+	this.normalmap_tangent = true;
 	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
 	this.use_scene_ambient = true;

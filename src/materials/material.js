@@ -26,6 +26,9 @@ function Material(o)
 	this.shader_name = "global";
 	this.blend_mode = LS.Blend.NORMAL;
 
+	this.alpha_test = false;
+	this.alpha_test_shadows = false;
+
 	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
 	//this.reflection_factor = 0.0;	
@@ -355,6 +358,8 @@ Material.prototype.getProperties = function()
 		blend_mode: "number",
 		specular_factor:"number",
 		specular_gloss:"number",
+		alpha_test:"boolean",
+		alpha_test_shadows:"boolean",
 		uvs_matrix:"mat3"
 	};
 
@@ -403,6 +408,8 @@ Material.prototype.setProperty = function(name, value)
 			break;
 		//bools
 		//strings
+		case "alpha_test":
+		case "alpha_test_shadows":
 		case "blend_mode":
 		case "shader_name":
 			this[name] = value; 
@@ -452,8 +459,11 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 			type = "number"; break;
 		//strings
 		case "shader_name":
-		//bools
 			type = "string"; break;
+		//bools
+		case "alpha_test":
+		case "alpha_test_shadows":
+			type = "boolean"; break;
 		//vectors
 		case "uvs_matrix":
 			type = "mat3"; break;

@@ -54,6 +54,8 @@ function MeshRenderer(o)
 	*/
 	this.textured_points = false;
 
+	this.material = null;
+
 	if(o)
 		this.configure(o);
 
@@ -78,6 +80,7 @@ MeshRenderer.icon = "mini-icon-teapot.png";
 //vars
 MeshRenderer["@mesh"] = { type: "mesh" };
 MeshRenderer["@lod_mesh"] = { type: "mesh" };
+MeshRenderer["@material"] = { type: "material" };
 MeshRenderer["@primitive"] = { type:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "LineLoop":2, "LineStrip":3, "Triangles":4, "TriangleStrip":5, "TriangleFan":6, "Wireframe":10 }};
 MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	var component = this.instance;
@@ -121,6 +124,7 @@ MeshRenderer.prototype.configure = function(o)
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
 	this.two_sided = !!o.two_sided;
+	this.material = o.material;
 	if(o.point_size !== undefined) //legacy
 		this.point_size = o.point_size;
 	this.textured_points = !!o.textured_points;
@@ -152,6 +156,7 @@ MeshRenderer.prototype.serialize = function()
 		o.two_sided = this.two_sided;
 	o.point_size = this.point_size;
 	o.textured_points = this.textured_points;
+	o.material = this.material;
 	return o;
 }
 
@@ -230,7 +235,10 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		RI.flags &= ~RI_CULL_FACE;
 
 	//material (after flags because it modifies the flags)
-	RI.setMaterial( this.material || this._root.getMaterial() );
+	var material = null;
+	if(this.material)
+		material = LS.ResourcesManager.getResource( this.material );
+	RI.setMaterial( material || this._root.getMaterial() );
 
 	//if(!mesh.indexBuffers["wireframe"])
 	//	mesh.computeWireframe();

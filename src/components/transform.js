@@ -165,6 +165,38 @@ Object.defineProperty( Transform.prototype, 'matrix', {
 	enumerable: true
 });
 
+Object.defineProperty( Transform.prototype, 'xrotation', {
+	get: function() { return 0; },
+	set: function(v) { 
+		this.rotateX(v * DEG2RAD);
+		//this._rotation[0] = Math.sin(v * DEG2RAD * 0.5);
+		//quat.normalize(this._rotation,this._rotation);
+		//this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+Object.defineProperty( Transform.prototype, 'yrotation', {
+	get: function() { return 0; },
+	set: function(v) { 
+		this.rotateY(v * DEG2RAD);
+		//this._rotation[1] = Math.sin(v * DEG2RAD * 0.5);
+		//quat.normalize(this._rotation,this._rotation);
+		//this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+Object.defineProperty( Transform.prototype, 'zrotation', {
+	get: function() { return 0; },
+	set: function(v) { 
+		this.rotateZ(v * DEG2RAD);
+		//this._rotation[2] = Math.sin(v * DEG2RAD * 0.5);
+		//quat.normalize(this._rotation,this._rotation);
+		//this._must_update_matrix = true; 
+	},
+	enumerable: false
+});
+
+
 
 /**
 * The position relative to its parent in vec3 format

@@ -28,7 +28,7 @@ LS.Formats = {
 		{
 			var extension = extensions[i].toLowerCase();
 			if( this.supported[ extension ] )
-				console.warning("There is already another parser associated to this extension");
+				console.warn("There is already another parser associated to this extension: " + extension);
 			this.supported[ extension ] = info;
 		}
 	},
@@ -179,7 +179,7 @@ LS.Formats = {
 };
 
 //native formats do not need parser
-LS.Formats.addSupportedFormat( "png,jpg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
+LS.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, dataType: "arraybuffer", resource: "Texture", "resourceClass": GL.Texture, has_preview: true, type: "image" } );
 LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
 LS.Formats.addSupportedFormat( "json,js,txt,csv", { dataType: "string" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class

@@ -72,6 +72,8 @@ Resource.getDataToStore = function( resource )
 	else if (resource._original_file) //file
 	{
 		data = resource._original_file;
+		if(data && (data.constructor !== File || data.constructor !== Blob))
+			console.warn("Resource._original_file is not File or Blob");
 		encoding = "file";
 	}
 	else if( resource._original_data ) //file in ArrayBuffer format
@@ -128,7 +130,10 @@ Resource.prototype.setData = function( v, skip_modified_flag )
 
 Resource.prototype.getDataToStore = function()
 {
-	return this.data || "";
+	var data = this.data || "";
+	if(data.constructor === Object )
+		data = JSON.stringify( data );
+	return data;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?

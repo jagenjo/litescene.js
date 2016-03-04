@@ -684,7 +684,7 @@ var Renderer = {
 		//	query.setMacro("USE_LINEAR_SHADOWMAP");
 
 		//not fully supported yet
-		if(node.flags.alpha_shadows == true )
+		if(material.alpha_test_shadows == true )
 		{
 			query.setMacro("USE_ALPHA_TEST","0.5");
 			var color = material.getTexture("color");
@@ -703,9 +703,6 @@ var Renderer = {
 			}
 			//shader.uniforms({ texture: 0, opacity_texture: 1 });
 		}
-
-		if(node.flags.alpha_shadows == true )
-			query.setMacro("USE_ALPHA_TEST","0.5");
 
 		var shader = ShadersManager.resolve( query );
 
@@ -1029,7 +1026,7 @@ var Renderer = {
 
 			//node & mesh constant information
 			var query = instance.query;
-			if(instance.flags & RI_ALPHA_TEST)
+			if(instance.flags & RI_ALPHA_TEST || instance.material.alpha_test)
 				query.macros.USE_ALPHA_TEST = "0.5";
 			else if(query.macros["USE_ALPHA_TEST"])
 				delete query.macros["USE_ALPHA_TEST"];
@@ -1204,13 +1201,13 @@ var Renderer = {
 	},
 
 	/**
-	* Renders the material preview to an image
+	* Renders the material preview to an image (or to the screen)
 	*
 	* @method renderMaterialPreview
 	* @param {Material} material
 	* @param {number} size image size
-	* @param {Object} options could be environment_texture
-	* @return {Image} the preview image (in canvas format)
+	* @param {Object} options could be environment_texture, to_viewport
+	* @return {Image} the preview image (in canvas format) or null if it was rendered to the viewport
 	*/
 	renderMaterialPreview: function( material, size, options )
 	{
@@ -1220,7 +1217,10 @@ var Renderer = {
 		if(!scene)
 		{
 			scene = this._material_scene = new LS.SceneTree();
-			scene.info.background_color.set([0,0,0,0]);
+			if(options.background_color)
+				scene.info.background_color.set(options.background_color);
+			else
+				scene.info.background_color.set([0.0,0.0,0.0,0]);
 			if(options.environment_texture)
 				scene.info.textures.environment = options.environment_texture;
 			var node = new LS.SceneNode( "sphere" );
@@ -1229,8 +1229,16 @@ var Renderer = {
 			scene.root.addChild( node );
 		}
 
-		var node = scene.getNode( "sphere") ;
+		var node = scene.getNode( "sphere");
+		if(options.rotate)
+			node.transform.rotateY( options.rotate );
 		node.material = material;
+
+		if(options.to_viewport)
+		{
+			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true, render_helpers: false, update_materials: true }, scene );
+			return;
+		}
 
 		var tex = this._material_preview_texture || new GL.Texture(size,size);
 		if(!this._material_preview_texture)

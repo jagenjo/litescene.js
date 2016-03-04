@@ -1,4 +1,7 @@
 var Network = {
+
+	default_dataType: "arraybuffer",
+
 	/**
 	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
 	*
@@ -11,7 +14,7 @@ var Network = {
 	{
 		if(typeof(request) === "string")
 			throw("LS.Network.request expects object, not string. Use LS.Network.requestText or LS.Network.requestJSON");
-		var dataType = request.dataType || "text";
+		var dataType = request.dataType || this.default_dataType;
 		if(dataType == "json") //parse it locally
 			dataType = "text";
 		else if(dataType == "xml") //parse it locally
@@ -114,20 +117,20 @@ var Network = {
 	},
 
 	/**
-	* retrieve a file from url (you can bind LEvents to done and fail)
-	* @method requestFile
+	* retrieve a text file from url (you can bind LEvents to done and fail)
+	* @method requestText
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	requestFile: function(url, data, callback, callback_error)
+	requestText: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == "function")
 		{
-			data = null;
 			callback = data;
+			data = null;
 		}
-		return LS.Network.request({url:url, data:data, success: callback, error: callback_error });
+		return LS.Network.request({url:url, dataType:"text", success: callback, error: callback_error});
 	},
 
 	/**
@@ -141,32 +144,32 @@ var Network = {
 	{
 		if(typeof(data) == "function")
 		{
-			data = null;
 			callback = data;
+			data = null;
 		}
 		return LS.Network.request({url:url, data:data, dataType:"json", success: callback, error: callback_error });
 	},
 
 	/**
-	* retrieve a text file from url (you can bind LEvents to done and fail)
-	* @method requestText
+	* retrieve a file from url (you can bind LEvents to done and fail)
+	* @method requestFile
 	* @param {string} url
 	* @param {object} params form params
 	* @param {function} callback
 	*/
-	requestText: function(url, data, callback, callback_error)
+	requestFile: function(url, data, callback, callback_error)
 	{
 		if(typeof(data) == "function")
 		{
-			data = null;
 			callback = data;
+			data = null;
 		}
-		return LS.Network.request({url:url, dataType:"txt", success: callback, error: callback_error});
+		return LS.Network.request({url:url, data:data, success: callback, error: callback_error });
 	},
 
 	/**
 	* Request script and inserts it in the DOM
-	* @method requireScript
+	* @method requestScript
 	* @param {String} url could be an array with urls to load in order
 	* @param {Function} on_complete
 	* @param {Function} on_error
@@ -202,7 +205,84 @@ var Network = {
 				}
 			document.getElementsByTagName('head')[0].appendChild( script );
 		}
+	},
+
+	requestFont: function( name, url )
+	{
+		if(!name || !url)
+			throw("LS.Network.requestFont: Wrong font name or url");
+
+		var fonts = this._loaded_fonts;
+		if(!fonts)
+			fonts = this._loaded_fonts = {};
+
+		if(fonts[name] == url)
+			return;
+		fonts[name] = url;
+
+		var style = document.getElementById("ls_fonts");
+		if(!style)
+		{
+			style = document.createElement("style");
+			style.id = "ls_fonts";
+			style.setAttribute("type","text/css");
+			document.head.appendChild(style);
+		}
+		var str = "";
+		for(var i in fonts)
+		{
+			var url = fonts[i];
+			str += "@font-face {\n" +
+					"\tfont-family: \""+i+"\";\n" + 
+					"\tsrc: url('"+url+"');\n" + 
+			"}\n";
+		}
+		style.innerHTML = str;
 	}
+
+	//NOT TESTED: to load script asyncronously, not finished. similar to require.js
+	/*
+	requireScript: function(files, on_complete)
+	{
+		if(typeof(files) == "string")
+			files = [files];
+
+		//store for the callback
+		var last = files[ files.length - 1];
+		if(on_complete)
+		{
+			if(!ResourcesManager._waiting_callbacks[ last ])
+				ResourcesManager._waiting_callbacks[ last ] = [on_complete];
+			else
+				ResourcesManager._waiting_callbacks[ last ].push(on_complete);
+		}
+		require_file(files);
+
+		function require_file(files)
+		{
+			//avoid require twice a file
+			var url = files.shift(1); 
+			while( ResourcesManager._required_files[url] && url )
+				url = files.shift(1);
+
+			ResourcesManager._required_files[url] = true;
+
+			LS.Network.request({
+				url: url,
+				success: function(response)
+				{
+					eval(response);
+					if( ResourcesManager._waiting_callbacks[ url ] )
+						for(var i in ResourcesManager._waiting_callbacks[ url ])
+							ResourcesManager._waiting_callbacks[ url ][i]();
+					require_file(files);
+				}
+			});
+		}
+	},
+	_required_files: {},
+	_waiting_callbacks: {}
+	*/
 };
 
 LS.Network = Network;

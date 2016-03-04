@@ -253,8 +253,8 @@ RenderInstance.prototype.applyNodeFlags = function()
 	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
 	else this.flags |= RI_DEPTH_WRITE;
 
-	if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
-	else this.flags &= ~RI_ALPHA_TEST;
+	//if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
+	//else this.flags &= ~RI_ALPHA_TEST;
 
 	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
 	else this.flags |= RI_CAST_SHADOWS;

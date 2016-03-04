@@ -10,6 +10,7 @@ function PlayAnimation(o)
 {
 	this.animation = "";
 	this.take = "default";
+	this.root_node = null;
 	this.playback_speed = 1.0;
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
@@ -30,6 +31,7 @@ PlayAnimation.ONCE = 3;
 PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE };
 
 PlayAnimation["@animation"] = { widget: "resource" };
+PlayAnimation["@root_node"] = { type: "node" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 
 PlayAnimation.prototype.configure = function(o)
@@ -44,6 +46,8 @@ PlayAnimation.prototype.configure = function(o)
 		this.take = o.take;
 	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
+	if(o.root_node !== undefined)
+		this.root_node = o.root_node;
 }
 
 
@@ -114,7 +118,16 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		}
 	}
 
-	take.applyTracks( time, this._last_time );
+	var root_node = null;
+	if(this.root_node && this._root.scene)
+	{
+		if(this.root_node == "@")
+			root_node = this._root;
+		else
+			root_node = this._root.scene.getNode( this.root_node );
+	}
+
+	take.applyTracks( time, this._last_time, undefined, root_node );
 	this._last_time = time; //TODO, add support for pingpong events in tracks
 
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );

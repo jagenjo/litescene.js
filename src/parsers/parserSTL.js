@@ -4,6 +4,7 @@ var parserSTL = {
 	extension: 'stl',
 	type: 'mesh',
 	format: 'binary',
+	dataType:'arraybuffer',
 	
 	parse: function( data, options )
 	{

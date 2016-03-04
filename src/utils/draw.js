@@ -15,6 +15,7 @@ var Draw = {
 	image_last_id: 1,
 
 	onRequestFrame: null,
+	reset_stack_on_reset: true,
 
 	/**
 	* Sets up everything (prepare meshes, shaders, and so)
@@ -307,8 +308,11 @@ var Draw = {
 		if( reset_memory )
 			this.images = {}; //clear images
 
-		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
-		mat4.identity( this.model_matrix );
+		if(this.reset_stack_on_reset)
+		{
+			this.model_matrix = new Float32Array(this.stack.buffer,0,16);
+			mat4.identity( this.model_matrix );
+		}
 	},
 
 	/**

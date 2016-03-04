@@ -216,6 +216,7 @@ var LS = {
 	/**
 	* Clones an object (no matter where the object came from)
 	* - It skip attributes starting with "_" or "jQuery" or functions
+	* - it tryes to see which is the best copy to perform
 	* - to the rest it applies JSON.parse( JSON.stringify ( obj ) )
 	* - use it carefully
 	* @method cloneObject
@@ -223,12 +224,15 @@ var LS = {
 	* @param {Object} target=null optional, the destination object
 	* @return {Object} returns the cloned object
 	*/
-	cloneObject: function(object, target, recursive)
+	cloneObject: function( object, target, recursive, only_existing )
 	{
 		var o = target || {};
 		for(var i in object)
 		{
 			if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+				continue;
+
+			if(only_existing && target[i] === undefined)
 				continue;
 
 			var v = object[i];
@@ -268,7 +272,12 @@ var LS = {
 					}
 				}
 				else //slow but safe
-					o[i] = JSON.parse( JSON.stringify(v) );
+				{
+					if(v.constructor !== Object && LS.Classes[ LS.getObjectClassName(v) ])
+						console.warn("Cannot clone internal classes: " + LS.getObjectClassName(v) );
+					else
+						o[i] = JSON.parse( JSON.stringify(v) );
+				}
 			}
 		}
 		return o;
@@ -365,7 +374,7 @@ var LS = {
 	},
 
 	/**
-	* Returns the public properties of one object and the type
+	* Returns the public properties of one object and the type (not the values)
 	* @method getObjectProperties
 	* @param {Object} object
 	* @return {Object} returns object with attribute name and its type
@@ -547,6 +556,19 @@ var LS = {
 		if(script)
 			return script.context;
 		return null;
+	},
+
+	convertToString: function( data )
+	{
+		if(!data)
+			return "";
+		if(data.constructor === String)
+			return data;
+		if(data.constructor === Object)
+			return JSON.stringify( object.serialize ? object.serialize() : object );
+		if(data.constructor === ArrayBuffer)
+			data = new Uint8Array(data);
+		return String.fromCharCode.apply(null,data);
 	}
 }
 
@@ -555,6 +577,20 @@ Object.defineProperty( LS, "catch_exceptions", {
 	get: function() { return this._catch_exceptions; },
 	enumerable: true
 });
+
+//Add some classes
+LS.Classes.WBin = LS.WBin = WBin;
+
+//helpful consts
+LS.ZERO = vec3.create();
+LS.ONE = vec3.fromValues(1,1,1);
+LS.TOP = vec3.fromValues(0,1,0);
+LS.BOTTOM = vec3.fromValues(0,-1,0);
+LS.RIGHT = vec3.fromValues(1,0,0);
+LS.LEFT = vec3.fromValues(-1,0,0);
+LS.FRONT = vec3.fromValues(0,0,-1);
+LS.BACK = vec3.fromValues(0,0,1);
+LS.IDENTITY = mat4.create();
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers
@@ -570,10 +606,23 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @param {*} value value to assign to property
 	*/
-	set: function( locator, value )
+	set: function( locator, value, root )
 	{
-		LS.GlobalScene.setPropertyValue( locator, value );
-		LS.GlobalScene.refresh();
+		if(!root)
+			LS.GlobalScene.setPropertyValue( locator, value );
+		else
+		{
+			if(root.constructor === LS.SceneNode)
+			{
+				var path = locator.split("/");
+				var node = root.findNodeByUId( path[0] );
+				if(!node)
+					return null;
+				return node.setPropertyValueFromPath( path.slice(1), value );
+			}
+		}
+
+		scene.refresh();
 	},
 
 	/**
@@ -584,11 +633,25 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @return {*} value of the property
 	*/
-	get: function( locator )
+	get: function( locator, root )
 	{
-		var info = LS.GlobalScene.getPropertyInfo( locator );
+		var info;
+		if(!root)
+			info = root.getPropertyInfo( locator );
+		else
+		{
+			if(root.constructor === LS.SceneNode)
+			{
+				var path = locator.split("/");
+				var node = root.findNodeByUId( path[0] );
+				if(!node)
+					return null;
+				info = node.getPropertyInfoFromPath( path.slice(1) );
+			}
+		}
 		if(info)
 			return info.value;
+		return null;
 	},
 
 	/**

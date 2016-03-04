@@ -203,6 +203,7 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 
 	if(path.length == 1)
 		return {
+			name:"context",
 			node: this._root,
 			target: context,
 			type: "object"
@@ -517,17 +518,60 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 			this._script._context.unbindAll();
 
 		//compiles and executes the context
+		var old = this._stored_properties || this.getContextProperties();
 		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
 		if(!skip_events)
 			this.hookEvents();
+		this.setContextProperties( old );
+		this._stored_properties = null;
 		return ret;
 	}
 	return true;
 }
 
+Script.prototype.getContextProperties = function()
+{
+	var ctx = this.getContext();
+	if(!ctx)
+		return;
+	return LS.cloneObject( ctx );
+}
+
+Script.prototype.setContextProperties = function( properties )
+{
+	if(!properties)
+		return;
+	var ctx = this.getContext();
+	if(!ctx) //maybe the context hasnt been crated yet
+	{
+		this._stored_properties = properties;
+		return;
+	}
+	LS.cloneObject( properties, ctx, false, true );
+}
+
+ScriptFromFile.prototype.configure = function(o)
+{
+	if(o.enabled !== undefined)
+		this.enabled = o.enabled;
+	if(o.filename !== undefined)
+		this.filename = o.filename;
+	if(o.properties)
+		 this.setContextProperties( o.properties );
+}
+
+ScriptFromFile.prototype.serialize = function()
+{
+	return {
+		enabled: this.enabled,
+		filename: this.filename,
+		properties: LS.cloneObject( this.getContextProperties() )
+	};
+}
+
+
 ScriptFromFile.prototype.getResources = function(res)
 {
-	
 	if(this.filename)
 		res[this.filename] = LS.Resource;
 
