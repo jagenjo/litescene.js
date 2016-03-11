@@ -10,7 +10,7 @@ function PlayAnimation(o)
 {
 	this.animation = "";
 	this.take = "default";
-	this.root_node = null;
+	this.root_node = "@";
 	this.playback_speed = 1.0;
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
@@ -27,8 +27,9 @@ function PlayAnimation(o)
 PlayAnimation.LOOP = 1;
 PlayAnimation.PINGPONG = 2;
 PlayAnimation.ONCE = 3;
+PlayAnimation.PAUSED = 4;
 
-PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE };
+PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE, "paused":PlayAnimation.PAUSED };
 
 PlayAnimation["@animation"] = { widget: "resource" };
 PlayAnimation["@root_node"] = { type: "node" };
@@ -48,6 +49,8 @@ PlayAnimation.prototype.configure = function(o)
 		this.playback_speed = parseFloat( o.playback_speed );
 	if(o.root_node !== undefined)
 		this.root_node = o.root_node;
+	if(o.playing !== undefined)
+		this.playing = o.playing;
 }
 
 
@@ -69,7 +72,10 @@ PlayAnimation.prototype.getAnimation = function()
 {
 	if(!this.animation || this.animation == "@scene") 
 		return this._root.scene.animation;
-	return LS.ResourcesManager.getResource( this.animation );
+	var anim = LS.ResourcesManager.getResource( this.animation );
+	if( anim && anim.constructor === LS.Animation )
+		return anim;
+	return null;
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
@@ -78,8 +84,10 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!animation) 
 		return;
 
-	//var time = Scene.getTime() * this.playback_speed;
-	if(this.playing)
+	if(!this.playing)
+		return;
+
+	if( this.mode != PlayAnimation.PAUSED )
 		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
@@ -114,9 +122,13 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 					else
 						time = duration - (this.current_time % duration);
 					break;
-			default: break;
+			default: 
+					time = end_time; 
+				break;
 		}
 	}
+	else if(time < start_time)
+		time = start_time;
 
 	var root_node = null;
 	if(this.root_node && this._root.scene)

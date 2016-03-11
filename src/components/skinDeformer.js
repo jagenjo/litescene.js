@@ -1,3 +1,13 @@
+
+/**
+* It applyes skinning to a RenderInstance created by another component (usually MeshRenderer)
+* Is in charge of gathering the bone nodes and adding to the RenderInstance the information needed to perform the skinning
+* It can do it using shader uniforms (simple way), a matrices texture (complex way), or by directly applying skinning by software (slow but well supported way)
+* It also allow to limit the bone search to specific nodes.
+*
+* @class SkinDeformer
+* @constructor
+*/
 function SkinDeformer(o)
 {
 	this.enabled = true;
@@ -43,6 +53,7 @@ SkinDeformer.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
+//returns the bone node taking into account the scoping of the component
 SkinDeformer.prototype.getBoneNode = function( name )
 {
 	var root_node = this._root;
@@ -60,13 +71,14 @@ SkinDeformer.prototype.getBoneNode = function( name )
 	}
 	else if(this.search_bones_in_parent)
 	{
-		return root_node.parentNode.findNodeByName( name );
+		return root_node.parentNode.findNode( name );
 	}
 	else
 		return scene.getNode( name );
 	return null;
 }
 
+//returns a reference to the global matrix of the bone
 SkinDeformer.prototype.getBoneMatrix = function( name )
 {
 	var node = this.getBoneNode( name );
@@ -113,6 +125,7 @@ SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 	return bones;
 }
 
+//Adds the deforming data to the last RenderInstance
 SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 {
 	if(!render_instances.length)
@@ -131,8 +144,7 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	this.applySkinning( last_RI );
 }
 
-
-
+//Applies skinning taking into account the options available (using uniforms, a texture or applying it by software)
 SkinDeformer.prototype.applySkinning = function(RI)
 {
 	var mesh = RI.mesh;
@@ -251,6 +263,7 @@ SkinDeformer.prototype.getMesh = function()
 	return this._mesh;
 }
 
+//Takes every vertex and multiplyes it by its bone matrices (slow but it works everywhere)
 SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 {
 	var original_vertices = ref_mesh.getBuffer("vertices").data;
@@ -340,22 +353,7 @@ SkinDeformer.prototype.extractSkeleton = function()
 	//TODO
 }
 
-SkinDeformer.prototype.convertBonesToRelative = function()
-{
-	//Check bones affecting this mesh
-	var bones = this.getBones();
-	if(!bones || !bones.length )
-		return;
-
-	//Rename the id to a relative name
-	for(var i = 0; i < bones.length; ++i)
-	{
-		//TODO
-		//replace the names in the mesh.bones so they point to relative names
-		//other option would be to hardcode the bone names inside the component as long as the mesh is the same
-	}
-}
-
+//returns an array with all the bone nodes affecting this mesh
 SkinDeformer.prototype.getBones = function()
 {
 	var mesh = this._mesh;

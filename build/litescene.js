@@ -938,7 +938,7 @@ var LS = {
 		var o = target || {};
 		for(var i in object)
 		{
-			if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+			if(i[0] == "@" || i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private) or '@' (they are definitions)
 				continue;
 
 			if(only_existing && target[i] === undefined)
@@ -1346,7 +1346,7 @@ var LSQ = {
 	{
 		var info;
 		if(!root)
-			info = root.getPropertyInfo( locator );
+			info = LS.GlobalScene.getPropertyInfo( locator );
 		else
 		{
 			if(root.constructor === LS.SceneNode)
@@ -1777,7 +1777,7 @@ function Resource()
 Object.defineProperty( Resource.prototype, "data", {
 	set: function(v){ 
 		this._data = v;
-		this._resource_modified = true;
+		this._modified = true;
 	},
 	get: function() { 
 		return this._data;
@@ -1883,7 +1883,7 @@ Resource.prototype.setData = function( v, skip_modified_flag )
 		this._original_data = null;
 	this._data = v;
 	if(!skip_modified_flag)
-		this._resource_modified = true;
+		this._modified = true;
 }
 
 Resource.prototype.getDataToStore = function()
@@ -2137,7 +2137,7 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
-		var pos = url.indexOf("://");
+		var pos = url.substr(0,10).indexOf(":");
 		var protocol = "";
 		if(pos != -1)
 			protocol = url.substr(0,pos);
@@ -2204,7 +2204,7 @@ var ResourcesManager = {
 	{
 		if(!url)
 			return null;
-		url = url.split("/").filter(function(v){ return !!v; }).join("/");
+		url = this.cleanFullpath( url );
 		return this.resources[ url ];
 	},
 
@@ -2238,8 +2238,22 @@ var ResourcesManager = {
 			return;
 		delete resource._original_data;
 		delete resource._original_file;
-		resource._modified = true;
+
+		if(resource.remote_path)
+			resource._modified = true;
+
 		LEvent.trigger(this, "resource_modified", resource );
+		
+		if(resource.from_pack)
+		{
+			if (resource.from_pack.constructor === String)
+			{
+				var pack = LS.ResourcesManager.getResource( resource.from_pack );
+				if(pack)
+					this.resourceModified(pack);
+			}
+		}
+
 	},
 
 	/**
@@ -2289,7 +2303,10 @@ var ResourcesManager = {
 		//extract the filename extension
 		var extension = this.getExtension( url );
 		if(!extension) //unknown file type
+		{
+			console.warn("Cannot load a file without extension: " + url );
 			return false;
+		}
 
 		if( this.resources_not_found[url] )
 			return;
@@ -2375,6 +2392,9 @@ var ResourcesManager = {
 
 		//ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
+			if(!resource)
+				return;
+
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource
@@ -2528,13 +2548,13 @@ var ResourcesManager = {
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
 
+		//Add to global container
+		this.resources[ filename ] = resource;
+
 		//POST-PROCESS resources extra final action (done here to ensure any registered resource is post-processed)
 		var post_callback = this.resource_post_callbacks[ type ];
 		if(post_callback)
 			post_callback( filename, resource );
-
-		//Add to global container
-		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
 		if(!resource.is_preview)
@@ -2563,6 +2583,8 @@ var ResourcesManager = {
 			delete this.meshes[ filename ];
 		if( this.textures[filename] )
 			delete this.textures[ filename ];
+		if( this.materials[filename] )
+			delete this.materials[ filename ];
 
 		LEvent.trigger(this,"resource_unregistered", resource);
 		LS.GlobalScene.refresh(); //render scene
@@ -2808,11 +2830,10 @@ LS.getTexture = function( name_or_texture ) {
 // This actions depend on the resource type, and format, and it is open so future formats are easy to implement.
 
 //global formats: take a file and extract info
-LS.ResourcesManager.registerResourcePreProcessor("wbin", function(filename, data, options) {
+LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
 
 	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
-	var data = WBin.load(data);
-	//data could be anything at this point
+	var data = WBin.load( data );
 	return data;
 },"binary");
 
@@ -2893,16 +2914,32 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 LS.ResourcesManager.processImage = function( filename, data, options, callback ) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
-	var mimetype = 'image/png';
+	var mimetype = "application/octet-stream";
 	if(extension == "jpg" || extension == "jpeg")
 		mimetype = "image/jpg";
-	if(extension == "webp")
+	else if(extension == "webp")
 		mimetype = "image/webp";
-	if(extension == "gif")
+	else if(extension == "gif")
 		mimetype = "image/gif";
+	else if(extension == "png")
+		mimetype = "image/png";
+	else {
+		var format = LS.Formats.supported[ extension ];
+		if(format.mimetype)
+			mimetype = format.mimetype;
+		else
+		{
+			var texture = this.processImageNonNative( filename, data, options );
+			inner_on_texture( texture );
+			return;
+		}
+	}
 
+	//blob and load
 	var blob = new Blob([data],{type: mimetype});
 	var objectURL = URL.createObjectURL( blob );
+
+	//regular image
 	var image = new Image();
 	image.src = objectURL;
 	image.real_filename = filename; //hard to get the original name from the image
@@ -2910,6 +2947,17 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 	{
 		var filename = this.real_filename;
 		var texture = LS.ResourcesManager.processTexture( filename, this, options );
+		inner_on_texture( texture );
+	}
+	image.onerror = function(err){
+		URL.revokeObjectURL(objectURL); //free memory
+		if(callback)
+			callback( filename, null, options );
+		throw("Error loading image: " + filename); //error if image is not an image I guess
+	}
+
+	function inner_on_texture( texture )
+	{
 		if(texture)
 		{
 			//LS.ResourcesManager.registerResource( filename, texture ); //this is done already by processResource
@@ -2920,17 +2968,12 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 		if(callback)
 			callback(filename,texture,options);
 	}
-	image.onerror = function(err){
-		URL.revokeObjectURL(objectURL); //free memory
-		if(callback)
-			callback( filename, null, options );
-		throw("Error loading image: " + filename); //error if image is not an image I guess
-	}
+
 	return true;
 }
 
 //Similar to processImage but for non native file formats
-LS.ResourcesManager.processImageNonNative = function(filename, data, options) {
+LS.ResourcesManager.processImageNonNative = function( filename, data, options ) {
 
 	//clone because DDS changes the original data
 	var cloned_data = new Uint8Array(data).buffer;
@@ -2940,6 +2983,7 @@ LS.ResourcesManager.processImageNonNative = function(filename, data, options) {
 	{
 		var texture = texture_data;
 		texture.filename = filename;
+		texture._original_data = cloned_data;
 		return texture;
 	}
 
@@ -3076,108 +3120,26 @@ LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mes
 	LS.ResourcesManager.meshes[filename] = mesh;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, texture ) {
+LS.ResourcesManager.registerResourcePostProcessor("Texture", function( filename, texture ) {
 	//store
 	LS.ResourcesManager.textures[filename] = texture;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
+LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename, material ) {
 	//store
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
 });
 
-//Extra methods for LiteGL Classes *************************************************************
+LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {
+	//flag contents to specify where do they come from
+	pack.flagResources();
+});
 
-GL.Mesh.fromBinary = function( data_array )
-{
-	var o = null;
-	if(data_array.constructor == ArrayBuffer )
-		o = WBin.load( data_array );
-	else
-		o = data_array;
-
-	var vertex_buffers = {};
-	for(var i in o.vertex_buffers)
-		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
-
-	var index_buffers = {};
-	for(var i in o.index_buffers)
-		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
-
-	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
-	mesh.info = o.info;
-	mesh.bounding = o.bounding;
-	if(o.bones)
-	{
-		mesh.bones = o.bones;
-		//restore Float32array
-		for(var i = 0; i < mesh.bones.length; ++i)
-			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
-		if(o.bind_matrix)
-			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
-	}
-	
-	return mesh;
-}
-
-GL.Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		object_type: "Mesh",
-		info: this.info,
-		groups: this.groups
-	};
-
-	if(this.bones)
-	{
-		var bones = [];
-		//convert to array
-		for(var i = 0; i < this.bones.length; ++i)
-			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
-		o.bones = bones;
-		if(this.bind_matrix)
-			o.bind_matrix = this.bind_matrix;
-	}
-
-	//bounding box
-	if(!this.bounding)	
-		this.updateBounding();
-	o.bounding = this.bounding;
-
-	var vertex_buffers = [];
-	var index_buffers = [];
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-		vertex_buffers.push( stream.name );
-
-		if(stream.name == "vertices")
-			o.info.num_vertices = stream.data.length / 3;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-		index_buffers.push( i );
-	}
-
-	o.vertex_buffers = vertex_buffers;
-	o.index_buffers = index_buffers;
-
-	//create pack file
-	var bin = WBin.create(o, "Mesh");
-
-	return bin;
-}
-
+LS.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, prefab ) {
+	//apply to nodes in the scene
+	prefab.applyToNodes();
+});
 
 /* Basic shader manager 
 	- Allows to load all shaders from XML
@@ -5210,6 +5172,130 @@ var Draw = {
 
 if(typeof(LS) != "undefined")
 	LS.Draw = Draw;
+
+//Add some functions to the classes in LiteGL to fit better in the LiteScene engine
+
+//when working with animations sometimes you want the bones to be referenced by node name and no node uid, because otherwise you cannot reuse
+//the same animation with different characters in the same scene.
+GL.Mesh.prototype.convertBonesToNames = function( root_node )
+{
+	if(!this.bones || !this.bones.length)
+		return 0;
+
+	var modifyed = false;
+
+	//Rename the id to a relative name
+	for(var i = 0; i < this.bones.length; ++i)
+	{
+		var bone = this.bones[i];
+		var bone_name = bone[0];
+		if( bone_name[0] != LS._uid_prefix)
+			continue; //already using a name, not a uid
+		var node = root_node ? root_node.findNode( bone_name ) : LS.GlobalScene.getNode( bone_name );
+		if(!node)
+		{
+			console.warn("Bone node not found: " + bone_name );
+			continue;
+		}
+
+		bone[0] = node.name;
+		modifyed = true;
+	}
+
+	//flag it
+	if(modifyed)
+		LS.RM.resourceModified( this );
+}
+
+GL.Mesh.fromBinary = function( data_array )
+{
+	var o = null;
+	if(data_array.constructor == ArrayBuffer )
+		o = WBin.load( data_array );
+	else
+		o = data_array;
+
+	var vertex_buffers = {};
+	for(var i in o.vertex_buffers)
+		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
+
+	var index_buffers = {};
+	for(var i in o.index_buffers)
+		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
+
+	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
+	mesh.info = o.info;
+	mesh.bounding = o.bounding;
+	if(o.bones)
+	{
+		mesh.bones = o.bones;
+		//restore Float32array
+		for(var i = 0; i < mesh.bones.length; ++i)
+			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
+		if(o.bind_matrix)
+			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
+	}
+	
+	return mesh;
+}
+
+GL.Mesh.prototype.toBinary = function()
+{
+	if(!this.info)
+		this.info = {};
+
+	//clean data
+	var o = {
+		object_type: "Mesh",
+		info: this.info,
+		groups: this.groups
+	};
+
+	if(this.bones)
+	{
+		var bones = [];
+		//convert to array
+		for(var i = 0; i < this.bones.length; ++i)
+			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
+		o.bones = bones;
+		if(this.bind_matrix)
+			o.bind_matrix = this.bind_matrix;
+	}
+
+	//bounding box
+	if(!this.bounding)	
+		this.updateBounding();
+	o.bounding = this.bounding;
+
+	var vertex_buffers = [];
+	var index_buffers = [];
+
+	for(var i in this.vertexBuffers)
+	{
+		var stream = this.vertexBuffers[i];
+		o[ stream.name ] = stream.data;
+		vertex_buffers.push( stream.name );
+
+		if(stream.name == "vertices")
+			o.info.num_vertices = stream.data.length / 3;
+	}
+
+	for(var i in this.indexBuffers)
+	{
+		var stream = this.indexBuffers[i];
+		o[i] = stream.data;
+		index_buffers.push( i );
+	}
+
+	o.vertex_buffers = vertex_buffers;
+	o.index_buffers = index_buffers;
+
+	//create pack file
+	var bin = WBin.create(o, "Mesh");
+
+	return bin;
+}
+
 
 
 
@@ -7875,11 +7961,12 @@ CompositePattern.prototype.findNode = function( name_or_uid )
 		return this;
 	if(!name_or_uid)
 		return null;
-	if(name_or_uid.charAt(0) == LS._uid_prefix)
+	if(name_or_uid.charAt(0) != LS._uid_prefix)
 		return this.findNodeByName( name_or_uid );
 	return this.findNodeByUId( name_or_uid );
 }
 
+//this function gets called a lot when using animations
 CompositePattern.prototype.findNodeByName = function( name )
 {
 	if(!name)
@@ -7891,18 +7978,20 @@ CompositePattern.prototype.findNodeByName = function( name )
 	var children = this._children;
 
 	if(children)
-		for(var i = 0; i < children.length; ++i)
+	{
+		for(var i = 0, l = children.length; i < l; ++i)
 		{
 			var node = children[i];
 			if( node.name == name )
 				return node;
 			if(node._children)
 			{
-				var r = node.findNodeByName(name);
+				var r = node.findNodeByName( name );
 				if(r)
 					return r;
 			}
 		}
+	}
 	return null;
 }
 
@@ -7992,7 +8081,7 @@ Component.prototype.configure = function(o)
 			this.uid = o.uid;
 	}
 	*/
-	LS.cloneObject(o, this); 
+	LS.cloneObject(o, this, false, true); 
 }
 
 Component.prototype.serialize = function()
@@ -8234,13 +8323,19 @@ LS.Component = Component;
 * @param {Object} object to configure from
 */
 
-function Transform(o)
+function Transform( o )
 {
-	//this.uid = null;
+	//packed data (helpful for animation stuff)
+	this._data = new Float32Array( 3 + 4 + 3 ); //pos, rot, scale
 
-	this._position = vec3.create();
-	this._rotation = quat.create();
-	this._scaling = vec3.fromValues(1,1,1);
+	this._position = this._data.subarray(0,3);
+
+	this._rotation = this._data.subarray(3,7);
+	quat.identity(this._rotation);
+
+	this._scaling = this._data.subarray(7,10);
+	this._scaling[0] = this._scaling[1] = this._scaling[2] = 1;
+
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
@@ -8255,6 +8350,7 @@ function Transform(o)
 		Object.observe( this._position, inner_transform_change );
 		Object.observe( this._rotation, inner_transform_change );
 		Object.observe( this._scaling, inner_transform_change );
+		Object.observe( this._data, inner_transform_change );
 	}
 
 	if(o)
@@ -8393,6 +8489,18 @@ Object.defineProperty( Transform.prototype, 'matrix', {
 		this.fromMatrix(v);	
 	},
 	enumerable: true
+});
+
+//this is used to speed up copying between transforms and for animation (better to animate one track than several)
+Object.defineProperty( Transform.prototype, 'data', {
+	get: function() { 
+		return this._data;
+	},
+	set: function(v) { 
+		this._data.set(v);	
+		this._must_update_matrix = true;
+	},
+	enumerable: false
 });
 
 Object.defineProperty( Transform.prototype, 'xrotation', {
@@ -8671,7 +8779,7 @@ Transform.prototype.updateGlobalMatrix = function (fast)
 	if(this._must_update_matrix)
 		this.updateMatrix();
 	if (this._parent)
-		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
+		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix( this._parent._global_matrix ), this._local_matrix );
 	else
 		this._global_matrix.set( this._local_matrix ); 
 }
@@ -8717,7 +8825,7 @@ Transform.prototype.getGlobalMatrix = function (out, fast)
 		this.updateMatrix();
 	out = out || mat4.create();
 	if (this._parent)
-		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix(), this._local_matrix );
+		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix( this._parent._global_matrix ), this._local_matrix );
 	else
 		mat4.copy( this._global_matrix, this._local_matrix ); 
 	return mat4.copy(out, this._global_matrix);
@@ -8866,46 +8974,98 @@ Transform.prototype.getNormalMatrix = function (m)
 * @param {mat4} matrix the matrix in array format
 * @param {bool} is_global tells if the matrix is in global space [optional]
 */
-Transform.prototype.fromMatrix = function(m, is_global)
-{
-	if(is_global && this._parent)
+Transform.prototype.fromMatrix = (function() { 
+
+	var global_temp = mat4.create();
+	var temp_mat4 = mat4.create();
+	var temp_mat3 = mat3.create();
+	var temp_vec3 = vec3.create();
+	//var scale_temp = mat4.create();
+	
+	return function fromMatrix( m, is_global )
 	{
-		mat4.copy(this._global_matrix, m); //assign to global
-		var M_parent = this._parent.getGlobalMatrix(); //get parent transform
-		mat4.invert(M_parent,M_parent); //invert
-		m = mat4.multiply( this._local_matrix, M_parent, m ); //transform from global to local
+		if(is_global && this._parent)
+		{
+			mat4.copy(this._global_matrix, m); //assign to global
+			var M_parent = this._parent.getGlobalMatrix( global_temp ); //get parent transform
+			mat4.invert(M_parent,M_parent); //invert
+			m = mat4.multiply( this._local_matrix, M_parent, m ); //transform from global to local
+		}
+
+		//pos
+		var M = temp_mat4;
+		M.set(m);
+		mat4.multiplyVec3( this._position, M, LS.ZERO );
+
+		//compute scale
+		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
+		this._scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.TOP) );
+		this._scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.BACK) );
+
+		//apply scale, why the inverse? ??
+		//mat4.scale( scale_temp, M, [1/this._scaling[0], 1/this._scaling[1], 1/this._scaling[2]] );
+
+		//quat.fromMat4(this._rotation, M);
+		//*
+		//normalize system vectors
+		vec3.normalize( M.subarray(0,3), M.subarray(0,3) );
+		vec3.normalize( M.subarray(4,7), M.subarray(4,7) );
+		vec3.normalize( M.subarray(8,11), M.subarray(8,11) );
+
+		var M3 = mat3.fromMat4( temp_mat3, M );
+		mat3.transpose( M3, M3 );
+		quat.fromMat3( this._rotation, M3 );
+		quat.normalize( this._rotation, this._rotation );
+		//*/
+
+		if(m != this._local_matrix)
+			mat4.copy(this._local_matrix, m);
+		this._must_update_matrix = false;
+		this._on_change(true);
 	}
+})();
 
-	//pos
-	var M = mat4.clone(m);
-	mat4.multiplyVec3(this._position, M, [0,0,0]);
+Transform.fromMatrix4ToTransformData = (function() { 
 
-	//scale
-	var tmp = vec3.create();
-	this._scaling[0] = vec3.length( mat4.rotateVec3(tmp,M,[1,0,0]) );
-	this._scaling[1] = vec3.length( mat4.rotateVec3(tmp,M,[0,1,0]) );
-	this._scaling[2] = vec3.length( mat4.rotateVec3(tmp,M,[0,0,1]) );
+	var global_temp = mat4.create();
+	var temp_mat4 = mat4.create();
+	var temp_mat3 = mat3.create();
+	var temp_vec3 = vec3.create();
+	
+	return function fromMatrix4ToTransformData( m, out )
+	{
+		var data = out || new Float32Array( 3 + 4 + 3 ); //pos, rot, scale
+		var position = data.subarray(0,3);
+		var rotation = data.subarray(3,7);
+		quat.identity(rotation);
+		var scaling = data.subarray(7,10);
 
-	mat4.scale( mat4.create(), M, [1/this._scaling[0],1/this._scaling[1],1/this._scaling[2]] );
+		//pos
+		var M = temp_mat4;
+		M.set(m);
+		mat4.multiplyVec3( position, M, LS.ZERO );
 
-	//rot
+		//extract scaling by 
+		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
+		scaling[1] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.TOP) );
+		scaling[2] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.BACK) );
 
-	//quat.fromMat4(this._rotation, M);
-	//*
-	vec3.normalize( M.subarray(0,3), M.subarray(0,3) );
-	vec3.normalize( M.subarray(4,7), M.subarray(4,7) );
-	vec3.normalize( M.subarray(8,11), M.subarray(8,11) );
-	var M3 = mat3.fromMat4( mat3.create(), M);
-	mat3.transpose(M3, M3);
-	quat.fromMat3(this._rotation, M3);
-	quat.normalize(this._rotation, this._rotation);
-	//*/
+		//quat.fromMat4( rotation, M ); //doesnt work
 
-	if(m != this._local_matrix)
-		mat4.copy(this._local_matrix, m);
-	this._must_update_matrix = false;
-	this._on_change(true);
-}
+		//normalize axis vectors
+		vec3.normalize( M.subarray(0,3), M.subarray(0,3) );
+		vec3.normalize( M.subarray(4,7), M.subarray(4,7) );
+		vec3.normalize( M.subarray(8,11), M.subarray(8,11) );
+
+		var M3 = mat3.fromMat4( temp_mat3, M );
+		mat3.transpose( M3, M3 );
+		quat.fromMat3( rotation, M3 );
+		quat.normalize( rotation, rotation );
+
+		return data;
+	}
+})();
+
 
 /**
 * Configure the transform rotation from a vec3 Euler angles (heading,attitude,bank)
@@ -9454,6 +9614,8 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 	this.fromMatrix(this._local_matrix);
 }
 */
+
+
 
 LS.registerComponent( Transform );
 LS.Transform = Transform;
@@ -13341,6 +13503,16 @@ MorphDeformer.prototype.getProperties = function()
 
 LS.registerComponent( MorphDeformer );
 LS.MorphDeformer = MorphDeformer;
+
+/**
+* It applyes skinning to a RenderInstance created by another component (usually MeshRenderer)
+* Is in charge of gathering the bone nodes and adding to the RenderInstance the information needed to perform the skinning
+* It can do it using shader uniforms (simple way), a matrices texture (complex way), or by directly applying skinning by software (slow but well supported way)
+* It also allow to limit the bone search to specific nodes.
+*
+* @class SkinDeformer
+* @constructor
+*/
 function SkinDeformer(o)
 {
 	this.enabled = true;
@@ -13386,6 +13558,7 @@ SkinDeformer.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
+//returns the bone node taking into account the scoping of the component
 SkinDeformer.prototype.getBoneNode = function( name )
 {
 	var root_node = this._root;
@@ -13403,13 +13576,14 @@ SkinDeformer.prototype.getBoneNode = function( name )
 	}
 	else if(this.search_bones_in_parent)
 	{
-		return root_node.parentNode.findNodeByName( name );
+		return root_node.parentNode.findNode( name );
 	}
 	else
 		return scene.getNode( name );
 	return null;
 }
 
+//returns a reference to the global matrix of the bone
 SkinDeformer.prototype.getBoneMatrix = function( name )
 {
 	var node = this.getBoneNode( name );
@@ -13456,6 +13630,7 @@ SkinDeformer.prototype.getBoneMatrices = function( ref_mesh )
 	return bones;
 }
 
+//Adds the deforming data to the last RenderInstance
 SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 {
 	if(!render_instances.length)
@@ -13474,8 +13649,7 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	this.applySkinning( last_RI );
 }
 
-
-
+//Applies skinning taking into account the options available (using uniforms, a texture or applying it by software)
 SkinDeformer.prototype.applySkinning = function(RI)
 {
 	var mesh = RI.mesh;
@@ -13594,6 +13768,7 @@ SkinDeformer.prototype.getMesh = function()
 	return this._mesh;
 }
 
+//Takes every vertex and multiplyes it by its bone matrices (slow but it works everywhere)
 SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 {
 	var original_vertices = ref_mesh.getBuffer("vertices").data;
@@ -13683,22 +13858,7 @@ SkinDeformer.prototype.extractSkeleton = function()
 	//TODO
 }
 
-SkinDeformer.prototype.convertBonesToRelative = function()
-{
-	//Check bones affecting this mesh
-	var bones = this.getBones();
-	if(!bones || !bones.length )
-		return;
-
-	//Rename the id to a relative name
-	for(var i = 0; i < bones.length; ++i)
-	{
-		//TODO
-		//replace the names in the mesh.bones so they point to relative names
-		//other option would be to hardcode the bone names inside the component as long as the mesh is the same
-	}
-}
-
+//returns an array with all the bone nodes affecting this mesh
 SkinDeformer.prototype.getBones = function()
 {
 	var mesh = this._mesh;
@@ -17744,7 +17904,7 @@ function PlayAnimation(o)
 {
 	this.animation = "";
 	this.take = "default";
-	this.root_node = null;
+	this.root_node = "@";
 	this.playback_speed = 1.0;
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
@@ -17761,8 +17921,9 @@ function PlayAnimation(o)
 PlayAnimation.LOOP = 1;
 PlayAnimation.PINGPONG = 2;
 PlayAnimation.ONCE = 3;
+PlayAnimation.PAUSED = 4;
 
-PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE };
+PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE, "paused":PlayAnimation.PAUSED };
 
 PlayAnimation["@animation"] = { widget: "resource" };
 PlayAnimation["@root_node"] = { type: "node" };
@@ -17782,6 +17943,8 @@ PlayAnimation.prototype.configure = function(o)
 		this.playback_speed = parseFloat( o.playback_speed );
 	if(o.root_node !== undefined)
 		this.root_node = o.root_node;
+	if(o.playing !== undefined)
+		this.playing = o.playing;
 }
 
 
@@ -17803,7 +17966,10 @@ PlayAnimation.prototype.getAnimation = function()
 {
 	if(!this.animation || this.animation == "@scene") 
 		return this._root.scene.animation;
-	return LS.ResourcesManager.getResource( this.animation );
+	var anim = LS.ResourcesManager.getResource( this.animation );
+	if( anim && anim.constructor === LS.Animation )
+		return anim;
+	return null;
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
@@ -17812,8 +17978,10 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!animation) 
 		return;
 
-	//var time = Scene.getTime() * this.playback_speed;
-	if(this.playing)
+	if(!this.playing)
+		return;
+
+	if( this.mode != PlayAnimation.PAUSED )
 		this.current_time += dt * this.playback_speed;
 
 	var take = animation.takes[ this.take ];
@@ -17848,9 +18016,13 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 					else
 						time = duration - (this.current_time % duration);
 					break;
-			default: break;
+			default: 
+					time = end_time; 
+				break;
 		}
 	}
+	else if(time < start_time)
+		time = start_time;
 
 	var root_node = null;
 	if(this.root_node && this._root.scene)
@@ -18241,6 +18413,32 @@ Object.defineProperty( Script.prototype, "context", {
 	enumerable: false //if it was enumerable it would be serialized
 });
 
+Script.prototype.configure = function(o)
+{
+	if(o.uid)
+		this.uid = o.uid;
+	if(o.enabled !== undefined)
+		this.enabled = o.enabled;
+	if(o.name !== undefined)
+		this.name = o.name;
+	if(o.code !== undefined)
+		this.code = o.code;
+	if(o.properties)
+		 this.setContextProperties( o.properties );
+}
+
+Script.prototype.serialize = function()
+{
+	return {
+		uid: this.uid,
+		enabled: this.enabled,
+		name: this.name,
+		code: this.code,
+		properties: LS.cloneObject( this.getContextProperties() )
+	};
+}
+
+
 
 Script.prototype.getContext = function()
 {
@@ -18274,13 +18472,41 @@ Script.prototype.processCode = function( skip_events )
 		if(this._script && this._script._context)
 			this._script._context.unbindAll();
 
+		//save old state
+		var old = this._stored_properties || this.getContextProperties();
+
 		//compiles and executes the context
 		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
 		if(!skip_events)
 			this.hookEvents();
+
+		this.setContextProperties( old );
+		this._stored_properties = null;
+
 		return ret;
 	}
 	return true;
+}
+
+Script.prototype.getContextProperties = function()
+{
+	var ctx = this.getContext();
+	if(!ctx)
+		return;
+	return LS.cloneObject( ctx );
+}
+
+Script.prototype.setContextProperties = function( properties )
+{
+	if(!properties)
+		return;
+	var ctx = this.getContext();
+	if(!ctx) //maybe the context hasnt been crated yet
+	{
+		this._stored_properties = properties;
+		return;
+	}
+	LS.cloneObject( properties, ctx, false, true );
 }
 
 //used for graphs
@@ -18676,29 +18902,10 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 	return true;
 }
 
-Script.prototype.getContextProperties = function()
-{
-	var ctx = this.getContext();
-	if(!ctx)
-		return;
-	return LS.cloneObject( ctx );
-}
-
-Script.prototype.setContextProperties = function( properties )
-{
-	if(!properties)
-		return;
-	var ctx = this.getContext();
-	if(!ctx) //maybe the context hasnt been crated yet
-	{
-		this._stored_properties = properties;
-		return;
-	}
-	LS.cloneObject( properties, ctx, false, true );
-}
-
 ScriptFromFile.prototype.configure = function(o)
 {
+	if(o.uid)
+		this.uid = o.uid;
 	if(o.enabled !== undefined)
 		this.enabled = o.enabled;
 	if(o.filename !== undefined)
@@ -18710,6 +18917,7 @@ ScriptFromFile.prototype.configure = function(o)
 ScriptFromFile.prototype.serialize = function()
 {
 	return {
+		uid: this.uid,
 		enabled: this.enabled,
 		filename: this.filename,
 		properties: LS.cloneObject( this.getContextProperties() )
@@ -20861,6 +21069,18 @@ Animation.prototype.convertIDstoNames = function( use_basename, root )
 	return num;
 }
 
+Animation.prototype.optimizeTracks = function()
+{
+	var num = 0;
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		num += take.optimizeTracks();
+	}
+	return num;
+}
+
+
 LS.Classes["Animation"] = LS.Animation = Animation;
 
 /** Represents a set of animations **/
@@ -21023,15 +21243,113 @@ Take.prototype.loadResources = function()
 	}
 }
 
+//convert track locators from using UIDs to use node names (this way the same animation can be used in several parts of the scene)
 Take.prototype.convertIDstoNames = function( use_basename, root )
+{
+	var num = 0;
+	for(var j = 0; j < this.tracks.length; ++j)
+	{
+		var track = this.tracks[j];
+		num += track.convertIDtoName( use_basename, root )
+	}
+	return num;
+}
+
+//optimize animations
+Take.prototype.optimizeTracks = function()
+{
+	var num = 0;
+	var temp = new Float32Array(10);
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if( track.value_size != 16 )
+			continue;
+
+		//convert locator
+		var path = track.property.split("/");
+		if( path[ path.length - 1 ] != "matrix")
+			continue;
+		path[ path.length - 1 ] = "Transform/data";
+		track.property = path.join("/");
+		track.type = "trans10";
+		track.value_size = 10;
+
+		//convert samples
+		if(!track.packed_data)
+		{
+			console.warn("convertMatricesToData only works with packed data");
+			continue;
+		}
+
+		var data = track.data;
+		var num_samples = data.length / 17;
+		for(var k = 0; k < num_samples; ++k)
+		{
+			var sample = data.subarray(k*17+1,(k*17)+17);
+			var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+			data[k*11] = data[k*17]; //timestamp
+			data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+		}
+		track.data = new Float32Array( data.subarray(0,num_samples*11) );
+		num += 1;
+	}
+	return num;
+}
+
+Take.prototype.matchTranslation = function( root )
+{
+	var num = 0;
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+
+		if(track.type != "trans10" && track.type != "mat4")
+			continue;
+
+		if( !track._property_path || !track._property_path.length )
+			continue;
+
+		var node = LSQ.get( track._property_path[0], root );
+		if(!node)
+			continue;
+		
+		var position = node.transform.position;
+		var offset = track.value_size + 1;
+
+		var data = track.data;
+		var num_samples = data.length / offset;
+		if(track.type == "trans10")
+		{
+			for(var j = 0; j < num_samples; ++j)
+				data.set( position, j*offset + 1 );
+		}
+		else if(track.type == "mat4")
+		{
+			for(var j = 0; j < num_samples; ++j)
+				data.set( position, j*offset + 1 + 12 ); //12,13,14 contain translation
+		}
+
+		num += 1;
+	}
+
+	return num;
+}
+
+Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
 	var num = 0;
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if( track.convertIDtoName( use_basename, root ) )
-			num += 1;
+		if(track.interpolation == interpolation)
+			continue;
+		track.interpolation = interpolation;
+		num += 1;
 	}
+
 	return num;
 }
 
@@ -21557,11 +21875,25 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		if(!result || result.length != this.value_size)
 			result = this._result = new Float32Array( this.value_size );
 
-		for(var i = 0; i < this.value_size; i++)
-			result[i] = a[1][i] * t + b[1][i] * (1-t);
-
-		if(this.type == "quat")
-			quat.normalize(result, result);
+		switch(this.type)
+		{
+			case "quat": 
+				quat.lerp( result, a[1], b[1], t );
+				quat.normalize( result, result );
+				break;
+			case "trans10": 
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1][i] * t + b[1][i] * (1-t);
+				var rotA = a[1].subarray(3,7);
+				var rotB = a[1].subarray(3,7);
+				var rotR = result.subarray(3,7);
+				quat.lerp( rotR, rotA, rotB, t );
+				quat.normalize( rotR, rotR );
+				break;
+			default:
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1][i] * t + b[1][i] * (1-t);
+		}
 
 		return result;
 	}
@@ -21594,6 +21926,11 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 		if(this.type == "quat")
 			quat.normalize(result, result);
+		else if(this.type == "trans10")
+		{
+			var rot = result.subarray(3,7);
+			quat.normalize(rot, rot);
+		}
 
 		return result;
 	}
@@ -21642,11 +21979,25 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		if(!result || result.length != this.value_size)
 			result = this._result = new Float32Array( this.value_size );
 
-		for(var i = 0; i < this.value_size; i++)
-			result[i] = a[1+i] * t + b[1+i] * (1-t);
-
-		if(this.type == "quat")
-			quat.normalize(result, result);
+		switch(this.type)
+		{
+			case "quat": 
+				quat.lerp( result, a.subarray(i+1,i+5), b.subarray(i+1,i+5), t );
+				quat.normalize( result, result );
+				break;
+			case "trans10": 
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1+i] * t + b[1+i] * (1-t);
+				var rotA = a.subarray(i+4,i+8);
+				var rotB = b.subarray(i+4,i+8);
+				var rotR = result.subarray(i+4,i+8);
+				quat.lerp( rotR, rotA, rotB, t );
+				quat.normalize( rotR, rotR );
+				break;
+			default:
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1+i] * t + b[1+i] * (1-t);
+		}
 
 		return result;
 	}
@@ -21672,6 +22023,11 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 		if(this.type == "quat")
 			quat.normalize(result, result);
+		else if(this.type == "trans10")
+		{
+			var rot = result.subarray(3,7);
+			quat.normalize(rot, rot);
+		}
 
 		return result;
 	}
@@ -22019,7 +22375,7 @@ function Prefab(o)
 {
 	this.resources = {}; 
 	this.prefab_json = null;
-	this.prefab_data = null;
+	this.prefab_data = null; //json object
 
 	if(o)
 		this.configure(o);
@@ -22189,6 +22545,37 @@ Prefab.packResources = function( resources, base_data )
 
 	to_binary["@resources_name"] = resources_name;
 	return WBin.create( to_binary, "Prefab" );
+}
+
+Prefab.prototype.flagResources = function()
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		resource.from_prefab = this.fullpath || this.filename || true;
+	}
+}
+
+//search for nodes using this prefab and creates the nodes
+Prefab.prototype.applyToNodes = function( scene )
+{
+	scene = scene || LS.GlobalScene;	
+	var name = this.fullpath || this.filename;
+
+	for(var i = 0; i < scene._nodes.length; ++i)
+	{
+		var node = scene._nodes[i];
+		if(node.prefab != name)
+			continue;
+		node.reloadFromPrefab();
+	}
 }
 
 LS.Classes["Prefab"] = LS.Prefab = Prefab;
@@ -22385,6 +22772,23 @@ Pack.packResources = function( resource_names, base_object )
 
 	to_binary["@resource_names"] = final_resource_names;
 	return WBin.create( to_binary, "Pack" );
+}
+
+//just tells the resources where they come from, we cannot do that before because we didnt have the name of the pack
+Pack.prototype.flagResources = function()
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		resource.from_pack = this.fullpath || this.filename || true;
+	}
 }
 
 LS.Classes["Pack"] = LS.Pack = Pack;
@@ -25752,9 +26156,11 @@ LS.Formats = {
 		var info = this.getFileFormatInfo( filename );
 		if(options.extension)
 			info.extension = options.extension; //force a format
+		else
+			info.extension = LS.ResourcesManager.getExtension( filename );
 
 		var format = this.supported[ info.extension ];
-		if(!format.parse)
+		if(!format || !format.parse)
 		{
 			console.error("Parser Error: No parser found for " + info.extension + " format");
 			return null;
@@ -29723,6 +30129,7 @@ function SceneTree()
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
+	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
 	//FEATURES NOT YET FULLY IMPLEMENTED
@@ -29787,6 +30194,7 @@ SceneTree.prototype.init = function()
 	this.id = "";
 	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
 	this.local_repository = null;
+	this.global_scripts = [];
 	this.external_scripts = [];
 	this.preloaded_resources = {};
 
@@ -29931,6 +30339,9 @@ SceneTree.prototype.configure = function(scene_info)
 	}
 	*/
 
+	if( scene_info.global_scripts )
+		this.global_scripts = scene_info.global_scripts.concat();
+
 	if( scene_info.external_scripts )
 		this.external_scripts = scene_info.external_scripts.concat();
 
@@ -29987,6 +30398,7 @@ SceneTree.prototype.serialize = function()
 		o.animation = this.animation.serialize();
 
 	o.layer_names = this.layer_names.concat();
+	o.global_scripts = this.global_scripts.concat();
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
 
@@ -30048,9 +30460,11 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 
 	function inner_json_loaded( response )
 	{
+		var scripts = LS.SceneTree.getScriptsList( response );
+
 		//check JSON for special scripts
-		if ( response.external_scripts && response.external_scripts.length )
-			that.loadExternalScripts( response.external_scripts, function(){ inner_success(response); }, on_error );
+		if ( scripts.length )
+			that.loadScripts( scripts, function(){ inner_success(response); }, on_error );
 		else
 			inner_success( response );
 	}
@@ -30086,9 +30500,54 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 	}
 }
 
-SceneTree.prototype.loadExternalScripts = function( scripts, on_complete, on_error )
+//returns a list of all the scripts that must be loaded, in order and with the full path
+SceneTree.getScriptsList = function( root )
 {
+	var scripts = [];
+	if ( root.external_scripts && root.external_scripts.length )
+		scripts = scripts.concat( root.external_scripts );
+	if ( root.global_scripts && root.global_scripts.length )
+	{
+		for(var i in root.global_scripts)
+		{
+			var script_fullpath = root.global_scripts[i];
+			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != "js" )
+				continue;
+			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
+			scripts.push( script_url );
+		}
+	}
+	return scripts;
+}
+
+SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
+{
+	scripts = scripts || LS.SceneTree.getScriptsList( this );
 	LS.Network.requestScript( scripts, on_complete, on_error );
+}
+
+//used to ensure that components use the right class when the class comes from a global script
+SceneTree.prototype.checkComponentsCodeModification = function()
+{
+	for(var i = 0; i < this._nodes.length; ++i )
+	{
+		var node = this._nodes[i];
+		for(var j = 0; j < node._components.length; ++j)
+		{
+			var compo = node._components[j];
+			var class_name = LS.getObjectClassName( compo );
+			var last_class = LS.Components[ class_name ];
+			if( last_class == compo.constructor )
+				continue;
+			//replace class instance in-place
+			var data = compo.serialize();
+			var index = node.getIndexOfComponent( compo );
+			node.removeComponent( compo );
+			var new_compo = new last_class( data );
+			node.addComponent( new_compo, index );
+			console.log("Class replaced: " + class_name );
+		}
+	}
 }
 
 SceneTree.prototype.appendScene = function(scene)
@@ -30150,8 +30609,10 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 	*/
 
 	//store by uid
-	if(!node.uid)
-		node.uid = LS.generateUId("NODE-");
+	if(!node.uid || this._nodes_by_uid[ node.uid ])
+		node._uid = LS.generateUId("NODE-");
+	//if( this._nodes_by_uid[ node.uid ] )
+	//	console.warn("There are more than one node with the same UID: ", node.uid );
 	this._nodes_by_uid[ node.uid ] = node;
 
 	//store nodes linearly
@@ -30404,7 +30865,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 	}
 
 	//get node
-	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
+	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 	return node.setPropertyValueFromPath( path.slice(1), value );
@@ -30430,7 +30891,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node 
 	}
 
 	//get node
-	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
+	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 
@@ -31023,6 +31484,20 @@ Object.defineProperty( SceneNode.prototype, 'material', {
 	enumerable: true
 });
 
+Object.defineProperty( SceneNode.prototype, 'prefab', {
+	set: function(name)
+	{
+		this._prefab = name;
+		var prefab = LS.RM.getResource(name);
+		if(prefab)
+			this.reloadFromPrefab();
+	},
+	get: function(){
+		return this._prefab;
+	},
+	enumerable: true
+});
+
 SceneNode.prototype.clear = function()
 {
 	this.removeAllComponents();
@@ -31477,6 +31952,7 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
+//apply prefab info (skipping the root components) to node
 SceneNode.prototype.reloadFromPrefab = function()
 {
 	if(!this.prefab)
@@ -31489,9 +31965,9 @@ SceneNode.prototype.reloadFromPrefab = function()
 	//apply info
 	this.removeAllChildren();
 	this.init( true );
-	var data = LS.cloneObject( prefab.prefab_data );
-	delete data.components;
-	this.configure( data );
+	//remove all but children info (prefabs overwrite only children info)
+	var prefab_data = { children: prefab.prefab_data.children };
+	this.configure( prefab_data );
 }
 
 
@@ -31670,8 +32146,10 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
-	//configure children too
-	this.configureChildren(info);
+	if(info.prefab) //prefabs ignore children config
+		this.reloadFromPrefab();
+	else //configure children too
+		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
 }
@@ -31717,7 +32195,7 @@ SceneNode.prototype.serialize = function()
 	if(this.comments) 
 		o.comments = this.comments;
 
-	if(this._children)
+	if(this._children && !this.prefab)
 		o.children = this.serializeChildren();
 
 	//save components
@@ -31969,10 +32447,12 @@ Player.prototype.setScene = function( scene_info, on_complete )
 	if(typeof(scene_info) == "string")
 		scene_info = JSON.parse(scene_info);
 
-	if( scene_info.external_scripts && scene_info.external_scripts.length )
+	var scripts = LS.SceneTree.getScriptsList( scene_info );
+
+	if( scripts && scripts.length )
 	{
 		scene.clear();
-		scene.loadExternalScripts( scene_info.external_scripts, inner_external_ready );
+		scene.loadScripts( scripts, inner_external_ready );
 	}
 	else
 		inner_external_ready();

@@ -229,7 +229,7 @@ var LS = {
 		var o = target || {};
 		for(var i in object)
 		{
-			if(i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private)
+			if(i[0] == "@" || i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private) or '@' (they are definitions)
 				continue;
 
 			if(only_existing && target[i] === undefined)
@@ -637,7 +637,7 @@ var LSQ = {
 	{
 		var info;
 		if(!root)
-			info = root.getPropertyInfo( locator );
+			info = LS.GlobalScene.getPropertyInfo( locator );
 		else
 		{
 			if(root.constructor === LS.SceneNode)

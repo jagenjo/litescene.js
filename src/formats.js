@@ -54,9 +54,11 @@ LS.Formats = {
 		var info = this.getFileFormatInfo( filename );
 		if(options.extension)
 			info.extension = options.extension; //force a format
+		else
+			info.extension = LS.ResourcesManager.getExtension( filename );
 
 		var format = this.supported[ info.extension ];
-		if(!format.parse)
+		if(!format || !format.parse)
 		{
 			console.error("Parser Error: No parser found for " + info.extension + " format");
 			return null;

@@ -161,6 +161,18 @@ Animation.prototype.convertIDstoNames = function( use_basename, root )
 	return num;
 }
 
+Animation.prototype.optimizeTracks = function()
+{
+	var num = 0;
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		num += take.optimizeTracks();
+	}
+	return num;
+}
+
+
 LS.Classes["Animation"] = LS.Animation = Animation;
 
 /** Represents a set of animations **/
@@ -323,15 +335,113 @@ Take.prototype.loadResources = function()
 	}
 }
 
+//convert track locators from using UIDs to use node names (this way the same animation can be used in several parts of the scene)
 Take.prototype.convertIDstoNames = function( use_basename, root )
+{
+	var num = 0;
+	for(var j = 0; j < this.tracks.length; ++j)
+	{
+		var track = this.tracks[j];
+		num += track.convertIDtoName( use_basename, root )
+	}
+	return num;
+}
+
+//optimize animations
+Take.prototype.optimizeTracks = function()
+{
+	var num = 0;
+	var temp = new Float32Array(10);
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if( track.value_size != 16 )
+			continue;
+
+		//convert locator
+		var path = track.property.split("/");
+		if( path[ path.length - 1 ] != "matrix")
+			continue;
+		path[ path.length - 1 ] = "Transform/data";
+		track.property = path.join("/");
+		track.type = "trans10";
+		track.value_size = 10;
+
+		//convert samples
+		if(!track.packed_data)
+		{
+			console.warn("convertMatricesToData only works with packed data");
+			continue;
+		}
+
+		var data = track.data;
+		var num_samples = data.length / 17;
+		for(var k = 0; k < num_samples; ++k)
+		{
+			var sample = data.subarray(k*17+1,(k*17)+17);
+			var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+			data[k*11] = data[k*17]; //timestamp
+			data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+		}
+		track.data = new Float32Array( data.subarray(0,num_samples*11) );
+		num += 1;
+	}
+	return num;
+}
+
+Take.prototype.matchTranslation = function( root )
+{
+	var num = 0;
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+
+		if(track.type != "trans10" && track.type != "mat4")
+			continue;
+
+		if( !track._property_path || !track._property_path.length )
+			continue;
+
+		var node = LSQ.get( track._property_path[0], root );
+		if(!node)
+			continue;
+		
+		var position = node.transform.position;
+		var offset = track.value_size + 1;
+
+		var data = track.data;
+		var num_samples = data.length / offset;
+		if(track.type == "trans10")
+		{
+			for(var j = 0; j < num_samples; ++j)
+				data.set( position, j*offset + 1 );
+		}
+		else if(track.type == "mat4")
+		{
+			for(var j = 0; j < num_samples; ++j)
+				data.set( position, j*offset + 1 + 12 ); //12,13,14 contain translation
+		}
+
+		num += 1;
+	}
+
+	return num;
+}
+
+Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
 	var num = 0;
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if( track.convertIDtoName( use_basename, root ) )
-			num += 1;
+		if(track.interpolation == interpolation)
+			continue;
+		track.interpolation = interpolation;
+		num += 1;
 	}
+
 	return num;
 }
 
@@ -857,11 +967,25 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		if(!result || result.length != this.value_size)
 			result = this._result = new Float32Array( this.value_size );
 
-		for(var i = 0; i < this.value_size; i++)
-			result[i] = a[1][i] * t + b[1][i] * (1-t);
-
-		if(this.type == "quat")
-			quat.normalize(result, result);
+		switch(this.type)
+		{
+			case "quat": 
+				quat.lerp( result, a[1], b[1], t );
+				quat.normalize( result, result );
+				break;
+			case "trans10": 
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1][i] * t + b[1][i] * (1-t);
+				var rotA = a[1].subarray(3,7);
+				var rotB = a[1].subarray(3,7);
+				var rotR = result.subarray(3,7);
+				quat.lerp( rotR, rotA, rotB, t );
+				quat.normalize( rotR, rotR );
+				break;
+			default:
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1][i] * t + b[1][i] * (1-t);
+		}
 
 		return result;
 	}
@@ -894,6 +1018,11 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 		if(this.type == "quat")
 			quat.normalize(result, result);
+		else if(this.type == "trans10")
+		{
+			var rot = result.subarray(3,7);
+			quat.normalize(rot, rot);
+		}
 
 		return result;
 	}
@@ -942,11 +1071,25 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		if(!result || result.length != this.value_size)
 			result = this._result = new Float32Array( this.value_size );
 
-		for(var i = 0; i < this.value_size; i++)
-			result[i] = a[1+i] * t + b[1+i] * (1-t);
-
-		if(this.type == "quat")
-			quat.normalize(result, result);
+		switch(this.type)
+		{
+			case "quat": 
+				quat.lerp( result, a.subarray(i+1,i+5), b.subarray(i+1,i+5), t );
+				quat.normalize( result, result );
+				break;
+			case "trans10": 
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1+i] * t + b[1+i] * (1-t);
+				var rotA = a.subarray(i+4,i+8);
+				var rotB = b.subarray(i+4,i+8);
+				var rotR = result.subarray(i+4,i+8);
+				quat.lerp( rotR, rotA, rotB, t );
+				quat.normalize( rotR, rotR );
+				break;
+			default:
+				for(var i = 0; i < this.value_size; i++)
+					result[i] = a[1+i] * t + b[1+i] * (1-t);
+		}
 
 		return result;
 	}
@@ -972,6 +1115,11 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 		if(this.type == "quat")
 			quat.normalize(result, result);
+		else if(this.type == "trans10")
+		{
+			var rot = result.subarray(3,7);
+			quat.normalize(rot, rot);
+		}
 
 		return result;
 	}

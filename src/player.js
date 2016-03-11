@@ -162,10 +162,12 @@ Player.prototype.setScene = function( scene_info, on_complete )
 	if(typeof(scene_info) == "string")
 		scene_info = JSON.parse(scene_info);
 
-	if( scene_info.external_scripts && scene_info.external_scripts.length )
+	var scripts = LS.SceneTree.getScriptsList( scene_info );
+
+	if( scripts && scripts.length )
 	{
 		scene.clear();
-		scene.loadExternalScripts( scene_info.external_scripts, inner_external_ready );
+		scene.loadScripts( scripts, inner_external_ready );
 	}
 	else
 		inner_external_ready();

@@ -145,6 +145,20 @@ Object.defineProperty( SceneNode.prototype, 'material', {
 	enumerable: true
 });
 
+Object.defineProperty( SceneNode.prototype, 'prefab', {
+	set: function(name)
+	{
+		this._prefab = name;
+		var prefab = LS.RM.getResource(name);
+		if(prefab)
+			this.reloadFromPrefab();
+	},
+	get: function(){
+		return this._prefab;
+	},
+	enumerable: true
+});
+
 SceneNode.prototype.clear = function()
 {
 	this.removeAllComponents();
@@ -599,6 +613,7 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
+//apply prefab info (skipping the root components) to node
 SceneNode.prototype.reloadFromPrefab = function()
 {
 	if(!this.prefab)
@@ -611,9 +626,9 @@ SceneNode.prototype.reloadFromPrefab = function()
 	//apply info
 	this.removeAllChildren();
 	this.init( true );
-	var data = LS.cloneObject( prefab.prefab_data );
-	delete data.components;
-	this.configure( data );
+	//remove all but children info (prefabs overwrite only children info)
+	var prefab_data = { children: prefab.prefab_data.children };
+	this.configure( prefab_data );
 }
 
 
@@ -792,8 +807,10 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
-	//configure children too
-	this.configureChildren(info);
+	if(info.prefab) //prefabs ignore children config
+		this.reloadFromPrefab();
+	else //configure children too
+		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
 }
@@ -839,7 +856,7 @@ SceneNode.prototype.serialize = function()
 	if(this.comments) 
 		o.comments = this.comments;
 
-	if(this._children)
+	if(this._children && !this.prefab)
 		o.children = this.serializeChildren();
 
 	//save components

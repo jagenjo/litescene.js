@@ -55,7 +55,7 @@ Component.prototype.configure = function(o)
 			this.uid = o.uid;
 	}
 	*/
-	LS.cloneObject(o, this); 
+	LS.cloneObject(o, this, false, true); 
 }
 
 Component.prototype.serialize = function()

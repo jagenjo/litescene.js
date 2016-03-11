@@ -343,11 +343,12 @@ CompositePattern.prototype.findNode = function( name_or_uid )
 		return this;
 	if(!name_or_uid)
 		return null;
-	if(name_or_uid.charAt(0) == LS._uid_prefix)
+	if(name_or_uid.charAt(0) != LS._uid_prefix)
 		return this.findNodeByName( name_or_uid );
 	return this.findNodeByUId( name_or_uid );
 }
 
+//this function gets called a lot when using animations
 CompositePattern.prototype.findNodeByName = function( name )
 {
 	if(!name)
@@ -359,18 +360,20 @@ CompositePattern.prototype.findNodeByName = function( name )
 	var children = this._children;
 
 	if(children)
-		for(var i = 0; i < children.length; ++i)
+	{
+		for(var i = 0, l = children.length; i < l; ++i)
 		{
 			var node = children[i];
 			if( node.name == name )
 				return node;
 			if(node._children)
 			{
-				var r = node.findNodeByName(name);
+				var r = node.findNodeByName( name );
 				if(r)
 					return r;
 			}
 		}
+	}
 	return null;
 }
 

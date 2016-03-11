@@ -11,6 +11,7 @@
 ../src/shadersManager.js
 
 ../src/utils/draw.js
+../src/utils/litegl-extra.js
 
 ../src/materials/material.js
 ../src/materials/standardMaterial.js

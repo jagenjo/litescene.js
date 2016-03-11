@@ -238,7 +238,7 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
-		var pos = url.indexOf("://");
+		var pos = url.substr(0,10).indexOf(":");
 		var protocol = "";
 		if(pos != -1)
 			protocol = url.substr(0,pos);
@@ -305,7 +305,7 @@ var ResourcesManager = {
 	{
 		if(!url)
 			return null;
-		url = url.split("/").filter(function(v){ return !!v; }).join("/");
+		url = this.cleanFullpath( url );
 		return this.resources[ url ];
 	},
 
@@ -339,8 +339,22 @@ var ResourcesManager = {
 			return;
 		delete resource._original_data;
 		delete resource._original_file;
-		resource._modified = true;
+
+		if(resource.remote_path)
+			resource._modified = true;
+
 		LEvent.trigger(this, "resource_modified", resource );
+		
+		if(resource.from_pack)
+		{
+			if (resource.from_pack.constructor === String)
+			{
+				var pack = LS.ResourcesManager.getResource( resource.from_pack );
+				if(pack)
+					this.resourceModified(pack);
+			}
+		}
+
 	},
 
 	/**
@@ -390,7 +404,10 @@ var ResourcesManager = {
 		//extract the filename extension
 		var extension = this.getExtension( url );
 		if(!extension) //unknown file type
+		{
+			console.warn("Cannot load a file without extension: " + url );
 			return false;
+		}
 
 		if( this.resources_not_found[url] )
 			return;
@@ -476,6 +493,9 @@ var ResourcesManager = {
 
 		//ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
+			if(!resource)
+				return;
+
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource
@@ -629,13 +649,13 @@ var ResourcesManager = {
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
 
+		//Add to global container
+		this.resources[ filename ] = resource;
+
 		//POST-PROCESS resources extra final action (done here to ensure any registered resource is post-processed)
 		var post_callback = this.resource_post_callbacks[ type ];
 		if(post_callback)
 			post_callback( filename, resource );
-
-		//Add to global container
-		this.resources[ filename ] = resource;
 
 		//send message to inform new resource is available
 		if(!resource.is_preview)
@@ -664,6 +684,8 @@ var ResourcesManager = {
 			delete this.meshes[ filename ];
 		if( this.textures[filename] )
 			delete this.textures[ filename ];
+		if( this.materials[filename] )
+			delete this.materials[ filename ];
 
 		LEvent.trigger(this,"resource_unregistered", resource);
 		LS.GlobalScene.refresh(); //render scene
@@ -909,11 +931,10 @@ LS.getTexture = function( name_or_texture ) {
 // This actions depend on the resource type, and format, and it is open so future formats are easy to implement.
 
 //global formats: take a file and extract info
-LS.ResourcesManager.registerResourcePreProcessor("wbin", function(filename, data, options) {
+LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
 
 	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
-	var data = WBin.load(data);
-	//data could be anything at this point
+	var data = WBin.load( data );
 	return data;
 },"binary");
 
@@ -994,16 +1015,32 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 LS.ResourcesManager.processImage = function( filename, data, options, callback ) {
 
 	var extension = LS.ResourcesManager.getExtension(filename);
-	var mimetype = 'image/png';
+	var mimetype = "application/octet-stream";
 	if(extension == "jpg" || extension == "jpeg")
 		mimetype = "image/jpg";
-	if(extension == "webp")
+	else if(extension == "webp")
 		mimetype = "image/webp";
-	if(extension == "gif")
+	else if(extension == "gif")
 		mimetype = "image/gif";
+	else if(extension == "png")
+		mimetype = "image/png";
+	else {
+		var format = LS.Formats.supported[ extension ];
+		if(format.mimetype)
+			mimetype = format.mimetype;
+		else
+		{
+			var texture = this.processImageNonNative( filename, data, options );
+			inner_on_texture( texture );
+			return;
+		}
+	}
 
+	//blob and load
 	var blob = new Blob([data],{type: mimetype});
 	var objectURL = URL.createObjectURL( blob );
+
+	//regular image
 	var image = new Image();
 	image.src = objectURL;
 	image.real_filename = filename; //hard to get the original name from the image
@@ -1011,6 +1048,17 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 	{
 		var filename = this.real_filename;
 		var texture = LS.ResourcesManager.processTexture( filename, this, options );
+		inner_on_texture( texture );
+	}
+	image.onerror = function(err){
+		URL.revokeObjectURL(objectURL); //free memory
+		if(callback)
+			callback( filename, null, options );
+		throw("Error loading image: " + filename); //error if image is not an image I guess
+	}
+
+	function inner_on_texture( texture )
+	{
 		if(texture)
 		{
 			//LS.ResourcesManager.registerResource( filename, texture ); //this is done already by processResource
@@ -1021,17 +1069,12 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 		if(callback)
 			callback(filename,texture,options);
 	}
-	image.onerror = function(err){
-		URL.revokeObjectURL(objectURL); //free memory
-		if(callback)
-			callback( filename, null, options );
-		throw("Error loading image: " + filename); //error if image is not an image I guess
-	}
+
 	return true;
 }
 
 //Similar to processImage but for non native file formats
-LS.ResourcesManager.processImageNonNative = function(filename, data, options) {
+LS.ResourcesManager.processImageNonNative = function( filename, data, options ) {
 
 	//clone because DDS changes the original data
 	var cloned_data = new Uint8Array(data).buffer;
@@ -1041,6 +1084,7 @@ LS.ResourcesManager.processImageNonNative = function(filename, data, options) {
 	{
 		var texture = texture_data;
 		texture.filename = filename;
+		texture._original_data = cloned_data;
 		return texture;
 	}
 
@@ -1177,105 +1221,23 @@ LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mes
 	LS.ResourcesManager.meshes[filename] = mesh;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Texture", function(filename, texture ) {
+LS.ResourcesManager.registerResourcePostProcessor("Texture", function( filename, texture ) {
 	//store
 	LS.ResourcesManager.textures[filename] = texture;
 });
 
-LS.ResourcesManager.registerResourcePostProcessor("Material", function(filename, material ) {
+LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename, material ) {
 	//store
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
 });
 
-//Extra methods for LiteGL Classes *************************************************************
+LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {
+	//flag contents to specify where do they come from
+	pack.flagResources();
+});
 
-GL.Mesh.fromBinary = function( data_array )
-{
-	var o = null;
-	if(data_array.constructor == ArrayBuffer )
-		o = WBin.load( data_array );
-	else
-		o = data_array;
-
-	var vertex_buffers = {};
-	for(var i in o.vertex_buffers)
-		vertex_buffers[ o.vertex_buffers[i] ] = o[ o.vertex_buffers[i] ];
-
-	var index_buffers = {};
-	for(var i in o.index_buffers)
-		index_buffers[ o.index_buffers[i] ] = o[ o.index_buffers[i] ];
-
-	var mesh = new GL.Mesh(vertex_buffers, index_buffers);
-	mesh.info = o.info;
-	mesh.bounding = o.bounding;
-	if(o.bones)
-	{
-		mesh.bones = o.bones;
-		//restore Float32array
-		for(var i = 0; i < mesh.bones.length; ++i)
-			mesh.bones[i][1] = mat4.clone(mesh.bones[i][1]);
-		if(o.bind_matrix)
-			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
-	}
-	
-	return mesh;
-}
-
-GL.Mesh.prototype.toBinary = function()
-{
-	if(!this.info)
-		this.info = {};
-
-	//clean data
-	var o = {
-		object_type: "Mesh",
-		info: this.info,
-		groups: this.groups
-	};
-
-	if(this.bones)
-	{
-		var bones = [];
-		//convert to array
-		for(var i = 0; i < this.bones.length; ++i)
-			bones.push([ this.bones[i][0], mat4.toArray( this.bones[i][1] ) ]);
-		o.bones = bones;
-		if(this.bind_matrix)
-			o.bind_matrix = this.bind_matrix;
-	}
-
-	//bounding box
-	if(!this.bounding)	
-		this.updateBounding();
-	o.bounding = this.bounding;
-
-	var vertex_buffers = [];
-	var index_buffers = [];
-
-	for(var i in this.vertexBuffers)
-	{
-		var stream = this.vertexBuffers[i];
-		o[ stream.name ] = stream.data;
-		vertex_buffers.push( stream.name );
-
-		if(stream.name == "vertices")
-			o.info.num_vertices = stream.data.length / 3;
-	}
-
-	for(var i in this.indexBuffers)
-	{
-		var stream = this.indexBuffers[i];
-		o[i] = stream.data;
-		index_buffers.push( i );
-	}
-
-	o.vertex_buffers = vertex_buffers;
-	o.index_buffers = index_buffers;
-
-	//create pack file
-	var bin = WBin.create(o, "Mesh");
-
-	return bin;
-}
-
+LS.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, prefab ) {
+	//apply to nodes in the scene
+	prefab.applyToNodes();
+});

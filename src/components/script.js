@@ -94,6 +94,32 @@ Object.defineProperty( Script.prototype, "context", {
 	enumerable: false //if it was enumerable it would be serialized
 });
 
+Script.prototype.configure = function(o)
+{
+	if(o.uid)
+		this.uid = o.uid;
+	if(o.enabled !== undefined)
+		this.enabled = o.enabled;
+	if(o.name !== undefined)
+		this.name = o.name;
+	if(o.code !== undefined)
+		this.code = o.code;
+	if(o.properties)
+		 this.setContextProperties( o.properties );
+}
+
+Script.prototype.serialize = function()
+{
+	return {
+		uid: this.uid,
+		enabled: this.enabled,
+		name: this.name,
+		code: this.code,
+		properties: LS.cloneObject( this.getContextProperties() )
+	};
+}
+
+
 
 Script.prototype.getContext = function()
 {
@@ -127,13 +153,41 @@ Script.prototype.processCode = function( skip_events )
 		if(this._script && this._script._context)
 			this._script._context.unbindAll();
 
+		//save old state
+		var old = this._stored_properties || this.getContextProperties();
+
 		//compiles and executes the context
 		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
 		if(!skip_events)
 			this.hookEvents();
+
+		this.setContextProperties( old );
+		this._stored_properties = null;
+
 		return ret;
 	}
 	return true;
+}
+
+Script.prototype.getContextProperties = function()
+{
+	var ctx = this.getContext();
+	if(!ctx)
+		return;
+	return LS.cloneObject( ctx );
+}
+
+Script.prototype.setContextProperties = function( properties )
+{
+	if(!properties)
+		return;
+	var ctx = this.getContext();
+	if(!ctx) //maybe the context hasnt been crated yet
+	{
+		this._stored_properties = properties;
+		return;
+	}
+	LS.cloneObject( properties, ctx, false, true );
 }
 
 //used for graphs
@@ -529,29 +583,10 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 	return true;
 }
 
-Script.prototype.getContextProperties = function()
-{
-	var ctx = this.getContext();
-	if(!ctx)
-		return;
-	return LS.cloneObject( ctx );
-}
-
-Script.prototype.setContextProperties = function( properties )
-{
-	if(!properties)
-		return;
-	var ctx = this.getContext();
-	if(!ctx) //maybe the context hasnt been crated yet
-	{
-		this._stored_properties = properties;
-		return;
-	}
-	LS.cloneObject( properties, ctx, false, true );
-}
-
 ScriptFromFile.prototype.configure = function(o)
 {
+	if(o.uid)
+		this.uid = o.uid;
 	if(o.enabled !== undefined)
 		this.enabled = o.enabled;
 	if(o.filename !== undefined)
@@ -563,6 +598,7 @@ ScriptFromFile.prototype.configure = function(o)
 ScriptFromFile.prototype.serialize = function()
 {
 	return {
+		uid: this.uid,
 		enabled: this.enabled,
 		filename: this.filename,
 		properties: LS.cloneObject( this.getContextProperties() )

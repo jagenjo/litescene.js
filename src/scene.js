@@ -19,6 +19,7 @@ function SceneTree()
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
+	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
 	//FEATURES NOT YET FULLY IMPLEMENTED
@@ -83,6 +84,7 @@ SceneTree.prototype.init = function()
 	this.id = "";
 	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
 	this.local_repository = null;
+	this.global_scripts = [];
 	this.external_scripts = [];
 	this.preloaded_resources = {};
 
@@ -227,6 +229,9 @@ SceneTree.prototype.configure = function(scene_info)
 	}
 	*/
 
+	if( scene_info.global_scripts )
+		this.global_scripts = scene_info.global_scripts.concat();
+
 	if( scene_info.external_scripts )
 		this.external_scripts = scene_info.external_scripts.concat();
 
@@ -283,6 +288,7 @@ SceneTree.prototype.serialize = function()
 		o.animation = this.animation.serialize();
 
 	o.layer_names = this.layer_names.concat();
+	o.global_scripts = this.global_scripts.concat();
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
 
@@ -344,9 +350,11 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 
 	function inner_json_loaded( response )
 	{
+		var scripts = LS.SceneTree.getScriptsList( response );
+
 		//check JSON for special scripts
-		if ( response.external_scripts && response.external_scripts.length )
-			that.loadExternalScripts( response.external_scripts, function(){ inner_success(response); }, on_error );
+		if ( scripts.length )
+			that.loadScripts( scripts, function(){ inner_success(response); }, on_error );
 		else
 			inner_success( response );
 	}
@@ -382,9 +390,54 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 	}
 }
 
-SceneTree.prototype.loadExternalScripts = function( scripts, on_complete, on_error )
+//returns a list of all the scripts that must be loaded, in order and with the full path
+SceneTree.getScriptsList = function( root )
 {
+	var scripts = [];
+	if ( root.external_scripts && root.external_scripts.length )
+		scripts = scripts.concat( root.external_scripts );
+	if ( root.global_scripts && root.global_scripts.length )
+	{
+		for(var i in root.global_scripts)
+		{
+			var script_fullpath = root.global_scripts[i];
+			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != "js" )
+				continue;
+			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
+			scripts.push( script_url );
+		}
+	}
+	return scripts;
+}
+
+SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
+{
+	scripts = scripts || LS.SceneTree.getScriptsList( this );
 	LS.Network.requestScript( scripts, on_complete, on_error );
+}
+
+//used to ensure that components use the right class when the class comes from a global script
+SceneTree.prototype.checkComponentsCodeModification = function()
+{
+	for(var i = 0; i < this._nodes.length; ++i )
+	{
+		var node = this._nodes[i];
+		for(var j = 0; j < node._components.length; ++j)
+		{
+			var compo = node._components[j];
+			var class_name = LS.getObjectClassName( compo );
+			var last_class = LS.Components[ class_name ];
+			if( last_class == compo.constructor )
+				continue;
+			//replace class instance in-place
+			var data = compo.serialize();
+			var index = node.getIndexOfComponent( compo );
+			node.removeComponent( compo );
+			var new_compo = new last_class( data );
+			node.addComponent( new_compo, index );
+			console.log("Class replaced: " + class_name );
+		}
+	}
 }
 
 SceneTree.prototype.appendScene = function(scene)
@@ -446,8 +499,10 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 	*/
 
 	//store by uid
-	if(!node.uid)
-		node.uid = LS.generateUId("NODE-");
+	if(!node.uid || this._nodes_by_uid[ node.uid ])
+		node._uid = LS.generateUId("NODE-");
+	//if( this._nodes_by_uid[ node.uid ] )
+	//	console.warn("There are more than one node with the same UID: ", node.uid );
 	this._nodes_by_uid[ node.uid ] = node;
 
 	//store nodes linearly
@@ -700,7 +755,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 	}
 
 	//get node
-	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
+	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 	return node.setPropertyValueFromPath( path.slice(1), value );
@@ -726,7 +781,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node 
 	}
 
 	//get node
-	var node = root_node ? root_node.findNodeByName( path[0] ) : this.getNode( path[0] );
+	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
 	if(!node)
 		return null;
 

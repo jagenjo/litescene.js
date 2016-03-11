@@ -192,4 +192,21 @@ Pack.packResources = function( resource_names, base_object )
 	return WBin.create( to_binary, "Pack" );
 }
 
+//just tells the resources where they come from, we cannot do that before because we didnt have the name of the pack
+Pack.prototype.flagResources = function()
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		resource.from_pack = this.fullpath || this.filename || true;
+	}
+}
+
 LS.Classes["Pack"] = LS.Pack = Pack;

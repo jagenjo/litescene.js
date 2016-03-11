@@ -19,7 +19,7 @@ function Resource()
 Object.defineProperty( Resource.prototype, "data", {
 	set: function(v){ 
 		this._data = v;
-		this._resource_modified = true;
+		this._modified = true;
 	},
 	get: function() { 
 		return this._data;
@@ -125,7 +125,7 @@ Resource.prototype.setData = function( v, skip_modified_flag )
 		this._original_data = null;
 	this._data = v;
 	if(!skip_modified_flag)
-		this._resource_modified = true;
+		this._modified = true;
 }
 
 Resource.prototype.getDataToStore = function()

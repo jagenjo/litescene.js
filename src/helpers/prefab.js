@@ -12,7 +12,7 @@ function Prefab(o)
 {
 	this.resources = {}; 
 	this.prefab_json = null;
-	this.prefab_data = null;
+	this.prefab_data = null; //json object
 
 	if(o)
 		this.configure(o);
@@ -182,6 +182,37 @@ Prefab.packResources = function( resources, base_data )
 
 	to_binary["@resources_name"] = resources_name;
 	return WBin.create( to_binary, "Prefab" );
+}
+
+Prefab.prototype.flagResources = function()
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		resource.from_prefab = this.fullpath || this.filename || true;
+	}
+}
+
+//search for nodes using this prefab and creates the nodes
+Prefab.prototype.applyToNodes = function( scene )
+{
+	scene = scene || LS.GlobalScene;	
+	var name = this.fullpath || this.filename;
+
+	for(var i = 0; i < scene._nodes.length; ++i)
+	{
+		var node = scene._nodes[i];
+		if(node.prefab != name)
+			continue;
+		node.reloadFromPrefab();
+	}
 }
 
 LS.Classes["Prefab"] = LS.Prefab = Prefab;
