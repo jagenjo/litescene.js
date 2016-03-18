@@ -939,6 +939,7 @@ var Renderer = {
 	/**
 	* Collects and process the rendering instances, cameras and lights that are visible
 	* Its a prepass shared among all rendering passes
+	* Warning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)
 	*
 	* @method processVisibleData
 	* @param {SceneTree} scene
@@ -1046,16 +1047,20 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//Sorting
+		//Sorting: (defining rendering order based on RIs priority and distance to camera)
 		if(render_settings.sort_instances_by_distance) //sort RIs in Z for alpha sorting
 		{
 			opaque_instances.sort(this._sort_near_to_far_func);
 			blend_instances.sort(this._sort_far_to_near_func);
 		}
-		var all_instances = opaque_instances.concat(blend_instances); //merge
-		if(render_settings.sort_instances_by_priority) //sort by priority
-			all_instances.sort( this._sort_by_priority_func );
 
+		if(render_settings.sort_instances_by_priority) //sort by priority (we do this before merging because otherwise the distance sorting gest messed up
+		{
+			opaque_instances.sort(this._sort_by_priority_and_near_to_far_func);
+			blend_instances.sort(this._sort_by_priority_and_far_to_near_func);
+		}
+
+		var all_instances = opaque_instances.concat(blend_instances); //merge
 
 		//update materials info only if they are in use
 		if(render_settings.update_materials)
@@ -1121,6 +1126,8 @@ var Renderer = {
 	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },
 	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
 	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
+	_sort_by_priority_and_near_to_far_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
+	_sort_by_priority_and_far_to_near_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 
 	/**
 	* Renders a frame into a texture (could be a cubemap, in which case does the six passes)

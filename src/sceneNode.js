@@ -14,15 +14,22 @@ function SceneNode( name )
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId("NODE-");
+	this._classList = {}; //to store classes
+	this.layers = 3|0; //32 bits for layers (force to int)
+	this.node_type = null; //used to store a string defining the node info
+
 	this.init();
 }
 
-SceneNode.prototype.init = function( keep_components )
+SceneNode.prototype.init = function( keep_components, keep_info )
 {
-	this.layers = 3|0; //32 bits for layers (force to int)
-
-	this._classList = {};
-	//this.className = "";
+	if(!keep_info)
+	{
+		this.layers = 3|0; //32 bits for layers (force to int)
+		this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+		this._uid = LS.generateUId("NODE-");
+		this._classList = {};
+	}
 
 	this.node_type = null;
 
@@ -47,6 +54,7 @@ SceneNode.prototype.init = function( keep_components )
 		if( this._components && this._components.length )
 			console.warn("SceneNode.init() should not be called if it contains components, call clear instead");
 		this._components = []; //used for logic actions
+		this._missing_components = null;
 		this.addComponent( new LS.Transform() );
 	}
 
@@ -134,7 +142,7 @@ Object.defineProperty( SceneNode.prototype, 'material', {
 			return;
 		if(v.constructor === String)
 			return;
-		if(v._root && v._root != this)
+		if(v._root && v._root != this) //has root and its not me
 			console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
 		else
 			v._root = this; //link
@@ -625,10 +633,14 @@ SceneNode.prototype.reloadFromPrefab = function()
 
 	//apply info
 	this.removeAllChildren();
-	this.init( true );
+	this.init( true, true );
 	//remove all but children info (prefabs overwrite only children info)
 	var prefab_data = { children: prefab.prefab_data.children };
 	this.configure( prefab_data );
+
+	//load secondary resources 
+	var resources = this.getResources( {}, true );
+	LS.ResourcesManager.loadResources( resources );
 }
 
 
@@ -704,9 +716,8 @@ SceneNode.prototype.configure = function(info)
 		this.layers = info.layers;
 
 	if (info.uid)
-	{
 		this.uid = info.uid;
-	}
+
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 
@@ -786,9 +797,6 @@ SceneNode.prototype.configure = function(info)
 		for(var i in info.flags)
 			this.flags[i] = info.flags[i];
 	
-	if(info.prefab) 
-		this.prefab = info.prefab;
-
 	//add animation tracks player
 	if(info.animations)
 	{
@@ -807,9 +815,9 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
-	if(info.prefab) //prefabs ignore children config
-		this.reloadFromPrefab();
-	else //configure children too
+	if(info.prefab) 
+		this.prefab = info.prefab; //assign and calls this.reloadFromPrefab();
+	else //configure children if it is not a prefab
 		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
@@ -819,9 +827,10 @@ SceneNode.prototype.configure = function(info)
 * Serializes this node by creating an object with all the info
 * it contains info about the components too
 * @method serialize
+* @param {bool} ignore_prefab serializing wont returns children if it is a prefab, if you set this to ignore_prefab it will return all the info
 * @return {Object} returns the object with the info
 */
-SceneNode.prototype.serialize = function()
+SceneNode.prototype.serialize = function( ignore_prefab )
 {
 	var o = {};
 
@@ -844,7 +853,7 @@ SceneNode.prototype.serialize = function()
 		o.submesh_id = this.submesh_id;
 	if(this.material) 
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
-	if(this.prefab) 
+	if(this.prefab && !ignore_prefab) 
 		o.prefab = this.prefab;
 
 	if(this.flags) 
@@ -856,7 +865,7 @@ SceneNode.prototype.serialize = function()
 	if(this.comments) 
 		o.comments = this.comments;
 
-	if(this._children && !this.prefab)
+	if(this._children && (!this.prefab || ignore_prefab) )
 		o.children = this.serializeChildren();
 
 	//save components

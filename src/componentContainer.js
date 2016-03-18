@@ -13,6 +13,7 @@ function ComponentContainer()
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
 	this._components = [];
+	this._missing_components = null; //here we store info about components with missing info
 	//this._components_by_uid = {}; //TODO
 }
 
@@ -25,25 +26,27 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function(info)
 {
-	if(!info.components)
-		return;
-
-	for(var i = 0, l = info.components.length; i < l; ++i)
-	{
-		var comp_info = info.components[i];
-		var comp_class = comp_info[0];
-		if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
+	if(info.components)
+		for(var i = 0, l = info.components.length; i < l; ++i)
 		{
-			this.transform.configure(comp_info[1]);
-			continue;
+			var comp_info = info.components[i];
+			var comp_class = comp_info[0];
+			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
+			{
+				this.transform.configure(comp_info[1]);
+				continue;
+			}
+			var classObject = LS.Components[comp_class];
+			if(!classObject){
+				console.error("Unknown component found: " + comp_class);
+				if(!this._missing_components)
+					this._missing_components = [];
+				this._missing_components.push( comp_info );
+				continue;
+			}
+			var comp = new LS.Components[comp_class]( comp_info[1] );
+			this.addComponent(comp);
 		}
-		if(!LS.Components[comp_class]){
-			console.error("Unknown component found: " + comp_class);
-			continue;
-		}
-		var comp = new LS.Components[comp_class]( comp_info[1] );
-		this.addComponent(comp);
-	}
 }
 
 /**
@@ -71,6 +74,9 @@ ComponentContainer.prototype.serializeComponents = function(o)
 
 		o.components.push([LS.getObjectClassName(comp), obj]);
 	}
+
+	if(this._missing_components && this._missing_components.length)
+		o.components = o.components.concat( this._missing_components );
 }
 
 /**
@@ -173,6 +179,7 @@ ComponentContainer.prototype.removeAllComponents = function()
 {
 	while(this._components.length)
 		this.removeComponent( this._components[0] );
+	this._missing_components = null;
 }
 
 

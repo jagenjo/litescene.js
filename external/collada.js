@@ -664,7 +664,11 @@ global.Collada = {
 
 			if(xmlparam_value.localName.toString() == "color")
 			{
-				material[ param_name ] = this.readContentAsFloats( xmlparam_value ).subarray(0,3);
+				var value = this.readContentAsFloats( xmlparam_value );
+				if( xmlparam.getAttribute("opaque") == "RGB_ZERO")
+					material[ param_name ] = value.subarray(0,4);
+				else
+					material[ param_name ] = value.subarray(0,3);
 				continue;
 			}
 			else if(xmlparam_value.localName.toString() == "float")
@@ -994,6 +998,7 @@ global.Collada = {
 		return matrix;
 	},
 
+	//for help read this: https://www.khronos.org/collada/wiki/Using_accessors
 	readGeometry: function(id, flip, scene)
 	{
 		//already read, could happend if several controllers point to the same mesh
@@ -1186,10 +1191,15 @@ global.Collada = {
 				//if(use_indices && last_index >= 256*256)
 				//	break;
 
+				var num_values_per_vertex = 1;
+				for(var b in buffers)
+					num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
+
 				//for every pack of indices in the polygon (vertex, normal, uv, ... )
-				for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+				var current_data_pos = 0;
+				for(var k = 0, l = data.length; k < l; k += num_values_per_vertex)
 				{
-					var vertex_id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+					var vertex_id = data.slice(k,k+num_values_per_vertex).join(" "); //generate unique id
 
 					prev_index = current_index;
 					if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
@@ -1200,15 +1210,29 @@ global.Collada = {
 						for(var j = 0; j < buffers.length; ++j)
 						{
 							var buffer = buffers[j];
-							var index = parseInt(data[k + j]);
 							var array = buffer[1]; //array where we accumulate the final data as we extract if from sources
 							var source = buffer[3]; //where to read the data from
+							
+							//compute the index inside the data source array
+							//var index = parseInt(data[k + j]);
+							var index = parseInt( data[ k + buffer[4] ] );
+							//current_data_pos += buffer[4];
+
+							//remember this index in case we need to remap
 							if(j == 0)
 								vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
-//								vertex_remap[ array.length / num_data_vertex ] = index;
-							index *= buffer[2]; //stride
+								//vertex_remap[ array.length / num_data_vertex ] = index;
+
+							//compute the position inside the source buffer where the final data is located
+							index *= buffer[2]; //this works in most DAEs (not all)
+							//index = index * buffer[2] + buffer[4]; //stride(2) offset(4)
+							//index += buffer[4]; //stride(2) offset(4)
+							//extract every value of this element and store it in its final array (every x,y,z, etc)
 							for(var x = 0; x < buffer[2]; ++x)
+							{
+								if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
 								array.push( source[index+x] );
+							}
 						}
 						
 						current_index = last_index;
@@ -1360,8 +1384,7 @@ global.Collada = {
 			var data_set = 0;
 			if(xmlinput.getAttribute("set"))
 				data_set = parseInt( xmlinput.getAttribute("set") );
-
-			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set ]);
 		}
 
 		return buffers;

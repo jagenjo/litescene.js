@@ -226,7 +226,27 @@ var LS = {
 	*/
 	cloneObject: function( object, target, recursive, only_existing )
 	{
-		var o = target || {};
+		if(object === undefined)
+			return undefined;
+		if(object === null)
+			return null;
+		switch( object.constructor )
+		{
+			case String:
+			case Number:
+			case Boolean:
+				return object;
+		}
+
+		var o = target;
+		if(o === undefined)
+		{
+			if(object.constructor === Array)
+				o = [];
+			else
+				o = {};
+		}
+
 		for(var i in object)
 		{
 			if(i[0] == "@" || i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private) or '@' (they are definitions)
@@ -234,6 +254,9 @@ var LS = {
 
 			if(only_existing && target[i] === undefined)
 				continue;
+
+			//if(o.constructor === Array) //not necessary
+			//	i = parseInt(i);
 
 			var v = object[i];
 			if(v == null)

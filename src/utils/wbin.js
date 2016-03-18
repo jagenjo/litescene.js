@@ -124,7 +124,11 @@ WBin.create = function( origin, origin_class_name )
 	for(var i in origin)
 	{
 		var data = origin[i];
-		if(data == null) continue;
+		if(data == null)
+			continue;
+
+		if(data.constructor === Blob || data.constructor === File)
+			throw("Wbin does not allow Blobs or Files as data to store, conver to ArrayBuffer");
 
 		var classname = WBin.getObjectClassName(data);
 

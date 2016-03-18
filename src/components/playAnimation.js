@@ -41,6 +41,8 @@ PlayAnimation.prototype.configure = function(o)
 		delete o.play;
 	if(o.range) 
 		this.range = o.range.concat();
+	if(o.mode !== undefined) 
+		this.mode = o.mode;
 	if(o.animation)
 		this.animation = o.animation;
 	if(o.take)

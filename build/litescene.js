@@ -135,7 +135,11 @@ WBin.create = function( origin, origin_class_name )
 	for(var i in origin)
 	{
 		var data = origin[i];
-		if(data == null) continue;
+		if(data == null)
+			continue;
+
+		if(data.constructor === Blob || data.constructor === File)
+			throw("Wbin does not allow Blobs or Files as data to store, conver to ArrayBuffer");
 
 		var classname = WBin.getObjectClassName(data);
 
@@ -935,7 +939,27 @@ var LS = {
 	*/
 	cloneObject: function( object, target, recursive, only_existing )
 	{
-		var o = target || {};
+		if(object === undefined)
+			return undefined;
+		if(object === null)
+			return null;
+		switch( object.constructor )
+		{
+			case String:
+			case Number:
+			case Boolean:
+				return object;
+		}
+
+		var o = target;
+		if(o === undefined)
+		{
+			if(object.constructor === Array)
+				o = [];
+			else
+				o = {};
+		}
+
 		for(var i in object)
 		{
 			if(i[0] == "@" || i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private) or '@' (they are definitions)
@@ -943,6 +967,9 @@ var LS = {
 
 			if(only_existing && target[i] === undefined)
 				continue;
+
+			//if(o.constructor === Array) //not necessary
+			//	i = parseInt(i);
 
 			var v = object[i];
 			if(v == null)
@@ -1835,7 +1862,11 @@ Resource.getDataToStore = function( resource )
 		encoding = "file";
 	}
 	else if( resource._original_data ) //file in ArrayBuffer format
+	{
 		data = resource._original_data;
+		if( data && data.constructor === ArrayBuffer )
+			encoding = "binary";
+	}
 	else if(resource.toBinary) //a function to compute the ArrayBuffer format
 	{
 		data = resource.toBinary();
@@ -1925,6 +1956,7 @@ var ResourcesManager = {
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
+	allow_base_files: false, //allow to load files that are not in a subfolder
 
 	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
@@ -1936,6 +1968,7 @@ var ResourcesManager = {
 	resources_not_found: {}, //resources that will be skipped because they werent found
 	resources_being_loaded: {}, //resources waiting to be loaded
 	resources_being_processed: {}, //used to avoid loading stuff that is being processes
+	resources_renamed_recently: {}, //used to find resources with old names
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
@@ -2236,10 +2269,18 @@ var ResourcesManager = {
 	{
 		if(!resource)
 			return;
+
+		if(resource.constructor === String)
+		{
+			console.warn("resourceModified parameter must be a resource, not a string");
+			return;
+		}
+
+
 		delete resource._original_data;
 		delete resource._original_file;
 
-		if(resource.remote_path)
+		if(resource.remotepath)
 			resource._modified = true;
 
 		LEvent.trigger(this, "resource_modified", resource );
@@ -2321,6 +2362,9 @@ var ResourcesManager = {
 		if(this.resources_being_processed[url])
 			return; //nothing to load, just waiting for the callback to process it
 
+		if(!this.allow_base_files && url.indexOf("/") == -1)
+			return; //this is not a valid file to load
+
 		//otherwise we have to load it
 		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
@@ -2397,8 +2441,8 @@ var ResourcesManager = {
 
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
-			//Keep original file inside the resource
-			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) )
+			//Keep original file inside the resource in case we want to save it
+			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) && (!resource._original_data && !resource._original_file) )
 				resource._original_data = data;
 		}
 
@@ -2538,6 +2582,9 @@ var ResourcesManager = {
 		if(this.resources[ filename ] == resource)
 			return; //already registered
 
+		if(resource.is_preview && this.resources[ filename ] )
+			return; //previews cannot overwrite resources
+
 		resource.filename = filename; //filename is a given name
 		//resource.fullpath = filename; //fullpath only if they are in the server
 
@@ -2572,10 +2619,11 @@ var ResourcesManager = {
 	*/
 	unregisterResource: function(filename)
 	{
-		if(!this.resources[filename])
+		var resource = this.resources[filename];
+
+		if(!resource)
 			return false; //not found
 
-		var resource = this.resources[filename];
 		delete this.resources[filename];
 
 		//ugly: too hardcoded, maybe implement unregister_callbacks
@@ -2585,6 +2633,9 @@ var ResourcesManager = {
 			delete this.textures[ filename ];
 		if( this.materials[filename] )
 			delete this.materials[ filename ];
+
+		if(resource.constructor === LS.Pack || resource.constructor === LS.Prefab)
+			resource.setResourcesLink(null);
 
 		LEvent.trigger(this,"resource_unregistered", resource);
 		LS.GlobalScene.refresh(); //render scene
@@ -2643,6 +2694,8 @@ var ResourcesManager = {
 			delete this.textures[ old ];
 			this.textures[ newname ] = res;
 		}
+
+		this.resources_renamed_recently[ old ] = newname;
 		return true;
 	},
 
@@ -2953,7 +3006,7 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 		URL.revokeObjectURL(objectURL); //free memory
 		if(callback)
 			callback( filename, null, options );
-		throw("Error loading image: " + filename); //error if image is not an image I guess
+		console.error("Error while loading image, file is not native image format: " + filename); //error if image is not an image I guess
 	}
 
 	function inner_on_texture( texture )
@@ -5182,7 +5235,7 @@ GL.Mesh.prototype.convertBonesToNames = function( root_node )
 	if(!this.bones || !this.bones.length)
 		return 0;
 
-	var modifyed = false;
+	var modified = false;
 
 	//Rename the id to a relative name
 	for(var i = 0; i < this.bones.length; ++i)
@@ -5199,11 +5252,11 @@ GL.Mesh.prototype.convertBonesToNames = function( root_node )
 		}
 
 		bone[0] = node.name;
-		modifyed = true;
+		modified = true;
 	}
 
 	//flag it
-	if(modifyed)
+	if(modified)
 		LS.RM.resourceModified( this );
 }
 
@@ -7301,6 +7354,7 @@ function ComponentContainer()
 	//this function never will be called (because only the methods are attached to other classes)
 	//unless you instantiate this class directly, something that would be weird
 	this._components = [];
+	this._missing_components = null; //here we store info about components with missing info
 	//this._components_by_uid = {}; //TODO
 }
 
@@ -7313,25 +7367,27 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function(info)
 {
-	if(!info.components)
-		return;
-
-	for(var i = 0, l = info.components.length; i < l; ++i)
-	{
-		var comp_info = info.components[i];
-		var comp_class = comp_info[0];
-		if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
+	if(info.components)
+		for(var i = 0, l = info.components.length; i < l; ++i)
 		{
-			this.transform.configure(comp_info[1]);
-			continue;
+			var comp_info = info.components[i];
+			var comp_class = comp_info[0];
+			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
+			{
+				this.transform.configure(comp_info[1]);
+				continue;
+			}
+			var classObject = LS.Components[comp_class];
+			if(!classObject){
+				console.error("Unknown component found: " + comp_class);
+				if(!this._missing_components)
+					this._missing_components = [];
+				this._missing_components.push( comp_info );
+				continue;
+			}
+			var comp = new LS.Components[comp_class]( comp_info[1] );
+			this.addComponent(comp);
 		}
-		if(!LS.Components[comp_class]){
-			console.error("Unknown component found: " + comp_class);
-			continue;
-		}
-		var comp = new LS.Components[comp_class]( comp_info[1] );
-		this.addComponent(comp);
-	}
 }
 
 /**
@@ -7359,6 +7415,9 @@ ComponentContainer.prototype.serializeComponents = function(o)
 
 		o.components.push([LS.getObjectClassName(comp), obj]);
 	}
+
+	if(this._missing_components && this._missing_components.length)
+		o.components = o.components.concat( this._missing_components );
 }
 
 /**
@@ -7461,6 +7520,7 @@ ComponentContainer.prototype.removeAllComponents = function()
 {
 	while(this._components.length)
 		this.removeComponent( this._components[0] );
+	this._missing_components = null;
 }
 
 
@@ -8202,6 +8262,11 @@ Component.prototype.getLocator = function()
 Component.prototype.bind = function( object, method, callback )
 {
 	var instance = this;
+	if(arguments.length > 3 )
+	{
+		console.error("Component.bind cannot use a fourth parameter, all callbacks will be binded to the component");
+		return;
+	}
 
 	if(!object)
 	{
@@ -8231,7 +8296,7 @@ Component.prototype.bind = function( object, method, callback )
 
 	//store info about which objects have events pointing to this instance
 	if(!this.__targeted_instances)
-		Object.defineProperty( this,"__targeted_instances", { value: [], enumerable: false });
+		Object.defineProperty( this,"__targeted_instances", { value: [], enumerable: false, writable: true });
 	var index = this.__targeted_instances.indexOf( object );
 	if(index == -1)
 		this.__targeted_instances.push( object );
@@ -8268,7 +8333,7 @@ Component.prototype.unbindAll = function()
 
 	for( var i = 0; i < this.__targeted_instances.length; ++i )
 		LEvent.unbindAll( this.__targeted_instances[i], this );
-	delete this.__targeted_instances;
+	this.__targeted_instances = null; //delete dont work??
 }
 
 //called by register component to add setters and getters to registered Component Classes
@@ -8341,7 +8406,7 @@ function Transform( o )
 
 	this._must_update_matrix = false; //matrix must be redone?
 
-	//Testing using observers (DO NOT WORK IN FIREFOX)
+	/* deprecated
 	if(Object.observe)
 	{
 		var inner_transform_change = (function(c) { 
@@ -8352,6 +8417,7 @@ function Transform( o )
 		Object.observe( this._scaling, inner_transform_change );
 		Object.observe( this._data, inner_transform_change );
 	}
+	*/
 
 	if(o)
 		this.configure(o);
@@ -8384,15 +8450,6 @@ Transform.prototype.onRemovedFromNode = function(node)
 {
 	if(node.transform == this)
 		delete node["transform"];
-}
-
-/**
-* Force object to update matrices
-* @method mustUpdate
-*/
-Transform.prototype.mustUpdate = function()
-{
-	this._must_update_matrix = true;
 }
 
 /**
@@ -8559,6 +8616,20 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 	set: function(v) { 
 	},
 	enumerable: true
+});
+
+/**
+* Force object to update matrices
+* @property mustUpdate {boolean}
+*/
+Object.defineProperty( Transform.prototype, 'mustUpdate', {
+	get: function() { 
+		return this._must_update_matrix;
+	},
+	set: function(v) { 
+		this._must_update_matrix = true;
+	},
+	enumerable: false
 });
 
 Transform.prototype.getProperties = function(v)
@@ -9097,13 +9168,16 @@ Transform.prototype.setPosition = function(x,y,z)
 }
 
 /**
-* sets the rotation
+* sets the rotation from a quaternion or from an angle(rad) and axis
 * @method setRotation
-* @param {quat} rotation in quaterion format
+* @param {quat} rotation in quaterion format or angle
 */
-Transform.prototype.setRotation = function(q)
+Transform.prototype.setRotation = function(q_angle,axis)
 {
-	quat.copy(this._rotation, q);
+	if(axis)
+		quat.setAxisAngle( this._rotation, axis, q_angle );
+	else
+		quat.copy(this._rotation, q);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -17935,6 +18009,8 @@ PlayAnimation.prototype.configure = function(o)
 		delete o.play;
 	if(o.range) 
 		this.range = o.range.concat();
+	if(o.mode !== undefined) 
+		this.mode = o.mode;
 	if(o.animation)
 		this.animation = o.animation;
 	if(o.take)
@@ -21338,6 +21414,70 @@ Take.prototype.matchTranslation = function( root )
 	return num;
 }
 
+Take.prototype.onlyRotations = function()
+{
+	var num = 0;
+	var temp = new Float32Array(10);
+	var final_quat = temp.subarray(3,7);
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+
+		//convert locator
+		var path = track.property.split("/");
+		var last_path = path[ path.length - 1 ];
+		var old_size = track.value_size;
+		if( track.type != "mat4" && track.type != "trans10" )
+			continue;
+
+		if(last_path == "matrix")
+			path[ path.length - 1 ] = "Transform/rotation";
+		else if (last_path == "data")
+			path[ path.length - 1 ] = "rotation";
+
+		track.property = path.join("/");
+		var old_type = track.type;
+		track.type = "quat";
+		track.value_size = 4;
+
+		//convert samples
+		if(!track.packed_data)
+		{
+			console.warn("convertMatricesToData only works with packed data");
+			continue;
+		}
+
+		var data = track.data;
+		var num_samples = data.length / (old_size+1);
+
+		if( old_type == "mat4" )
+		{
+			for(var k = 0; k < num_samples; ++k)
+			{
+				var sample = data.subarray(k*17+1,(k*17)+17);
+				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+				data[k*11] = data[k*17]; //timestamp
+				data.set( final_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
+			}
+		}
+		else if( old_type == "trans10" )
+		{
+			for(var k = 0; k < num_samples; ++k)
+			{
+				var sample = data.subarray(k*11+4,(k*11)+8);
+				data[k*5] = data[k*11]; //timestamp
+				data.set( sample, k*5+1); //overwrite inplace (because the output is less big that the input)
+			}
+		}
+		
+		track.data = new Float32Array( data.subarray(0,num_samples*5) );
+		num += 1;
+	}
+	return num;
+}
+
+
 Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
 	var num = 0;
@@ -21982,16 +22122,16 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		switch(this.type)
 		{
 			case "quat": 
-				quat.lerp( result, a.subarray(i+1,i+5), b.subarray(i+1,i+5), t );
+				quat.lerp( result, b.subarray(1,5), a.subarray(1,5), t );
 				quat.normalize( result, result );
 				break;
 			case "trans10": 
 				for(var i = 0; i < this.value_size; i++)
 					result[i] = a[1+i] * t + b[1+i] * (1-t);
-				var rotA = a.subarray(i+4,i+8);
-				var rotB = b.subarray(i+4,i+8);
-				var rotR = result.subarray(i+4,i+8);
-				quat.lerp( rotR, rotA, rotB, t );
+				var rotA = a.subarray(4,8);
+				var rotB = b.subarray(4,8);
+				var rotR = result.subarray(3,7);
+				quat.lerp( rotR, rotB, rotA, t );
 				quat.normalize( rotR, rotR );
 				break;
 			default:
@@ -22492,11 +22632,13 @@ Prefab.createPrefab = function( filename, node_data, resources)
 	filename = filename.replace(/ /gi,"_");
 	resources = resources || {};
 
-	node_data.id = null; //remove the id
+	//LS.clearUIds( node_data ); //remove uids of nodes and components
 	node_data.object_type = "SceneNode";
 
 	var prefab = new LS.Prefab();
-	filename += ".wbin";
+	var ext = LS.ResourcesManager.getExtension(filename);
+	if(ext != "wbin")
+		filename += ".wbin";
 
 	//checkfilenames and rename them to short names
 	prefab.filename = filename;
@@ -22538,6 +22680,12 @@ Prefab.packResources = function( resources, base_data )
 			continue;
 		}
 
+		if(data.constructor === Blob || data.constructor === File)
+		{
+			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
+			continue;
+		}
+
 		to_binary["@RES_" + resources_name.length ] = data;
 		resources_name.push( res_name );
 		//to_binary[res_name] = data;
@@ -22545,6 +22693,14 @@ Prefab.packResources = function( resources, base_data )
 
 	to_binary["@resources_name"] = resources_name;
 	return WBin.create( to_binary, "Prefab" );
+}
+
+Prefab.prototype.updateFromNode = function(node)
+{
+	var data = node.serialize(true);
+	LS.clearUIds(data);
+	this.prefab_data = data;
+	this.prefab_json = JSON.stringify( data );
 }
 
 Prefab.prototype.flagResources = function()
@@ -22560,6 +22716,21 @@ Prefab.prototype.flagResources = function()
 			continue;
 
 		resource.from_prefab = this.fullpath || this.filename || true;
+	}
+}
+
+Prefab.prototype.setResourcesLink = function( value )
+{
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+		if(value)
+			resource.from_prefab = value;
+		else
+			delete resource.from_prefab;
 	}
 }
 
@@ -22688,6 +22859,21 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	this._modified = true;
 }
 
+Pack.prototype.setResourcesLink = function( value )
+{
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+		if(value)
+			resource.from_pack = value;
+		else
+			delete resource.from_pack;
+	}
+}
+
 Pack.prototype.addResources = function( resource_names, mark_them )
 {
 	this.setResources( this.resource_names.concat( resource_names ), mark_them );
@@ -22762,6 +22948,12 @@ Pack.packResources = function( resource_names, base_object )
 		if(!data)
 		{
 			console.warning("Wrong data in resource");
+			continue;
+		}
+
+		if(data.constructor === Blob || data.constructor === File)
+		{
+			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
 			continue;
 		}
 
@@ -23382,10 +23574,20 @@ LS.Tween = {
 	current_easings: [],
 	_alife: [], //temporal array
 
+	reset: function()
+	{
+		this.current_easings = [];
+		this._alife = [];
+	},
+
 	easeProperty: function( object, property, target, time, easing_function, on_complete, on_progress )
 	{
-		if( !object || !target )
+		if( !object )
 			throw("ease object cannot be null");
+		if( target === undefined )
+			throw("target vaue must be defined");
+		if(object[property] === undefined)
+			throw("property not found in object, must be initialized to a value");
 
 		easing_function = easing_function || this.EASE_IN_OUT_QUAD;
 
@@ -23398,9 +23600,11 @@ LS.Tween = {
 			origin = LS.cloneObject( object );
 		target = LS.cloneObject( target );
 
-		//precompute size
+		//precompute target value size
 		var size = 0;
-		if(target.length !== undefined)
+		if(target.constructor === Number)
+			size = -1;
+		else if(target && target.length !== undefined)
 			size = target.length;
 
 		var data = { object: object, property: property, origin: origin, target: target, current: 0, time: time, easing: easing_function, on_complete: on_complete, on_progress: on_progress, size: size };
@@ -23477,8 +23681,16 @@ LS.Tween = {
 
 			if(item.size)
 			{
-				for(var j = 0; j < item.size; ++j)
-					item.object[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+				if(item.size == -1) //number
+					item.object[ item.property ] = item.target * f + item.origin * ( 1.0 - f );
+				else
+				{
+					var property = item.object[ item.property ];
+					for(var j = 0; j < item.size; ++j)
+						property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+				}
+				if(item.object.mustUpdate !== undefined)
+					item.object.mustUpdate = true;
 			}
 
 			if(item.on_progress)
@@ -25139,6 +25351,7 @@ var Renderer = {
 	/**
 	* Collects and process the rendering instances, cameras and lights that are visible
 	* Its a prepass shared among all rendering passes
+	* Warning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)
 	*
 	* @method processVisibleData
 	* @param {SceneTree} scene
@@ -25246,16 +25459,20 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//Sorting
+		//Sorting: (defining rendering order based on RIs priority and distance to camera)
 		if(render_settings.sort_instances_by_distance) //sort RIs in Z for alpha sorting
 		{
 			opaque_instances.sort(this._sort_near_to_far_func);
 			blend_instances.sort(this._sort_far_to_near_func);
 		}
-		var all_instances = opaque_instances.concat(blend_instances); //merge
-		if(render_settings.sort_instances_by_priority) //sort by priority
-			all_instances.sort( this._sort_by_priority_func );
 
+		if(render_settings.sort_instances_by_priority) //sort by priority (we do this before merging because otherwise the distance sorting gest messed up
+		{
+			opaque_instances.sort(this._sort_by_priority_and_near_to_far_func);
+			blend_instances.sort(this._sort_by_priority_and_far_to_near_func);
+		}
+
+		var all_instances = opaque_instances.concat(blend_instances); //merge
 
 		//update materials info only if they are in use
 		if(render_settings.update_materials)
@@ -25321,6 +25538,8 @@ var Renderer = {
 	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },
 	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
 	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
+	_sort_by_priority_and_near_to_far_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
+	_sort_by_priority_and_far_to_near_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 
 	/**
 	* Renders a frame into a texture (could be a cubemap, in which case does the six passes)
@@ -27295,7 +27514,11 @@ global.Collada = {
 
 			if(xmlparam_value.localName.toString() == "color")
 			{
-				material[ param_name ] = this.readContentAsFloats( xmlparam_value ).subarray(0,3);
+				var value = this.readContentAsFloats( xmlparam_value );
+				if( xmlparam.getAttribute("opaque") == "RGB_ZERO")
+					material[ param_name ] = value.subarray(0,4);
+				else
+					material[ param_name ] = value.subarray(0,3);
 				continue;
 			}
 			else if(xmlparam_value.localName.toString() == "float")
@@ -27625,6 +27848,7 @@ global.Collada = {
 		return matrix;
 	},
 
+	//for help read this: https://www.khronos.org/collada/wiki/Using_accessors
 	readGeometry: function(id, flip, scene)
 	{
 		//already read, could happend if several controllers point to the same mesh
@@ -27817,10 +28041,15 @@ global.Collada = {
 				//if(use_indices && last_index >= 256*256)
 				//	break;
 
+				var num_values_per_vertex = 1;
+				for(var b in buffers)
+					num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
+
 				//for every pack of indices in the polygon (vertex, normal, uv, ... )
-				for(var k = 0, l = data.length; k < l; k += num_data_vertex)
+				var current_data_pos = 0;
+				for(var k = 0, l = data.length; k < l; k += num_values_per_vertex)
 				{
-					var vertex_id = data.slice(k,k+num_data_vertex).join(" "); //generate unique id
+					var vertex_id = data.slice(k,k+num_values_per_vertex).join(" "); //generate unique id
 
 					prev_index = current_index;
 					if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
@@ -27831,15 +28060,29 @@ global.Collada = {
 						for(var j = 0; j < buffers.length; ++j)
 						{
 							var buffer = buffers[j];
-							var index = parseInt(data[k + j]);
 							var array = buffer[1]; //array where we accumulate the final data as we extract if from sources
 							var source = buffer[3]; //where to read the data from
+							
+							//compute the index inside the data source array
+							//var index = parseInt(data[k + j]);
+							var index = parseInt( data[ k + buffer[4] ] );
+							//current_data_pos += buffer[4];
+
+							//remember this index in case we need to remap
 							if(j == 0)
 								vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
-//								vertex_remap[ array.length / num_data_vertex ] = index;
-							index *= buffer[2]; //stride
+								//vertex_remap[ array.length / num_data_vertex ] = index;
+
+							//compute the position inside the source buffer where the final data is located
+							index *= buffer[2]; //this works in most DAEs (not all)
+							//index = index * buffer[2] + buffer[4]; //stride(2) offset(4)
+							//index += buffer[4]; //stride(2) offset(4)
+							//extract every value of this element and store it in its final array (every x,y,z, etc)
 							for(var x = 0; x < buffer[2]; ++x)
+							{
+								if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
 								array.push( source[index+x] );
+							}
 						}
 						
 						current_index = last_index;
@@ -27991,8 +28234,7 @@ global.Collada = {
 			var data_set = 0;
 			if(xmlinput.getAttribute("set"))
 				data_set = parseInt( xmlinput.getAttribute("set") );
-
-			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set]);
+			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set ]);
 		}
 
 		return buffers;
@@ -29029,7 +29271,7 @@ if(isWorker)
 var parserDAE = {
 	extension: "dae",
 	type: "scene",
-	resource: "SceneTree",
+	resource: "SceneNode",
 	format: "text",
 	dataType:'text',
 
@@ -29049,11 +29291,13 @@ var parserDAE = {
 			diffuse: "color"
 		}; //this is done to match LS specification
 
+		var clean_filename = LS.RM.getFilename(filename);
+
 		//parser moved to Collada.js library
-		var scene = Collada.parse( data, options, filename );
+		var scene = Collada.parse( data, options, clean_filename );
 		console.log( scene ); 
 
-		scene.root.name = filename;
+		scene.root.name = clean_filename;
 
 		//apply 90 degrees rotation to match the Y UP AXIS of the system
 		if( scene.metadata && scene.metadata.up_axis == "Z_UP" )
@@ -29065,7 +29309,7 @@ var parserDAE = {
 
 		//rename meshes, nodes, etc
 		var renamed = {};
-		var basename = filename.substr(0, filename.indexOf("."));
+		var basename = clean_filename.substr(0, clean_filename.indexOf("."));
 
 		//rename meshes names
 		var renamed_meshes = {};
@@ -29281,6 +29525,24 @@ var parserDAE = {
 		if(material.transparency)
 		{
 			material.opacity = 1.0 - parseFloat( material.transparency );
+			if(material.transparent)
+				material.opacity = material.transparency; //why? dont know but works
+		}
+
+		if(material.textures)
+		{
+			for(var i in material.textures)
+			{
+				var tex_info = material.textures[i];
+				var coords = LS.Material.COORDS_UV0;
+				if( tex_info.uvs == "TEX1")
+					coords = LS.Material.COORDS_UV1;
+				tex_info = { 
+					texture: tex_info.map_id,
+					uvs: coords
+				};
+				material.textures[i] = tex_info;
+			}
 		}
 	}
 };
@@ -29732,13 +29994,13 @@ var parserMTL = {
 					current_material.specular_gloss = parseFloat(tokens[1]);
 					break;
 				case "map_Kd":
-					current_material.textures["color"] = tokens[1];
+					current_material.textures["color"] = this.clearPath( tokens[1] );
 					break;
 				case "map_Ka":
-					current_material.textures["ambient"] = tokens[1];
+					current_material.textures["ambient"] = this.clearPath( tokens[1] );
 					break;
 				case "map_Ks":
-					current_material.textures["specular"] = tokens[1];
+					current_material.textures["specular"] = this.clearPath( tokens[1] );
 					break;
 				case "d": //disolve is like transparency
 					current_material.opacity = parseFloat( tokens[1] );
@@ -29763,6 +30025,17 @@ var parserMTL = {
 		{
 			return [ parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3]) ];
 		}
+	},
+
+	clearPath: function(path)
+	{
+		var pos = path.lastIndexOf("\\");
+		if(pos != -1)
+			path = path.substr(pos+1);
+		var filename = LS.RM.getFilename(path);
+		if( LS.RM.resources_renamed_recently[filename] )
+			filename = LS.RM.resources_renamed_recently[filename];
+		return filename;
 	}
 };
 
@@ -29883,20 +30156,27 @@ var parserTGA = {
 		img.imageSize = img.width * img.height * img.bytesPerPixel;
 		img.pixels = data.subarray(18,18+img.imageSize);
 
-		//TGA comes in BGR format ... this is slooooow
-		for(var i = 0; i < img.imageSize; i+= img.bytesPerPixel)
+		if(	(header[5] & (1<<4)) == 0) //hack, needs swap
 		{
-			var temp = img.pixels[i];
-			img.pixels[i] = img.pixels[i+2];
-			img.pixels[i+2] = temp;
+			//TGA comes in BGR format so we swap it, this is slooooow
+			for(var i = 0; i < img.imageSize; i+= img.bytesPerPixel)
+			{
+				var temp = img.pixels[i];
+				img.pixels[i] = img.pixels[i+2];
+				img.pixels[i+2] = temp;
+			}
+			header[5] |= 1<<4; //mark as swaped
+			img.format = img.bpp == 32 ? "RGBA" : "RGB";
 		}
+		else
+			img.format = img.bpp == 32 ? "RGBA" : "RGB";
 
 		//some extra bytes to avoid alignment problems
 		//img.pixels = new Uint8Array( img.imageSize + 14);
 		//img.pixels.set( data.subarray(18,18+img.imageSize), 0);
 
 		img.flipY = true;
-		img.format = img.bpp == 32 ? "BGRA" : "BGR";
+		//img.format = img.bpp == 32 ? "BGRA" : "BGR";
 		//trace("TGA info: " + img.width + "x" + img.height );
 		return img;
 	}
@@ -30531,21 +30811,46 @@ SceneTree.prototype.checkComponentsCodeModification = function()
 {
 	for(var i = 0; i < this._nodes.length; ++i )
 	{
+		//current components
 		var node = this._nodes[i];
 		for(var j = 0; j < node._components.length; ++j)
 		{
 			var compo = node._components[j];
 			var class_name = LS.getObjectClassName( compo );
-			var last_class = LS.Components[ class_name ];
-			if( last_class == compo.constructor )
+			var current_class = LS.Components[ class_name ];
+			if( current_class == compo.constructor )
 				continue;
 			//replace class instance in-place
 			var data = compo.serialize();
+
+			var new_compo = new current_class( data );
+
 			var index = node.getIndexOfComponent( compo );
 			node.removeComponent( compo );
-			var new_compo = new last_class( data );
+			
 			node.addComponent( new_compo, index );
 			console.log("Class replaced: " + class_name );
+		}
+
+		//missing
+		if(node._missing_components && node._missing_components.length)
+		{
+			var still_missing = [];
+			for(var j = 0; j < node._missing_components.length; ++j)
+			{
+				var compo_info = node._missing_components[j];
+				var class_name = compo_info[0];
+				var current_class = LS.Components[ class_name ];
+				if(!current_class)
+				{
+					still_missing.push(compo_info);
+					continue; //still missing
+				}
+				var new_compo = new current_class( compo_info[1] );
+				node.addComponent( new_compo );
+				console.log("Missing repaired: " + class_name );
+			}
+			node._missing_components = still_missing.length ? still_missing : null;
 		}
 	}
 }
@@ -31353,15 +31658,22 @@ function SceneNode( name )
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId("NODE-");
+	this._classList = {}; //to store classes
+	this.layers = 3|0; //32 bits for layers (force to int)
+	this.node_type = null; //used to store a string defining the node info
+
 	this.init();
 }
 
-SceneNode.prototype.init = function( keep_components )
+SceneNode.prototype.init = function( keep_components, keep_info )
 {
-	this.layers = 3|0; //32 bits for layers (force to int)
-
-	this._classList = {};
-	//this.className = "";
+	if(!keep_info)
+	{
+		this.layers = 3|0; //32 bits for layers (force to int)
+		this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+		this._uid = LS.generateUId("NODE-");
+		this._classList = {};
+	}
 
 	this.node_type = null;
 
@@ -31386,6 +31698,7 @@ SceneNode.prototype.init = function( keep_components )
 		if( this._components && this._components.length )
 			console.warn("SceneNode.init() should not be called if it contains components, call clear instead");
 		this._components = []; //used for logic actions
+		this._missing_components = null;
 		this.addComponent( new LS.Transform() );
 	}
 
@@ -31473,7 +31786,7 @@ Object.defineProperty( SceneNode.prototype, 'material', {
 			return;
 		if(v.constructor === String)
 			return;
-		if(v._root && v._root != this)
+		if(v._root && v._root != this) //has root and its not me
 			console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
 		else
 			v._root = this; //link
@@ -31964,10 +32277,14 @@ SceneNode.prototype.reloadFromPrefab = function()
 
 	//apply info
 	this.removeAllChildren();
-	this.init( true );
+	this.init( true, true );
 	//remove all but children info (prefabs overwrite only children info)
 	var prefab_data = { children: prefab.prefab_data.children };
 	this.configure( prefab_data );
+
+	//load secondary resources 
+	var resources = this.getResources( {}, true );
+	LS.ResourcesManager.loadResources( resources );
 }
 
 
@@ -32043,9 +32360,8 @@ SceneNode.prototype.configure = function(info)
 		this.layers = info.layers;
 
 	if (info.uid)
-	{
 		this.uid = info.uid;
-	}
+
 	if (info.className && info.className.constructor == String)	
 		this.className = info.className;
 
@@ -32125,9 +32441,6 @@ SceneNode.prototype.configure = function(info)
 		for(var i in info.flags)
 			this.flags[i] = info.flags[i];
 	
-	if(info.prefab) 
-		this.prefab = info.prefab;
-
 	//add animation tracks player
 	if(info.animations)
 	{
@@ -32146,9 +32459,9 @@ SceneNode.prototype.configure = function(info)
 	if(info.components)
 		this.configureComponents(info);
 
-	if(info.prefab) //prefabs ignore children config
-		this.reloadFromPrefab();
-	else //configure children too
+	if(info.prefab) 
+		this.prefab = info.prefab; //assign and calls this.reloadFromPrefab();
+	else //configure children if it is not a prefab
 		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
@@ -32158,9 +32471,10 @@ SceneNode.prototype.configure = function(info)
 * Serializes this node by creating an object with all the info
 * it contains info about the components too
 * @method serialize
+* @param {bool} ignore_prefab serializing wont returns children if it is a prefab, if you set this to ignore_prefab it will return all the info
 * @return {Object} returns the object with the info
 */
-SceneNode.prototype.serialize = function()
+SceneNode.prototype.serialize = function( ignore_prefab )
 {
 	var o = {};
 
@@ -32183,7 +32497,7 @@ SceneNode.prototype.serialize = function()
 		o.submesh_id = this.submesh_id;
 	if(this.material) 
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
-	if(this.prefab) 
+	if(this.prefab && !ignore_prefab) 
 		o.prefab = this.prefab;
 
 	if(this.flags) 
@@ -32195,7 +32509,7 @@ SceneNode.prototype.serialize = function()
 	if(this.comments) 
 		o.comments = this.comments;
 
-	if(this._children && !this.prefab)
+	if(this._children && (!this.prefab || ignore_prefab) )
 		o.children = this.serializeChildren();
 
 	//save components

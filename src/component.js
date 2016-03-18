@@ -176,6 +176,11 @@ Component.prototype.getLocator = function()
 Component.prototype.bind = function( object, method, callback )
 {
 	var instance = this;
+	if(arguments.length > 3 )
+	{
+		console.error("Component.bind cannot use a fourth parameter, all callbacks will be binded to the component");
+		return;
+	}
 
 	if(!object)
 	{
@@ -205,7 +210,7 @@ Component.prototype.bind = function( object, method, callback )
 
 	//store info about which objects have events pointing to this instance
 	if(!this.__targeted_instances)
-		Object.defineProperty( this,"__targeted_instances", { value: [], enumerable: false });
+		Object.defineProperty( this,"__targeted_instances", { value: [], enumerable: false, writable: true });
 	var index = this.__targeted_instances.indexOf( object );
 	if(index == -1)
 		this.__targeted_instances.push( object );
@@ -242,7 +247,7 @@ Component.prototype.unbindAll = function()
 
 	for( var i = 0; i < this.__targeted_instances.length; ++i )
 		LEvent.unbindAll( this.__targeted_instances[i], this );
-	delete this.__targeted_instances;
+	this.__targeted_instances = null; //delete dont work??
 }
 
 //called by register component to add setters and getters to registered Component Classes

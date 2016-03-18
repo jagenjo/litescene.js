@@ -106,6 +106,21 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	this._modified = true;
 }
 
+Pack.prototype.setResourcesLink = function( value )
+{
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+		if(value)
+			resource.from_pack = value;
+		else
+			delete resource.from_pack;
+	}
+}
+
 Pack.prototype.addResources = function( resource_names, mark_them )
 {
 	this.setResources( this.resource_names.concat( resource_names ), mark_them );
@@ -180,6 +195,12 @@ Pack.packResources = function( resource_names, base_object )
 		if(!data)
 		{
 			console.warning("Wrong data in resource");
+			continue;
+		}
+
+		if(data.constructor === Blob || data.constructor === File)
+		{
+			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
 			continue;
 		}
 

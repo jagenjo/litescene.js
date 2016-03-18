@@ -2,7 +2,7 @@
 var parserDAE = {
 	extension: "dae",
 	type: "scene",
-	resource: "SceneTree",
+	resource: "SceneNode",
 	format: "text",
 	dataType:'text',
 
@@ -22,11 +22,13 @@ var parserDAE = {
 			diffuse: "color"
 		}; //this is done to match LS specification
 
+		var clean_filename = LS.RM.getFilename(filename);
+
 		//parser moved to Collada.js library
-		var scene = Collada.parse( data, options, filename );
+		var scene = Collada.parse( data, options, clean_filename );
 		console.log( scene ); 
 
-		scene.root.name = filename;
+		scene.root.name = clean_filename;
 
 		//apply 90 degrees rotation to match the Y UP AXIS of the system
 		if( scene.metadata && scene.metadata.up_axis == "Z_UP" )
@@ -38,7 +40,7 @@ var parserDAE = {
 
 		//rename meshes, nodes, etc
 		var renamed = {};
-		var basename = filename.substr(0, filename.indexOf("."));
+		var basename = clean_filename.substr(0, clean_filename.indexOf("."));
 
 		//rename meshes names
 		var renamed_meshes = {};
@@ -254,6 +256,24 @@ var parserDAE = {
 		if(material.transparency)
 		{
 			material.opacity = 1.0 - parseFloat( material.transparency );
+			if(material.transparent)
+				material.opacity = material.transparency; //why? dont know but works
+		}
+
+		if(material.textures)
+		{
+			for(var i in material.textures)
+			{
+				var tex_info = material.textures[i];
+				var coords = LS.Material.COORDS_UV0;
+				if( tex_info.uvs == "TEX1")
+					coords = LS.Material.COORDS_UV1;
+				tex_info = { 
+					texture: tex_info.map_id,
+					uvs: coords
+				};
+				material.textures[i] = tex_info;
+			}
 		}
 	}
 };

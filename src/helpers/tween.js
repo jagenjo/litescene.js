@@ -33,10 +33,20 @@ LS.Tween = {
 	current_easings: [],
 	_alife: [], //temporal array
 
+	reset: function()
+	{
+		this.current_easings = [];
+		this._alife = [];
+	},
+
 	easeProperty: function( object, property, target, time, easing_function, on_complete, on_progress )
 	{
-		if( !object || !target )
+		if( !object )
 			throw("ease object cannot be null");
+		if( target === undefined )
+			throw("target vaue must be defined");
+		if(object[property] === undefined)
+			throw("property not found in object, must be initialized to a value");
 
 		easing_function = easing_function || this.EASE_IN_OUT_QUAD;
 
@@ -49,9 +59,11 @@ LS.Tween = {
 			origin = LS.cloneObject( object );
 		target = LS.cloneObject( target );
 
-		//precompute size
+		//precompute target value size
 		var size = 0;
-		if(target.length !== undefined)
+		if(target.constructor === Number)
+			size = -1;
+		else if(target && target.length !== undefined)
 			size = target.length;
 
 		var data = { object: object, property: property, origin: origin, target: target, current: 0, time: time, easing: easing_function, on_complete: on_complete, on_progress: on_progress, size: size };
@@ -128,8 +140,16 @@ LS.Tween = {
 
 			if(item.size)
 			{
-				for(var j = 0; j < item.size; ++j)
-					item.object[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+				if(item.size == -1) //number
+					item.object[ item.property ] = item.target * f + item.origin * ( 1.0 - f );
+				else
+				{
+					var property = item.object[ item.property ];
+					for(var j = 0; j < item.size; ++j)
+						property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+				}
+				if(item.object.mustUpdate !== undefined)
+					item.object.mustUpdate = true;
 			}
 
 			if(item.on_progress)

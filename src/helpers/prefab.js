@@ -129,11 +129,13 @@ Prefab.createPrefab = function( filename, node_data, resources)
 	filename = filename.replace(/ /gi,"_");
 	resources = resources || {};
 
-	node_data.id = null; //remove the id
+	//LS.clearUIds( node_data ); //remove uids of nodes and components
 	node_data.object_type = "SceneNode";
 
 	var prefab = new LS.Prefab();
-	filename += ".wbin";
+	var ext = LS.ResourcesManager.getExtension(filename);
+	if(ext != "wbin")
+		filename += ".wbin";
 
 	//checkfilenames and rename them to short names
 	prefab.filename = filename;
@@ -175,6 +177,12 @@ Prefab.packResources = function( resources, base_data )
 			continue;
 		}
 
+		if(data.constructor === Blob || data.constructor === File)
+		{
+			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
+			continue;
+		}
+
 		to_binary["@RES_" + resources_name.length ] = data;
 		resources_name.push( res_name );
 		//to_binary[res_name] = data;
@@ -182,6 +190,14 @@ Prefab.packResources = function( resources, base_data )
 
 	to_binary["@resources_name"] = resources_name;
 	return WBin.create( to_binary, "Prefab" );
+}
+
+Prefab.prototype.updateFromNode = function(node)
+{
+	var data = node.serialize(true);
+	LS.clearUIds(data);
+	this.prefab_data = data;
+	this.prefab_json = JSON.stringify( data );
 }
 
 Prefab.prototype.flagResources = function()
@@ -197,6 +213,21 @@ Prefab.prototype.flagResources = function()
 			continue;
 
 		resource.from_prefab = this.fullpath || this.filename || true;
+	}
+}
+
+Prefab.prototype.setResourcesLink = function( value )
+{
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+		if(value)
+			resource.from_prefab = value;
+		else
+			delete resource.from_prefab;
 	}
 }
 

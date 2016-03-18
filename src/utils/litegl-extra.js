@@ -8,7 +8,7 @@ GL.Mesh.prototype.convertBonesToNames = function( root_node )
 	if(!this.bones || !this.bones.length)
 		return 0;
 
-	var modifyed = false;
+	var modified = false;
 
 	//Rename the id to a relative name
 	for(var i = 0; i < this.bones.length; ++i)
@@ -25,11 +25,11 @@ GL.Mesh.prototype.convertBonesToNames = function( root_node )
 		}
 
 		bone[0] = node.name;
-		modifyed = true;
+		modified = true;
 	}
 
 	//flag it
-	if(modifyed)
+	if(modified)
 		LS.RM.resourceModified( this );
 }
 

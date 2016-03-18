@@ -421,21 +421,46 @@ SceneTree.prototype.checkComponentsCodeModification = function()
 {
 	for(var i = 0; i < this._nodes.length; ++i )
 	{
+		//current components
 		var node = this._nodes[i];
 		for(var j = 0; j < node._components.length; ++j)
 		{
 			var compo = node._components[j];
 			var class_name = LS.getObjectClassName( compo );
-			var last_class = LS.Components[ class_name ];
-			if( last_class == compo.constructor )
+			var current_class = LS.Components[ class_name ];
+			if( current_class == compo.constructor )
 				continue;
 			//replace class instance in-place
 			var data = compo.serialize();
+
+			var new_compo = new current_class( data );
+
 			var index = node.getIndexOfComponent( compo );
 			node.removeComponent( compo );
-			var new_compo = new last_class( data );
+			
 			node.addComponent( new_compo, index );
 			console.log("Class replaced: " + class_name );
+		}
+
+		//missing
+		if(node._missing_components && node._missing_components.length)
+		{
+			var still_missing = [];
+			for(var j = 0; j < node._missing_components.length; ++j)
+			{
+				var compo_info = node._missing_components[j];
+				var class_name = compo_info[0];
+				var current_class = LS.Components[ class_name ];
+				if(!current_class)
+				{
+					still_missing.push(compo_info);
+					continue; //still missing
+				}
+				var new_compo = new current_class( compo_info[1] );
+				node.addComponent( new_compo );
+				console.log("Missing repaired: " + class_name );
+			}
+			node._missing_components = still_missing.length ? still_missing : null;
 		}
 	}
 }

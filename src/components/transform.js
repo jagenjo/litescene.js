@@ -22,7 +22,7 @@ function Transform( o )
 
 	this._must_update_matrix = false; //matrix must be redone?
 
-	//Testing using observers (DO NOT WORK IN FIREFOX)
+	/* deprecated
 	if(Object.observe)
 	{
 		var inner_transform_change = (function(c) { 
@@ -33,6 +33,7 @@ function Transform( o )
 		Object.observe( this._scaling, inner_transform_change );
 		Object.observe( this._data, inner_transform_change );
 	}
+	*/
 
 	if(o)
 		this.configure(o);
@@ -65,15 +66,6 @@ Transform.prototype.onRemovedFromNode = function(node)
 {
 	if(node.transform == this)
 		delete node["transform"];
-}
-
-/**
-* Force object to update matrices
-* @method mustUpdate
-*/
-Transform.prototype.mustUpdate = function()
-{
-	this._must_update_matrix = true;
 }
 
 /**
@@ -240,6 +232,20 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 	set: function(v) { 
 	},
 	enumerable: true
+});
+
+/**
+* Force object to update matrices
+* @property mustUpdate {boolean}
+*/
+Object.defineProperty( Transform.prototype, 'mustUpdate', {
+	get: function() { 
+		return this._must_update_matrix;
+	},
+	set: function(v) { 
+		this._must_update_matrix = true;
+	},
+	enumerable: false
 });
 
 Transform.prototype.getProperties = function(v)
@@ -778,13 +784,16 @@ Transform.prototype.setPosition = function(x,y,z)
 }
 
 /**
-* sets the rotation
+* sets the rotation from a quaternion or from an angle(rad) and axis
 * @method setRotation
-* @param {quat} rotation in quaterion format
+* @param {quat} rotation in quaterion format or angle
 */
-Transform.prototype.setRotation = function(q)
+Transform.prototype.setRotation = function(q_angle,axis)
 {
-	quat.copy(this._rotation, q);
+	if(axis)
+		quat.setAxisAngle( this._rotation, axis, q_angle );
+	else
+		quat.copy(this._rotation, q);
 	this._must_update_matrix = true;
 	this._on_change();
 }

@@ -26,6 +26,7 @@ var ResourcesManager = {
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
+	allow_base_files: false, //allow to load files that are not in a subfolder
 
 	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
@@ -37,6 +38,7 @@ var ResourcesManager = {
 	resources_not_found: {}, //resources that will be skipped because they werent found
 	resources_being_loaded: {}, //resources waiting to be loaded
 	resources_being_processed: {}, //used to avoid loading stuff that is being processes
+	resources_renamed_recently: {}, //used to find resources with old names
 	num_resources_being_loaded: 0,
 	MAX_TEXTURE_SIZE: 4096,
 
@@ -337,10 +339,18 @@ var ResourcesManager = {
 	{
 		if(!resource)
 			return;
+
+		if(resource.constructor === String)
+		{
+			console.warn("resourceModified parameter must be a resource, not a string");
+			return;
+		}
+
+
 		delete resource._original_data;
 		delete resource._original_file;
 
-		if(resource.remote_path)
+		if(resource.remotepath)
 			resource._modified = true;
 
 		LEvent.trigger(this, "resource_modified", resource );
@@ -422,6 +432,9 @@ var ResourcesManager = {
 		if(this.resources_being_processed[url])
 			return; //nothing to load, just waiting for the callback to process it
 
+		if(!this.allow_base_files && url.indexOf("/") == -1)
+			return; //this is not a valid file to load
+
 		//otherwise we have to load it
 		//set the callback
 		this.resources_being_loaded[url] = [{options: options, callback: on_complete}];
@@ -498,8 +511,8 @@ var ResourcesManager = {
 
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
-			//Keep original file inside the resource
-			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) )
+			//Keep original file inside the resource in case we want to save it
+			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) && (!resource._original_data && !resource._original_file) )
 				resource._original_data = data;
 		}
 
@@ -639,6 +652,9 @@ var ResourcesManager = {
 		if(this.resources[ filename ] == resource)
 			return; //already registered
 
+		if(resource.is_preview && this.resources[ filename ] )
+			return; //previews cannot overwrite resources
+
 		resource.filename = filename; //filename is a given name
 		//resource.fullpath = filename; //fullpath only if they are in the server
 
@@ -673,10 +689,11 @@ var ResourcesManager = {
 	*/
 	unregisterResource: function(filename)
 	{
-		if(!this.resources[filename])
+		var resource = this.resources[filename];
+
+		if(!resource)
 			return false; //not found
 
-		var resource = this.resources[filename];
 		delete this.resources[filename];
 
 		//ugly: too hardcoded, maybe implement unregister_callbacks
@@ -686,6 +703,9 @@ var ResourcesManager = {
 			delete this.textures[ filename ];
 		if( this.materials[filename] )
 			delete this.materials[ filename ];
+
+		if(resource.constructor === LS.Pack || resource.constructor === LS.Prefab)
+			resource.setResourcesLink(null);
 
 		LEvent.trigger(this,"resource_unregistered", resource);
 		LS.GlobalScene.refresh(); //render scene
@@ -744,6 +764,8 @@ var ResourcesManager = {
 			delete this.textures[ old ];
 			this.textures[ newname ] = res;
 		}
+
+		this.resources_renamed_recently[ old ] = newname;
 		return true;
 	},
 
@@ -1054,7 +1076,7 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 		URL.revokeObjectURL(objectURL); //free memory
 		if(callback)
 			callback( filename, null, options );
-		throw("Error loading image: " + filename); //error if image is not an image I guess
+		console.error("Error while loading image, file is not native image format: " + filename); //error if image is not an image I guess
 	}
 
 	function inner_on_texture( texture )

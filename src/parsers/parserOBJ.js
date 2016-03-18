@@ -380,13 +380,13 @@ var parserMTL = {
 					current_material.specular_gloss = parseFloat(tokens[1]);
 					break;
 				case "map_Kd":
-					current_material.textures["color"] = tokens[1];
+					current_material.textures["color"] = this.clearPath( tokens[1] );
 					break;
 				case "map_Ka":
-					current_material.textures["ambient"] = tokens[1];
+					current_material.textures["ambient"] = this.clearPath( tokens[1] );
 					break;
 				case "map_Ks":
-					current_material.textures["specular"] = tokens[1];
+					current_material.textures["specular"] = this.clearPath( tokens[1] );
 					break;
 				case "d": //disolve is like transparency
 					current_material.opacity = parseFloat( tokens[1] );
@@ -411,6 +411,17 @@ var parserMTL = {
 		{
 			return [ parseFloat(v[1]), parseFloat(v[2]), parseFloat(v[3]) ];
 		}
+	},
+
+	clearPath: function(path)
+	{
+		var pos = path.lastIndexOf("\\");
+		if(pos != -1)
+			path = path.substr(pos+1);
+		var filename = LS.RM.getFilename(path);
+		if( LS.RM.resources_renamed_recently[filename] )
+			filename = LS.RM.resources_renamed_recently[filename];
+		return filename;
 	}
 };
 

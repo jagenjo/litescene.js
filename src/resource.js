@@ -77,7 +77,11 @@ Resource.getDataToStore = function( resource )
 		encoding = "file";
 	}
 	else if( resource._original_data ) //file in ArrayBuffer format
+	{
 		data = resource._original_data;
+		if( data && data.constructor === ArrayBuffer )
+			encoding = "binary";
+	}
 	else if(resource.toBinary) //a function to compute the ArrayBuffer format
 	{
 		data = resource.toBinary();
