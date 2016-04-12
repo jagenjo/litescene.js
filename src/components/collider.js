@@ -13,11 +13,15 @@ function Collider(o)
 
 Collider.icon = "mini-icon-collider.png";
 
+Collider.BOX = LS.PhysicsInstance.BOX;
+Collider.SPHERE = LS.PhysicsInstance.SPHERE;
+Collider.MESH = LS.PhysicsInstance.MESH;
+
 //vars
 Collider["@size"] = { type: "vec3", step: 0.01 };
 Collider["@center"] = { type: "vec3", step: 0.01 };
 Collider["@mesh"] = { type: "mesh" };
-Collider["@shape"] = { type:"enum", values: {"Box":1, "Sphere": 2, "Mesh":5 }};
+Collider["@shape"] = { type:"enum", values: {"Box": Collider.BOX, "Sphere": Collider.SPHERE, "Mesh": Collider.MESH }};
 
 //Collider["@adjustToNodeBounding"] = { type:"action" };
 

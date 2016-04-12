@@ -41,7 +41,9 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","update","trigger","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
+Script.exported_callbacks = ["start","prefabReady","update","trigger","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
+Script.node_triggered_events = { "trigger":true, "prefabReady": true };
+
 Script.translate_events = {
 	"sceneRender": "beforeRender",
 	"beforeRender": "sceneRender",
@@ -63,6 +65,7 @@ Exported functions:\n\
  + render : before rendering the node\n\
  + getRenderInstances: when collecting instances\n\
  + afterRender : after rendering the node\n\
+ + prefabReady: when the prefab has been loaded\n\
  + finish : when the scene finished (mostly used for editor stuff)\n\
 \n\
 Remember, all basic vars attached to this will be exported as global.\n\
@@ -187,6 +190,7 @@ Script.prototype.setContextProperties = function( properties )
 		this._stored_properties = properties;
 		return;
 	}
+
 	LS.cloneObject( properties, ctx, false, true );
 }
 
@@ -296,16 +300,18 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
-Script.prototype.setPropertyValueFromPath = function( path, value )
+Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	if(path.length < 1)
+	offset = offset || 0;
+
+	if( path.length < (offset+1) )
 		return;
 
-	if(path[0] != "context" )
+	if(path[offset] != "context" )
 		return;
 
 	var context = this.getContext();
-	var varname = path[1];
+	var varname = path[offset+1];
 	if(!context || context[ varname ] === undefined )
 		return;
 
@@ -335,8 +341,8 @@ Script.prototype.hookEvents = function()
 	for(var i in hookable)
 	{
 		var name = hookable[i];
-		var event_name = LS.Script.translate_events[name] || name;
-		var target = event_name == "trigger" ? root : scene; //some events are triggered in the scene, others in the node
+		var event_name = LS.Script.translate_events[ name ] || name;
+		var target = Script.node_triggered_events[ event_name ] ? root : scene; //some events are triggered in the scene, others in the node
 		if( context[name] && context[name].constructor === Function )
 		{
 			if( !LEvent.isBind( target, event_name, this.onScriptEvent, this )  )
@@ -578,6 +584,23 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 			this.hookEvents();
 		this.setContextProperties( old );
 		this._stored_properties = null;
+
+		//try to catch up with all the events missed while loading the script
+		if( !this._script._context._initialized )
+		{
+			if( this._root && this._script._context.onAddedToNode )
+			{
+				this._script._context.onAddedToNode( this._root );
+				if( this._root.scene && this._script._context.onAddedToScene )
+				{
+					this._script._context.onAddedToScene( this._root.scene );
+					if( this._root.scene._state === LS.RUNNING && this._script._context.start )
+						this._script._context.start();
+				}
+			}
+			this._script._context._initialized = true; //avoid initializing it twice
+		}
+
 		return ret;
 	}
 	return true;

@@ -303,6 +303,7 @@ var parserOBJ = {
 			if(finalTexCoords)
 				texcoordsArray = finalTexCoords;
 			indicesArray = null;
+			max_index = 0;
 		}
 
 		//Create final mesh object
@@ -316,7 +317,7 @@ var parserOBJ = {
 		if (hasTex && texcoordsArray.length > 0)
 			mesh.coords = new Float32Array(texcoordsArray);
 		if (indicesArray && indicesArray.length > 0)
-			mesh.triangles = new Uint16Array(indicesArray);
+			mesh.triangles = new (support_uint && max_index > 256*256 ? Uint32Array : Uint16Array)(indicesArray);
 
 		//extra info
 		mesh.bounding = GL.Mesh.computeBounding(mesh.vertices);

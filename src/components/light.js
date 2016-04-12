@@ -168,7 +168,6 @@ Light.OMNI = 1;
 Light.SPOT = 2;
 Light.DIRECTIONAL = 3;
 
-Light.DEFAULT_SHADOWMAP_RESOLUTION = 1024;
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
 Light.coding_help = "\

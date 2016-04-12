@@ -108,15 +108,16 @@ GlobalInfo.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
-GlobalInfo.prototype.setPropertyValueFromPath = function( path, value )
+GlobalInfo.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	if( path.length < 1 )
+	offset = offset || 0;
+	if( path.length < (offset+1) )
 		return;
 
-	if( path[0] != "textures" )
+	if( path[offset] != "textures" )
 		return;
 
-	var varname = path[1];
+	var varname = path[offset+1];
 	this._textures[ varname ] = value;
 }
 

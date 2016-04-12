@@ -109,6 +109,10 @@ var Physics = {
 	raycast: function( origin, direction, options )
 	{
 		options = options || {};
+
+		if(!origin || !direction)
+			throw("Physics.raycast: origin or direction missing.");
+
 		var layers = options.layers;
 		if(layers === undefined)
 			layers = 0xFFFF;
@@ -264,6 +268,7 @@ var Physics = {
 		return null;
 	},
 
+	//test collision between two PhysicsInstance 
 	testCollision: function( A, B )
 	{
 		//test AABBs
@@ -286,7 +291,7 @@ var Physics = {
 
 		//mesh mesh not supported
 
-		return true;
+		//return true;
 	},
 
 	testAllCollisions: function( on_collision, layers, scene )

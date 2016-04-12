@@ -3,7 +3,7 @@ function TerrainRenderer(o)
 	this.height = 2;
 	this.size = 10;
 
-	this.subdivisions = 10;
+	this.subdivisions = 100;
 	this.heightmap = "";
 	this._primitive = -1;
 	this.auto_update = true;
@@ -64,7 +64,8 @@ TerrainRenderer.prototype.onResourceRenamed = function (old_name, new_name, reso
 
 TerrainRenderer.prototype.updateMesh = function()
 {
-	trace("updating terrain mesh...");
+	//console.log("updating terrain mesh...");
+
 	//check that we have all the data
 	if(!this.heightmap) 
 		return;
@@ -82,7 +83,8 @@ TerrainRenderer.prototype.updateMesh = function()
 	if(this.subdivisions > img.height)
 		this.subdivisions = img.height;
 
-	if(this.subdivisions > 255)	this.subdivisions = 255; //MAX because of indexed nature
+	if(this.subdivisions > 255 && !gl.extensions.OES_element_index_uint )
+		this.subdivisions = 255; //MAX because of indexed nature
 
 	//optimize it
 	var hsize = this.size * 0.5;
@@ -105,7 +107,8 @@ TerrainRenderer.prototype.updateMesh = function()
 	var normals = [];
 	var coords = [];
 
-	var detailY = detailX = subdivisions-1;
+	var detailX, detailY;
+	detailY = detailX = subdivisions-1;
 	var h,lh,th,rh,bh = 0;
 
 	var yScale = height;

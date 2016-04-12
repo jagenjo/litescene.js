@@ -91,12 +91,23 @@ function Player(options)
 
 	if(options.loadingbar)
 	{
-		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ this.loading_bar = 0.0; }).bind(this) );
-		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
-			if( this.loading_bar < v )
-				this.loading_bar = v;
+		this.loading = {
+			visible: true,
+			scene_bar: 0,
+			resources_bar: 0
+		};
+		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
+			this.loading.resources_bar = 0.0; 
 		}).bind(this) );
-		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ this.loading_bar = this._total_loading = undefined; }).bind(this) );
+		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
+			if( this.loading.resources_bar < v )
+				this.loading.resources_bar = v;
+		}).bind(this) );
+		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
+			this._total_loading = undefined; 
+			this.loading.resources_bar = 1; 
+			this.loading.visible = false;
+		}).bind(this) );
 	}
 
 	LS.Renderer.init();
@@ -136,7 +147,7 @@ Player.prototype.loadScene = function(url, on_complete)
 {
 	var that = this;
 	var scene = this.scene;
-	scene.load( url, inner_start );
+	scene.load( url, null, null, inner_progress, inner_start );
 
 	function inner_start()
 	{
@@ -144,8 +155,19 @@ Player.prototype.loadScene = function(url, on_complete)
 		if(that.autoplay)
 			that.play();
 		console.log("Scene playing");
+		that.loading_bar = -1;
 		if(on_complete)
 			on_complete();
+	}
+
+	function inner_progress(e)
+	{
+		if(that.loading === undefined)
+			return;
+		var partial_load = 0;
+		if(e.total) //sometimes we dont have the total so we dont know the amount
+			partial_load = e.loaded / e.total;
+		that.loading.scene_bar = partial_load;
 	}
 }
 
@@ -227,7 +249,7 @@ Player.prototype._ondraw = function()
 	if(this.onDraw)
 		this.onDraw();
 
-	if(this.loading_bar !== undefined )
+	if(this.loading && this.loading.visible )
 		this.renderLoadingBar();
 }
 
@@ -279,6 +301,9 @@ Player.prototype._onkey = function(e)
 
 Player.prototype.renderLoadingBar = function()
 {
+	if(!this.loading)
+		return;
+
 	if(!window.enableWebGLCanvas)
 		return;
 
@@ -287,10 +312,14 @@ Player.prototype.renderLoadingBar = function()
 
 	gl.start2D();
 	var y = 0;//gl.drawingBufferHeight - 6;
-	gl.fillStyle = [0,0,0,0.5];
-	gl.fillRect( 0, y, gl.drawingBufferWidth, 6);
-	gl.fillColor = this.loadingbar_color || [0.9,0.5,1.0,1.0];
-	gl.fillRect(0,y,gl.drawingBufferWidth * this.loading_bar,6);
+	gl.fillColor = [0,0,0,1];
+	gl.fillRect( 0, y, gl.drawingBufferWidth, 8);
+	//scene
+	gl.fillColor = this.loading.bar_color || [0.5,0.9,1.0,1.0];
+	gl.fillRect( 0, y, gl.drawingBufferWidth * this.loading.scene_bar, 4 );
+	//resources
+	gl.fillColor = this.loading.bar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * this.loading.resources_bar, 4 );
 	gl.finish2D();
 }
 

@@ -25,6 +25,7 @@ var parserTGA = {
 		img.bytesPerPixel = img.bpp / 8;
 		img.imageSize = img.width * img.height * img.bytesPerPixel;
 		img.pixels = data.subarray(18,18+img.imageSize);
+		img.pixels = new Uint8Array( img.pixels ); 	//clone
 
 		if(	(header[5] & (1<<4)) == 0) //hack, needs swap
 		{

@@ -16,6 +16,8 @@ function StandardMaterial(o)
 {
 	Material.call(this,null); //do not pass the object, it is called later
 
+	this.shader_name = "global";
+
 	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty("emissive", new Float32Array(3), "color" );
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
@@ -316,6 +318,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "extra_factor":
 		case "detail_factor":
 		//strings
+		case "shader_name":
 		//bools
 		case "specular_ontop":
 		case "normalmap_tangent":
@@ -354,6 +357,7 @@ StandardMaterial.prototype.getProperties = function()
 
 	//add some more
 	o.merge({
+		shader_name: "string",
 		backlight_factor:"number",
 		reflection_factor:"number",
 		reflection_fresnel:"number",

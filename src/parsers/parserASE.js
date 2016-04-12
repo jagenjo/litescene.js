@@ -12,15 +12,18 @@ var parserASE = {
 
 		//final arrays (packed, lineal [ax,ay,az, bx,by,bz ...])
 		var positionsArray = [ ];
-		var texcoordsArray = [ ];
 		var normalsArray   = [ ];
 		var indicesArray   = [ ];
 
+		var uvs_container = [ ];
+		var current_uvs = null;
+
+
 		//unique arrays (not packed, lineal)
 		var positions = [ ];
-		var texcoords = [ ];
 		var normals   = [ ];
 		var indices = [ ];
+		var tvertlist = [ ];
 		var facemap   = { };
 		var index     = 0;
 
@@ -60,9 +63,9 @@ var parserASE = {
 			{
 				mesh_index += 1;
 				positions = [];
-				texcoords = [];
 
-				if(mesh_index > 1) break; //parse only the first mesh
+				if(mesh_index > 1)
+					break; //parse only the first mesh
 			}
 			else if (tokens[0] == "*NODE_NAME") {
 				current_mesh_name =  tokens[1].substr(1, tokens[1].length - 2);
@@ -104,18 +107,34 @@ var parserASE = {
 				vertex = positions[ parseInt(tokens[7]) ];
 				positionsArray.push( vertex[0], vertex[1], vertex[2] );
 			}
+			else if(tokens[0] == "*MESH_TVERTLIST")
+			{
+				tvertlist = [];
+			}
 			else if(tokens[0] == "*MESH_TVERT")
 			{
-				texcoords.push( [parseFloat(tokens[2]), parseFloat(tokens[3])] );
+				tvertlist.push( [parseFloat(tokens[2]), parseFloat(tokens[3])] );
+			}
+			else if(tokens[0] == "*MESH_TFACELIST")
+			{
+				if( current_uvs && current_uvs.length )
+					uvs_container.push( current_uvs );
+				current_uvs = [];
 			}
 			else if(tokens[0] == "*MESH_TFACE")
 			{
-				var coord = texcoords[ parseInt(tokens[2]) ];
-				texcoordsArray.push( coord[0], coord[1] );
-				coord = texcoords[ parseInt(tokens[3]) ];
-				texcoordsArray.push( coord[0], coord[1] );
-				coord = texcoords[ parseInt(tokens[4]) ];
-				texcoordsArray.push( coord[0], coord[1] );
+				var coord = tvertlist[ parseInt(tokens[2]) ];
+				current_uvs.push( coord[0], coord[1] );
+				coord = tvertlist[ parseInt(tokens[3]) ];
+				current_uvs.push( coord[0], coord[1] );
+				coord = tvertlist[ parseInt(tokens[4]) ];
+				current_uvs.push( coord[0], coord[1] );
+			}
+			else if(tokens[0] == "*MESH_MAPPINGCHANNEL")
+			{
+				if( current_uvs )
+					uvs_container.push( current_uvs );
+				current_uvs = [];
 			}
 			else if(tokens[0] == "*MESH_VERTEXNORMAL")
 			{
@@ -125,6 +144,9 @@ var parserASE = {
 					normalsArray.push(parseFloat(tokens[2]),parseFloat(tokens[3]),parseFloat(tokens[4]));
 			}
 		}
+
+		if(current_uvs)
+			uvs_container.push( current_uvs );
 
 		var total_primitives = positionsArray.length / 3 - group.start;
 		if(group && total_primitives > 1)
@@ -138,8 +160,13 @@ var parserASE = {
 		mesh.vertices = new Float32Array(positionsArray);
 		if (normalsArray.length > 0)
 			mesh.normals = new Float32Array(normalsArray);
-		if (texcoordsArray.length > 0)
-			mesh.coords = new Float32Array(texcoordsArray);
+		for(var i = 0; i < uvs_container.length; ++i )
+		{
+			var channel = "";
+			if(i > 0)
+				channel = i+1;
+			mesh[ "coords" + channel ] = new Float32Array( uvs_container[i] );
+		}
 
 		//extra info
 		mesh.bounding = LS.Formats.computeMeshBounding( mesh.vertices );

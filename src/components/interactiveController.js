@@ -1,3 +1,11 @@
+/**
+* Allows to easily test interaction between the user and the scene, attach the InteractiveController to any element and the mouse down,move and up events will
+* be processed using a raycast and trigger events.
+* @namespace LS
+* @class InteractiveController
+* @constructor
+* @param {Object} last serialized data [optional]
+*/
 function InteractiveController(o)
 {
 	this.enabled = true;

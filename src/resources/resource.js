@@ -14,7 +14,11 @@ function Resource()
 	this.fullpath = null; //contains the unique name as is to be used to fetch it by the resources manager
 	this.remotepath = null; //the string to fetch this resource in internet (local resources do not have this name)
 	this._data = null;
+	//this.type = 0;
 }
+
+//Resource.DATA = 1;
+//Resource.SCRIPT = 2;
 
 Object.defineProperty( Resource.prototype, "data", {
 	set: function(v){ 
@@ -72,7 +76,7 @@ Resource.getDataToStore = function( resource )
 	else if (resource._original_file) //file
 	{
 		data = resource._original_file;
-		if(data && (data.constructor !== File || data.constructor !== Blob))
+		if(data && data.constructor !== File && data.constructor !== Blob)
 			console.warn("Resource._original_file is not File or Blob");
 		encoding = "file";
 	}
@@ -101,8 +105,12 @@ Resource.getDataToStore = function( resource )
 	else if(resource.serialize) //a json object
 	{
 		var obj = resource.serialize();
-		if(obj.preview_url) //special case...
-			delete obj.preview_url;
+		//remove inner stuff from the editor
+		delete obj.filename;
+		delete obj.fullpath;
+		delete obj.remotepath;
+		delete obj.preview_url;
+		//convert to string
 		data = JSON.stringify( obj );
 	}
 	else if(resource.data) //regular string data
@@ -140,6 +148,23 @@ Resource.prototype.getDataToStore = function()
 	return data;
 }
 
+Resource.prototype.clone = function()
+{
+	var r = new LS.Resource();
+	r._data = this._data;
+	return r;
+}
+
+Resource.prototype.getCategory = function()
+{
+	var filename = this.fullpath || this.filename;
+	var ext = LS.ResourcesManager.getExtension( filename );
+	if(ext == "js")
+		return "Script";
+	return "Data";
+}
+
 Resource.hasPreview = false; //should this resource use a preview image?
 
 LS.Resource = Resource;
+LS.registerResourceClass( Resource );

@@ -6,7 +6,6 @@
 ../src/core.js
 ../src/defines.js
 ../src/network.js
-../src/resource.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
 
@@ -17,10 +16,31 @@
 ../src/materials/standardMaterial.js
 ../src/materials/customMaterial.js
 ../src/materials/surfaceMaterial.js
+../src/materials/shaderMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js
 ../src/component.js
+
+../src/resources/resource.js
+../src/resources/animation.js
+../src/resources/prefab.js
+../src/resources/pack.js
+../src/resources/shaderCode.js
+
+../src/graph/scene.js
+
+../src/helpers/path.js
+../src/helpers/textureFX.js
+../src/helpers/tween.js
+
+../src/render/renderSettings.js
+../src/render/renderInstance.js
+../src/render/renderFrameContainer.js
+../src/render/renderer.js
+
+../src/picking.js
+../src/physics.js
 
 ../src/components/transform.js
 ../src/components/camera.js
@@ -65,23 +85,6 @@
 ../src/components/threeJS.js
 
 ../src/components/interactiveController.js
-
-../src/graph/scene.js
-
-../src/helpers/animation.js
-../src/helpers/path.js
-../src/helpers/prefab.js
-../src/helpers/pack.js
-../src/helpers/textureFX.js
-../src/helpers/tween.js
-
-../src/render/renderSettings.js
-../src/render/renderInstance.js
-../src/render/renderFrameContainer.js
-../src/render/renderer.js
-
-../src/picking.js
-../src/physics.js
 
 ../src/formats.js
 ../src/parsers/parserASE.js

@@ -438,19 +438,21 @@ MorphDeformer.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
-MorphDeformer.prototype.setPropertyValueFromPath = function( path, value )
+MorphDeformer.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	if( path.length < 1 )
+	offset = offset || 0;
+
+	if( path.length < (offset+1) )
 		return;
 
-	if( path[0] != "morphs" )
+	if( path[offset] != "morphs" )
 		return;
 
-	var num = parseInt( path[1] );
+	var num = parseInt( path[offset+1] );
 	if(num >= this.morph_targets.length)
 		return;
 
-	var varname = path[2];
+	var varname = path[offset+2];
 	this.morph_targets[num][ varname ] = value;
 }
 

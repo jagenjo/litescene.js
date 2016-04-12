@@ -49,7 +49,7 @@ Path.prototype.computePoint = function(f, out)
 		default:
 			return this.getSplinePoint(f,out); break;
 	}
-	throw("Impossible path type");
+	//throw("Impossible path type");
 }
 
 

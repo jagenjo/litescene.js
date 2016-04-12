@@ -1,5 +1,9 @@
 /** 
 * This module allows to store custom data inside a node
+* properties have the form of:
+* - name:
+* - value:
+* - type:
 * @class CustomData
 * @constructor
 * @param {Object} object to configure from
@@ -47,10 +51,33 @@ CustomData.prototype.updateProperty = function( p )
 //used for animation tracks
 CustomData.prototype.getPropertyInfoFromPath = function( path )
 {
+	var varname = path[0];
+	var property = this.getProperty( varname );
+	if(!property)
+		return null;
+	return {
+		node: this._root,
+		target: this,
+		name: varname,
+		value: property.value,
+		type: property.type
+	};
 }
 
-CustomData.prototype.setPropertyValueFromPath = function( path, value )
+CustomData.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
+	offset = offset || 0;
+
+	var varname = path[offset];
+	var property = this.getProperty( varname );
+	if(!property)
+		return;
+
+	//assign
+	if(property.value && property.value.set)
+		property.value.set( value ); //typed arrays
+	else
+		property.value = value;
 }
 
 

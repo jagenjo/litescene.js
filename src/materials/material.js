@@ -16,22 +16,17 @@
 
 function Material(o)
 {
-	this.name = "";
 	this.uid = LS.generateUId("MAT-");
 	this._dirty = true;
 
-	//this.shader_name = null; //default shader
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.createProperty("diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.shader_name = "global";
+	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.blend_mode = LS.Blend.NORMAL;
-
-	this.alpha_test = false;
-	this.alpha_test_shadows = false;
-
 	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
-	//this.reflection_factor = 0.0;	
+	//flags
+	this.alpha_test = false;
+	this.alpha_test_shadows = false;
 
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
@@ -284,7 +279,10 @@ Material.prototype.fillUniforms = function( scene, options )
 Material.prototype.configure = function(o)
 {
 	for(var i in o)
-		this.setProperty( i, o[i] );
+	{
+		if(!this.setProperty( i, o[i] ) && LS.debug)
+			console.warn("Material property not assigned: " + i );
+	}
 }
 
 /**
@@ -354,7 +352,6 @@ Material.prototype.getProperties = function()
 	var o = {
 		color:"vec3",
 		opacity:"number",
-		shader_name: "string",
 		blend_mode: "number",
 		specular_factor:"number",
 		specular_gloss:"number",
@@ -387,7 +384,7 @@ Material.prototype.getProperty = function(name)
 * @method getProperty
 * @return {Object} object with name:type
 */
-Material.prototype.setProperty = function(name, value)
+Material.prototype.setProperty = function( name, value )
 {
 	if(name.substr(0,4) == "tex_")
 	{
@@ -411,7 +408,6 @@ Material.prototype.setProperty = function(name, value)
 		case "alpha_test":
 		case "alpha_test_shadows":
 		case "blend_mode":
-		case "shader_name":
 			this[name] = value; 
 			break;
 		//vectors
@@ -440,6 +436,20 @@ Material.prototype.setProperty = function(name, value)
 	return true;
 }
 
+Material.prototype.setPropertyValueFromPath = function( path, value, offset )
+{
+	offset = offset || 0;
+
+	if( path.length < (offset+1) )
+		return;
+
+	//maybe check if path is texture?
+	//TODO
+
+	//assign
+	this.setProperty( path[ offset ], value );
+}
+
 Material.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( path.length < 1)
@@ -457,9 +467,6 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 		case "reflection": 
 		case "blend_mode":
 			type = "number"; break;
-		//strings
-		case "shader_name":
-			type = "string"; break;
 		//bools
 		case "alpha_test":
 		case "alpha_test_shadows":
@@ -706,6 +713,9 @@ Material.prototype.updatePreview = function(size, options)
 
 	size = size || 256;
 	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
+	if(!preview)
+		return;
+
 	this.preview = preview;
 	if(preview.toDataURL)
 		this.preview_url = preview.toDataURL("image/png");
@@ -729,10 +739,28 @@ Material.processShaderCode = function(code)
 	return code;
 }
 
-Material.prototype.createProperty = function( name, value, type )
+/**
+* Creates a new property in this material class, but helps with some special cases
+* like when we have a Float32Array property and we dont want it to be replaced by another array, but setted
+* @method createProperty
+* @param {String} name the property name as it should be accessed ( p.e.  "color" -> material.color )
+* @param {*} value
+* @param {String} type a valid value type ("Number","Boolean","Texture",...)
+*/
+Material.prototype.createProperty = function( name, value, type, options )
 {
 	if(type)
+	{
+		LS.validatePropertyType(type);
 		this.constructor[ "@" + name ] = { type: type };
+	}
+
+	if(options)
+	{
+		if(!this.constructor[ "@" + name ])
+			this.constructor[ "@" + name ] = {};
+		LS.cloneObject( options, this.constructor[ "@" + name ] );
+	}
 
 	//basic type
 	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
@@ -756,6 +784,18 @@ Material.prototype.createProperty = function( name, value, type )
 	}
 }
 
+Material.prototype.prepareMaterial = function( scene )
+{
+	if(!this._uniforms)
+	{
+		this._uniforms = {};
+		this._samplers = {};
+	}
+	this.fillShaderQuery( scene ); //update shader macros on this material
+	this.fillUniforms( scene ); //update uniforms
+}
 
-LS.registerMaterialClass(Material);
+
+LS.registerMaterialClass( Material );
+LS.registerResourceClass( Material );
 LS.Material = Material;

@@ -110,7 +110,7 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 	//material
 	if(!this._material)
 		this._material = new LS.Material({ shader_name: "lowglobal" });
-	this._material.setTexture( "COLOR", this.texture );
+	this._material.setTexture( "color", this.texture );
 	this._material.blend_mode = this.blend_mode;
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
 

@@ -72,7 +72,7 @@ PlayAnimation.prototype.onRemovedFromScene = function(scene)
 
 PlayAnimation.prototype.getAnimation = function()
 {
-	if(!this.animation || this.animation == "@scene") 
+	if(!this.animation || this.animation[0] == "@") 
 		return this._root.scene.animation;
 	var anim = LS.ResourcesManager.getResource( this.animation );
 	if( anim && anim.constructor === LS.Animation )

@@ -118,7 +118,7 @@ SceneTree.prototype.init = function()
 
 	this.layer_names = ["main","secondary"];
 	this.animation = null;
-	this._local_resources = {};
+	this._local_resources = {}; //not used yet
 	this.extra = {};
 
 	this._renderer = LS.Renderer;
@@ -325,20 +325,27 @@ SceneTree.prototype.serialize = function()
 * @param {String} url where the JSON object containing the scene is stored
 * @param {Function}[on_complete=null] the callback to call when the loading is complete
 * @param {Function}[on_error=null] the callback to call if there is a  loading error
+* @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
+* @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
 */
 
-SceneTree.prototype.load = function(url, on_complete, on_error)
+SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on_resources_loaded )
 {
-	if(!url) return;
+	if(!url)
+		return;
+
 	var that = this;
 	var nocache = LS.ResourcesManager.getNoCache(true);
 	if(nocache)
 		url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
 
+	var extension = LS.ResourcesManager.getExtension( url );
+
 	LS.Network.request({
 		url: url,
-		dataType: 'json',
-		success: inner_json_loaded,
+		dataType: extension == "json" ? "json" : "binary",
+		success: extension == "json" ? inner_json_loaded : inner_pack_loaded,
+		progress: on_progress,
 		error: inner_error
 	});
 
@@ -347,6 +354,25 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 	 * @event beforeLoad
 	 */
 	LEvent.trigger(this,"beforeLoad");
+
+	function inner_pack_loaded( response )
+	{
+		//process pack
+		LS.ResourcesManager.processResource( url, response, null, inner_pack_processed );
+	}
+
+	function inner_pack_processed( pack_url, pack )
+	{
+		if(!pack || !pack._data || !pack._data["scene.json"] )
+		{
+			console.error("Error loading PACK, doesnt look like it has a valid scene inside");
+			return;
+		}
+
+		var scene = JSON.parse( pack._data["scene.json"] );
+
+		inner_json_loaded( scene );
+	}
 
 	function inner_json_loaded( response )
 	{
@@ -361,6 +387,9 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 
 	function inner_success( response )
 	{
+		if(on_complete)
+			on_complete(that, url);
+
 		that.init();
 		that.configure(response);
 		that.loadResources( inner_all_loaded );
@@ -369,12 +398,15 @@ SceneTree.prototype.load = function(url, on_complete, on_error)
 		 * @event load
 		 */
 		LEvent.trigger(that,"load");
+
+		if(!LS.ResourcesManager.isLoading())
+			inner_all_loaded();
 	}
 
 	function inner_all_loaded()
 	{
-		if(on_complete)
-			on_complete(that, url);
+		if(on_resources_loaded)
+			on_resources_loaded(that, url);
 		/**
 		 * Fired after all resources have been loaded
 		 * @event loadCompleted
@@ -770,20 +802,7 @@ SceneTree.prototype.getPropertyInfoFromPath = function( path )
 SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 {
 	var path = locator.split("/");
-
-	if(path[0].substr(0,5) == "@MAT-")
-	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
-		if(!material)
-			return null;
-		return material.setPropertyValueFromPath( path.slice(1), value );
-	}
-
-	//get node
-	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
-	if(!node)
-		return null;
-	return node.setPropertyValueFromPath( path.slice(1), value );
+	this.setPropertyValueFromPath( path, value, root_node, 0 );
 }
 
 /**
@@ -793,24 +812,30 @@ SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 * @method setPropertyValueFromPath
 * @param {Array} path a property locator split by "/"
 * @param {*} value the value to assign
+* @param {SceneNode} root_node [optional] the root node where you want to search the locator (this is to limit the locator to a branch of the scene tree)
+* @param {Number} offset [optional] used to avoir generating garbage, instead of slicing the array every time, we pass the array index
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node )
+SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node, offset )
 {
-	if(path[0].substr(0,5) == "@MAT-")
+	offset = offset || 0;
+	if(path.length < (offset+1))
+		return;
+
+	if(path[offset].substr(0,5) == "@MAT-")
 	{
-		var material = LS.RM.materials_by_uid[ path[0] ];
+		var material = LS.RM.materials_by_uid[ path[offset] ];
 		if(!material)
 			return null;
-		return material.setPropertyValueFromPath( path.slice(1), value );
+		return material.setPropertyValueFromPath( path, value, offset + 1 );
 	}
 
 	//get node
-	var node = root_node ? root_node.findNode( path[0] ) : this.getNode( path[0] );
+	var node = root_node ? root_node.findNode( path[offset] ) : this.getNode( path[offset] );
 	if(!node)
 		return null;
 
-	return node.setPropertyValueFromPath( path.slice(1), value );
+	return node.setPropertyValueFromPath( path, value, offset + 1 );
 }
 
 
@@ -821,7 +846,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node 
 * @method getResources
 * @param {Object} resources [optional] object with resources
 */
-SceneTree.prototype.getResources = function( resources )
+SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 {
 	resources = resources || {};
 
@@ -839,7 +864,26 @@ SceneTree.prototype.getResources = function( resources )
 	for(var i in this._nodes)
 		this._nodes[i].getResources( resources );
 
-	return resources;
+	//remove the resources that belong to packs or prefabs
+	if(skip_in_pack)
+		for(var i in resources)
+		{
+			var resource = LS.ResourcesManager.resources[i];
+			if(!resource)
+				continue;
+			if(resource && (resource.from_prefab || resource.from_pack))
+				delete resources[i];
+		}
+
+	//return as object
+	if(!as_array)
+		return resources;
+
+	//return as array
+	var r = [];
+	for(var i in resources)
+		r.push(i);
+	return r;
 }
 
 /**
@@ -1143,7 +1187,13 @@ SceneTree.prototype.triggerInNodes = function(event_type, data)
 	LEvent.triggerArray( this._nodes, event_type, data);
 }
 
-
+/**
+* generate a unique node name given a prefix
+*
+* @method generateUniqueNodeName
+* @param {String} prefix the prefix, if not given then "node" is used
+* @return {String} a node name that it is not in the scene
+*/
 SceneTree.prototype.generateUniqueNodeName = function(prefix)
 {
 	prefix = prefix || "node";
@@ -1166,13 +1216,22 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 	return node_name;
 }
 
-
+/**
+* Marks that this scene must be rendered again
+*
+* @method refresh
+*/
 SceneTree.prototype.refresh = function()
 {
 	this._must_redraw = true;
 }
 
-
+/**
+* returns current scene time (remember that scene time remains freezed if the scene is not running
+*
+* @method getTime
+* @return {Number} scene time in seconds
+*/
 SceneTree.prototype.getTime = function()
 {
 	return this._time;
@@ -1210,18 +1269,32 @@ SceneTree.prototype.purgeResidualEvents = function()
 	}
 }
 
-SceneTree.prototype.getLayerNames = function(v)
+/**
+* returns an array with the name of all the layers given a layers mask
+*
+* @method getLayerNames
+* @param {Number} layers a number with the enabled layers in bit mask format, if ommited all layers are returned
+* @return {Array} array of strings with the layer names
+*/
+SceneTree.prototype.getLayerNames = function(layers)
 {
 	var r = [];
 
 	for(var i = 0; i < 32; ++i)
 	{
-		if( v === undefined || v & (1<<i) )
+		if( layers === undefined || layers & (1<<i) )
 			r.push( this.layer_names[i] || ("layer"+i) );
 	}
 	return r;
 }
 
+/**
+* returns an array with all the components in the scene and scenenodes that matches this class
+*
+* @method findNodeComponents
+* @param {String||Component} type the type of the components to search (could be a string with the name or the class itself)
+* @return {Array} array with the components found
+*/
 SceneTree.prototype.findNodeComponents = function( type )
 {
 	if(!type)
@@ -1247,6 +1320,33 @@ SceneTree.prototype.findNodeComponents = function( type )
 	}
 	return result;
 }
+
+/**
+* returns a pack containing all the scene and resources, used to save a scene to harddrive
+*
+* @method toPack
+* @param {String} fullpath a fiven fullpath name
+* @return {LS.Pack} the pack
+*/
+SceneTree.prototype.toPack = function( fullpath )
+{
+	//change name to valid name
+	var basename = LS.RM.removeExtension( fullpath, true );
+	var final_fullpath = basename + ".SCENE.wbin";
+
+	//extract json info
+	var scene_json = JSON.stringify( this.serialize() );
+
+	//get all resources
+	var resources = this.getResources(null,true,true);
+
+	//create pack
+	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );
+	pack.fullpath = final_fullpath;
+	pack.category = "SceneTree";
+
+	return pack;
+},
 
 LS.SceneTree = SceneTree;
 LS.Classes.SceneTree = SceneTree;

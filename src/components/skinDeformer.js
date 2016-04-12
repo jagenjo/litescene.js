@@ -325,6 +325,7 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 		}
 		
 		//we could also multiply the normal but this is already superslow...
+		/*
 		if(0)
 		{
 			//apply weights
@@ -338,6 +339,7 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 					vec3.scaleAndAdd( v, v, temp, w[j] );
 				}
 		}
+		*/
 
 		//if(factor != 1) vec3.lerp( v, ov, v, factor);
 	}

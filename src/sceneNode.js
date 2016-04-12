@@ -5,12 +5,18 @@
 * Is the base class for all objects in the scene as meshes, lights, cameras, and so
 *
 * @class SceneNode
-* @param{String} id the id (otherwise a random one is computed)
+* @param {String} name the name for this node (otherwise a random one is computed)
 * @constructor
 */
 
 function SceneNode( name )
 {
+	if(name && name.constructor !== String)
+	{
+		name = null;
+		console.warn("SceneNode cosntructor first parameter must be a String with the name");
+	}
+
 	//Generic
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId("NODE-");
@@ -18,19 +24,14 @@ function SceneNode( name )
 	this.layers = 3|0; //32 bits for layers (force to int)
 	this.node_type = null; //used to store a string defining the node info
 
-	this.init();
-}
+	this._components = []; //used for logic actions
+	this._missing_components = null;
 
-SceneNode.prototype.init = function( keep_components, keep_info )
-{
-	if(!keep_info)
-	{
-		this.layers = 3|0; //32 bits for layers (force to int)
-		this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
-		this._uid = LS.generateUId("NODE-");
-		this._classList = {};
-	}
+	this._prefab = null;
+	this._parentNode = null;
+	this._children = null;
 
+	this._material = null;
 	this.node_type = null;
 
 	//flags
@@ -41,12 +42,41 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		flip_normals: false,
 		cast_shadows: true,
 		receive_shadows: true,
-		ignore_lights: false, //not_affected_by_lights
-		alpha_test: false,
-		alpha_shadows: false,
+		ignore_lights: false,
 		depth_test: true,
 		depth_write: true
 	};
+
+	this.init(false,true);
+}
+
+SceneNode.prototype.init = function( keep_components, keep_info )
+{
+	if(!keep_info)
+	{
+		this.layers = 3|0; //32 bits for layers (force to int)
+		this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
+		this._uid = LS.generateUId("NODE-");
+		this._classList = {};
+
+		//material
+		this._material = null;
+		this.extra = {}; //for extra info
+		this.node_type = null;
+
+		//flags
+		this.flags = {
+			visible: true,
+			selectable: true,
+			two_sided: false,
+			flip_normals: false,
+			cast_shadows: true,
+			receive_shadows: true,
+			ignore_lights: false, //not_affected_by_lights
+			depth_test: true,
+			depth_write: true
+		};
+	}
 
 	//Basic components
 	if(!keep_components)
@@ -57,10 +87,6 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		this._missing_components = null;
 		this.addComponent( new LS.Transform() );
 	}
-
-	//material
-	this._material = null;
-	this.extra = {}; //for extra info
 }
 
 //get methods from other classes
@@ -96,25 +122,37 @@ Object.defineProperty( SceneNode.prototype, 'fullname', {
 	enumerable: false
 });
 
+//Changing the UID  has lots of effects (because nodes are indexed by UID in the scene)
+//If you want to catch the event of the uid_change, remember, the previous uid is stored in LS.SceneNode._last_uid_changed (it is not passed in the event)
 Object.defineProperty( SceneNode.prototype, 'uid', {
 	set: function(uid)
 	{
 		if(!uid)
 			return;
 
+		//valid uid?
 		if(uid[0] != LS._uid_prefix)
 		{
 			console.warn("Invalid UID, renaming it to: " + uid );
 			uid = LS._uid_prefix + uid;
 		}
 
+		//no changes?
 		if(uid == this._uid)
 			return;
+
+		SceneNode._last_uid_changed = this._uid; //hack, in case we want the previous uid of a node 
+
+		//update scene tree indexing
 		if( this._in_tree && this._in_tree._nodes_by_uid[ this.uid ] )
 			delete this._in_tree._nodes_by_uid[ this.uid ];
 		this._uid = uid;
 		if( this._in_tree )
 			this._in_tree._nodes_by_uid[ this.uid ] = this;
+		//events
+		LEvent.trigger( this, "uid_changed", uid );
+		if(this._in_tree)
+			LEvent.trigger( this._in_tree, "node_uid_changed", this );
 	},
 	get: function(){
 		return this._uid;
@@ -403,42 +441,44 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 SceneNode.prototype.setPropertyValue = function( locator, value )
 {
 	var path = locator.split("/");
-	return this.setPropertyValueFromPath(path, value);
+	return this.setPropertyValueFromPath(path, value, 0);
 }
 
-SceneNode.prototype.setPropertyValueFromPath = function( path, value )
+SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	var target = null;
-	var varname = path[0];
+	offset = offset || 0;
 
-	if(path.length > 1)
+	var target = null;
+	var varname = path[offset];
+
+	if(path.length > (offset+1))
 	{
-		if(path[0][0] == "@")
+		if(path[offset][0] == "@")
 		{
-			varname = path[1];
-			target = this.getComponentByUId( path[0] );
+			varname = path[offset+1];
+			target = this.getComponentByUId( path[offset] );
 		}
-		else if( path[1] == "material" )
+		else if( path[offset] == "material" )
 		{
 			target = this.getMaterial();
-			varname = path[1];
+			varname = path[offset+1];
 		}
-		else if( path[1] == "flags" )
+		else if( path[offset] == "flags" )
 		{
 			target = this.flags;
-			varname = path[1];
+			varname = path[offset+1];
 		}
 		else 
 		{
-			target = this.getComponent( path[0] );
-			varname = path[1];
+			target = this.getComponent( path[offset] );
+			varname = path[offset+1];
 		}
 
 		if(!target)
 			return null;
 	}
 	else { //special cases 
-		switch ( path[0] )
+		switch ( path[offset] )
 		{
 			case "matrix": target = this.transform; break;
 			case "x":
@@ -448,7 +488,7 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 			case "yrotation": 
 			case "zrotation": 
 				target = this.transform; 
-				varname = path[0];
+				varname = path[offset];
 				break;
 			case "translate.X": target = this.transform; varname = "x"; break;
 			case "translate.Y": target = this.transform; varname = "y"; break;
@@ -464,7 +504,7 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value )
 		return null;
 
 	if(target.setPropertyValueFromPath && target != this)
-		if( target.setPropertyValueFromPath( path.slice(1), value ) === true )
+		if( target.setPropertyValueFromPath( path, value, offset+1 ) === true )
 			return target;
 	
 	if(target.setPropertyValue  && target != this)
@@ -621,7 +661,8 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
-//apply prefab info (skipping the root components) to node
+//Apply prefab info (skipping the root components) to node
+//It is called from prefab.applyToNodes when a prefab is loaded in memory
 SceneNode.prototype.reloadFromPrefab = function()
 {
 	if(!this.prefab)
@@ -636,11 +677,14 @@ SceneNode.prototype.reloadFromPrefab = function()
 	this.init( true, true );
 	//remove all but children info (prefabs overwrite only children info)
 	var prefab_data = { children: prefab.prefab_data.children };
+	//uid data is already removed from the prefab
 	this.configure( prefab_data );
 
 	//load secondary resources 
 	var resources = this.getResources( {}, true );
 	LS.ResourcesManager.loadResources( resources );
+
+	LEvent.trigger( this, "prefabReady", prefab );
 }
 
 
@@ -678,11 +722,27 @@ SceneNode.prototype.getLayers = function()
 }
 
 /**
+* Returns the root node of the prefab incase it is inside a prefab, otherwise null
+* @method insidePrefab
+* @return {Object} returns the node where the prefab starts
+*/
+SceneNode.prototype.insidePrefab = function()
+{
+	var aux = this;
+	while( aux )
+	{
+		if(aux.prefab)
+			return aux;
+		aux = aux._parentNode;
+	}
+	return null;
+}
+
+/**
 * remember clones this node and returns the new copy (you need to add it to the scene to see it)
 * @method clone
 * @return {Object} returns a cloned version of this node
 */
-
 SceneNode.prototype.clone = function()
 {
 	var scene = this._in_tree;

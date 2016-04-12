@@ -31,6 +31,9 @@ CompositePattern.prototype.getScene = function()
 
 CompositePattern.prototype.addChild = function(node, index, options)
 {
+	if(!node)
+		throw("cannot addChild of null");
+
 	//be careful with weird recursions...
 	var aux = this;
 	while( aux._parentNode )
@@ -117,6 +120,9 @@ CompositePattern.prototype.addChild = function(node, index, options)
 */
 CompositePattern.prototype.removeChild = function(node, param1, param2)
 {
+	if(!node)
+		throw("cannot removeChild of null");
+
 	if(!this._children || node._parentNode != this)
 		return false;
 	if( node._parentNode != this)

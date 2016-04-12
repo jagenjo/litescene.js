@@ -272,12 +272,14 @@ CustomMaterial.prototype.setProperty = function(name, value)
 	return false;
 }
 
-CustomMaterial.prototype.setPropertyValueFromPath = function( path, value )
+/*
+CustomMaterial.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	if( path.length < 1)
+	if( path.length < (offset+1) )
 		return;
-	return this.setProperty( path[0], value );
+	return this.setProperty( path[offset], value );
 }
+*/
 
 CustomMaterial.prototype.getPropertyInfoFromPath = function( path )
 {

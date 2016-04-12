@@ -17,8 +17,10 @@ var LS = {
 	//vars used for uuid genereration
 	_last_uid: 1,
 	_uid_prefix: "@", //WARNING: must be one character long
+	debug: false, //enable to see verbose output
 
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
+	ResourceClasses: {}, //classes that can contain a resource of the system
 
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
@@ -47,6 +49,18 @@ var LS = {
 	{
 		var exp = /^[a-z\s0-9-_.]+$/i; //letters digits and dashes
 		return v.match(exp);
+	},
+
+	valid_property_types: ["String","Number","Boolean","color","vec2","vec3","vec4","quat","mat3","mat4","Resource","Animation","Texture","Prefab","Mesh","ShaderCode"],
+
+	validatePropertyType: function(v)
+	{
+		if(	this.valid_property_types.indexOf(v) == -1 )
+		{
+			console.error( v + " is not a valid property value type." );
+			return false;
+		}
+		return true;
 	},
 
 	_catch_exceptions: false, //used to try/catch all possible callbacks (used mostly during development inside an editor) It is linked to LScript too
@@ -108,6 +122,23 @@ var LS = {
 		var name = this.getClassName( comp_class );
 		return !!this.Components[name];
 	},
+
+	/**
+	* Register a resource class so we know which classes could be use as resources
+	*
+	* @method registerResourceClass
+	* @param {ComponentClass} c component class to register
+	*/
+	registerResourceClass: function( resourceClass )
+	{
+		var class_name = LS.getClassName( resourceClass );
+		this.ResourceClasses[ class_name ] = resourceClass;
+		this.Classes[ class_name ] = resourceClass;
+		resourceClass.is_resource = true;
+
+		//some validation here? maybe...
+	},
+
 
 	/**
 	* Is a wrapper for callbacks that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
@@ -239,7 +270,7 @@ var LS = {
 		}
 
 		var o = target;
-		if(o === undefined)
+		if(o === undefined || o === null)
 		{
 			if(object.constructor === Array)
 				o = [];
@@ -267,7 +298,13 @@ var LS = {
 				o[i] = v;
 			else if( v.buffer && v.byteLength && v.buffer.constructor === ArrayBuffer ) //typed arrays are ugly when serialized
 			{
-				o[i] = new v.constructor(v); //clone typed array
+				if(o[i] && v && only_existing) 
+				{
+					if(o[i].length == v.length) //typed arrays force to fit in the same container
+						o[i].set( v );
+				}
+				else
+					o[i] = new v.constructor(v); //clone typed array
 			}
 			else if ( v.constructor === Array ) //clone regular array (container and content!)
 			{
@@ -581,6 +618,14 @@ var LS = {
 		return null;
 	},
 
+	//we do it in a function to make it more standard and traceable
+	dispatchCodeError: function( err, line, resource, extra )
+	{
+		var error_info = { error: err, line: line, resource: resource, extra: extra };
+		console.error(error_info);
+		LEvent.trigger( this, "code_error", error_info );
+	},
+
 	convertToString: function( data )
 	{
 		if(!data)
@@ -595,8 +640,12 @@ var LS = {
 	}
 }
 
+//ensures no exception is catched by the system (useful for developers)
 Object.defineProperty( LS, "catch_exceptions", { 
-	set: function(v){ this._catch_exceptions = v; LScript.catch_exceptions = v; },
+	set: function(v){ 
+		this._catch_exceptions = v; 
+		LScript.catch_exceptions = v; 
+	},
 	get: function() { return this._catch_exceptions; },
 	enumerable: true
 });
@@ -742,11 +791,11 @@ var LSQ = {
 	}
 };
 
-//register classes
+//register resource classes
 if(global.GL)
 {
-	LS.Classes["Mesh"] = GL.Mesh;
-	LS.Classes["Texture"] = GL.Texture;
+	LS.registerResourceClass( GL.Mesh );
+	LS.registerResourceClass( GL.Texture );
 }
 
 

@@ -112,7 +112,7 @@ ComponentContainer.prototype.getComponents = function( class_type )
 ComponentContainer.prototype.addComponent = function( component, index )
 {
 	if(!component)
-		return console.error("addComponent cannot receive null");
+		throw("addComponent cannot receive null");
 
 	//link component with container
 	component._root = this;
@@ -149,7 +149,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 ComponentContainer.prototype.removeComponent = function(component)
 {
 	if(!component)
-		return console.error("removeComponent cannot receive null");
+		throw("removeComponent cannot receive null");
 
 	//unlink component with container
 	component._root = null;

@@ -84,6 +84,9 @@ var ResourcesManager = {
 	*/
 	registerResourcePreProcessor: function( fileformats, callback, data_type, resource_type )
 	{
+		if(!fileformats)
+			return;
+
 		var ext = fileformats.split(",");
 		for(var i in ext)
 		{
@@ -109,19 +112,43 @@ var ResourcesManager = {
 	* Returns the filename extension from an url
 	*
 	* @method getExtension
-	* @param {String} url
+	* @param {String} fullpath url or filename
+	* @param {boolean} complex_extension [optional] returns the extension from the first dot, otherwise only the part from last dot
 	* @return {String} filename extension
 	*/
-
-	getExtension: function(url)
+	getExtension: function( fullpath, complex_extension )
 	{
-		var question = url.indexOf("?");
+		if(!fullpath)
+			return "";
+		var question = fullpath.indexOf("?");
 		if(question != -1)
-			url = url.substr(0,question);
+			fullpath = fullpath.substr(0,question);
 
-		var point = url.lastIndexOf(".");
-		if(point == -1) return "";
-		return url.substr(point+1).toLowerCase();
+		var point = complex_extension ? fullpath.indexOf(".") : fullpath.lastIndexOf(".");
+		if(point == -1)
+			return "";
+		return fullpath.substr(point+1).toLowerCase();
+	},
+
+	/**
+	* Returns the url without the extension
+	*
+	* @method removeExtension
+	* @param {String} fullpath url or filename
+	* @param {boolean} complex_extension [optional] removes the extension from the first dot, otherwise only the part from last dot
+	* @return {String} url without extension
+	*/
+	removeExtension: function( fullpath, complex_extension )
+	{
+		if(!fullpath)
+			return "";
+		var question = fullpath.indexOf("?");
+		if(question != -1)
+			fullpath = fullpath.substr(0,question);
+		var point = complex_extension ? fullpath.indexOf(".") : fullpath.lastIndexOf(".");
+		if(point == -1)
+			return fullpath;
+		return fullpath.substr(0,point);
 	},
 
 	/**
@@ -133,6 +160,8 @@ var ResourcesManager = {
 	*/
 	getFilename: function( fullpath )
 	{
+		if(!fullpath)
+			return "";
 		var pos = fullpath.lastIndexOf("/");
 		//if(pos == -1) return fullpath;
 		var question = fullpath.lastIndexOf("?");
@@ -149,6 +178,8 @@ var ResourcesManager = {
 	*/
 	getFolder: function(fullpath)
 	{
+		if(!fullpath)
+			return "";
 		var pos = fullpath.lastIndexOf("/");
 		return fullpath.substr(0,pos);
 	},	
@@ -160,11 +191,15 @@ var ResourcesManager = {
 	* @param {String} fullpath
 	* @return {String} filename extension
 	*/
-	getBasename: function(fullpath)
+	getBasename: function( fullpath )
 	{
+		if(!fullpath)
+			return "";
+
 		var name = this.getFilename(fullpath);
 		var pos = name.indexOf(".");
-		if(pos == -1) return name;
+		if(pos == -1)
+			return name;
 		return name.substr(0,pos);
 	},
 
@@ -177,6 +212,9 @@ var ResourcesManager = {
 	*/
 	cleanFullpath: function(fullpath)
 	{
+		if(!fullpath)
+			return "";
+
 		//clean up the filename (to avoid problems with //)
 		if(fullpath.indexOf("://") == -1)
 			return fullpath.split("/").filter(function(v){ return !!v; }).join("/");
@@ -192,6 +230,9 @@ var ResourcesManager = {
 	*/
 	loadResources: function(res, options )
 	{
+		if(!res)
+			return;
+
 		for(var i in res)
 		{
 			if( i[0] == ":" || i[0] == "_" )
@@ -224,6 +265,12 @@ var ResourcesManager = {
 	*/
 	setProxy: function( proxy_url )
 	{
+		if(!proxy_url)
+		{
+			this.proxy = null;
+			return;
+		}
+
 		if( proxy_url.indexOf("@") != -1 )
 			this.proxy = "http://" + proxy_url.replace("@", window.location.host );
 		else
@@ -240,6 +287,9 @@ var ResourcesManager = {
 	*/
 	getFullURL: function( url, options )
 	{
+		if(!url)
+			return null;
+
 		var pos = url.substr(0,10).indexOf(":");
 		var protocol = "";
 		if(pos != -1)
@@ -433,7 +483,10 @@ var ResourcesManager = {
 			return; //nothing to load, just waiting for the callback to process it
 
 		if(!this.allow_base_files && url.indexOf("/") == -1)
+		{
+			console.warn("Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: ", url );
 			return; //this is not a valid file to load
+		}
 
 		//otherwise we have to load it
 		//set the callback
@@ -466,11 +519,13 @@ var ResourcesManager = {
 				LS.ResourcesManager._resourceLoadedError(url,err);
 			},
 			progress: function(e) { 
+				var partial_load = 0;
+				if(e.total) //sometimes we dont have the total so we dont know the amount
+					partial_load = e.loaded / e.total;
 				if( LEvent.hasBind(  LS.ResourcesManager, "resource_loading_progress" ) ) //used to avoid creating objects during loading
-					LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e, progress: e.loaded / e.total } );
+					LEvent.trigger( LS.ResourcesManager, "resource_loading_progress", { url: url, event: e, progress: partial_load } );
 				if( LEvent.hasBind(  LS.ResourcesManager, "loading_resources_progress" ) ) //used to avoid creating objects during loading
-					LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - (LS.ResourcesManager.num_resources_being_loaded - e.loaded / e.total) / LS.ResourcesManager._total_resources_to_load );
-
+					LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - (LS.ResourcesManager.num_resources_being_loaded - partial_load) / LS.ResourcesManager._total_resources_to_load );
 			}
 		};
 
@@ -498,6 +553,9 @@ var ResourcesManager = {
 	processResource: function( url, data, options, on_complete, was_loaded )
 	{
 		options = options || {};
+
+		if(options && options.constructor !== Object)
+			throw("processResource options must be object");
 		if( data === null || data === undefined )
 			throw("No data found when processing resource: " + url);
 
@@ -578,10 +636,22 @@ var ResourcesManager = {
 		}
 		else //or just store the resource as a plain data buffer
 		{
-			var resource = new LS.Resource();
-			resource.filename = resource.fullpath = url;
-			resource._data = data;
-			process_final( url, resource, options );
+			var resource = null;
+			if(format_info && format_info.resourceClass)
+				resource = new format_info.resourceClass();
+			else
+				resource = new LS.Resource();
+
+			if(resource.setData)
+				resource.setData(data, true)
+			else
+				throw("Resource without setData, cannot assign");
+
+			if(resource)
+			{
+				resource.filename = resource.fullpath = url;
+				process_final( url, resource, options );
+			}
 		}
 	},
 
@@ -763,6 +833,10 @@ var ResourcesManager = {
 		if( this.textures[old] ) {
 			delete this.textures[ old ];
 			this.textures[ newname ] = res;
+		}
+		if( this.materials[old] ) {
+			delete this.materials[ old ];
+			this.materials[ newname ] = res;
 		}
 
 		this.resources_renamed_recently[ old ] = newname;
@@ -1110,11 +1184,12 @@ LS.ResourcesManager.processImageNonNative = function( filename, data, options ) 
 		return texture;
 	}
 
+	//texture in object format
 	var texture = LS.ResourcesManager.processTexture( filename, texture_data );
 	return texture;
 }
 
-//Takes one image (or canvas) as input and creates a GL.Texture
+//Takes one image (or canvas or object with width,height,pixels) as input and creates a GL.Texture
 LS.ResourcesManager.processTexture = function(filename, img, options)
 {
 	if(img.width == (img.height / 6) || filename.indexOf("CUBECROSS") != -1) //cubemap
@@ -1252,6 +1327,7 @@ LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename
 	//store
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
+	material.prepareMaterial( LS.GlobalScene );
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {
@@ -1263,3 +1339,9 @@ LS.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, 
 	//apply to nodes in the scene
 	prefab.applyToNodes();
 });
+
+LS.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filename, shader_code ) {
+	//apply to materials
+	shader_code.applyToMaterials();
+});
+

@@ -260,6 +260,9 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	if( Material.prototype.setProperty.call(this,name,value) )
 		return true;
 
+	if(name == "shader_name")
+		this.shader_name = value;
+
 	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
@@ -272,12 +275,15 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 	return false;
 }
 
-SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value )
+/*
+SurfaceMaterial.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
-	if( path.length < 1)
+	offset = offset || 0;
+	if( path.length < (offset+1) )
 		return;
-	return this.setProperty( path[0], value );
+	return this.setProperty( path[offset], value );
 }
+*/
 
 SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 {

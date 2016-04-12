@@ -9,7 +9,7 @@ function RenderSettings( o )
 	this.renderer_name = null; //null means default
 
 	//global render settings
-	this.default_shadowmap_resolution = LS.Light.DEFAULT_SHADOWMAP_RESOLUTION; //let the system decide best shadowmap resolution according to quality settings
+	this.default_shadowmap_resolution = LS.RenderSettings.default_shadowmap_resolution; //let the system decide best shadowmap resolution according to quality settings
 	this.ignore_viewports = false;	//render to full viewport, ignoring the viewport in the cameras
 	this.ignore_clear = false;	//skip global clear, used in case you want to mix LiteScene with another renderer
 	this.keep_viewport = false; //do not force a full canvas viewport at render start (use the current one in WebGL as the full)
@@ -47,6 +47,8 @@ function RenderSettings( o )
 	if(o)
 		this.configure(o);
 }
+
+RenderSettings.default_shadowmap_resolution = 1024;
 
 RenderSettings["@default_shadowmap_resolution"] = { widget: "combo", values: [0,256,512,1024,2048,4096] };
 

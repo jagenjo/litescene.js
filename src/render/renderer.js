@@ -58,7 +58,7 @@ var Renderer = {
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
 
-	_close_lights: [],
+	_near_lights: [],
 
 	//called from...
 	init: function()
@@ -458,35 +458,65 @@ var Renderer = {
 		this.resetGLState( render_settings );
 	},
 
-	//this function is in charge of rendering the regular color pass (used also for reflections)
-	renderColorPassInstance: function( instance, render_settings )
+	/**
+	* returns a list of all he lights overlapping this instance (it uses sperical bounding so it could returns lights that are not really overlapping)
+	* It is used by the multipass lighting to iterate 
+	*
+	* @method getNearLights
+	* @param {RenderInstance} instance the render instance
+	* @param {Array} result [optional] the output array
+	* @return {Array} array containing a list of LS.Light affecting this RenderInstance
+	*/
+	getNearLights: function( instance, result )
 	{
+		result = result || [];
+
+		//it uses the lights gathered by prepareVisibleData
 		var lights = this._visible_lights;
-		var numLights = lights.length;
-		var close_lights = this._close_lights;
+		if(!lights || !lights.length)
+			return result;
 
 		//Compute lights affecting this RI (by proximity, only takes into account spherical bounding)
-		close_lights.length = 0;
+		result.length = 0;
+		var numLights = lights.length;
 		for(var j = 0; j < numLights; j++)
 		{
 			var light = lights[j];
+			//same layer?
 			if( (light._root.layers & instance.layers) == 0 || (light._root.layers & this._current_camera.layers) == 0)
 				continue;
 			var light_intensity = light.computeLightIntensity();
+			//light intensity too low?
 			if(light_intensity < 0.0001)
 				continue;
 			var light_radius = light.computeLightRadius();
 			var light_pos = light.position;
+			//overlapping?
 			if( light_radius == -1 || instance.overlapsSphere( light_pos, light_radius ) )
-				close_lights.push( light );
+				result.push( light );
 		}
 
-		//render multipass
-		this.renderColorMultiPassLightingInstance( instance, close_lights, this._current_scene, render_settings );
+		return result;
+	},
+
+	//this function is in charge of rendering the regular color pass (used also for reflections)
+	renderColorPassInstance: function( instance, render_settings )
+	{
+
+		var near_lights = this.getNearLights( instance, this._near_lights );
+
+		//render instance
+		var renderered = false;
+		if( instance.material && instance.material.renderInstance )
+			renderered = instance.material.renderInstance( instance, near_lights, this._current_scene, render_settings );
+
+		//render using default system (slower but it works)
+		if(!renderered)
+			this.renderColorMultiPassLightingInstance( instance, near_lights, this._current_scene, render_settings );
 	},
 
 	/**
-	* Renders this render instance taking into account all the lights that affect it and doing a render for every light
+	* Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light
 	*
 	* @method renderColorMultiPassLightingInstance
 	* @param {RenderInstance} instance
@@ -760,7 +790,7 @@ var Renderer = {
 		instance.render(shader);
 	},
 
-	bindSamplers: function(samplers, shader)
+	bindSamplers: function( samplers, shader )
 	{
 		var sampler_uniforms = {};
 		var slot = 0;
@@ -776,7 +806,7 @@ var Renderer = {
 
 			//REFACTOR THIS
 			var tex = null;
-			if(sampler.constructor === String || sampler.constructor === Texture) //old way
+			if(sampler.constructor === String || sampler.constructor === GL.Texture) //old way
 			{
 				tex = sampler;
 				sampler = null;
@@ -1113,13 +1143,7 @@ var Renderer = {
 		for(var i in materials)
 		{
 			var material = materials[i];
-			if(!material._uniforms)
-			{
-				material._uniforms = {};
-				material._samplers = {};
-			}
-			material.fillShaderQuery(scene); //update shader macros on this material
-			material.fillUniforms(scene); //update uniforms
+			material.prepareMaterial( scene );
 		}
 	},
 
@@ -1237,6 +1261,12 @@ var Renderer = {
 		}
 
 		var node = scene.getNode( "sphere");
+		if(!node)
+		{
+			console.error("Node not found in Material Preview Scene");
+			return null;
+		}
+
 		if(options.rotate)
 			node.transform.rotateY( options.rotate );
 		node.material = material;

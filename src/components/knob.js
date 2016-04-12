@@ -19,6 +19,8 @@ function Knob(o)
 	this.max_angle = 120;
 	this.axis = vec3.fromValues(0,0,1);
 
+	this._dragging = false;
+
 	if(o)
 		this.configure(o);
 }
@@ -27,7 +29,9 @@ Knob.icon = "mini-icon-knob.png";
 
 Knob.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind( scene, "mousemove", this.onmousemove, this );
+	LEvent.bind( scene, "mousedown", this.onMouse, this );
+	LEvent.bind( scene, "mouseup", this.onMouse, this );
+	LEvent.bind( scene, "mousemove", this.onMouse, this );
 	this.updateKnob();
 }
 
@@ -37,27 +41,59 @@ Knob.prototype.onRemovedFromScene = function(scene)
 }
 
 
-Knob.prototype.updateKnob = function() {
+Knob.prototype.updateKnob = function()
+{
 	if(!this._root)
 		return;
-	var f = this.value / (this.max_value - this.min_value)
-	quat.setAxisAngle(this._root.transform._rotation,this.axis, (this.min_angle + (this.max_angle - this.min_angle) * f )* DEG2RAD);
-	this._root.transform._dirty = true;
+
+	var f = this.value / (this.max_value - this.min_value);
+	var angle = (this.min_angle + (this.max_angle - this.min_angle) * f );
+	quat.setAxisAngle(this._root.transform._rotation,this.axis, angle * DEG2RAD);
+	this._root.transform.mustUpdate = true;
 }
 
-Knob.prototype.onmousemove = function(e, mouse_event) { 
-	this.value -= mouse_event.deltay * this.delta;
+Knob.prototype.onMouse = function(e, mouse_event)
+{ 
+	if( e == "mousedown")
+	{
+		if(!this._root || !this._root._instances || !this._root._instances.length)
+			return;
 
-	if(this.value > this.max_value) this.value = this.max_value;
-	else if(this.value < this.min_value) this.value = this.min_value;
+		var instance = this._root._instances[0];
 
-	this.updateKnob();
+		var cam = LS.Renderer.getCameraAtPosition( mouse_event.canvasx, mouse_event.canvasy );
+		if(!cam)
+			return;
+		var ray = cam.getRayInPixel( mouse_event.canvasx, mouse_event.canvasy );
+		if(!ray)
+			return;
 
-	LEvent.trigger( this, "change", this.value);
-	if(this._root)
-		LEvent.trigger( this._root, "knobChange", this.value );
+		this._dragging = geo.testRayBBox( ray.start, ray.direction, instance.aabb);
+	}
+	else if( e == "mouseup")
+	{
+		this._dragging = false;
+	}
+	else //mouse move
+	{
+		if(!mouse_event.dragging || !this._dragging)
+			return;
 
-	return false;
+		this.value -= mouse_event.deltay * this.delta;
+
+		if(this.value > this.max_value)
+			this.value = this.max_value;
+		else if(this.value < this.min_value)
+			this.value = this.min_value;
+
+		this.updateKnob();
+
+		LEvent.trigger( this, "change", this.value );
+		if(this._root)
+			LEvent.trigger( this._root, "knobChange", this.value );
+
+		return false;
+	}
 };
 
 LS.registerComponent( Knob );

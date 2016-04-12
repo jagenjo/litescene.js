@@ -9,13 +9,13 @@
 function Pack(o)
 {
 	this.resource_names = []; 
-	this.metadata = {};
+	this._data = {}; //here we store the original chunks from the WBin
 	this._resources_data = {};
 	if(o)
 		this.configure(o);
 }
 
-Pack.version = "0.1"; //used to know where the file comes from 
+Pack.version = "0.2"; //used to know where the file comes from 
 
 /**
 * configure the pack from an unpacked WBin
@@ -24,23 +24,38 @@ Pack.version = "0.1"; //used to know where the file comes from
 **/
 Pack.prototype.configure = function( data )
 {
-	var version = data["@version"];
-	var metadata = data["@metadata"];
-	if(metadata)
-		this.metadata = metadata.constructor === String ? JSON.parse( metadata ) : metadata;
+	this._data = LS.cloneObject( data );
 
 	//extract resource names
 	this.resource_names = data["@resource_names"];
 	this._resources_data = {};
 	if(this.resource_names)
 	{
+		delete this._data["@resource_names"];
 		for(var i in this.resource_names)
+		{
 			this._resources_data[ this.resource_names[i] ] = data[ "@RES_" + i ];
+			delete this._data[ "@RES_" + i ];
+		}
 	}
 
 	//store resources in LS.ResourcesManager
 	this.processResources();
 }
+
+Object.defineProperty( Pack.prototype, 'bindata', {
+	set: function(name)
+	{
+		throw("Pack bindata cannot be assigned");
+	},
+	get: function(){
+		if(!this._original_data)
+			this._original_data = LS.Pack.packResources( this.resource_names, this._data );
+		return this._original_data;
+	},
+	enumerable: true
+});
+
 
 Pack.fromBinary = function(data)
 {
@@ -135,22 +150,23 @@ Pack.prototype.addResources = function( resource_names, mark_them )
 * @param {boolean} mark_them [optional] marks all the resources as if they come from a pack
 * @return object containing the pack data ready to be converted to WBin
 **/
-Pack.createPack = function( filename, resource_names, metadata, mark_them )
+Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 {
 	if(!filename)
 		return;
 
 	if(!resource_names || resource_names.constructor !== Array)
 		throw("Pack.createPack resources must be array with names");
+	if(extra_data && extra_data.constructor !== Object)
+		throw("Pack.createPack extra_data must be an object with the chunks to store");
 
 	filename = filename.replace(/ /gi,"_");
 
 	var pack = new LS.Pack();
 	filename += ".wbin";
 	pack.filename = filename;
-	if(metadata)
-		pack.metadata = metadata;
-	var metadata_json = JSON.stringify( pack.metadata );
+	if(extra_data)
+		pack._data = extra_data;
 
 	pack.resource_names = resource_names;
 	for(var i = 0; i < resource_names.length; ++i)
@@ -164,7 +180,7 @@ Pack.createPack = function( filename, resource_names, metadata, mark_them )
 	}
 
 	//create the WBIN in case this pack gets stored
-	var bindata = LS.Pack.packResources( resource_names, { "@metadata": metadata_json, "@version": LS.Pack.version } );
+	var bindata = LS.Pack.packResources( resource_names, extra_data );
 	pack._original_data = bindata;
 
 	return pack;
@@ -230,4 +246,6 @@ Pack.prototype.flagResources = function()
 	}
 }
 
-LS.Classes["Pack"] = LS.Pack = Pack;
+LS.Pack = Pack;
+LS.registerResourceClass( Pack );
+

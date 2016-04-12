@@ -224,7 +224,7 @@ Take.prototype.createTrack = function( data )
 }
 
 /**
-* Assigns a value to the property of a component in a node based on the locator of that property
+* For every track, gets the interpolated value between keyframes and applies the value to the property associated with the track locator
 * Locators are in the form of "{NODE_UID}/{COMPONENT_UID}/{property_name}"
 *
 * @method applyTracks
@@ -242,6 +242,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 		if( track.enabled === false || !track.data )
 			continue;
 
+		//events are an special kind of tracks, they execute actions
 		if( track.type == "events" )
 		{
 			var keyframe = track.getKeyframeByTime( current_time );
@@ -256,12 +257,13 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			if(info.node && info.target && info.target[ keyframe[1][0] ] )
 				info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
 		}
-		else
+		else //regular tracks
 		{
-			//read from the animation
+			//read from the animation track the value
 			var sample = track.getSample( current_time, !ignore_interpolation );
-			if( sample !== undefined ) //apply to node
-				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample, root_node );
+			//apply the value to the property specified by the locator
+			if( sample !== undefined ) 
+				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
 		}
 	}
 }
@@ -956,28 +958,24 @@ Track.prototype.findTimeIndex = function( time )
 			return -1;
 		return (last/offset);
 	}
-	else //unpacked data
+
+	var last = -1;
+	for(i = 0; i < l; ++i )
 	{
-		var last = -1;
-		for(i = 0; i < l; ++i )
+		if(time > data[i][0]) 
 		{
-			if(time > data[i][0]) 
-			{
-				last = i;
-				continue;
-			}
-			if(time == data[i][0]) 
-				return i;
-			if(last == -1)
-				return -1;
-			return last;
+			last = i;
+			continue;
 		}
+		if(time == data[i][0]) 
+			return i;
 		if(last == -1)
 			return -1;
 		return last;
 	}
-
-	return -1;
+	if(last == -1)
+		return -1;
+	return last;
 }
 
 //Warning: if no result is provided the same result is reused between samples.
@@ -1272,6 +1270,10 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 
 	return result;
 }
+
+
+LS.registerResourceClass( Animation );
+
 
 LS.Interpolators = {};
 

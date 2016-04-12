@@ -385,41 +385,33 @@ global.loadFileAtlas = GL.loadFileAtlas = function loadFileAtlas(url, callback, 
 	return { done: function(callback) { deferred_callback = callback; } };
 }
 
-global.processFileAtlas = GL.processFileAtlas = function(data)
+//This parses a text file that contains several text files (they are separated by "\filename"), and returns an object with every file separatly
+global.processFileAtlas = GL.processFileAtlas = function(data, skip_trim)
 {
-	//var reg = /^[a-z0-9/_]+$/i;
 	var lines = data.split("\n");
 	var files = {};
-	var file = [];
-	var filename = "";
+
+	var current_file_lines = [];
+	var current_file_name = "";
 	for(var i = 0, l = lines.length; i < l; i++)
 	{
-		var line = lines[i].trim();
+		var line = skip_trim ? lines[i] : lines[i].trim();
 		if(!line.length)
 			continue;
-		if( line[0] == "\\") // || (line[0] == '/' && reg.test( line[1] ) ) //allow to use forward slash instead of backward slash
+		if( line[0] != "\\")
 		{
-			if(!filename)
-			{
-				filename = line.substr(1);
-				continue;
-			}
-			inner_newfile();
+			current_file_lines.push(line);
+			continue;
 		}
-		else
-			file.push(line);
+
+		if( current_file_lines.length )
+			files[ current_file_name ] = current_file_lines.join("\n");
+		current_file_lines.length = 0;
+		current_file_name = line.substr(1);
 	}
 
-	if(filename)
-		inner_newfile();
-
-	function inner_newfile()
-	{
-		var resource = file.join("\n");
-		files[ filename ] = resource;
-		file.length = 0;
-		filename = line.substr(1);
-	}
+	if( current_file_lines.length )
+		files[ current_file_name ] = current_file_lines.join("\n");
 
 	return files;
 }
@@ -1904,6 +1896,9 @@ global.Mesh = GL.Mesh = function Mesh( vertexbuffers, indexbuffers, options, gl 
 	this.vertexBuffers = {};
 	this.indexBuffers = {};
 
+	this.info = null; //here you can store extra info, like groups, which is an array of { name, start, length, material }
+	this.bounding = null; //here you can store a AABB in BBox format
+
 	if(vertexbuffers || indexbuffers)
 		this.addBuffers( vertexbuffers, indexbuffers, options ? options.stream_type : null );
 
@@ -2120,6 +2115,21 @@ Mesh.prototype.getVertexBuffer = function(name)
 */
 Mesh.prototype.createIndexBuffer = function(name, buffer_data, stream_type) {
 	//(target, data, spacing, stream_type, gl)
+
+	//cast to typed
+	if(buffer_data.constructor === Array)
+	{
+		var datatype = Uint16Array;
+		var vertices = this.vertexBuffers["vertices"];
+		if(vertices)
+		{
+			var num_vertices = vertices.data.length / 3;
+			if(num_vertices > 256*256)
+				datatype = Uint32Array;
+			buffer_data = new datatype( buffer_data );
+		}
+	}
+
 	var buffer = this.indexBuffers[name] = new GL.Buffer(gl.ELEMENT_ARRAY_BUFFER, buffer_data, 0, stream_type, this.gl );
 	return buffer;
 }
@@ -2427,7 +2437,7 @@ Mesh.prototype.flipNormals = function( stream_type  ) {
 	normals_buffer.upload( stream_type );
 
 	//reverse indices too
-	if(!this.indexBuffers["triangles"])
+	if(this.indexBuffers["triangles"])
 		this.computeIndices();
 
 	var triangles_buffer = this.indexBuffers["triangles"];
@@ -2932,9 +2942,10 @@ Mesh.mergeMeshes = function( meshes, options )
 
 	var vertex_buffers = {};
 	var index_buffers = {};
-	var offsets = {};
+	var offsets = {}; //tells how many positions indices must be offseted
 	var vertex_offsets = [];
 	var current_vertex_offset = 0;
+	var groups = [];
 
 	//vertex buffers
 	//compute size
@@ -2942,8 +2953,10 @@ Mesh.mergeMeshes = function( meshes, options )
 	{
 		var mesh_info = meshes[i];
 		var mesh = mesh_info.mesh;
-		vertex_offsets.push( current_vertex_offset );
-		current_vertex_offset += mesh.vertexBuffers["vertices"].data.length / 3;
+		var offset = current_vertex_offset;
+		vertex_offsets.push( offset );
+		var length = mesh.vertexBuffers["vertices"].data.length / 3;
+		current_vertex_offset += length;
 
 		for(var j in mesh.vertexBuffers)
 		{
@@ -2960,6 +2973,16 @@ Mesh.mergeMeshes = function( meshes, options )
 			else
 				index_buffers[j] += mesh.indexBuffers[j].data.length;
 		}
+
+		//groups
+		var group = {
+			name: "mesh_" + i,
+			start: offset,
+			length: length,
+			material: ""
+		};
+
+		groups.push( group );
 	}
 
 	//allocate
@@ -2990,11 +3013,16 @@ Mesh.mergeMeshes = function( meshes, options )
 	{
 		var mesh_info = meshes[i];
 		var mesh = mesh_info.mesh;
+		var offset = 0;
+		var length = 0;
 
 		for(var j in mesh.vertexBuffers)
 		{
 			if(!vertex_buffers[j])
 				continue;
+
+			if(j == "vertices")
+				length = mesh.vertexBuffers[j].data.length / 3;
 
 			vertex_buffers[j].set( mesh.vertexBuffers[j].data, offsets[j] );
 
@@ -3047,10 +3075,12 @@ Mesh.mergeMeshes = function( meshes, options )
 			array[i] += offset;
 	}
 
+	var extra = { info: { groups: groups } };
+
 	//return
 	if( typeof(gl) != "undefined" )
-		return new GL.Mesh( vertex_buffers,index_buffers );
-	return { vertexBuffers: vertex_buffers, indexBuffers: index_buffers };
+		return new GL.Mesh( vertex_buffers,index_buffers, extra );
+	return { vertexBuffers: vertex_buffers, indexBuffers: index_buffers, info: { groups: groups } };
 }
 
 
@@ -5357,6 +5387,9 @@ global.Shader = GL.Shader = function Shader( vertexSource, fragmentSource, macro
 		throw 'link error: ' + gl.getProgramInfoLog(this.program);
 	}
 
+	this.vs_shader = vs;
+	this.fs_shader = fs;
+
 	//Extract info from the shader
 	this.attributes = {}; 
 	this.uniformInfo = {};
@@ -5382,18 +5415,58 @@ Shader.expandMacros = function(macros)
 * @method Shader.compileSource
 * @param {Number} type could be gl.VERTEX_SHADER or gl.FRAGMENT_SHADER
 * @param {String} source the source file to compile
-* @return {WebGLHandler}
+* @return {WebGLShader} the handler from webgl
 */
-Shader.compileSource = function(type, source, gl)
+Shader.compileSource = function( type, source, gl, shader )
 {
 	gl = gl || global.gl;
-	var shader = gl.createShader(type);
+	shader = shader || gl.createShader(type);
 	gl.shaderSource(shader, source);
 	gl.compileShader(shader);
 	if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
 		throw (type == gl.VERTEX_SHADER ? "Vertex" : "Fragment") + ' shader compile error: ' + gl.getShaderInfoLog(shader);
 	}
 	return shader;
+}
+
+/**
+* It updates the code inside one shader
+* @method updateShader
+* @param {String} vertexSource 
+* @param {String} fragmentSource 
+* @param {Object} macros [optional]
+*/
+Shader.prototype.updateShader = function( vertexSource, fragmentSource, macros )
+{
+	var gl = this.gl || global.gl;
+
+	//expand macros
+	var extra_code = Shader.expandMacros( macros );
+
+	if(this.program)
+		this.program = gl.createProgram();
+
+	var vs = vertexSource.constructor === String ? GL.Shader.compileSource( gl.VERTEX_SHADER, extra_code + vertexSource, gl, this.vs_shader ) : vertexSource;
+	var fs = fragmentSource.constructor === String ? GL.Shader.compileSource( gl.FRAGMENT_SHADER, extra_code + fragmentSource, gl, this.fs_shader ) : fragmentSource;
+
+	gl.attachShader( this.program, vs, gl );
+	gl.attachShader( this.program, fs, gl );
+	gl.linkProgram( this.program );
+	if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+		throw 'link error: ' + gl.getProgramInfoLog( this.program );
+	}
+
+	//store shaders separated
+	this.vs_shader = vs;
+	this.fs_shader = fs;
+
+	//Extract info from the shader
+	this.attributes = {}; 
+	this.uniformInfo = {};
+	this.samplers = {};
+
+	//extract info about the shader to speed up future processes
+	this.extractShaderInfo();
 }
 
 /**
@@ -5405,7 +5478,7 @@ Shader.prototype.extractShaderInfo = function()
 {
 	var gl = this.gl;
 	
-	var l = gl.getProgramParameter(this.program, gl.ACTIVE_UNIFORMS);
+	var l = gl.getProgramParameter( this.program, gl.ACTIVE_UNIFORMS );
 
 	//extract uniforms info
 	for(var i = 0; i < l; ++i)
@@ -5999,13 +6072,16 @@ Shader.FLAT_FRAGMENT_SHADER = "\n\
 * @param {string} code string containg code, like "color = color * 2.0;"
 * @param {string} [uniforms=null] string containg extra uniforms, like "uniform vec3 u_pos;"
 */
-Shader.createFX = function(code, uniforms)
+Shader.createFX = function(code, uniforms, shader)
 {
 	var macros = {
 		FX_CODE: code,
 		FX_UNIFORMS: uniforms || ""
 	}
-	return new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, GL.Shader.SCREEN_FRAGMENT_FX, macros );
+	if(!shader)
+		return new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, GL.Shader.SCREEN_FRAGMENT_FX, macros );
+	shader.updateShader( GL.Shader.SCREEN_VERTEX_SHADER, GL.Shader.SCREEN_FRAGMENT_FX, macros );
+	return shader;
 }
 
 /**

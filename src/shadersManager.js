@@ -234,21 +234,7 @@ var ShadersManager = {
 		{
 			if(this.dump_compile_errors)
 			{
-				console.error("Error compiling shader: " + name);
-				console.log(err);
-				console.groupCollapsed("Vertex Shader Code");
-				//console.log("VS CODE\n************");
-				var lines = (this.global_extra_code + vs_code).split("\n");
-				for(var i in lines)
-					console.log(i + ": " + lines[i]);
-				console.groupEnd();
-
-				console.groupCollapsed("Fragment Shader Code");
-				//console.log("FS CODE\n************");
-				lines = (this.global_extra_code + fs_code).split("\n");
-				for(var i in lines)
-					console.log(i + ": " + lines[i]);
-				console.groupEnd();
+				this.dumpShaderError(name, err, vs_code, fs_code );
 				this.dump_compile_errors = false; //disable so the console dont get overflowed
 			}
 
@@ -258,6 +244,25 @@ var ShadersManager = {
 			return null;
 		}
 		return shader;
+	},
+
+	dumpShaderError: function( name, err, vs_code, fs_code )
+	{
+		console.error("Error compiling shader: " + name);
+		console.log(err);
+		console.groupCollapsed("Vertex Shader Code");
+		//console.log("VS CODE\n************");
+		var lines = (this.global_extra_code + vs_code).split("\n");
+		for(var i in lines)
+			console.log(i + ": " + lines[i]);
+		console.groupEnd();
+
+		console.groupCollapsed("Fragment Shader Code");
+		//console.log("FS CODE\n************");
+		lines = (this.global_extra_code + fs_code).split("\n");
+		for(var i in lines)
+			console.log(i + ": " + lines[i]);
+		console.groupEnd();
 	},
 
 	/**
@@ -406,7 +411,7 @@ var ShadersManager = {
 				fs_info: fs_info
 			}
 
-			console.log( template[id] );
+			//console.log( template[id] );
 		}
 
 		this.ready = true;
@@ -714,6 +719,7 @@ ShaderQuery.prototype.resolve = function()
 //ShaderQuery.prototype.addHook = function
 
 LS.ShaderQuery = ShaderQuery;
+
 
 
 //work in progress
