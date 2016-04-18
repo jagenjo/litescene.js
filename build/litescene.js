@@ -7395,7 +7395,6 @@ SurfaceMaterial.prototype.getResources = function (res)
 
 LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;
-/*
 
 /**
 * ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS
@@ -27934,8 +27933,8 @@ var parserBVH = {
 };
 
 LS.Formats.registerParser( parserBVH );
-// collada.js by Javi Agenjo (2015)
-// https://github.com/jagenjo/collada.js
+//collada.js 
+//This worker should offload the main thread from parsing big text files (DAE)
 
 (function(global){
 
@@ -28572,7 +28571,7 @@ global.Collada = {
 		return null;
 	},
 
-	readMaterial: function(url)
+		readMaterial: function(url)
 	{
 		var xmlmaterial = this.querySelectorAndId( this._xmlroot, "library_materials material", url );
 		if(!xmlmaterial)
@@ -28593,7 +28592,32 @@ global.Collada = {
 		if(!xmltechnique) 
 			return null;
 
+		//get newparams and convert to js object
+		var xmlnewparams = xmleffects.querySelectorAll("newparam");
+		var newparams = {}
+		for (var i = 0; i < xmlnewparams.length; i++) {
+
+			var init_from = xmlnewparams[i].querySelector("init_from");
+			var parent;
+			if (init_from)
+				parent = init_from.innerHTML;
+			else {
+				var source = xmlnewparams[i].querySelector("source");
+				parent = source.innerHTML;
+			}
+
+			newparams[xmlnewparams[i].getAttribute("sid")] = {
+				parent: parent
+			};
+		}
+
+
+
 		var material = {};
+
+		//read the images here because we need to access them to assign texture names
+		var images = this.readImages(this._xmlroot);
+
 
 		var xmlphong = xmltechnique.querySelector("phong");
 		if(!xmlphong) 
@@ -28641,6 +28665,17 @@ global.Collada = {
 				if(!map_id)
 					continue;
 
+				// if map_id is not a filename, lets go and look for it.
+				if (map_id.indexOf('.') === -1){
+					//check effect parents
+					map_id = this.getParentParam(newparams, map_id);
+
+					if (images[map_id])
+						map_id = images[map_id].path;
+				}
+
+				//now get the texture filename from images
+
 				var map_info = { map_id: map_id };
 				var uvs = xmlparam_value.getAttribute("texcoord");
 				map_info.uvs = uvs;
@@ -28650,6 +28685,16 @@ global.Collada = {
 
 		material.object_type = "Material";
 		return material;
+	},
+
+	getParentParam: function(newparams, param) {
+		if (!newparams[param])
+			return param;
+
+		if (newparams[param].parent)
+			return this.getParentParam(newparams, newparams[param].parent)
+		else
+			return param;
 	},
 
 	readLight: function(node, url)

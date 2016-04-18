@@ -1,4 +1,3 @@
-/*
 
 /**
 * ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS

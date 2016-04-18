@@ -3122,30 +3122,45 @@ Mesh.fromURL = function(url, on_complete, gl, options)
 	return mesh;
 }
 
+/**
+* given some data an information about the format, it search for a parser in Mesh.parsers and tries to extract the mesh information
+* Only obj supported now
+* @method parse
+* @param {*} data could be string or ArrayBuffer
+* @param {String} format parser file format name (p.e. "obj")
+* @return {?} depending on the parser
+*/
 Mesh.prototype.parse = function( data, format )
 {
 	format = format.toLowerCase();
 	var parser = GL.Mesh.parsers[ format ];
 	if(parser)
 		return parser.call(null, data, {mesh: this});
-	else
-		throw("GL.Mesh.parse: no parser found for format " + format );
-	return null;
+	throw("GL.Mesh.parse: no parser found for format " + format );
 }
 
+/**
+* It returns the mesh data encoded in the format specified
+* Only obj supported now
+* @method encode
+* @param {String} format to encode the data to (p.e. "obj")
+* @return {?} String with the info
+*/
 Mesh.prototype.encode = function( format, options )
 {
 	format = format.toLowerCase();
 	var encoder = GL.Mesh.encoders[ format ];
 	if(encoder)
 		return encoder.call(null, this, options );
-	else
-		throw("GL.Mesh.encode: no encoder found for format " + format );
-	return null;
+	throw("GL.Mesh.encode: no encoder found for format " + format );
 }
 
-
-
+/**
+* Returns a shared mesh containing a quad to be used when rendering to the screen
+* Reusing the same quad helps not filling the memory
+* @method getScreenQuad
+* @return {GL.Mesh} the screen quad
+*/
 Mesh.getScreenQuad = function(gl)
 {
 	gl = gl || global.gl;
