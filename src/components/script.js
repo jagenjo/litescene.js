@@ -41,8 +41,8 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","prefabReady","update","trigger","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
-Script.node_triggered_events = { "trigger":true, "prefabReady": true };
+Script.exported_callbacks = ["start","prefabReady","update","clicked","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
+Script.node_triggered_events = { "clicked":true, "prefabReady": true };
 
 Script.translate_events = {
 	"sceneRender": "beforeRender",
@@ -61,8 +61,9 @@ Global vars:\n\
 Exported functions:\n\
  + start: when the Scene starts\n\
  + update: when updating\n\
- + trigger : if this node is triggered\n\
+ + clicked : if this node is clicked\n\
  + render : before rendering the node\n\
+ + renderGUI : to render something in the GUI using canvas2D\n\
  + getRenderInstances: when collecting instances\n\
  + afterRender : after rendering the node\n\
  + prefabReady: when the prefab has been loaded\n\

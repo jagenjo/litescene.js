@@ -28,3 +28,15 @@ LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
 LS.STOPPED = 0;
 LS.RUNNING = 1;
 LS.PAUSED = 2;
+
+//types
+LS.TYPES = {
+	BOOLEAN: "boolean",
+	NUMBER : "number",
+	STRING : "string",
+	VEC2 : "vec2",
+	VEC3 : "vec3",
+	VEC4 : "vec3",
+	COLOR : "color",
+	TEXTURE : "texture"
+};

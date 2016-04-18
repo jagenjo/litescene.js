@@ -75,6 +75,8 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		this.size = [100,20];
 
+		this._node = null;
+
 		this.addInput("node_id", "string", { locked: true });
 
 		if(LGraphSceneNode._current_node_id)
@@ -198,6 +200,15 @@ if(typeof(LiteGraph) != "undefined")
 		return true;
 	}
 
+	LGraphSceneNode.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "node_id")
+		{
+			var scene = this.graph.getScene();
+			this._node = scene.getNode( name );
+		}
+	}
+
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
 		var result = [["Visible","boolean"],["Material","Material"]];
@@ -207,7 +218,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"],["Material","Material"]];
+		var result = [["Visible","boolean"],["Material","Material"],["onClicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}

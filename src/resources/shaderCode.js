@@ -73,7 +73,7 @@ ShaderCode.prototype.processCode = function()
 	this.getShader();
 
 	//process init code
-	var init_code = blocks[""]; //the empty block is the init block
+	var init_code = subfiles[""]; //the empty block is the init block
 	if(init_code)
 	{
 		if(LS.catch_exceptions)
@@ -120,7 +120,7 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	flags = flags || 0;
 
 	//search for a compiled version of the shader
-	var shader = this._compiled_shaders[render_mode];
+	var shader = this._compiled_shaders[ render_mode ];
 	if(shader)
 		return shader;
 
@@ -133,17 +133,21 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 
 	//compile the shader and return it
 	if(!LS.catch_exceptions)
-		return this._compiled_shaders[ render_mode ] = shader = new GL.Shader( code.vs.code, code.fs.code );
+		shader = new GL.Shader( code.vs.code, code.fs.code );
 
 	try
 	{
-		return this._compiled_shaders[ render_mode ] = shader = new GL.Shader( code.vs.code, code.fs.code );
+		shader = new GL.Shader( code.vs.code, code.fs.code );
 	}
 	catch(err)
 	{
 		console.error(err);
 		LS.dispatchCodeError(err);
+		return;
 	}
+
+	this._compiled_shaders[ render_mode ] = shader;
+	return shader;
 }
 
 //searches for materials using this ShaderCode and forces them to be updated (update the properties)

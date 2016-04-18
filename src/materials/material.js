@@ -2,12 +2,9 @@
 
 
 //Material class **************************
-/* Warning: a material is not a component, because it can be shared by multiple nodes */
-
 /**
-* Material class contains all the info about how a mesh should be rendered, more in a highlevel format.
-* Most of the info is Colors, factors and Textures but it can also specify a shader or some flags.
-* Materials could be shared among different objects.
+* A Material is a class in charge of defining how to render an object, there are several classes for Materials
+* but this class is more like a template for other material classes.
 * @namespace LS
 * @class Material
 * @constructor
@@ -22,7 +19,6 @@ function Material(o)
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.blend_mode = LS.Blend.NORMAL;
-	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
 	//flags
 	this.alpha_test = false;
@@ -45,18 +41,6 @@ function Material(o)
 	Object.defineProperty( this, 'opacity', {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },
-		enumerable: true
-	});
-
-	Object.defineProperty( this, 'specular_factor', {
-		get: function() { return this._specular_data[0]; },
-		set: function(v) { this._specular_data[0] = v; },
-		enumerable: true
-	});
-
-	Object.defineProperty( this, 'specular_gloss', {
-		get: function() { return this._specular_data[1]; },
-		set: function(v) { this._specular_data[1] = v; },
 		enumerable: true
 	});
 
@@ -129,7 +113,7 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
+Material.texture_channels = []; //base material doesnt support any texture
 
 Material.prototype.applyToRenderInstance = function(ri)
 {
@@ -244,11 +228,10 @@ Material.prototype.fillUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
 	uniforms.u_diffuse_color = this._diffuse;
-
-	uniforms.u_specular = this._specular_data;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
-	uniforms.u_reflection = this.reflection_factor;
+	uniforms.u_specular = vec2.create([1,50]);
+	uniforms.u_reflection = 0.0;
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -353,8 +336,6 @@ Material.prototype.getProperties = function()
 		color:"vec3",
 		opacity:"number",
 		blend_mode: "number",
-		specular_factor:"number",
-		specular_gloss:"number",
 		alpha_test:"boolean",
 		alpha_test_shadows:"boolean",
 		uvs_matrix:"mat3"
@@ -796,6 +777,6 @@ Material.prototype.prepareMaterial = function( scene )
 }
 
 
-LS.registerMaterialClass( Material );
+//LS.registerMaterialClass( Material );
 LS.registerResourceClass( Material );
 LS.Material = Material;

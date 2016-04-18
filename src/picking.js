@@ -8,6 +8,8 @@
 */
 var Picking = {
 
+	picking_color_offset: 10, //color difference between picking objects
+
 	/**
 	* Renders the pixel and retrieves the color to detect which object it was, slow but accurate
 	* @method getNodeAtCanvasPosition
@@ -58,7 +60,7 @@ var Picking = {
 		this._picking_nodes = {};
 
 		//render all Render Instances
-		this.renderPickingBuffer( scene, camera, x,y, layers );
+		this.getPickingColorFromBuffer( scene, camera, x,y, layers );
 
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
@@ -170,7 +172,7 @@ var Picking = {
 	*/
 	getNextPickingColor: function( info )
 	{
-		this._picking_next_color_id += 10;
+		this._picking_next_color_id += this.picking_color_offset;
 		var pick_color = new Uint32Array(1); //store four bytes number
 		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
@@ -188,31 +190,26 @@ var Picking = {
 	_picking_nodes: {},
 	_picking_render_settings: new RenderSettings(),
 
-	renderPickingBuffer: function( scene, camera, x, y, layers )
+	getPickingColorFromBuffer: function( scene, camera, x, y, layers )
 	{
-		var that = this;
-		if(layers === undefined)
-			layers = 0xFFFF;
-
+		//create texture
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
+			this._pickingFBO = new GL.FBO([this._pickingMap]);
 			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
 		//y = gl.canvas.height - y; //reverse Y
 		var small_area = true;
-		this._picking_next_color_id = 0;
 
 		LS.Renderer._current_target = this._pickingMap;
-		var picking_render_settings = this._picking_render_settings;
 
-		this._pickingMap.drawTo(function() {
+		this._pickingFBO.bind();
+
 			//var viewport = camera.getLocalViewport();
 			//camera._real_aspect = viewport[2] / viewport[3];
 			//gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
-
-			LS.Renderer.enableCamera( camera, that._picking_render_settings );
 
 			if(small_area)
 			{
@@ -220,36 +217,48 @@ var Picking = {
 				gl.enable(gl.SCISSOR_TEST);
 			}
 
-			gl.clearColor(0,0,0,0);
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			this.renderPickingBuffer( scene, camera, layers, [x,y] );
 
-			//gl.viewport(x-20,y-20,40,40);
-			LS.Renderer.setRenderPass("picking");
-			picking_render_settings.layers = layers;
-
-			//check instances colliding with cursor using a ray against AABBs
-			//TODO
-
-			LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
-			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
-
-			LEvent.trigger( scene, "renderPicking", [x,y] );
-			LEvent.trigger( LS.Renderer, "renderPicking", [x,y] );
-
-			LS.Renderer.setRenderPass("color");
-
-			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, that._picking_color );
+			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, this._picking_color );
 
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 
-		});
+		this._pickingFBO.unbind();
 
-		LS.Renderer._current_target = null;
+		LS.Renderer._current_target = null; //??? deprecated
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		//trace(" END Rendering: ", this._picking_color );
 		return this._picking_color;
+	},
+
+	renderPickingBuffer: function( scene, camera, layers, mouse_pos )
+	{
+		if(layers === undefined)
+			layers = 0xFFFF;
+		var picking_render_settings = this._picking_render_settings;
+
+		LS.Renderer.enableCamera( camera, this._picking_render_settings );
+
+		gl.clearColor(0,0,0,0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+		//gl.viewport(x-20,y-20,40,40);
+		this._picking_next_color_id = 0;
+		LS.Renderer.setRenderPass("picking");
+		picking_render_settings.layers = layers;
+
+		//check instances colliding with cursor using a ray against AABBs
+		//TODO
+
+		LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
+		//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
+
+		LEvent.trigger( scene, "renderPicking", mouse_pos );
+		LEvent.trigger( LS.Renderer, "renderPicking", mouse_pos );
+
+		LS.Renderer.setRenderPass("color");
 	}
 };
 

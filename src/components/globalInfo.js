@@ -2,7 +2,6 @@
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
-	this.createProperty( "background_color", GlobalInfo.DEFAULT_BACKGROUND_COLOR, "color" );
 
 	this._render_settings = new LS.RenderSettings();
 
@@ -41,7 +40,6 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 });
 
 GlobalInfo.icon = "mini-icon-bg.png";
-GlobalInfo.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
 GlobalInfo.prototype.onAddedToScene = function(scene)
@@ -68,7 +66,6 @@ GlobalInfo.prototype.getProperties = function()
 {
 	return {
 		"ambient_color":"color",
-		"background_color":"color",
 		"textures/environment": "texture",
 		"textures/irradiance": "texture",
 		"render_settings":"RenderSettings"

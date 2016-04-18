@@ -114,6 +114,7 @@ var Renderer = {
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 
+		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
 		{
 			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -153,20 +154,28 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
 		scene.triggerInNodes("beforeRenderMainPass", render_settings ); //TODO: remove
 
-		//enable FX
-		if(render_settings.render_fx)
-			LEvent.trigger( scene, "enableFrameBuffer", render_settings );
+		//allows to overwrite renderer
+		if(this.custom_renderer && this.custom_renderer.render && render_settings.custom_renderer )
+		{
+			this.custom_renderer.render( cameras, render_settings );
+		}
+		else
+		{
+			//enable FX
+			if(render_settings.render_fx)
+				LEvent.trigger( scene, "enableFrameBuffer", render_settings );
 
-		//render
-		this.renderFrameCameras( cameras, render_settings );
+			//render
+			this.renderFrameCameras( cameras, render_settings );
 
-		if( render_settings.keep_viewport )
-			gl.setViewport( this._global_viewport );
+			//keep original viewport
+			if( render_settings.keep_viewport )
+				gl.setViewport( this._global_viewport );
 
-
-		//disable and show FX
-		if(render_settings.render_fx)
-			LEvent.trigger( scene, "showFrameBuffer", render_settings );
+			//disable and show FX
+			if(render_settings.render_fx)
+				LEvent.trigger( scene, "showFrameBuffer", render_settings );
+		}
 
 		if(render_settings.render_gui)
 			LEvent.trigger( scene, "renderGUI", render_settings );
@@ -183,7 +192,7 @@ var Renderer = {
 	* @param {Array} cameras
 	* @param {RenderSettings} render_settings
 	*/
-	renderFrameCameras: function( cameras, render_settings, global_render_frame )
+	renderFrameCameras: function( cameras, render_settings )
 	{
 		var scene = this._current_scene;
 
@@ -227,12 +236,7 @@ var Renderer = {
 
 		//clear buffer
 		var info = scene.info;
-		if(info)
-		{
-			gl.clearColor( info.background_color[0],info.background_color[1],info.background_color[2], info.background_color[3] );
-		}
-		else
-			gl.clearColor(0,0,0,0);
+		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
 
 		if(render_settings.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
@@ -892,7 +896,6 @@ var Renderer = {
 			u_brightness_factor: render_settings.brightness_factor != null ? render_settings.brightness_factor : 1,
 			u_colorclip_factor: render_settings.colorclip_factor != null ? render_settings.colorclip_factor : 0,
 			u_ambient_light: scene.info.ambient_color,
-			u_background_color: scene.info.background_color.subarray(0,3),
 			u_viewport: gl.viewport_data
 		};
 
@@ -996,7 +999,6 @@ var Renderer = {
 			var camera = cameras[i];
 			camera._rendering_index = i;
 		}
-
 
 		//meh!
 		if(!this._main_camera)
@@ -1102,6 +1104,7 @@ var Renderer = {
 			var instance = instances[i];
 			var node = instance.node;
 			var material = instance.material;
+			instance.index = i;
 
 			var query = instance._final_query;
 			query.clear();
@@ -1122,7 +1125,7 @@ var Renderer = {
 			samplers.merge( instance.samplers );			
 		}
 
-
+		//store all the info
 		var lights = scene._lights;
 
 		this._blend_instances = blend_instances;
@@ -1161,7 +1164,7 @@ var Renderer = {
 	* @param {Texture} texture
 	* @param {RenderSettings} render_settings
 	*/
-	renderInstancesToRT: function(cam, texture, render_settings)
+	renderInstancesToRT: function( cam, texture, render_settings )
 	{
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
@@ -1178,7 +1181,7 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
-			gl.clearColor(scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
+			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
@@ -1198,7 +1201,7 @@ var Renderer = {
 	* @param {number} far
 	* @return {Texture} the resulting texture
 	*/
-	renderToCubemap: function(position, size, texture, render_settings, near, far)
+	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color )
 	{
 		size = size || 256;
 		near = near || 1;
@@ -1215,10 +1218,10 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
-			if(texture._is_shadowmap || !scene.info )
+			if(texture._is_shadowmap || !background_color )
 				gl.clearColor(0,0,0,0);
 			else
-				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
+				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
@@ -1244,14 +1247,12 @@ var Renderer = {
 	{
 		options = options || {};
 
+		//create scene
 		var scene = this._material_scene;
 		if(!scene)
 		{
 			scene = this._material_scene = new LS.SceneTree();
-			if(options.background_color)
-				scene.info.background_color.set(options.background_color);
-			else
-				scene.info.background_color.set([0.0,0.0,0.0,0]);
+			scene.root.camera.background_color.set([0.0,0.0,0.0,0]);
 			if(options.environment_texture)
 				scene.info.textures.environment = options.environment_texture;
 			var node = new LS.SceneNode( "sphere" );
@@ -1259,6 +1260,9 @@ var Renderer = {
 			node.addComponent( compo );
 			scene.root.addChild( node );
 		}
+
+		if(options.background_color)
+			scene.root.camera.background_color.set(options.background_color);
 
 		var node = scene.getNode( "sphere");
 		if(!node)
@@ -1269,6 +1273,7 @@ var Renderer = {
 
 		if(options.rotate)
 			node.transform.rotateY( options.rotate );
+
 		node.material = material;
 
 		if(options.to_viewport)
@@ -1289,7 +1294,6 @@ var Renderer = {
 		});
 
 		var canvas = tex.toCanvas(null, true);
-		//document.body.appendChild( canvas ); //debug
 		return canvas;
 	},
 

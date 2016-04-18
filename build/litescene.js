@@ -1546,6 +1546,18 @@ LS.STOPPED = 0;
 LS.RUNNING = 1;
 LS.PAUSED = 2;
 
+//types
+LS.TYPES = {
+	BOOLEAN: "boolean",
+	NUMBER : "number",
+	STRING : "string",
+	VEC2 : "vec2",
+	VEC3 : "vec3",
+	VEC4 : "vec3",
+	COLOR : "color",
+	TEXTURE : "texture"
+};
+
 var Network = {
 
 	default_dataType: "arraybuffer",
@@ -5346,12 +5358,9 @@ GL.Mesh.prototype.toBinary = function()
 
 
 //Material class **************************
-/* Warning: a material is not a component, because it can be shared by multiple nodes */
-
 /**
-* Material class contains all the info about how a mesh should be rendered, more in a highlevel format.
-* Most of the info is Colors, factors and Textures but it can also specify a shader or some flags.
-* Materials could be shared among different objects.
+* A Material is a class in charge of defining how to render an object, there are several classes for Materials
+* but this class is more like a template for other material classes.
 * @namespace LS
 * @class Material
 * @constructor
@@ -5366,7 +5375,6 @@ function Material(o)
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.blend_mode = LS.Blend.NORMAL;
-	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 
 	//flags
 	this.alpha_test = false;
@@ -5389,18 +5397,6 @@ function Material(o)
 	Object.defineProperty( this, 'opacity', {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },
-		enumerable: true
-	});
-
-	Object.defineProperty( this, 'specular_factor', {
-		get: function() { return this._specular_data[0]; },
-		set: function(v) { this._specular_data[0] = v; },
-		enumerable: true
-	});
-
-	Object.defineProperty( this, 'specular_gloss', {
-		get: function() { return this._specular_data[1]; },
-		set: function(v) { this._specular_data[1] = v; },
 		enumerable: true
 	});
 
@@ -5473,7 +5469,7 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-Material.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, Material.ENVIRONMENT_TEXTURE ];
+Material.texture_channels = []; //base material doesnt support any texture
 
 Material.prototype.applyToRenderInstance = function(ri)
 {
@@ -5588,11 +5584,10 @@ Material.prototype.fillUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
 	uniforms.u_diffuse_color = this._diffuse;
-
-	uniforms.u_specular = this._specular_data;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
-	uniforms.u_reflection = this.reflection_factor;
+	uniforms.u_specular = vec2.create([1,50]);
+	uniforms.u_reflection = 0.0;
 
 	//iterate through textures in the material
 	for(var i in this.textures) 
@@ -5697,8 +5692,6 @@ Material.prototype.getProperties = function()
 		color:"vec3",
 		opacity:"number",
 		blend_mode: "number",
-		specular_factor:"number",
-		specular_gloss:"number",
 		alpha_test:"boolean",
 		alpha_test_shadows:"boolean",
 		uvs_matrix:"mat3"
@@ -6140,7 +6133,7 @@ Material.prototype.prepareMaterial = function( scene )
 }
 
 
-LS.registerMaterialClass( Material );
+//LS.registerMaterialClass( Material );
 LS.registerResourceClass( Material );
 LS.Material = Material;
 
@@ -6154,7 +6147,7 @@ LS.Material = Material;
 * @namespace LS
 * @class StandardMaterial
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object [optional] to configure from
 */
 
 function StandardMaterial(o)
@@ -6168,6 +6161,7 @@ function StandardMaterial(o)
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 
+	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 	this.specular_ontop = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
@@ -6218,6 +6212,19 @@ Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
 	set: function(v) { this._extra_data.set( v ); },
 	enumerable: true
 });
+
+Object.defineProperty( StandardMaterial.prototype, 'specular_factor', {
+	get: function() { return this._specular_data[0]; },
+	set: function(v) { this._specular_data[0] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
+	get: function() { return this._specular_data[1]; },
+	set: function(v) { this._specular_data[1] = v; },
+	enumerable: true
+});
+
 
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
@@ -6452,6 +6459,8 @@ StandardMaterial.prototype.setProperty = function(name, value)
 	switch(name)
 	{
 		//numbers
+		case "specular_factor":
+		case "specular_gloss":
 		case "backlight_factor":
 		case "reflection_factor":
 		case "reflection_fresnel":
@@ -6502,29 +6511,31 @@ StandardMaterial.prototype.getProperties = function()
 
 	//add some more
 	o.merge({
-		shader_name: "string",
-		backlight_factor:"number",
-		reflection_factor:"number",
-		reflection_fresnel:"number",
-		velvet_exp:"number",
+		shader_name:  LS.TYPES.STRING,
+		specular_factor: LS.TYPES.NUMBER,
+		specular_gloss: LS.TYPES.NUMBER,
+		backlight_factor: LS.TYPES.NUMBER,
+		reflection_factor: LS.TYPES.NUMBER,
+		reflection_fresnel: LS.TYPES.NUMBER,
+		velvet_exp: LS.TYPES.NUMBER,
 
-		normalmap_factor:"number",
-		displacementmap_factor:"number",
-		extra_factor:"number",
-		extra_surface_shader_code:"string",
+		normalmap_factor: LS.TYPES.NUMBER,
+		displacementmap_factor: LS.TYPES.NUMBER,
+		extra_factor: LS.TYPES.NUMBER,
+		extra_surface_shader_code: LS.TYPES.STRING,
 
-		ambient:"vec3",
-		emissive:"vec3",
-		velvet:"vec3",
-		extra_color:"vec3",
-		detail_factor:"number",
-		detail_scale:"vec2",
+		ambient: LS.TYPES.VEC3,
+		emissive: LS.TYPES.VEC3,
+		velvet: LS.TYPES.VEC3,
+		extra_color: LS.TYPES.VEC3,
+		detail_factor: LS.TYPES.NUMBER,
+		detail_scale: LS.TYPES.VEC2,
 
-		specular_ontop:"boolean",
-		normalmap_tangent:"boolean",
-		reflection_specular:"boolean",
-		use_scene_ambient:"boolean",
-		velvet_additive:"boolean"
+		specular_ontop: LS.TYPES.BOOLEAN,
+		normalmap_tangent: LS.TYPES.BOOLEAN,
+		reflection_specular: LS.TYPES.BOOLEAN,
+		use_scene_ambient: LS.TYPES.BOOLEAN,
+		velvet_additive: LS.TYPES.BOOLEAN
 	});
 
 	return o;
@@ -6551,22 +6562,22 @@ SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "displacementmap_factor":
 		case "extra_factor":
 		case "detail_factor":
-			type = "number"; break;
+			type = LS.TYPES.NUMBER; break;
 		case "extra_surface_shader_code":
-			type = "string"; break;
+			type = LS.TYPES.STRING; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
 		case "extra_color":
-			type = "vec3"; break;
+			type = LS.TYPES.VEC3; break;
 		case "detail_scale":
-			type = "vec2"; break;
+			type = LS.TYPES.VEC2; break;
 		case "specular_ontop":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "velvet_additive":
-			type = "boolean"; break;
+			type = LS.TYPES.BOOLEAN; break;
 		default:
 			return null;
 	}
@@ -7384,7 +7395,15 @@ SurfaceMaterial.prototype.getResources = function (res)
 
 LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;
-/* This material is aimed to use your own shader instead of using the global one */
+/*
+
+/**
+* ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS
+* @namespace LS
+* @class ShaderMaterial
+* @constructor
+* @param {Object} object [optional] to configure from
+*/
 function ShaderMaterial( o )
 {
 	Material.call( this, null );
@@ -7428,41 +7447,16 @@ Object.defineProperty( ShaderMaterial.prototype, "properties", {
 	}
 });
 
-/*
-ShaderMaterial.prototype.serialize = function()
-{
-	var o = LS.cloneObject(this);
-	o.material_class = LS.getObjectClassName(this);
-	o.properties = LS.cloneObject( this._properties );
-	return o;
-}
-*/
-
-/*
-ShaderMaterial.prototype.configure = function( o )
-{
-	if( Material.prototype.setProperty.call(this,name,value) )
-		return true;
-
-	this._shader = o.shader;
-	if(o.properties)
-	{
-		this._properties = o.properties;
-		this._properties_by_name = {};
-		for(var i in this._properties)
-			this._properties_by_name[ this._properties[i].name ] = this._properties[i];
-	}
-	this.processShaderCode();
-}
-*/
-
-ShaderMaterial.prototype.createUniform = function(name, uniform, value, type, options )
+ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, options )
 {
 	if(!name || !uniform)
 		throw("parameter missing in createUniform");
 
-	value = value || 0;
 	type = type || "Number";
+	value = value || 0;
+
+	if( type.constructor !== String )
+		throw("type must be string");
 
 	if(value && value.length)
 		value = new Float32Array( value );//cast them always
@@ -10811,7 +10805,7 @@ ShaderCode.prototype.processCode = function()
 	this.getShader();
 
 	//process init code
-	var init_code = blocks[""]; //the empty block is the init block
+	var init_code = subfiles[""]; //the empty block is the init block
 	if(init_code)
 	{
 		if(LS.catch_exceptions)
@@ -10858,7 +10852,7 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	flags = flags || 0;
 
 	//search for a compiled version of the shader
-	var shader = this._compiled_shaders[render_mode];
+	var shader = this._compiled_shaders[ render_mode ];
 	if(shader)
 		return shader;
 
@@ -10871,17 +10865,21 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 
 	//compile the shader and return it
 	if(!LS.catch_exceptions)
-		return this._compiled_shaders[ render_mode ] = shader = new GL.Shader( code.vs.code, code.fs.code );
+		shader = new GL.Shader( code.vs.code, code.fs.code );
 
 	try
 	{
-		return this._compiled_shaders[ render_mode ] = shader = new GL.Shader( code.vs.code, code.fs.code );
+		shader = new GL.Shader( code.vs.code, code.fs.code );
 	}
 	catch(err)
 	{
 		console.error(err);
 		LS.dispatchCodeError(err);
+		return;
 	}
+
+	this._compiled_shaders[ render_mode ] = shader;
+	return shader;
 }
 
 //searches for materials using this ShaderCode and forces them to be updated (update the properties)
@@ -11096,6 +11094,8 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		this.size = [100,20];
 
+		this._node = null;
+
 		this.addInput("node_id", "string", { locked: true });
 
 		if(LGraphSceneNode._current_node_id)
@@ -11219,6 +11219,15 @@ if(typeof(LiteGraph) != "undefined")
 		return true;
 	}
 
+	LGraphSceneNode.prototype.onPropertyChanged = function(name,value)
+	{
+		if(name == "node_id")
+		{
+			var scene = this.graph.getScene();
+			this._node = scene.getNode( name );
+		}
+	}
+
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
 		var result = [["Visible","boolean"],["Material","Material"]];
@@ -11228,7 +11237,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"],["Material","Material"]];
+		var result = [["Visible","boolean"],["Material","Material"],["onClicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
 		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
@@ -12944,6 +12953,7 @@ function RenderInstance( node, component )
 	this._key = ""; //not used yet
 	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
 	this.layers = 3;
+	this.index = -1; //used to know the rendering order
 
 	//info about the mesh
 	this.vertex_buffers = {};
@@ -13578,6 +13588,7 @@ var Renderer = {
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 
+		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
 		{
 			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -13617,20 +13628,28 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
 		scene.triggerInNodes("beforeRenderMainPass", render_settings ); //TODO: remove
 
-		//enable FX
-		if(render_settings.render_fx)
-			LEvent.trigger( scene, "enableFrameBuffer", render_settings );
+		//allows to overwrite renderer
+		if(this.custom_renderer && this.custom_renderer.render && render_settings.custom_renderer )
+		{
+			this.custom_renderer.render( cameras, render_settings );
+		}
+		else
+		{
+			//enable FX
+			if(render_settings.render_fx)
+				LEvent.trigger( scene, "enableFrameBuffer", render_settings );
 
-		//render
-		this.renderFrameCameras( cameras, render_settings );
+			//render
+			this.renderFrameCameras( cameras, render_settings );
 
-		if( render_settings.keep_viewport )
-			gl.setViewport( this._global_viewport );
+			//keep original viewport
+			if( render_settings.keep_viewport )
+				gl.setViewport( this._global_viewport );
 
-
-		//disable and show FX
-		if(render_settings.render_fx)
-			LEvent.trigger( scene, "showFrameBuffer", render_settings );
+			//disable and show FX
+			if(render_settings.render_fx)
+				LEvent.trigger( scene, "showFrameBuffer", render_settings );
+		}
 
 		if(render_settings.render_gui)
 			LEvent.trigger( scene, "renderGUI", render_settings );
@@ -13647,7 +13666,7 @@ var Renderer = {
 	* @param {Array} cameras
 	* @param {RenderSettings} render_settings
 	*/
-	renderFrameCameras: function( cameras, render_settings, global_render_frame )
+	renderFrameCameras: function( cameras, render_settings )
 	{
 		var scene = this._current_scene;
 
@@ -13691,12 +13710,7 @@ var Renderer = {
 
 		//clear buffer
 		var info = scene.info;
-		if(info)
-		{
-			gl.clearColor( info.background_color[0],info.background_color[1],info.background_color[2], info.background_color[3] );
-		}
-		else
-			gl.clearColor(0,0,0,0);
+		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
 
 		if(render_settings.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
@@ -14356,7 +14370,6 @@ var Renderer = {
 			u_brightness_factor: render_settings.brightness_factor != null ? render_settings.brightness_factor : 1,
 			u_colorclip_factor: render_settings.colorclip_factor != null ? render_settings.colorclip_factor : 0,
 			u_ambient_light: scene.info.ambient_color,
-			u_background_color: scene.info.background_color.subarray(0,3),
 			u_viewport: gl.viewport_data
 		};
 
@@ -14460,7 +14473,6 @@ var Renderer = {
 			var camera = cameras[i];
 			camera._rendering_index = i;
 		}
-
 
 		//meh!
 		if(!this._main_camera)
@@ -14566,6 +14578,7 @@ var Renderer = {
 			var instance = instances[i];
 			var node = instance.node;
 			var material = instance.material;
+			instance.index = i;
 
 			var query = instance._final_query;
 			query.clear();
@@ -14586,7 +14599,7 @@ var Renderer = {
 			samplers.merge( instance.samplers );			
 		}
 
-
+		//store all the info
 		var lights = scene._lights;
 
 		this._blend_instances = blend_instances;
@@ -14625,7 +14638,7 @@ var Renderer = {
 	* @param {Texture} texture
 	* @param {RenderSettings} render_settings
 	*/
-	renderInstancesToRT: function(cam, texture, render_settings)
+	renderInstancesToRT: function( cam, texture, render_settings )
 	{
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
@@ -14642,7 +14655,7 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
-			gl.clearColor(scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
+			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			//render scene
@@ -14662,7 +14675,7 @@ var Renderer = {
 	* @param {number} far
 	* @return {Texture} the resulting texture
 	*/
-	renderToCubemap: function(position, size, texture, render_settings, near, far)
+	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color )
 	{
 		size = size || 256;
 		near = near || 1;
@@ -14679,10 +14692,10 @@ var Renderer = {
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
-			if(texture._is_shadowmap || !scene.info )
+			if(texture._is_shadowmap || !background_color )
 				gl.clearColor(0,0,0,0);
 			else
-				gl.clearColor( scene.info.background_color[0], scene.info.background_color[1], scene.info.background_color[2], scene.info.background_color[3] );
+				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
 
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
@@ -14708,14 +14721,12 @@ var Renderer = {
 	{
 		options = options || {};
 
+		//create scene
 		var scene = this._material_scene;
 		if(!scene)
 		{
 			scene = this._material_scene = new LS.SceneTree();
-			if(options.background_color)
-				scene.info.background_color.set(options.background_color);
-			else
-				scene.info.background_color.set([0.0,0.0,0.0,0]);
+			scene.root.camera.background_color.set([0.0,0.0,0.0,0]);
 			if(options.environment_texture)
 				scene.info.textures.environment = options.environment_texture;
 			var node = new LS.SceneNode( "sphere" );
@@ -14723,6 +14734,9 @@ var Renderer = {
 			node.addComponent( compo );
 			scene.root.addChild( node );
 		}
+
+		if(options.background_color)
+			scene.root.camera.background_color.set(options.background_color);
 
 		var node = scene.getNode( "sphere");
 		if(!node)
@@ -14733,6 +14747,7 @@ var Renderer = {
 
 		if(options.rotate)
 			node.transform.rotateY( options.rotate );
+
 		node.material = material;
 
 		if(options.to_viewport)
@@ -14753,7 +14768,6 @@ var Renderer = {
 		});
 
 		var canvas = tex.toCanvas(null, true);
-		//document.body.appendChild( canvas ); //debug
 		return canvas;
 	},
 
@@ -14824,6 +14838,8 @@ LS.Renderer = Renderer;
 */
 var Picking = {
 
+	picking_color_offset: 10, //color difference between picking objects
+
 	/**
 	* Renders the pixel and retrieves the color to detect which object it was, slow but accurate
 	* @method getNodeAtCanvasPosition
@@ -14874,7 +14890,7 @@ var Picking = {
 		this._picking_nodes = {};
 
 		//render all Render Instances
-		this.renderPickingBuffer( scene, camera, x,y, layers );
+		this.getPickingColorFromBuffer( scene, camera, x,y, layers );
 
 		this._picking_color[3] = 0; //remove alpha, because alpha is always 255
 		var id = new Uint32Array(this._picking_color.buffer)[0]; //get only element
@@ -14986,7 +15002,7 @@ var Picking = {
 	*/
 	getNextPickingColor: function( info )
 	{
-		this._picking_next_color_id += 10;
+		this._picking_next_color_id += this.picking_color_offset;
 		var pick_color = new Uint32Array(1); //store four bytes number
 		pick_color[0] = this._picking_next_color_id; //with the picking color for this object
 		var byte_pick_color = new Uint8Array( pick_color.buffer ); //read is as bytes
@@ -15004,31 +15020,26 @@ var Picking = {
 	_picking_nodes: {},
 	_picking_render_settings: new RenderSettings(),
 
-	renderPickingBuffer: function( scene, camera, x, y, layers )
+	getPickingColorFromBuffer: function( scene, camera, x, y, layers )
 	{
-		var that = this;
-		if(layers === undefined)
-			layers = 0xFFFF;
-
+		//create texture
 		if(this._pickingMap == null || this._pickingMap.width != gl.canvas.width || this._pickingMap.height != gl.canvas.height )
 		{
 			this._pickingMap = new GL.Texture( gl.canvas.width, gl.canvas.height, { format: gl.RGBA, filter: gl.NEAREST });
+			this._pickingFBO = new GL.FBO([this._pickingMap]);
 			//LS.ResourcesManager.textures[":picking"] = this._pickingMap; //debug the texture
 		}
 
 		//y = gl.canvas.height - y; //reverse Y
 		var small_area = true;
-		this._picking_next_color_id = 0;
 
 		LS.Renderer._current_target = this._pickingMap;
-		var picking_render_settings = this._picking_render_settings;
 
-		this._pickingMap.drawTo(function() {
+		this._pickingFBO.bind();
+
 			//var viewport = camera.getLocalViewport();
 			//camera._real_aspect = viewport[2] / viewport[3];
 			//gl.viewport( viewport[0], viewport[1], viewport[2], viewport[3] );
-
-			LS.Renderer.enableCamera( camera, that._picking_render_settings );
 
 			if(small_area)
 			{
@@ -15036,36 +15047,48 @@ var Picking = {
 				gl.enable(gl.SCISSOR_TEST);
 			}
 
-			gl.clearColor(0,0,0,0);
-			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			this.renderPickingBuffer( scene, camera, layers, [x,y] );
 
-			//gl.viewport(x-20,y-20,40,40);
-			LS.Renderer.setRenderPass("picking");
-			picking_render_settings.layers = layers;
-
-			//check instances colliding with cursor using a ray against AABBs
-			//TODO
-
-			LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
-			//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
-
-			LEvent.trigger( scene, "renderPicking", [x,y] );
-			LEvent.trigger( LS.Renderer, "renderPicking", [x,y] );
-
-			LS.Renderer.setRenderPass("color");
-
-			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, that._picking_color );
+			gl.readPixels(x,y,1,1,gl.RGBA,gl.UNSIGNED_BYTE, this._picking_color );
 
 			if(small_area)
 				gl.disable(gl.SCISSOR_TEST);
 
-		});
+		this._pickingFBO.unbind();
 
-		LS.Renderer._current_target = null;
+		LS.Renderer._current_target = null; //??? deprecated
 
 		//if(!this._picking_color) this._picking_color = new Uint8Array(4); //debug
 		//trace(" END Rendering: ", this._picking_color );
 		return this._picking_color;
+	},
+
+	renderPickingBuffer: function( scene, camera, layers, mouse_pos )
+	{
+		if(layers === undefined)
+			layers = 0xFFFF;
+		var picking_render_settings = this._picking_render_settings;
+
+		LS.Renderer.enableCamera( camera, this._picking_render_settings );
+
+		gl.clearColor(0,0,0,0);
+		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+		//gl.viewport(x-20,y-20,40,40);
+		this._picking_next_color_id = 0;
+		LS.Renderer.setRenderPass("picking");
+		picking_render_settings.layers = layers;
+
+		//check instances colliding with cursor using a ray against AABBs
+		//TODO
+
+		LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
+		//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
+
+		LEvent.trigger( scene, "renderPicking", mouse_pos );
+		LEvent.trigger( LS.Renderer, "renderPicking", mouse_pos );
+
+		LS.Renderer.setRenderPass("color");
 	}
 };
 
@@ -16765,6 +16788,8 @@ function Camera(o)
 	this._viewport = new Float32Array([0,0,1,1]);
 	this._viewport_in_pixels = vec4.create(); //viewport in screen coordinates
 
+	this._background_color = vec4.fromValues(0,0,0,1);
+
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
@@ -16796,7 +16821,8 @@ function Camera(o)
 		u_camera_eye: this._global_eye,
 		u_camera_front: this._global_front,
 		u_camera_planes: vec2.fromValues( this.near, this.far ),
-		u_camera_perspective: vec3.create()
+		u_camera_perspective: vec3.create(),
+		u_background_color: this._background_color
 	};
 
 	this.updateMatrices();
@@ -17060,6 +17086,19 @@ Object.defineProperty( Camera.prototype, "viewport_size", {
 	},
 	set: function(v) {
 		this._viewport.set(v,2);
+	},
+	enumerable: true
+});
+
+/**
+* @property background_color {vec4}
+*/
+Object.defineProperty( Camera.prototype, "background_color", {
+	get: function() {
+		return this._background_color;
+	},
+	set: function(v) {
+		this._background_color.set(v);
 	},
 	enumerable: true
 });
@@ -17752,6 +17791,8 @@ Camera.prototype.configure = function(o)
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
 
+	if(o.background_color !== undefined) this._background_color.set( o.background_color );
+
 	if(o.render_to_texture !== undefined) this.render_to_texture = o.render_to_texture;
 	if(o.texture_name !== undefined) this.texture_name = o.texture_name;
 	if(o.texture_size && o.texture_size.length == 2) this.texture_size.set(o.texture_size);
@@ -17775,6 +17816,7 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
+		background_color: vec4.toArray(this._background_color),
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
@@ -17953,7 +17995,7 @@ Camera.prototype.fillCameraShaderUniforms = function( scene )
 	return uniforms;
 },
 
-LS.registerComponent(Camera);
+LS.registerComponent( Camera );
 LS.Camera = Camera;
 /**
 * This component allow to create basic FX
@@ -18493,6 +18535,8 @@ Light.DIRECTIONAL = 3;
 
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
+Light.shadowmap_depth_texture = true;
+
 Light.coding_help = "\
 LightInfo LIGHT -> light info before applying equation\n\
 Input IN -> info about the mesh\n\
@@ -18919,6 +18963,8 @@ Light.prototype.getQuery = function(instance, render_settings)
 			query.macros.USE_SHADOW_CUBEMAP = "";
 		if(this.hard_shadows)// || macros.USE_SHADOW_CUBEMAP != null)
 			query.macros.USE_HARD_SHADOWS = "";
+		if(this._shadowmap && this._shadowmap.format == gl.DEPTH_COMPONENT)
+			query.macros.USE_SHADOW_DEPTH_TEXTURE = "";
 		query.macros.SHADOWMAP_OFFSET = "";
 	}
 	else
@@ -19078,10 +19124,18 @@ Light.prototype.generateShadowmap = function (render_settings)
 		shadowmap_resolution = render_settings.default_shadowmap_resolution;
 
 	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
+	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type )
 	{
-		var format = gl.RGBA; //gl.extensions.WEBGL_depth_texture ? gl.DEPTH_COMPONENT16 : gl.RGBA;
-		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		var type = gl.UNSIGNED_BYTE;
+		var format = gl.RGBA;
+		//not all webgl implementations support depth textures
+		if( LS.Light.shadowmap_depth_texture && gl.extensions.WEBGL_depth_texture && this.type != LS.Light.OMNI )
+		{
+			format = gl.DEPTH_COMPONENT;
+			type = gl.UNSIGNED_INT;
+		}
+		//create texture to store the shadowmap
+		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 		LS.ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
 		if( this._shadowmap.texture_type == gl.TEXTURE_2D )
 		{
@@ -22820,7 +22874,6 @@ LS.registerComponent(GeometricPrimitive);
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
-	this.createProperty( "background_color", GlobalInfo.DEFAULT_BACKGROUND_COLOR, "color" );
 
 	this._render_settings = new LS.RenderSettings();
 
@@ -22859,7 +22912,6 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 });
 
 GlobalInfo.icon = "mini-icon-bg.png";
-GlobalInfo.DEFAULT_BACKGROUND_COLOR = new Float32Array([0,0,0,1]);
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
 
 GlobalInfo.prototype.onAddedToScene = function(scene)
@@ -22886,7 +22938,6 @@ GlobalInfo.prototype.getProperties = function()
 {
 	return {
 		"ambient_color":"color",
-		"background_color":"color",
 		"textures/environment": "texture",
 		"textures/irradiance": "texture",
 		"render_settings":"RenderSettings"
@@ -25564,8 +25615,8 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","prefabReady","update","trigger","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
-Script.node_triggered_events = { "trigger":true, "prefabReady": true };
+Script.exported_callbacks = ["start","prefabReady","update","clicked","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
+Script.node_triggered_events = { "clicked":true, "prefabReady": true };
 
 Script.translate_events = {
 	"sceneRender": "beforeRender",
@@ -25584,8 +25635,9 @@ Global vars:\n\
 Exported functions:\n\
  + start: when the Scene starts\n\
  + update: when updating\n\
- + trigger : if this node is triggered\n\
+ + clicked : if this node is clicked\n\
  + render : before rendering the node\n\
+ + renderGUI : to render something in the GUI using canvas2D\n\
  + getRenderInstances: when collecting instances\n\
  + afterRender : after rendering the node\n\
  + prefabReady: when the prefab has been loaded\n\
@@ -27214,7 +27266,7 @@ ThreeJS.prototype.processCode = function( skip_events )
 LS.registerComponent( ThreeJS );
 
 /**
-* Allows to easily test interaction between the user and the scene, attach the InteractiveController to any element and the mouse down,move and up events will
+* Allows to easily test interaction between the user and the scene, attach the InteractiveController to the root and the mouse down,move and up events will
 * be processed using a raycast and trigger events.
 * @namespace LS
 * @class InteractiveController
@@ -27225,8 +27277,6 @@ function InteractiveController(o)
 {
 	this.enabled = true;
 	this.mode = InteractiveController.PICKING;
-	this.send_trigger = true;
-	this.self_trigger = true;
 	this.layers = 3;
 
 	if(o)
@@ -27302,10 +27352,9 @@ InteractiveController.prototype._onMouse = function(type, e)
 		this._clicked_node = node;
 		if(this._clicked_node && e.eventType == "mousedown" && e.button == 0 )
 		{
-			if( this.send_trigger )
-				LEvent.trigger( this._clicked_node, "trigger", e );
-			if( this.self_trigger )
-				LEvent.trigger( this._root, "trigger", this._clicked_node );
+			console.log("Node clicked: " + this._clicked_node.name );
+			LEvent.trigger( this._clicked_node, "clicked", e );
+			LEvent.trigger( this._root.scene, "node_clicked", this._clicked_node );
 		}
 	}
 
@@ -27320,6 +27369,9 @@ InteractiveController.prototype._onMouse = function(type, e)
 
 	if(e.eventType == "mouseup")
 		this._clicked_node = null;
+
+	if(this._clicked_node)
+		return true;
 }
 
 
@@ -27882,8 +27934,8 @@ var parserBVH = {
 };
 
 LS.Formats.registerParser( parserBVH );
-//collada.js 
-//This worker should offload the main thread from parsing big text files (DAE)
+// collada.js by Javi Agenjo (2015)
+// https://github.com/jagenjo/collada.js
 
 (function(global){
 
@@ -30406,19 +30458,11 @@ var parserDAE = {
 		}
 		scene.meshes = renamed_meshes;
 
-		//rename morph targets names
 		for(var i in scene.meshes)
 		{
 			var mesh = scene.meshes[i];
-			if(mesh.morph_targets)
-				for(var j = 0; j < mesh.morph_targets.length; ++j)
-				{
-					var morph = mesh.morph_targets[j];
-					if(morph.mesh && renamed[ morph.mesh ])
-						morph.mesh = renamed[ morph.mesh ];
-				}
+			this.processMesh( mesh, renamed );
 		}
-
 
 		//change local collada ids to valid uids 
 		replace_uids( scene.root );
@@ -30431,7 +30475,6 @@ var parserDAE = {
 				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
 			}
-
 			
 			if(node.type)
 			{
@@ -30477,6 +30520,32 @@ var parserDAE = {
 		}
 
 		return scene;
+	},
+
+	processMesh: function( mesh, renamed )
+	{
+		//check that UVS have 2 components (MAX export 3 components for UVs)
+		if(mesh.coords && mesh.coords.length == mesh.vertices.length)
+		{
+			var num_vertices = mesh.vertices.length / 3;
+			var old_coords = mesh.coords;
+			var new_coords = new Float32Array( num_vertices * 2 );
+			for(var i = 0; i < num_vertices; ++i )
+			{
+				new_coords[i*2] = old_coords[i*3];
+				new_coords[i*2+1] = old_coords[i*3+1];
+			}
+			mesh.coords = new_coords;
+		}
+
+		//rename morph targets names
+		if(mesh.morph_targets)
+			for(var j = 0; j < mesh.morph_targets.length; ++j)
+			{
+				var morph = mesh.morph_targets[j];
+				if(morph.mesh && renamed[ morph.mesh ])
+					morph.mesh = renamed[ morph.mesh ];
+			}
 	},
 
 	//depending on the 3D software used, animation tracks could be tricky to handle
@@ -30606,6 +30675,8 @@ var parserDAE = {
 
 	processMaterial: function(material)
 	{
+		material.object_type = "StandardMaterial";
+
 		if(material.transparency)
 		{
 			material.opacity = 1.0 - parseFloat( material.transparency );

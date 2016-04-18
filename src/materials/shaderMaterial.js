@@ -1,4 +1,12 @@
-/* This material is aimed to use your own shader instead of using the global one */
+/*
+
+/**
+* ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS
+* @namespace LS
+* @class ShaderMaterial
+* @constructor
+* @param {Object} object [optional] to configure from
+*/
 function ShaderMaterial( o )
 {
 	Material.call( this, null );
@@ -42,41 +50,16 @@ Object.defineProperty( ShaderMaterial.prototype, "properties", {
 	}
 });
 
-/*
-ShaderMaterial.prototype.serialize = function()
-{
-	var o = LS.cloneObject(this);
-	o.material_class = LS.getObjectClassName(this);
-	o.properties = LS.cloneObject( this._properties );
-	return o;
-}
-*/
-
-/*
-ShaderMaterial.prototype.configure = function( o )
-{
-	if( Material.prototype.setProperty.call(this,name,value) )
-		return true;
-
-	this._shader = o.shader;
-	if(o.properties)
-	{
-		this._properties = o.properties;
-		this._properties_by_name = {};
-		for(var i in this._properties)
-			this._properties_by_name[ this._properties[i].name ] = this._properties[i];
-	}
-	this.processShaderCode();
-}
-*/
-
-ShaderMaterial.prototype.createUniform = function(name, uniform, value, type, options )
+ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, options )
 {
 	if(!name || !uniform)
 		throw("parameter missing in createUniform");
 
-	value = value || 0;
 	type = type || "Number";
+	value = value || 0;
+
+	if( type.constructor !== String )
+		throw("type must be string");
 
 	if(value && value.length)
 		value = new Float32Array( value );//cast them always

@@ -170,6 +170,8 @@ Light.DIRECTIONAL = 3;
 
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
+Light.shadowmap_depth_texture = true;
+
 Light.coding_help = "\
 LightInfo LIGHT -> light info before applying equation\n\
 Input IN -> info about the mesh\n\
@@ -596,6 +598,8 @@ Light.prototype.getQuery = function(instance, render_settings)
 			query.macros.USE_SHADOW_CUBEMAP = "";
 		if(this.hard_shadows)// || macros.USE_SHADOW_CUBEMAP != null)
 			query.macros.USE_HARD_SHADOWS = "";
+		if(this._shadowmap && this._shadowmap.format == gl.DEPTH_COMPONENT)
+			query.macros.USE_SHADOW_DEPTH_TEXTURE = "";
 		query.macros.SHADOWMAP_OFFSET = "";
 	}
 	else
@@ -755,10 +759,18 @@ Light.prototype.generateShadowmap = function (render_settings)
 		shadowmap_resolution = render_settings.default_shadowmap_resolution;
 
 	var tex_type = this.type == Light.OMNI ? gl.TEXTURE_CUBE_MAP : gl.TEXTURE_2D;
-	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type)
+	if(this._shadowmap == null || this._shadowmap.width != shadowmap_resolution || this._shadowmap.texture_type != tex_type )
 	{
-		var format = gl.RGBA; //gl.extensions.WEBGL_depth_texture ? gl.DEPTH_COMPONENT16 : gl.RGBA;
-		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
+		var type = gl.UNSIGNED_BYTE;
+		var format = gl.RGBA;
+		//not all webgl implementations support depth textures
+		if( LS.Light.shadowmap_depth_texture && gl.extensions.WEBGL_depth_texture && this.type != LS.Light.OMNI )
+		{
+			format = gl.DEPTH_COMPONENT;
+			type = gl.UNSIGNED_INT;
+		}
+		//create texture to store the shadowmap
+		this._shadowmap = new GL.Texture( shadowmap_resolution, shadowmap_resolution, { type: type, texture_type: tex_type, format: format, magFilter: gl.NEAREST, minFilter: gl.NEAREST });
 		LS.ResourcesManager.textures[":shadowmap_" + this.uid ] = this._shadowmap; //debug
 		if( this._shadowmap.texture_type == gl.TEXTURE_2D )
 		{

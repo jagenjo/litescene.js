@@ -1,5 +1,5 @@
 /**
-* Allows to easily test interaction between the user and the scene, attach the InteractiveController to any element and the mouse down,move and up events will
+* Allows to easily test interaction between the user and the scene, attach the InteractiveController to the root and the mouse down,move and up events will
 * be processed using a raycast and trigger events.
 * @namespace LS
 * @class InteractiveController
@@ -10,8 +10,6 @@ function InteractiveController(o)
 {
 	this.enabled = true;
 	this.mode = InteractiveController.PICKING;
-	this.send_trigger = true;
-	this.self_trigger = true;
 	this.layers = 3;
 
 	if(o)
@@ -87,10 +85,9 @@ InteractiveController.prototype._onMouse = function(type, e)
 		this._clicked_node = node;
 		if(this._clicked_node && e.eventType == "mousedown" && e.button == 0 )
 		{
-			if( this.send_trigger )
-				LEvent.trigger( this._clicked_node, "trigger", e );
-			if( this.self_trigger )
-				LEvent.trigger( this._root, "trigger", this._clicked_node );
+			console.log("Node clicked: " + this._clicked_node.name );
+			LEvent.trigger( this._clicked_node, "clicked", e );
+			LEvent.trigger( this._root.scene, "node_clicked", this._clicked_node );
 		}
 	}
 
@@ -105,6 +102,9 @@ InteractiveController.prototype._onMouse = function(type, e)
 
 	if(e.eventType == "mouseup")
 		this._clicked_node = null;
+
+	if(this._clicked_node)
+		return true;
 }
 
 

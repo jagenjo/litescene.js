@@ -45,6 +45,8 @@ function Camera(o)
 	this._viewport = new Float32Array([0,0,1,1]);
 	this._viewport_in_pixels = vec4.create(); //viewport in screen coordinates
 
+	this._background_color = vec4.fromValues(0,0,0,1);
+
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
@@ -76,7 +78,8 @@ function Camera(o)
 		u_camera_eye: this._global_eye,
 		u_camera_front: this._global_front,
 		u_camera_planes: vec2.fromValues( this.near, this.far ),
-		u_camera_perspective: vec3.create()
+		u_camera_perspective: vec3.create(),
+		u_background_color: this._background_color
 	};
 
 	this.updateMatrices();
@@ -340,6 +343,19 @@ Object.defineProperty( Camera.prototype, "viewport_size", {
 	},
 	set: function(v) {
 		this._viewport.set(v,2);
+	},
+	enumerable: true
+});
+
+/**
+* @property background_color {vec4}
+*/
+Object.defineProperty( Camera.prototype, "background_color", {
+	get: function() {
+		return this._background_color;
+	},
+	set: function(v) {
+		this._background_color.set(v);
 	},
 	enumerable: true
 });
@@ -1032,6 +1048,8 @@ Camera.prototype.configure = function(o)
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
 
+	if(o.background_color !== undefined) this._background_color.set( o.background_color );
+
 	if(o.render_to_texture !== undefined) this.render_to_texture = o.render_to_texture;
 	if(o.texture_name !== undefined) this.texture_name = o.texture_name;
 	if(o.texture_size && o.texture_size.length == 2) this.texture_size.set(o.texture_size);
@@ -1055,6 +1073,7 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
+		background_color: vec4.toArray(this._background_color),
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
@@ -1233,5 +1252,5 @@ Camera.prototype.fillCameraShaderUniforms = function( scene )
 	return uniforms;
 },
 
-LS.registerComponent(Camera);
+LS.registerComponent( Camera );
 LS.Camera = Camera;

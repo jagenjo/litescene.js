@@ -1,5 +1,5 @@
-//collada.js 
-//This worker should offload the main thread from parsing big text files (DAE)
+// collada.js by Javi Agenjo (2015)
+// https://github.com/jagenjo/collada.js
 
 (function(global){
 

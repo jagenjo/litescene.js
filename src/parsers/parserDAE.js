@@ -53,19 +53,11 @@ var parserDAE = {
 		}
 		scene.meshes = renamed_meshes;
 
-		//rename morph targets names
 		for(var i in scene.meshes)
 		{
 			var mesh = scene.meshes[i];
-			if(mesh.morph_targets)
-				for(var j = 0; j < mesh.morph_targets.length; ++j)
-				{
-					var morph = mesh.morph_targets[j];
-					if(morph.mesh && renamed[ morph.mesh ])
-						morph.mesh = renamed[ morph.mesh ];
-				}
+			this.processMesh( mesh, renamed );
 		}
-
 
 		//change local collada ids to valid uids 
 		replace_uids( scene.root );
@@ -78,7 +70,6 @@ var parserDAE = {
 				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
 			}
-
 			
 			if(node.type)
 			{
@@ -124,6 +115,32 @@ var parserDAE = {
 		}
 
 		return scene;
+	},
+
+	processMesh: function( mesh, renamed )
+	{
+		//check that UVS have 2 components (MAX export 3 components for UVs)
+		if(mesh.coords && mesh.coords.length == mesh.vertices.length)
+		{
+			var num_vertices = mesh.vertices.length / 3;
+			var old_coords = mesh.coords;
+			var new_coords = new Float32Array( num_vertices * 2 );
+			for(var i = 0; i < num_vertices; ++i )
+			{
+				new_coords[i*2] = old_coords[i*3];
+				new_coords[i*2+1] = old_coords[i*3+1];
+			}
+			mesh.coords = new_coords;
+		}
+
+		//rename morph targets names
+		if(mesh.morph_targets)
+			for(var j = 0; j < mesh.morph_targets.length; ++j)
+			{
+				var morph = mesh.morph_targets[j];
+				if(morph.mesh && renamed[ morph.mesh ])
+					morph.mesh = renamed[ morph.mesh ];
+			}
 	},
 
 	//depending on the 3D software used, animation tracks could be tricky to handle
@@ -253,6 +270,8 @@ var parserDAE = {
 
 	processMaterial: function(material)
 	{
+		material.object_type = "StandardMaterial";
+
 		if(material.transparency)
 		{
 			material.opacity = 1.0 - parseFloat( material.transparency );

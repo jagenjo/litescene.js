@@ -9,7 +9,7 @@
 * @namespace LS
 * @class StandardMaterial
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object [optional] to configure from
 */
 
 function StandardMaterial(o)
@@ -23,6 +23,7 @@ function StandardMaterial(o)
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 
+	this._specular_data = vec2.fromValues( 0.1, 10.0 );
 	this.specular_ontop = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
@@ -73,6 +74,19 @@ Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
 	set: function(v) { this._extra_data.set( v ); },
 	enumerable: true
 });
+
+Object.defineProperty( StandardMaterial.prototype, 'specular_factor', {
+	get: function() { return this._specular_data[0]; },
+	set: function(v) { this._specular_data[0] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
+	get: function() { return this._specular_data[1]; },
+	set: function(v) { this._specular_data[1] = v; },
+	enumerable: true
+});
+
 
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
@@ -307,6 +321,8 @@ StandardMaterial.prototype.setProperty = function(name, value)
 	switch(name)
 	{
 		//numbers
+		case "specular_factor":
+		case "specular_gloss":
 		case "backlight_factor":
 		case "reflection_factor":
 		case "reflection_fresnel":
@@ -357,29 +373,31 @@ StandardMaterial.prototype.getProperties = function()
 
 	//add some more
 	o.merge({
-		shader_name: "string",
-		backlight_factor:"number",
-		reflection_factor:"number",
-		reflection_fresnel:"number",
-		velvet_exp:"number",
+		shader_name:  LS.TYPES.STRING,
+		specular_factor: LS.TYPES.NUMBER,
+		specular_gloss: LS.TYPES.NUMBER,
+		backlight_factor: LS.TYPES.NUMBER,
+		reflection_factor: LS.TYPES.NUMBER,
+		reflection_fresnel: LS.TYPES.NUMBER,
+		velvet_exp: LS.TYPES.NUMBER,
 
-		normalmap_factor:"number",
-		displacementmap_factor:"number",
-		extra_factor:"number",
-		extra_surface_shader_code:"string",
+		normalmap_factor: LS.TYPES.NUMBER,
+		displacementmap_factor: LS.TYPES.NUMBER,
+		extra_factor: LS.TYPES.NUMBER,
+		extra_surface_shader_code: LS.TYPES.STRING,
 
-		ambient:"vec3",
-		emissive:"vec3",
-		velvet:"vec3",
-		extra_color:"vec3",
-		detail_factor:"number",
-		detail_scale:"vec2",
+		ambient: LS.TYPES.VEC3,
+		emissive: LS.TYPES.VEC3,
+		velvet: LS.TYPES.VEC3,
+		extra_color: LS.TYPES.VEC3,
+		detail_factor: LS.TYPES.NUMBER,
+		detail_scale: LS.TYPES.VEC2,
 
-		specular_ontop:"boolean",
-		normalmap_tangent:"boolean",
-		reflection_specular:"boolean",
-		use_scene_ambient:"boolean",
-		velvet_additive:"boolean"
+		specular_ontop: LS.TYPES.BOOLEAN,
+		normalmap_tangent: LS.TYPES.BOOLEAN,
+		reflection_specular: LS.TYPES.BOOLEAN,
+		use_scene_ambient: LS.TYPES.BOOLEAN,
+		velvet_additive: LS.TYPES.BOOLEAN
 	});
 
 	return o;
@@ -406,22 +424,22 @@ SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "displacementmap_factor":
 		case "extra_factor":
 		case "detail_factor":
-			type = "number"; break;
+			type = LS.TYPES.NUMBER; break;
 		case "extra_surface_shader_code":
-			type = "string"; break;
+			type = LS.TYPES.STRING; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
 		case "extra_color":
-			type = "vec3"; break;
+			type = LS.TYPES.VEC3; break;
 		case "detail_scale":
-			type = "vec2"; break;
+			type = LS.TYPES.VEC2; break;
 		case "specular_ontop":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "velvet_additive":
-			type = "boolean"; break;
+			type = LS.TYPES.BOOLEAN; break;
 		default:
 			return null;
 	}

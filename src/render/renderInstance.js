@@ -38,6 +38,7 @@ function RenderInstance( node, component )
 	this._key = ""; //not used yet
 	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
 	this.layers = 3;
+	this.index = -1; //used to know the rendering order
 
 	//info about the mesh
 	this.vertex_buffers = {};
