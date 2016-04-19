@@ -609,7 +609,7 @@ Camera.prototype.getEye = function( out )
 {
 	out = out || vec3.create();
 	out.set( this._eye );
-	if(this._root && this._root.transform)
+	if( this._root && this._root.transform )
 	{
 		return this._root.transform.getGlobalPosition( out );
 		//return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
@@ -628,7 +628,7 @@ Camera.prototype.getCenter = function( out )
 {
 	out = out || vec3.create();
 
-	if(this._root && this._root.transform)
+	if( this._root && this._root.transform )
 	{
 		out[0] = out[1] = 0; out[2] = -1;
 		return mat4.multiplyVec3(out, this._root.transform.getGlobalMatrixRef(), out );
@@ -781,18 +781,23 @@ Camera.prototype.move = function(v)
 * @param {vec3} axis
 * @param {boolean} in_local_space allows to specify if the axis is in local space or global space
 */
-Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
-{
-	if(in_local_space)
-		this.getLocalVector(axis, axis);
+Camera.prototype.rotate = (function() { 
+	var tmp_quat = quat.create();
+	var tmp_vec3 = vec3.create();
+	
+	return function(angle_in_deg, axis, in_local_space)
+	{
+		if(in_local_space)
+			this.getLocalVector(axis, axis);
 
-	var R = quat.setAxisAngle( quat.create(), axis, angle_in_deg * 0.0174532925 );
-	var front = vec3.subtract( vec3.create(), this._center, this._eye );
+		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
+		var front = vec3.subtract( tmp_vec3, this._center, this._eye );
 
-	vec3.transformQuat(front, front, R );
-	vec3.add(this._center, this._eye, front);
-	this._must_update_view_matrix = true;
-}
+		vec3.transformQuat( front, front, R );
+		vec3.add(this._center, this._eye, front);
+		this._must_update_view_matrix = true;
+	};
+})();
 
 /**
 * Rotates the camera eye around a center
@@ -801,15 +806,20 @@ Camera.prototype.rotate = function(angle_in_deg, axis, in_local_space)
 * @param {vec3} axis
 * @param {vec3} center optional
 */
-Camera.prototype.orbit = function(angle_in_deg, axis, center)
-{
-	center = center || this._center;
-	var R = quat.setAxisAngle( quat.create(), axis, angle_in_deg * 0.0174532925 );
-	var front = vec3.subtract( vec3.create(), this._eye, center );
-	vec3.transformQuat(front, front, R );
-	vec3.add(this._eye, center, front);
-	this._must_update_view_matrix = true;
-}
+Camera.prototype.orbit = (function() { 
+	var tmp_quat = quat.create();
+	var tmp_vec3 = vec3.create();
+
+	return function( angle_in_deg, axis, center )
+	{
+		center = center || this._center;
+		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
+		var front = vec3.subtract( tmp_vec3, this._eye, center );
+		vec3.transformQuat( front, front, R );
+		vec3.add( this._eye, center, front );
+		this._must_update_view_matrix = true;
+	};
+})();
 
 //this is too similar to setDistanceToCenter, must be removed
 Camera.prototype.orbitDistanceFactor = function(f, center)

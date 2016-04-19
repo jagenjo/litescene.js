@@ -788,8 +788,13 @@ SceneNode.prototype.configure = function(info)
 			this._is_bone = true;
 	}
 
-	//TO DO: Change this to more generic stuff
-	//some helpers (mostly for when loading from js object that come from importers
+	//some helpers (mostly for when loading from js object that come from importers or code)
+	if(info.camera)
+		this.addComponent( new LS.Camera( info.camera ) );
+
+	if(info.light)
+		this.addComponent( new LS.Light( info.light ) );
+
 	if(info.mesh)
 	{
 		var mesh_id = info.mesh;
@@ -804,7 +809,7 @@ SceneNode.prototype.configure = function(info)
 			if(info.morph_targets !== undefined)
 				mesh_render_config.morph_targets = info.morph_targets;
 
-			var compo = new LS.Components.MeshRenderer(mesh_render_config);
+			var compo = new LS.Components.MeshRenderer( mesh_render_config );
 
 			//parsed meshes have info about primitive
 			if( mesh.primitive === "line_strip" )
@@ -823,7 +828,7 @@ SceneNode.prototype.configure = function(info)
 				this.addComponent( compo );
 			}
 
-			//morph
+			//morph targets
 			if( mesh && mesh.morph_targets )
 			{
 				var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
@@ -849,7 +854,7 @@ SceneNode.prototype.configure = function(info)
 	{
 		var mat_class = info.material.material_class;
 		if(!mat_class) 
-			mat_class = "Material";
+			mat_class = "StandardMaterial";
 		this.material = typeof(info.material) == "string" ? info.material : new LS.MaterialClasses[mat_class](info.material);
 	}
 

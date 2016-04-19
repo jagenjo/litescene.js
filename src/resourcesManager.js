@@ -918,10 +918,15 @@ var ResourcesManager = {
 	sendResourceRenamedEvent: function( old_name, new_name, resource )
 	{
 		var scene = LS.GlobalScene;
-		for(var i = 0; i < scene._nodes.length; i++)
+		var nodes = scene._nodes.concat();
+		for(var i = 0; i < nodes.length; i++)
 		{
 			//nodes
-			var node = scene._nodes[i];
+			var node = nodes[i];
+
+			//prefabs
+			if( node.prefab && node.prefab === old_name )
+				node.prefab = new_name; //does this launch a reload prefab? dont know
 
 			//components
 			for(var j = 0; j < node._components.length; j++)
@@ -930,11 +935,16 @@ var ResourcesManager = {
 				if(component.onResourceRenamed)
 					component.onResourceRenamed( old_name, new_name, resource )
 			}
-	
+
 			//materials
-			var material = node.getMaterial();
-			if(material && material.onResourceRenamed)
-				material.onResourceRenamed(old_name, new_name, resource)
+			if( node.material && node.material == old_name )
+				node.material = new_name;
+			else
+			{
+				var material = node.getMaterial();
+				if( material && material.onResourceRenamed )
+					material.onResourceRenamed(old_name, new_name, resource)
+			}
 		}
 	},
 

@@ -81,8 +81,12 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(!this._root || !this.enabled) 
 		return;
 	
-	var cam = this._root.camera;
-	if(!cam) return;
+	var node = this._root;
+	var cam = node.camera;
+	if(!cam)
+		return;
+
+	var is_global_camera = !node.transform;
 
 	if(!mouse_event)
 		mouse_event = e;
@@ -92,7 +96,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		var wheel = mouse_event.wheel > 0 ? 1 : -1;
 		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed, this.orbit_center);
 		cam.updateMatrices();
-		this._root.scene.refresh();
+		node.scene.refresh();
 		return;
 	}
 
@@ -111,72 +115,112 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	var changed = false;
 
-	if( this._root.transform )
+	if(this.mode == CameraController.FIRSTPERSON)
 	{
-		//TODO
-	}
-	else 
-	{
-		if(this.mode == CameraController.FIRSTPERSON)
+		cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
+		cam.updateMatrices();
+		var right = cam.getLocalVector([1,0,0]);
+
+		if(is_global_camera)
 		{
-			cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
-			cam.updateMatrices();
-			var right = cam.getLocalVector([1,0,0]);
 			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
 			cam.updateMatrices();
-			changed = true;
 		}
-		else if(this.mode == CameraController.ORBIT)
+		else
 		{
-			if(this.allow_panning && (mouse_event.ctrlKey || mouse_event.button == 1)) //pan
+			node.transform.rotate(-mouse_event.deltay * this.rot_speed,right);
+			cam.updateMatrices();
+		}
+
+		changed = true;
+	}
+	else if(this.mode == CameraController.ORBIT)
+	{
+		if(this.allow_panning && (mouse_event.ctrlKey || mouse_event.button == 1)) //pan
+		{
+			var collision = vec3.create();
+			var center = vec3.create();
+			var delta = vec3.create();
+
+			cam.getCenter( center );
+			this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, center, collision );
+			vec3.sub( delta, this._collision, collision );
+
+			if(is_global_camera)
 			{
-				var collision = vec3.create();
-				this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), collision );
-				var delta = vec3.sub( vec3.create(), this._collision, collision);
 				cam.move( delta );
-				//vec3.copy(  this._collision, collision );
 				cam.updateMatrices();
-				changed = true;
-			}
-			else //regular orbit
-			{
-				var yaw = mouse_event.deltax * this.rot_speed;
-				var pitch = -mouse_event.deltay * this.rot_speed;
-
-				if( Math.abs(yaw) > 0.0001 )
-				{
-					cam.orbit( -yaw, [0,1,0], this.orbit_center );
-					cam.updateMatrices();
-					changed = true;
-				}
-
-				var right = cam.getRight();
-				var front = cam.getFront();
-				var up = cam.getUp();
-				var problem_angle = vec3.dot( up, front );
-				if( !(problem_angle > 0.99 && pitch > 0 || problem_angle < -0.99 && pitch < 0)) //avoid strange behaviours
-				{
-					cam.orbit( -pitch, right, this.orbit_center );
-					changed = true;
-				}
-			}
-		}
-		else if(this.mode == CameraController.PLANE)
-		{
-			if(this._button == 2)
-			{
-				cam.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], cam.target );
-				changed = true;
 			}
 			else
 			{
-				var collision = vec3.create();
-				this.testOriginPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, collision );
-				var delta = vec3.sub( vec3.create(), this._collision, collision );
-				cam.move( delta );
+				node.transform.move( delta );
 				cam.updateMatrices();
+			}
+
+			changed = true;
+		}
+		else //regular orbit
+		{
+			var yaw = mouse_event.deltax * this.rot_speed;
+			var pitch = -mouse_event.deltay * this.rot_speed;
+
+			if( Math.abs(yaw) > 0.0001 )
+			{
+				if(is_global_camera)
+				{
+					cam.orbit( -yaw, [0,1,0], this.orbit_center );
+					cam.updateMatrices();
+				}
+				else
+				{
+					node.transform.orbit( -yaw, [0,1,0], this.orbit_center );
+					cam.updateMatrices();
+				}
 				changed = true;
 			}
+
+			var right = cam.getRight();
+			var front = cam.getFront();
+			var up = cam.getUp();
+			var problem_angle = vec3.dot( up, front );
+			if( !(problem_angle > 0.99 && pitch > 0 || problem_angle < -0.99 && pitch < 0)) //avoid strange behaviours
+			{
+				if(is_global_camera)
+				{
+					cam.orbit( -pitch, right, this.orbit_center );
+				}
+				else
+				{
+					node.transform.orbit( -pitch, right, this.orbit_center );
+				}
+				changed = true;
+			}
+		}
+	}
+	else if(this.mode == CameraController.PLANE)
+	{
+		if(this._button == 2)
+		{
+			var center = vec3.create();
+			cam.getCenter( center );
+			if(is_global_camera)
+				cam.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+			else
+				node.transform.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+			changed = true;
+		}
+		else
+		{
+			var collision = vec3.create();
+			var delta = vec3.create();
+			this.testOriginPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, collision );
+			vec3.sub( delta, this._collision, collision );
+			if(is_global_camera)
+				cam.move( delta );
+			else
+				node.transform.move( delta );
+			cam.updateMatrices();
+			changed = true;
 		}
 	}
 

@@ -597,7 +597,9 @@ global.Collada = {
 	},
 
 	light_translate_table: {
-		point: "omni"		
+		point: "omni",
+		directional: "directional",
+		spot: "spot"		
 	},
 
 	camera_translate_table: {
@@ -636,7 +638,7 @@ global.Collada = {
 		return null;
 	},
 
-		readMaterial: function(url)
+	readMaterial: function(url)
 	{
 		var xmlmaterial = this.querySelectorAndId( this._xmlroot, "library_materials material", url );
 		if(!xmlmaterial)
@@ -803,11 +805,19 @@ global.Collada = {
 			switch( xml.localName )
 			{
 				case "point": 
+					light.type = this.light_translate_table[ xml.localName ]; 
+					parse_params(light, xml);
+					break;
+				case "directional":
+					light.type = this.light_translate_table[ xml.localName ]; 
+					parse_params(light, xml);
+					break;
 				case "spot": 
 					light.type = this.light_translate_table[ xml.localName ]; 
 					parse_params(light, xml);
 					break;
-				case "intensity": light.intensity = this.readContentAsFloats( xml )[0]; 
+				case "intensity": 
+					light.intensity = this.readContentAsFloats( xml )[0]; 
 					break;
 			}
 		}
@@ -822,7 +832,8 @@ global.Collada = {
 
 				switch( child.localName )
 				{
-					case "color": light.color = Collada.readContentAsFloats( child ); break;
+					case "color": 
+						light.color = Collada.readContentAsFloats( child ); break;
 					case "falloff_angle": 
 						light.angle_end = Collada.readContentAsFloats( child )[0]; 
 						light.angle = light.angle_end - 10; 
@@ -831,16 +842,24 @@ global.Collada = {
 			}
 		}
 
-		/*
+		
 		if(node.model)
 		{
-			var M = mat4.create();
-			var R = mat4.rotate(M,M, Math.PI * 0.5, [1,0,0]);
-			//mat4.multiply( node.model, node.model, R );
+			//light position is final column of model
+			light.position = [node.model[12],node.model[13],node.model[14]];
+			//light forward vector is reverse of third column of model
+			var forward = [ - node.model[8], - node.model[9], - node.model[10]];
+			//so light target is position + forward
+			light.target = [light.position[0] + forward[0],
+							light.position[1] + forward[1],
+							light.position[2] + forward[2] ];
 		}
-		*/
-		light.position = [0,0,0];
-		light.target = [0,-1,0];
+		else {
+			console.warn( "Could not read light position for light: " + node.name + ". Setting defaults.");
+			light.position = [0,0,0];
+			light.target = [0,-1,0];
+		}
+		
 
 		node.light = light;
 	},
@@ -876,8 +895,18 @@ global.Collada = {
 					continue;
 				var translated = Collada.camera_translate_table[ child.localName ] || child.localName;
 				camera[ translated ] = parseFloat( child.textContent );
+				
 			}
 		}
+
+		//parse to convert yfov to standard (x) fov
+		if ( camera.yfov && !camera.fov ) {
+			if ( camera.aspect ) {
+				camera.fov = camera.yfov * camera.aspect;
+			}
+			else
+				console.warn("Could not convert camera yfov to xfov because aspect ratio not set")
+		} 
 
 		node.camera = camera;
 	},

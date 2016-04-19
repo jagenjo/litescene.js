@@ -8,6 +8,7 @@
 
 function PlayAnimation(o)
 {
+	this.enabled = true;
 	this.animation = "";
 	this.take = "default";
 	this.root_node = "@";
@@ -82,6 +83,9 @@ PlayAnimation.prototype.getAnimation = function()
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
 {
+	if(!this.enabled)
+		return;
+
 	var animation = this.getAnimation();
 	if(!animation) 
 		return;
@@ -212,4 +216,4 @@ PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resour
 		this.animation = new_name;
 }
 
-LS.registerComponent(PlayAnimation);
+LS.registerComponent( PlayAnimation );
