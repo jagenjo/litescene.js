@@ -1260,7 +1260,7 @@ SceneTree.prototype.refresh = function()
 }
 
 /**
-* returns current scene time (remember that scene time remains freezed if the scene is not running
+* returns current scene time (remember that scene time remains freezed if the scene is not running)
 *
 * @method getTime
 * @return {Number} scene time in seconds

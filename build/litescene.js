@@ -9780,6 +9780,11 @@ Track.prototype.findTimeIndex = function(time)
 		var imid = 0;
 		var imax = n;
 
+		if(n == 0)
+			return -1;
+		if(n == 1)
+			return 0;
+
 		//time out of duration
 		if( data[ (imax - 1) * offset ] < time )
 			return (imax - 1);
@@ -9812,6 +9817,11 @@ Track.prototype.findTimeIndex = function(time)
 	var imin = 0;
 	var imid = 0;
 	var imax = n;
+
+	if(n == 0)
+		return -1;
+	if(n == 1)
+		return 0;
 
 	//time out of duration
 	if( data[ (imax - 1) ][0] < time )
@@ -14927,12 +14937,17 @@ function DebugRender()
 
 DebugRender.prototype.enable = function( scene )
 {
-	LEvent.bind( scene, "afterRenderInstances", this.render, this );
+	LEvent.bind( scene, "afterRenderInstances", this.onRender, this );
 }
 
 DebugRender.prototype.disable = function( scene )
 {
-	LEvent.unbind( scene, "afterRenderInstances", this.render, this );
+	LEvent.unbind( scene, "afterRenderInstances", this.onRender, this );
+}
+
+DebugRender.prototype.onRender = function( e, render_settings )
+{
+	this.render( LS.Renderer._current_camera );
 }
 
 //we pass a callback to check if something is selected
@@ -17728,7 +17743,8 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 }
 
 /**
-* 
+* Positions the camera at eye, pointing at center, and facing up as vertical.
+* If the camera is a node camera, then the node transform is modified (plus the center to match the focalLength)
 * @method lookAt
 * @param {vec3} eye
 * @param {vec3} center
@@ -17736,9 +17752,17 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 */
 Camera.prototype.lookAt = function(eye,center,up)
 {
-	vec3.copy(this._eye, eye);
-	vec3.copy(this._center, center);
-	vec3.copy(this._up,up);
+	if( this._root && this._root.transform )
+	{
+		this._root.transform.lookAt(eye,center,up);
+		this.focalLength = vec3.distance( eye, center );
+	}
+	else
+	{
+		vec3.copy(this._eye, eye);
+		vec3.copy(this._center, center);
+		vec3.copy(this._up,up);
+	}
 	this._must_update_view_matrix = true;
 }
 
@@ -28562,8 +28586,9 @@ var parserBVH = {
 };
 
 LS.Formats.registerParser( parserBVH );
-//collada.js 
-//This worker should offload the main thread from parsing big text files (DAE)
+// Collada.js  https://github.com/jagenjo/collada.js
+// Javi Agenjo 2015 
+// Specification from https://www.khronos.org/collada/wiki
 
 (function(global){
 
@@ -29894,6 +29919,12 @@ global.Collada = {
 			var xmlps = xml_shape_root.querySelectorAll("p");
 			var num_data_vertex = buffers.length; //one value per input buffer
 
+			//compute data to read per vertex
+			var num_values_per_vertex = 1;
+			var buffers_length = buffers.length;
+			for(var b = 0; b < buffers_length; ++b)
+				num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
+
 			//for every polygon (could be one with all the indices, could be several, depends on the program)
 			for(var i = 0; i < xmlps.length; i++)
 			{
@@ -29912,12 +29943,7 @@ global.Collada = {
 				//if(use_indices && last_index >= 256*256)
 				//	break;
 
-				var num_values_per_vertex = 1;
-				for(var b in buffers)
-					num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
-
 				//for every pack of indices in the polygon (vertex, normal, uv, ... )
-				var current_data_pos = 0;
 				for(var k = 0, l = data.length; k < l; k += num_values_per_vertex)
 				{
 					var vertex_id = data.slice(k,k+num_values_per_vertex).join(" "); //generate unique id
@@ -29928,30 +29954,26 @@ global.Collada = {
 					else
 					{
 						//for every data buffer associated to this vertex
-						for(var j = 0; j < buffers.length; ++j)
+						for(var j = 0; j < buffers_length; ++j)
 						{
 							var buffer = buffers[j];
 							var array = buffer[1]; //array where we accumulate the final data as we extract if from sources
 							var source = buffer[3]; //where to read the data from
 							
 							//compute the index inside the data source array
-							//var index = parseInt(data[k + j]);
 							var index = parseInt( data[ k + buffer[4] ] );
-							//current_data_pos += buffer[4];
 
 							//remember this index in case we need to remap
 							if(j == 0)
 								vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
-								//vertex_remap[ array.length / num_data_vertex ] = index;
 
 							//compute the position inside the source buffer where the final data is located
 							index *= buffer[2]; //this works in most DAEs (not all)
-							//index = index * buffer[2] + buffer[4]; //stride(2) offset(4)
-							//index += buffer[4]; //stride(2) offset(4)
+
 							//extract every value of this element and store it in its final array (every x,y,z, etc)
 							for(var x = 0; x < buffer[2]; ++x)
 							{
-								if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
+								//if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
 								array.push( source[index+x] );
 							}
 						}
@@ -30021,7 +30043,10 @@ global.Collada = {
 		var xmlp = xml_shape_root.querySelector("p");
 		var data = this.readContentAsUInt32( xmlp );
 
-		var num_data_vertex = buffers.length;
+		var num_values_per_vertex = 1;
+		var buffers_length = buffers.length;
+		for(var b = 0; b < buffers_length; ++b)
+			num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
 
 		var pos = 0;
 		for(var i = 0, l = vcount.length; i < l; ++i)
@@ -30033,26 +30058,35 @@ global.Collada = {
 			var prev_index = -1;
 
 			//iterate vertices of this polygon
-			for(var k = 0; k < num_vertices; ++k )
+			for(var k = 0; k < num_vertices; ++k)
 			{
-				var vertex_id = data.subarray(pos,pos + num_data_vertex).join(" ");
+				var vertex_id = data.slice( pos, pos + num_values_per_vertex).join(" "); //generate unique id
 
 				prev_index = current_index;
 				if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
 					current_index = facemap[vertex_id];
 				else
 				{
-					for(var j = 0; j < buffers.length; ++j)
+					for(var j = 0; j < buffers_length; ++j)
 					{
 						var buffer = buffers[j];
-						var index = parseInt( data[pos + j] ); //p
 						var array = buffer[1]; //array with all the data
 						var source = buffer[3]; //where to read the data from
+
+						var index = parseInt( data[ pos + buffer[4] ] );
+
 						if(j == 0)
-							vertex_remap[ array.length / num_data_vertex ] = index;
-						index *= buffer[2]; //stride
+							vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
+
+						//compute the position inside the source buffer where the final data is located
+						index *= buffer[2]; //this works in most DAEs (not all)
+
+						//extract every value of this element and store it in its final array (every x,y,z, etc)
 						for(var x = 0; x < buffer[2]; ++x)
+						{
+							//if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
 							array.push( source[index+x] );
+						}
 					}
 					
 					current_index = last_index;
@@ -30073,9 +30107,8 @@ global.Collada = {
 				}
 
 				indicesArray.push( current_index );
-				pos += num_data_vertex;
+				pos += num_values_per_vertex;
 			}//per vertex
-
 		}//per polygon
 
 		var mesh = {
@@ -33577,7 +33610,7 @@ SceneTree.prototype.refresh = function()
 }
 
 /**
-* returns current scene time (remember that scene time remains freezed if the scene is not running
+* returns current scene time (remember that scene time remains freezed if the scene is not running)
 *
 * @method getTime
 * @return {Number} scene time in seconds

@@ -436,7 +436,8 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 }
 
 /**
-* 
+* Positions the camera at eye, pointing at center, and facing up as vertical.
+* If the camera is a node camera, then the node transform is modified (plus the center to match the focalLength)
 * @method lookAt
 * @param {vec3} eye
 * @param {vec3} center
@@ -444,9 +445,17 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 */
 Camera.prototype.lookAt = function(eye,center,up)
 {
-	vec3.copy(this._eye, eye);
-	vec3.copy(this._center, center);
-	vec3.copy(this._up,up);
+	if( this._root && this._root.transform )
+	{
+		this._root.transform.lookAt(eye,center,up);
+		this.focalLength = vec3.distance( eye, center );
+	}
+	else
+	{
+		vec3.copy(this._eye, eye);
+		vec3.copy(this._center, center);
+		vec3.copy(this._up,up);
+	}
 	this._must_update_view_matrix = true;
 }
 

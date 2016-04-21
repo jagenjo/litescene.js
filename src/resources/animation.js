@@ -908,6 +908,11 @@ Track.prototype.findTimeIndex = function(time)
 		var imid = 0;
 		var imax = n;
 
+		if(n == 0)
+			return -1;
+		if(n == 1)
+			return 0;
+
 		//time out of duration
 		if( data[ (imax - 1) * offset ] < time )
 			return (imax - 1);
@@ -940,6 +945,11 @@ Track.prototype.findTimeIndex = function(time)
 	var imin = 0;
 	var imid = 0;
 	var imax = n;
+
+	if(n == 0)
+		return -1;
+	if(n == 1)
+		return 0;
 
 	//time out of duration
 	if( data[ (imax - 1) ][0] < time )

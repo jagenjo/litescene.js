@@ -45,12 +45,17 @@ function DebugRender()
 
 DebugRender.prototype.enable = function( scene )
 {
-	LEvent.bind( scene, "afterRenderInstances", this.render, this );
+	LEvent.bind( scene, "afterRenderInstances", this.onRender, this );
 }
 
 DebugRender.prototype.disable = function( scene )
 {
-	LEvent.unbind( scene, "afterRenderInstances", this.render, this );
+	LEvent.unbind( scene, "afterRenderInstances", this.onRender, this );
+}
+
+DebugRender.prototype.onRender = function( e, render_settings )
+{
+	this.render( LS.Renderer._current_camera );
 }
 
 //we pass a callback to check if something is selected
