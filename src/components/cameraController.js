@@ -15,7 +15,6 @@ function CameraController(o)
 	this.smooth = false;
 	this.allow_panning = true;
 	this.mode = CameraController.ORBIT;
-	this.orbit_center = null;
 
 	this._moving = vec3.fromValues(0,0,0);
 	this._collision = vec3.create();
@@ -94,7 +93,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(mouse_event.eventType == "mousewheel")
 	{
 		var wheel = mouse_event.wheel > 0 ? 1 : -1;
-		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed, this.orbit_center);
+		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
 		cam.updateMatrices();
 		node.scene.refresh();
 		return;
@@ -153,7 +152,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 			else
 			{
-				node.transform.move( delta );
+				node.transform.translate( delta );
 				cam.updateMatrices();
 			}
 
@@ -168,12 +167,14 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			{
 				if(is_global_camera)
 				{
-					cam.orbit( -yaw, [0,1,0], this.orbit_center );
+					cam.orbit( -yaw, [0,1,0] );
 					cam.updateMatrices();
 				}
 				else
 				{
-					node.transform.orbit( -yaw, [0,1,0], this.orbit_center );
+					var eye = cam.getEye();
+					node.transform.globalToLocal( eye, eye );
+					node.transform.orbit( -yaw, [0,1,0], eye );
 					cam.updateMatrices();
 				}
 				changed = true;
@@ -191,7 +192,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 				}
 				else
 				{
-					node.transform.orbit( -pitch, right, this.orbit_center );
+					var eye = cam.getEye();
+					node.transform.globalToLocal( eye, eye );
+					node.transform.orbit( -pitch, right, eye );
 				}
 				changed = true;
 			}
@@ -218,7 +221,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			if(is_global_camera)
 				cam.move( delta );
 			else
-				node.transform.move( delta );
+				node.transform.translate( delta );
 			cam.updateMatrices();
 			changed = true;
 		}

@@ -204,6 +204,27 @@ Object.defineProperty( Camera.prototype, "center", {
 });
 
 /**
+* The distance between the center and the eye point
+* @property focalLength {Number}
+* @default (depends)
+*/
+Object.defineProperty( Camera.prototype, "focalLength", {
+	get: function() {
+		return vec3.distance( this._eye, this._center );
+	},
+	set: function(v) {
+		var tmp = vec3.create();
+		vec3.sub( tmp, this._center, this._eye );
+		vec3.normalize( tmp, tmp );
+		vec3.scaleAndAdd( tmp, this._eye, tmp, v );
+		this._center.set( tmp );
+		this._must_update_view_matrix = true;
+	},
+	enumerable: true
+});
+
+
+/**
 * The up vector of the camera (in local space, node space)
 * @property up {vec3}
 * @default [0,1,0]
@@ -564,43 +585,47 @@ Camera.prototype.updateVectors = function(model)
 * transform a local coordinate to global coordinates
 * @method getLocalPoint
 * @param {vec3} v vector
-* @param {vec3} dest
+* @param {vec3} dest where to store the output, if not provided a vec3 is created
 * @return {vec3} v in global coordinates
 */
-Camera.prototype.getLocalPoint = function(v, dest)
+Camera.prototype.getLocalPoint = function( v, dest )
 {
 	dest = dest || vec3.create();
+
+	if( this._root && this._root.transform )
+		return mat4.multiplyVec3( dest, this._root.transform.getGlobalMatrixRef(), v );
+
 	if(this._must_update_view_matrix)
 		this.updateMatrices();
-	var temp = this._model_matrix; //mat4.create();
-	//mat4.invert( temp, this._view_matrix );
-	if(this._root && this._root.transform)
-		mat4.multiply( temp, temp, this._root.transform.getGlobalMatrixRef() );
-	return mat4.multiplyVec3(dest, temp, v );
+
+	return mat4.multiplyVec3( dest, this._model_matrix, v );
 }
 
 /**
 * rotate a local coordinate to global coordinates (skipping translation)
 * @method getLocalVector
 * @param {vec3} v vector
-* @param {vec3} dest
+* @param {vec3} dest where to store the output, if not provided a vec3 is created
 * @return {vec3} v in global coordinates
 */
 
 Camera.prototype.getLocalVector = function(v, dest)
 {
 	dest = dest || vec3.create();
+
+	if( this._root && this._root.transform )
+		return mat4.rotateVec3( dest, this._root.transform.getGlobalMatrixRef(), v );
+
 	if(this._must_update_view_matrix)
 		this.updateMatrices();
-	var temp = this._model_matrix; //mat4.create();
-	//mat4.invert( temp, this._view_matrix );
-	if(this._root && this._root.transform)
-		mat4.multiply(temp, temp, this._root.transform.getGlobalMatrixRef() );
-	return mat4.rotateVec3(dest, temp, v );
+
+	return mat4.rotateVec3( dest, this._model_matrix, v );
 }
 
 /**
-* returns the eye (position of the camera) in global coordinates
+* Returns the eye (position of the camera) in global coordinates
+* Takes into account if it is a camera attached to a node
+* The result of this function wont match the _eye property if the camera is a node camera
 * @method getEye
 * @param {vec3} out output vector [optional]
 * @return {vec3} position in global coordinates
@@ -610,10 +635,7 @@ Camera.prototype.getEye = function( out )
 	out = out || vec3.create();
 	out.set( this._eye );
 	if( this._root && this._root.transform )
-	{
 		return this._root.transform.getGlobalPosition( out );
-		//return mat4.multiplyVec3(eye, this._root.transform.getGlobalMatrixRef(), eye );
-	}
 	return out;
 }
 
@@ -629,11 +651,7 @@ Camera.prototype.getCenter = function( out )
 	out = out || vec3.create();
 
 	if( this._root && this._root.transform )
-	{
-		out[0] = out[1] = 0; out[2] = -1;
-		return mat4.multiplyVec3(out, this._root.transform.getGlobalMatrixRef(), out );
-	}
-
+		return mat4.multiplyVec3( out, this._root.transform.getGlobalMatrixRef(), this._center );
 	out.set( this._center );
 	return out;
 }

@@ -38,6 +38,7 @@
 ../src/render/renderInstance.js
 ../src/render/renderFrameContainer.js
 ../src/render/renderer.js
+../src/render/debug.js
 
 ../src/picking.js
 ../src/physics.js

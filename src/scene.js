@@ -100,7 +100,6 @@ SceneTree.prototype.init = function()
 	this.info = new LS.Components.GlobalInfo();
 	this._root.addComponent( this.info );
 	this._root.addComponent( new LS.Camera() );
-	this.current_camera = this._root.camera;
 	this._root.addComponent( new LS.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this._frame = 0;

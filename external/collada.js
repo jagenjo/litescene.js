@@ -447,19 +447,34 @@ global.Collada = {
 		return node;
 	},
 
-	readNodeInfo: function( xmlnode, scene, level, flip )
+	readNodeInfo: function( xmlnode, scene, level, flip, parent )
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
 
+		/*
 		if(!node_id && !node_sid)
 		{
 			console.warn("Collada: node without id, creating a random one");
 			node_id = this.generateName("node_");
 			return null;
 		}
+		*/
 
-		var node = this._nodes_by_id[ node_id || node_sid ];
+		var node;
+		if(!node_id && !node_sid) {
+			//if there is no id, then either all of this node's properties 
+			//should be assigned directly to its parent node, or the node doesn't
+			//have a parent node, in which case its a light or something. 
+			//So we get the parent by its id, and if there is no parent, we return null
+			if (parent)
+				node = this._nodes_by_id[ parent.id || parent.sid ];
+			else 
+				return null;
+		} 
+		else
+			node = this._nodes_by_id[ node_id || node_sid ];
+
 		if(!node)
 		{
 			console.warn("Collada: Node not found by id: " + (node_id || node_sid));
@@ -476,7 +491,8 @@ global.Collada = {
 			//children
 			if(xmlchild.localName == "node")
 			{
-				this.readNodeInfo( xmlchild, scene, level+1, flip );
+				//pass parent node in case child node is a 'dead' node (has no id or sid)
+				this.readNodeInfo( xmlchild, scene, level+1, flip, xmlnode );
 				continue;
 			}
 
@@ -514,6 +530,7 @@ global.Collada = {
 						//matname = matname.replace(/ /g,"_"); //names cannot have spaces
 						if(!scene.materials[ matname ])
 						{
+
 							var material = this.readMaterial(matname);
 							if(material)
 							{
@@ -543,12 +560,50 @@ global.Collada = {
 
 				if(xmlcontroller)
 				{
+
 					var mesh_data = this.readController( xmlcontroller, flip, scene );
 
 					//binded materials
-					var xmlbindmaterial = xmlchild.querySelector("bind_material");
-					if(xmlbindmaterial)
-						node.materials = this.readBindMaterials( xmlbindmaterial );
+					var xmlbind_material = xmlchild.querySelector("bind_material");
+					if(xmlbind_material){
+						//removed readBindMaterials up here for consistency
+						var xmltechniques = xmlbind_material.querySelectorAll("technique_common");
+						for(var iTec = 0; iTec < xmltechniques.length; iTec++)
+						{
+							var xmltechnique = xmltechniques.item(iTec);
+							var xmlinstance_materials = xmltechnique.querySelectorAll("instance_material");
+							for(var iMat = 0; iMat < xmlinstance_materials.length; iMat++)
+							{
+								var xmlinstance_material = xmlinstance_materials.item(iMat);
+								if(!xmlinstance_material)
+								{
+									console.warn("instance_material for controller not found: " + xmlinstance_material);
+									continue;
+								}
+								var matname = xmlinstance_material.getAttribute("target").toString().substr(1);
+								if(!scene.materials[ matname ])
+								{
+
+									var material = this.readMaterial(matname);
+									if(material)
+									{
+										material.id = matname; 
+										scene.materials[ material.id ] = material;
+									}
+								}
+								if(iMat == 0)
+									node.material = matname;
+								else
+								{
+									if(!node.materials)
+										node.materials = [];
+									node.materials.push(matname);
+								}
+
+							}
+						}
+
+					}
 
 					if(mesh_data)
 					{
@@ -597,6 +652,7 @@ global.Collada = {
 	},
 
 	light_translate_table: {
+
 		point: "omni",
 		directional: "directional",
 		spot: "spot"		
@@ -641,6 +697,7 @@ global.Collada = {
 	readMaterial: function(url)
 	{
 		var xmlmaterial = this.querySelectorAndId( this._xmlroot, "library_materials material", url );
+
 		if(!xmlmaterial)
 			return null;
 
@@ -652,6 +709,7 @@ global.Collada = {
 
 		//get effect
 		var xmleffects = this.querySelectorAndId( this._xmlroot, "library_effects effect", effect_url );
+
 		if(!xmleffects) return null;
 
 		//get common
@@ -689,6 +747,8 @@ global.Collada = {
 		var xmlphong = xmltechnique.querySelector("phong");
 		if(!xmlphong) 
 			xmlphong = xmltechnique.querySelector("blinn");
+		if(!xmlphong) 
+			xmlphong = xmltechnique.querySelector("lambert");
 		if(!xmlphong) 
 			return null;
 
@@ -816,6 +876,7 @@ global.Collada = {
 					light.type = this.light_translate_table[ xml.localName ]; 
 					parse_params(light, xml);
 					break;
+				
 				case "intensity": 
 					light.intensity = this.readContentAsFloats( xml )[0]; 
 					break;
@@ -1936,6 +1997,7 @@ global.Collada = {
 		}
 
 		var id = xmlcontroller.getAttribute("id");
+
 		//use cached
 		if( this._controllers_found[ id ] )
 			return this._controllers_found[ id ];
@@ -1943,8 +2005,9 @@ global.Collada = {
 		var use_indices = false;
 		var mesh = null;
 		var xmlskin = xmlcontroller.querySelector("skin");
-		if(xmlskin)
+		if(xmlskin) {
 			mesh = this.readSkinController( xmlskin, flip, scene);
+		}
 
 		var xmlmorph = xmlcontroller.querySelector("morph");
 		if(xmlmorph)
@@ -1952,6 +2015,7 @@ global.Collada = {
 
 		//cache and return
 		this._controllers_found[ id ] = mesh;
+
 		return mesh;
 	},
 
@@ -1960,6 +2024,8 @@ global.Collada = {
 	{
 		//base geometry
 		var id_geometry = xmlskin.getAttribute("source");
+
+
 		var mesh = this.readGeometry( id_geometry, flip, scene );
 		if(!mesh)
 			return null;
@@ -2026,6 +2092,7 @@ global.Collada = {
 		var xmlvertexweights = xmlskin.querySelector("vertex_weights");
 		if(xmlvertexweights)
 		{
+
 			//here we see the order 
 			var weights_indexed_array = null;
 			var xmlinputs = xmlvertexweights.querySelectorAll("input");
@@ -2164,7 +2231,7 @@ global.Collada = {
 			mesh.bones = joints;
 			mesh.bind_matrix = bind_matrix;
 
-			delete mesh["_remap"];
+			//delete mesh["_remap"];
 		}
 
 		return mesh;

@@ -980,6 +980,33 @@ Transform.interpolate = function(a,b,factor, result)
 }
 
 /**
+* Orbits around its parent node
+* @method orbit
+* @param {number} angle_in_deg
+* @param {vec3} axis
+* @param {vec3} center optional
+*/
+Transform.prototype.orbit = (function() { 
+	var tmp_quat = quat.create();
+	var tmp_vec3 = vec3.create();
+
+	return function( angle_in_deg, axis, center )
+	{
+		center = center || this._center;
+		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
+		tmp_vec3.set( this._position );
+		if(center)
+			vec3.sub(tmp_vec3, tmp_vec3, center );
+		vec3.transformQuat( tmp_vec3, tmp_vec3, R );
+		if(center)
+			vec3.add(tmp_vec3, tmp_vec3, center );
+		this._position.set( tmp_vec3 );
+		this._must_update_matrix = true;
+	};
+})();
+
+
+/**
 * Orients the transform to look from one position to another
 * @method lookAt
 * @param {vec3} position
@@ -996,38 +1023,39 @@ Transform.prototype.lookAt = (function() {
 	var temp_target = vec3.create();
 	var temp_up = vec3.create();
 	
-	return function(pos, target, up, in_world)
+	return function( pos, target, up, in_world )
 	{
+		up = up || LS.TOP;
 
-	//convert to local space
-	if(in_world && this._parent)
-	{
-		this._parent.getGlobalMatrix( GM );
-		var inv = mat4.invert(GM,GM);
-		mat4.multiplyVec3(temp_pos, inv, pos);
-		mat4.multiplyVec3(temp_target, inv, target);
-		mat4.rotateVec3(temp_up, inv, up );
-	}
-	else
-	{
-		temp_pos.set( pos );
-		temp_target.set( target );
-		temp_up.set( up );
-	}
+		//convert to local space
+		if(in_world && this._parent)
+		{
+			this._parent.getGlobalMatrix( GM );
+			var inv = mat4.invert(GM,GM);
+			mat4.multiplyVec3(temp_pos, inv, pos);
+			mat4.multiplyVec3(temp_target, inv, target);
+			mat4.rotateVec3(temp_up, inv, up );
+		}
+		else
+		{
+			temp_pos.set( pos );
+			temp_target.set( target );
+			temp_up.set( up );
+		}
 
-	mat4.lookAt(temp, temp_pos, temp_target, temp_up);
-	//mat4.invert(temp, temp);
+		mat4.lookAt(temp, temp_pos, temp_target, temp_up);
+		//mat4.invert(temp, temp);
 
-	quat.fromMat4( this._rotation, temp );
-	this._position.set( temp_pos );	
-	this._must_update_matrix = true;
+		quat.fromMat4( this._rotation, temp );
+		this._position.set( temp_pos );	
+		this._must_update_matrix = true;
 
-	/*
-	mat4.lookAt(temp, pos, target, up);
-	mat4.invert(temp, temp);
-	this.fromMatrix(temp);
-	this.updateGlobalMatrix();
-	*/
+		/*
+		mat4.lookAt(temp, pos, target, up);
+		mat4.invert(temp, temp);
+		this.fromMatrix(temp);
+		this.updateGlobalMatrix();
+		*/
 	}
 })();
 
@@ -1092,7 +1120,8 @@ Transform.prototype.transformPoint = function(vec, dest) {
 */
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
-	if(this._must_update_matrix) this.updateMatrix();
+	if(this._must_update_matrix)
+		this.updateMatrix();
 	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
 }
 
@@ -1112,13 +1141,16 @@ Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
 * @param {vec3} point
 * @param {vec3} destination (optional)
 */
-Transform.prototype.globalToLocal = function(vec, dest) {
-	dest = dest || vec3.create();
-	if(this._must_update_matrix) this.updateMatrix();
-	var inv = mat4.invert( mat4.create(), this.getGlobalMatrixRef() );
-	return mat4.multiplyVec3( dest, inv, vec );
-}
-
+Transform.prototype.globalToLocal = (function(){ 
+	var inv = mat4.create();
+	return function(vec, dest) {
+		dest = dest || vec3.create();
+		if(this._must_update_matrix)
+			this.updateMatrix();
+		mat4.invert( inv, this.getGlobalMatrixRef() );
+		return mat4.multiplyVec3( dest, inv, vec );
+	};
+})();
 
 /**
 * Applies the transformation to a vector (rotate but not translate)
