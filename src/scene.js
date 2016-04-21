@@ -18,6 +18,12 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
+	//used to stored info when collecting from nodes
+	this._instances = [];
+	this._lights = [];
+	this._cameras = [];
+	this._colliders = [];
+
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
 	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
@@ -530,9 +536,37 @@ SceneTree.prototype.getCamera = function()
 	return this._cameras[0];
 }
 
+/**
+* Returns an array with all the cameras enabled in the scene
+*
+* @method getActiveCameras
+* @param {boolean} force [optional] if you want to collect the cameras again, otherwise it returns the last ones collected
+* @return {Array} cameras
+*/
+SceneTree.prototype.getActiveCameras = function( force )
+{
+	if(force)
+		LEvent.trigger(this, "collectCameras", this._cameras );
+	return this._cameras;
+}
+
 SceneTree.prototype.getLight = function()
 {
 	return this._root.light;
+}
+
+/**
+* Returns an array with all the lights enabled in the scene
+*
+* @method getActiveLights
+* @param {boolean} force [optional] if you want to collect the lights again, otherwise it returns the last ones collected
+* @return {Array} lights
+*/
+SceneTree.prototype.getActiveLights = function( force )
+{
+	if(force)
+		LEvent.trigger(this, "collectLights", this._lights );
+	return this._lights;
 }
 
 SceneTree.prototype.onNodeAdded = function(e,node)
@@ -1015,10 +1049,15 @@ SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
 	var nodes = this.getNodes();
-	var instances = [];
-	var lights = [];
-	var cameras = [];
-	var colliders = [];
+
+	var instances = this._instances;
+	var lights = this._lights;
+	var cameras = this._cameras;
+	var colliders = this._colliders;
+	instances.length = 0;
+	lights.length = 0;
+	cameras.length = 0;
+	colliders.length = 0;
 
 	//collect render instances, lights and cameras
 	for(var i = 0, l = nodes.length; i < l; ++i)
@@ -1089,11 +1128,6 @@ SceneTree.prototype.collectData = function()
 		var collider = colliders[i];
 		collider.updateAABB();
 	}
-
-	this._instances = instances;
-	this._lights = lights;
-	this._cameras = cameras;
-	this._colliders = colliders;
 
 	//remember when was last time I collected to avoid repeating it
 	this._last_collect_frame = this._frame;

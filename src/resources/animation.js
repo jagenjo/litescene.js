@@ -516,7 +516,7 @@ Animation.Take = Take;
 
 /**
 * Represents one track with data over time about one property
-* Data could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode
+* Data could be stored in two forms, or an array containing arrays of [time,data] (unpacked data) or in a single typed array (packed data), depends on the attribute typed_mode
 *
 * @class Animation.Track
 * @namespace LS
@@ -893,41 +893,83 @@ Track.prototype.unpackData = function()
 	this.packed_data = false;
 }
 
-/* not tested
-Track.prototype.findSampleIndex = function(time)
+//Dichotimic search
+//returns nearest index of keyframe with time equal or less to specified time
+Track.prototype.findTimeIndex = function(time)
 {
 	var data = this.data;
-	var offset = this.value_size + 1;
-	var l = data.length;
-	var n = l / offset;
-	var imin = 0;
-	var imax = n;
-	var imid = 0;
 
-	//dichotimic search
-	// continue searching while [imin,imax] is not empty
+	if(this.packed_data)
+	{
+		var offset = this.value_size + 1; //data size plus timestamp
+		var l = data.length;
+		var n = l / offset; //num samples
+		var imin = 0;
+		var imid = 0;
+		var imax = n;
+
+		//time out of duration
+		if( data[ (imax - 1) * offset ] < time )
+			return (imax - 1);
+
+		//dichotimic search
+		// continue searching while [imin,imax] are continuous
+		while (imax >= imin)
+		{
+			// calculate the midpoint for roughly equal partition
+			imid = ((imax + imin)*0.5)|0;
+			var t = data[ imid * offset ]; //get time
+			if( t == time )
+				return imid; 
+			//when there are no more elements to search
+			if( imin == (imax - 1) )
+				return imin;
+			// determine which subarray to search
+			if (t < time)
+				// change min index to search upper subarray
+				imin = imid;
+			else         
+				// change max index to search lower subarray
+				imax = imid;
+		}
+		return imid;
+	}
+
+	//unpacked data
+	var n = data.length; //num samples
+	var imin = 0;
+	var imid = 0;
+	var imax = n;
+
+	//time out of duration
+	if( data[ (imax - 1) ][0] < time )
+		return (imax - 1);
+
 	while (imax >= imin)
 	{
 		// calculate the midpoint for roughly equal partition
-		imid = (((imax - imin)*0.5)|0) + imin;
-		var v = data[ imid * offset ];
-		if( v == time )
-			return imid * offset; 
-			// determine which subarray to search
-		else if (v < key)
+		imid = ((imax + imin)*0.5)|0;
+		var t = data[ imid ][0]; //get time
+		if( t == time )
+			return imid; 
+		//when there are no more elements to search
+		if( imin == (imax - 1) )
+			return imin;
+		// determine which subarray to search
+		if (t < time)
 			// change min index to search upper subarray
-			imin = imid + 1;
+			imin = imid;
 		else         
 			// change max index to search lower subarray
-			imax = imid - 1;
+			imax = imid;
 	}
 
-	return imid * offset;
+	return imid;
 }
-*/
 
-//TODO: IMPROVE WITH DICOTOMIC SEARCH
-//Returns the index of the last sample with a time less or equal to time
+
+/*
+//Brute force search
 Track.prototype.findTimeIndex = function( time )
 {
 	if(!this.data || this.data.length == 0)
@@ -977,6 +1019,7 @@ Track.prototype.findTimeIndex = function( time )
 		return -1;
 	return last;
 }
+*/
 
 //Warning: if no result is provided the same result is reused between samples.
 Track.prototype.getSample = function( time, interpolate, result )

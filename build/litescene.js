@@ -9388,7 +9388,7 @@ Animation.Take = Take;
 
 /**
 * Represents one track with data over time about one property
-* Data could be stored in two forms, or an array containing arrays of [time,data] or in a single typed array, depends on the attribute typed_mode
+* Data could be stored in two forms, or an array containing arrays of [time,data] (unpacked data) or in a single typed array (packed data), depends on the attribute typed_mode
 *
 * @class Animation.Track
 * @namespace LS
@@ -9765,41 +9765,83 @@ Track.prototype.unpackData = function()
 	this.packed_data = false;
 }
 
-/* not tested
-Track.prototype.findSampleIndex = function(time)
+//Dichotimic search
+//returns nearest index of keyframe with time equal or less to specified time
+Track.prototype.findTimeIndex = function(time)
 {
 	var data = this.data;
-	var offset = this.value_size + 1;
-	var l = data.length;
-	var n = l / offset;
-	var imin = 0;
-	var imax = n;
-	var imid = 0;
 
-	//dichotimic search
-	// continue searching while [imin,imax] is not empty
+	if(this.packed_data)
+	{
+		var offset = this.value_size + 1; //data size plus timestamp
+		var l = data.length;
+		var n = l / offset; //num samples
+		var imin = 0;
+		var imid = 0;
+		var imax = n;
+
+		//time out of duration
+		if( data[ (imax - 1) * offset ] < time )
+			return (imax - 1);
+
+		//dichotimic search
+		// continue searching while [imin,imax] are continuous
+		while (imax >= imin)
+		{
+			// calculate the midpoint for roughly equal partition
+			imid = ((imax + imin)*0.5)|0;
+			var t = data[ imid * offset ]; //get time
+			if( t == time )
+				return imid; 
+			//when there are no more elements to search
+			if( imin == (imax - 1) )
+				return imin;
+			// determine which subarray to search
+			if (t < time)
+				// change min index to search upper subarray
+				imin = imid;
+			else         
+				// change max index to search lower subarray
+				imax = imid;
+		}
+		return imid;
+	}
+
+	//unpacked data
+	var n = data.length; //num samples
+	var imin = 0;
+	var imid = 0;
+	var imax = n;
+
+	//time out of duration
+	if( data[ (imax - 1) ][0] < time )
+		return (imax - 1);
+
 	while (imax >= imin)
 	{
 		// calculate the midpoint for roughly equal partition
-		imid = (((imax - imin)*0.5)|0) + imin;
-		var v = data[ imid * offset ];
-		if( v == time )
-			return imid * offset; 
-			// determine which subarray to search
-		else if (v < key)
+		imid = ((imax + imin)*0.5)|0;
+		var t = data[ imid ][0]; //get time
+		if( t == time )
+			return imid; 
+		//when there are no more elements to search
+		if( imin == (imax - 1) )
+			return imin;
+		// determine which subarray to search
+		if (t < time)
 			// change min index to search upper subarray
-			imin = imid + 1;
+			imin = imid;
 		else         
 			// change max index to search lower subarray
-			imax = imid - 1;
+			imax = imid;
 	}
 
-	return imid * offset;
+	return imid;
 }
-*/
 
-//TODO: IMPROVE WITH DICOTOMIC SEARCH
-//Returns the index of the last sample with a time less or equal to time
+
+/*
+//Brute force search
 Track.prototype.findTimeIndex = function( time )
 {
 	if(!this.data || this.data.length == 0)
@@ -9849,6 +9891,7 @@ Track.prototype.findTimeIndex = function( time )
 		return -1;
 	return last;
 }
+*/
 
 //Warning: if no result is provided the same result is reused between samples.
 Track.prototype.getSample = function( time, interpolate, result )
@@ -32292,6 +32335,12 @@ function SceneTree()
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
 
+	//used to stored info when collecting from nodes
+	this._instances = [];
+	this._lights = [];
+	this._cameras = [];
+	this._colliders = [];
+
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
 	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
@@ -32804,9 +32853,37 @@ SceneTree.prototype.getCamera = function()
 	return this._cameras[0];
 }
 
+/**
+* Returns an array with all the cameras enabled in the scene
+*
+* @method getActiveCameras
+* @param {boolean} force [optional] if you want to collect the cameras again, otherwise it returns the last ones collected
+* @return {Array} cameras
+*/
+SceneTree.prototype.getActiveCameras = function( force )
+{
+	if(force)
+		LEvent.trigger(this, "collectCameras", this._cameras );
+	return this._cameras;
+}
+
 SceneTree.prototype.getLight = function()
 {
 	return this._root.light;
+}
+
+/**
+* Returns an array with all the lights enabled in the scene
+*
+* @method getActiveLights
+* @param {boolean} force [optional] if you want to collect the lights again, otherwise it returns the last ones collected
+* @return {Array} lights
+*/
+SceneTree.prototype.getActiveLights = function( force )
+{
+	if(force)
+		LEvent.trigger(this, "collectLights", this._lights );
+	return this._lights;
 }
 
 SceneTree.prototype.onNodeAdded = function(e,node)
@@ -33289,10 +33366,15 @@ SceneTree.prototype.collectData = function()
 {
 	//var nodes = scene.nodes;
 	var nodes = this.getNodes();
-	var instances = [];
-	var lights = [];
-	var cameras = [];
-	var colliders = [];
+
+	var instances = this._instances;
+	var lights = this._lights;
+	var cameras = this._cameras;
+	var colliders = this._colliders;
+	instances.length = 0;
+	lights.length = 0;
+	cameras.length = 0;
+	colliders.length = 0;
 
 	//collect render instances, lights and cameras
 	for(var i = 0, l = nodes.length; i < l; ++i)
@@ -33363,11 +33445,6 @@ SceneTree.prototype.collectData = function()
 		var collider = colliders[i];
 		collider.updateAABB();
 	}
-
-	this._instances = instances;
-	this._lights = lights;
-	this._cameras = cameras;
-	this._colliders = colliders;
 
 	//remember when was last time I collected to avoid repeating it
 	this._last_collect_frame = this._frame;
