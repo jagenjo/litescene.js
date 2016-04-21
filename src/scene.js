@@ -1096,7 +1096,7 @@ SceneTree.prototype.collectData = function()
 		LEvent.trigger(node,"collectLights", lights );
 		LEvent.trigger(node,"collectCameras", cameras );
 
-		instances = instances.concat( node._instances );
+		instances.push.apply(instances, node._instances); //push inside
 	}
 
 	//we also collect from the scene itself just in case (TODO: REMOVE THIS)
