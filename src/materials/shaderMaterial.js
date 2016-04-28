@@ -114,39 +114,53 @@ ShaderMaterial.prototype.processShaderCode = function()
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
 		return false;
 
+	var old_properties = this._properties_by_name;
+	this._properties = [];
+	this._properties_by_name = {};
+
 	//apply init 
 	if( shader_code._init_function )
 	{
-		var old_properties = this._properties_by_name;
-		this._properties = [];
-		this._properties_by_name = {};
 		shader_code._init_function.call( this );
-		for(var i = 0; i < this._properties.length; ++i)
+	}
+
+	for(var i in shader_code._global_uniforms)
+	{
+		var global = shader_code._global_uniforms[i];
+		this.createUniform( global.name, global.uniform, global.type, global.value, global.options );
+	}
+
+	//restore old values
+	this.assignOldProperties( old_properties );
+}
+
+ShaderMaterial.prototype.assignOldProperties = function( old_properties )
+{
+	for(var i = 0; i < this._properties.length; ++i)
+	{
+		var new_prop = this._properties[i];
+
+		if(!old_properties[ new_prop.name ])
+			continue;
+		var old = old_properties[ new_prop.name ];
+		if(old.value === undefined)
+			continue;
+
+		//this is to keep current values when coding the shader from the editor
+		if( new_prop.value && new_prop.value.set ) //special case for typed arrays avoiding generating GC
 		{
-			var new_prop = this._properties[i];
-
-			if(!old_properties[ new_prop.name ])
-				continue;
-			var old = old_properties[ new_prop.name ];
-			if(old.value === undefined)
-				continue;
-
-			//this is to keep current values when coding the shader from the editor
-			if( new_prop.value && new_prop.value.set ) //special case for typed arrays avoiding generating GC
-			{
-				//this is to be careful when an array changes sizes
-				if( old.value && old.value.length && new_prop.value.length && old.value.length <= new_prop.value.length)
-					new_prop.value.set( old.value );
-				else
-					new_prop.value = old.value;
-			}
+			//this is to be careful when an array changes sizes
+			if( old.value && old.value.length && new_prop.value.length && old.value.length <= new_prop.value.length)
+				new_prop.value.set( old.value );
 			else
 				new_prop.value = old.value;
 		}
+		else
+			new_prop.value = old.value;
 	}
 }
 
-ShaderMaterial.prototype.renderInstance = function( instance, lights, scene, render_settings )
+ShaderMaterial.prototype.renderInstance = function( instance, render_settings, lights )
 {
 	if(!this.shader)
 		return false;
@@ -163,6 +177,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, lights, scene, ren
 
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
+	var scene = LS.Renderer._current_scene;
 
 	//compute matrices
 	var model = instance.matrix;
@@ -219,7 +234,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, lights, scene, ren
 	return true;
 }
 
-
+ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings )
+{
+	return this.renderInstance( instance, render_settings );
+}
 
 /**
 * Collects all the resources needed by this material (textures)

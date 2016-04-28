@@ -290,12 +290,12 @@ var Renderer = {
 			//force fullscreen viewport?
 			if(render_settings && render_settings.ignore_viewports )
 			{
-				camera._final_aspect = this.global_aspect * camera._aspect * (width / height);
+				camera.final_aspect = this.global_aspect * camera._aspect * (width / height);
 				gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			}
 			else
 			{
-				camera._final_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
+				camera.final_aspect = this.global_aspect * camera._aspect * (final_width / final_height); //what if we want to change the aspect?
 				gl.viewport( final_x, final_y, final_width, final_height );
 			}
 		}
@@ -475,6 +475,8 @@ var Renderer = {
 	{
 		result = result || [];
 
+		result.length = 0; //clear old lights
+
 		//it uses the lights gathered by prepareVisibleData
 		var lights = this._visible_lights;
 		if(!lights || !lights.length)
@@ -506,33 +508,45 @@ var Renderer = {
 	//this function is in charge of rendering the regular color pass (used also for reflections)
 	renderColorPassInstance: function( instance, render_settings )
 	{
-
 		var near_lights = this.getNearLights( instance, this._near_lights );
 
 		//render instance
 		var renderered = false;
 		if( instance.material && instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, near_lights, this._current_scene, render_settings );
+			renderered = instance.material.renderInstance( instance, render_settings, near_lights );
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderColorMultiPassLightingInstance( instance, near_lights, this._current_scene, render_settings );
+			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, near_lights );
 	},
+
+	renderShadowPassInstance: function( instance, render_settings )
+	{
+		//render instance
+		var renderered = false;
+		if( instance.material && instance.material.renderShadowInstance )
+			renderered = instance.material.renderShadowInstance( instance, render_settings );
+
+		//render using default system (slower but it works)
+		if(!renderered)
+			this.renderStandardShadowPassInstance( instance, render_settings);
+	},
+
 
 	/**
 	* Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light
 	*
 	* @method renderColorMultiPassLightingInstance
 	* @param {RenderInstance} instance
-	* @param {Array} lights array containing al the lights affecting this RI
-	* @param {SceneTree} scene
 	* @param {RenderSettings} render_settings
+	* @param {Array} lights array containing al the lights affecting this RI
 	*/
-	renderColorMultiPassLightingInstance: function( instance, lights, scene, render_settings )
+	renderStandardColorMultiPassLightingInstance: function( instance, render_settings, lights )
 	{
 		var camera = this._current_camera;
 		var node = instance.node;
 		var material = instance.material;
+		var scene = this._current_scene;
 
 		//compute matrices
 		var model = instance.matrix;
@@ -684,12 +698,13 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
-	renderShadowPassInstance: function(instance, render_settings)
+	renderStandardShadowPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
 		var camera = this._current_camera;
 		var node = instance.node;
 		var material = instance.material;
+		var scene = this._current_scene;
 
 		//compute matrices
 		var model = instance.matrix;
@@ -1126,8 +1141,6 @@ var Renderer = {
 		}
 
 		//store all the info
-		var lights = scene._lights;
-
 		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
 		this._visible_instances = all_instances; //sorted version
@@ -1136,8 +1149,8 @@ var Renderer = {
 		this._visible_materials = materials;
 
 		//prepare lights (collect data and generate shadowmaps)
-		for(var i = 0, l = lights.length; i < l; ++i)
-			lights[i].prepare( render_settings );
+		for(var i = 0, l = this._visible_lights.length; i < l; ++i)
+			this._visible_lights[i].prepare( render_settings );
 	},
 
 	//outside of processVisibleData to allow optimizations in processVisibleData

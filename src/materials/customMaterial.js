@@ -199,17 +199,17 @@ CustomMaterial.prototype.onResourceRenamed = function (old_name, new_name, resou
 
 /**
 * gets all the properties and its types
-* @method getProperties
+* @method getPropertiesInfo
 * @return {Object} object with name:type
 */
-CustomMaterial.prototype.getProperties = function()
+CustomMaterial.prototype.getPropertiesInfo = function()
 {
 	var o = {
-		color:"vec3",
-		opacity:"number",
-		shader_name: "string",
-		blend_mode: "number",
-		code: "string"
+		color: LS.TYPES.VEC3,
+		opacity: LS.TYPES.NUMBER,
+		shader_name: LS.TYPES.STRING,
+		blend_mode: LS.TYPES.NUMBER,
+		code: LS.TYPES.STRING
 	};
 
 	//from this material

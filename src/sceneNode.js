@@ -14,7 +14,7 @@ function SceneNode( name )
 	if(name && name.constructor !== String)
 	{
 		name = null;
-		console.warn("SceneNode cosntructor first parameter must be a String with the name");
+		console.warn("SceneNode constructor first parameter must be a String with the name");
 	}
 
 	//Generic
@@ -307,7 +307,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			target: null,
 			name: "",
 			value: this,
-			type: "node"
+			type: "node" //node because thats the global type for nodes
 		};
 	}
     else if(path.length == 1) //compo or //var
@@ -852,10 +852,14 @@ SceneNode.prototype.configure = function(info)
 	//first the no components
 	if(info.material)
 	{
-		var mat_class = info.material.material_class;
-		if(!mat_class) 
-			mat_class = "StandardMaterial";
-		this.material = typeof(info.material) == "string" ? info.material : new LS.MaterialClasses[mat_class](info.material);
+		var mat_classname = info.material.material_class;
+		if(!mat_classname) 
+			mat_classname = "StandardMaterial";
+		var constructor = LS.MaterialClasses[mat_classname];
+		if(constructor)
+			this.material = typeof(info.material) == "string" ? info.material : new constructor( info.material );
+		else
+			console.warn("Material not found: " + mat_classname );
 	}
 
 	if(info.flags) //merge

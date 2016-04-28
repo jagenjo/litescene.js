@@ -363,13 +363,13 @@ StandardMaterial.prototype.setProperty = function(name, value)
 
 /**
 * gets all the properties and its types
-* @method getProperties
+* @method getPropertiesInfo
 * @return {Object} object with name:type
 */
-StandardMaterial.prototype.getProperties = function()
+StandardMaterial.prototype.getPropertiesInfo = function()
 {
 	//get from the regular material
-	var o = Material.prototype.getProperties.call(this);
+	var o = Material.prototype.getPropertiesInfo.call(this);
 
 	//add some more
 	o.merge({

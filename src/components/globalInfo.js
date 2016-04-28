@@ -62,7 +62,7 @@ GlobalInfo.prototype.getResources = function(res)
 	return res;
 }
 
-GlobalInfo.prototype.getProperties = function()
+GlobalInfo.prototype.getPropertiesInfo = function()
 {
 	return {
 		"ambient_color":"color",

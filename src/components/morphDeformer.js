@@ -477,7 +477,7 @@ MorphDeformer.prototype.setProperty = function(name, value)
 }
 
 
-MorphDeformer.prototype.getProperties = function()
+MorphDeformer.prototype.getPropertiesInfo = function()
 {
 	var properties = {
 		enabled: "boolean"

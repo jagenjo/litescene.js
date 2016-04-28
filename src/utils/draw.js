@@ -451,7 +451,9 @@ var Draw = {
 	*/
 	renderPoints: function(points, colors, shader)
 	{
-		if(!points || !points.length) return;
+		if(!points || !points.length)
+			return;
+
 		var vertices = null;
 
 		if(points.constructor == Float32Array)
@@ -737,8 +739,11 @@ var Draw = {
 		return this.renderSolidCube(size,size,size);
 	},
 
-	renderPlane: function(position, size, texture, shader)
+	renderPlane: function( position, size, texture, shader)
 	{
+		if(!position || !size)
+			throw("LS.Draw.renderPlane param missing");
+
 		this.push();
 		this.translate(position);
 		this.scale( size[0], size[1], 1 );
@@ -848,7 +853,7 @@ var Draw = {
 	* @params {number} segments
 	* @params {boolean} in_z aligned with z axis
 	*/
-	renderCylinder: function(radius, height, segments, in_z)
+	renderCylinder: function( radius, height, segments, in_z )
 	{
 		var mesh = this.createCylinderMesh(radius, height, segments, in_z, true);
 		return this.renderMesh( mesh, gl.TRIANGLE_STRIP, undefined, undefined, 0, this._global_mesh_last_size );
@@ -862,8 +867,10 @@ var Draw = {
 	* @params {number} size [optional=10]
 	* @params {boolean} fixed_size [optional=false] (camera distance do not affect size)
 	*/
-	renderImage: function(position, image, size, fixed_size )
+	renderImage: function( position, image, size, fixed_size )
 	{
+		if(!position || !image)
+			throw("LS.Draw.renderImage param missing");
 		size = size || 10;
 		var texture = null;
 
@@ -929,7 +936,11 @@ var Draw = {
 	*/
 	renderMesh: function( mesh, primitive, shader, indices, range_start, range_length )
 	{
-		if(!this.ready) throw ("Draw.js not initialized, call Draw.init()");
+		if(!this.ready)
+			throw ("Draw.js not initialized, call Draw.init()");
+		if(!mesh)
+			throw ("LS.Draw.renderMesh mesh cannot be null");
+
 		if(!shader)
 		{
 			if(mesh === this._global_mesh && this._global_mesh_ignore_colors )

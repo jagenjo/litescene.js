@@ -442,8 +442,8 @@ var LS = {
 	//TODO: merge this with the locator stuff
 	getObjectProperties: function( object )
 	{
-		if(object.getProperties)
-			return object.getProperties();
+		if(object.getPropertiesInfo)
+			return object.getPropertiesInfo();
 		var class_object = object.constructor;
 		if(class_object.properties)
 			return class_object.properties;
@@ -471,23 +471,23 @@ var LS = {
 			else if ( isFunction(v) )//&& Object.getOwnPropertyDescriptor(object, i) && Object.getOwnPropertyDescriptor(object, i).get )
 				continue; //o[i] = v;
 			else if (  v.constructor === Boolean )
-				o[i] = "boolean";
+				o[i] = LS.TYPES.BOOLEAN;
 			else if (  v.constructor === Number )
-				o[i] = "number";
+				o[i] = LS.TYPES.NUMBER;
 			else if ( v.constructor === String )
-				o[i] = "string";
+				o[i] = LS.TYPES.STRING;
 			else if ( v.buffer && v.buffer.constructor === ArrayBuffer ) //typed array
 			{
 				if(v.length == 2)
-					o[i] = "vec2";
+					o[i] = LS.TYPES.VEC2;
 				else if(v.length == 3)
-					o[i] = "vec3";
+					o[i] = LS.TYPES.VEC3;
 				else if(v.length == 4)
-					o[i] = "vec4";
+					o[i] = LS.TYPES.VEC4;
 				else if(v.length == 9)
-					o[i] = "mat3";
+					o[i] = LS.TYPES.MAT3;
 				else if(v.length == 16)
-					o[i] = "mat4";
+					o[i] = LS.TYPES.MAT4;
 				else
 					o[i] = 0;
 			}
@@ -637,6 +637,20 @@ var LS = {
 		if(data.constructor === ArrayBuffer)
 			data = new Uint8Array(data);
 		return String.fromCharCode.apply(null,data);
+	},
+
+	stringToValue: function( v )
+	{
+		var value = v;
+		try
+		{
+			value = JSON.parse(v);
+		}
+		catch (err)
+		{
+			console.error( "Not a valid value: " + v );
+		}
+		return value;
 	}
 }
 

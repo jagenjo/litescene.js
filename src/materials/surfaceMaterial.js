@@ -178,17 +178,17 @@ SurfaceMaterial.prototype.configure = function(o) {
 
 /**
 * gets all the properties and its types
-* @method getProperties
+* @method getPropertiesInfo
 * @return {Object} object with name:type
 */
-SurfaceMaterial.prototype.getProperties = function()
+SurfaceMaterial.prototype.getPropertiesInfo = function()
 {
 	var o = {
-		color:"vec3",
-		opacity:"number",
-		shader_name: "string",
-		blend_mode: "number",
-		code: "string"
+		color: LS.TYPES.VEC3,
+		opacity: LS.TYPES.NUMBER,
+		shader_name: LS.TYPES.STRING,
+		blend_mode: LS.TYPES.NUMBER,
+		code: LS.TYPES.STRING
 	};
 
 	//from this material

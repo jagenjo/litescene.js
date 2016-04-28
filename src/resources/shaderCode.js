@@ -13,7 +13,9 @@ function ShaderCode( code )
 	this._code = null;
 
 	this._init_function = null;
+	this._global_uniforms = {};
 	this._code_parts = {};
+	this._subfiles = {};
 	this._compiled_shaders = {};
 
 	if(code)
@@ -38,57 +40,85 @@ Object.defineProperty( ShaderCode.prototype, "code", {
 ShaderCode.prototype.processCode = function()
 {
 	var code = this._code;
+	this._global_uniforms = {};
 	this._code_parts = {};
 	this._compiled_shaders = {};
 	this._init_function = null;
 
 	var subfiles = GL.processFileAtlas( this._code );
+	this._subfiles = subfiles;
+
+	var num_subfiles = 0;
+	var init_code = null; 
+
 	for(var i in subfiles)
 	{
-		var subfiles_name = i;
-		var subfiles_data = subfiles[i];
+		var subfile_name = i;
+		var subfile_data = subfiles[i];
+		num_subfiles++;
 
-		if(!subfiles_name) //empty subfiles, is javascript code to initialize
+		if(!subfile_name)
 			continue;
 
-		var name = LS.ResourcesManager.removeExtension(i);
-		var extension = LS.ResourcesManager.getExtension(i);
-		var code_part = this._code_parts[name];
-		if(!code_part)
-			code_part = this._code_parts[name] = {};
-
-		if(extension != "vs" && extension != "fs")
+		if(subfile_name == "init")
 		{
-			console.warn("Unknown extension in GLSL file, only vs & fs supported, ignoring subfile: " + name);
+			init_code = subfile_data;
 			continue;
 		}
 
-		//parse data (extract pragmas and stuff)
-		var blocks = LS.ShaderCode.parseGLSLCode( subfiles_data );
+		if(subfile_name == "uniforms")
+		{
+			var lines = subfile_data.split("/n");
+			for(var j = 0; j < lines.length; ++j)
+			{
+				var line = lines[j].trim();
+				var words = line.split(" ");
+				var value = words[3];
+				if( value !== undefined )
+					value = LS.stringToValue(value);
+				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: words[4] };
+			}
+			continue;
+		}
 
-		code_part[ extension ] = { code: subfiles_data, blocks: blocks };
+		var name = LS.ResourcesManager.removeExtension( subfile_name );
+		var extension = LS.ResourcesManager.getExtension( subfile_name );
+
+		if(extension == "vs" || extension == "fs")
+		{
+			var code_part = this._code_parts[name];
+			if(!code_part)
+				code_part = this._code_parts[name] = {};
+			//parse data (extract pragmas and stuff)
+			code_part[ extension ] = LS.ShaderCode.parseGLSLCode( subfile_data );
+		}
 	}
 
 	//compile the shader before using it to ensure there is no errors
 	this.getShader();
 
 	//process init code
-	var init_code = subfiles[""]; //the empty block is the init block
 	if(init_code)
 	{
-		if(LS.catch_exceptions)
+		//clean code
+		init_code = LS.ShaderCode.removeComments(init_code);
+
+		if(init_code) //still some code? (we test it because if there is a single line of code the behaviour changes)
 		{
-			try
+			if(LS.catch_exceptions)
 			{
+				try
+				{
+					this._init_function = new Function( init_code );
+				}
+				catch (err)
+				{
+					LS.dispatchCodeError( err, LScript.computeLineFromError(err), this );
+				}
+			}
+			else
 				this._init_function = new Function( init_code );
-			}
-			catch (err)
-			{
-				LS.dispatchCodeError( err, LScript.computeLineFromError(err), this );
-			}
 		}
-		else
-			this._init_function = new Function( init_code );
 	}
 
 	//to alert all the materials out there using this shader that they must update themselves.
@@ -131,24 +161,182 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	if(!code.vs || !code.fs)
 		return null;
 
+	var vs_code = this.getCodeFromSubfile( code.vs );
+	var fs_code = this.getCodeFromSubfile( code.fs );
+
+	if(!vs_code || !fs_code) //code includes something missing
+		return null;
+
 	//compile the shader and return it
 	if(!LS.catch_exceptions)
-		shader = new GL.Shader( code.vs.code, code.fs.code );
-
-	try
+		shader = new GL.Shader( vs_code, fs_code );
+	else
 	{
-		shader = new GL.Shader( code.vs.code, code.fs.code );
-	}
-	catch(err)
-	{
-		console.error(err);
-		LS.dispatchCodeError(err);
-		return;
+		try
+		{
+			shader = new GL.Shader( vs_code, fs_code );
+		}
+		catch(err)
+		{
+			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
+			LS.dispatchCodeError(err);
+			return;
+		}
 	}
 
 	this._compiled_shaders[ render_mode ] = shader;
 	return shader;
 }
+
+ShaderCode.prototype.getCodeFromSubfile = function( subfile )
+{
+	if( !subfile.is_dynamic )
+		return subfile.code;
+
+	var code = "";
+	var blocks = subfile.blocks;
+
+	for(var i = 0; i < blocks.length; ++i)
+	{
+		var block = blocks[i];
+		if( block.type == 1 ) //regular code
+		{
+			code += block.code;
+			continue;
+		}
+
+		//pragma
+		if(block.include)
+		{
+			var filename = block.include;
+			var ext = LS.ResourcesManager.getExtension( filename );
+			if(ext)
+			{
+				var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
+				if(!extra_shadercode)
+				{
+					LS.ResourcesManager.load( filename ); //force load
+					return null;
+				}
+				if(!block.include_subfile)
+					code += "\n" + extra_shadercode._subfiles[""] + "\n";
+				else
+				{
+					var extra = extra_shadercode._subfiles[ block.include_subfile ];
+					if(extra === undefined)
+						return null;
+					code += "\n" + extra + "\n";
+				}
+			}
+			else
+			{
+				var snippet_code = LS.ShadersManager.getSnippet( filename );
+				if( !snippet_code )
+					return null; //snippet not found
+				code += "\n" + snippet_code.code + "\n";
+			}
+		}
+	}
+
+	return code;
+}
+
+//given a code with some pragmas, it separates them
+ShaderCode.parseGLSLCode = function( code )
+{
+	//remove comments
+	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
+
+	var blocks = [];
+	var current_block = [];
+	var pragmas = {};
+	var uniforms = {};
+	var includes = {};
+	var is_dynamic = false; //means this shader has no variations using pragmas or macros
+
+	var lines = code.split("\n");
+
+	/* REMOVED: fors could have problems
+	//clean (this helps in case a line contains two instructions, like "uniform float a; uniform float b;"
+	var clean_lines = [];
+	for(var i = 0; i < lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line)
+			continue;
+		var pos = line.lastIndexOf(";");
+		if(pos == -1 || pos == lines.length - 1)
+			clean_lines.push(line);
+		else
+		{
+			var sublines = line.split(";");
+			for(var j = 0; j < sublines.length; ++j)
+			{
+				if(sublines[j])
+					clean_lines.push( sublines[j] + ";" );
+			}
+		}
+	}
+	lines = clean_lines;
+	*/
+
+	//parse
+	for(var i = 0; i < lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line.length)
+			continue;//empty line
+
+		if(line[0] != "#")
+		{
+			var words = line.split(" ");
+			if( words[0] == "uniform" ) //store which uniforms we found in the code (not used)
+			{
+				var uniform_name = words[2].split(";");
+				uniforms[ uniform_name[0] ] = words[1];
+			}
+			current_block.push(line);
+			continue;
+		}
+
+		var t = line.split(" ");
+		if(t[0] == "#pragma")
+		{
+			is_dynamic = true;
+			pragmas[ t[2] ] = true;
+			var action = t[1];
+			blocks.push( { type: 1, code: current_block.join("\n") } ); //merge lines and add as block
+			current_block.length = 0;
+			var pragma_info = { type: 2, line: line, action: action, param: t[2] };
+			if( action == "include" && t[2] )
+			{
+				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				var fullname = include.split(":");
+				var filename = fullname[0];
+				var subfile = fullname[1];
+				pragma_info.include = filename;
+				pragma_info.include_subfile = subfile;
+				includes[ pragma_info.include ] = true;
+			}
+			blocks.push( pragma_info ); //add pragma block
+		}
+		else
+			current_block.push( line ); //add line to current block lines
+	}
+
+	if(current_block.length)
+		blocks.push( { type: 1, code: current_block.join("\n") } ); //merge lines and add as block
+
+	return {
+		is_dynamic: is_dynamic,
+		code: code,
+		blocks: blocks,
+		pragmas: pragmas,
+		uniforms: uniforms,
+		includes: {}
+	};
+}
+
 
 //searches for materials using this ShaderCode and forces them to be updated (update the properties)
 ShaderCode.prototype.applyToMaterials = function( scene )
@@ -176,52 +364,15 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 	}
 }
 
-//given a code with some pragmas, it separates them
-ShaderCode.parseGLSLCode = function( code )
+ShaderCode.removeComments = function( code )
 {
-	//remove comments
-	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
-
-	var blocks = [];
-	var current_block = [];
-	var pragmas = {};
-	var is_dynamic = false; //means this shader has no variations using pragmas or macros
-
-	var lines = code.split("\n");
-	for(var i = 0; i < lines.length; i++)
-	{
-		var line = lines[i].trim();
-		if(!line.length)
-			continue;//empty line
-		if(line[0] != "#")
-		{
-			current_block.push(line);
-			continue;
-		}
-
-		var t = line.split(" ");
-		if(t[0] == "#pragma")
-		{
-			is_dynamic = true;
-			pragmas[ t[2] ] = true;
-			blocks.push( { type: 1, code: current_block.join("\n") } );
-			current_block.length = 0;
-			blocks.push( { type: 2, line: line, action: t[1], param: t[2] });
-		}
-		else
-			current_block.push( line ); //regular line
-	}
-
-	return {
-		is_dynamic: is_dynamic,
-		code: code,
-		blocks: blocks,
-		pragmas: pragmas
-	};
+	// /^\s*[\r\n]/gm
+	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
 }
 
 //Example code for a shader
-ShaderCode.example = "\n\
+ShaderCode.examples = {};
+ShaderCode.examples.fullshader = "\n\
 \n\
 \\default.vs\n\
 \n\

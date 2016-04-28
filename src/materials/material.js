@@ -327,10 +327,10 @@ Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, op
 
 /**
 * gets all the properties and its types
-* @method getProperties
+* @method getPropertiesInfo
 * @return {Object} object with name:type
 */
-Material.prototype.getProperties = function()
+Material.prototype.getPropertiesInfo = function()
 {
 	var o = {
 		color:"vec3",

@@ -248,7 +248,7 @@ Object.defineProperty( Transform.prototype, 'mustUpdate', {
 	enumerable: false
 });
 
-Transform.prototype.getProperties = function(v)
+Transform.prototype.getPropertiesInfo = function(v)
 {
 	if(v == "output")
 	{
@@ -980,11 +980,11 @@ Transform.interpolate = function(a,b,factor, result)
 }
 
 /**
-* Orbits around its parent node
+* Orbits around a point
 * @method orbit
 * @param {number} angle_in_deg
 * @param {vec3} axis
-* @param {vec3} center optional
+* @param {vec3} center in local coordinates
 */
 Transform.prototype.orbit = (function() { 
 	var tmp_quat = quat.create();
@@ -992,14 +992,14 @@ Transform.prototype.orbit = (function() {
 
 	return function( angle_in_deg, axis, center )
 	{
-		center = center || this._center;
+		if(!center)
+			throw("Transform orbit requires a center");
+
 		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
 		tmp_vec3.set( this._position );
-		if(center)
-			vec3.sub(tmp_vec3, tmp_vec3, center );
+		vec3.sub(tmp_vec3, tmp_vec3, center );
 		vec3.transformQuat( tmp_vec3, tmp_vec3, R );
-		if(center)
-			vec3.add(tmp_vec3, tmp_vec3, center );
+		vec3.add(tmp_vec3, tmp_vec3, center );
 		this._position.set( tmp_vec3 );
 		this._must_update_matrix = true;
 	};

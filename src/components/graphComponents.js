@@ -24,16 +24,15 @@ function GraphComponent(o)
 		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
 
 	this._graph = new LGraph();
-	this._graph._scene = Scene;
-	this._graph.getScene = function() { return this._scene; }
+	this._graph.getScene = function() { return this._scene || LS.GlobalScene; } //this OR is ugly
 
 	if(o)
 		this.configure(o);
 	else //default
 	{
-		var graphnode = LiteGraph.createNode("scene/node");
-		//graphnode.properties.node_id = ¿? not added yet
-		this._graph.add(graphnode);
+		var graphnode = this._default_node = LiteGraph.createNode("scene/node");
+		this._graph.add( graphnode );
+		//graphnode.properties.node_id = //cannot be set yet, not attached to node
 	}
 	
 	LEvent.bind(this,"trigger", this.trigger, this );	
@@ -54,14 +53,22 @@ GraphComponent.prototype.configure = function(o)
 	this.enabled = !!o.enabled;
 	if(o.graph_data)
 	{
-		try
+		if(LS.catch_exceptions)
+		{
+			try
+			{
+				var obj = JSON.parse(o.graph_data);
+				this._graph.configure( obj );
+			}
+			catch (err)
+			{
+				console.error("Error configuring Graph data: " + err);
+			}
+		}
+		else
 		{
 			var obj = JSON.parse(o.graph_data);
 			this._graph.configure( obj );
-		}
-		catch (err)
-		{
-			console.error("Error configuring Graph data: " + err);
 		}
 	}
 
@@ -85,6 +92,8 @@ GraphComponent.prototype.serialize = function()
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;
+	if( this._default_node )
+		this._default_node.properties.node_id = node.uid;
 	//catch the global rendering
 	//LEvent.bind( LS.GlobalScene, "beforeRenderMainPass", this.onBeforeRender, this );
 }
@@ -97,27 +106,34 @@ GraphComponent.prototype.onRemovedFromNode = function(node)
 
 GraphComponent.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene ,"start", this.onEvent, this );
-	LEvent.bind( scene , "beforeRenderMainPass", this.onEvent, this );
-	LEvent.bind( scene ,"update", this.onEvent, this );
+	this._graph._scene = scene;
+	LEvent.bind( scene , "init", this.onSceneEvent, this );
+	LEvent.bind( scene , "start", this.onSceneEvent, this );
+	LEvent.bind( scene , "beforeRenderMainPass", this.onSceneEvent, this );
+	LEvent.bind( scene , "update", this.onSceneEvent, this );
 }
 
 GraphComponent.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene,"start", this.onEvent, this );
-	LEvent.unbind( scene,"beforeRenderMainPass", this.onEvent, this );
-	LEvent.unbind( scene,"update", this.onEvent, this );
+	this._graph._scene = null;
+	LEvent.unbind( scene, "init", this.onSceneEvent, this );
+	LEvent.unbind( scene, "start", this.onSceneEvent, this );
+	LEvent.unbind( scene, "beforeRenderMainPass", this.onSceneEvent, this );
+	LEvent.unbind( scene, "update", this.onSceneEvent, this );
 }
 
-GraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
+GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resource )
 {
-	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, res]);
+	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, resource]);
 }
 
-GraphComponent.prototype.onEvent = function(event_type, event_data)
+GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
 {
 	if(event_type == "beforeRenderMainPass")
 		event_type = "render";
+
+	if(event_type == "init")
+		this._graph.sendEventToAllNodes("onInit");
 
 	if(this.on_event == event_type)
 		this.runGraph();
@@ -203,10 +219,9 @@ function FXGraphComponent(o)
 
 
 	if(typeof(LGraphTexture) == "undefined")
-		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
+		return console.error("Cannot use FXGraphComponent if LiteGraph is not installed");
 
 	this._graph = new LGraph();
-	this._graph._scene = Scene;
 	this._graph.getScene = function() { return this._scene; }
 
 	if(o)
@@ -410,12 +425,14 @@ FXGraphComponent.prototype.onRemovedFromNode = function(node)
 
 FXGraphComponent.prototype.onAddedToScene = function( scene )
 {
+	this._graph._scene = scene;
 	LEvent.bind( scene, "enableFrameBuffer", this.onBeforeRender, this );
 	LEvent.bind( scene, "showFrameBuffer", this.onAfterRender, this );
 }
 
 FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 {
+	this._graph._scene = null;
 	LEvent.unbind( scene, "enableFrameBuffer", this.onBeforeRender, this );
 	LEvent.unbind( scene, "showFrameBuffer", this.onAfterRender, this );
 

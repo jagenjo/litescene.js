@@ -54,7 +54,6 @@ function Camera(o)
 
 	//this._previous_viewprojection_matrix = mat4.create(); //used for motion blur
 
-
 	//lazy upload
 	this._must_update_view_matrix = true;
 	this._must_update_projection_matrix = true;
@@ -290,6 +289,20 @@ Object.defineProperty( Camera.prototype, "aspect", {
 	},
 	enumerable: true
 });
+
+//this is set by the renderer, it is the final aspect that will be used (taking into account viewport size)
+Object.defineProperty( Camera.prototype, "final_aspect", {
+	get: function() {
+		return this._final_aspect;
+	},
+	set: function(v) {
+		if(	this._final_aspect != v)
+			this._must_update_projection_matrix = true;
+		this._final_aspect = v;
+	},
+	enumerable: false
+});
+
 /**
 * The field of view in degrees
 * @property fov {number}
@@ -385,13 +398,22 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
-	LEvent.bind( node, "collectCameras", this.onCollectCameras, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
 {
 	if(node.camera == this)
 		delete node.camera;
+}
+
+Camera.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "collectCameras", this.onCollectCameras, this ); //here because we store them in node
+}
+
+Camera.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "collectCameras", this.onCollectCameras, this );
 
 	if(this._texture) //free memory
 	{
@@ -463,20 +485,32 @@ Camera.prototype.lookAt = function(eye,center,up)
 * Update matrices according to the eye,center,up,fov,aspect,...
 * @method updateMatrices
 */
-Camera.prototype.updateMatrices = function()
+Camera.prototype.updateMatrices = function( force )
 {
-	if(this.type == Camera.ORTHOGRAPHIC)
-		mat4.ortho(this._projection_matrix, -this._frustum_size*this._final_aspect*0.5, this._frustum_size*this._final_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
-	else if (this.type == Camera.ORTHO2D)
-		mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
-	else
-		mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._final_aspect, this._near, this._far);
+	//nothing to update?
+	if(!this._must_update_projection_matrix && !this._must_update_view_matrix && !force)
+		return;
 
-	//if (this.type != Camera.ORTHO2D)
-	if(this._root && this._root._is_root) //in root node
-		mat4.lookAt( this._view_matrix, this._eye, this._center, this._up );
-	else
-		mat4.lookAt( this._view_matrix, this.getEye(this._global_eye), this.getCenter(this._global_center), this.getUp(this._global_up) );
+	//update projection
+	if( this._must_update_projection_matrix || force )
+	{
+		if(this.type == Camera.ORTHOGRAPHIC)
+			mat4.ortho(this._projection_matrix, -this._frustum_size*this._final_aspect*0.5, this._frustum_size*this._final_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
+		else if (this.type == Camera.ORTHO2D)
+			mat4.ortho(this._projection_matrix, this._ortho[0], this._ortho[1], this._ortho[2], this._ortho[3], this._near, this._far);
+		else
+			mat4.perspective(this._projection_matrix, this._fov * DEG2RAD, this._final_aspect, this._near, this._far);
+	}
+
+	//update view
+	if( this._must_update_view_matrix || force )
+	{
+		if(this._root && this._root._is_root) //in root node
+			mat4.lookAt( this._view_matrix, this._eye, this._center, this._up );
+		else
+			mat4.lookAt( this._view_matrix, this.getEye(this._global_eye), this.getCenter(this._global_center), this.getUp(this._global_up) );
+		mat4.invert(this._model_matrix, this._view_matrix );
+	}
 
 	/*
 	if(this.flip_x) //used in reflections
@@ -487,7 +521,6 @@ Camera.prototype.updateMatrices = function()
 	//if(this._root && this._root.transform)
 
 	mat4.multiply(this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
-	mat4.invert(this._model_matrix, this._view_matrix );
 
 	this._must_update_view_matrix = false;
 	this._must_update_projection_matrix = false;
@@ -796,6 +829,13 @@ Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
 */
 Camera.prototype.move = function(v)
 {
+	if(this._root && this._root.transform)
+	{
+		this._root.transform.move(v);
+		this._must_update_view_matrix = true;
+		return;
+	}
+
 	vec3.add(this._center, this._center, v);
 	vec3.add(this._eye, this._eye, v);
 	this._must_update_view_matrix = true;
@@ -814,10 +854,22 @@ Camera.prototype.rotate = (function() {
 	
 	return function(angle_in_deg, axis, in_local_space)
 	{
-		if(in_local_space)
-			this.getLocalVector(axis, axis);
+		if(angle_in_deg == 0)
+			return;
 
-		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
+		if(this._root && this._root.transform)
+		{
+			this._root.transform.rotate(angle_in_deg, axis, in_local_space);
+			this._must_update_view_matrix = true;
+			return;
+		}
+
+		if(in_local_space)
+			this.getLocalVector( axis, tmp_vec3 );
+		else
+			tmp_vec3.set( axis );
+
+		var R = quat.setAxisAngle( tmp_quat, tmp_vec3, angle_in_deg * 0.0174532925 );
 		var front = vec3.subtract( tmp_vec3, this._center, this._eye );
 
 		vec3.transformQuat( front, front, R );
@@ -839,6 +891,16 @@ Camera.prototype.orbit = (function() {
 
 	return function( angle_in_deg, axis, center )
 	{
+		if(angle_in_deg == 0)
+			return;
+
+		if(this._root && this._root.transform)
+		{
+			this._root.transform.orbit( angle_in_deg, axis, center || this.getCenter() );
+			this._must_update_view_matrix = true;
+			return;
+		}
+
 		center = center || this._center;
 		var R = quat.setAxisAngle( tmp_quat, axis, angle_in_deg * 0.0174532925 );
 		var front = vec3.subtract( tmp_vec3, this._eye, center );
@@ -1093,7 +1155,7 @@ Camera.prototype.configure = function(o)
 	if(o.texture_high !== undefined) this.texture_high = o.texture_high;
 	if(o.texture_clone !== undefined) this.texture_clone = o.texture_clone;
 
-	this.updateMatrices();
+	this.updateMatrices( true );
 }
 
 Camera.prototype.serialize = function()

@@ -352,13 +352,21 @@ var ResourcesManager = {
 	*
 	* @method getResource
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
+	* @param {Function} constructor [optional] allows to specify the class expected for this resource, if the resource doesnt match, it returns null
+	* @return {*} the resource
 	*/
-	getResource: function( url )
+	getResource: function( url, constructor )
 	{
 		if(!url)
 			return null;
 		url = this.cleanFullpath( url );
-		return this.resources[ url ];
+		if(!constructor)
+			return this.resources[ url ];
+		
+		var res = this.resources[ url ];
+		if(res && res.constructor === constructor )
+			return res;
+		return null;
 	},
 
 	/**
@@ -1186,6 +1194,12 @@ LS.ResourcesManager.processImageNonNative = function( filename, data, options ) 
 	var cloned_data = new Uint8Array(data).buffer;
 	var texture_data = LS.Formats.parse( filename, cloned_data, options );
 
+	if(!texture_data)
+	{
+		console.error("Cannot parse image format");
+		return null;
+	}
+
 	if(texture_data.constructor == GL.Texture)
 	{
 		var texture = texture_data;
@@ -1227,7 +1241,7 @@ LS.ResourcesManager.processTexture = function(filename, img, options)
 
 		//from TGAs...
 		if(img.pixels) //not a real image, just an object with width,height and a buffer with all the pixels
-			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), no_flip: img.flipY, wrapS: gl.REPEAT, wrapT: gl.REPEAT, magFilter: default_mag_filter, minFilter: default_min_filter });
+			texture = GL.Texture.fromMemory(img.width, img.height, img.pixels, { format: (img.bpp == 24 ? gl.RGB : gl.RGBA), no_flip: img.flipY, wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
 		else //default format is RGBA (because particles have alpha)
 			texture = GL.Texture.fromImage(img, { format: gl.RGBA,  wrapS: default_wrap, wrapT: default_wrap, magFilter: default_mag_filter, minFilter: default_min_filter });
 		if(!texture)

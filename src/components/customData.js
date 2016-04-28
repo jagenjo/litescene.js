@@ -38,7 +38,7 @@ CustomData.prototype.getProperty = function( name )
 	return null;
 }
 
-CustomData.prototype.getProperties = function()
+CustomData.prototype.getPropertiesInfo = function()
 {
 	return this.properties;
 }

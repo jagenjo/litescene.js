@@ -5,7 +5,9 @@ if(typeof(LiteGraph) != "undefined")
 	global.LGraphScene = function()
 	{
 		this.addOutput("Time","number");
+		this._scene = null;
 	}
+
 
 	LGraphScene.title = "Scene";
 	LGraphScene.desc = "Scene";
@@ -24,6 +26,48 @@ if(typeof(LiteGraph) != "undefined")
 		}
 
 		return result;
+	}
+
+	LGraphScene.prototype.onAdded = function( graph )
+	{
+		this.bindEvents( this.graph.getScene() );
+	}
+
+	LGraphScene.prototype.onRemoved = function()
+	{
+		this.bindEvents( null );
+	}
+
+	LGraphScene.prototype.onConnectionsChange = function()
+	{
+		this.bindEvents( this.graph.getScene() );
+	}
+
+	//bind events attached to this component
+	LGraphScene.prototype.bindEvents = function( scene )
+	{
+		if(this._scene)
+			LEvent.unbindAll( this._scene, this );
+
+		this._scene = scene;
+		if( !this._scene )
+			return;
+		
+		//iterate outputs
+		if(this.outputs && this.outputs.length)
+			for(var i = 0; i < this.outputs.length; ++i )
+			{
+				var output = this.outputs[i];
+				if( output.type !== LiteGraph.EVENT )
+					continue;
+				var event_name = output.name.substr(3);
+				LEvent.bind( this._scene, event_name, this.onEvent, this );
+			}
+	}
+
+	LGraphScene.prototype.onEvent = function( event_name, params )
+	{
+		this.trigger( "on_" + event_name, params );
 	}
 
 	LGraphScene.prototype.onExecute = function()
@@ -45,7 +89,7 @@ if(typeof(LiteGraph) != "undefined")
 		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
+			if(!output.links || !output.links.length || output.type == LiteGraph.EVENT )
 				continue;
 			var result = null;
 			switch( output.name )
@@ -62,7 +106,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphScene.prototype.onGetOutputs = function()
 	{
-		var r = [["Elapsed","number"],["Frame","number"]];
+		var r = [["Elapsed","number"],["Frame","number"],["on_start",LiteGraph.EVENT],["on_finish",LiteGraph.EVENT]];
 		return LGraphScene.getComponents( this.graph.getScene().root, r);
 	}
 
@@ -75,16 +119,24 @@ if(typeof(LiteGraph) != "undefined")
 		this.properties = {node_id:""};
 		this.size = [100,20];
 
-		this._node = null;
-
 		this.addInput("node_id", "string", { locked: true });
 
-		if(LGraphSceneNode._current_node_id)
-			this.properties.node_id = LGraphSceneNode._current_node_id;
+		this._node = null;
 	}
 
 	LGraphSceneNode.title = "SceneNode";
 	LGraphSceneNode.desc = "Node on the scene";
+
+	LGraphSceneNode.prototype.onRemoved = function()
+	{
+		if(this._node)
+			this.bindNodeEvents(null);
+	}
+
+	LGraphSceneNode.prototype.onConnectionsChange = function()
+	{
+		this.bindNodeEvents( this._component );
+	}
 
 	LGraphSceneNode.prototype.getNode = function()
 	{
@@ -96,25 +148,31 @@ if(typeof(LiteGraph) != "undefined")
 		if(node_id)
 			this.properties.node_id = node_id;
 
-		var scene = this.graph.getScene();
-		var node = null;
-
 		//then check properties
 		if(	!node_id && this.properties.node_id )
 			node_id = this.properties.node_id;
 
+		//get node from scene
+		var scene = this.graph.getScene();
+		if(!scene)
+			return;
+
+		var node = null;
 		if(node_id)
 			node = scene.getNode( node_id );
 
-		//otherwise use the graph node
-		if(!node)
-			node = this.graph._scenenode;
+		//hook events
+		if(this._node != node)
+			this.bindNodeEvents(node);
+
 		return node;
 	}
 
 	LGraphSceneNode.prototype.onExecute = function()
 	{
 		var node = this.getNode();
+		if(!node)
+			return;
 
 		//read inputs
 		if(this.inputs) //there must be inputs always but just in case
@@ -122,6 +180,8 @@ if(typeof(LiteGraph) != "undefined")
 			for(var i = 1; i < this.inputs.length; ++i)
 			{
 				var input = this.inputs[i];
+				if( input.type === LiteGraph.ACTION )
+					continue;
 				var v = this.getInputData(i);
 				if(v === undefined)
 					continue;
@@ -142,7 +202,7 @@ if(typeof(LiteGraph) != "undefined")
 		for(var i = 0; i < this.outputs.length; ++i)
 		{
 			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
+			if(!output.links || !output.links.length || output.type == LiteGraph.EVENT )
 				continue;
 			switch( output.name )
 			{
@@ -151,6 +211,7 @@ if(typeof(LiteGraph) != "undefined")
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
 				case "Visible": this.setOutputData(i, node.flags.visible ); break;
 				default:
+					//this must be refactored
 					var compo = node.getComponentByUId( output.name );
 					if(!compo)
 					{
@@ -203,53 +264,287 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphSceneNode.prototype.onPropertyChanged = function(name,value)
 	{
 		if(name == "node_id")
-		{
-			var scene = this.graph.getScene();
-			this._node = scene.getNode( name );
-		}
+			this.getNode(); //updates this._node and binds events
+	}
+
+	//bind events attached to this component
+	LGraphSceneNode.prototype.bindNodeEvents = function( node )
+	{
+		if(this._node)
+			LEvent.unbindAll( this._node, this );
+
+		this._node = node;
+		if( !this._node )
+			return;
+		
+		//iterate outputs
+		if(this.outputs && this.outputs.length)
+			for(var i = 0; i < this.outputs.length; ++i )
+			{
+				var output = this.outputs[i];
+				if( output.type !== LiteGraph.EVENT )
+					continue;
+				var event_name = output.name.substr(3);
+				LEvent.bind( this._node, event_name, this.onNodeEvent, this );
+			}
+	}
+
+	LGraphSceneNode.prototype.onNodeEvent = function( e, params )
+	{
+		//trigger event
+		this.trigger( "on_" + e, params );
 	}
 
 	LGraphSceneNode.prototype.onGetInputs = function()
 	{
 		var result = [["Visible","boolean"],["Material","Material"]];
 		return this.getComponents(result);
-		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"],["Material","Material"],["onClicked",LiteGraph.EVENT]];
+		var result = [["Visible","boolean"],["Material","Material"],["on_clicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
-		//return [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
 	}
-
-	/*
-	LGraphSceneNode.prototype.onGetOutputs = function()
-	{
-		var node = this.getNode();
-		var r = [];
-		for(var i = 0; i < node._components.length; ++i)
-		{
-			var comp = node._components[i];
-			var classname = getObjectClassName(comp);
-			var vars = getObjectAttributes(comp);
-			r.push([classname,vars]);
-		}
-		return r;
-		*/
-
-		/*
-		var r = [["Transform","Transform"],["Material","Material"],["Mesh","Mesh"],["Enabled","boolean"]];
-		if(node.light)
-			r.push(["Light","Light"]);
-		if(node.camera)
-			r.push(["Camera","Camera"]);
-		return r;
-	}
-	*/
 
 	LiteGraph.registerNodeType("scene/node", LGraphSceneNode );
 
+	//********************************************************
+
+	global.LGraphComponent = function()
+	{
+		this.properties = {
+			node_id: "",
+			component_id: ""
+		};
+
+		//this.addInput("Component", undefined, { locked: true });
+
+		this._component = null;
+	}
+
+	LGraphComponent.title = "Component";
+	LGraphComponent.desc = "A component from a node";
+
+	LGraphComponent.prototype.onRemoved = function()
+	{
+		this.bindComponentEvents(null); //remove binding		
+	}
+
+	LGraphComponent.prototype.onConnectionsChange = function( side )
+	{
+		this.bindComponentEvents( this._component );
+	}
+
+	LGraphComponent.prototype.onInit = function()
+	{
+		var compo = this.getComponent();
+		if(!compo)
+			return;
+		this.processOutputs( compo );
+	}
+
+	LGraphComponent.prototype.processOutputs = function( compo )
+	{
+		if(!this.outputs || !this.outputs.length  )
+			return;
+
+		//write outputs
+		for(var i = 0; i < this.outputs.length; i++)
+		{
+			var output = this.outputs[i];
+			if( !output.links || !output.links.length || output.type == LiteGraph.EVENT )
+				continue;
+
+			if(output.name == "Component")
+				this.setOutputData(i, compo );
+			else
+				this.setOutputData(i, compo[ output.name ] );
+		}
+	}
+
+
+	LGraphComponent.prototype.onExecute = function()
+	{
+		var compo = this.getComponent();
+		if(!compo)
+			return;
+
+		//read inputs (skip 1, is the component)
+		if(this.inputs)
+		for(var i = 0; i < this.inputs.length; i++)
+		{
+			var input = this.inputs[i];
+			if( input.type === LiteGraph.ACTION )
+				continue;
+			var v = this.getInputData(i);
+			if(v === undefined)
+				continue;
+			LS.setObjectProperty( compo, input.name, v );
+		}
+
+		//write outputs (done in a function so it can be reused by other methods)
+		this.processOutputs( compo );
+	}
+
+	LGraphComponent.updateOutputData = function( slot )
+	{
+		if(!this.outputs || slot >= this.outputs.length  )
+			return;
+
+		var output = this.outputs[i];
+		if( !output.links || !output.links.length || output.type == LiteGraph.EVENT )
+			return;
+
+		var compo = this.getComponent();
+		if(!compo)
+			return;
+
+		if(output.name == "Component")
+			this.setOutputData( slot, compo );
+		else
+			this.setOutputData( slot, compo[ output.name ] );
+	}
+
+	LGraphComponent.prototype.onDrawBackground = function()
+	{
+		var compo = this.getComponent();
+		if(compo)
+			this.title = LS.getClassName( compo.constructor );
+	}
+
+	LGraphComponent.prototype.getComponent = function()
+	{
+		var v = this.getInputData(0);
+		if(v)
+			return v;
+
+		var scene = this.graph._scene;
+		if(!scene) 
+			return null;
+
+		var node_id = this.properties.node_id;
+		if(!node_id)
+			return;
+
+		//find node
+		var node = scene.getNode( node_id );
+		if(!node)
+			return null;
+
+		//find compo
+		var compo_id = this.properties.component_id;
+		var compo = null;
+		if(compo_id.charAt(0) == "@")
+			compo = node.getComponentByUId( compo_id );
+		else if( LS.Components[ compo_id ] )
+			compo = node.getComponent( LS.Components[ compo_id ] );
+		else
+			return null;
+
+		if(compo && !compo.constructor.is_component)
+			return null;
+
+		if(this._component != compo)
+			this.bindComponentEvents( compo );
+
+		this._component = compo;
+		return compo;
+	}
+
+	//bind events attached to this component
+	LGraphComponent.prototype.bindComponentEvents = function( component )
+	{
+		if(this._component)
+			LEvent.unbindAll( this._component, this );
+
+		this._component = component;
+		if( !this._component )
+			return;
+		
+		//iterate outputs
+		if(this.outputs && this.outputs.length)
+			for(var i = 0; i < this.outputs.length; ++i )
+			{
+				var output = this.outputs[i];
+				if( output.type !== LiteGraph.EVENT )
+					continue;
+				var event_name = output.name.substr(3);
+				LEvent.bind( this._component, event_name, this.onComponentEvent, this );
+			}
+	}
+
+	LGraphComponent.prototype.onComponentEvent = function ( e, params )
+	{
+		this.trigger( "on_" + e, params );
+	}
+
+	LGraphComponent.prototype.getComponentProperties = function( get_inputs, result )
+	{
+		var compo = this.getComponent();
+		if(!compo)
+			return null;
+
+		var attrs = null;
+		if(compo.getPropertiesInfo)
+			attrs = compo.getPropertiesInfo( get_inputs );
+		else
+			attrs = LS.getObjectProperties( compo );
+
+		result = result || [];
+		for(var i in attrs)
+			result.push( [i, attrs[i]] );
+		return result;
+	}
+
+	LGraphComponent.prototype.onAction = function( action_name, params ) { 
+		if(!action_name)
+			return;
+		var compo = this.getComponent();
+		if(!compo)
+			return;
+		if(compo[action_name])
+			compo[action_name]( ); //params will be mostly MouseEvent, so for now I wont pass it
+	}
+
+	LGraphComponent.prototype.onGetInputs = function()
+	{ 
+		var inputs = [];
+
+		this.getComponentProperties("input", inputs);
+
+		var compo = this.getComponent();
+		if(compo && compo.getEventActions)
+		{
+			var actions = compo.getEventActions();
+			if(actions)
+				for(var i in actions)
+					inputs.push( [i, LiteGraph.ACTION ] );
+		}
+
+		return inputs;
+	}
+
+	LGraphComponent.prototype.onGetOutputs = function()
+	{ 
+		var outputs = [];
+		outputs.push( ["Component", "Component" ], null ); //compo + separator
+
+		this.getComponentProperties( "output", outputs);
+
+		var compo = this.getComponent();
+		if(compo && compo.getEvents)
+		{
+			var events = compo.getEvents();
+			if(events)
+				for(var i in events)
+					outputs.push( ["on_" + i, LiteGraph.EVENT ] );
+		}
+		return outputs;
+	}
+
+	LiteGraph.registerNodeType("scene/component", LGraphComponent );
+	
 	//********************************************************
 
 	/* LGraphNode representing an object in the Scene */
@@ -455,8 +750,9 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphMaterial.prototype.onGetInputs = function()
 	{
 		var mat = this.getMaterial();
-		if(!mat) return;
-		var o = mat.getProperties();
+		if(!mat)
+			return;
+		var o = mat.getPropertiesInfo();
 		var results = [["Material","Material"]];
 		for(var i in o)
 			results.push([i,o[i]]);
@@ -473,8 +769,9 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphMaterial.prototype.onGetOutputs = function()
 	{
 		var mat = this.getMaterial();
-		if(!mat) return;
-		var o = mat.getProperties();
+		if(!mat)
+			return;
+		var o = mat.getPropertiesInfo();
 		var results = [["Material","Material"]];
 		for(var i in o)
 			results.push([i,o[i]]);
@@ -491,125 +788,8 @@ if(typeof(LiteGraph) != "undefined")
 	LiteGraph.registerNodeType("scene/material", LGraphMaterial );
 	global.LGraphMaterial = LGraphMaterial;
 
-	//********************************************************
-
-	global.LGraphComponent = function()
-	{
-		this.properties = {
-			node: "",
-			component: ""
-		};
-
-		this.addInput("Component", undefined, { locked: true });
-
-		this._component = null;
-	}
-
-	LGraphComponent.title = "Component";
-	LGraphComponent.desc = "A component from a node";
-
-	LGraphComponent.prototype.onConnectInput = function( slot, type )
-	{
-		if (slot == 0 && !LS.Components[type])
-			return false;
-	}
-
-	LGraphComponent.prototype.onExecute = function()
-	{
-		var compo = this.getComponent();
-		if(!compo)
-			return;
-
-		//read inputs (skip 1, is the component)
-		for(var i = 1; i < this.inputs.length; i++)
-		{
-			var input = this.inputs[i];
-			var v = this.getInputData(i);
-			if(v === undefined)
-				continue;
-			LS.setObjectProperty( compo, input.name, v );
-		}
-
-		//write outputs
-		for(var i in this.outputs)
-		{
-			var output = this.outputs[i];
-			if(!output.links || !output.links.length)
-				continue;
-
-			//could be better...
-			this.setOutputData(i, compo[ output.name ] );
-		}
-	}
-
-	LGraphComponent.prototype.onDrawBackground = function()
-	{
-		var compo = this.getComponent();
-		if(compo)
-			this.title = LS.getClassName( compo.constructor );
-	}
-
-	LGraphComponent.prototype.getComponent = function()
-	{
-		var v = this.getInputData(0);
-		if(v)
-			return v;
-
-		var scene = this.graph._scene;
-		if(!scene) 
-			return null;
-
-		var node_id = this.properties.node;
-		if(!node_id)
-			return;
-
-		//find node
-		var node = scene.getNode( node_id );
-		if(!node)
-			return null;
-
-		//find compo
-		var compo_id = this.properties.component;
-		var compo = null;
-		if(compo_id.charAt(0) == "@")
-			compo = node.getComponentByUId( compo_id );
-		else if( LS.Components[ compo_id ] )
-			compo = node.getComponent( LS.Components[ compo_id ] );
-		else
-			return null;
-
-		if(compo && !compo.constructor.is_component)
-			return null;
-
-		this._component = compo;
-		return compo;
-	}
-
-	LGraphComponent.prototype.getComponentProperties = function( v )
-	{
-		var compo = this.getComponent();
-		if(!compo)
-			return null;
-
-		var attrs = null;
-		if(compo.getProperties)
-			attrs = compo.getProperties( v );
-		else
-			attrs = LS.getObjectProperties( compo );
-
-		var result = [];
-		for(var i in attrs)
-			result.push( [i, attrs[i]] );
-		return result;
-	}
-
-	LGraphComponent.prototype.onGetInputs = function() { return this.getComponentProperties("input"); }
-	LGraphComponent.prototype.onGetOutputs = function() { return this.getComponentProperties("output"); }
-
-	LiteGraph.registerNodeType("scene/component", LGraphComponent );
-
 	//************************************************************
-
+	/*
 	global.LGraphLight = function()
 	{
 		this.properties = {mat_name:""};
@@ -690,6 +870,7 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/light", LGraphLight );
+	*/
 
 	//************************************
 
@@ -732,13 +913,18 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphLocatorProperty.title = "Property";
 	LGraphLocatorProperty.desc = "A property of a node or component of the scene specified by its locator string";
 
-	LGraphLocatorProperty.prototype.onExecute = function()
+	LGraphLocatorProperty.prototype.getLocatorInfo = function()
 	{
 		var locator = this.properties.locator;
 		if(!this.properties.locator)
 			return;
+		var scene = this.graph.scene || LS.GlobalScene;
+		return this._locator_info = scene.getPropertyInfo( locator );
+	}
 
-		var info = this._locator_info = LS.GlobalScene.getPropertyInfo( locator );
+	LGraphLocatorProperty.prototype.onExecute = function()
+	{
+		var info = this.getLocatorInfo();
 
 		if(info && info.target)
 		{
@@ -751,6 +937,32 @@ if(typeof(LiteGraph) != "undefined")
 	}
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
+
+	//***********************************
+
+	//*
+	global.LGraphToggleValue = function()
+	{
+		this.addInput("target","Component");
+		this.addInput("toggle",LiteGraph.ACTION);
+		this.properties = {property_name:""};
+	}
+
+	LGraphToggleValue.title = "Toggle";
+	LGraphToggleValue.desc = "Toggle a property value";
+
+	LGraphToggleValue.prototype.onAction = function( action_name, params ) { 
+
+		var target = this.getInputData(0,true);
+		if(!target)
+			return;
+		var prop_name = this.properties.property_name;
+		if( target[ prop_name ] !== undefined )
+			target[ prop_name ] = !target[ prop_name ];
+	}
+
+	LiteGraph.registerNodeType("scene/toggle", LGraphToggleValue );
+	//*/
 
 	//************************************
 

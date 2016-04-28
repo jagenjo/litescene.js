@@ -997,6 +997,14 @@ SceneTree.prototype.start = function()
 	this._state = LS.RUNNING;
 	this._start_time = getTime() * 0.001;
 	/**
+	 * Fired when the nodes need to be initialized
+	 *
+	 * @event init
+	 * @param {LS.SceneTree} scene
+	 */
+	LEvent.trigger(this,"init",this);
+	this.triggerInNodes("init");
+	/**
 	 * Fired when the scene is starting to play
 	 *
 	 * @event start
@@ -1054,6 +1062,7 @@ SceneTree.prototype.collectData = function()
 	var lights = this._lights;
 	var cameras = this._cameras;
 	var colliders = this._colliders;
+
 	instances.length = 0;
 	lights.length = 0;
 	cameras.length = 0;
@@ -1080,7 +1089,7 @@ SceneTree.prototype.collectData = function()
 			LEvent.trigger( node, "computingShaderQuery", node_query );
 
 			var node_uniforms = {};
-			LEvent.trigger(node, "computingShaderUniforms", node_uniforms );
+			LEvent.trigger( node, "computingShaderUniforms", node_uniforms );
 
 		//store info
 		node._query = node_query;
@@ -1093,13 +1102,13 @@ SceneTree.prototype.collectData = function()
 		//get render instances: remember, triggers only support one parameter
 		LEvent.trigger(node,"collectRenderInstances", node._instances );
 		LEvent.trigger(node,"collectPhysicInstances", colliders );
-		LEvent.trigger(node,"collectLights", lights );
-		LEvent.trigger(node,"collectCameras", cameras );
+		//LEvent.trigger(node,"collectLights", lights );
+		//LEvent.trigger(node,"collectCameras", cameras );
 
 		instances.push.apply(instances, node._instances); //push inside
 	}
 
-	//we also collect from the scene itself just in case (TODO: REMOVE THIS)
+	//we also collect from the scene itself 
 	LEvent.trigger(this, "collectRenderInstances", instances );
 	LEvent.trigger(this, "collectPhysicInstances", colliders );
 	LEvent.trigger(this, "collectLights", lights );

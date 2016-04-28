@@ -24,18 +24,22 @@ function ComponentContainer()
 * @param {Object} info object containing all the info from a previous serialization
 */
 
-ComponentContainer.prototype.configureComponents = function(info)
+ComponentContainer.prototype.configureComponents = function( info )
 {
 	if(info.components)
 		for(var i = 0, l = info.components.length; i < l; ++i)
 		{
 			var comp_info = info.components[i];
 			var comp_class = comp_info[0];
-			if(comp_class == "Transform" && i == 0) //special case: this is the only component that comes by default
+
+			//special case: this is the only component that comes by default
+			if(comp_class == "Transform" && i == 0) 
 			{
 				this.transform.configure(comp_info[1]);
 				continue;
 			}
+
+			//search for the class
 			var classObject = LS.Components[comp_class];
 			if(!classObject){
 				console.error("Unknown component found: " + comp_class);
@@ -44,8 +48,19 @@ ComponentContainer.prototype.configureComponents = function(info)
 				this._missing_components.push( comp_info );
 				continue;
 			}
-			var comp = new LS.Components[comp_class]( comp_info[1] );
+
+			//create component
+			var comp = new classObject(); //comp_info[1]
+
+			//attach to node
 			this.addComponent(comp);
+
+			//what about configure the comp after adding it? 
+			comp.configure( comp_info[1] );
+
+			//ensure the component uid is stored, some components may forgot about it
+			if( comp_info[1].uid && comp_info[1].uid !== comp.uid )
+				comp.uid = comp_info[1].uid;
 		}
 }
 

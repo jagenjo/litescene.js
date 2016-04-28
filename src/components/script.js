@@ -212,7 +212,7 @@ Script.prototype.setProperty = function(name, value)
 }
 
 
-Script.prototype.getProperties = function()
+Script.prototype.getPropertiesInfo = function()
 {
 	var ctx = this.getContext();
 
@@ -673,6 +673,22 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 			compo.processCode(skip_events);
 	}
 }
+
+//used in editor
+ScriptFromFile.prototype.getComponentTitle = function()
+{
+	if(!this._script.code)
+		return;
+
+	var line = this._script.code.substr(0,32);
+	if(line.indexOf("//@") != 0)
+		return null;
+	var last = line.indexOf("\n");
+	if(last == -1)
+		last = undefined;
+	return line.substr(3,last - 3);
+}
+
 
 LS.extendClass( ScriptFromFile, Script );
 

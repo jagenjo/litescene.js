@@ -216,15 +216,25 @@ struct SurfaceOutput {\n\
 
 Light.prototype.onAddedToNode = function(node)
 {
-	if(!node.light) node.light = this;
-
-	LEvent.bind(node, "collectLights", this.onCollectLights, this );
+	if(!node.light)
+		node.light = this;
 }
 
 Light.prototype.onRemovedFromNode = function(node)
 {
-	if(node.light == this) delete node.light;
-	delete ResourcesManager.textures[":shadowmap_" + this.uid ];
+	if(node.light == this)
+		delete node.light;
+}
+
+Light.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "collectLights", this.onCollectLights, this ); 
+}
+
+Light.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "collectLights", this.onCollectLights, this );
+	LS.ResourcesManager.unregisterResource( ":shadowmap_" + this.uid );
 }
 
 Light.prototype.onCollectLights = function(e, lights)
@@ -782,6 +792,7 @@ Light.prototype.generateShadowmap = function (render_settings)
 	}
 
 	LS.Renderer.setRenderPass("shadow");
+	LS.Renderer._current_light = this;
 
 	//render the scene inside the texture
 	if(this.type == Light.OMNI) //render to cubemap
@@ -813,6 +824,7 @@ Light.prototype.generateShadowmap = function (render_settings)
 	}
 
 	LS.Renderer.setRenderPass("color");
+	LS.Renderer._current_light = null;
 }
 
 /**

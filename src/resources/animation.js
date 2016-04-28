@@ -254,8 +254,15 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			if(!info)
 				return;
 
-			if(info.node && info.target && info.target[ keyframe[1][0] ] )
-				info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
+			//events
+			if(info.target) //components
+				LEvent.trigger( info.target, keyframe[1], keyframe[1][1] );
+			else if(info.node) //nodes
+				LEvent.trigger( info.node, keyframe[1][0], keyframe[1][1] );
+
+			//functions
+			//if(info.node && info.target && info.target[ keyframe[1][0] ] )
+			//	info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
 		}
 		else //regular tracks
 		{
@@ -898,6 +905,8 @@ Track.prototype.unpackData = function()
 Track.prototype.findTimeIndex = function(time)
 {
 	var data = this.data;
+	if(!data || data.length == 0)
+		return -1;
 
 	if(this.packed_data)
 	{

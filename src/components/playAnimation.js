@@ -40,6 +40,9 @@ PlayAnimation.prototype.configure = function(o)
 {
 	if(o.play) //LEGACY
 		delete o.play;
+
+	if(o.enabled)
+		this.enabled = true;
 	if(o.range) 
 		this.range = o.range.concat();
 	if(o.mode !== undefined) 
@@ -86,15 +89,15 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if(!this.enabled)
 		return;
 
-	var animation = this.getAnimation();
-	if(!animation) 
-		return;
-
 	if(!this.playing)
 		return;
 
 	if( this.mode != PlayAnimation.PAUSED )
 		this.current_time += dt * this.playback_speed;
+
+	var animation = this.getAnimation();
+	if(!animation) 
+		return;
 
 	var take = animation.takes[ this.take ];
 	if(!take) 
@@ -119,6 +122,8 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		{
 			case PlayAnimation.ONCE: 
 					time = end_time; 
+					//time = start_time; //reset after
+					LEvent.trigger( this, "end_animation" );
 					this.playing = false;
 				break;
 			case PlayAnimation.LOOP: time = ((this.current_time - start_time) % duration) + start_time; break;
@@ -136,18 +141,9 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	else if(time < start_time)
 		time = start_time;
 
-	var root_node = null;
-	if(this.root_node && this._root.scene)
-	{
-		if(this.root_node == "@")
-			root_node = this._root;
-		else
-			root_node = this._root.scene.getNode( this.root_node );
-	}
+	this.applyAnimation( time, this._last_time );
 
-	take.applyTracks( time, this._last_time, undefined, root_node );
 	this._last_time = time; //TODO, add support for pingpong events in tracks
-
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
 
 	var scene = this._root.scene;
@@ -159,20 +155,63 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 PlayAnimation.prototype.play = function()
 {
 	this.playing = true;
+
+	this.current_time = 0;
+	if(this.range)
+		this.current_time = this.range[0];
+	this._last_time = this.current_time;
+	LEvent.trigger( this, "start_animation" );
+
+	//this.applyAnimation( this.current_time );
+}
+
+PlayAnimation.prototype.pause = function()
+{
+	this.playing = false;
 }
 
 PlayAnimation.prototype.stop = function()
 {
 	this.playing = false;
+
+	this.current_time = 0;
+	if(this.range)
+		this.current_time = this.range[0];
+	this._last_time = this.current_time;
+	//this.applyAnimation( this.current_time );
 }
 
 PlayAnimation.prototype.playRange = function( start, end )
 {
 	this.playing = true;
 	this.current_time = start;
+	this._last_time = this.current_time;
 	this.range = [ start, end ];
 }
 
+PlayAnimation.prototype.applyAnimation = function( time, last_time )
+{
+	if( last_time === undefined )
+		last_time = time;
+
+	var animation = this.getAnimation();
+	if(!animation) 
+		return;
+
+	var take = animation.takes[ this.take ];
+	if(!take) 
+		return;
+
+	var root_node = null;
+	if(this.root_node && this._root.scene)
+	{
+		if(this.root_node == "@")
+			root_node = this._root;
+		else
+			root_node = this._root.scene.getNode( this.root_node );
+	}
+	take.applyTracks( time, last_time, undefined, root_node );
+}
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
 {
@@ -215,5 +254,18 @@ PlayAnimation.prototype.onResourceRenamed = function (old_name, new_name, resour
 	if(this.animation == old_name)
 		this.animation = new_name;
 }
+
+//returns which events can trigger this component
+PlayAnimation.prototype.getEvents = function()
+{
+	return { "start_animation": "event", "end_animation": "event" };
+}
+
+//returns which actions can be triggered in this component
+PlayAnimation.prototype.getEventActions = function()
+{
+	return { "play": "function","pause": "function","stop": "function" };
+}
+
 
 LS.registerComponent( PlayAnimation );
