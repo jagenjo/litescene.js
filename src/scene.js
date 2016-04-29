@@ -1093,7 +1093,7 @@ SceneTree.prototype.collectData = function()
 
 		//store info
 		node._query = node_query;
-		node._uniforms = node_uniforms;
+		//node._uniforms = node_uniforms; //???
 		if(!node._instances)
 			node._instances = [];
 		else

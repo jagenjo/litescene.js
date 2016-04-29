@@ -80,7 +80,7 @@ function RenderInstance( node, component )
 	//for extra data for the shader
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
-	this.samplers = {};
+	this.samplers = [];
 
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
 	this._is_visible = false; //used during the rendering
@@ -88,8 +88,6 @@ function RenderInstance( node, component )
 	//for internal use
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
-	this._final_uniforms = {};
-	this._final_samplers = {};
 }
 
 /*

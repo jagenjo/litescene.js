@@ -123,6 +123,7 @@ function Light(o)
 	//for caching purposes
 	this._query = new ShaderQuery();
 	this._uniforms = {};
+	this._samplers = [];
 
 	if(o) 
 	{
@@ -457,6 +458,8 @@ Light.prototype.isInLayer = function(num)
 Light.prototype.prepare = function( render_settings )
 {
 	var uniforms = this._uniforms;
+	var samplers = this._samplers;
+
 	var query = this._query;
 	query.clear(); //delete all properties (I dont like to generate garbage)
 
@@ -472,7 +475,7 @@ Light.prototype.prepare = function( render_settings )
 
 	this.updateVectors();
 
-	//PREPARE MACROS
+	//PREPARE SHADER QUERY
 	if(this.type == Light.DIRECTIONAL)
 		query.macros.USE_DIRECTIONAL_LIGHT = "";
 	else if(this.type == Light.SPOT)
@@ -513,9 +516,6 @@ Light.prototype.prepare = function( render_settings )
 		}
 	}
 
-
-	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-	//	macros.USE_IGNORE_LIGHT = "";
 
 	//PREPARE UNIFORMS
 	if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
@@ -575,7 +575,62 @@ Light.prototype.prepare = function( render_settings )
 	if( this._shadowmap && !this.cast_shadows )
 		this._shadowmap = null; //remove shadowmap
 
-	this._uniforms = uniforms;
+	//prepare samplers
+	this._samplers.length = 0;
+	var use_shadows = this.cast_shadows && this._shadowmap && this._light_matrix != null && !render_settings.shadows_disabled;
+
+	//projective texture
+	if(this.projective_texture)
+	{
+		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[ this.projective_texture ] : this.projective_texture;
+		if(light_projective_texture)
+		{
+			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				uniforms.light_cubemap = LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
+			else
+				uniforms.light_texture = LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT;
+		}
+		samplers[ LS.Renderer.LIGHTPROJECTOR_TEXTURE_SLOT ] = light_projective_texture;
+	}
+	else
+	{
+		delete uniforms["light_texture"];
+		delete uniforms["light_cubemap"];
+	}
+
+	if(this.extra_texture)
+	{
+		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
+		if(extra_texture)
+		{
+			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
+				uniforms.extra_light_cubemap = LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
+			else
+				uniforms.extra_light_texture = LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT;
+		}
+		samplers[ LS.Renderer.LIGHTEXTRA_TEXTURE_SLOT ] = extra_texture;
+	}
+	else
+	{
+		delete uniforms["extra_light_texture"];
+		delete uniforms["extra_light_cubemap"];
+	}
+
+	//use shadows?
+	if(use_shadows)
+	{
+		var closest_far = this.computeShadowmapFar();
+		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ];
+		//uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
+		uniforms.shadowmap = LS.Renderer.SHADOWMAP_TEXTURE_SLOT;
+		uniforms.u_light_matrix = this._light_matrix;
+		samplers[ LS.Renderer.SHADOWMAP_TEXTURE_SLOT ] = this._shadowmap;
+	}
+	else
+	{
+		delete uniforms["u_shadow_params"];
+		delete uniforms["shadowmap"];
+	}
 }
 
 /**
@@ -621,79 +676,6 @@ Light.prototype.getQuery = function(instance, render_settings)
 		delete query.macros["USE_EXTRA_LIGHT_SHADER_CODE"];
 
 	return query;
-}
-
-/**
-* Collects and returns the uniforms for the light (some uniforms have to be computed now because they depend not only on the light, also on the node or material)
-* @method getUniforms
-* @param {RenderInstance} instance the render instance where this light will be applied
-* @param {Object} render_settings info about how the scene will be rendered
-* @return {Object} the uniforms
-*/
-Light.prototype.getUniforms = function( instance, render_settings )
-{
-	var uniforms = this._uniforms;
-	var use_shadows = this.cast_shadows && 
-					instance.flags & RI_RECEIVE_SHADOWS && 
-					this._shadowmap && this._light_matrix != null && 
-					!render_settings.shadows_disabled;
-
-	//compute the light mvp
-	if(this._light_matrix)
-		uniforms.u_lightMatrix = mat4.multiply( uniforms.u_lightMatrix || mat4.create(), this._light_matrix, instance.matrix );
-
-	//projective texture
-	if(this.projective_texture)
-	{
-		var light_projective_texture = this.projective_texture.constructor === String ? ResourcesManager.textures[this.projective_texture] : this.projective_texture;
-		if(light_projective_texture)
-		{
-			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				uniforms.light_cubemap = light_projective_texture.bind(11); //fixed slot
-			else
-				uniforms.light_texture = light_projective_texture.bind(11); //fixed slot
-			//	uniforms.light_rotation_matrix = 
-		}
-	}
-	else
-	{
-		delete uniforms["light_texture"];
-		delete uniforms["light_cubemap"];
-	}
-
-	if(this.extra_texture)
-	{
-		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
-		if(extra_texture)
-		{
-			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				uniforms.extra_light_cubemap = extra_texture.bind(12); //fixed slot
-			else
-				uniforms.extra_light_texture = extra_texture.bind(12); //fixed slot
-			//	uniforms.light_rotation_matrix = 
-		}
-	}
-	else
-	{
-		delete uniforms["extra_light_texture"];
-		delete uniforms["extra_light_cubemap"];
-	}
-
-
-	//use shadows?
-	if(use_shadows)
-	{
-		var closest_far = this.computeShadowmapFar();
-		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ];
-		uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
-	}
-	else
-	{
-		delete uniforms["u_shadow_params"];
-		delete uniforms["shadowmap"];
-	}
-
-	return uniforms;
 }
 
 /**

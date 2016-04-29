@@ -110,6 +110,9 @@ Script.prototype.configure = function(o)
 		this.code = o.code;
 	if(o.properties)
 		 this.setContextProperties( o.properties );
+
+	if(this._root && this._root.scene)
+		this.processCode();
 }
 
 Script.prototype.serialize = function()
@@ -617,6 +620,9 @@ ScriptFromFile.prototype.configure = function(o)
 		this.filename = o.filename;
 	if(o.properties)
 		 this.setContextProperties( o.properties );
+
+	if(this._root && this._root.scene)
+		this.processCode();
 }
 
 ScriptFromFile.prototype.serialize = function()

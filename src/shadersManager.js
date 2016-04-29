@@ -671,7 +671,7 @@ LS.SM = LS.ShadersManager = ShadersManager;
 
 
 /**
-* ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.
+* ShaderQuery is in charge of specifying info that must be taken into account when compiling a shader
 *
 * @class ShaderQuery
 * @namespace LS

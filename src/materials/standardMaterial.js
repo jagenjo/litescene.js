@@ -233,7 +233,7 @@ StandardMaterial.prototype.fillShaderQuery = function( scene )
 StandardMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = {};
+	var samplers = []; //array with the samplers in the binding order
 
 	uniforms.u_material_color = this._color;
 
@@ -262,6 +262,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	//iterate through textures in the material
+	var last_texture_slot = 0;
 	for(var i in this.textures) 
 	{
 		var sampler = this.getTextureSampler(i);
@@ -279,23 +280,11 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 		
 		if(!texture)  //loading or non-existant
 			sampler = { texture: ":missing" };
-		else
-			samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
 
-		var texture_uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
-		//last_slot += 1;
-
-		if(texture)
-		{
-			if(i == "irradiance" && texture.type == gl.TEXTURE_2D)
-			{
-				texture.bind(0);
-				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
-				texture.setParameter( gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
-				texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
-				//texture.min_filter = gl.GL_LINEAR;
-			}
-		}
+		samplers[ last_texture_slot ] = sampler;
+		var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
+		uniforms[ uniform_name ] = last_texture_slot;
+		last_texture_slot++;
 	}
 
 	//add extra uniforms

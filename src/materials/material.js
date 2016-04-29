@@ -156,74 +156,10 @@ Material.prototype.fillShaderQuery = function(scene)
 			query.macros[im] = this.extra_macros[im];
 }
 
-//Fill with info about the light
-// This is hard to precompute and reuse because here macros depend on the node (receive_shadows?), on the scene (shadows enabled?), on the material (contant diffuse?) 
-// and on the light itself
-/*
-Material.prototype.getLightShaderMacros = function(light, node, scene, render_settings)
-{
-	var macros = {};
-
-	var use_shadows = light.cast_shadows && light._shadowmap && light._light_matrix != null && !render_settings.shadows_disabled;
-
-	//light macros
-	if(light.use_diffuse && !this.constant_diffuse)
-		macros.USE_DIFFUSE_LIGHT = "";
-	if(light.use_specular && this.specular_factor > 0)
-		macros.USE_SPECULAR_LIGHT = "";
-	if(light.type == Light.DIRECTIONAL)
-		macros.USE_DIRECTIONAL_LIGHT = "";
-	else if(light.type == Light.SPOT)
-		macros.USE_SPOT_LIGHT = "";
-	if(light.spot_cone)
-		macros.USE_SPOT_CONE = "";
-	if(light.linear_attenuation)
-		macros.USE_LINEAR_ATTENUATION = "";
-	if(light.range_attenuation)
-		macros.USE_RANGE_ATTENUATION = "";
-
-	var light_projective_texture = light.projective_texture;
-	if(light_projective_texture && light_projective_texture.constructor == String)
-		light_projective_texture = ResourcesManager.textures[light_projective_texture];
-
-	if(light_projective_texture)
-	{
-		macros.USE_PROJECTIVE_LIGHT = "";
-		if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-			macros.USE_PROJECTIVE_LIGHT_CUBEMAP = "";
-	}
-
-	var light_average_texture = light.average_texture;
-	if(light_average_texture && light_average_texture.constructor == String)
-		light_average_texture = ResourcesManager.textures[light_average_texture];
-	if(light_average_texture)
-		macros.USE_TEXTURE_AVERAGE_LIGHT = "";
-
-	//if(vec3.squaredLength( light.color ) < 0.001 || node.flags.ignore_lights)
-	//	macros.USE_IGNORE_LIGHT = "";
-
-	if(light.offset > 0.001)
-		macros.USE_LIGHT_OFFSET = "";
-
-	if(use_shadows && node.flags.receive_shadows != false)
-	{
-		macros.USE_SHADOW_MAP = "";
-		if(light._shadowmap && light._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
-			macros.USE_SHADOW_CUBEMAP = "";
-		if(light.hard_shadows || macros.USE_SHADOW_CUBEMAP != null)
-			macros.USE_HARD_SHADOWS = "";
-
-		macros.SHADOWMAP_OFFSET = "";
-	}
-
-	return macros;
-}
-*/
-
 Material.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = {};
-	var samplers = {};
+	var samplers = [];
 
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
@@ -234,16 +170,21 @@ Material.prototype.fillUniforms = function( scene, options )
 	uniforms.u_reflection = 0.0;
 
 	//iterate through textures in the material
+	var last_texture_slot = 0;
 	for(var i in this.textures) 
 	{
-		var texture_info = this.getTextureSampler(i);
-		if(!texture_info) continue;
+		var sampler = this.getTextureSampler(i);
+		if(!sampler)
+			continue;
 
-		var texture = Material.getTextureFromSampler( texture_info );
+		var texture = Material.getTextureFromSampler( sampler );
 		if(!texture) //loading or non-existant
 			continue;
 
-		samplers[ i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = texture_info;
+		samplers[ last_texture_slot ] = sampler;
+		var uniform_name = i + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
+		uniforms[ uniform_name ] = last_texture_slot;
+		last_texture_slot++;
 	}
 
 	//add extra uniforms
@@ -586,7 +527,7 @@ Material.getTextureFromSampler = function(sampler)
 	if(texture.constructor === String)
 		texture = LS.ResourcesManager.textures[ texture ];
 	
-	if (!texture || texture.constructor != Texture)
+	if (!texture || texture.constructor != GL.Texture)
 		return null;
 	return texture;
 }
