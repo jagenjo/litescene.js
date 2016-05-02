@@ -38,5 +38,10 @@ LS.TYPES = {
 	VEC3 : "vec3",
 	VEC4 : "vec3",
 	COLOR : "color",
-	TEXTURE : "texture"
+	RESOURCE: "resource",
+	TEXTURE : "texture",
+	MESH: "mesh",
+	SCENENODE: "node",
+	SCENENODE_ID: "node_id",
+	COMPONENT: "component"
 };

@@ -184,17 +184,17 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	if(instance.flags & RI_IGNORE_VIEWPROJECTION)
 		renderer._mvp_matrix.set( model );
 	else
-		mat4.multiply(renderer._mvp_matrix, renderer._viewprojection_matrix, model );
+		mat4.multiply( renderer._mvp_matrix, renderer._viewprojection_matrix, model );
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
-	var instance_final_uniforms = instance._final_uniforms;
 	var instance_final_samplers = instance._final_samplers;
+	var render_uniforms = LS.Renderer._render_uniforms;
 
 	//maybe this two should be somewhere else
-	instance_final_uniforms.u_model = model; 
-	instance_final_uniforms.u_normal_model = instance.normal_matrix; 
-	instance_final_uniforms.u_mvp = renderer._mvp_matrix;
+	render_uniforms.u_model = model; 
+	render_uniforms.u_normal_model = instance.normal_matrix; 
+	render_uniforms.u_mvp = renderer._mvp_matrix;
 
 	//global stuff
 	renderer.enableInstanceFlags( instance, render_settings );
@@ -217,15 +217,18 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 		if(p.is_texture)
 		{
 			if(p.value)
-				samplers.push(p.value);
+			{
+				this._uniforms[ p.uniform ] = samplers.length;
+				samplers.push( p.value );
+			}
 		}
 		else
 			this._uniforms[ p.uniform ] = p.value;
 	}
 
 	//assign
-	LS.Renderer.bindSamplers( samplers, shader );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, this._uniforms, instance_final_uniforms ] );
+	LS.Renderer.bindSamplers( samplers );
+	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance._uniforms ] );
 
 	//render
 	instance.render( shader );
@@ -257,6 +260,35 @@ ShaderMaterial.prototype.getResources = function ( res )
 			res[ p.value ] = GL.Texture;
 	}
 	return res;
+}
+
+ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length < 1)
+		return;
+
+	var info = Material.prototype.getPropertyInfoFromPath.call(this,path);
+	if(info)
+		return info;
+
+	var varname = path[0];
+
+	for(var i = 0, l = this.properties.length; i < l; ++i )
+	{
+		var prop = this.properties[i];
+		if(prop.name != varname)
+			continue;
+
+		return {
+			node: this._root,
+			target: this,
+			name: prop.name,
+			value: prop.value,
+			type: prop.type
+		};
+	}
+
+	return;
 }
 
 

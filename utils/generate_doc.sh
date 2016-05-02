@@ -1,1 +1,1 @@
-yuidoc ../src -o ../doc
+yuidoc ../src ../external/litegl.js -o ../doc

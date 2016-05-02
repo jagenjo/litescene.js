@@ -41,6 +41,7 @@ var Renderer = {
 	_visible_lights: null,
 	_visible_instances: null,
 	_near_lights: [],
+	_active_samples: [],
 
 	//stats
 	_rendercalls: 0, //calls to instance.render
@@ -67,6 +68,11 @@ var Renderer = {
 	LIGHTPROJECTOR_TEXTURE_SLOT: 3,
 	LIGHTEXTRA_TEXTURE_SLOT: 2,
 
+	//used in special cases
+	BONES_TEXTURE_SLOT: 3,
+	MORPHS_TEXTURE_SLOT: 2,
+
+
 	//called from...
 	init: function()
 	{
@@ -89,8 +95,14 @@ var Renderer = {
 		this.SHADOWMAP_TEXTURE_SLOT = max_texture_units - 2;
 		this.ENVIRONMENT_TEXTURE_SLOT = max_texture_units - 3;
 		this.IRRADIANCE_TEXTURE_SLOT = max_texture_units - 4;
+
 		this.LIGHTPROJECTOR_TEXTURE_SLOT = max_texture_units - 5;
 		this.LIGHTEXTRA_TEXTURE_SLOT = max_texture_units - 6;
+
+		this.BONES_TEXTURE_SLOT = max_texture_units - 7;
+		this.MORPHS_TEXTURE_SLOT = max_texture_units - 8;
+
+		this._active_samples.length = max_texture_units;
 	},
 
 	reset: function()
@@ -616,7 +628,7 @@ var Renderer = {
 		var num_lights = lights.length;
 
 		//no lights rendering (flat light)
-		var ignore_lights = node.flags.ignore_lights || (instance.flags & RI_IGNORE_LIGHTS) || render_settings.lights_disabled;
+		var ignore_lights = node.flags.ignore_lights || !!(instance.flags & RI_IGNORE_LIGHTS) || render_settings.lights_disabled;
 		if(!num_lights || ignore_lights)
 		{
 			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:"", LAST_PASS:"", USE_AMBIENT_ONLY:"" });
@@ -827,6 +839,18 @@ var Renderer = {
 		return result;
 	},
 
+	//to be sure we dont have anything binded
+	clearSamplers: function()
+	{
+		for(var i = 0; i < this._max_texture_units; ++i)
+		{
+			gl.activeTexture(gl.TEXTURE0 + i);
+			gl.bindTexture( gl.TEXTURE_2D, null );
+			gl.bindTexture( gl.TEXTURE_CUBE_MAP, null );
+			this._active_samples[i] = null;
+		}
+	},
+
 	bindSamplers: function( samplers )
 	{
 		if(!samplers)
@@ -855,7 +879,11 @@ var Renderer = {
 			if(!tex)
 				tex = this._missing_texture;
 
+			if(tex._locked) //locked textures are usually the render target where we are rendering right now, so we cannot read and write at the same texture
+				continue;
+
 			tex.bind( i );
+			this._active_samples[i] = tex;
 
 			//texture properties
 			if(sampler)
@@ -898,6 +926,7 @@ var Renderer = {
 		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
 			query.setMacro("USE_DRAW_BUFFERS");
 
+		//so components can add stuff (like Fog, etc)
 		LEvent.trigger( scene, "fillSceneQuery", query );
 
 		scene._query = query;
@@ -922,16 +951,22 @@ var Renderer = {
 			uniforms.u_gamma = 2.2;
 
 		scene._uniforms = uniforms;
-		scene._samplers = [];
+		scene._samplers = scene._samplers || [];
+		scene._samplers.length = 0;
 
-		/*
 		for(var i in scene.info.textures)
 		{
 			var texture = LS.getTexture( scene.info.textures[i] );
 			if(!texture)
 				continue;
-			if(i != "environment" && i != "irradiance")
-				continue; //TO DO: improve this, I dont want all textures to be binded 
+
+			var slot = 0;
+			if( i == "environment" )
+				slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
+			else if( i == "irradiance" )
+				slot = LS.Renderer.IRRADIANCE_TEXTURE_SLOT;
+			else
+				continue; 
 
 			var type = (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap");
 			if(texture.texture_type == gl.TEXTURE_2D)
@@ -939,10 +974,10 @@ var Renderer = {
 				texture.bind(0);
 				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
 			}
-			scene._samplers[i + type] = texture;
+			scene._samplers[ slot ] = texture;
+			scene._uniforms[ i + type ] = slot;
 			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 		}
-		*/
 
 		LEvent.trigger( scene, "fillSceneUniforms", scene._uniforms );
 	},	

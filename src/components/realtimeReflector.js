@@ -10,8 +10,6 @@ function RealtimeReflector(o)
 {
 	this.enabled = true;
 	this.texture_size = 512;
-	this.brightness_factor = 1.0;
-	this.colorclip_factor = 0.0;
 	this.clip_offset = 0.5; //to avoid ugly edges near clipping plane
 	this.texture_name = "";
 	this.use_cubemap = false;
@@ -74,12 +72,23 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 		this._root.flags.seen_by_reflections = false;
 
 	//add flags
-	render_settings.brightness_factor = this.brightness_factor;
-	render_settings.colorclip_factor = this.colorclip_factor;
 	var old_layers = render_settings.layers;
 	render_settings.layers = this.layers;
 
 	var cameras = LS.Renderer._visible_cameras;
+
+	//to be sure we are not using this texture during the rendering to avoid
+	//rendering to and reading of same texture
+	/*
+	var mat = this._root.getMaterial();
+	if(mat)
+		mat.setTexture( Material.ENVIRONMENT_TEXTURE, null );
+	mat.fillUniforms( LS.Renderer._current_scene ); //otherwise the samplers wont be updated
+	//gl.activeTexture(gl.TEXTURE0 + LS.Renderer.ENVIRONMENT_TEXTURE_SLOT);
+	//gl.bindTexture( gl.TEXTURE_2D, null );
+	//gl.bindTexture( gl.TEXTURE_CUBE_MAP, null );
+	*/
+	LS.Renderer.clearSamplers();
 
 	for(var i = 0; i < cameras.length; i++)
 	{
@@ -106,6 +115,8 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 			texture.has_mipmaps = this.generate_mipmaps;
 			this._textures[ camera.uid ] = texture;
 		}
+
+		texture._locked = true; //avoid binding this texture during rendering
 
 		//compute planes
 		var plane_center = this._root.transform.getGlobalPosition();
@@ -170,6 +181,8 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 			texture.unbind();
 		}
 
+		texture._locked = false;
+
 		if(this.texture_name)
 			LS.ResourcesManager.registerResource( this.texture_name, texture );
 		LS.ResourcesManager.registerResource( ":reflection_" + camera.uid, texture );
@@ -183,6 +196,15 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 	render_settings.layers = old_layers;
 	delete render_settings.brightness_factor;
 	delete render_settings.colorclip_factor;
+
+	/*
+	if(mat)
+	{
+		var sampler = mat.setTexture( Material.ENVIRONMENT_TEXTURE, ":reflection_" + camera.uid );
+		sampler.uvs = Material.COORDS_FLIPPED_SCREEN;
+		mat.fillUniforms( LS.Renderer._current_scene ); //otherwise the samplers wont be updated
+	}
+	*/
 
 	//make it visible again
 	this._root.flags.visible = visible;

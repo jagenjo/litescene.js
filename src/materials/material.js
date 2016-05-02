@@ -711,7 +711,7 @@ Material.prototype.prepareMaterial = function( scene )
 	if(!this._uniforms)
 	{
 		this._uniforms = {};
-		this._samplers = {};
+		this._samplers = [];
 	}
 	this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms

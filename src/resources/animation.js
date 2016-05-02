@@ -175,7 +175,13 @@ Animation.prototype.optimizeTracks = function()
 
 LS.Classes["Animation"] = LS.Animation = Animation;
 
-/** Represents a set of animations **/
+/**  
+* Represents a set of animations
+*
+* @class Take
+* @namespace LS.Animation
+* @constructor
+*/
 function Take(o)
 {
 	this.name = null;

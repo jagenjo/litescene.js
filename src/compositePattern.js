@@ -114,8 +114,8 @@ CompositePattern.prototype.addChild = function(node, index, options)
 *
 * @method removeChild
 * @param {Node} node this child to remove
-* @param1 {*} param1 data passed to onChildRemoved
-* @param2 {*} param2 data passed to onChildRemoved as second parameter
+* @param {*} param1 data passed to onChildRemoved
+* @param {*} param2 data passed to onChildRemoved as second parameter
 * @return {Boolean} returns true if it was found and removed
 */
 CompositePattern.prototype.removeChild = function(node, param1, param2)

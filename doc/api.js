@@ -2,6 +2,7 @@ YUI.add("yuidoc-meta", function(Y) {
    Y.YUIDoc = { meta: {
     "classes": [
         "LS.Animation",
+        "LS.Animation.Take",
         "LS.Animation.Track",
         "LS.Collision",
         "LS.Component",
@@ -15,9 +16,6 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.GeometricPrimitive",
         "LS.Components.GlobalFX",
         "LS.Components.GraphComponent",
-        "LS.Components.Knob",
-        "LS.Components.Light",
-        "LS.Components.LightFX",
         "LS.Components.MeshRenderer",
         "LS.Components.NodeManipulator",
         "LS.Components.PlayAnimation",
@@ -25,17 +23,23 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.RealtimeReflector",
         "LS.Components.Rotator",
         "LS.Components.Script",
+        "LS.Components.SkinDeformer",
         "LS.Components.Spherize",
         "LS.Components.Target",
+        "LS.Components.TextureFX",
         "LS.Components.Transform",
         "LS.Components.VRCameraController",
         "LS.CompositePattern",
         "LS.Draw",
         "LS.Formats",
+        "LS.InteractiveController",
+        "LS.Knob",
         "LS.LS",
-        "LS.LSQ",
         "LS.LScript",
+        "LS.Light",
+        "LS.LightFX",
         "LS.Material",
+        "LS.Pack",
         "LS.Physics",
         "LS.PhysicsInstance",
         "LS.Picking",
@@ -45,16 +49,28 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.RenderInstance",
         "LS.RenderSettings",
         "LS.Renderer",
+        "LS.Resource",
         "LS.ResourcesManager",
         "LS.SceneNode",
         "LS.SceneTree",
+        "LS.ShaderCode",
+        "LS.ShaderMaterial",
         "LS.ShaderQuery",
         "LS.ShadersManager",
         "LS.StandardMaterial",
-        "LS.TextureFX",
-        "LS.WBin"
+        "LS.WBin",
+        "LSQ"
     ],
-    "modules": [],
-    "allModules": []
+    "modules": [
+        "LS"
+    ],
+    "allModules": [
+        {
+            "displayName": "LS",
+            "name": "LS",
+            "description": "LS is the global scope for the global functions and containers of LiteScene"
+        }
+    ],
+    "elements": []
 } };
 });

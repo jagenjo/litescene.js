@@ -9,7 +9,7 @@ typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Arra
 * LS is the global scope for the global functions and containers of LiteScene
 *
 * @class  LS
-* @namespace  LS
+* @module LS
 */
 
 var LS = {

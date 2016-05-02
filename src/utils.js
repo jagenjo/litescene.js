@@ -1,7 +1,7 @@
 /**
 * Samples a curve and returns the resulting value 
 *
-* @class LS
+* @namespace LS
 * @method getCurveValueAt
 * @param {Array} values 
 * @param {number} minx min x value
@@ -37,6 +37,7 @@ LS.getCurveValueAt = function(values,minx,maxx,defaulty, x)
 /**
 * Resamples a full curve in values (useful to upload to GPU array)
 *
+* @namespace LS
 * @method resampleCurve
 * @param {Array} values 
 * @param {number} minx min x value

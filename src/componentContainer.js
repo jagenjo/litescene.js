@@ -201,7 +201,7 @@ ComponentContainer.prototype.removeAllComponents = function()
 /**
 * Returns if the class has an instance of this component
 * @method hasComponent
-* @param {bool}
+* @param {bool} true if it has a component of this class
 */
 ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
 {

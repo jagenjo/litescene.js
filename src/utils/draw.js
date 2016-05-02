@@ -240,9 +240,9 @@ var Draw = {
 	/**
 	* A helper to create shaders when you only want to specify some basic shading
 	* @method createSurfaceShader
-	* @params {string} surface_function GLSL code like: "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
-	* @params {object} macros [optional] object containing the macros and value
-	* @params {object} uniforms [optional] object with name and type
+	* @param {string} surface_function GLSL code like: "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
+	* @param {object} macros [optional] object containing the macros and value
+	* @param {object} uniforms [optional] object with name and type
 	* @return {GL.Shader} the resulting shader
 	*/
 	createSurfaceShader: function( surface_function, uniforms, macros )
@@ -318,7 +318,7 @@ var Draw = {
 	/**
 	* Sets the color used to paint primitives
 	* @method setColor
-	* @params {vec3|vec4} color
+	* @param {vec3|vec4} color
 	*/
 	setColor: function(color)
 	{
@@ -329,7 +329,7 @@ var Draw = {
 	/**
 	* Sets the alpha used to paint primitives
 	* @method setAlpha
-	* @params {number} alpha
+	* @param {number} alpha
 	*/
 	setAlpha: function(alpha)
 	{
@@ -339,7 +339,7 @@ var Draw = {
 	/**
 	* Sets the point size
 	* @method setPointSize
-	* @params {number} v
+	* @param {number} v
 	*/
 	setPointSize: function(v)
 	{
@@ -349,7 +349,7 @@ var Draw = {
 	/**
 	* Sets the camera to use during the rendering, this is already done by LS.Renderer
 	* @method setCamera
-	* @params {LS.Camera} camera
+	* @param {LS.Camera} camera
 	*/
 	setCamera: function( camera )
 	{
@@ -364,7 +364,7 @@ var Draw = {
 	/**
 	* Specifies the camera position (used to compute point size)
 	* @method setCameraPosition
-	* @params {vec3} center
+	* @param {vec3} center
 	*/
 	setCameraPosition: function(center)
 	{
@@ -386,9 +386,9 @@ var Draw = {
 	/**
 	* Specifies the camera view and projection matrices
 	* @method setViewProjectionMatrix
-	* @params {mat4} view
-	* @params {mat4} projection
-	* @params {mat4} vp viewprojection matrix [optional]
+	* @param {mat4} view
+	* @param {mat4} projection
+	* @param {mat4} vp viewprojection matrix [optional]
 	*/
 	setViewProjectionMatrix: function(view, projection, vp)
 	{
@@ -403,7 +403,7 @@ var Draw = {
 	/**
 	* Specifies the transformation matrix to apply to the mesh
 	* @method setMatrix
-	* @params {mat4} matrix
+	* @param {mat4} matrix
 	*/
 	setMatrix: function(matrix)
 	{
@@ -413,7 +413,7 @@ var Draw = {
 	/**
 	* Multiplies the current matrix by a given one
 	* @method multMatrix
-	* @params {mat4} matrix
+	* @param {mat4} matrix
 	*/
 	multMatrix: function(matrix)
 	{
@@ -423,9 +423,9 @@ var Draw = {
 	/**
 	* Render lines given a set of points
 	* @method renderLines
-	* @params {Float32Array|Array} points
-	* @params {Float32Array|Array} colors [optional]
-	* @params {bool} strip [optional] if the lines are a line strip (one consecutive line)
+	* @param {Float32Array|Array} points
+	* @param {Float32Array|Array} colors [optional]
+	* @param {bool} strip [optional] if the lines are a line strip (one consecutive line)
 	*/
 	renderLines: function(lines, colors, strip)
 	{
@@ -445,9 +445,9 @@ var Draw = {
 	/**
 	* Render points given a set of positions (and colors)
 	* @method renderPoints
-	* @params {Float32Array|Array} points
-	* @params {Float32Array|Array} colors [optional]
-	* @params {GL.Shader} shader [optional]
+	* @param {Float32Array|Array} points
+	* @param {Float32Array|Array} colors [optional]
+	* @param {GL.Shader} shader [optional]
 	*/
 	renderPoints: function(points, colors, shader)
 	{
@@ -481,9 +481,9 @@ var Draw = {
 	/**
 	* Render round points given a set of positions (and colors)
 	* @method renderRoundPoints
-	* @params {Float32Array|Array} points
-	* @params {Float32Array|Array} colors [optional]
-	* @params {GL.Shader} shader [optional]
+	* @param {Float32Array|Array} points
+	* @param {Float32Array|Array} colors [optional]
+	* @param {GL.Shader} shader [optional]
 	*/
 	renderRoundPoints: function(points, colors, shader)
 	{
@@ -511,11 +511,11 @@ var Draw = {
 	/**
 	* Render points with color, size, and texture binded in 0
 	* @method renderPointsWithSize
-	* @params {Float32Array|Array} points
-	* @params {Float32Array|Array} colors [optional]
-	* @params {Float32Array|Array} sizes [optional]
-	* @params {GL.Texture} texture [optional]
-	* @params {GL.Shader} shader [optional]
+	* @param {Float32Array|Array} points
+	* @param {Float32Array|Array} colors [optional]
+	* @param {Float32Array|Array} sizes [optional]
+	* @param {GL.Texture} texture [optional]
+	* @param {GL.Shader} shader [optional]
 	*/
 	renderPointsWithSize: function(points, colors, sizes, texture, shader)
 	{
@@ -559,9 +559,9 @@ var Draw = {
 	/**
 	* Render points with color, size, and texture binded in 0
 	* @method renderRectangle
-	* @params {number} width
-	* @params {number} height
-	* @params {boolean} in_z [optional] if the plane is aligned with the z plane
+	* @param {number} width
+	* @param {number} height
+	* @param {boolean} in_z [optional] if the plane is aligned with the z plane
 	*/
 	renderRectangle: function(width, height, in_z)
 	{
@@ -606,10 +606,10 @@ var Draw = {
 	/**
 	* Renders a circle 
 	* @method renderCircle
-	* @params {number} radius
-	* @params {number} segments
-	* @params {boolean} in_z [optional] if the circle is aligned with the z plane
-	* @params {boolean} filled [optional] renders the interior
+	* @param {number} radius
+	* @param {number} segments
+	* @param {boolean} in_z [optional] if the circle is aligned with the z plane
+	* @param {boolean} filled [optional] renders the interior
 	*/
 	renderCircle: function(radius, segments, in_z, filled)
 	{
@@ -620,9 +620,9 @@ var Draw = {
 	/**
 	* Render a filled circle
 	* @method renderSolidCircle
-	* @params {number} radius
-	* @params {number} segments
-	* @params {boolean} in_z [optional] if the circle is aligned with the z plane
+	* @param {number} radius
+	* @param {number} segments
+	* @param {boolean} in_z [optional] if the circle is aligned with the z plane
 	*/
 	renderSolidCircle: function(radius, segments, in_z)
 	{
@@ -666,8 +666,8 @@ var Draw = {
 	/**
 	* Renders three circles to form a simple spherical shape
 	* @method renderWireSphere
-	* @params {number} radius
-	* @params {number} segments
+	* @param {number} radius
+	* @param {number} segments
 	*/
 	renderWireSphere: function(radius, segments)
 	{
@@ -693,9 +693,9 @@ var Draw = {
 	/**
 	* Renders a wire box (box made of lines, not filled)
 	* @method renderWireBox
-	* @params {number} sizex
-	* @params {number} sizey
-	* @params {number} sizez
+	* @param {number} sizex
+	* @param {number} sizey
+	* @param {number} sizez
 	*/
 	renderWireBox: function(sizex,sizey,sizez)
 	{
@@ -719,9 +719,9 @@ var Draw = {
 	/**
 	* Renders a solid box 
 	* @method renderSolidBox
-	* @params {number} sizex
-	* @params {number} sizey
-	* @params {number} sizez
+	* @param {number} sizex
+	* @param {number} sizey
+	* @param {number} sizez
 	*/
 	renderSolidBox: function(sizex,sizey,sizez)
 	{
@@ -811,10 +811,10 @@ var Draw = {
 	/**
 	* Renders a cone 
 	* @method renderCone
-	* @params {number} radius
-	* @params {number} height
-	* @params {number} segments
-	* @params {boolean} in_z aligned with z axis
+	* @param {number} radius
+	* @param {number} height
+	* @param {number} segments
+	* @param {boolean} in_z aligned with z axis
 	*/
 	renderCone: function(radius, height, segments, in_z)
 	{
@@ -848,10 +848,10 @@ var Draw = {
 	/**
 	* Renders a cylinder
 	* @method renderCylinder
-	* @params {number} radius
-	* @params {number} height
-	* @params {number} segments
-	* @params {boolean} in_z aligned with z axis
+	* @param {number} radius
+	* @param {number} height
+	* @param {number} segments
+	* @param {boolean} in_z aligned with z axis
 	*/
 	renderCylinder: function( radius, height, segments, in_z )
 	{
@@ -862,10 +862,10 @@ var Draw = {
 	/**
 	* Renders an image
 	* @method renderImage
-	* @params {vec3} position
-	* @params {Image|Texture|String} image from an URL, or a texture
-	* @params {number} size [optional=10]
-	* @params {boolean} fixed_size [optional=false] (camera distance do not affect size)
+	* @param {vec3} position
+	* @param {Image|Texture|String} image from an URL, or a texture
+	* @param {number} size [optional=10]
+	* @param {boolean} fixed_size [optional=false] (camera distance do not affect size)
 	*/
 	renderImage: function( position, image, size, fixed_size )
 	{
@@ -928,11 +928,11 @@ var Draw = {
 	/**
 	* Renders a given mesh applyting the stack transformations
 	* @method renderMesh
-	* @params {GL.Mesh} mesh
-	* @params {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
-	* @params {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
-	* @params {number} range_start [optional] in case of rendering a range, the start primitive
-	* @params {number} range_length [optional] in case of rendering a range, the number of primitives
+	* @param {GL.Mesh} mesh
+	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
+	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
+	* @param {number} range_start [optional] in case of rendering a range, the start primitive
+	* @param {number} range_length [optional] in case of rendering a range, the number of primitives
 	*/
 	renderMesh: function( mesh, primitive, shader, indices, range_start, range_length )
 	{
@@ -986,7 +986,7 @@ var Draw = {
 	/**
 	* Renders a text in the current matrix position
 	* @method renderText
-	* @params {string} text
+	* @param {string} text
 	*/
 	renderText: function( text )
 	{
