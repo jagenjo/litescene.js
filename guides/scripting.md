@@ -40,7 +40,7 @@ Keep in mind that myfunction must be a public method attached to the context (p.
 
 ### Default methods ###
 
-However, there are some basic events that all scripts usually want to use, like **start**, **render**, **update** and **finish**.
+However, there are some basic events that all scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
 You do not need to bind those events, the Script component does it automatically.
 You just need to create a public method (attached to the context) with the appropiate name:
 ```this.update = function(dt) { ... };```
@@ -68,7 +68,7 @@ Although you are free to register the components in some global container when t
 When coding scripts for LiteScene there are several things you must take into account:
 - Remember to unbind every event you bind, otherwise the editor could have erratic behaviour.
 - When using LS.Component.Script keep in mind that when the context is created (when your global code is executed) if you try to access to the scene tree to retrieve information (like nodes) it is possible that this info is not yet available because it hasnt been parsed yet.
-
+- You can name the scripts by putting the name in the first like inside a comment like this: ```//@script_name ``` this may be useful if you are using the WebGLStudio editor as the name will be shown instead of the component class name.
 
 ## ScriptFromFile ##
 
