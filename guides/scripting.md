@@ -34,19 +34,22 @@ To interact with the system, scripts need to attach callbacks to events dispatch
 The number of events is too big to list here, check the different components documentation and the examples to see to which events you can bind to.
 To bind an event you can call the bind method:
 
-```this.bind( LS.Renderer, "computeVisibility", myfunction );```
+```javascript
+this.bind( LS.Renderer, "computeVisibility", myfunction );
+```
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
 
 ### API exported methods ###
 
 However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
-You do not need to bind (or unbind) those events, the Script component does it automatically.
-You just need to create a public method (attached to the context) with the appropiate name. 
+You do not need to bind (or unbind) those events, the Script component does it automatically if it detect a method in the context with an specific name (depending on the event):
 
-```this.onUpdate = function(dt) { ... };```
+```javascript
+this.onUpdate = function(dt) { ... };
+```
 
-Here is a list of the automatically binded events.
+Here is a list of the automatically binded events:
 
 - **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
@@ -62,6 +65,7 @@ Here is a list of the automatically binded events.
 - **onEnableFrameContext**: triggered by the scene "enableFrameContext" event. Before rendering the final frame, used to setup a special RenderFrameContext and apply FX to the final image.
 - **onShowFrameContext**: triggered by the scene "showFrameContext" event. After the final frame, to show the frame into the viewport.
 - **onRemovedFromScene**: called when the node where the script belongs is detached from the scene.
+- **onGetResources**: called when the script needs to collect resources. This function receives an object that needs to be filled with the fullpath : type of the resources it uses so they can be automatically loaded when the scene is loaded.
 
 Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the onRemovedFromScene so no lose binds are left.
 
@@ -77,9 +81,11 @@ If you want to access data from the context of another script in the scene (or c
 
 To do so the best way is to get the node from the scene, get the script component from that node, and get the context from that component.
 
-```var node = scene.getNode("nodename");
+```javascript
+var node = scene.getNode("nodename");
 var component = node.getComponent( LS.Components.Script ); //or ScriptFromFile, depending which component was used
-var foo = component.context.foo; //read context property```
+var foo = component.context.foo; //read context property
+```
 
 Although you are free to register the components in some global container when the context is created so they are easier to retrieve.
 
