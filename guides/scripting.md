@@ -38,12 +38,32 @@ To bind an event you can call the bind method:
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
 
-### Default methods ###
+### API exported methods ###
 
-However, there are some basic events that all scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
-You do not need to bind those events, the Script component does it automatically.
-You just need to create a public method (attached to the context) with the appropiate name:
-```this.update = function(dt) { ... };```
+However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
+You do not need to bind (or unbind) those events, the Script component does it automatically.
+You just need to create a public method (attached to the context) with the appropiate name. 
+
+```this.onUpdate = function(dt) { ... };```
+
+Here is a list of the automatically binded events.
+
+- **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
+- **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
+- **onPrefabReady**: triggered by the node "prefabReady", used to access components or node that come from the prefab
+- **onUpdate**: triggered by scene "update" event. it receives the delta time in seconds.
+- **onClicked**: triggered by the node "clicked" event. Remember that you need an InteractiveController in the scene to dispatch this events.
+- **onCollectRenderInstances**: triggered by node "collectRenderInstances" event. To pass RenderInstasnces
+- **onSceneRender**: triggered by scene "beforeRender" event. Used to prepare stuff before any rendering is done.
+- **onRender**: triggered by the node "beforeRenderInstances" event. Used to direct render stuff before the RenderInstances are rendered.
+- **onAfterRender**: triggered by the node "afterRenderInstances" event. Used to direct render stuff after the RenderInstances are rendered.
+- **onRenderHelpers**: triggered by scene "renderHelpers" event. To direct render stuff related to the editor.
+- **onRenderGUI**: triggered by scene "renderGUI", to render stuff in 2D (using the canvas2D).
+- **onEnableFrameContext**: triggered by the scene "enableFrameContext" event. Before rendering the final frame, used to setup a special RenderFrameContext and apply FX to the final image.
+- **onShowFrameContext**: triggered by the scene "showFrameContext" event. After the final frame, to show the frame into the viewport.
+- **onRemovedFromScene**: called when the node where the script belongs is detached from the scene.
+
+Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the onRemovedFromScene so no lose binds are left.
 
 ### Serialization ###
 
