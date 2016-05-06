@@ -2,31 +2,56 @@
 
 LiteScene allows to run scripts so users can code the behaviour of the application.
 
+The info about the scripts is stored inside the scene so when a new scene is loaded it loads its scripts too.
+
 There are several ways to interact programmatically with LiteScene, every method is better suited for different purposes.
 
-## Script component ##
+## Using script components ##
 
-This is the easiest way. There is a component called LS.Component.Script that stores the script as an string inside the property code.
-The script stored inside the Script component have their own execution context usually referred as the script context.
+This is the easiest way. You can attach a Script or a ScriptFromFile component to any node. The difference between both is that Script stores the code inside the component while ScriptFromFile references the code from a resource file (better suited when sharing the same behaviour among different nodes or projects).
 
-The context is created when the component is configured and every var (or function) defined in that scope is local to the context so it cannot be accesed from outside of the scope.
+ScriptFromFile behave as regular Scripts but because its load is asynchromous it means their context will be created later in time after the scene has started, keep that in mind (events like start will me called once the node is loaded).
+
+### The script context ###
+
+Every script has its own execution context usually referred as the script context.
+
+The context is created when the component is configured and the code loaded.
+
+To access the context of a script component just access the context property:
+
+```javascript
+script_component.context.foo = 10;
+```
+
+### Local vars and functions ###
+
+Every ```var``` (or ```function```) defined in that scope is local to the context so it cannot be accesed from outside of the scope.
+
+Unless we make it public or we make a setter/getter.
 
 ### Public vars ###
 
-If the user wants to make local vars or methods accesible from other scripts, graphs or animation tracks, they need to be made public, to do so they must be attached to the context itself:
+If the user wants to make local vars or methods accesible from other scripts, graphs or animation tracks  (or the editor), they need to be made public, to do so they must be attached to the context itself:
 
-```this.number = 1;```
+```javascript
+this.number = 1; //this var will be public
+```
 
 Sometimes may be helpful to specify the type of the var to the system, this way the var can be properly connected using Graphs, or animated using Animation Tracks.
 In that case the user can use:
 
-```this.createProperty("myvar", [1,1,1], "vec3");```
+```javascript
+this.createProperty("myvar", [1,1,1], LS.TYPES.VEC3 );
+```
 
 Specifying types is important when the types are not basic types, and if you are using WebGLStudio the system will create appropiate widgets to interact with them.
 
-Also, when using WebGLStudio, there is also the option to specify widget properties to have a better ui for this script:
+Also, when using WebGLStudio, there is also the option to specify widget properties to have a better UI for this script:
 
-```this.createProperty("myvar", 0, {type: "number", widget:"slider", min:0, max:100, step:1});```
+```javascript
+this.createProperty("myvar", 0, {type: "number", widget:"slider", min:0, max:100, step:1});
+```
 
 ### Events ###
 
@@ -35,7 +60,7 @@ The number of events is too big to list here, check the different components doc
 To bind an event you can call the bind method:
 
 ```javascript
-this.bind( LS.Renderer, "computeVisibility", myfunction );
+this.bind( scene, "update", myfunction );
 ```
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
@@ -95,13 +120,6 @@ When coding scripts for LiteScene there are several things you must take into ac
 - Remember to unbind every event you bind, otherwise the editor could have erratic behaviour.
 - When using LS.Component.Script keep in mind that when the context is created (when your global code is executed) if you try to access to the scene tree to retrieve information (like nodes) it is possible that this info is not yet available because it hasnt been parsed yet.
 - You can name the scripts by putting the name in the first like inside a comment like this: ```//@script_name ``` this may be useful if you are using the WebGLStudio editor as the name will be shown instead of the component class name.
-
-## ScriptFromFile ##
-
-The problem with **LS.Components.Script** is that sometimes you want to have the same script shared among several nodes of the scene.
-In that case you can create a **ScriptFromFile** component. This component loads the script from a file instead of storing it inside the component, this way if the script file is modified all components using that script will be affected.
-
-ScriptsFromFile behave as regular Scripts, they have their own context, but because its load is asynchromous it means their context will be created later in time after the scene has started, keep that in mind (events like start will me called once the node is loaded).
 
 ## Global Scripts ##
 
