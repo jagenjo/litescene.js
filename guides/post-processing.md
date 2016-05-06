@@ -35,12 +35,12 @@ To help tackling those situations LiteScene provides a special class called LS.R
 
 To enable a RenderFrameContext just call ```enable```, and when finished call ```disable```. To show it on the screen call ```show``` although if you want to apply any FX you can read the textures using the ```getColorTexture``` method.
 
-### FXGraphComponent ###
+## FXGraphComponent ##
 
 Another way to apply FX is using the graph system. This way is much more intuitive but it consumes way more memory (because every graph node uses its own texture).
 Just connect the "Rendered Frame" graph node to any gltexture node and the final output to viewport.
 
-### Using a Script ###
+## Using a Script ##
 
 When using scripts you can easily create your own effects, here is an example:
 
