@@ -8,10 +8,9 @@ function GlobalFX(o)
 	this.enabled = true;
 
 	this.fx = new LS.TextureFX( o ? o.fx : null );
-
-	this.use_viewport_size = true;
-	this.use_high_precision = false;
+	this.frame = new LS.RenderFrameContext();
 	this.use_antialiasing = false;
+	this.shader_material = null;
 
 	if(o)
 		this.configure(o);
@@ -19,26 +18,25 @@ function GlobalFX(o)
 
 GlobalFX.icon = "mini-icon-fx.png";
 
-Object.defineProperty( GlobalFX.prototype, "use_antialiasing", { 
-	set: function(v) { this.fx.apply_fxaa = v; },
-	get: function() { return this.fx.apply_fxaa; },
-	enumerable: true
-});
-
 GlobalFX.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
-	this.use_high_precision = !!o.use_high_precision;
+	this.use_antialiasing = !!o.use_antialiasing;
+	this.shader_material = o.shader_material;
 	if(o.fx)
-		this.fx.configure(o.fx);
+		this.fx.configure( o.fx );
+	if(o.frame)
+		this.frame.configure( o.frame );
 }
 
 GlobalFX.prototype.serialize = function()
 {
 	return { 
 		enabled: this.enabled,
-		use_high_precision: this.use_high_precision,
+		frame: this.frame.serialize(),
+		shader_material: this.shader_material,
+		use_antialiasing: this.use_antialiasing,
 		use_viewport_size: this.use_viewport_size,
 		fx: this.fx.serialize()
 	};
@@ -72,14 +70,14 @@ GlobalFX.prototype.removeFX = function( fx )
 
 GlobalFX.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, "enableFrameBuffer", this.onBeforeRender, this );
-	LEvent.bind( scene, "showFrameBuffer", this.onAfterRender, this );
+	LEvent.bind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.bind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
 GlobalFX.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, "enableFrameBuffer", this.onBeforeRender, this );
-	LEvent.unbind( scene, "showFrameBuffer", this.onAfterRender, this );
+	LEvent.unbind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.unbind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
 //hook the RFC
@@ -103,15 +101,7 @@ GlobalFX.prototype.enableGlobalFBO = function( render_settings )
 	if(!this.enabled)
 		return;
 
-	var RFC = this._renderFrameContainer;
-	if(!RFC)
-		RFC = this._renderFrameContainer = new LS.RenderFrameContainer();
-
-	//configure
-	if(this.use_viewport_size)
-		RFC.useCanvasSize();
-	RFC.use_high_precision = this.use_high_precision;
-	RFC.preRender( render_settings );
+	this.frame.enable( render_settings );
 }
 
 GlobalFX.prototype.showFBO = function()
@@ -119,13 +109,24 @@ GlobalFX.prototype.showFBO = function()
 	if(!this.enabled)
 		return;
 
-	this._renderFrameContainer.endFBO();
+	this.frame.disable();
+
+	if(this.shader_material)
+	{
+		var material = LS.ResourcesManager.getResource( this.shader_material );
+		var rendered = false;
+		if(material && material.constructor === LS.ShaderMaterial )
+			rendered = material.applyToTexture( this.frame._color_texture );
+		if(!rendered)
+			this.frame._color_texture.toViewport(); //fallback in case the shader is missing
+		return;
+	}
 
 	if( this._viewport )
 	{
 		gl.setViewport( this._viewport );
 		this.applyFX();
-		gl.setViewport( this._renderFrameContainer._fbo._old_viewport );
+		gl.setViewport( this.frame._fbo._old_viewport );
 	}
 	else
 		this.applyFX();
@@ -133,12 +134,11 @@ GlobalFX.prototype.showFBO = function()
 
 GlobalFX.prototype.applyFX = function()
 {
-	var RFC = this._renderFrameContainer;
-
-	var color_texture = RFC.color_texture;
-	var depth_texture = RFC.depth_texture;
+	var color_texture = this.frame._color_texture;
+	var depth_texture = this.frame._depth_texture;
 
 	this.fx.apply_fxaa = this.use_antialiasing;
+	this.fx.filter = this.frame.filter_texture;
 	this.fx.applyFX( color_texture, null, { depth_texture: depth_texture } );
 }
 

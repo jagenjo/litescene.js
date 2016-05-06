@@ -1513,7 +1513,7 @@
             "module": "LS",
             "namespace": "",
             "file": "../src/core.js",
-            "line": 681,
+            "line": 682,
             "description": "LSQ allows to set or get values easily from the global scene, using short strings as identifiers"
         },
         "LS.Formats": {
@@ -2596,7 +2596,7 @@
         },
         {
             "file": "../src/components/graphComponents.js",
-            "line": 282,
+            "line": 256,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -3089,10 +3089,28 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 149,
+            "line": 157,
             "description": "This is the method in charge of compiling the code and executing the constructor, which also creates the context.\nIt is called everytime the code is modified, that implies that the context is created when the component is configured.",
             "itemtype": "method",
             "name": "processCode",
+            "class": "LS.Components.Script",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/script.js",
+            "line": 339,
+            "description": "This check if the context has API functions that should be called, if thats the case, it binds events automatically\nThis way we dont have to bind manually all the methods.",
+            "itemtype": "method",
+            "name": "hookEvents",
+            "class": "LS.Components.Script",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/script.js",
+            "line": 386,
+            "description": "Called every time an event should be redirected to one function in the script context",
+            "itemtype": "method",
+            "name": "onScriptEvent",
             "class": "LS.Components.Script",
             "namespace": "LS.Components"
         },
@@ -4151,7 +4169,7 @@
         },
         {
             "file": "../src/helpers/textureFX.js",
-            "line": 310,
+            "line": 311,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -4716,7 +4734,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 242,
+            "line": 264,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -4735,8 +4753,29 @@
             "namespace": "LS"
         },
         {
+            "file": "../src/materials/shaderMaterial.js",
+            "line": 314,
+            "description": "Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture",
+            "itemtype": "method",
+            "name": "applyToTexture",
+            "params": [
+                {
+                    "name": "input_texture",
+                    "description": "",
+                    "type": "Texture"
+                },
+                {
+                    "name": "output_texture",
+                    "description": "[optional] where to store the result, if omitted it will be shown in the viewport",
+                    "type": "Texture"
+                }
+            ],
+            "class": "LS.ShaderMaterial",
+            "namespace": "LS"
+        },
+        {
             "file": "../src/materials/standardMaterial.js",
-            "line": 298,
+            "line": 305,
             "description": "assign a value to a property in a safe way",
             "itemtype": "method",
             "name": "setProperty",
@@ -4752,7 +4791,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 353,
+            "line": 360,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getPropertiesInfo",
@@ -4992,7 +5031,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 111,
+            "line": 123,
             "description": "Renders the current scene to the screen\nMany steps are involved, from gathering info from the scene tree, generating shadowmaps, setup FBOs, render every camera\nIf you want to change the rendering pipeline, do not overwrite this function, try to understand it first, otherwise you will miss lots of features",
             "itemtype": "method",
             "name": "render",
@@ -5020,7 +5059,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 210,
+            "line": 222,
             "description": "Calls renderFrame of every camera in the cameras list (triggering the appropiate events)",
             "itemtype": "method",
             "name": "renderFrameCameras",
@@ -5041,7 +5080,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 239,
+            "line": 251,
             "description": "renders the view from one camera to the current viewport (could be the screen or a texture)",
             "itemtype": "method",
             "name": "renderFrame",
@@ -5062,7 +5101,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 285,
+            "line": 301,
             "description": "Sets camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw",
             "itemtype": "method",
             "name": "enableCamera",
@@ -5083,7 +5122,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 351,
+            "line": 413,
             "description": "To set gl state to a known and constant state in every render pass",
             "itemtype": "method",
             "name": "resetGLState",
@@ -5099,7 +5138,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 374,
+            "line": 436,
             "description": "Calls the render method for every RenderInstance (it also takes into account events and frustrum culling)",
             "itemtype": "method",
             "name": "renderInstances",
@@ -5120,7 +5159,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 487,
+            "line": 549,
             "description": "returns a list of all the lights overlapping this instance (it uses sperical bounding so it could returns lights that are not really overlapping)\nIt is used by the multipass lighting to iterate",
             "itemtype": "method",
             "name": "getNearLights",
@@ -5145,7 +5184,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 559,
+            "line": 621,
             "description": "Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light\nThis function it is not as fast as I would like but enables lots of interesting features",
             "itemtype": "method",
             "name": "renderColorMultiPassLightingInstance",
@@ -5171,7 +5210,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 709,
+            "line": 771,
             "description": "Renders this RenderInstance into the shadowmap",
             "itemtype": "method",
             "name": "renderShadowPassInstance",
@@ -5192,7 +5231,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 776,
+            "line": 838,
             "description": "Render instance into the picking buffer",
             "itemtype": "method",
             "name": "renderPickingInstance",
@@ -5213,7 +5252,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 876,
+            "line": 954,
             "description": "Update the scene shader query according to the render pass\nDo not reuse the query, they change between rendering passes (shadows, reflections, etc)",
             "itemtype": "method",
             "name": "fillSceneShaderQuery",
@@ -5234,7 +5273,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 950,
+            "line": 1035,
             "description": "Switch WebGL flags according to the RenderInstance flags",
             "itemtype": "method",
             "name": "enableInstanceFlags",
@@ -5255,7 +5294,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 992,
+            "line": 1077,
             "description": "Collects and process the rendering instances, cameras and lights that are visible\nIts a prepass shared among all rendering passes\nWarning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)",
             "itemtype": "method",
             "name": "processVisibleData",
@@ -5281,7 +5320,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1166,
+            "line": 1230,
             "description": "Renders a frame into a texture (could be a cubemap, in which case does the six passes)",
             "itemtype": "method",
             "name": "renderInstancesToRT",
@@ -5307,7 +5346,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1199,
+            "line": 1263,
             "description": "Renders the current scene to a cubemap centered in the given position",
             "itemtype": "method",
             "name": "renderToCubemap",
@@ -5352,7 +5391,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1244,
+            "line": 1308,
             "description": "Renders the material preview to an image (or to the screen)",
             "itemtype": "method",
             "name": "renderMaterialPreview",
@@ -5382,7 +5421,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1307,
+            "line": 1371,
             "description": "Returns the last camera that falls into a given screen position",
             "itemtype": "method",
             "name": "getCameraAtPosition",
@@ -5412,7 +5451,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1334,
+            "line": 1398,
             "description": "Sets the render pass to use, this allow to change between \"color\",\"shadow\",\"picking\",etc",
             "itemtype": "method",
             "name": "setRenderPass",
@@ -5428,7 +5467,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1345,
+            "line": 1409,
             "description": "Register a render pass to be used during the rendering",
             "itemtype": "method",
             "name": "registerRenderPass",
@@ -6846,16 +6885,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 182,
-            "description": "Remove node from parent",
-            "itemtype": "method",
-            "name": "destroy",
-            "class": "LS.CompositePattern",
-            "namespace": "LS"
-        },
-        {
-            "file": "../src/compositePattern.js",
-            "line": 194,
+            "line": 181,
             "description": "Serialize the data from all the children",
             "itemtype": "method",
             "name": "serializeChildren",
@@ -6868,7 +6898,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 209,
+            "line": 196,
             "description": "Configure every children with the data",
             "itemtype": "method",
             "name": "configureChildren",
@@ -6881,7 +6911,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 235,
+            "line": 222,
             "description": "Returns parent node",
             "itemtype": "method",
             "name": "getParent",
@@ -6894,7 +6924,7 @@
         },
         {
             "file": "../src/compositePattern.js",
-            "line": 329,
+            "line": 316,
             "description": "get all nodes below this in the hierarchy (children and children of children)",
             "itemtype": "method",
             "name": "getDescendants",
@@ -7283,7 +7313,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 687,
+            "line": 688,
             "description": "Assigns a value to a property of one node in the scene, just by using a string identifier\nExample:  LSQ.set(\"mynode|a_child/MeshRenderer/enabled\",false);",
             "itemtype": "method",
             "name": "set",
@@ -7304,7 +7334,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 714,
+            "line": 715,
             "description": "Retrieves the value of a property of one node in the scene, just by using a string identifier\nExample: var value = LSQ.get(\"mynode|a_child/MeshRenderer/enabled\");",
             "itemtype": "method",
             "name": "get",
@@ -7324,7 +7354,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 743,
+            "line": 744,
             "description": "Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property\nExample: \"@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size\" -> \"node|child/Collider/size\"",
             "itemtype": "method",
             "name": "shortify",
@@ -9355,7 +9385,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 691,
+            "line": 702,
             "description": "Assigns this node to one layer",
             "itemtype": "method",
             "name": "setLayer",
@@ -9377,7 +9407,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 724,
+            "line": 735,
             "description": "Returns the root node of the prefab incase it is inside a prefab, otherwise null",
             "itemtype": "method",
             "name": "insidePrefab",
@@ -9391,7 +9421,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 741,
+            "line": 752,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -9405,7 +9435,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 763,
+            "line": 774,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -9422,7 +9452,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 895,
+            "line": 906,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",

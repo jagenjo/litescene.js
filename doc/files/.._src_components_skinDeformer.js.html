@@ -322,7 +322,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			RI.uniforms[&quot;u_bones&quot;] = u_bones;
 			if(bones.length &gt; SkinDeformer.MAX_BONES)
 				RI.query.macros[&quot;MAX_BONES&quot;] = bones.length.toString();
-			delete RI.samplers[&quot;u_bones&quot;]; //use uniforms, not samplers
+			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 		}
 		else if( SkinDeformer.num_supported_textures &gt; 0 ) //upload the bones as a float texture (slower)
 		{
@@ -335,10 +335,10 @@ SkinDeformer.prototype.applySkinning = function(RI)
 
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
-			LS.RM.textures[&quot;:bones&quot;] = texture; //debug
+			LS.RM.textures[&quot;:bones_&quot; + this.uid ] = texture; //debug
+			RI.uniforms[&quot;u_bones&quot;] = LS.Renderer.BONES_TEXTURE_SLOT;
 			RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;] = &quot;&quot;;
-			RI.samplers[&quot;u_bones&quot;] = texture;
-			delete RI.uniforms[&quot;u_bones&quot;]; //use samplers, not uniforms
+			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
 		}
 		else
 			console.error(&quot;impossible to get here&quot;);
@@ -372,7 +372,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		//remove the flags to avoid recomputing shaders
 		delete RI.query.macros[&quot;USE_SKINNING&quot;]; 
 		delete RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;];
-		delete RI.samplers[&quot;u_bones&quot;];
+		RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 	}
 
 	if( this.ignore_transform )

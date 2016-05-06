@@ -22,7 +22,7 @@ var parserDAE = {
 			diffuse: "color"
 		}; //this is done to match LS specification
 
-		var clean_filename = LS.RM.getFilename(filename);
+		var clean_filename = LS.RM.getFilename( filename );
 
 		//parser moved to Collada.js library
 		var scene = Collada.parse( data, options, clean_filename );

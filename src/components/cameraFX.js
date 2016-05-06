@@ -3,16 +3,15 @@
 * @class CameraFX
 * @param {Object} o object with the serialized info
 */
-function CameraFX(o)
+function CameraFX( o )
 {
 	this.enabled = true;
 
-	this.fx = new LS.TextureFX( o ? o.fx : null );
-
-	this.use_viewport_size = true;
-	this.use_high_precision = false;
-	this.camera_uid = null;
 	this.use_antialiasing = false;
+	this.fx = new LS.TextureFX( o ? o.fx : null );
+	this.frame = new LS.RenderFrameContext();
+
+	this.shader_material = null;
 
 	if(o)
 		this.configure(o);
@@ -30,9 +29,10 @@ Object.defineProperty( CameraFX.prototype, "use_antialiasing", {
 CameraFX.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
-	this.use_viewport_size = !!o.use_viewport_size;
-	this.use_high_precision = !!o.use_high_precision;
+	this.use_antialiasing = !!o.use_antialiasing;
 	this.camera_uid = o.camera_uid;
+	if(o.frame)
+		this.frame.configure( o.frame );
 	if(o.fx)
 		this.fx.configure(o.fx);
 }
@@ -41,8 +41,8 @@ CameraFX.prototype.serialize = function()
 {
 	return { 
 		enabled: this.enabled,
-		use_high_precision: this.use_high_precision,
-		use_viewport_size: this.use_viewport_size,
+		use_antialiasing: this.use_antialiasing,
+		frame: this.frame.serialize(),
 		camera_uid: this.camera_uid,
 		fx: this.fx.serialize()
 	};
@@ -50,7 +50,7 @@ CameraFX.prototype.serialize = function()
 
 CameraFX.prototype.getResources = function(res)
 {
-	//TODO
+	//TODO: get res from FX
 	return res;
 }
 
@@ -133,8 +133,6 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 		LEvent.bind( camera, "showFrameBuffer", this.showCameraFBO, this );
 	}
 	this._binded_camera = camera;
-
-	//this.enableGlobalFBO( render_settings );
 }
 
 CameraFX.prototype.onAfterRender = function( e, render_settings )
@@ -149,15 +147,9 @@ CameraFX.prototype.enableCameraFBO = function(e, render_settings )
 	if(!this.enabled)
 		return;
 
-	var RFC = this._renderFrameContainer;
-	if(!RFC)
-		RFC = this._renderFrameContainer = new LS.RenderFrameContainer();
 	var camera = this._binded_camera;
-	
 	var viewport = this._viewport = camera.getLocalViewport( null, this._viewport );
-	RFC.setSize( viewport[2], viewport[3] );
-	RFC.use_high_precision = this.use_high_precision;
-	RFC.preRender( render_settings );
+	this.frame.enable( render_settings, viewport );
 
 	render_settings.ignore_viewports = true;
 }
@@ -170,37 +162,29 @@ CameraFX.prototype.showCameraFBO = function(e, render_settings )
 	this.showFBO();
 }
 
-/*
-CameraFX.prototype.enableGlobalFBO = function( render_settings )
-{
-	if(!this.enabled)
-		return;
-
-	var RFC = this._renderFrameContainer;
-	if(!RFC)
-		RFC = this._renderFrameContainer = new LS.RenderFrameContainer();
-
-	//configure
-	if(this.use_viewport_size)
-		RFC.useCanvasSize();
-	RFC.use_high_precision = this.use_high_precision;
-
-	RFC.preRender( render_settings );
-}
-*/
-
 CameraFX.prototype.showFBO = function()
 {
 	if(!this.enabled)
 		return;
 
-	this._renderFrameContainer.endFBO();
+	this.frame.disable();
+
+	if(this.shader_material)
+	{
+		var material = LS.ResourcesManager.getResource( this.shader_material );
+		var rendered = false;
+		if(material && material.constructor === LS.ShaderMaterial )
+			rendered = material.applyToTexture( this.frame._color_texture );
+		if(!rendered)
+			this.frame._color_texture.toViewport(); //fallback in case the shader is missing
+		return;
+	}
 
 	if( this._viewport )
 	{
 		gl.setViewport( this._viewport );
 		this.applyFX();
-		gl.setViewport( this._renderFrameContainer._fbo._old_viewport );
+		gl.setViewport( this.frame._fbo._old_viewport );
 	}
 	else
 		this.applyFX();
@@ -209,12 +193,11 @@ CameraFX.prototype.showFBO = function()
 
 CameraFX.prototype.applyFX = function()
 {
-	var RFC = this._renderFrameContainer;
-
-	var color_texture = RFC.color_texture;
-	var depth_texture = RFC.depth_texture;
+	var color_texture = this.frame._color_texture;
+	var depth_texture = this.frame._depth_texture;
 
 	this.fx.apply_fxaa = this.use_antialiasing;
+	this.fx.filter = this.frame.filter_texture;
 	this.fx.applyFX( color_texture, null, { depth_texture: depth_texture } );
 }
 

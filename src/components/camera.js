@@ -1243,8 +1243,8 @@ Camera.prototype.applyTransformMatrix = function( matrix, center, element )
 		p = this._center;
 	else
 		p = this._eye;
-
 	mat4.multiplyVec3( p, matrix, p );
+	this._must_update_view_matrix = true;
 	return true;
 }
 

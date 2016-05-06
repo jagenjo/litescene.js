@@ -149,6 +149,7 @@
 function TextureFX( o )
 {
 	this.apply_fxaa = false;
+	this.filter = true;
 	this.fx = [];
 
 	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_texture_depth: 1, u_random: vec2.create() };
@@ -656,7 +657,7 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 	if(shader.hasUniform(&quot;u_texture_depth&quot;))
 		depth_texture.bind(1);
 
-	color_texture.setParameter( gl.TEXTURE_MAG_FILTER, gl.LINEAR );
+	color_texture.setParameter( gl.TEXTURE_MAG_FILTER, this.filter ? gl.LINEAR : gl.NEAREST );
 	color_texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
 
 	if( this.apply_fxaa )

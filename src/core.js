@@ -659,6 +659,7 @@ Object.defineProperty( LS, "catch_exceptions", {
 	set: function(v){ 
 		this._catch_exceptions = v; 
 		LScript.catch_exceptions = v; 
+		LScript.catch_important_exceptions = v;
 	},
 	get: function() { return this._catch_exceptions; },
 	enumerable: true

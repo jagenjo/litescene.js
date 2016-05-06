@@ -155,6 +155,7 @@ function ShaderMaterial( o )
 	this.flags = 0;
 
 	this._uniforms = {};
+	this._samplers = [];
 	this._properties = [];
 	this._properties_by_name = {};
 
@@ -259,6 +260,15 @@ ShaderMaterial.prototype.processShaderCode = function()
 	this._properties = [];
 	this._properties_by_name = {};
 
+	//clear old functions
+	for(var i in this)
+	{
+		if(!this.hasOwnProperty(i))
+			continue;
+		if( this[i] &amp;&amp; this[i].constructor === Function )
+			delete this[i];
+	}
+
 	//apply init 
 	if( shader_code._init_function )
 	{
@@ -325,17 +335,17 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	if(instance.flags &amp; RI_IGNORE_VIEWPROJECTION)
 		renderer._mvp_matrix.set( model );
 	else
-		mat4.multiply(renderer._mvp_matrix, renderer._viewprojection_matrix, model );
+		mat4.multiply( renderer._mvp_matrix, renderer._viewprojection_matrix, model );
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
-	var instance_final_uniforms = instance._final_uniforms;
 	var instance_final_samplers = instance._final_samplers;
+	var render_uniforms = LS.Renderer._render_uniforms;
 
 	//maybe this two should be somewhere else
-	instance_final_uniforms.u_model = model; 
-	instance_final_uniforms.u_normal_model = instance.normal_matrix; 
-	instance_final_uniforms.u_mvp = renderer._mvp_matrix;
+	render_uniforms.u_model = model; 
+	render_uniforms.u_normal_model = instance.normal_matrix; 
+	render_uniforms.u_mvp = renderer._mvp_matrix;
 
 	//global stuff
 	renderer.enableInstanceFlags( instance, render_settings );
@@ -350,29 +360,41 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	else
 		gl.disable( gl.BLEND );
 
-	//gather uniforms &amp; samplers
-	var samplers = [];
-	for(var i = 0; i &lt; this._properties.length; ++i)
-	{
-		var p = this._properties[i];
-		if(p.is_texture)
-		{
-			if(p.value)
-				samplers.push(p.value);
-		}
-		else
-			this._uniforms[ p.uniform ] = p.value;
-	}
+	this.fillUniforms();
+
+	if(this.prepare_render)
+		this.prepare_render( instance );
 
 	//assign
-	LS.Renderer.bindSamplers( samplers, shader );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, this._uniforms, instance_final_uniforms ] );
+	LS.Renderer.bindSamplers(  this._samplers );
+	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance._uniforms ] );
 
 	//render
 	instance.render( shader );
 	renderer._rendercalls += 1;
 
 	return true;
+}
+
+ShaderMaterial.prototype.fillUniforms = function()
+{
+	//gather uniforms &amp; samplers
+	var samplers = this._samplers;
+	samplers.length = 0;
+	for(var i = 0; i &lt; this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.is_texture)
+		{
+			if(p.value)
+			{
+				this._uniforms[ p.uniform ] = samplers.length;
+				samplers.push( p.value );
+			}
+		}
+		else
+			this._uniforms[ p.uniform ] = p.value;
+	}
 }
 
 ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings )
@@ -398,6 +420,77 @@ ShaderMaterial.prototype.getResources = function ( res )
 			res[ p.value ] = GL.Texture;
 	}
 	return res;
+}
+
+
+ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( path.length &lt; 1)
+		return;
+
+	var info = Material.prototype.getPropertyInfoFromPath.call(this,path);
+	if(info)
+		return info;
+
+	var varname = path[0];
+
+	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
+	{
+		var prop = this.properties[i];
+		if(prop.name != varname)
+			continue;
+
+		return {
+			node: this._root,
+			target: this,
+			name: prop.name,
+			value: prop.value,
+			type: prop.type
+		};
+	}
+
+	return;
+}
+
+/**
+* Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture
+* @method applyToTexture
+* @param {Texture} input_texture
+* @param {Texture} output_texture [optional] where to store the result, if omitted it will be shown in the viewport
+*/
+ShaderMaterial.prototype.applyToTexture = function( input_texture, output_texture )
+{
+	if( !this.shader || !input_texture )
+		return false;
+
+	//get shader code
+	var shader_code = LS.ResourcesManager.getResource( this.shader );
+	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+		return false;
+
+	//extract shader compiled
+	var shader = shader_code.getShader(&quot;fx&quot;);
+	if(!shader)
+		return false;
+
+	//global vars
+	this.fillUniforms();
+	this._uniforms.u_time = LS.GlobalScene._time;
+	this._uniforms.u_viewport = gl.viewport_data;
+
+	//bind samplers
+	LS.Renderer.bindSamplers( this._samplers );
+
+	gl.disable( gl.DEPTH_TEST );
+	gl.disable( gl.CULL_FACE );
+
+	//render
+	if(!output_texture)
+		input_texture.toViewport( shader, this._uniforms );
+	else
+		output_texture.drawTo( function(){
+			input_texture.toViewport( shader, this._uniforms );
+		});
 }
 
 

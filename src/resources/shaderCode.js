@@ -60,7 +60,7 @@ ShaderCode.prototype.processCode = function()
 		if(!subfile_name)
 			continue;
 
-		if(subfile_name == "init")
+		if(subfile_name == "js")
 		{
 			init_code = subfile_data;
 			continue;
@@ -76,7 +76,11 @@ ShaderCode.prototype.processCode = function()
 				var value = words[3];
 				if( value !== undefined )
 					value = LS.stringToValue(value);
-				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: words[4] };
+				var options = null;
+				var options_index = line.indexOf("{");
+				if(options_index)
+					options = LS.stringToValue(line.substr(options_index));
+				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: options };
 			}
 			continue;
 		}
@@ -158,13 +162,23 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	var code = this._code_parts[ render_mode ];
 	if(!code)
 		return null;
-	if(!code.vs || !code.fs)
-		return null;
 
-	var vs_code = this.getCodeFromSubfile( code.vs );
+	//vertex shader code
+	var vs_code = null;
+	if(render_mode == "fx")
+		vs_code = GL.Shader.SCREEN_VERTEX_SHADER;
+	else if( !code.vs )
+		return null;
+	else
+		vs_code = this.getCodeFromSubfile( code.vs );
+
+	//fragment shader code
+	if( !code.fs )
+		return;
 	var fs_code = this.getCodeFromSubfile( code.fs );
 
-	if(!vs_code || !fs_code) //code includes something missing
+	//no code or code includes something missing
+	if(!vs_code || !fs_code) 
 		return null;
 
 	//compile the shader and return it
@@ -337,6 +351,11 @@ ShaderCode.parseGLSLCode = function( code )
 	};
 }
 
+//makes this resource available 
+ShaderCode.prototype.register = function()
+{
+	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
+}
 
 //searches for materials using this ShaderCode and forces them to be updated (update the properties)
 ShaderCode.prototype.applyToMaterials = function( scene )
@@ -372,7 +391,21 @@ ShaderCode.removeComments = function( code )
 
 //Example code for a shader
 ShaderCode.examples = {};
-ShaderCode.examples.fullshader = "\n\
+
+ShaderCode.examples.fx = "\n\
+\\fx.fs\n\
+	precision highp float;\n\
+	\n\
+	uniform float u_time;\n\
+	uniform vec4 u_viewport;\n\
+	uniform sampler2D u_texture;\n\
+	varying vec2 v_coord;\n\
+	void main() {\n\
+		gl_FragColor = texture2D( u_texture, v_coord );\n\
+	}\n\
+";
+
+ShaderCode.examples.color = "\n\
 \n\
 \\default.vs\n\
 \n\

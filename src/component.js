@@ -105,7 +105,7 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 	}
 
 	//basic type
-	if( (value.constructor === Number || value.constructor === String || value.constructor === Boolean) && !setter && !getter )
+	if(  (value === null || value === undefined || value.constructor === Number || value.constructor === String || value.constructor === Boolean) && !setter && !getter )
 	{
 		this[ name ] = value;
 		return;
@@ -114,7 +114,7 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 	var private_name = "_" + name;
 
 	//vector type has special type with setters and getters to avoid overwritting
-	if(value.constructor === Float32Array)
+	if(value && value.constructor === Float32Array)
 	{
 		value = new Float32Array( value ); //clone
 		this[ private_name ] = value; //this could be removed...

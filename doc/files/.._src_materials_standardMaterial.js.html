@@ -422,10 +422,17 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 		if(!texture)  //loading or non-existant
 			sampler = { texture: &quot;:missing&quot; };
 
-		samplers[ last_texture_slot ] = sampler;
+		var slot = last_texture_slot;
+		if( i == &quot;environment&quot; )
+			slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
+		else if( i == &quot;irradiance&quot; )
+			slot = LS.Renderer.IRRADIANCE_TEXTURE_SLOT;
+		else
+			last_texture_slot++;
+
+		samplers[ slot ] = sampler;
 		var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? &quot;_texture&quot; : &quot;_cubemap&quot;);
-		uniforms[ uniform_name ] = last_texture_slot;
-		last_texture_slot++;
+		uniforms[ uniform_name ] = slot;
 	}
 
 	//add extra uniforms

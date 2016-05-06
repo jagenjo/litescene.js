@@ -425,6 +425,17 @@ Object.defineProperty( SceneNode.prototype, &#x27;className&#x27;, {
 	enumerable: true
 });
 
+SceneNode.prototype.destroy = function()
+{
+	LEvent.trigger( this, &quot;destroy&quot; );
+	this.removeAllComponents();
+	if(this.children)
+		while(this.children.length)
+			this.children[0].destroy();
+	if(this._parent)
+		this._parent.removeChild( this );
+}
+
 SceneNode.prototype.getLocator = function()
 {
 	return this.uid;

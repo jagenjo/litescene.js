@@ -10,8 +10,7 @@
 function Script(o)
 {
 	this.enabled = true;
-	this._name = "Unnamed";
-	this.code = "this.update = function(dt)\n{\n\t//node.scene.refresh();\n}";
+	this.code = "this.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}";
 
 	this._script = new LScript();
 
@@ -26,7 +25,7 @@ function Script(o)
 	};
 
 	this._script.onerror = this.onError.bind(this);
-	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
+	this._script.exported_functions = [];
 	this._last_error = null;
 
 	if(o)
@@ -41,50 +40,62 @@ Script.icon = "mini-icon-script.png";
 
 Script["@code"] = {type:'script'};
 
-Script.exported_callbacks = ["start","prefabReady","update","clicked","sceneRender", "render","afterRender","renderGUI","finish","collectRenderInstances"];
-Script.node_triggered_events = { "clicked":true, "prefabReady": true };
+//used to determine to which object to bind
+Script.BIND_TO_COMPONENT = 1;
+Script.BIND_TO_NODE = 2;
+Script.BIND_TO_SCENE = 3;
+Script.BIND_TO_RENDERER = 4;
 
-Script.translate_events = {
-	"sceneRender": "beforeRender",
-	"beforeRender": "sceneRender",
-	"render": "renderInstances", 
-	"renderInstances": "render",
-	"afterRender":"afterRenderInstances", 
-	"afterRenderInstances": "afterRender"};
+//Here we specify which methods of the script will be automatically binded to events in the system
+//This way developing is much more easy as you dont have to bind or unbind anything
+Script.API_functions = {};
+Script.API_events_to_function = {};
+
+Script.defineAPIFunction = function( func_name, target, event, info ) {
+	event = event || func_name;
+	target = target || Script.BIND_TO_SCENE;
+	var data = { name: func_name, target: target, event: event, info: info };
+	Script.API_functions[ func_name ] = data;
+	Script.API_events_to_function[ event ] = data;
+}
+
+Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, "start" );
+Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
+Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
+Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, "update" );
+Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
+Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" );
+Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, "collectRenderInstances" );
+Script.defineAPIFunction( "onRender", Script.BIND_TO_NODE, "beforeRenderInstances" );
+Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, "afterRenderInstances" );
+Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
+Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
+Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
+Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
+Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
 
 Script.coding_help = "\n\
+For a complete guide check: <a href='https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md' target='blank'>Scripting Guide</a>\n\
 Global vars:\n\
  + node : represent the node where this component is attached.\n\
  + component : represent the component.\n\
  + this : represents the script context\n\
 \n\
-Exported functions:\n\
- + start: when the Scene starts\n\
- + update: when updating\n\
- + clicked : if this node is clicked\n\
- + render : before rendering the node\n\
- + renderGUI : to render something in the GUI using canvas2D\n\
- + getRenderInstances: when collecting instances\n\
- + afterRender : after rendering the node\n\
- + prefabReady: when the prefab has been loaded\n\
- + finish : when the scene finished (mostly used for editor stuff)\n\
+Some of the common API functions:\n\
+ + onStart: when the Scene starts\n\
+ + onUpdate: when updating\n\
+ + onClicked : if this node is clicked\n\
+ + onRender : before rendering the node\n\
+ + onRenderGUI : to render something in the GUI using canvas2D\n\
+ + onCollectRenderInstances: when collecting instances\n\
+ + onAfterRender : after rendering the node\n\
+ + onPrefabReady: when the prefab has been loaded\n\
+ + onFinish : when the scene finished (mostly used for editor stuff)\n\
 \n\
 Remember, all basic vars attached to this will be exported as global.\n\
 ";
 
 Script.active_scripts = {};
-
-Object.defineProperty( Script.prototype, "name", {
-	set: function(v){ 
-		if( LS.Script.active_scripts[ this._name ] )
-			delete LS.Script.active_scripts[ this._name ];
-		this._name = v;
-		if( this._name && !LS.Script.active_scripts[ this._name ] )
-			LS.Script.active_scripts[ this._name ] = this;
-	},
-	get: function() { return this._name; },
-	enumerable: true
-});
 
 Object.defineProperty( Script.prototype, "context", {
 	set: function(v){ 
@@ -104,15 +115,15 @@ Script.prototype.configure = function(o)
 		this.uid = o.uid;
 	if(o.enabled !== undefined)
 		this.enabled = o.enabled;
-	if(o.name !== undefined)
-		this.name = o.name;
 	if(o.code !== undefined)
 		this.code = o.code;
-	if(o.properties)
-		 this.setContextProperties( o.properties );
 
 	if(this._root && this._root.scene)
 		this.processCode();
+
+	//do this before processing the code if you want the script to overwrite the vars
+	if(o.properties)
+		 this.setContextProperties( o.properties );
 }
 
 Script.prototype.serialize = function()
@@ -120,13 +131,10 @@ Script.prototype.serialize = function()
 	return {
 		uid: this.uid,
 		enabled: this.enabled,
-		name: this.name,
 		code: this.code,
 		properties: LS.cloneObject( this.getContextProperties() )
 	};
 }
-
-
 
 Script.prototype.getContext = function()
 {
@@ -328,11 +336,17 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 		context[ varname ] = value;
 }
 
+/**
+* This check if the context has API functions that should be called, if thats the case, it binds events automatically
+* This way we dont have to bind manually all the methods.
+* @method hookEvents
+*/
 Script.prototype.hookEvents = function()
 {
-	var hookable = LS.Script.exported_callbacks;
-	var root = this._root;
-	var scene = root.scene;
+	var node = this._root;
+	if(!node)
+		throw("hooking events of a Script without a node");
+	var scene = node.scene;
 	if(!scene)
 		scene = LS.GlobalScene; //hack
 
@@ -342,19 +356,45 @@ Script.prototype.hookEvents = function()
 		return;
 
 	//hook events
-	for(var i in hookable)
+	for(var i in LS.Script.API_functions)
 	{
-		var name = hookable[i];
-		var event_name = LS.Script.translate_events[ name ] || name;
-		var target = Script.node_triggered_events[ event_name ] ? root : scene; //some events are triggered in the scene, others in the node
-		if( context[name] && context[name].constructor === Function )
+		var func_name = i;
+		var event_info = LS.Script.API_functions[ func_name ];
+
+		var target = null;
+		switch( event_info.target )
 		{
-			if( !LEvent.isBind( target, event_name, this.onScriptEvent, this )  )
-				LEvent.bind( target, event_name, this.onScriptEvent, this );
+			case Script.BIND_TO_COMPONENT: target = this; break;
+			case Script.BIND_TO_NODE: target = node; break;
+			case Script.BIND_TO_SCENE: target = scene; break;
+			case Script.BIND_TO_RENDERER: target = LS.Renderer; break;
 		}
-		else
-			LEvent.unbind( target, event_name, this.onScriptEvent, this );
+		if(!target)
+			throw("Script event without target?");
+
+		//check if this function exist
+		if( context[ func_name ] && context[ func_name ].constructor === Function )
+		{
+			if( !LEvent.isBind( target, event_info.event, this.onScriptEvent, this )  )
+				LEvent.bind( target, event_info.event, this.onScriptEvent, this );
+		}
+		else //if it doesnt ensure we are not binding the event
+			LEvent.unbind( target, event_info.event, this.onScriptEvent, this );
 	}
+}
+
+/**
+* Called every time an event should be redirected to one function in the script context
+* @method onScriptEvent
+*/
+Script.prototype.onScriptEvent = function(event_type, params)
+{
+	if(!this.enabled)
+		return;
+	var event_info = LS.Script.API_events_to_function[ event_type ];
+	if(!event_info)
+		return; //????
+	return this._script.callMethod( event_info.name, params );
 }
 
 Script.prototype.onAddedToNode = function( node )
@@ -398,15 +438,32 @@ Script.prototype.onRemovedFromScene = function(scene)
 		delete LS.Script.active_scripts[ this._name ];
 
 	//ensures no binded events
-	if(this._context)
-		LEvent.unbindAll( scene, this._context, this );
-
-	//unbind evends
 	LEvent.unbindAll( scene, this );
+	if(this._context)
+	{
+		LEvent.unbindAll( scene, this._context, this );
+		if(this._context.onRemovedFromScene)
+			this._context.onRemovedFromScene(scene);
+	}
+}
+
+//used in editor
+Script.prototype.getComponentTitle = function()
+{
+	if(!this._script.code)
+		return;
+	var line = this._script.code.substr(0,32);
+	if(line.indexOf("//@") != 0)
+		return null;
+	var last = line.indexOf("\n");
+	if(last == -1)
+		last = undefined;
+	return line.substr(3,last - 3);
 }
 
 
 //TODO stuff ***************************************
+/*
 Script.prototype.onAddedToProject = function( project )
 {
 	try
@@ -429,25 +486,8 @@ Script.prototype.onRemovedFromProject = function( project )
 	//unbind evends
 	LEvent.unbindAll( project, this );
 }
+*/
 //*******************************
-
-
-
-Script.prototype.onScriptEvent = function(event_type, params)
-{
-	//this.processCode(true); //¿?
-
-	if(!this.enabled)
-		return;
-
-	var method_name = LS.Script.translate_events[ event_type ] || event_type;
-	this._script.callMethod( method_name, params );
-}
-
-Script.prototype.runStep = function(method, args)
-{
-	this._script.callMethod(method,args);
-}
 
 Script.prototype.onError = function(err)
 {
@@ -471,11 +511,8 @@ Script.prototype.onCodeChange = function(code)
 Script.prototype.getResources = function(res)
 {
 	var ctx = this.getContext();
-
-	if(!ctx || !ctx.getResources )
-		return;
-	
-	ctx.getResources( res );
+	if(ctx && ctx.onGetResources )
+		ctx.onGetResources( res );
 }
 
 LS.registerComponent( Script );
@@ -501,12 +538,14 @@ function ScriptFromFile(o)
 	};
 
 	this._script.onerror = this.onError.bind(this);
-	this._script.exported_callbacks = [];//this.constructor.exported_callbacks;
+	this._script.exported_functions = [];//this.constructor.exported_callbacks;
 	this._last_error = null;
 
 	if(o)
 		this.configure(o);
 }
+
+ScriptFromFile.coding_help = Script.coding_help;
 
 Object.defineProperty( ScriptFromFile.prototype, "filename", {
 	set: function(v){ 
@@ -679,22 +718,6 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 			compo.processCode(skip_events);
 	}
 }
-
-//used in editor
-ScriptFromFile.prototype.getComponentTitle = function()
-{
-	if(!this._script.code)
-		return;
-
-	var line = this._script.code.substr(0,32);
-	if(line.indexOf("//@") != 0)
-		return null;
-	var last = line.indexOf("\n");
-	if(last == -1)
-		last = undefined;
-	return line.substr(3,last - 3);
-}
-
 
 LS.extendClass( ScriptFromFile, Script );
 

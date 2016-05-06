@@ -197,7 +197,7 @@ var Renderer = {
 		{
 			//enable FX
 			if(render_settings.render_fx)
-				LEvent.trigger( scene, "enableFrameBuffer", render_settings );
+				LEvent.trigger( scene, "enableFrameContext", render_settings );
 
 			//render
 			this.renderFrameCameras( cameras, render_settings );
@@ -208,7 +208,7 @@ var Renderer = {
 
 			//disable and show FX
 			if(render_settings.render_fx)
-				LEvent.trigger( scene, "showFrameBuffer", render_settings );
+				LEvent.trigger( scene, "showFrameContext", render_settings );
 		}
 
 		if(render_settings.render_gui)
@@ -237,12 +237,12 @@ var Renderer = {
 
 			LEvent.trigger(scene, "beforeRenderFrame", render_settings );
 			LEvent.trigger(current_camera, "beforeRenderFrame", render_settings );
-			LEvent.trigger(current_camera, "enableFrameBuffer", render_settings );
+			LEvent.trigger(current_camera, "enableFrameContext", render_settings );
 
 			//main render
 			this.renderFrame( current_camera, render_settings ); 
 
-			LEvent.trigger(current_camera, "showFrameBuffer", render_settings );
+			LEvent.trigger(current_camera, "showFrameContext", render_settings );
 			LEvent.trigger(current_camera, "afterRenderFrame", render_settings );
 			LEvent.trigger(scene, "afterRenderFrame", render_settings );
 		}
@@ -257,28 +257,30 @@ var Renderer = {
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
+		//get all the data
 		if(scene) //in case we use another scene
 			this.processVisibleData(scene, render_settings);
-
 		scene = scene || this._current_scene;
 
-		this.enableCamera( camera, render_settings, render_settings.skip_viewport ); //set as active camera and set viewport
+		//set as active camera and set viewport
+		this.enableCamera( camera, render_settings, render_settings.skip_viewport ); 
+
+		//compute the rendering order
+		this.sortRenderInstances( camera, render_settings );
 
 		//scissors test for the gl.clear, otherwise the clear affects the full viewport
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
 		gl.enable(gl.SCISSOR_TEST);
 
-		//clear buffer
+		//clear buffer 
 		var info = scene.info;
 		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-
 		if(render_settings.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
 			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
 
 		gl.disable(gl.SCISSOR_TEST);
 
-		//render scene
-
+		//send before events
 		LEvent.trigger(scene, "beforeRenderScene", camera );
 		scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "beforeRenderScene", camera );
@@ -286,10 +288,12 @@ var Renderer = {
 		//here we render all the instances
 		this.renderInstances(render_settings);
 
+		//send after events
 		LEvent.trigger(scene, "afterRenderScene", camera );
 		scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "afterRenderScene", camera );
 
+		//render helpers (guizmos)
 		if(render_settings.render_helpers)
 			LEvent.trigger(this, "renderHelpers", camera );
 	},
@@ -359,6 +363,52 @@ var Renderer = {
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 	},
+
+	sortRenderInstances: function( camera, render_settings )
+	{
+		//nothing to do
+		if(!render_settings.sort_instances_by_distance && !render_settings.sort_instances_by_priority)
+			return;
+
+		var opaque_instances = this._opaque_instances;
+		var blend_instances = this._blend_instances;
+		var instances = this._visible_instances;
+
+		var camera_eye = camera.getEye();
+
+		//process render instances (add stuff if needed)
+		for(var i = 0, l = instances.length; i < l; ++i)
+		{
+			var instance = instances[i];
+			if(!instance)
+				continue;
+			instance._dist = vec3.dist( instance.center, camera_eye );
+		}
+
+		//sort opaque from far to near, and blend from far to near
+		if(render_settings.sort_instances_by_distance) 
+		{
+			opaque_instances.sort(this._sort_near_to_far_func);
+			blend_instances.sort(this._sort_far_to_near_func);
+		}
+
+		 //sort by priority (we do this before merging because otherwise the distance sorting gets messed up
+		if(render_settings.sort_instances_by_priority)
+		{
+			opaque_instances.sort(this._sort_by_priority_and_near_to_far_func);
+			blend_instances.sort(this._sort_by_priority_and_far_to_near_func);
+		}
+
+		//merge them into a single final container
+		this._visible_instances = opaque_instances.concat( blend_instances );
+	},
+
+	//sorting functions used to sort RenderInstances before rendering
+	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },
+	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
+	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
+	_sort_by_priority_and_near_to_far_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
+	_sort_by_priority_and_far_to_near_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 	
 	/**
 	* To set gl state to a known and constant state in every render pass
@@ -1134,21 +1184,6 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//Sorting: (defining rendering order based on RIs priority and distance to camera)
-		if(render_settings.sort_instances_by_distance) //sort RIs in Z for alpha sorting
-		{
-			opaque_instances.sort(this._sort_near_to_far_func);
-			blend_instances.sort(this._sort_far_to_near_func);
-		}
-
-		if(render_settings.sort_instances_by_priority) //sort by priority (we do this before merging because otherwise the distance sorting gest messed up
-		{
-			opaque_instances.sort(this._sort_by_priority_and_near_to_far_func);
-			blend_instances.sort(this._sort_by_priority_and_far_to_near_func);
-		}
-
-		var all_instances = opaque_instances.concat(blend_instances); //merge
-
 		//update materials info only if they are in use
 		if(render_settings.update_materials)
 			this._prepareMaterials( materials, scene );
@@ -1169,9 +1204,10 @@ var Renderer = {
 		}
 
 		//store all the info
-		this._blend_instances = blend_instances;
 		this._opaque_instances = opaque_instances;
-		this._visible_instances = all_instances; //sorted version
+		this._blend_instances = blend_instances;
+
+		this._visible_instances = this._opaque_instances.concat( this._blend_instances );
 		this._visible_lights = scene._lights;
 		this._visible_cameras = cameras; 
 		this._visible_materials = materials;
@@ -1190,13 +1226,6 @@ var Renderer = {
 			material.prepareMaterial( scene );
 		}
 	},
-
-	//sorting functions used to sort RenderInstances before rendering
-	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },
-	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
-	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
-	_sort_by_priority_and_near_to_far_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
-	_sort_by_priority_and_far_to_near_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 
 	/**
 	* Renders a frame into a texture (could be a cubemap, in which case does the six passes)
