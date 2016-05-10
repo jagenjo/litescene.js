@@ -32,7 +32,7 @@ PlayAnimation.PAUSED = 4;
 
 PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE, "paused":PlayAnimation.PAUSED };
 
-PlayAnimation["@animation"] = { widget: "resource" };
+PlayAnimation["@animation"] = { widget: "animation" };
 PlayAnimation["@root_node"] = { type: "node" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 

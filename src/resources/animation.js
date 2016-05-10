@@ -161,6 +161,18 @@ Animation.prototype.convertIDstoNames = function( use_basename, root )
 	return num;
 }
 
+Animation.prototype.setTracksPacking = function(v)
+{
+	var num = 0;
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		num += take.setTracksPacking(v);
+	}
+	return num;
+}
+
+
 Animation.prototype.optimizeTracks = function()
 {
 	var num = 0;
@@ -358,6 +370,23 @@ Take.prototype.convertIDstoNames = function( use_basename, root )
 	{
 		var track = this.tracks[j];
 		num += track.convertIDtoName( use_basename, root )
+	}
+	return num;
+}
+
+Take.prototype.setTracksPacking = function(v)
+{
+	var num = 0;
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		if( track.packed_data == v)
+			continue;
+		if(v)
+			track.packData();
+		else
+			track.unpackData();
+		num += 1;
 	}
 	return num;
 }
@@ -1100,16 +1129,16 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		switch(this.type)
 		{
 			case "quat": 
-				quat.lerp( result, a[1], b[1], t );
+				quat.slerp( result, a[1], b[1], t );
 				quat.normalize( result, result );
 				break;
 			case "trans10": 
-				for(var i = 0; i < this.value_size; i++)
+				for(var i = 0; i < 10; i++) //this.value_size should be 10
 					result[i] = a[1][i] * t + b[1][i] * (1-t);
 				var rotA = a[1].subarray(3,7);
-				var rotB = a[1].subarray(3,7);
+				var rotB = b[1].subarray(3,7);
 				var rotR = result.subarray(3,7);
-				quat.lerp( rotR, rotA, rotB, t );
+				quat.slerp( rotR, rotB, rotA, t );
 				quat.normalize( rotR, rotR );
 				break;
 			default:
@@ -1204,16 +1233,16 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		switch(this.type)
 		{
 			case "quat": 
-				quat.lerp( result, b.subarray(1,5), a.subarray(1,5), t );
+				quat.slerp( result, b.subarray(1,5), a.subarray(1,5), t );
 				quat.normalize( result, result );
 				break;
 			case "trans10": 
-				for(var i = 0; i < this.value_size; i++)
+				for(var i = 0; i < 10; i++) //this.value_size should be 10
 					result[i] = a[1+i] * t + b[1+i] * (1-t);
 				var rotA = a.subarray(4,8);
 				var rotB = b.subarray(4,8);
 				var rotR = result.subarray(3,7);
-				quat.lerp( rotR, rotB, rotA, t );
+				quat.slerp( rotR, rotB, rotA, t );
 				quat.normalize( rotR, rotR );
 				break;
 			default:

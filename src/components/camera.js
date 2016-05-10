@@ -1107,7 +1107,7 @@ Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 
 	var dir = vec3.subtract( pos, pos, eye );
 	vec3.normalize(dir, dir);
-	return { start: eye, direction: dir };
+	return { origin: eye, direction: dir };
 }
 
 /**
@@ -1334,12 +1334,22 @@ Camera.prototype.endFBO = function()
 	}
 }
 
-Camera.prototype.fillCameraShaderUniforms = function( scene )
+Camera.prototype.fillShaderQuery = function()
+{
+	var query = new LS.ShaderQuery();
+
+	if( this.type == Camera.ORTHOGRAPHIC )
+		query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
+
+	this._query = query;
+}
+
+Camera.prototype.fillShaderUniforms = function()
 {
 	var uniforms = this._uniforms;
 	uniforms.u_camera_planes[0] = this.near;
 	uniforms.u_camera_planes[1] = this.far;
-	if(this.type == Camera.PERSPECTIVE)
+	if(this.type == LS.Camera.PERSPECTIVE)
 		uniforms.u_camera_perspective.set( [this.fov * DEG2RAD, 512 / Math.tan( this.fov * DEG2RAD ) ] );
 	else
 		uniforms.u_camera_perspective.set( [ this._frustum_size, 512 / this._frustum_size ] );

@@ -12,6 +12,8 @@ function InteractiveController(o)
 	this.mode = InteractiveController.PICKING;
 	this.layers = 3;
 
+	this._last_collision = null;
+
 	if(o)
 		this.configure(o);
 }
@@ -21,6 +23,7 @@ InteractiveController.icon = "mini-icon-cursor.png";
 InteractiveController.PICKING = 1;
 InteractiveController.BOUNDING = 2;
 InteractiveController.COLLIDERS = 3;
+InteractiveController.RENDER_INSTANCES = 4;
 
 InteractiveController["@mode"] = { type: "enum", values: { "Picking": InteractiveController.PICKING, "Bounding": InteractiveController.BOUNDING, "Colliders": InteractiveController.COLLIDERS }};
 InteractiveController["@layers"] = { type: "layers" };
@@ -44,28 +47,35 @@ InteractiveController.prototype.getNodeUnderMouse = function( e )
 	if(this.mode == InteractiveController.PICKING)
 		return LS.Picking.getNodeAtCanvasPosition( e.canvasx, e.canvasy, null, layers );
 
+	var camera = LS.Renderer.getCameraAtPosition( e.canvasx, e.canvasy );
+	if(!camera)
+		return null;
+	var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
+
 	if(this.mode == InteractiveController.BOUNDING)
 	{
-		var camera = LS.Renderer.getCameraAtPosition(e.canvasx, e.canvasy);
-		if(!camera)
-			return null;
-
-		var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
-		var collisions = LS.Picking.raycast( ray.start, ray.direction, { layers: layers } );
+		var collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
+		this._last_collision = collisions[0];
+		return collisions[0].node;
+	}
+
+	if(this.mode == InteractiveController.RENDER_INSTANCES)
+	{
+		var collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { layers: layers, triangle_collision: true } );
+		if(!collisions || !collisions.length)
+			return null;
+		this._last_collision = collisions[0];
 		return collisions[0].node;
 	}
 
 	if(this.mode == InteractiveController.COLLIDERS)
 	{
-		var camera = LS.Renderer.getCameraAtPosition(e.canvasx, e.canvasy);
-		if(!camera)
-			return null;
-		var ray = camera.getRayInPixel( e.canvasx, e.canvasy );
-		var collisions = LS.Physics.raycast( ray.start, ray.direction, { layers: layers } );
+		var collisions = LS.Physics.raycast( ray.origin, ray.direction, { layers: layers } );
 		if(!collisions || !collisions.length)
 			return null;
+		this._last_collision = collisions[0];
 		return collisions[0].node;
 	}
 

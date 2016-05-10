@@ -353,7 +353,8 @@ var Renderer = {
 		this._current_camera = camera;
 
 		//prepare camera
-		camera.fillCameraShaderUniforms( scene );
+		camera.fillShaderQuery();
+		camera.fillShaderUniforms();
 
 		//Draw allows to render debug info easily
 		Draw.reset(); //clear 
@@ -682,6 +683,7 @@ var Renderer = {
 		{
 			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:"", LAST_PASS:"", USE_AMBIENT_ONLY:"" });
 			query.add( scene._query );
+			query.add( camera._query );
 			query.add( instance_final_query ); //contains node, material and instance macros
 
 			if( ignore_lights )
@@ -960,10 +962,7 @@ var Renderer = {
 	*/
 	fillSceneShaderQuery: function( scene, render_settings )
 	{
-		var query = new ShaderQuery();
-
-		if( this._current_camera.type == Camera.ORTHOGRAPHIC )
-			query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
+		var query = new LS.ShaderQuery();
 
 		//camera info
 		if( this._current_pass.id == COLOR_PASS )

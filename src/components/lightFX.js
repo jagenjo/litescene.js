@@ -7,6 +7,7 @@
 * @param {Object} object to configure from
 */
 
+/* DISABLED
 function LightFX(o)
 {
 	this.enabled = true;
@@ -80,7 +81,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 	//material
 	var mat = this._volumetric_material;
 	if(!mat)
-		mat = this._volumetric_material = new Material({shader_name:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
+		mat = this._volumetric_material = new LS.Material({shader_name:"volumetric_light", blending: Material.ADDITIVE_BLENDING });
 	vec3.copy( mat.color, light.color );
 	mat.opacity = this.volume_visibility;
 	RI.material = mat;
@@ -169,7 +170,7 @@ LightFX.onGlarePreRender = function( render_settings )
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = LS.Picking.raycast( center, dir, { max_distance: dist } );
+		coll = LS.Physics.raycast( center, dir, { max_distance: dist } );
 
 	if(coll.length)
 	{
@@ -197,6 +198,8 @@ LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
 	if(this.glare_texture == old_name)
 		this.glare_texture = new_name;
 }
+
+*/
 
 //LS.registerComponent(LightFX);
 

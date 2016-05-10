@@ -1367,11 +1367,13 @@ SceneTree.prototype.findNodeComponents = function( type )
 * returns a pack containing all the scene and resources, used to save a scene to harddrive
 *
 * @method toPack
-* @param {String} fullpath a fiven fullpath name
+* @param {String} fullpath a given fullpath name, it will be assigned to the scene with the appropiate extension
 * @return {LS.Pack} the pack
 */
 SceneTree.prototype.toPack = function( fullpath )
 {
+	fullpath = fullpath || "unnamed_scene";
+
 	//change name to valid name
 	var basename = LS.RM.removeExtension( fullpath, true );
 	var final_fullpath = basename + ".SCENE.wbin";

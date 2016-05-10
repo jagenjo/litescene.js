@@ -68,7 +68,7 @@ Knob.prototype.onMouse = function(e, mouse_event)
 		if(!ray)
 			return;
 
-		this._dragging = geo.testRayBBox( ray.start, ray.direction, instance.aabb);
+		this._dragging = geo.testRayBBox( ray.origin, ray.direction, instance.aabb);
 	}
 	else if( e == "mouseup")
 	{

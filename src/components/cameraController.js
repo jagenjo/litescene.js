@@ -238,7 +238,7 @@ CameraController.prototype.testOriginPlane = function(x,y, result)
 	var result = result || vec3.create();
 
 	//test against plane at 0,0,0
-	if( geo.testRayPlane( ray.start, ray.direction, [0,0,0], [0,1,0], result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, [0,0,0], [0,1,0], result ) )
 		return true;
 	return false;
 }
@@ -253,7 +253,7 @@ CameraController.prototype.testPerpendicularPlane = function(x,y, center, result
 	var result = result || vec3.create();
 
 	//test against plane
-	if( geo.testRayPlane( ray.start, ray.direction, center, front, result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, center, front, result ) )
 		return true;
 	return false;
 }
