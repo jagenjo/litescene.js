@@ -592,16 +592,14 @@ var Renderer = {
 	//this function is in charge of rendering the regular color pass (used also for reflections)
 	renderColorPassInstance: function( instance, render_settings )
 	{
-		var near_lights = this.getNearLights( instance, this._near_lights );
-
 		//render instance
 		var renderered = false;
 		if( instance.material && instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, render_settings, near_lights );
+			renderered = instance.material.renderInstance( instance, render_settings );
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, near_lights );
+			this.renderStandardColorMultiPassLightingInstance( instance, render_settings );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -627,7 +625,7 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} lights array containing al the lights affecting this RI
 	*/
-	renderStandardColorMultiPassLightingInstance: function( instance, render_settings, lights )
+	renderStandardColorMultiPassLightingInstance: function( instance, render_settings )
 	{
 		var camera = this._current_camera;
 		var node = instance.node;
@@ -635,6 +633,7 @@ var Renderer = {
 		var scene = this._current_scene;
 		var renderer_uniforms = this._render_uniforms;
 		var instance_final_query = instance._final_query;
+		var lights = this.getNearLights( instance, this._near_lights );
 
 		//compute matrices
 		var model = instance.matrix;
@@ -930,7 +929,7 @@ var Renderer = {
 				tex = this._missing_texture;
 
 			if(tex._locked) //locked textures are usually the render target where we are rendering right now, so we cannot read and write at the same texture
-				continue;
+				tex = this._missing_texture;
 
 			tex.bind( i );
 			this._active_samples[i] = tex;
@@ -1240,6 +1239,7 @@ var Renderer = {
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
 		var scene = LS.Renderer._current_scene;
+		texture._locked = true;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -1249,6 +1249,7 @@ var Renderer = {
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
 			this.renderToCubemap( cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far );
 		this._current_target = null;
+		texture._locked = false;
 
 		function inner_draw_2d()
 		{

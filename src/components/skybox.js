@@ -4,6 +4,7 @@ function Skybox(o)
 	this.enabled = true;
 	this.texture = null;
 	this.intensity = 1;
+	this.material = null;
 	this.use_environment = true;
 	if(o)
 		this.configure(o);
@@ -12,6 +13,7 @@ function Skybox(o)
 Skybox.icon = "mini-icon-dome.png";
 
 //vars
+Skybox["@material"] = { widget: "resource" };
 Skybox["@texture"] = { widget: "texture" };
 
 Skybox.prototype.onAddedToNode = function(node)
@@ -28,6 +30,8 @@ Skybox.prototype.getResources = function(res)
 {
 	if(typeof(this.texture) == "string")
 		res[this.texture] = GL.Texture;
+	if(typeof(this.material) == "string")
+		res[this.material] = LS.Material;
 	return res;
 }
 
@@ -84,9 +88,19 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		};
 	}
 
-	var mat = this._material;
+	var mat = null;
+	if(this.material)
+	{
+		mat = LS.ResourcesManager.getResource( this.material );
+	}
+
 	if(!mat)
-		mat = this._material = new LS.Material({use_scene_ambient:false});
+	{
+		mat = this._material;
+		if(!mat)
+			mat = this._material = new LS.Material({use_scene_ambient:false});
+	}
+
 
 	vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
 	var sampler = mat.setTexture( LS.Material.COLOR, texture );

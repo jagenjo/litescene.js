@@ -163,7 +163,7 @@ Material.prototype.fillUniforms = function( scene, options )
 
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
-	uniforms.u_diffuse_color = this._diffuse;
+	//uniforms.u_diffuse_color = this._diffuse;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_specular = vec2.create([1,50]);

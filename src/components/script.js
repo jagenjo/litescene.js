@@ -109,6 +109,24 @@ Object.defineProperty( Script.prototype, "context", {
 	enumerable: false //if it was enumerable it would be serialized
 });
 
+Object.defineProperty( Script.prototype, "name", {
+	set: function(v){ 
+		console.error("Script: name cannot be assigned");
+	},
+	get: function() { 
+		if(!this._script.code)
+			return;
+		var line = this._script.code.substr(0,32);
+		if(line.indexOf("//@") != 0)
+			return null;
+		var last = line.indexOf("\n");
+		if(last == -1)
+			last = undefined;
+		return line.substr(3,last - 3);
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
 Script.prototype.configure = function(o)
 {
 	if(o.uid)
@@ -450,15 +468,7 @@ Script.prototype.onRemovedFromScene = function(scene)
 //used in editor
 Script.prototype.getComponentTitle = function()
 {
-	if(!this._script.code)
-		return;
-	var line = this._script.code.substr(0,32);
-	if(line.indexOf("//@") != 0)
-		return null;
-	var last = line.indexOf("\n");
-	if(last == -1)
-		last = undefined;
-	return line.substr(3,last - 3);
+	return this.name;
 }
 
 

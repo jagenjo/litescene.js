@@ -134,6 +134,8 @@ GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
 
 	if(event_type == "init")
 		this._graph.sendEventToAllNodes("onInit");
+	if(event_type == "start")
+		this._graph.sendEventToAllNodes("onStart");
 
 	if(this.on_event == event_type)
 		this.runGraph();

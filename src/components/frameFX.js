@@ -1,9 +1,9 @@
 /**
 * This component allow to create basic FX applied to the whole scene
-* @class GlobalFX
+* @class FrameFX
 * @param {Object} o object with the serialized info
 */
-function GlobalFX(o)
+function FrameFX(o)
 {
 	this.enabled = true;
 
@@ -16,9 +16,9 @@ function GlobalFX(o)
 		this.configure(o);
 }
 
-GlobalFX.icon = "mini-icon-fx.png";
+FrameFX.icon = "mini-icon-fx.png";
 
-GlobalFX.prototype.configure = function(o)
+FrameFX.prototype.configure = function(o)
 {
 	this.enabled = !!o.enabled;
 	this.use_viewport_size = !!o.use_viewport_size;
@@ -30,7 +30,7 @@ GlobalFX.prototype.configure = function(o)
 		this.frame.configure( o.frame );
 }
 
-GlobalFX.prototype.serialize = function()
+FrameFX.prototype.serialize = function()
 {
 	return { 
 		enabled: this.enabled,
@@ -42,61 +42,61 @@ GlobalFX.prototype.serialize = function()
 	};
 }
 
-GlobalFX.prototype.getResources = function(res)
+FrameFX.prototype.getResources = function(res)
 {
 	//TODO
 	return res;
 }
 
-GlobalFX.prototype.addFX = function( name )
+FrameFX.prototype.addFX = function( name )
 {
 	this.fx.addFX(name);
 }
 
-GlobalFX.prototype.getFX = function(index)
+FrameFX.prototype.getFX = function(index)
 {
 	return this.fx.getFX( index );
 }
 
-GlobalFX.prototype.moveFX = function( fx, offset )
+FrameFX.prototype.moveFX = function( fx, offset )
 {
 	return this.fx.moveFX(fx,offset);
 }
 
-GlobalFX.prototype.removeFX = function( fx )
+FrameFX.prototype.removeFX = function( fx )
 {
 	return this.fx.removeFX( fx );
 }
 
-GlobalFX.prototype.onAddedToScene = function( scene )
+FrameFX.prototype.onAddedToScene = function( scene )
 {
 	LEvent.bind( scene, "enableFrameContext", this.onBeforeRender, this );
 	LEvent.bind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
-GlobalFX.prototype.onRemovedFromScene = function( scene )
+FrameFX.prototype.onRemovedFromScene = function( scene )
 {
 	LEvent.unbind( scene, "enableFrameContext", this.onBeforeRender, this );
 	LEvent.unbind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
 //hook the RFC
-GlobalFX.prototype.onBeforeRender = function(e, render_settings)
+FrameFX.prototype.onBeforeRender = function(e, render_settings)
 {
 	if(!this.enabled)
 		return;
 
-	this.enableGlobalFBO( render_settings );
+	this.enableFrameFBO( render_settings );
 }
 
-GlobalFX.prototype.onAfterRender = function( e, render_settings )
+FrameFX.prototype.onAfterRender = function( e, render_settings )
 {
 	if(!this.enabled)
 		return;
 	this.showFBO();
 }
 
-GlobalFX.prototype.enableGlobalFBO = function( render_settings )
+FrameFX.prototype.enableFrameFBO = function( render_settings )
 {
 	if(!this.enabled)
 		return;
@@ -104,7 +104,7 @@ GlobalFX.prototype.enableGlobalFBO = function( render_settings )
 	this.frame.enable( render_settings );
 }
 
-GlobalFX.prototype.showFBO = function()
+FrameFX.prototype.showFBO = function()
 {
 	if(!this.enabled)
 		return;
@@ -132,7 +132,7 @@ GlobalFX.prototype.showFBO = function()
 		this.applyFX();
 }
 
-GlobalFX.prototype.applyFX = function()
+FrameFX.prototype.applyFX = function()
 {
 	var color_texture = this.frame._color_texture;
 	var depth_texture = this.frame._depth_texture;
@@ -142,4 +142,4 @@ GlobalFX.prototype.applyFX = function()
 	this.fx.applyFX( color_texture, null, { depth_texture: depth_texture } );
 }
 
-LS.registerComponent( GlobalFX );
+LS.registerComponent( FrameFX );

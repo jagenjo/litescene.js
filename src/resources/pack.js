@@ -9,8 +9,8 @@
 function Pack(o)
 {
 	this.resource_names = []; 
-	this._data = {}; //here we store the original chunks from the WBin
-	this._resources_data = {};
+	this._data = {}; //the original chunks from the WBin, including the @JSON and @resource_names
+	this._resources_data = {}; //every resource in arraybuffer format
 	if(o)
 		this.configure(o);
 }
@@ -20,7 +20,7 @@ Pack.version = "0.2"; //used to know where the file comes from
 /**
 * configure the pack from an unpacked WBin
 * @method configure
-* @param {*} data
+* @param {Object} data an unpacked WBIN (object with every chunk)
 **/
 Pack.prototype.configure = function( data )
 {
@@ -121,6 +121,7 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	this._modified = true;
 }
 
+//adds to every resource in this pack info about where it came from (the pack)
 Pack.prototype.setResourcesLink = function( value )
 {
 	for(var i = 0; i < this.resource_names.length; ++i)
@@ -136,8 +137,13 @@ Pack.prototype.setResourcesLink = function( value )
 	}
 }
 
+//adds a new resource (or array of resources) to this pack
 Pack.prototype.addResources = function( resource_names, mark_them )
 {
+	if(!resource_names)
+		return;
+	if(resource_names.constructor !== Array)
+		resource_names = [ resource_names ];
 	this.setResources( this.resource_names.concat( resource_names ), mark_them );
 }
 

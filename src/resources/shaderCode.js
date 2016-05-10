@@ -78,7 +78,7 @@ ShaderCode.prototype.processCode = function()
 					value = LS.stringToValue(value);
 				var options = null;
 				var options_index = line.indexOf("{");
-				if(options_index)
+				if(options_index != -1)
 					options = LS.stringToValue(line.substr(options_index));
 				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: options };
 			}
@@ -182,24 +182,31 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 		return null;
 
 	//compile the shader and return it
+	var shader = this.compileShader( vs_code, fs_code );
+	if(!shader)
+		return null;
+
+	this._compiled_shaders[ render_mode ] = shader;
+	return shader;
+}
+
+ShaderCode.prototype.compileShader = function( vs_code, fs_code)
+{
 	if(!LS.catch_exceptions)
-		shader = new GL.Shader( vs_code, fs_code );
+		return new GL.Shader( vs_code, fs_code );
 	else
 	{
 		try
 		{
-			shader = new GL.Shader( vs_code, fs_code );
+			return new GL.Shader( vs_code, fs_code );
 		}
 		catch(err)
 		{
 			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
 			LS.dispatchCodeError(err);
-			return;
 		}
 	}
-
-	this._compiled_shaders[ render_mode ] = shader;
-	return shader;
+	return null;
 }
 
 ShaderCode.prototype.getCodeFromSubfile = function( subfile )

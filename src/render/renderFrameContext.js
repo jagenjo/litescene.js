@@ -11,8 +11,9 @@ function RenderFrameContext( o )
 	this.height = 0; //0 means the same size as the viewport
 	this.precision = RenderFrameContext.DEFAULT_PRECISION;
 	this.filter_texture = true; //magFilter
-	this.use_depth_texture = true;
+	this.use_depth_texture = false;
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
+	this.name = null; //if a name is provided all the textures will be stored
 
 	this.adjust_aspect = false;
 
@@ -51,6 +52,7 @@ RenderFrameContext.prototype.configure = function(o)
 	this.adjust_aspect = !!o.adjust_aspect;
 	this.use_depth_texture = !!o.use_depth_texture;
 	this.num_extra_textures = o.num_extra_textures || 0;
+	this.name = o.name;
 }
 
 RenderFrameContext.prototype.serialize = function()
@@ -62,23 +64,24 @@ RenderFrameContext.prototype.serialize = function()
 		precision:  this.precision,
 		adjust_aspect: this.adjust_aspect,
 		use_depth_texture:  this.use_depth_texture,
-		num_extra_textures:  this.num_extra_textures
+		num_extra_textures:  this.num_extra_textures,
+		name: this.name
 	};
 }
 
 RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height )
 {
 	//compute the right size for the textures
-	var width = this.width;
-	var height = this.height;
-	if(width == 0)
-		width = viewport_width;
-	else if(width < 0)
-		width = viewport_width >> Math.abs( this.width ); //subsampling
-	if(height == 0)
-		height = viewport_height;
-	else if(height < 0)
-		height = viewport_height >> Math.abs( this.height ); //subsampling
+	var final_width = this.width;
+	var final_height = this.height;
+	if(final_width == 0)
+		final_width = viewport_width;
+	else if(final_width < 0)
+		final_width = viewport_width >> Math.abs( this.width ); //subsampling
+	if(final_height == 0)
+		final_height = viewport_height;
+	else if(final_height < 0)
+		final_height = viewport_height >> Math.abs( this.height ); //subsampling
 
 	var format = gl.RGBA;
 	var filter = this.filter_texture ? gl.LINEAR : gl.NEAREST ;
@@ -99,10 +102,12 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	var textures = this._textures;
 
 	//for the color: check that the texture size matches
-	if(!this._color_texture || this._color_texture.width != width || this._color_texture.height != height || this._color_texture.type != type)
-		this._color_texture = new GL.Texture( width, height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
+	if(!this._color_texture || this._color_texture.width != final_width || this._color_texture.height != final_height || this._color_texture.type != type)
+		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 	else
 		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
+	if(this.name)
+		LS.ResourcesManager.resources[ this.name ] = LS.ResourcesManager.textures[ this.name ] = this._color_texture;
 
 	textures[0] = this._color_texture;
 
@@ -111,22 +116,30 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	for(var i = 0; i < total_extra; ++i) //MAX is 4
 	{
 		var extra_texture = textures[1 + i];
-		if( (!extra_texture || extra_texture.width != width || extra_texture.height != height || extra_texture.type != type) )
-			extra_texture = new GL.Texture( width, height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
+		if( (!extra_texture || extra_texture.width != final_width || extra_texture.height != final_height || extra_texture.type != type) )
+			extra_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 		else
 			extra_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
 		textures[1 + i] = extra_texture;
+		if(this.name)
+			LS.ResourcesManager.resources[ this.name + (1+i) ] = LS.ResourcesManager.textures[ this.name + (1+i) ] = extra_texture;
 	}
 
 	//for the depth
-	if( this.use_depth_texture && (!this._depth_texture || this._depth_texture.width != width || this._depth_texture.height != height) && gl.extensions["WEBGL_depth_texture"] )
-		this._depth_texture = new GL.Texture( width, height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
+	if( this.use_depth_texture && (!this._depth_texture || this._depth_texture.width != final_width || this._depth_texture.height != final_height) && gl.extensions["WEBGL_depth_texture"] )
+		this._depth_texture = new GL.Texture( final_width, final_height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
 	else if( !this.use_depth_texture )
 		this._depth_texture = null;
 
 	//we will store some extra info in the depth texture for the near and far plane distances
-	if(this._depth_texture && !this._depth_texture.near_far_planes)
-		this._depth_texture.near_far_planes = vec2.create();
+	if(this._depth_texture)
+	{
+		if(this.name)
+			LS.ResourcesManager.resources[ this.name + "_depth" ] = LS.ResourcesManager.textures[ this.name + "_depth" ] = this._depth_texture;
+
+		if(!this._depth_texture.near_far_planes)
+			this._depth_texture.near_far_planes = vec2.create();
+	}
 
 	//create FBO
 	if( !this._fbo )

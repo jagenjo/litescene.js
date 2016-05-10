@@ -204,7 +204,7 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Cleans resource name (removing double slashes)
+	* Cleans resource name (removing double slashes to avoid problems)
 	*
 	* @method cleanFullpath
 	* @param {String} fullpath
@@ -214,6 +214,9 @@ var ResourcesManager = {
 	{
 		if(!fullpath)
 			return "";
+
+		if( fullpath.indexOf("//") == -1 )
+			return fullpath;
 
 		//clean up the filename (to avoid problems with //)
 		if(fullpath.indexOf("://") == -1)

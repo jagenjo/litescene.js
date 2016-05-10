@@ -226,7 +226,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 
 	//assign
 	LS.Renderer.bindSamplers(  this._samplers );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance._uniforms ] );
+	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] );
 
 	//render
 	instance.render( shader );
@@ -237,19 +237,23 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 
 ShaderMaterial.prototype.fillUniforms = function()
 {
+
 	//gather uniforms & samplers
 	var samplers = this._samplers;
 	samplers.length = 0;
+
+	this._uniforms.u_material_color = this._color;
+
 	for(var i = 0; i < this._properties.length; ++i)
 	{
 		var p = this._properties[i];
 		if(p.is_texture)
 		{
+			this._uniforms[ p.uniform ] = samplers.length;
 			if(p.value)
-			{
-				this._uniforms[ p.uniform ] = samplers.length;
 				samplers.push( p.value );
-			}
+			else
+				samplers.push( " " ); //force missing texture
 		}
 		else
 			this._uniforms[ p.uniform ] = p.value;
