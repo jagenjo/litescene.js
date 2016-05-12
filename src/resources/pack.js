@@ -222,8 +222,12 @@ Pack.packResources = function( resource_names, base_object )
 
 		if(data.constructor === Blob || data.constructor === File)
 		{
-			console.warn("WBin does not support to store File or Blob, please, use ArrayBuffer");
-			continue;
+			if(!data.data || data.data.constructor !== ArrayBuffer )
+			{
+				console.warn("WBin does not support to store File or Blob, please, use ArrayBuffer");
+				continue;
+			}
+			data = data.data; //because files have an arraybuffer with the data if it was read
 		}
 
 		to_binary["@RES_" + final_resource_names.length ] = data;
