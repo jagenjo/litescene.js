@@ -524,7 +524,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess, true );
+				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedEnd, true );
 			},
 			error: function(err) { 	
 				LS.ResourcesManager._resourceLoadedError(url,err);
@@ -576,7 +576,10 @@ var ResourcesManager = {
 		//ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
+			{
+				LS.ResourcesManager._resourceLoadedEnd( url, null ); //to remove it from loading 
 				return;
+			}
 
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
@@ -984,25 +987,28 @@ var ResourcesManager = {
 
 	//*************************************
 
-	//Called after a resource has been loaded successfully and processed
-	_resourceLoadedSuccess: function(url,res)
+	//Called after a resource has been loaded and processed
+	_resourceLoadedEnd: function(url,res)
 	{
 		if( LS.ResourcesManager.debug )
 			console.log("RES: " + url + " ---> " + LS.ResourcesManager.num_resources_being_loaded);
 
-		for(var i in LS.ResourcesManager.resources_being_loaded[url])
+		if(res)
 		{
-			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-				LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
-		}
+			for(var i in LS.ResourcesManager.resources_being_loaded[url])
+			{
+				if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
+					LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
+			}
 
-		//triggers 'once' callbacks
-		if(LS.ResourcesManager.resource_once_callbacks[ url ])
-		{
-			var v = LS.ResourcesManager.resource_once_callbacks[url];
-			for(var i in v)
-				v[i](url, res);
-			delete LS.ResourcesManager.resource_once_callbacks[url];
+			//triggers 'once' callbacks
+			if(LS.ResourcesManager.resource_once_callbacks[ url ])
+			{
+				var v = LS.ResourcesManager.resource_once_callbacks[url];
+				for(var i in v)
+					v[i](url, res);
+				delete LS.ResourcesManager.resource_once_callbacks[url];
+			}
 		}
 
 		//two pases, one for launching, one for removing
@@ -1010,7 +1016,10 @@ var ResourcesManager = {
 		{
 			delete LS.ResourcesManager.resources_being_loaded[url];
 			LS.ResourcesManager.num_resources_being_loaded--;
-			LEvent.trigger( LS.ResourcesManager, "resource_loaded", url );
+			if(res)
+				LEvent.trigger( LS.ResourcesManager, "resource_loaded", url );
+			else
+				LEvent.trigger( LS.ResourcesManager, "resource_problem_loading", url );
 			LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - LS.ResourcesManager.num_resources_being_loaded / LS.ResourcesManager._total_resources_to_load );
 			if( LS.ResourcesManager.num_resources_being_loaded == 0)
 			{

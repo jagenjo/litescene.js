@@ -708,12 +708,12 @@ ShaderQuery.prototype.add = function( query )
 
 ShaderQuery.prototype.setMacro = function( name, value )
 {
-	this.macros[name] = name || "";
+	this.macros[name] = value || "";
 }
 
 ShaderQuery.prototype.resolve = function()
 {
-	return LS.ShadersManager.query(this);
+	return LS.ShadersManager.resolve(this);
 }
 
 //ShaderQuery.prototype.addHook = function

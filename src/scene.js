@@ -894,7 +894,7 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 			resources[ i ] = true;
 
 	//resources from nodes
-	for(var i in this._nodes)
+	for(var i = 0; i < this._nodes.length; ++i)
 		this._nodes[i].getResources( resources );
 
 	//remove the resources that belong to packs or prefabs
@@ -1370,7 +1370,7 @@ SceneTree.prototype.findNodeComponents = function( type )
 * @param {String} fullpath a given fullpath name, it will be assigned to the scene with the appropiate extension
 * @return {LS.Pack} the pack
 */
-SceneTree.prototype.toPack = function( fullpath )
+SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 {
 	fullpath = fullpath || "unnamed_scene";
 
@@ -1382,7 +1382,7 @@ SceneTree.prototype.toPack = function( fullpath )
 	var scene_json = JSON.stringify( this.serialize() );
 
 	//get all resources
-	var resources = this.getResources(null,true,true);
+	var resources = this.getResources(null,true, !force_all_resources );
 
 	//create pack
 	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );

@@ -534,7 +534,7 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 	return target;
 }
 
-SceneNode.prototype.getResources = function(res, include_children)
+SceneNode.prototype.getResources = function( res, include_children )
 {
 	//resources in components
 	for(var i in this._components)
@@ -544,19 +544,17 @@ SceneNode.prototype.getResources = function(res, include_children)
 	//res in material
 	if(this.material)
 	{
-		if(typeof(this.material) == "string")
+		if( this.material.constructor === String )
 		{
 			if(this.material[0] != ":") //not a local material, then its a reference
 			{
 				res[this.material] = LS.Material;
 			}
 		}
-		else //get the material to get the resources
-		{
-			var mat = this.getMaterial();
-			if(mat)
-				mat.getResources( res );
-		}
+
+		var mat = this.getMaterial();
+		if(mat)
+			mat.getResources( res );
 	}
 
 	//prefab

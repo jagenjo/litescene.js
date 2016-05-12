@@ -17,6 +17,7 @@ function RenderFrameContext( o )
 
 	this.adjust_aspect = false;
 
+	this._fbo = null;
 	this._color_texture = null;
 	this._depth_texture = null;
 	this._textures = []; //all color textures
@@ -42,6 +43,23 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 	}
 };
 RenderFrameContext["@num_extra_textures"] = { type: "number", step: 1, min: 0, max: 4, precision: 0 };
+RenderFrameContext["@name"] = { type: "string" };
+
+RenderFrameContext.prototype.clear = function()
+{
+	if(this.name)
+	{
+		for(var i = 0; i < this._textures.length; ++i)
+			delete LS.ResourcesManager.textures[ this.name + (i > 1 ? i : "") ];
+		if(this._depth_texture)
+			delete LS.ResourcesManager.textures[ this.name + "_depth"];
+	}
+
+	this._fbo = null;
+	this._textures = [];
+	this._color_texture = null;
+	this._depth_textures = null;
+}
 
 RenderFrameContext.prototype.configure = function(o)
 {
@@ -121,8 +139,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		else
 			extra_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
 		textures[1 + i] = extra_texture;
-		if(this.name)
-			LS.ResourcesManager.resources[ this.name + (1+i) ] = LS.ResourcesManager.textures[ this.name + (1+i) ] = extra_texture;
 	}
 
 	//for the depth
@@ -134,9 +150,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	//we will store some extra info in the depth texture for the near and far plane distances
 	if(this._depth_texture)
 	{
-		if(this.name)
-			LS.ResourcesManager.resources[ this.name + "_depth" ] = LS.ResourcesManager.textures[ this.name + "_depth" ] = this._depth_texture;
-
 		if(!this._depth_texture.near_far_planes)
 			this._depth_texture.near_far_planes = vec2.create();
 	}
@@ -148,8 +161,8 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	//cut extra
 	textures.length = 1 + total_extra;
 
-	//assign textures
-	this._fbo.setTextures( textures, this._depth_texture, true );
+	//assign textures (this will enable the FBO but it will restore the old one after finishing)
+	this._fbo.setTextures( textures, this._depth_texture );
 }
 
 //Called before rendering the scene
@@ -193,7 +206,12 @@ RenderFrameContext.prototype.enableFBO = function()
 	if(!this._fbo)
 		throw("No FBO created in RenderFrameContext");
 
-	this._fbo.bind(); //changes viewport to full FBO size (saves old)
+	this._fbo.bind( true ); //changes viewport to full FBO size (saves old)
+
+	for(var i = 0; i < this._textures.length; ++i)
+		this._textures[i]._locked = true;
+	if(this._depth_texture)
+		this._depth_texture._locked = true;
 
 	LS.Renderer._full_viewport.set( gl.viewport_data );
 	this._old_aspect = LS.Renderer.global_aspect;
@@ -206,6 +224,18 @@ RenderFrameContext.prototype.disableFBO = function()
 	this._fbo.unbind(); //restores viewport to old saved one
 	LS.Renderer._full_viewport.set( this._fbo._old_viewport );
 	LS.Renderer.global_aspect = this._old_aspect;
+
+	for(var i = 0; i < this._textures.length; ++i)
+		this._textures[i]._locked = false;
+	if(this._depth_texture)
+		this._depth_texture._locked = false;
+	if(this.name)
+	{
+		for(var i = 0; i < this._textures.length; ++i)
+			LS.ResourcesManager.textures[ this.name + (i > 0 ? i : "") ] = this._textures[i];
+		if(this._depth_texture)
+			LS.ResourcesManager.textures[ this.name + "_depth"] = this._depth_texture;
+	}
 }
 
 //Render the context of the fbo to the viewport (allows to apply FXAA)

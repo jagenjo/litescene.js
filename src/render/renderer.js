@@ -254,6 +254,7 @@ var Renderer = {
 	* @method renderFrame
 	* @param {Camera} camera 
 	* @param {Object} render_settings
+	* @param {SceneTree} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
@@ -338,7 +339,6 @@ var Renderer = {
 			}
 		}
 
-		//compute matrices
 		camera.updateMatrices();
 
 		//store matrices locally
@@ -351,10 +351,6 @@ var Renderer = {
 
 		//set as the current camera
 		this._current_camera = camera;
-
-		//prepare camera
-		camera.fillShaderQuery();
-		camera.fillShaderUniforms();
 
 		//Draw allows to render debug info easily
 		Draw.reset(); //clear 
@@ -1101,6 +1097,7 @@ var Renderer = {
 		{
 			var camera = cameras[i];
 			camera._rendering_index = i;
+			camera.prepare();
 		}
 
 		//meh!

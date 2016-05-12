@@ -21,6 +21,7 @@ function Transform( o )
 	this._global_matrix = mat4.create();
 
 	this._must_update_matrix = false; //matrix must be redone?
+	this._last_change = 0;
 
 	/* deprecated
 	if(Object.observe)
@@ -453,6 +454,7 @@ Transform.prototype.updateMatrix = function()
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
 	this._must_update_matrix = false;
+	this._last_change += 1;
 }
 Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 

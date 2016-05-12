@@ -29,7 +29,7 @@ Object.defineProperty( TerrainRenderer.prototype, 'primitive', {
 
 TerrainRenderer.icon = "mini-icon-terrain.png";
 
-TerrainRenderer["@subdivisions"] = { type: "number", min:1,max:255,step:1 };
+TerrainRenderer["@subdivisions"] = { type: "number", min:1,max:255,step:1, precision:0 };
 TerrainRenderer["@heightmap"] = { type: "texture" };
 TerrainRenderer["@action"] = { widget: "button", callback: function() { 
 	if(this.options.instance)
