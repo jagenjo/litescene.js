@@ -216,13 +216,13 @@ Pack.packResources = function( resource_names, base_object )
 
 		if(!data)
 		{
-			console.warning("Wrong data in resource");
+			console.warn("Wrong data in resource");
 			continue;
 		}
 
 		if(data.constructor === Blob || data.constructor === File)
 		{
-			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
+			console.warn("WBin does not support to store File or Blob, please, use ArrayBuffer");
 			continue;
 		}
 

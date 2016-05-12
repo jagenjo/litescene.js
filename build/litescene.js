@@ -10919,13 +10919,13 @@ Pack.packResources = function( resource_names, base_object )
 
 		if(!data)
 		{
-			console.warning("Wrong data in resource");
+			console.warn("Wrong data in resource");
 			continue;
 		}
 
 		if(data.constructor === Blob || data.constructor === File)
 		{
-			console.warning("WBin does not support to store File or Blob, please, use ArrayBuffer");
+			console.warn("WBin does not support to store File or Blob, please, use ArrayBuffer");
 			continue;
 		}
 
@@ -34008,6 +34008,16 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 			if(resource && (resource.from_prefab || resource.from_pack))
 				delete resources[i];
 		}
+
+	//check if any resource requires another resource (a material that requires textures)
+	for(var i in resources)
+	{
+		var resource = LS.ResourcesManager.resources[i];
+		if(!resource)
+			continue;
+		if(resource.getResources)
+			resource.getResources(resources);
+	}
 
 	//return as object
 	if(!as_array)
