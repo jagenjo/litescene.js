@@ -285,6 +285,21 @@ var parserDAE = {
 				material.opacity = material.transparency; //why? dont know but works
 		}
 
+		//Litescene expects a single value for specular_factor, some exporters provide RGB, 
+		//which is parsed to a Float32Array by collada.js
+		if(material.specular_factor) {
+			if (material.specular_factor instanceof Float32Array) {
+				//then we need to convert from (RGB) array to single value
+				var sum = 0;
+				for (var i = 0; i < material.specular_factor.length; i++) {
+					sum += material.specular_factor[i];
+				}
+				sum /= material.specular_factor.length;
+				//reassign property to the average
+				material.specular_factor = sum;
+			} 
+		}
+
 		if(material.textures)
 		{
 			for(var i in material.textures)
@@ -299,6 +314,16 @@ var parserDAE = {
 				};
 				material.textures[i] = tex_info;
 			}
+
+			//if the specular node of the collada was a texture, it will appear as a texture
+			//but with the wrong name ("specular_factor" instead of "specular")
+			//also the material.specular_factor property won't be set
+			//so here we fix all that
+			if (material.textures.hasOwnProperty("specular_factor")) {
+		        material.textures["specular"] = material.textures["specular_factor"];
+		        delete material.textures["specular_factor"];
+		        material.specular_factor = 1.0;
+		    }
 		}
 	}
 };
