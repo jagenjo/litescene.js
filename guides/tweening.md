@@ -9,13 +9,13 @@ LiteScene comes with its own tweening system.
 To tween just call the LS.Tween.easyProperty passing the object containing the property, the property name in string format, the target value, and the time the transition should last.
 
 ```javascript
-  	LS.Tween.easeProperty( list.transform, "x", target, 1 );
+  	LS.Tween.easeProperty( node.transform, "x", target, 1 );
 ```
 
 By default it will use EASE_IN_OUT_QUAD interpolation function (quadratic interpolation for in and out), but you can choose any of the supported functions:
 
 ```javascript
-  	LS.Tween.easeProperty( list.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC );
+  	LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC );
 ```
 Here is a list:
 
@@ -47,11 +47,13 @@ Here is a list:
 In case you want to call a callback once per update or once it finishes you can pass the callbacks in order:
 
 ```javascript
-  	LS.Tween.easeProperty( list.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
+  	LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
 ```
 
 ## Update ##
 
 The pending tweens are processed using the method LS.Tween.update which is called automatically from LS.Player.update.
+
+Also the system will check for a ```mustUpdate``` variable in the object and if it is pressed it will set it to true.
 
 Keep in mind that if the scene is not running the tweens wont be processed.
