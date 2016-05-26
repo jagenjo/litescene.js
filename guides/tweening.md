@@ -49,3 +49,9 @@ In case you want to call a callback once per update or once it finishes you can 
 ```javascript
   	LS.Tween.easeProperty( list.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
 ```
+
+## Update ##
+
+The pending tweens are processed using the method LS.Tween.update which is called automatically from LS.Player.update.
+
+Keep in mind that if the scene is not running the tweens wont be processed.
