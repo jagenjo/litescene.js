@@ -320,11 +320,11 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 		return this._frustum_size;
 	},
 	set: function(v) {
-		if(	this._frustum_size != v)
-		{
-			this._must_update_view_matrix = true;
-			this._must_update_projection_matrix = true;
-		}
+		if(	this._frustum_size == v)
+			return;
+
+		//this._must_update_view_matrix = true;
+		this._must_update_projection_matrix = true;
 		this._frustum_size  = v;
 	},
 	enumerable: true

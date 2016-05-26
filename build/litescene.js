@@ -731,6 +731,7 @@ var LS = {
 	_last_uid: 1,
 	_uid_prefix: "@", //WARNING: must be one character long
 	debug: false, //enable to see verbose output
+	allow_static: true, //used to disable static instances in the editor
 
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
@@ -2726,14 +2727,18 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Tells if it is loading resources
+	* Tells if it is loading resources (or an specific resource)
 	*
 	* @method isLoading
 	* @return {Boolean}
 	*/
-	isLoading: function()
+	isLoading: function( fullpath )
 	{
-		return this.num_resources_being_loaded > 0;
+		if(!fullpath)
+			return this.num_resources_being_loaded > 0;
+		if(this.resources_being_loaded[ fullpath ] || this.resources_being_processed[ fullpath ])
+			return true;
+		return false;
 	},	
 
 	/**
@@ -6384,7 +6389,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient && scene.info)
+	if(this.use_scene_ambient && scene.info && !this.textures["ambient"])
 		uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
 	else
 		uniforms.u_ambient_color = this.ambient;
@@ -8552,7 +8557,20 @@ function Component(o)
 		this.configure(o);
 }
 
-//default methods inserted in components that doesnt have a configure or serialize method
+/**
+* Returns the node where this components is attached
+* @method getRootNode
+**/
+Component.prototype.getRootNode = function()
+{
+	return this._root;
+}
+
+/**
+* Configures the components based on an object that contains the serialized info
+* @method configure
+* @param {Object} o object with the serialized info
+**/
 Component.prototype.configure = function(o)
 { 
 	if(!o)
@@ -8579,6 +8597,11 @@ Component.prototype.configure = function(o)
 	LS.cloneObject(o, this, false, true); 
 }
 
+/**
+* Returns an object with all the info about this component in an object form
+* @method serialize
+* @return {Object} object with the serialized info
+**/
 Component.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this);
@@ -8590,6 +8613,7 @@ Component.prototype.serialize = function()
 /**
 * Create a clone of this node (the UID is removed to avoid collisions)
 * @method clone
+* @return {*} component clone
 **/
 Component.prototype.clone = function()
 {
@@ -8820,7 +8844,7 @@ LS.Component = Component;
 
 /**
 * This class contains all the info about a resource and it works as a template for any resource class
-* Keep in mind that there are many resource classes like Meshes or Textures that dont inherit from this class.
+* Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.
 * This class is used mainly to generic file resources like text files (scripts, csvs, etc)
 *
 * @class Resource
@@ -8981,6 +9005,17 @@ Resource.prototype.getCategory = function()
 	if(ext == "js")
 		return "Script";
 	return "Data";
+}
+
+Resource.prototype.assignToNode = function(node)
+{
+	if(!node || this.getCategory() != "Script")
+		return false;
+
+	var filename = this.fullpath || this.filename;
+	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
+	node.addComponent( script_component );
+	return true;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?
@@ -11858,10 +11893,6 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.getComponent = function()
 	{
-		var v = this.getInputData(0);
-		if(v)
-			return v;
-
 		var scene = this.graph._scene;
 		if(!scene) 
 			return null;
@@ -14054,9 +14085,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 	else
 		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
-	if(this.name)
-		LS.ResourcesManager.resources[ this.name ] = LS.ResourcesManager.textures[ this.name ] = this._color_texture;
-
 	textures[0] = this._color_texture;
 
 	//extra color texture (multibuffer rendering)
@@ -14162,9 +14190,17 @@ RenderFrameContext.prototype.disableFBO = function()
 	if(this.name)
 	{
 		for(var i = 0; i < this._textures.length; ++i)
-			LS.ResourcesManager.textures[ this.name + (i > 0 ? i : "") ] = this._textures[i];
+		{
+			var name = this.name + (i > 0 ? i : "");
+			this._textures[i].filename = name;
+			LS.ResourcesManager.textures[ name ] = this._textures[i];
+		}
 		if(this._depth_texture)
-			LS.ResourcesManager.textures[ this.name + "_depth"] = this._depth_texture;
+		{
+			var name = this.name + "_depth";
+			this._depth_texture.filename = name;
+			LS.ResourcesManager.textures[ name ] = this._depth_texture;
+		}
 	}
 }
 
@@ -14459,17 +14495,8 @@ var Renderer = {
 		//compute the rendering order
 		this.sortRenderInstances( camera, render_settings );
 
-		//scissors test for the gl.clear, otherwise the clear affects the full viewport
-		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
-		gl.enable(gl.SCISSOR_TEST);
-
-		//clear buffer 
-		var info = scene.info;
-		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-		if(render_settings.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
-			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
-
-		gl.disable(gl.SCISSOR_TEST);
+		//clear buffer
+		this.clearBuffer( camera, render_settings );
 
 		//send before events
 		LEvent.trigger(scene, "beforeRenderScene", camera );
@@ -14549,6 +14576,23 @@ var Renderer = {
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
+	},
+
+	//clear color using camerae info
+	clearBuffer: function( camera, render_settings )
+	{
+		if( render_settings.ignore_clear || (!camera.clear_color && !camera.clear_depth) )
+			return;
+
+		//scissors test for the gl.clear, otherwise the clear affects the full viewport
+		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
+		gl.enable(gl.SCISSOR_TEST);
+
+		//clear buffer 
+		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
+		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
+
+		gl.disable(gl.SCISSOR_TEST);
 	},
 
 	sortRenderInstances: function( camera, render_settings )
@@ -14631,7 +14675,10 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		if(!scene)
-			return console.warn("LS.Renderer.renderInstances: no scene found");
+		{
+			console.warn("LS.Renderer.renderInstances: no scene found");
+			return 0;
+		}
 
 		var pass = this._current_pass;
 		var camera = this._current_camera;
@@ -14663,7 +14710,7 @@ var Renderer = {
 
 		var render_instance_func = pass.render_instance;
 		if(!render_instance_func)
-			return;
+			return 0;
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -14702,6 +14749,8 @@ var Renderer = {
 				instance._camera_visibility |= camera_index_flag;
 		}
 
+		var start = this._rendered_instances;
+
 		//for each render instance
 		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
@@ -14731,6 +14780,8 @@ var Renderer = {
 
 		//and finally again
 		this.resetGLState( render_settings );
+
+		return this._rendered_instances - start;
 	},
 
 	/**
@@ -15341,7 +15392,7 @@ var Renderer = {
 				}
 			}
 
-			//and finally, the alpha thing to determine if it is visible or not
+			//check if it has alpha, and put in right container
 			if(instance.flags & RI_BLEND)
 				blend_instances.push(instance);
 			else
@@ -15439,9 +15490,12 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
+			LS.Renderer.clearBuffer( cam, render_settings );
+			/*
 			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			*/
 			//render scene
 			LS.Renderer.renderInstances( render_settings );
 		}
@@ -15480,7 +15534,6 @@ var Renderer = {
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
-
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 
@@ -15683,6 +15736,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 	gl.disable( gl.CULL_FACE );
 	gl.depthFunc( gl.LEQUAL );
 	//gl.depthMask( false );
+	var selected_node = null;
 
 	if( settings.render_grid && settings.grid_alpha > 0 )
 		this.renderGrid();
@@ -15703,6 +15757,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 		{
 			var node = LS.GlobalScene._nodes[i];
 			var is_node_selected = node._is_selected;
+			selected_node = node;
 			if(node.renderEditor)
 				node.renderEditor( is_node_selected );
 			for(var j = 0, l2 = node._components.length; j < l2; ++j)
@@ -15831,7 +15886,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 	}
 
 	//DEBUG
-	if(settings.render_axis) //render axis for all nodes
+	if(settings.render_axis && selected_node) //render axis for all nodes
 	{
 		LS.Draw.push();
 		var Q = selected_node.transform.getGlobalRotation();
@@ -16711,7 +16766,7 @@ function Transform( o )
 	this._global_matrix = mat4.create();
 
 	this._must_update_matrix = false; //matrix must be redone?
-	this._last_change = 0;
+	this._version = 0;
 
 	/* deprecated
 	if(Object.observe)
@@ -16731,6 +16786,7 @@ function Transform( o )
 }
 
 Transform.temp_matrix = mat4.create();
+Transform.temp_quat = quat.create();
 Transform.icon = "mini-icon-gizmo.png";
 Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
@@ -17030,6 +17086,7 @@ Transform.prototype.identity = function()
 	vec3.copy(this._scaling, [1,1,1]);
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
+	this._version += 1;
 	this._must_update_matrix = false;
 }
 
@@ -17144,7 +17201,8 @@ Transform.prototype.updateMatrix = function()
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
 	this._must_update_matrix = false;
-	this._last_change += 1;
+	this._version += 1;
+	this.updateDescendants();
 }
 Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 
@@ -17400,6 +17458,7 @@ Transform.prototype.fromMatrix = (function() {
 		if(m != this._local_matrix)
 			mat4.copy(this._local_matrix, m);
 		this._must_update_matrix = false;
+		this._version += 1;
 		this._on_change(true);
 	}
 })();
@@ -17485,7 +17544,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q);
+		quat.copy(this._rotation, q_angle);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -18029,6 +18088,27 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 }
 */
 
+//marks descendants to be updated
+Transform.prototype.updateDescendants = function()
+{
+	if(!this._root)
+		return;
+	var children = this._root._children;
+	if(!children)
+		return;
+
+	for(var i = 0; i < children.length; ++i)
+	{
+		var node = children[i];
+		if(!node.transform)
+			continue;
+
+		node.transform._must_update_matrix = true;
+		node.transform._version += 1;
+		if(node._children && node._children.length)
+			node.transform.updateDescendants();
+	}
+}
 
 
 LS.registerComponent( Transform );
@@ -18356,11 +18436,11 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 		return this._frustum_size;
 	},
 	set: function(v) {
-		if(	this._frustum_size != v)
-		{
-			this._must_update_view_matrix = true;
-			this._must_update_projection_matrix = true;
-		}
+		if(	this._frustum_size == v)
+			return;
+
+		//this._must_update_view_matrix = true;
+		this._must_update_projection_matrix = true;
 		this._frustum_size  = v;
 	},
 	enumerable: true
@@ -19971,7 +20051,7 @@ Light.prototype.updateLightCamera = function()
 
 	var closest_far = this.computeShadowmapFar();
 
-	camera._frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
+	camera.frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
 	camera.near = this.near;
 	camera.far = closest_far;
 	camera.fov = (this.angle_end || 45); //fov is in degrees
@@ -20817,6 +20897,9 @@ function MeshRenderer(o)
 
 	this.material = null;
 
+	this._must_update_static = true; //used in static meshes
+	this._transform_version = -1;
+
 	if(o)
 		this.configure(o);
 
@@ -20926,7 +21009,7 @@ MeshRenderer.prototype.getMesh = function() {
 		return null;
 
 	if( this.mesh.constructor === String )
-		return LS.ResourcesManager.meshes[this.mesh];
+		return LS.ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
@@ -20983,6 +21066,13 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!RI)
 		this._RI = RI = new LS.RenderInstance( this._root, this );
 
+	var is_static = this._root.flags && this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	//optimize
+	if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
+		return instances.push( RI );
+
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
@@ -20999,10 +21089,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var material = null;
 	if(this.material)
 		material = LS.ResourcesManager.getResource( this.material );
-	RI.setMaterial( material || this._root.getMaterial() );
-
-	//if(!mesh.indexBuffers["wireframe"])
-	//	mesh.computeWireframe();
+	else
+		material = this._root.getMaterial();
+	RI.setMaterial( material );
 
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
@@ -21040,10 +21129,29 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
 		delete RI.query.macros["USE_TEXTURED_POINTS"];
 
+	//mark it as ready once no more changes should be applied
+	if( is_static && LS.allow_static && !this.isLoading() )
+	{
+		this._must_update_static = false;
+		this._transform_version = transform ? transform._version : 0;
+	}
+
 	instances.push( RI );
 }
 
-
+//test if any of the assets is being loaded
+MeshRenderer.prototype.isLoading = function()
+{
+	if( this.mesh && LS.ResourcesManager.isLoading( this.mesh ))
+		return true;
+	if( this.lod_mesh && LS.ResourcesManager.isLoading( this.lod_mesh ))
+		return true;
+	if( this.material && LS.ResourcesManager.isLoading( this.material ))
+		return true;
+	if(this._root && this._root.material && this._root.material.constructor === String && LS.ResourcesManager.isLoading( this._root.material ))
+		return true;
+	return false;
+}
 
 
 LS.registerComponent( MeshRenderer );
@@ -22436,10 +22544,14 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		this._render_instance = RI = new LS.RenderInstance(this._root, this);
 		RI.priority = 100;
 
+		//to position the skybox on top of the camera
 		RI.onPreRender = function(render_settings) { 
-			var cam_pos = LS.Renderer._current_camera.getEye();
+			var camera = LS.Renderer._current_camera;
+			var cam_pos = camera.getEye();
 			mat4.identity(this.matrix);
 			mat4.setTranslation( this.matrix, cam_pos );
+			var size = (camera.near + camera.far) * 0.5;
+			//mat4.scale( this.matrix, this.matrix, [ size, size, size ]);
 			if(this.node.transform)
 			{
 				var R = this.node.transform.getGlobalRotationMatrix();
@@ -23264,7 +23376,7 @@ AnnotationComponent.prototype.serialize = function()
 		start_position: this.start_position
 	};
 	
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		for(var j in note)
@@ -23277,13 +23389,14 @@ AnnotationComponent.prototype.serialize = function()
 	return o;
 }
 
-AnnotationComponent.prototype.onAddedToNode = function(node)
+AnnotationComponent.prototype.onAddedToScene = function(node)
 {
-	LEvent.bind(node,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
 }
 
-AnnotationComponent.prototype.onRemovedFromNode = function(node)
+AnnotationComponent.prototype.onRemovedFromScene = function(node)
 {
+	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
 }
 
 AnnotationComponent.prototype.onMouse = function(type, e)
@@ -23299,7 +23412,7 @@ AnnotationComponent.prototype.onMouse = function(type, e)
 			AnnotationComponent.onShowMainAnnotation(this._root);
 		}
 
-		for(var i in this.notes)
+		for(var i = 0; i < this.notes.length; ++i)
 		{
 			var note = this.notes[i];
 			dist = vec2.dist( note._end_screen, [e.mousex, gl.canvas.height - e.mousey] );
@@ -23365,7 +23478,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	var model = this._root.transform.getGlobalMatrix();
 
 	//notes
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		var start = mat4.multiplyVec3( vec3.create(), model, note.start );
@@ -23432,7 +23545,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	//texts
 	gl.disable( gl.CULL_FACE );
 	LS.Draw.setColor( LS.Components.AnnotationComponent.editor_color );
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		LS.Draw.push();
@@ -26988,6 +27101,10 @@ Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
 Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
 Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
+Script.defineAPIFunction( "onMouseDown", Script.BIND_TO_SCENE, "mousedown" );
+Script.defineAPIFunction( "onMouseMove", Script.BIND_TO_SCENE, "mousemove" );
+Script.defineAPIFunction( "onMouseUp", Script.BIND_TO_SCENE, "mouseup" );
+Script.defineAPIFunction( "onKeyDown", Script.BIND_TO_SCENE, "keydown" );
 Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
 
 Script.coding_help = "\n\
@@ -27384,7 +27501,7 @@ Script.prototype.onRemovedFromScene = function(scene)
 //used in editor
 Script.prototype.getComponentTitle = function()
 {
-	return this.name;
+	return this.name; //name is a getter that reads the name from the code comment
 }
 
 
@@ -27492,6 +27609,24 @@ Object.defineProperty( ScriptFromFile.prototype, "context", {
 		if(this._script)
 				return this._script._context;
 		return null;
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
+Object.defineProperty( ScriptFromFile.prototype, "name", {
+	set: function(v){ 
+		console.error("Script: name cannot be assigned");
+	},
+	get: function() { 
+		if(!this._script.code)
+			return;
+		var line = this._script.code.substr(0,32);
+		if(line.indexOf("//@") != 0)
+			return null;
+		var last = line.indexOf("\n");
+		if(last == -1)
+			last = undefined;
+		return line.substr(3,last - 3);
 	},
 	enumerable: false //if it was enumerable it would be serialized
 });
@@ -29744,13 +29879,20 @@ global.Collada = {
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+		var node_name = this.safeString( xmlnode.getAttribute("name") );
 
-		if(!node_id && !node_sid)
+		var unique_name = node_id || node_sid || node_name;
+
+		if(!unique_name)
+		{
+			console.warn("Collada: node without name or id, skipping it");
 			return null;
+		}
 
 		//here we create the node
 		var node = { 
-			id: node_sid || node_id, 
+			name: node_name,
+			id: unique_name, 
 			children:[], 
 			_depth: level 
 		};
@@ -29759,10 +29901,7 @@ global.Collada = {
 		if(node_type)
 			node.type = node_type;
 
-		var node_name = xmlnode.getAttribute("name");
-		if( node_name)
-			node.name = node_name;
-		this._nodes_by_id[ node.id ] = node;
+		this._nodes_by_id[ unique_name ] = node;
 		if( node_id )
 			this._nodes_by_id[ node_id ] = node;
 		if( node_sid )
@@ -29795,6 +29934,9 @@ global.Collada = {
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+		var node_name = this.safeString( xmlnode.getAttribute("name") );
+
+		var unique_name = node_id || node_sid || node_name;
 
 		/*
 		if(!node_id && !node_sid)
@@ -29806,18 +29948,21 @@ global.Collada = {
 		*/
 
 		var node;
-		if(!node_id && !node_sid) {
+		if(!unique_name) {
 			//if there is no id, then either all of this node's properties 
 			//should be assigned directly to its parent node, or the node doesn't
 			//have a parent node, in which case its a light or something. 
 			//So we get the parent by its id, and if there is no parent, we return null
 			if (parent)
-				node = this._nodes_by_id[ parent.id || parent.sid ];
+				node = this._nodes_by_id[ parent.id || parent.sid || parent.name ];
 			else 
+			{
+				console.warn("Collada: node without name or id, skipping it");
 				return null;
+			}
 		} 
 		else
-			node = this._nodes_by_id[ node_id || node_sid ];
+			node = this._nodes_by_id[ unique_name ];
 
 		if(!node)
 		{
@@ -29845,7 +29990,15 @@ global.Collada = {
 			{
 				var url = xmlchild.getAttribute("url");
 				var mesh_id = url.toString().substr(1);
-				node.mesh = mesh_id;
+
+				if(!node.mesh)
+					node.mesh = mesh_id;
+				else
+				{
+					if(!node.meshes)
+						node.meshes = [node.mesh];
+					node.meshes.push( mesh_id );
+				}
 
 				if(!scene.meshes[ url ])
 				{
@@ -32041,6 +32194,12 @@ var parserDAE = {
 			}
 
 			//change mesh names to engine friendly ids
+			if(node.meshes)
+			{
+				for(var i = 0; i < node.meshes.length; i++)
+					if(node.meshes[i] && renamed[ node.meshes[i] ])
+						node.meshes[i] = renamed[ node.meshes[i] ];
+			}
 			if(node.mesh && renamed[ node.mesh ])
 				node.mesh = renamed[ node.mesh ];
 
@@ -34507,6 +34666,14 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	return pack;
 },
 
+SceneTree.prototype.updateStaticObjects = function()
+{
+	var old = LS.allow_static;
+	LS.allow_static = false;
+	this.collectData();
+	LS.allow_static = old;
+}
+
 LS.SceneTree = SceneTree;
 LS.Classes.SceneTree = SceneTree;
 
@@ -34550,6 +34717,7 @@ function SceneNode( name )
 	//flags
 	this.flags = {
 		visible: true,
+		is_static: false,
 		selectable: true,
 		two_sided: false,
 		flip_normals: false,
@@ -34580,6 +34748,7 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		//flags
 		this.flags = {
 			visible: true,
+			is_static: false,
 			selectable: true,
 			two_sided: false,
 			flip_normals: false,
@@ -34681,6 +34850,17 @@ Object.defineProperty( SceneNode.prototype, 'visible', {
 	},
 	get: function(){
 		return this.flags.visible;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'is_static', {
+	set: function(v)
+	{
+		this.flags.is_static = v;
+	},
+	get: function(){
+		return this.flags.is_static;
 	},
 	enumerable: true
 });
@@ -35317,51 +35497,14 @@ SceneNode.prototype.configure = function(info)
 	if(info.light)
 		this.addComponent( new LS.Light( info.light ) );
 
-	if(info.mesh)
+	//in case more than one mesh in on e node
+	if(info.meshes)
 	{
-		var mesh_id = info.mesh;
-		var mesh = LS.ResourcesManager.meshes[ mesh_id ];
-
-		if(mesh)
-		{
-			var mesh_render_config = { mesh: mesh_id };
-
-			if(info.submesh_id !== undefined)
-				mesh_render_config.submesh_id = info.submesh_id;
-			if(info.morph_targets !== undefined)
-				mesh_render_config.morph_targets = info.morph_targets;
-
-			var compo = new LS.Components.MeshRenderer( mesh_render_config );
-
-			//parsed meshes have info about primitive
-			if( mesh.primitive === "line_strip" )
-			{
-				compo.primitive = 3;
-				delete mesh.primitive;
-			}
-
-			//add MeshRenderer
-			this.addComponent( compo );
-
-			//skinning
-			if(mesh && mesh.bones)
-			{
-				compo = new LS.Components.SkinDeformer();
-				this.addComponent( compo );
-			}
-
-			//morph targets
-			if( mesh && mesh.morph_targets )
-			{
-				var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
-				this.addComponent( compo );
-			}
-		}
-		else
-		{
-			console.warn( "SceneNode mesh not found: " + mesh_id );
-		}
+		for(var i = 0; i < info.meshes.length; ++i)
+			this.addMeshComponents( info.meshes[i], info );
 	}
+	else if(info.mesh)
+		this.addMeshComponents( info.mesh, info );
 
 	//transform in matrix format could come from importers so we leave it
 	if(info.position) 
@@ -35412,6 +35555,54 @@ SceneNode.prototype.configure = function(info)
 		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
+}
+
+//adds components according to a mesh
+SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
+{
+	extra_info = extra_info || {};
+
+	var mesh = LS.ResourcesManager.meshes[ mesh_id ];
+
+	if(!mesh)
+	{
+		console.warn( "SceneNode mesh not found: " + mesh_id );
+		return;
+	}
+
+	var mesh_render_config = { mesh: mesh_id };
+
+	if(extra_info.submesh_id !== undefined)
+		mesh_render_config.submesh_id = extra_info.submesh_id;
+	if(extra_info.morph_targets !== undefined)
+		mesh_render_config.morph_targets = extra_info.morph_targets;
+
+	var compo = new LS.Components.MeshRenderer( mesh_render_config );
+
+	//parsed meshes have info about primitive
+	if( mesh.primitive === "line_strip" )
+	{
+		compo.primitive = 3;
+		delete mesh.primitive;
+	}
+
+	//add MeshRenderer
+	this.addComponent( compo );
+
+	//skinning
+	if(mesh && mesh.bones)
+	{
+		compo = new LS.Components.SkinDeformer();
+		this.addComponent( compo );
+	}
+
+	//morph targets
+	if( mesh && mesh.morph_targets )
+	{
+		var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
+		this.addComponent( compo );
+	}
+
 }
 
 /**

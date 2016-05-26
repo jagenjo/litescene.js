@@ -269,17 +269,8 @@ var Renderer = {
 		//compute the rendering order
 		this.sortRenderInstances( camera, render_settings );
 
-		//scissors test for the gl.clear, otherwise the clear affects the full viewport
-		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
-		gl.enable(gl.SCISSOR_TEST);
-
-		//clear buffer 
-		var info = scene.info;
-		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-		if(render_settings.ignore_clear != true && (camera.clear_color || camera.clear_depth) )
-			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
-
-		gl.disable(gl.SCISSOR_TEST);
+		//clear buffer
+		this.clearBuffer( camera, render_settings );
 
 		//send before events
 		LEvent.trigger(scene, "beforeRenderScene", camera );
@@ -359,6 +350,23 @@ var Renderer = {
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
+	},
+
+	//clear color using camerae info
+	clearBuffer: function( camera, render_settings )
+	{
+		if( render_settings.ignore_clear || (!camera.clear_color && !camera.clear_depth) )
+			return;
+
+		//scissors test for the gl.clear, otherwise the clear affects the full viewport
+		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
+		gl.enable(gl.SCISSOR_TEST);
+
+		//clear buffer 
+		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
+		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
+
+		gl.disable(gl.SCISSOR_TEST);
 	},
 
 	sortRenderInstances: function( camera, render_settings )
@@ -441,7 +449,10 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		if(!scene)
-			return console.warn("LS.Renderer.renderInstances: no scene found");
+		{
+			console.warn("LS.Renderer.renderInstances: no scene found");
+			return 0;
+		}
 
 		var pass = this._current_pass;
 		var camera = this._current_camera;
@@ -473,7 +484,7 @@ var Renderer = {
 
 		var render_instance_func = pass.render_instance;
 		if(!render_instance_func)
-			return;
+			return 0;
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -512,6 +523,8 @@ var Renderer = {
 				instance._camera_visibility |= camera_index_flag;
 		}
 
+		var start = this._rendered_instances;
+
 		//for each render instance
 		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
@@ -541,6 +554,8 @@ var Renderer = {
 
 		//and finally again
 		this.resetGLState( render_settings );
+
+		return this._rendered_instances - start;
 	},
 
 	/**
@@ -1151,7 +1166,7 @@ var Renderer = {
 				}
 			}
 
-			//and finally, the alpha thing to determine if it is visible or not
+			//check if it has alpha, and put in right container
 			if(instance.flags & RI_BLEND)
 				blend_instances.push(instance);
 			else
@@ -1249,9 +1264,12 @@ var Renderer = {
 
 		function inner_draw_2d()
 		{
+			LS.Renderer.clearBuffer( cam, render_settings );
+			/*
 			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			*/
 			//render scene
 			LS.Renderer.renderInstances( render_settings );
 		}
@@ -1290,7 +1308,6 @@ var Renderer = {
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
-
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 

@@ -858,14 +858,18 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Tells if it is loading resources
+	* Tells if it is loading resources (or an specific resource)
 	*
 	* @method isLoading
 	* @return {Boolean}
 	*/
-	isLoading: function()
+	isLoading: function( fullpath )
 	{
-		return this.num_resources_being_loaded > 0;
+		if(!fullpath)
+			return this.num_resources_being_loaded > 0;
+		if(this.resources_being_loaded[ fullpath ] || this.resources_being_processed[ fullpath ])
+			return true;
+		return false;
 	},	
 
 	/**

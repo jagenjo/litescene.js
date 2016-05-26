@@ -37,6 +37,7 @@ function SceneNode( name )
 	//flags
 	this.flags = {
 		visible: true,
+		is_static: false,
 		selectable: true,
 		two_sided: false,
 		flip_normals: false,
@@ -67,6 +68,7 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		//flags
 		this.flags = {
 			visible: true,
+			is_static: false,
 			selectable: true,
 			two_sided: false,
 			flip_normals: false,
@@ -168,6 +170,17 @@ Object.defineProperty( SceneNode.prototype, 'visible', {
 	},
 	get: function(){
 		return this.flags.visible;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( SceneNode.prototype, 'is_static', {
+	set: function(v)
+	{
+		this.flags.is_static = v;
+	},
+	get: function(){
+		return this.flags.is_static;
 	},
 	enumerable: true
 });
@@ -804,51 +817,14 @@ SceneNode.prototype.configure = function(info)
 	if(info.light)
 		this.addComponent( new LS.Light( info.light ) );
 
-	if(info.mesh)
+	//in case more than one mesh in on e node
+	if(info.meshes)
 	{
-		var mesh_id = info.mesh;
-		var mesh = LS.ResourcesManager.meshes[ mesh_id ];
-
-		if(mesh)
-		{
-			var mesh_render_config = { mesh: mesh_id };
-
-			if(info.submesh_id !== undefined)
-				mesh_render_config.submesh_id = info.submesh_id;
-			if(info.morph_targets !== undefined)
-				mesh_render_config.morph_targets = info.morph_targets;
-
-			var compo = new LS.Components.MeshRenderer( mesh_render_config );
-
-			//parsed meshes have info about primitive
-			if( mesh.primitive === "line_strip" )
-			{
-				compo.primitive = 3;
-				delete mesh.primitive;
-			}
-
-			//add MeshRenderer
-			this.addComponent( compo );
-
-			//skinning
-			if(mesh && mesh.bones)
-			{
-				compo = new LS.Components.SkinDeformer();
-				this.addComponent( compo );
-			}
-
-			//morph targets
-			if( mesh && mesh.morph_targets )
-			{
-				var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
-				this.addComponent( compo );
-			}
-		}
-		else
-		{
-			console.warn( "SceneNode mesh not found: " + mesh_id );
-		}
+		for(var i = 0; i < info.meshes.length; ++i)
+			this.addMeshComponents( info.meshes[i], info );
 	}
+	else if(info.mesh)
+		this.addMeshComponents( info.mesh, info );
 
 	//transform in matrix format could come from importers so we leave it
 	if(info.position) 
@@ -899,6 +875,54 @@ SceneNode.prototype.configure = function(info)
 		this.configureChildren(info);
 
 	LEvent.trigger(this,"configure",info);
+}
+
+//adds components according to a mesh
+SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
+{
+	extra_info = extra_info || {};
+
+	var mesh = LS.ResourcesManager.meshes[ mesh_id ];
+
+	if(!mesh)
+	{
+		console.warn( "SceneNode mesh not found: " + mesh_id );
+		return;
+	}
+
+	var mesh_render_config = { mesh: mesh_id };
+
+	if(extra_info.submesh_id !== undefined)
+		mesh_render_config.submesh_id = extra_info.submesh_id;
+	if(extra_info.morph_targets !== undefined)
+		mesh_render_config.morph_targets = extra_info.morph_targets;
+
+	var compo = new LS.Components.MeshRenderer( mesh_render_config );
+
+	//parsed meshes have info about primitive
+	if( mesh.primitive === "line_strip" )
+	{
+		compo.primitive = 3;
+		delete mesh.primitive;
+	}
+
+	//add MeshRenderer
+	this.addComponent( compo );
+
+	//skinning
+	if(mesh && mesh.bones)
+	{
+		compo = new LS.Components.SkinDeformer();
+		this.addComponent( compo );
+	}
+
+	//morph targets
+	if( mesh && mesh.morph_targets )
+	{
+		var compo = new LS.Components.MorphDeformer( { morph_targets: mesh.morph_targets } );
+		this.addComponent( compo );
+	}
+
 }
 
 /**

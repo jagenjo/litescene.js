@@ -401,13 +401,20 @@ global.Collada = {
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+		var node_name = this.safeString( xmlnode.getAttribute("name") );
 
-		if(!node_id && !node_sid)
+		var unique_name = node_id || node_sid || node_name;
+
+		if(!unique_name)
+		{
+			console.warn("Collada: node without name or id, skipping it");
 			return null;
+		}
 
 		//here we create the node
 		var node = { 
-			id: node_sid || node_id, 
+			name: node_name,
+			id: unique_name, 
 			children:[], 
 			_depth: level 
 		};
@@ -416,10 +423,7 @@ global.Collada = {
 		if(node_type)
 			node.type = node_type;
 
-		var node_name = xmlnode.getAttribute("name");
-		if( node_name)
-			node.name = node_name;
-		this._nodes_by_id[ node.id ] = node;
+		this._nodes_by_id[ unique_name ] = node;
 		if( node_id )
 			this._nodes_by_id[ node_id ] = node;
 		if( node_sid )
@@ -452,6 +456,9 @@ global.Collada = {
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
+		var node_name = this.safeString( xmlnode.getAttribute("name") );
+
+		var unique_name = node_id || node_sid || node_name;
 
 		/*
 		if(!node_id && !node_sid)
@@ -463,18 +470,21 @@ global.Collada = {
 		*/
 
 		var node;
-		if(!node_id && !node_sid) {
+		if(!unique_name) {
 			//if there is no id, then either all of this node's properties 
 			//should be assigned directly to its parent node, or the node doesn't
 			//have a parent node, in which case its a light or something. 
 			//So we get the parent by its id, and if there is no parent, we return null
 			if (parent)
-				node = this._nodes_by_id[ parent.id || parent.sid ];
+				node = this._nodes_by_id[ parent.id || parent.sid || parent.name ];
 			else 
+			{
+				console.warn("Collada: node without name or id, skipping it");
 				return null;
+			}
 		} 
 		else
-			node = this._nodes_by_id[ node_id || node_sid ];
+			node = this._nodes_by_id[ unique_name ];
 
 		if(!node)
 		{
@@ -502,7 +512,15 @@ global.Collada = {
 			{
 				var url = xmlchild.getAttribute("url");
 				var mesh_id = url.toString().substr(1);
-				node.mesh = mesh_id;
+
+				if(!node.mesh)
+					node.mesh = mesh_id;
+				else
+				{
+					if(!node.meshes)
+						node.meshes = [node.mesh];
+					node.meshes.push( mesh_id );
+				}
 
 				if(!scene.meshes[ url ])
 				{

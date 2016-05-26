@@ -18,6 +18,7 @@ var LS = {
 	_last_uid: 1,
 	_uid_prefix: "@", //WARNING: must be one character long
 	debug: false, //enable to see verbose output
+	allow_static: true, //used to disable static instances in the editor
 
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system

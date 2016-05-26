@@ -1402,6 +1402,14 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	return pack;
 },
 
+SceneTree.prototype.updateStaticObjects = function()
+{
+	var old = LS.allow_static;
+	LS.allow_static = false;
+	this.collectData();
+	LS.allow_static = old;
+}
+
 LS.SceneTree = SceneTree;
 LS.Classes.SceneTree = SceneTree;
 

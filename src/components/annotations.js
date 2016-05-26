@@ -86,7 +86,7 @@ AnnotationComponent.prototype.serialize = function()
 		start_position: this.start_position
 	};
 	
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		for(var j in note)
@@ -99,13 +99,14 @@ AnnotationComponent.prototype.serialize = function()
 	return o;
 }
 
-AnnotationComponent.prototype.onAddedToNode = function(node)
+AnnotationComponent.prototype.onAddedToScene = function(node)
 {
-	LEvent.bind(node,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
 }
 
-AnnotationComponent.prototype.onRemovedFromNode = function(node)
+AnnotationComponent.prototype.onRemovedFromScene = function(node)
 {
+	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
 }
 
 AnnotationComponent.prototype.onMouse = function(type, e)
@@ -121,7 +122,7 @@ AnnotationComponent.prototype.onMouse = function(type, e)
 			AnnotationComponent.onShowMainAnnotation(this._root);
 		}
 
-		for(var i in this.notes)
+		for(var i = 0; i < this.notes.length; ++i)
 		{
 			var note = this.notes[i];
 			dist = vec2.dist( note._end_screen, [e.mousex, gl.canvas.height - e.mousey] );
@@ -187,7 +188,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	var model = this._root.transform.getGlobalMatrix();
 
 	//notes
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		var start = mat4.multiplyVec3( vec3.create(), model, note.start );
@@ -254,7 +255,7 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 	//texts
 	gl.disable( gl.CULL_FACE );
 	LS.Draw.setColor( LS.Components.AnnotationComponent.editor_color );
-	for(var i in this.notes)
+	for(var i = 0; i < this.notes.length; ++i)
 	{
 		var note = this.notes[i];
 		LS.Draw.push();

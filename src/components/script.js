@@ -72,6 +72,10 @@ Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
 Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
 Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
+Script.defineAPIFunction( "onMouseDown", Script.BIND_TO_SCENE, "mousedown" );
+Script.defineAPIFunction( "onMouseMove", Script.BIND_TO_SCENE, "mousemove" );
+Script.defineAPIFunction( "onMouseUp", Script.BIND_TO_SCENE, "mouseup" );
+Script.defineAPIFunction( "onKeyDown", Script.BIND_TO_SCENE, "keydown" );
 Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
 
 Script.coding_help = "\n\
@@ -468,7 +472,7 @@ Script.prototype.onRemovedFromScene = function(scene)
 //used in editor
 Script.prototype.getComponentTitle = function()
 {
-	return this.name;
+	return this.name; //name is a getter that reads the name from the code comment
 }
 
 
@@ -576,6 +580,24 @@ Object.defineProperty( ScriptFromFile.prototype, "context", {
 		if(this._script)
 				return this._script._context;
 		return null;
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
+Object.defineProperty( ScriptFromFile.prototype, "name", {
+	set: function(v){ 
+		console.error("Script: name cannot be assigned");
+	},
+	get: function() { 
+		if(!this._script.code)
+			return;
+		var line = this._script.code.substr(0,32);
+		if(line.indexOf("//@") != 0)
+			return null;
+		var last = line.indexOf("\n");
+		if(last == -1)
+			last = undefined;
+		return line.substr(3,last - 3);
 	},
 	enumerable: false //if it was enumerable it would be serialized
 });

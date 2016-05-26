@@ -78,6 +78,12 @@ var parserDAE = {
 			}
 
 			//change mesh names to engine friendly ids
+			if(node.meshes)
+			{
+				for(var i = 0; i < node.meshes.length; i++)
+					if(node.meshes[i] && renamed[ node.meshes[i] ])
+						node.meshes[i] = renamed[ node.meshes[i] ];
+			}
 			if(node.mesh && renamed[ node.mesh ])
 				node.mesh = renamed[ node.mesh ];
 

@@ -238,7 +238,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient && scene.info)
+	if(this.use_scene_ambient && scene.info && !this.textures["ambient"])
 		uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
 	else
 		uniforms.u_ambient_color = this.ambient;

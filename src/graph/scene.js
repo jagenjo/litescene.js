@@ -415,10 +415,6 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.getComponent = function()
 	{
-		var v = this.getInputData(0);
-		if(v)
-			return v;
-
 		var scene = this.graph._scene;
 		if(!scene) 
 			return null;

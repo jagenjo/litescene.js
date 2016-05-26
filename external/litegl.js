@@ -4851,7 +4851,7 @@ Texture.fromShader = function(width, height, shader, options) {
 	var texture = new GL.Texture( width, height, options );
 	//copy content
 	texture.drawTo(function() {
-		gl.disable( gl.BLEND );
+		gl.disable( gl.BLEND ); 
 		gl.disable( gl.DEPTH_TEST );
 		gl.disable( gl.CULL_FACE );
 		var mesh = Mesh.getScreenQuad();
@@ -5179,15 +5179,9 @@ Texture.prototype.toBlob = function(flip_y, type)
 {
 	//dump to canvas
 	var canvas = this.toCanvas(null,flip_y);
-	if(canvas.toBlob)
-	{
-		var blob = canvas.toBlob(null,type);
-		if(blob)
-			return blob;
-	}
 
-	//use the slow method
-	var data = this.toDataURL( type );
+	//use the slow method (because its sync)
+	var data = canvas.toDataURL( type );
 	var index = data.indexOf(",");
 	var base64_data = data.substr(index+1);
 	var binStr = atob( base64_data );
@@ -5199,6 +5193,26 @@ Texture.prototype.toBlob = function(flip_y, type)
 	var blob = new Blob( [arr], {type: type || 'image/png'} );
 	return blob;
 }
+
+//faster depending on the browser
+Texture.prototype.toBlobAsync = function(flip_y, type, callback)
+{
+	//dump to canvas
+	var canvas = this.toCanvas(null,flip_y);
+
+	//some browser support a fast way to blob a canvas
+	if(canvas.toBlob)
+	{
+		canvas.toBlob( callback, type );
+		return;
+	}
+
+	//use the slow method
+	var blob = this.toBlob( flip_y, type );
+	if(callback)
+		callback(blob);
+}
+
 
 /**
 * returns a base64 String containing all the data from the texture
@@ -5298,6 +5312,8 @@ Texture.blend = function( a, b, factor, out )
 	if(out)
 	{
 		out.drawTo( function(){
+			if(a == out || b == out)
+				throw("Blend output cannot be the same as the input");
 			a.bind(0);
 			shader.draw( mesh, gl.TRIANGLES );
 		});
@@ -6713,7 +6729,12 @@ GL.create = function(options) {
 		if(v) { v[0] = gl.viewport_data[0]; v[1] = gl.viewport_data[1]; v[2] = gl.viewport_data[2]; v[3] = gl.viewport_data[3]; return v; }
 		return new Float32Array( gl.viewport_data );
 	};
-	gl.setViewport = function(v) { gl.viewport_data.set(v); this._viewport_func(v[0],v[1],v[2],v[3]); };
+	gl.setViewport = function( v, flip_y ) {
+		gl.viewport_data.set(v);
+		if(flip_y)
+			gl.viewport_data[1] = this.drawingBufferHeight-v[1]-v[3];
+		this._viewport_func(v[0],gl.viewport_data[1],v[2],v[3]);
+	};
 	
 	//just some checks
 	if(typeof(glMatrix) == "undefined")

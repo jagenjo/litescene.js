@@ -124,9 +124,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 	else
 		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
-	if(this.name)
-		LS.ResourcesManager.resources[ this.name ] = LS.ResourcesManager.textures[ this.name ] = this._color_texture;
-
 	textures[0] = this._color_texture;
 
 	//extra color texture (multibuffer rendering)
@@ -232,9 +229,17 @@ RenderFrameContext.prototype.disableFBO = function()
 	if(this.name)
 	{
 		for(var i = 0; i < this._textures.length; ++i)
-			LS.ResourcesManager.textures[ this.name + (i > 0 ? i : "") ] = this._textures[i];
+		{
+			var name = this.name + (i > 0 ? i : "");
+			this._textures[i].filename = name;
+			LS.ResourcesManager.textures[ name ] = this._textures[i];
+		}
 		if(this._depth_texture)
-			LS.ResourcesManager.textures[ this.name + "_depth"] = this._depth_texture;
+		{
+			var name = this.name + "_depth";
+			this._depth_texture.filename = name;
+			LS.ResourcesManager.textures[ name ] = this._depth_texture;
+		}
 	}
 }
 

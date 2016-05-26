@@ -31,7 +31,20 @@ function Component(o)
 		this.configure(o);
 }
 
-//default methods inserted in components that doesnt have a configure or serialize method
+/**
+* Returns the node where this components is attached
+* @method getRootNode
+**/
+Component.prototype.getRootNode = function()
+{
+	return this._root;
+}
+
+/**
+* Configures the components based on an object that contains the serialized info
+* @method configure
+* @param {Object} o object with the serialized info
+**/
 Component.prototype.configure = function(o)
 { 
 	if(!o)
@@ -58,6 +71,11 @@ Component.prototype.configure = function(o)
 	LS.cloneObject(o, this, false, true); 
 }
 
+/**
+* Returns an object with all the info about this component in an object form
+* @method serialize
+* @return {Object} object with the serialized info
+**/
 Component.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this);
@@ -69,6 +87,7 @@ Component.prototype.serialize = function()
 /**
 * Create a clone of this node (the UID is removed to avoid collisions)
 * @method clone
+* @return {*} component clone
 **/
 Component.prototype.clone = function()
 {

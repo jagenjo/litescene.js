@@ -21,7 +21,7 @@ function Transform( o )
 	this._global_matrix = mat4.create();
 
 	this._must_update_matrix = false; //matrix must be redone?
-	this._last_change = 0;
+	this._version = 0;
 
 	/* deprecated
 	if(Object.observe)
@@ -41,6 +41,7 @@ function Transform( o )
 }
 
 Transform.temp_matrix = mat4.create();
+Transform.temp_quat = quat.create();
 Transform.icon = "mini-icon-gizmo.png";
 Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
@@ -340,6 +341,7 @@ Transform.prototype.identity = function()
 	vec3.copy(this._scaling, [1,1,1]);
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
+	this._version += 1;
 	this._must_update_matrix = false;
 }
 
@@ -454,7 +456,8 @@ Transform.prototype.updateMatrix = function()
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
 	this._must_update_matrix = false;
-	this._last_change += 1;
+	this._version += 1;
+	this.updateDescendants();
 }
 Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 
@@ -710,6 +713,7 @@ Transform.prototype.fromMatrix = (function() {
 		if(m != this._local_matrix)
 			mat4.copy(this._local_matrix, m);
 		this._must_update_matrix = false;
+		this._version += 1;
 		this._on_change(true);
 	}
 })();
@@ -795,7 +799,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q);
+		quat.copy(this._rotation, q_angle);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -1339,6 +1343,27 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 }
 */
 
+//marks descendants to be updated
+Transform.prototype.updateDescendants = function()
+{
+	if(!this._root)
+		return;
+	var children = this._root._children;
+	if(!children)
+		return;
+
+	for(var i = 0; i < children.length; ++i)
+	{
+		var node = children[i];
+		if(!node.transform)
+			continue;
+
+		node.transform._must_update_matrix = true;
+		node.transform._version += 1;
+		if(node._children && node._children.length)
+			node.transform.updateDescendants();
+	}
+}
 
 
 LS.registerComponent( Transform );

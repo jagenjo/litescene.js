@@ -69,6 +69,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 	gl.disable( gl.CULL_FACE );
 	gl.depthFunc( gl.LEQUAL );
 	//gl.depthMask( false );
+	var selected_node = null;
 
 	if( settings.render_grid && settings.grid_alpha > 0 )
 		this.renderGrid();
@@ -89,6 +90,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 		{
 			var node = LS.GlobalScene._nodes[i];
 			var is_node_selected = node._is_selected;
+			selected_node = node;
 			if(node.renderEditor)
 				node.renderEditor( is_node_selected );
 			for(var j = 0, l2 = node._components.length; j < l2; ++j)
@@ -217,7 +219,7 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 	}
 
 	//DEBUG
-	if(settings.render_axis) //render axis for all nodes
+	if(settings.render_axis && selected_node) //render axis for all nodes
 	{
 		LS.Draw.push();
 		var Q = selected_node.transform.getGlobalRotation();

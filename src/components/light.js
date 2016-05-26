@@ -275,7 +275,7 @@ Light.prototype.updateLightCamera = function()
 
 	var closest_far = this.computeShadowmapFar();
 
-	camera._frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
+	camera.frustum_size = this.frustum_size || Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE;
 	camera.near = this.near;
 	camera.far = closest_far;
 	camera.fov = (this.angle_end || 45); //fov is in degrees

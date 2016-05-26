@@ -1,7 +1,7 @@
 
 /**
 * This class contains all the info about a resource and it works as a template for any resource class
-* Keep in mind that there are many resource classes like Meshes or Textures that dont inherit from this class.
+* Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.
 * This class is used mainly to generic file resources like text files (scripts, csvs, etc)
 *
 * @class Resource
@@ -162,6 +162,17 @@ Resource.prototype.getCategory = function()
 	if(ext == "js")
 		return "Script";
 	return "Data";
+}
+
+Resource.prototype.assignToNode = function(node)
+{
+	if(!node || this.getCategory() != "Script")
+		return false;
+
+	var filename = this.fullpath || this.filename;
+	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
+	node.addComponent( script_component );
+	return true;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?

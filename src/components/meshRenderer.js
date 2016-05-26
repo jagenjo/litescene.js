@@ -56,6 +56,9 @@ function MeshRenderer(o)
 
 	this.material = null;
 
+	this._must_update_static = true; //used in static meshes
+	this._transform_version = -1;
+
 	if(o)
 		this.configure(o);
 
@@ -165,7 +168,7 @@ MeshRenderer.prototype.getMesh = function() {
 		return null;
 
 	if( this.mesh.constructor === String )
-		return LS.ResourcesManager.meshes[this.mesh];
+		return LS.ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
@@ -222,6 +225,13 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!RI)
 		this._RI = RI = new LS.RenderInstance( this._root, this );
 
+	var is_static = this._root.flags && this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	//optimize
+	if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
+		return instances.push( RI );
+
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
@@ -238,10 +248,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var material = null;
 	if(this.material)
 		material = LS.ResourcesManager.getResource( this.material );
-	RI.setMaterial( material || this._root.getMaterial() );
-
-	//if(!mesh.indexBuffers["wireframe"])
-	//	mesh.computeWireframe();
+	else
+		material = this._root.getMaterial();
+	RI.setMaterial( material );
 
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
@@ -279,10 +288,29 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
 		delete RI.query.macros["USE_TEXTURED_POINTS"];
 
+	//mark it as ready once no more changes should be applied
+	if( is_static && LS.allow_static && !this.isLoading() )
+	{
+		this._must_update_static = false;
+		this._transform_version = transform ? transform._version : 0;
+	}
+
 	instances.push( RI );
 }
 
-
+//test if any of the assets is being loaded
+MeshRenderer.prototype.isLoading = function()
+{
+	if( this.mesh && LS.ResourcesManager.isLoading( this.mesh ))
+		return true;
+	if( this.lod_mesh && LS.ResourcesManager.isLoading( this.lod_mesh ))
+		return true;
+	if( this.material && LS.ResourcesManager.isLoading( this.material ))
+		return true;
+	if(this._root && this._root.material && this._root.material.constructor === String && LS.ResourcesManager.isLoading( this._root.material ))
+		return true;
+	return false;
+}
 
 
 LS.registerComponent( MeshRenderer );
