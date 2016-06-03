@@ -76,4 +76,25 @@ var button = panel.querySelector("button");
 button.addEventListener("click", my_function );
 ```
 
+## Using HTML files ##
+
+Creating HTML from a javascript file is very tedious and not very friendly.
+
+Usually when creating HTML code you want to write it inside a normal HTML file. You can create a text file from the editor in WebGLStudio and add all the HTML code inside the file, retrieve the file when your application starts and attach it to the GUI element.
+
+Here is one example:
+
+```javascript
+
+this.onStart = function()
+{
+  LS.ResourcesManagear.load("myfile.html", function(res){
+    var gui_root = LS.getGUIElement();
+    gui_root.innerHTML = res.data;
+  });
+}
+```
+
+
+
 
