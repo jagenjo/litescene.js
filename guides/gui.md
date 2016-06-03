@@ -25,12 +25,12 @@ First, do not add HTML elements to the GUI till the application starts (when the
 
 Second, all DOM elements must be attached to the GUI root element, this way the system can remove all DOM elements if the scene is reset.
 
-To get the GUI root element use the function ´´´LS.getGUIElement()´´´:
+To get the GUI root element use the function ```LS.getGUIElement()```:
 
-´´´javascript
+```javascript
 var gui_root = LS.getGUIElement();
 gui_root.innerHTML = "<button>click me</button>";
-´´´
+```
 
 Be careful changing the style of the GUI root element.
 
@@ -40,17 +40,17 @@ The GUI root element is a div with 100% width and 100% height, positioned so tha
 
 Because of that the div would get all the mouse events and no mouse events would reach the canvas.
 
-To avoid that the GUI element has the ´´´style.pointerEvents´´´ set to ´´´none´´´ which means all the mouse events will be ignored by the element **and all its children**.
+To avoid that the GUI element has the ```style.pointerEvents``` set to ```none``` which means all the mouse events will be ignored by the element **and all its children**.
 
 But sometimes we want to process mouse events in our widgets (clicking buttons, draging scrolls, etc).
-If that is the case, you must set the ´´´style.pointerEvents´´´ to ´´´auto´´´ in the element that could get mouse events. You could do it by code or by CSS.
+If that is the case, you must set the ```style.pointerEvents``` to ```auto``` in the element that could get mouse events. You could do it by code or by CSS.
 
 Keep that in mind when working with GUI elements.
 
 ## Creating GUI panels ##
 
 Most of the time you would like to make just a floating div on top of the GUI to show some HTML information.
-To help in those cases the easier solution is using the ´´´LS.createElementGUI´´´ that behaves similar to ´´´document.createElement´´´, creating a tag of a given parameter, but it has some extra functionalities.
+To help in those cases the easier solution is using the ```LS.createElementGUI``` that behaves similar to ```document.createElement```, creating a tag of a given parameter, but it has some extra functionalities.
 
 First the element will be attached automatically to the GUIElement so we dont have to do it.
 
@@ -60,10 +60,10 @@ Thirth, it will be anchored to the corner of our canvas that we specify (if not 
 
 Here is an example :
 
-´´´javascript
+```javascript
 var panel = LS.createElementGUI("div","top-left");
 panel.innerHTML = "<h3>HELLO!</h3>";
-´´´
+```
 
 Valid anchors are "top-left","top-right","bottom-left" and "bottom-right";
 
@@ -71,9 +71,9 @@ Valid anchors are "top-left","top-right","bottom-left" and "bottom-right";
 
 From here if you want to bind events to the DOM elements you can do it as in any HTML website:
 
-´´´javascript
+```javascript
 var button = panel.querySelector("button");
 button.addEventListener("click", my_function );
-´´´
+```
 
 
