@@ -9,13 +9,13 @@ LiteScene comes with its own tweening system.
 To tween just call the LS.Tween.easyProperty passing the object containing the property, the property name in string format, the target value, and the time the transition should last.
 
 ```javascript
-  	LS.Tween.easeProperty( node.transform, "x", target, 1 );
+  	LS.Tween.easeProperty( node.transform, "x", 2.5, 1 );
 ```
 
 By default it will use EASE_IN_OUT_QUAD interpolation function (quadratic interpolation for in and out), but you can choose any of the supported functions:
 
 ```javascript
-  	LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC );
+  	LS.Tween.easeProperty( node.transform, "x", 2.5, 1, LS.Tween.EASE_IN_CUBIC );
 ```
 Here is a list:
 
@@ -27,7 +27,7 @@ Here is a list:
 - EASE_OUT_CUBIC: 
 - EASE_IN_OUT_CUBIC: 
 - CUBIC: 
-- EASE_IN_QUART: 7,
+- EASE_IN_QUART:
 - EASE_OUT_QUART: 
 - EASE_IN_OUT_QUART: 
 - QUART: 
@@ -35,9 +35,9 @@ Here is a list:
 - EASE_OUT_SINE: 
 - EASE_IN_OUT_SINE: 
 - SINE: 
-- EASE_IN_EXPO: 13,
-- EASE_OUT_EXPO: 14,
-- EASE_IN_OUT_EXPO: 15,
+- EASE_IN_EXPO:
+- EASE_OUT_EXPO:
+- EASE_IN_OUT_EXPO:
 - EXPO: 
 - EASE_IN_BACK: 
 - EASE_OUT_BACK:
