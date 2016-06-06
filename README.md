@@ -44,7 +44,7 @@ document.getElementById("mycontainer").appendChild( player.canvas )
 
 Load the scene
 ```js
-LS.GlobalScene.loadScene("scene.json");
+LS.GlobalScene.load("scene.json");
 ```
 
 
