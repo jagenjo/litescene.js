@@ -17807,7 +17807,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q);
+		quat.copy(this._rotation, q_angle );
 	this._must_update_matrix = true;
 	this._on_change();
 }
