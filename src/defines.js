@@ -29,6 +29,17 @@ LS.STOPPED = 0;
 LS.RUNNING = 1;
 LS.PAUSED = 2;
 
+//helpful consts
+LS.ZEROS = vec3.create();
+LS.ONES = vec3.fromValues(1,1,1);
+LS.TOP = vec3.fromValues(0,1,0);
+LS.BOTTOM = vec3.fromValues(0,-1,0);
+LS.RIGHT = vec3.fromValues(1,0,0);
+LS.LEFT = vec3.fromValues(-1,0,0);
+LS.FRONT = vec3.fromValues(0,0,-1);
+LS.BACK = vec3.fromValues(0,0,1);
+LS.IDENTITY = mat4.create();
+
 //types
 LS.TYPES = {
 	BOOLEAN: "boolean",
@@ -41,7 +52,9 @@ LS.TYPES = {
 	RESOURCE: "resource",
 	TEXTURE : "texture",
 	MESH: "mesh",
+	SCENE: "scene",
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
-	COMPONENT: "component"
+	COMPONENT: "component",
+	MATERIAL: "material"
 };

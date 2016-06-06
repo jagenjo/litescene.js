@@ -563,6 +563,8 @@ ScriptFromFile.coding_help = Script.coding_help;
 
 Object.defineProperty( ScriptFromFile.prototype, "filename", {
 	set: function(v){ 
+		if(v) //to avoid double slashes
+			v = LS.ResourcesManager.cleanFullpath( v );
 		this._filename = v;
 		this.processCode();
 	},
@@ -661,7 +663,7 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 		this._stored_properties = null;
 
 		//try to catch up with all the events missed while loading the script
-		if( !this._script._context._initialized )
+		if( this._script._context && !this._script._context._initialized )
 		{
 			if( this._root && this._script._context.onAddedToNode )
 			{
@@ -718,6 +720,12 @@ ScriptFromFile.prototype.getResources = function(res)
 		return;
 	ctx.getResources( res );
 }
+
+ScriptFromFile.prototype.getCodeResource = function()
+{
+	return LS.ResourcesManager.getResource( this.filename );
+}
+
 
 ScriptFromFile.prototype.getCode = function()
 {

@@ -28,6 +28,8 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 		return this._shader;
 	},
 	set: function(v) {
+		if(v)
+			v = LS.ResourcesManager.cleanFullpath(v);
 		if(this._shader == v)
 			return;
 		this._shader = v;
@@ -192,9 +194,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//compute matrices
 	var model = instance.matrix;
 	if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-		renderer._mvp_matrix.set( model );
-	else
-		mat4.multiply( renderer._mvp_matrix, renderer._viewprojection_matrix, model );
+		renderer._viewprojection_matrix.set( model ); //warning?
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
@@ -204,7 +204,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//maybe this two should be somewhere else
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
-	render_uniforms.u_mvp = renderer._mvp_matrix;
 
 	//global stuff
 	renderer.enableInstanceFlags( instance, render_settings );

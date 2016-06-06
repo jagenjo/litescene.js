@@ -109,7 +109,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	}
 
 	//regular mouse dragging
-	if(!mouse_event.dragging)
+	if( mouse_event.eventType != "mousemove" || !mouse_event.dragging )
 		return;
 
 	var changed = false;

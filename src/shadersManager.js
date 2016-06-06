@@ -547,7 +547,8 @@ var ShadersManager = {
 		attribute vec3 a_vertex;\n\
 		attribute vec3 a_normal;\n\
 		attribute vec2 a_coord;\n\
-		uniform mat4 u_mvp;\n\
+		uniform mat4 u_model;\n\
+		uniform mat4 u_viewprojection;\n\
 	",
 	common_fscode: "\n\
 		precision mediump float;\n\
@@ -565,7 +566,8 @@ var ShadersManager = {
 		//flat
 		this.registerGlobalShader(this.common_vscode + '\
 			void main() {\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
+				mat4 mvp = u_viewprojection * u_model;\
+				gl_Position = mvp * vec4(a_vertex,1.0);\
 			}\
 			', this.common_fscode + '\
 			uniform vec4 u_material_color;\
@@ -579,7 +581,8 @@ var ShadersManager = {
 			varying vec2 v_uvs;\
 			void main() {\n\
 				v_uvs = a_coord;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
+				mat4 mvp = u_viewprojection * u_model;\
+				gl_Position = mvp * vec4(a_vertex,1.0);\
 			}\
 			', this.common_fscode + '\
 			uniform vec4 u_material_color;\

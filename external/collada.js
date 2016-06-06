@@ -2099,7 +2099,7 @@ global.Collada = {
 				return null;
 			}
 
-			for(var i in joints_source)
+			for(var i = 0; i < joints_source.length; ++i)
 			{
 				//get the inverse of the bind pose
 				var inv_mat = inv_bind_source.subarray(i*16,i*16+16);

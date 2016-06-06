@@ -23,6 +23,10 @@ var LS = {
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
 
+	//for HTML GUI
+	_gui_element: null,
+	_gui_style: null,
+
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
@@ -254,7 +258,7 @@ var LS = {
 	* @method cloneObject
 	* @param {Object} object the object to clone
 	* @param {Object} target=null optional, the destination object
-	* @return {Object} returns the cloned object
+	* @return {Object} returns the cloned object (target if it is specified)
 	*/
 	cloneObject: function( object, target, recursive, only_existing )
 	{
@@ -262,12 +266,31 @@ var LS = {
 			return undefined;
 		if(object === null)
 			return null;
+
+		//base type
 		switch( object.constructor )
 		{
 			case String:
 			case Number:
 			case Boolean:
 				return object;
+		}
+
+		//typed array
+		if( object.constructor.BYTES_PER_ELEMENT )
+		{
+			if(!target)
+				return new object.constructor( object );
+			if(target.set)
+				target.set(object);
+			else if(target.construtor === Array)
+			{
+				for(var i = 0; i < object.length; ++i)
+					target[i] = object[i];
+			}
+			else
+				throw("cloneObject: target has no set method");
+			return target;
 		}
 
 		var o = target;
@@ -580,6 +603,25 @@ var LS = {
 		gui.style.position = "absolute";
 		gui.style.top = "0";
 		gui.style.left = "0";
+
+		//normalize
+		gui.style.color = "#999";
+		gui.style.font = "20px Arial";
+
+		//make it fullsize
+		gui.style.width = "100%";
+		gui.style.height = "100%";
+		gui.style.overflow = "hidden";
+		gui.style.pointerEvents = "none";
+
+		if(!this._gui_style)
+		{
+			var style = this._gui_style = document.createElement("style");
+			style.appendChild(document.createTextNode(""));
+			document.head.appendChild(style);
+			style.sheet.insertRule(".litescene-gui button, .litescene-gui input { pointer-events: auto; }");
+		}
+
 		gl.canvas.parentNode.appendChild( gui );
 		
 		LS._gui_element = gui;
@@ -587,11 +629,57 @@ var LS = {
 	},
 
 	/**
-	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	* Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas
 	*
-	* @method getScript
-	* @param {String} name the name of the script according to the Script component.
-	* @return {Object} the context of the script.
+	* @method createElementGUI
+	* @param {String} tag_type the tag type "div"
+	* @param {String} anchor "top-left", "top-right", "bottom-left", "bottom-right"
+	* @return {HTMLElement} 
+	*/
+	createElementGUI: function( tag_type, anchor )
+	{
+		tag_type = tag_type || "div";
+		anchor = anchor || "top-left";
+
+		var element = document.createElement("div");
+		element.style.position = "absolute";
+		element.style.pointerEvents = "auto";
+
+		switch(anchor)
+		{
+			case "bottom":
+			case "bottom-left":
+				element.style.bottom = "0";
+				element.style.left = "0";
+				break;
+			case "bottom-right":
+				element.style.bottom = "0";
+				element.style.right = "0";
+				break;
+			case "right":
+			case "top-right":
+				element.style.top = "0";
+				element.style.right = "0";
+				break;
+			default:
+				console.warn("invalid GUI anchor position: ",anchor);
+			case "left":
+			case "top":
+			case "top-left":
+				element.style.top = "0";
+				element.style.left = "0";
+				break;
+		}
+
+		var gui_root = this.getGUIElement();
+		gui_root.appendChild( element );
+		return element;
+	},
+
+	/**
+	* Removes all the GUI elements from the DOM
+	*
+	* @method removeGUIElement
 	*/
 	removeGUIElement: function()
 	{
@@ -668,17 +756,6 @@ Object.defineProperty( LS, "catch_exceptions", {
 
 //Add some classes
 LS.Classes.WBin = LS.WBin = WBin;
-
-//helpful consts
-LS.ZERO = vec3.create();
-LS.ONE = vec3.fromValues(1,1,1);
-LS.TOP = vec3.fromValues(0,1,0);
-LS.BOTTOM = vec3.fromValues(0,-1,0);
-LS.RIGHT = vec3.fromValues(1,0,0);
-LS.LEFT = vec3.fromValues(-1,0,0);
-LS.FRONT = vec3.fromValues(0,0,-1);
-LS.BACK = vec3.fromValues(0,0,1);
-LS.IDENTITY = mat4.create();
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers

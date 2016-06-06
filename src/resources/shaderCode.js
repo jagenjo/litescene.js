@@ -431,7 +431,6 @@ uniform mat4 u_model;\n\
 uniform mat4 u_normal_model;\n\
 uniform mat4 u_view;\n\
 uniform mat4 u_viewprojection;\n\
-uniform mat4 u_mvp;\n\
 \n\
 //globals\n\
 uniform float u_time;\n\

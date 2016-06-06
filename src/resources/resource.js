@@ -44,7 +44,7 @@ Object.defineProperty( Resource.prototype, "uid", {
 });
 
 /**
-* Returns an object with a representation of the resource internal data
+* Static method: Returns an object with a representation of the resource internal data
 * The order to obtain that object is:
 * 0. checks if getDataToStore function in resource
 * 1. test for _original_file (File or Blob)
@@ -148,6 +148,10 @@ Resource.prototype.getDataToStore = function()
 	return data;
 }
 
+/** Clone the resource
+* @method clone
+* @return {LS.Resource} the clone of the resource
+*/
 Resource.prototype.clone = function()
 {
 	var r = new LS.Resource();
@@ -173,6 +177,30 @@ Resource.prototype.assignToNode = function(node)
 	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
 	node.addComponent( script_component );
 	return true;
+}
+
+/** Parses the resource data as subfiles (subfiles are fragments of the code identified by a slash followed by name string)
+* @method getAsSubfiles
+* @return {Object} the object that contains every subfile
+*/
+Resource.prototype.getAsSubfiles = function()
+{
+	if(!this._data)
+		return null;
+	return GL.processFileAtlas( this._data );
+}
+
+/** Parses the resource as HTML code and returns a HTMLElement containing the html code
+* @method getAsHTML
+* @return {HTMLElement} the root HTMLElement that contains the code
+*/
+Resource.prototype.getAsHTML = function()
+{
+	if(!this._data)
+		return null;
+	var container = document.createElement("div");
+	container.innerHTML = this._data;
+	return container;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?

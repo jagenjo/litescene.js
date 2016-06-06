@@ -216,7 +216,11 @@ var ResourcesManager = {
 			return "";
 
 		if( fullpath.indexOf("//") == -1 )
+		{
+			if(fullpath.charCodeAt(0) == 47) // the '/' char
+				return fullpath.substr(1);
 			return fullpath;
+		}
 
 		//clean up the filename (to avoid problems with //)
 		if(fullpath.indexOf("://") == -1)

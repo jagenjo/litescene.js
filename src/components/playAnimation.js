@@ -121,20 +121,24 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		switch( this.mode )
 		{
 			case PlayAnimation.ONCE: 
-					time = end_time; 
-					//time = start_time; //reset after
-					LEvent.trigger( this, "end_animation" );
-					this.playing = false;
+				time = end_time; 
+				//time = start_time; //reset after
+				LEvent.trigger( this, "end_animation" );
+				this.playing = false;
 				break;
-			case PlayAnimation.LOOP: time = ((this.current_time - start_time) % duration) + start_time; break;
 			case PlayAnimation.PINGPONG:
-					if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
-						time = this.current_time % duration; 
-					else
-						time = duration - (this.current_time % duration);
-					break;
+				if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
+					time = this.current_time % duration; 
+				else
+					time = duration - (this.current_time % duration);
+				break;
+			case PlayAnimation.PINGPONG:
+				time = end_time; 
+				break;
+			case PlayAnimation.LOOP: 
 			default: 
-					time = end_time; 
+				time = ((this.current_time - start_time) % duration) + start_time;
+				LEvent.trigger( this, "animation_loop" );
 				break;
 		}
 	}

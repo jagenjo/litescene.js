@@ -41,7 +41,6 @@ function Transform( o )
 }
 
 Transform.temp_matrix = mat4.create();
-Transform.temp_quat = quat.create();
 Transform.icon = "mini-icon-gizmo.png";
 Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
@@ -336,9 +335,9 @@ Transform.prototype.serialize = function()
 */
 Transform.prototype.identity = function()
 {
-	vec3.copy(this._position, [0,0,0]);
-	quat.copy(this._rotation, [0,0,0,1]);
-	vec3.copy(this._scaling, [1,1,1]);
+	vec3.copy(this._position, LS.ZEROS );
+	quat.identity( this._rotation );
+	vec3.copy(this._scaling, LS.ONES );
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._version += 1;
@@ -346,6 +345,40 @@ Transform.prototype.identity = function()
 }
 
 Transform.prototype.reset = Transform.prototype.identity;
+
+/**
+* Sets the rotation to identity
+* @method resetRotation
+*/
+Transform.prototype.resetRotation = function()
+{
+	quat.identity( this._rotation );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the position to 0,0,0
+* @method resetPosition
+*/
+Transform.prototype.resetPosition = function()
+{
+	vec3.copy( this._position, LS.ZEROS );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the scale to 1,1,1
+* @method resetScale
+*/
+Transform.prototype.resetScale = function()
+{
+	vec3.copy( this._scaling, LS.ONES );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
 
 /**
 * Returns a copy of the local position
@@ -687,7 +720,7 @@ Transform.prototype.fromMatrix = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( this._position, M, LS.ZERO );
+		mat4.multiplyVec3( this._position, M, LS.ZEROS );
 
 		//compute scale
 		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -736,7 +769,7 @@ Transform.fromMatrix4ToTransformData = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( position, M, LS.ZERO );
+		mat4.multiplyVec3( position, M, LS.ZEROS );
 
 		//extract scaling by 
 		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -799,7 +832,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q_angle);
+		quat.copy(this._rotation, q);
 	this._must_update_matrix = true;
 	this._on_change();
 }

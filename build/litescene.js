@@ -55,7 +55,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","WString":"WS","Number":"NU", "null":"00"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","WideObject":"WO","String":"ST","WideString":"WS","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -155,9 +155,13 @@ WBin.create = function( origin, origin_class_name )
 
 		var data_length = 0;
 
-		//convert all to typed arrays
-		if(typeof(data) == "string")
-			data = WBin.stringToUint8Array(data);
+		//convert any string related data to typed arrays
+		if( data && data.constructor == String )
+		{
+			data = WBin.stringToTypedArray( data );
+			if(data.constructor === Uint16Array) //careful when wide characters found (international characters)
+				code = (code == "OB") ? "WO" : "WS";
+		}
 
 		//typed array
 		if(data.buffer && data.buffer.constructor == ArrayBuffer)
@@ -271,14 +275,16 @@ WBin.load = function( data_array, skip_classname )
 		switch(data_class_name)
 		{
 			case "null": break;
-			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
+			case "WideString": 
+			case "String": lump_final = WBin.TypedArrayToString( lump_data ); break;
 			case "Number": 
 					if(header.version < 0.3) //LEGACY: remove
-						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+						lump_final = parseFloat( WBin.TypedArrayToString( lump_data ) );
 					else
 						lump_final = (new Float64Array( lump_data.buffer ))[0];
 					break;
-			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "WideObject": 
+			case "Object": lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
@@ -332,7 +338,7 @@ WBin.getHeaderInfo = function(data_array)
 	var version = WBin.readFloat32( data_array, 4);
 	var flags = new Uint8Array( data_array.subarray(8,10) );
 	var numlumps = WBin.readUint16(data_array, 10);
-	var classname = WBin.Uint8ArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
+	var classname = WBin.TypedArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
 
 	var lumps = [];
 	for(var i = 0; i < numlumps; ++i)
@@ -342,8 +348,8 @@ WBin.getHeaderInfo = function(data_array)
 		var lump = {};
 		lump.start = WBin.readUint32(lumpheader,0);
 		lump.size  = WBin.readUint32(lumpheader,4);
-		lump.code  = WBin.Uint8ArrayToString(lumpheader.subarray(8,10));
-		lump.name  = WBin.Uint8ArrayToString(lumpheader.subarray(10));
+		lump.code  = WBin.TypedArrayToString(lumpheader.subarray(8,10));
+		lump.name  = WBin.TypedArrayToString(lumpheader.subarray(10));
 		lumps.push(lump);
 	}
 
@@ -387,7 +393,7 @@ WBin.stringToUint8Array = function(str, fixed_length)
 	return r;
 }
 
-WBin.Uint8ArrayToString = function(typed_array, same_size)
+WBin.TypedArrayToString = function(typed_array, same_size)
 {
 	var r = "";
 	for(var i = 0; i < typed_array.length; i++)
@@ -396,6 +402,32 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 		else
 			r += String.fromCharCode( typed_array[i] );
 	//return String.fromCharCode.apply(null,typed_array)
+	return r;
+}
+
+WBin.stringToTypedArray = function(str, fixed_length)
+{
+	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
+	for(var i = 0; i < str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		if(c > 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(!warning)
+		return r;
+
+	//convert to 16bits per character
+	var r = new Uint16Array( fixed_length ? fixed_length : str.length);
+	for(var i = 0; i < str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		r[i] = c;
+	}
+
 	return r;
 }
 
@@ -736,6 +768,10 @@ var LS = {
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
 
+	//for HTML GUI
+	_gui_element: null,
+	_gui_style: null,
+
 	/**
 	* Generates a UUID based in the user-agent, time, random and sequencial number. Used for Nodes and Components.
 	* @method generateUId
@@ -967,7 +1003,7 @@ var LS = {
 	* @method cloneObject
 	* @param {Object} object the object to clone
 	* @param {Object} target=null optional, the destination object
-	* @return {Object} returns the cloned object
+	* @return {Object} returns the cloned object (target if it is specified)
 	*/
 	cloneObject: function( object, target, recursive, only_existing )
 	{
@@ -975,12 +1011,31 @@ var LS = {
 			return undefined;
 		if(object === null)
 			return null;
+
+		//base type
 		switch( object.constructor )
 		{
 			case String:
 			case Number:
 			case Boolean:
 				return object;
+		}
+
+		//typed array
+		if( object.constructor.BYTES_PER_ELEMENT )
+		{
+			if(!target)
+				return new object.constructor( object );
+			if(target.set)
+				target.set(object);
+			else if(target.construtor === Array)
+			{
+				for(var i = 0; i < object.length; ++i)
+					target[i] = object[i];
+			}
+			else
+				throw("cloneObject: target has no set method");
+			return target;
 		}
 
 		var o = target;
@@ -1293,6 +1348,25 @@ var LS = {
 		gui.style.position = "absolute";
 		gui.style.top = "0";
 		gui.style.left = "0";
+
+		//normalize
+		gui.style.color = "#999";
+		gui.style.font = "20px Arial";
+
+		//make it fullsize
+		gui.style.width = "100%";
+		gui.style.height = "100%";
+		gui.style.overflow = "hidden";
+		gui.style.pointerEvents = "none";
+
+		if(!this._gui_style)
+		{
+			var style = this._gui_style = document.createElement("style");
+			style.appendChild(document.createTextNode(""));
+			document.head.appendChild(style);
+			style.sheet.insertRule(".litescene-gui button, .litescene-gui input { pointer-events: auto; }");
+		}
+
 		gl.canvas.parentNode.appendChild( gui );
 		
 		LS._gui_element = gui;
@@ -1300,11 +1374,57 @@ var LS = {
 	},
 
 	/**
-	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
+	* Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas
 	*
-	* @method getScript
-	* @param {String} name the name of the script according to the Script component.
-	* @return {Object} the context of the script.
+	* @method createElementGUI
+	* @param {String} tag_type the tag type "div"
+	* @param {String} anchor "top-left", "top-right", "bottom-left", "bottom-right"
+	* @return {HTMLElement} 
+	*/
+	createElementGUI: function( tag_type, anchor )
+	{
+		tag_type = tag_type || "div";
+		anchor = anchor || "top-left";
+
+		var element = document.createElement("div");
+		element.style.position = "absolute";
+		element.style.pointerEvents = "auto";
+
+		switch(anchor)
+		{
+			case "bottom":
+			case "bottom-left":
+				element.style.bottom = "0";
+				element.style.left = "0";
+				break;
+			case "bottom-right":
+				element.style.bottom = "0";
+				element.style.right = "0";
+				break;
+			case "right":
+			case "top-right":
+				element.style.top = "0";
+				element.style.right = "0";
+				break;
+			default:
+				console.warn("invalid GUI anchor position: ",anchor);
+			case "left":
+			case "top":
+			case "top-left":
+				element.style.top = "0";
+				element.style.left = "0";
+				break;
+		}
+
+		var gui_root = this.getGUIElement();
+		gui_root.appendChild( element );
+		return element;
+	},
+
+	/**
+	* Removes all the GUI elements from the DOM
+	*
+	* @method removeGUIElement
 	*/
 	removeGUIElement: function()
 	{
@@ -1381,17 +1501,6 @@ Object.defineProperty( LS, "catch_exceptions", {
 
 //Add some classes
 LS.Classes.WBin = LS.WBin = WBin;
-
-//helpful consts
-LS.ZERO = vec3.create();
-LS.ONE = vec3.fromValues(1,1,1);
-LS.TOP = vec3.fromValues(0,1,0);
-LS.BOTTOM = vec3.fromValues(0,-1,0);
-LS.RIGHT = vec3.fromValues(1,0,0);
-LS.LEFT = vec3.fromValues(-1,0,0);
-LS.FRONT = vec3.fromValues(0,0,-1);
-LS.BACK = vec3.fromValues(0,0,1);
-LS.IDENTITY = mat4.create();
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers
@@ -1562,6 +1671,17 @@ LS.STOPPED = 0;
 LS.RUNNING = 1;
 LS.PAUSED = 2;
 
+//helpful consts
+LS.ZEROS = vec3.create();
+LS.ONES = vec3.fromValues(1,1,1);
+LS.TOP = vec3.fromValues(0,1,0);
+LS.BOTTOM = vec3.fromValues(0,-1,0);
+LS.RIGHT = vec3.fromValues(1,0,0);
+LS.LEFT = vec3.fromValues(-1,0,0);
+LS.FRONT = vec3.fromValues(0,0,-1);
+LS.BACK = vec3.fromValues(0,0,1);
+LS.IDENTITY = mat4.create();
+
 //types
 LS.TYPES = {
 	BOOLEAN: "boolean",
@@ -1574,9 +1694,11 @@ LS.TYPES = {
 	RESOURCE: "resource",
 	TEXTURE : "texture",
 	MESH: "mesh",
+	SCENE: "scene",
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
-	COMPONENT: "component"
+	COMPONENT: "component",
+	MATERIAL: "material"
 };
 
 var Network = {
@@ -2085,7 +2207,11 @@ var ResourcesManager = {
 			return "";
 
 		if( fullpath.indexOf("//") == -1 )
+		{
+			if(fullpath.charCodeAt(0) == 47) // the '/' char
+				return fullpath.substr(1);
 			return fullpath;
+		}
 
 		//clean up the filename (to avoid problems with //)
 		if(fullpath.indexOf("://") == -1)
@@ -3804,7 +3930,8 @@ var ShadersManager = {
 		attribute vec3 a_vertex;\n\
 		attribute vec3 a_normal;\n\
 		attribute vec2 a_coord;\n\
-		uniform mat4 u_mvp;\n\
+		uniform mat4 u_model;\n\
+		uniform mat4 u_viewprojection;\n\
 	",
 	common_fscode: "\n\
 		precision mediump float;\n\
@@ -3822,7 +3949,8 @@ var ShadersManager = {
 		//flat
 		this.registerGlobalShader(this.common_vscode + '\
 			void main() {\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
+				mat4 mvp = u_viewprojection * u_model;\
+				gl_Position = mvp * vec4(a_vertex,1.0);\
 			}\
 			', this.common_fscode + '\
 			uniform vec4 u_material_color;\
@@ -3836,7 +3964,8 @@ var ShadersManager = {
 			varying vec2 v_uvs;\
 			void main() {\n\
 				v_uvs = a_coord;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\
+				mat4 mvp = u_viewprojection * u_model;\
+				gl_Position = mvp * vec4(a_vertex,1.0);\
 			}\
 			', this.common_fscode + '\
 			uniform vec4 u_material_color;\
@@ -6550,7 +6679,7 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 	return o;
 }
 
-SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( path.length < 1)
 		return;
@@ -6742,8 +6871,9 @@ CustomMaterial.prototype.fillShaderQuery = function(scene)
 
 CustomMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var samplers = {};
+	var samplers = [];
 
+	var last_texture_slot = 0;
 	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
@@ -6756,7 +6886,10 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 			var texture = LS.getTexture( tex_name );
 			if(!texture)
 				texture = ":missing";
-			samplers[ prop.name ] = texture;
+			
+			samplers[ last_texture_slot ] = texture;
+			this._uniforms[ prop.name ] = last_texture_slot;
+			last_texture_slot++;
 		}
 		else
 			this._uniforms[ prop.name ] = prop.value;
@@ -6764,6 +6897,7 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 
 	this._uniforms.u_material_color = this._color;
 
+	/*
 	if(this.textures["environment"])
 	{
 		var sampler = this.textures["environment"];
@@ -6771,6 +6905,7 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 		if(texture)
 			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
 	}
+	*/
 
 	this._samplers = samplers;
 }
@@ -7440,6 +7575,8 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 		return this._shader;
 	},
 	set: function(v) {
+		if(v)
+			v = LS.ResourcesManager.cleanFullpath(v);
 		if(this._shader == v)
 			return;
 		this._shader = v;
@@ -7604,9 +7741,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//compute matrices
 	var model = instance.matrix;
 	if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-		renderer._mvp_matrix.set( model );
-	else
-		mat4.multiply( renderer._mvp_matrix, renderer._viewprojection_matrix, model );
+		renderer._viewprojection_matrix.set( model ); //warning?
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
@@ -7616,7 +7751,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//maybe this two should be somewhere else
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
-	render_uniforms.u_mvp = renderer._mvp_matrix;
 
 	//global stuff
 	renderer.enableInstanceFlags( instance, render_settings );
@@ -7956,6 +8090,8 @@ ComponentContainer.prototype.removeComponent = function(component)
 	var pos = this._components.indexOf(component);
 	if(pos != -1)
 		this._components.splice(pos,1);
+	else
+		console.warn("removeComponent: Component not found in node");
 }
 
 /**
@@ -8887,7 +9023,7 @@ Object.defineProperty( Resource.prototype, "uid", {
 });
 
 /**
-* Returns an object with a representation of the resource internal data
+* Static method: Returns an object with a representation of the resource internal data
 * The order to obtain that object is:
 * 0. checks if getDataToStore function in resource
 * 1. test for _original_file (File or Blob)
@@ -8991,6 +9127,10 @@ Resource.prototype.getDataToStore = function()
 	return data;
 }
 
+/** Clone the resource
+* @method clone
+* @return {LS.Resource} the clone of the resource
+*/
 Resource.prototype.clone = function()
 {
 	var r = new LS.Resource();
@@ -9016,6 +9156,30 @@ Resource.prototype.assignToNode = function(node)
 	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
 	node.addComponent( script_component );
 	return true;
+}
+
+/** Parses the resource data as subfiles (subfiles are fragments of the code identified by a slash followed by name string)
+* @method getAsSubfiles
+* @return {Object} the object that contains every subfile
+*/
+Resource.prototype.getAsSubfiles = function()
+{
+	if(!this._data)
+		return null;
+	return GL.processFileAtlas( this._data );
+}
+
+/** Parses the resource as HTML code and returns a HTMLElement containing the html code
+* @method getAsHTML
+* @return {HTMLElement} the root HTMLElement that contains the code
+*/
+Resource.prototype.getAsHTML = function()
+{
+	if(!this._data)
+		return null;
+	var container = document.createElement("div");
+	container.innerHTML = this._data;
+	return container;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?
@@ -11431,7 +11595,6 @@ uniform mat4 u_model;\n\
 uniform mat4 u_normal_model;\n\
 uniform mat4 u_view;\n\
 uniform mat4 u_viewprojection;\n\
-uniform mat4 u_mvp;\n\
 \n\
 //globals\n\
 uniform float u_time;\n\
@@ -13267,6 +13430,7 @@ TextureFX.prototype.getTexture = function( name )
 
 LS.TextureFX = TextureFX;
 LS.Tween = {
+	MAX_EASINGS: 256, //to avoid problems
 
 	EASE_IN_QUAD: 1,
 	EASE_OUT_QUAD: 2,
@@ -13334,7 +13498,24 @@ LS.Tween = {
 		else if(target && target.length !== undefined)
 			size = target.length;
 
-		var data = { object: object, property: property, origin: origin, target: target, current: 0, time: time, easing: easing_function, on_complete: on_complete, on_progress: on_progress, size: size };
+		var type = null;
+		var type_info = object.constructor["@" + property];
+		if( type_info )
+			type = type_info.type;
+
+		var data = { 
+			object: object, 
+			property: property, 
+			origin: origin, 
+			target: target, 
+			current: 0, 
+			time: time, 
+			easing: easing_function, 
+			on_complete: on_complete, 
+			on_progress: on_progress, 
+			size: size, 
+			type: type
+		};
 
 		for(var i = 0; i < this.current_easings.length; ++i)
 		{
@@ -13343,6 +13524,12 @@ LS.Tween = {
 				this.current_easings[i] = data; //replace old easing
 				break;
 			}
+		}
+
+		if(this.current_easings.length >= this.MAX_EASINGS)
+		{
+			var easing = this.current_easings.shift();
+			//TODO: this could be improved applyting the target value right now
 		}
 
 		this.current_easings.push( data );
@@ -13374,6 +13561,11 @@ LS.Tween = {
 				this.current_easings[i] = data; //replace old easing
 				break;
 			}
+		}
+
+		if(this.current_easings.length >= this.MAX_EASINGS)
+		{
+			this.current_easings.shift();
 		}
 
 		this.current_easings.push( data );
@@ -13413,8 +13605,15 @@ LS.Tween = {
 				else
 				{
 					var property = item.object[ item.property ];
-					for(var j = 0; j < item.size; ++j)
-						property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+
+					if(item.type && item.type == "quat")
+						quat.slerp( property, item.origin, item.target, f );
+					else
+					{
+						//regular linear interpolation
+						for(var j = 0; j < item.size; ++j)
+							property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+					}
 				}
 				if(item.object.mustUpdate !== undefined)
 					item.object.mustUpdate = true;
@@ -13664,6 +13863,9 @@ function RenderInstance( node, component )
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
+
+	//TO DO: instancing
+	//this.uniforms_instancing = {};
 
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
 	this._is_visible = false; //used during the rendering
@@ -13927,6 +14129,40 @@ RenderInstance.prototype.render = function(shader)
 	  this.primitive, this.range[0], this.range[1] );
 }
 
+/*
+RenderInstance.prototype.renderInstancing = function( shader )
+{
+	var instances_info = this.instances_info;
+
+	var matrices = new Float32Array( instances_info.length * 16 );
+	for(var j = 0; j < instances_info.length; ++j)
+	{
+		var matrix = instances_info[j].matrix;
+		matrices.set( matrix, j*16 );
+	}
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, matricesBuffer );
+	gl.bufferData(gl.ARRAY_BUFFER, matrices, gl.STREAM_DRAW);
+
+	// Bind the instance matrices data (mat4 behaves as 4 attributes)
+	for(var k = 0; k < 4; ++k)
+	{
+		gl.enableVertexAttribArray( location+k );
+		gl.vertexAttribPointer( location+k, 4, gl.FLOAT , false, 16*4, k*4*4 );
+		ext.vertexAttribDivisorANGLE( location+k, 1 ); // This makes it instanced!
+	}
+
+	//gl.drawElements( gl.TRIANGLES, length, indexBuffer.buffer.gl_type, 0 ); //gl.UNSIGNED_SHORT
+	ext.drawElementsInstancedANGLE( gl.TRIANGLES, length, indexBuffer.buffer.gl_type, 0, batch.length );
+	GFX.stats.calls += 1;
+	for(var k = 0; k < 4; ++k)
+	{
+		ext.vertexAttribDivisorANGLE( location+k, 0 );
+		gl.disableVertexAttribArray( location+k );
+	}
+}
+*/
+
 RenderInstance.prototype.overlapsSphere = function(center, radius)
 {
 	//we dont know if the bbox of the instance is valid
@@ -13957,6 +14193,7 @@ RenderInstance.prototype.setCollisionMesh = function(mesh)
 	this.collision_mesh = mesh;
 }
 */
+
 
 LS.RenderInstance = RenderInstance;
 /*	
@@ -14282,7 +14519,7 @@ var Renderer = {
 	_projection_matrix: mat4.create(),
 	_viewprojection_matrix: mat4.create(),
 	_2Dviewprojection_matrix: mat4.create(),
-	_mvp_matrix: mat4.create(),
+
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
@@ -14875,14 +15112,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-			this._mvp_matrix.set( model );
-		else
-			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_settings);
@@ -15024,10 +15256,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var instance_final_query = instance._final_query;
 
@@ -15089,10 +15320,8 @@ var Renderer = {
 		var model = instance.matrix;
 		var renderer_uniforms = this._render_uniforms;
 
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var pick_color = LS.Picking.getNextPickingColor( node );
 
@@ -15856,7 +16085,8 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 		LS.Draw.renderPoints( this.debug_points );
 	}
 
-	if(settings.render_names)
+	//this require Canvas2DtoWebGL library
+	if(settings.render_names && gl.start2D)
 	{
 		gl.disable( gl.DEPTH_TEST );
 		var camera2D = this.camera2D;
@@ -16786,7 +17016,6 @@ function Transform( o )
 }
 
 Transform.temp_matrix = mat4.create();
-Transform.temp_quat = quat.create();
 Transform.icon = "mini-icon-gizmo.png";
 Transform.ZERO = vec3.create();
 Transform.UP = vec3.fromValues(0,1,0);
@@ -17081,9 +17310,9 @@ Transform.prototype.serialize = function()
 */
 Transform.prototype.identity = function()
 {
-	vec3.copy(this._position, [0,0,0]);
-	quat.copy(this._rotation, [0,0,0,1]);
-	vec3.copy(this._scaling, [1,1,1]);
+	vec3.copy(this._position, LS.ZEROS );
+	quat.identity( this._rotation );
+	vec3.copy(this._scaling, LS.ONES );
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._version += 1;
@@ -17091,6 +17320,40 @@ Transform.prototype.identity = function()
 }
 
 Transform.prototype.reset = Transform.prototype.identity;
+
+/**
+* Sets the rotation to identity
+* @method resetRotation
+*/
+Transform.prototype.resetRotation = function()
+{
+	quat.identity( this._rotation );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the position to 0,0,0
+* @method resetPosition
+*/
+Transform.prototype.resetPosition = function()
+{
+	vec3.copy( this._position, LS.ZEROS );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the scale to 1,1,1
+* @method resetScale
+*/
+Transform.prototype.resetScale = function()
+{
+	vec3.copy( this._scaling, LS.ONES );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
 
 /**
 * Returns a copy of the local position
@@ -17432,7 +17695,7 @@ Transform.prototype.fromMatrix = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( this._position, M, LS.ZERO );
+		mat4.multiplyVec3( this._position, M, LS.ZEROS );
 
 		//compute scale
 		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -17481,7 +17744,7 @@ Transform.fromMatrix4ToTransformData = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( position, M, LS.ZERO );
+		mat4.multiplyVec3( position, M, LS.ZEROS );
 
 		//extract scaling by 
 		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -17544,7 +17807,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q_angle);
+		quat.copy(this._rotation, q);
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -18514,6 +18777,20 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 	},
 	enumerable: true
 });
+
+/**
+* @property mustUpdate {Boolean}
+*/
+Object.defineProperty( Camera.prototype, "mustUpdate", {
+	get: function() {
+		return this._must_update_projection_matrix || this._must_update_view_matrix;
+	},
+	set: function(v) {
+		this._must_update_projection_matrix = this._must_update_view_matrix = v;
+	},
+	enumerable: true
+});
+
 
 Camera.prototype.onAddedToNode = function(node)
 {
@@ -23738,7 +24015,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	}
 
 	//regular mouse dragging
-	if(!mouse_event.dragging)
+	if( mouse_event.eventType != "mousemove" || !mouse_event.dragging )
 		return;
 
 	var changed = false;
@@ -26645,20 +26922,24 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		switch( this.mode )
 		{
 			case PlayAnimation.ONCE: 
-					time = end_time; 
-					//time = start_time; //reset after
-					LEvent.trigger( this, "end_animation" );
-					this.playing = false;
+				time = end_time; 
+				//time = start_time; //reset after
+				LEvent.trigger( this, "end_animation" );
+				this.playing = false;
 				break;
-			case PlayAnimation.LOOP: time = ((this.current_time - start_time) % duration) + start_time; break;
 			case PlayAnimation.PINGPONG:
-					if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
-						time = this.current_time % duration; 
-					else
-						time = duration - (this.current_time % duration);
-					break;
+				if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
+					time = this.current_time % duration; 
+				else
+					time = duration - (this.current_time % duration);
+				break;
+			case PlayAnimation.PINGPONG:
+				time = end_time; 
+				break;
+			case PlayAnimation.LOOP: 
 			default: 
-					time = end_time; 
+				time = ((this.current_time - start_time) % duration) + start_time;
+				LEvent.trigger( this, "animation_loop" );
 				break;
 		}
 	}
@@ -27592,6 +27873,8 @@ ScriptFromFile.coding_help = Script.coding_help;
 
 Object.defineProperty( ScriptFromFile.prototype, "filename", {
 	set: function(v){ 
+		if(v) //to avoid double slashes
+			v = LS.ResourcesManager.cleanFullpath( v );
 		this._filename = v;
 		this.processCode();
 	},
@@ -27690,7 +27973,7 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 		this._stored_properties = null;
 
 		//try to catch up with all the events missed while loading the script
-		if( !this._script._context._initialized )
+		if( this._script._context && !this._script._context._initialized )
 		{
 			if( this._root && this._script._context.onAddedToNode )
 			{
@@ -27747,6 +28030,12 @@ ScriptFromFile.prototype.getResources = function(res)
 		return;
 	ctx.getResources( res );
 }
+
+ScriptFromFile.prototype.getCodeResource = function()
+{
+	return LS.ResourcesManager.getResource( this.filename );
+}
+
 
 ScriptFromFile.prototype.getCode = function()
 {
@@ -31577,7 +31866,7 @@ global.Collada = {
 				return null;
 			}
 
-			for(var i in joints_source)
+			for(var i = 0; i < joints_source.length; ++i)
 			{
 				//get the inverse of the bind pose
 				var inv_mat = inv_bind_source.subarray(i*16,i*16+16);

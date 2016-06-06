@@ -138,8 +138,9 @@ CustomMaterial.prototype.fillShaderQuery = function(scene)
 
 CustomMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var samplers = {};
+	var samplers = [];
 
+	var last_texture_slot = 0;
 	for(var i = 0, l = this.properties.length; i < l; ++i )
 	{
 		var prop = this.properties[i];
@@ -152,7 +153,10 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 			var texture = LS.getTexture( tex_name );
 			if(!texture)
 				texture = ":missing";
-			samplers[ prop.name ] = texture;
+			
+			samplers[ last_texture_slot ] = texture;
+			this._uniforms[ prop.name ] = last_texture_slot;
+			last_texture_slot++;
 		}
 		else
 			this._uniforms[ prop.name ] = prop.value;
@@ -160,6 +164,7 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 
 	this._uniforms.u_material_color = this._color;
 
+	/*
 	if(this.textures["environment"])
 	{
 		var sampler = this.textures["environment"];
@@ -167,6 +172,7 @@ CustomMaterial.prototype.fillUniforms = function( scene, options )
 		if(texture)
 			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
 	}
+	*/
 
 	this._samplers = samplers;
 }

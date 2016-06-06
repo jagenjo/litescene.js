@@ -189,7 +189,8 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 		LS.Draw.renderPoints( this.debug_points );
 	}
 
-	if(settings.render_names)
+	//this require Canvas2DtoWebGL library
+	if(settings.render_names && gl.start2D)
 	{
 		gl.disable( gl.DEPTH_TEST );
 		var camera2D = this.camera2D;

@@ -399,7 +399,7 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 	return o;
 }
 
-SurfaceMaterial.prototype.getPropertyInfoFromPath = function( path )
+StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( path.length < 1)
 		return;

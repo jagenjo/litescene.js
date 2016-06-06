@@ -44,7 +44,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	"ArrayBuffer":"AB", "Int8Array":"I1", "Uint8Array":"i1", "Int16Array":"I2", "Uint16Array":"i2", "Int32Array":"I4", "Uint32Array":"i4",
-	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","String":"ST","WString":"WS","Number":"NU", "null":"00"
+	"Float32Array":"F4", "Float64Array": "F8", "Object":"OB","WideObject":"WO","String":"ST","WideString":"WS","Number":"NU", "null":"00"
 };
 
 WBin.REVERSE_CODES = {};
@@ -144,9 +144,13 @@ WBin.create = function( origin, origin_class_name )
 
 		var data_length = 0;
 
-		//convert all to typed arrays
-		if(typeof(data) == "string")
-			data = WBin.stringToUint8Array(data);
+		//convert any string related data to typed arrays
+		if( data && data.constructor == String )
+		{
+			data = WBin.stringToTypedArray( data );
+			if(data.constructor === Uint16Array) //careful when wide characters found (international characters)
+				code = (code == "OB") ? "WO" : "WS";
+		}
 
 		//typed array
 		if(data.buffer && data.buffer.constructor == ArrayBuffer)
@@ -260,14 +264,16 @@ WBin.load = function( data_array, skip_classname )
 		switch(data_class_name)
 		{
 			case "null": break;
-			case "String": lump_final = WBin.Uint8ArrayToString( lump_data ); break;
+			case "WideString": 
+			case "String": lump_final = WBin.TypedArrayToString( lump_data ); break;
 			case "Number": 
 					if(header.version < 0.3) //LEGACY: remove
-						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+						lump_final = parseFloat( WBin.TypedArrayToString( lump_data ) );
 					else
 						lump_final = (new Float64Array( lump_data.buffer ))[0];
 					break;
-			case "Object": lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case "WideObject": 
+			case "Object": lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
@@ -321,7 +327,7 @@ WBin.getHeaderInfo = function(data_array)
 	var version = WBin.readFloat32( data_array, 4);
 	var flags = new Uint8Array( data_array.subarray(8,10) );
 	var numlumps = WBin.readUint16(data_array, 10);
-	var classname = WBin.Uint8ArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
+	var classname = WBin.TypedArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
 
 	var lumps = [];
 	for(var i = 0; i < numlumps; ++i)
@@ -331,8 +337,8 @@ WBin.getHeaderInfo = function(data_array)
 		var lump = {};
 		lump.start = WBin.readUint32(lumpheader,0);
 		lump.size  = WBin.readUint32(lumpheader,4);
-		lump.code  = WBin.Uint8ArrayToString(lumpheader.subarray(8,10));
-		lump.name  = WBin.Uint8ArrayToString(lumpheader.subarray(10));
+		lump.code  = WBin.TypedArrayToString(lumpheader.subarray(8,10));
+		lump.name  = WBin.TypedArrayToString(lumpheader.subarray(10));
 		lumps.push(lump);
 	}
 
@@ -376,7 +382,7 @@ WBin.stringToUint8Array = function(str, fixed_length)
 	return r;
 }
 
-WBin.Uint8ArrayToString = function(typed_array, same_size)
+WBin.TypedArrayToString = function(typed_array, same_size)
 {
 	var r = "";
 	for(var i = 0; i < typed_array.length; i++)
@@ -385,6 +391,32 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 		else
 			r += String.fromCharCode( typed_array[i] );
 	//return String.fromCharCode.apply(null,typed_array)
+	return r;
+}
+
+WBin.stringToTypedArray = function(str, fixed_length)
+{
+	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
+	for(var i = 0; i < str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		if(c > 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(!warning)
+		return r;
+
+	//convert to 16bits per character
+	var r = new Uint16Array( fixed_length ? fixed_length : str.length);
+	for(var i = 0; i < str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		r[i] = c;
+	}
+
 	return r;
 }
 

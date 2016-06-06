@@ -56,7 +56,7 @@ var Renderer = {
 	_projection_matrix: mat4.create(),
 	_viewprojection_matrix: mat4.create(),
 	_2Dviewprojection_matrix: mat4.create(),
-	_mvp_matrix: mat4.create(),
+
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
@@ -649,14 +649,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-			this._mvp_matrix.set( model );
-		else
-			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_settings);
@@ -798,10 +793,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var instance_final_query = instance._final_query;
 
@@ -863,10 +857,8 @@ var Renderer = {
 		var model = instance.matrix;
 		var renderer_uniforms = this._render_uniforms;
 
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var pick_color = LS.Picking.getNextPickingColor( node );
 

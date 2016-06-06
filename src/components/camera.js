@@ -399,6 +399,20 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 	enumerable: true
 });
 
+/**
+* @property mustUpdate {Boolean}
+*/
+Object.defineProperty( Camera.prototype, "mustUpdate", {
+	get: function() {
+		return this._must_update_projection_matrix || this._must_update_view_matrix;
+	},
+	set: function(v) {
+		this._must_update_projection_matrix = this._must_update_view_matrix = v;
+	},
+	enumerable: true
+});
+
+
 Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)

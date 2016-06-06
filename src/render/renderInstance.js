@@ -82,6 +82,9 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 
+	//TO DO: instancing
+	//this.uniforms_instancing = {};
+
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
 	this._is_visible = false; //used during the rendering
 
@@ -344,6 +347,40 @@ RenderInstance.prototype.render = function(shader)
 	  this.primitive, this.range[0], this.range[1] );
 }
 
+/*
+RenderInstance.prototype.renderInstancing = function( shader )
+{
+	var instances_info = this.instances_info;
+
+	var matrices = new Float32Array( instances_info.length * 16 );
+	for(var j = 0; j < instances_info.length; ++j)
+	{
+		var matrix = instances_info[j].matrix;
+		matrices.set( matrix, j*16 );
+	}
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, matricesBuffer );
+	gl.bufferData(gl.ARRAY_BUFFER, matrices, gl.STREAM_DRAW);
+
+	// Bind the instance matrices data (mat4 behaves as 4 attributes)
+	for(var k = 0; k < 4; ++k)
+	{
+		gl.enableVertexAttribArray( location+k );
+		gl.vertexAttribPointer( location+k, 4, gl.FLOAT , false, 16*4, k*4*4 );
+		ext.vertexAttribDivisorANGLE( location+k, 1 ); // This makes it instanced!
+	}
+
+	//gl.drawElements( gl.TRIANGLES, length, indexBuffer.buffer.gl_type, 0 ); //gl.UNSIGNED_SHORT
+	ext.drawElementsInstancedANGLE( gl.TRIANGLES, length, indexBuffer.buffer.gl_type, 0, batch.length );
+	GFX.stats.calls += 1;
+	for(var k = 0; k < 4; ++k)
+	{
+		ext.vertexAttribDivisorANGLE( location+k, 0 );
+		gl.disableVertexAttribArray( location+k );
+	}
+}
+*/
+
 RenderInstance.prototype.overlapsSphere = function(center, radius)
 {
 	//we dont know if the bbox of the instance is valid
@@ -374,5 +411,6 @@ RenderInstance.prototype.setCollisionMesh = function(mesh)
 	this.collision_mesh = mesh;
 }
 */
+
 
 LS.RenderInstance = RenderInstance;

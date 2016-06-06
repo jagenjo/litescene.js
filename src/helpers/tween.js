@@ -1,4 +1,5 @@
 LS.Tween = {
+	MAX_EASINGS: 256, //to avoid problems
 
 	EASE_IN_QUAD: 1,
 	EASE_OUT_QUAD: 2,
@@ -66,7 +67,24 @@ LS.Tween = {
 		else if(target && target.length !== undefined)
 			size = target.length;
 
-		var data = { object: object, property: property, origin: origin, target: target, current: 0, time: time, easing: easing_function, on_complete: on_complete, on_progress: on_progress, size: size };
+		var type = null;
+		var type_info = object.constructor["@" + property];
+		if( type_info )
+			type = type_info.type;
+
+		var data = { 
+			object: object, 
+			property: property, 
+			origin: origin, 
+			target: target, 
+			current: 0, 
+			time: time, 
+			easing: easing_function, 
+			on_complete: on_complete, 
+			on_progress: on_progress, 
+			size: size, 
+			type: type
+		};
 
 		for(var i = 0; i < this.current_easings.length; ++i)
 		{
@@ -75,6 +93,12 @@ LS.Tween = {
 				this.current_easings[i] = data; //replace old easing
 				break;
 			}
+		}
+
+		if(this.current_easings.length >= this.MAX_EASINGS)
+		{
+			var easing = this.current_easings.shift();
+			//TODO: this could be improved applyting the target value right now
 		}
 
 		this.current_easings.push( data );
@@ -106,6 +130,11 @@ LS.Tween = {
 				this.current_easings[i] = data; //replace old easing
 				break;
 			}
+		}
+
+		if(this.current_easings.length >= this.MAX_EASINGS)
+		{
+			this.current_easings.shift();
 		}
 
 		this.current_easings.push( data );
@@ -145,8 +174,15 @@ LS.Tween = {
 				else
 				{
 					var property = item.object[ item.property ];
-					for(var j = 0; j < item.size; ++j)
-						property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+
+					if(item.type && item.type == "quat")
+						quat.slerp( property, item.origin, item.target, f );
+					else
+					{
+						//regular linear interpolation
+						for(var j = 0; j < item.size; ++j)
+							property[j] = item.target[j] * f + item.origin[j] * ( 1.0 - f );
+					}
 				}
 				if(item.object.mustUpdate !== undefined)
 					item.object.mustUpdate = true;

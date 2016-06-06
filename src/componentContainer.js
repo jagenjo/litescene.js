@@ -183,6 +183,8 @@ ComponentContainer.prototype.removeComponent = function(component)
 	var pos = this._components.indexOf(component);
 	if(pos != -1)
 		this._components.splice(pos,1);
+	else
+		console.warn("removeComponent: Component not found in node");
 }
 
 /**
