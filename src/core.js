@@ -595,8 +595,8 @@ var LS = {
 	*/
 	getGUIElement: function()
 	{
-		if( LS._gui_element )
-			return LS._gui_element;
+		if( this._gui_element )
+			return this._gui_element;
 
 		var gui = document.createElement("div");
 		gui.className = "litescene-gui";
@@ -624,7 +624,7 @@ var LS = {
 
 		gl.canvas.parentNode.appendChild( gui );
 		
-		LS._gui_element = gui;
+		this._gui_element = gui;
 		return gui;
 	},
 
@@ -639,11 +639,23 @@ var LS = {
 	createElementGUI: function( tag_type, anchor )
 	{
 		tag_type = tag_type || "div";
-		anchor = anchor || "top-left";
 
 		var element = document.createElement("div");
-		element.style.position = "absolute";
 		element.style.pointerEvents = "auto";
+		return this.attachToGUI( element, anchor );
+	},
+
+	attachToGUI: function( element, anchor )
+	{
+		if(!element)
+		{
+			console.error("attachToGUI: element cannot be null");
+			return;
+		}
+
+		element.style.position = "absolute";
+
+		anchor = anchor || "top-left";
 
 		switch(anchor)
 		{
@@ -656,10 +668,20 @@ var LS = {
 				element.style.bottom = "0";
 				element.style.right = "0";
 				break;
+			case "bottom-middle":
+				element.style.bottom = "0";
+				element.style.width = "50%";
+				element.style.margin = "0 auto";
+				break;
 			case "right":
 			case "top-right":
 				element.style.top = "0";
 				element.style.right = "0";
+				break;
+			case "top-middle":
+				element.style.top = "0";
+				element.style.width = "50%";
+				element.style.margin = "0 auto";
 				break;
 			default:
 				console.warn("invalid GUI anchor position: ",anchor);
@@ -683,12 +705,18 @@ var LS = {
 	*/
 	removeGUIElement: function()
 	{
-		if( !LS._gui_element )
+		if( !this._gui_element )
 			return;
 
-		if(LS._gui_element.parentNode)
-			LS._gui_element.parentNode.removeChild( LS._gui_element );
-		LS._gui_element = null;
+		if(this._gui_element.parentNode)
+			this._gui_element.parentNode.removeChild( this._gui_element );
+		this._gui_element = null;
+
+		if(this._gui_style)
+		{
+			this._gui_style.parentNode.removeChild( this._gui_style );
+			this._gui_style = null;		
+		}
 		return;
 	},
 

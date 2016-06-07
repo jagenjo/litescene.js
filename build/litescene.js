@@ -1340,8 +1340,8 @@ var LS = {
 	*/
 	getGUIElement: function()
 	{
-		if( LS._gui_element )
-			return LS._gui_element;
+		if( this._gui_element )
+			return this._gui_element;
 
 		var gui = document.createElement("div");
 		gui.className = "litescene-gui";
@@ -1369,7 +1369,7 @@ var LS = {
 
 		gl.canvas.parentNode.appendChild( gui );
 		
-		LS._gui_element = gui;
+		this._gui_element = gui;
 		return gui;
 	},
 
@@ -1384,11 +1384,23 @@ var LS = {
 	createElementGUI: function( tag_type, anchor )
 	{
 		tag_type = tag_type || "div";
-		anchor = anchor || "top-left";
 
 		var element = document.createElement("div");
-		element.style.position = "absolute";
 		element.style.pointerEvents = "auto";
+		return this.attachToGUI( element, anchor );
+	},
+
+	attachToGUI: function( element, anchor )
+	{
+		if(!element)
+		{
+			console.error("attachToGUI: element cannot be null");
+			return;
+		}
+
+		element.style.position = "absolute";
+
+		anchor = anchor || "top-left";
 
 		switch(anchor)
 		{
@@ -1401,10 +1413,20 @@ var LS = {
 				element.style.bottom = "0";
 				element.style.right = "0";
 				break;
+			case "bottom-middle":
+				element.style.bottom = "0";
+				element.style.width = "50%";
+				element.style.margin = "0 auto";
+				break;
 			case "right":
 			case "top-right":
 				element.style.top = "0";
 				element.style.right = "0";
+				break;
+			case "top-middle":
+				element.style.top = "0";
+				element.style.width = "50%";
+				element.style.margin = "0 auto";
 				break;
 			default:
 				console.warn("invalid GUI anchor position: ",anchor);
@@ -1428,12 +1450,18 @@ var LS = {
 	*/
 	removeGUIElement: function()
 	{
-		if( !LS._gui_element )
+		if( !this._gui_element )
 			return;
 
-		if(LS._gui_element.parentNode)
-			LS._gui_element.parentNode.removeChild( LS._gui_element );
-		LS._gui_element = null;
+		if(this._gui_element.parentNode)
+			this._gui_element.parentNode.removeChild( this._gui_element );
+		this._gui_element = null;
+
+		if(this._gui_style)
+		{
+			this._gui_style.parentNode.removeChild( this._gui_style );
+			this._gui_style = null;		
+		}
 		return;
 	},
 
@@ -14545,6 +14573,10 @@ var Renderer = {
 		//draw helps rendering debug stuff
 		LS.Draw.init();
 		LS.Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
+
+		//enable webglCanvas lib so it is easy to render in 2D
+		if(global.enableWebGLCanvas && !gl.canvas.canvas2DtoWebGL_enabled)
+			global.enableWebGLCanvas( gl.canvas );
 
 		//there are different render passes, they have different render functions
 		this.registerRenderPass( "color", { id: COLOR_PASS, render_instance: this.renderColorPassInstance } );
@@ -34446,6 +34478,11 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 		for(var i in this.preloaded_resources)
 			resources[ i ] = true;
 
+	//global scripts
+	for(var i = 0; i < this.global_scripts.length; ++i)
+		if( this.global_scripts[i] )
+			resources[ this.global_scripts[i] ] = true;
+
 	//resources from nodes
 	for(var i = 0; i < this._nodes.length; ++i)
 		this._nodes[i].getResources( resources );
@@ -36330,10 +36367,10 @@ Player.prototype.renderLoadingBar = function()
 	if(!this.loading)
 		return;
 
-	if(!window.enableWebGLCanvas)
+	if(!global.enableWebGLCanvas)
 		return;
 
-	if( gl.canvas.canvas2DtoWebGL_enabled )
+	if(!gl.canvas.canvas2DtoWebGL_enabled)
 		enableWebGLCanvas( gl.canvas );
 
 	gl.start2D();
@@ -36456,6 +36493,7 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 
 function toArray(v) { return Array.apply( [], v ); }
 
+/*
 Object.defineProperty(Object.prototype, "merge", { 
     value: function(v) {
         for(var i in v)
@@ -36466,6 +36504,7 @@ Object.defineProperty(Object.prototype, "merge", {
     writable: false,
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
+*/
 
 //used for hashing keys:TODO move from here somewhere else
 if( !String.prototype.hasOwnProperty( "hashCode" ) )

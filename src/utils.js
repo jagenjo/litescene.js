@@ -97,6 +97,7 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 
 function toArray(v) { return Array.apply( [], v ); }
 
+/*
 Object.defineProperty(Object.prototype, "merge", { 
     value: function(v) {
         for(var i in v)
@@ -107,6 +108,7 @@ Object.defineProperty(Object.prototype, "merge", {
     writable: false,
 	enumerable: false  // uncomment to be explicit, though not necessary
 });
+*/
 
 //used for hashing keys:TODO move from here somewhere else
 if( !String.prototype.hasOwnProperty( "hashCode" ) )

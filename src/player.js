@@ -304,10 +304,10 @@ Player.prototype.renderLoadingBar = function()
 	if(!this.loading)
 		return;
 
-	if(!window.enableWebGLCanvas)
+	if(!global.enableWebGLCanvas)
 		return;
 
-	if( gl.canvas.canvas2DtoWebGL_enabled )
+	if(!gl.canvas.canvas2DtoWebGL_enabled)
 		enableWebGLCanvas( gl.canvas );
 
 	gl.start2D();
