@@ -36,15 +36,15 @@ var player = new LS.Player({
 });
 ```
 
-Attach to DOM
+Attach to Canvas to the DOM:
 ```js
 document.getElementById("mycontainer").appendChild( player.canvas )
 ```
+or you can pass the canvas in the player settings as { canvas: my_canvas_element }
 
-
-Load the scene
+Load the scene and play it:
 ```js
-LS.GlobalScene.load("scene.json");
+player.loadScene("scene.json");
 ```
 
 
