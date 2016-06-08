@@ -3,6 +3,26 @@ This guide intends to help people understand the Engine so they can take full ad
 The most important thing to understand is that the engine is separated in several layers, every one of them is independent, so to better understand everything about LiteScene please first go to LiteGL.js which is the low-level layer in charge of accesing WebGL, and the one LiteScene uses to simplify the GPU calls.
 Read the parts of LiteGL related to events (LEvent) to ensure you understand the events system used by LiteScene.
 
+## Guides ##
+
+Here there is a list with the most commont topics to master LiteScene:
+
+- [Scene](scene.md): Understanding the scene tree
+- [Components](components.md): How to use the components system
+- [Scripting](scripting.md): How to create your own scripts
+- [Input](input.md): how to get user input
+- [GUI](GUI.md): how to add a GUI to your application
+- [Resources](resources.md): How to handle resources (textures, meshes, etc)
+
+Some advanced topics:
+
+- [Post-processing](post-processing.md): How to apply postprocessing effects
+- [Render pipeline](render_pipeline.md): How does the render pipeline work
+- [Shaders}(shaders.md): How to write your own shaders
+- [Tweening](tweening.md): how to interpolate values easily
+
+
+
 ## Index ##
 * Features
 * Limitations
