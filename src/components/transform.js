@@ -855,7 +855,7 @@ Transform.prototype.setScale = function(x,y,z)
 }
 
 /**
-* translates object in local coordinates (adds to the position)
+* translates object in local coordinates (using the rotation and the scale)
 * @method translate
 * @param {number} x 
 * @param {number} y
@@ -864,27 +864,26 @@ Transform.prototype.setScale = function(x,y,z)
 Transform.prototype.translate = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.add( this._position, this._position, [x,y,z] );
+		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
 	else
-		vec3.add( this._position, this._position, x );
+		vec3.add( this._position, this._position, this.transformVector(x) );
 	this._must_update_matrix = true;
 	this._on_change();
 }
 
 /**
-* NOT TESTED
-* translates object in object coordinates (using the rotation and the scale)
-* @method translateLocal
+* translates object in local coordinates (adds to the position)
+* @method translateGlobal
 * @param {number} x 
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translateLocal = function(x,y,z)
+Transform.prototype.translateGlobal = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
+		vec3.add( this._position, this._position, [x,y,z] );
 	else
-		vec3.add( this._position, this._position, this.transformVector(x) );
+		vec3.add( this._position, this._position, x );
 	this._must_update_matrix = true;
 	this._on_change();
 }

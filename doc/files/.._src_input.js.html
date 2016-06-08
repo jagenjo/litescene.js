@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.GlobalFX</title>
+    <title>../src/input.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -135,44 +136,177 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Components.GlobalFX Class</h1>
-<div class="box meta">
+<h1 class="file-heading">File: ../src/input.js</h1>
 
+<div class="file">
+    <pre class="code prettyprint linenums">
 
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_components_globalFX.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;globalFX.js:1</code></a>
-        </div>
+/**
+* Input is a static class used to read the input state (keyboard, mouse, gamepad, etc)
+*
+* @class Input
+* @namespace LS
+* @constructor
+*/
+var Input = {
+	mapping: {
 
-            Module: <a href="../modules/LS.html">LS</a>
+		//xbox
+		A_BUTTON: 0,
+		B_BUTTON: 1,
+		X_BUTTON: 2,
+		Y_BUTTON: 3,
+		LB_BUTTON: 4,
+		RB_BUTTON: 5,
+		BACK_BUTTON: 6,
+		START_BUTTON: 7,
+		LS_BUTTON: 8,
+		RS_BUTTON: 9,
 
-</div>
+		LX: 0,
+		LY: 1,
+		RX: 2,
+		RY: 3,
+		TRIGGERS: 4,
+		LEFT_TRIGGER: 4,
+		RIGHT_TRIGGER: 5,
 
+		//generic
+		JUMP:0,
+		FIRE:1,
 
-<div class="box intro">
-    <p>This component allow to create basic FX applied to the whole scene</p>
+		//mouse
+		LEFT:0,
+		MIDDLE:1,
+		RIGHT:2
+	},
 
-</div>
+	Keyboard: [],
+	Mouse: {},
+	Gamepads: [],
 
+	init: function()
+	{
+		this.Keyboard = gl.keys;
+		this.Mouse = gl.mouse;
+		this.Gamepads = gl.getGamepads();
+	},
 
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
+	reset: function()
+	{
+		this.Gamepads = gl.gamepads = []; //force reset so they send new events 
+	},
 
-    </ul>
+	update: function()
+	{
+		//capture gamepads snapshot
+		this.Gamepads = gl.getGamepads();
+	},
 
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
+	/**
+	* returns if the mouse is inside the rect defined by x,y, width,height
+	*
+	* @method isMouseInRect
+	* @param {Number} x x coordinate of the mouse in canvas coordinates 
+	* @param {Number} y y coordinate of the mouse in canvas coordinates (0 is bottom)
+	* @param {Number} width rectangle width in pixels
+	* @param {Number} height rectangle height in pixels
+	* @param {boolean} flip [optional] if you want to flip the y coordinate
+	* @return {boolean}
+	*/
+	isMouseInRect: function(x,y,width,height, flip_y)
+	{
+		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
+	},
 
+	/**
+	* Returns a gamepad snapshot if it is connected
+	*
+	* @method getGamepad
+	* @param {Number} index the index of the gamepad
+	* @return {Object} gamepad snapshot with all the info
+	*/
+	getGamepad: function(index)
+	{
+		index = index || 0;
+		return this.Gamepads[index];
+	},
 
+	/**
+	* Returns a gamepad snapshot if it is connected
+	*
+	* @method getGamepadAxis
+	* @param {Number} index the index of the gamepad
+	* @param {String} name the name of the axis (also you could specify the number)
+	* @param {boolean} raw [optional] if you want the data unfiltered
+	* @return {Number} axis value from -1 to 1
+	*/
+	getGamepadAxis: function(index, name, raw)
+	{
+		var gamepad = this.Gamepads[index];
+		if(!gamepad)
+			return 0;
 
+		var num = 0;
+		if(name &amp;&amp; name.constructor === String)
+			num = this.mapping[name];
+		else
+			num = name;
+		if(num === undefined)
+			return 0;
+		var v = gamepad.axes[num];
+		if(!raw &amp;&amp; v &gt; -0.1 &amp;&amp; v &lt; 0.1 ) //filter
+			return 0;
+		return v;
+	},
 
-        </div>
+	/**
+	* Returns if the given button of the specified gamepad is pressed
+	*
+	* @method isGamepadButtonPressed
+	* @param {Number} index the index of the gamepad
+	* @param {String} name the name of the button &quot;A&quot;,&quot;B&quot;,&quot;X&quot;,&quot;Y&quot;,&quot;LB&quot;,&quot;RB&quot;,&quot;BACK&quot;,&quot;START&quot;,&quot;LS&quot;,&quot;RS&quot; (also you could specify the number)
+	* @return {Boolean} if the button is pressed
+	*/
+	isGamepadButtonPressed: function(input, name)
+	{
+		var gamepad = this.Gamepads[input];
+		if(!gamepad)
+			return null;
 
+		var num = 0;
+		if(name &amp;&amp; name.constructor === String)
+			num = this.mapping[name];
+		else
+			num = name;
+		if(num === undefined)
+			return 0;
+		var button = gamepad.buttons[num];
+		return button &amp;&amp; button.pressed;
+	},
 
+	/**
+	* Returns if the given mouse button is pressed
+	*
+	* @method isMouseButtonPressed
+	* @param {String} name the name of the button  &quot;LEFT&quot;,&quot;MIDDLE,&quot;RIGHT&quot; (also you could specify the number)
+	* @return {Boolean} if the button is pressed
+	*/
+	isMouseButtonPressed: function(name)
+	{
+		var num = 0;
+		if(name &amp;&amp; name.constructor === String)
+			num = this.mapping[name];
+		else
+			num = name;
+		if(num === undefined)
+			return false;
+		return (this.Mouse.buttons &amp; (1&lt;&lt;num)) !== 0;
+	}
+};
 
-
-    </div>
+LS.Input = Input;
+    </pre>
 </div>
                     </div>
                 </div>

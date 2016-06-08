@@ -116,9 +116,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(this.mode == CameraController.FIRSTPERSON)
 	{
-		cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
+		cam.rotate(-mouse_event.deltax * this.rot_speed,LS.TOP);
 		cam.updateMatrices();
-		var right = cam.getLocalVector([1,0,0]);
+		var right = cam.getLocalVector(LS.RIGHT);
 
 		if(is_global_camera)
 		{
@@ -152,7 +152,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 			else
 			{
-				node.transform.translate( delta );
+				node.transform.translateGlobal( delta );
 				cam.updateMatrices();
 			}
 
@@ -207,9 +207,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			var center = vec3.create();
 			cam.getCenter( center );
 			if(is_global_camera)
-				cam.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+				cam.orbit( -mouse_event.deltax * this.rot_speed, LS.TOP, center );
 			else
-				node.transform.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+				node.transform.orbit( -mouse_event.deltax * this.rot_speed, LS.TOP, center );
 			changed = true;
 		}
 		else
@@ -221,7 +221,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			if(is_global_camera)
 				cam.move( delta );
 			else
-				node.transform.translate( delta );
+				node.transform.translateGlobal( delta );
 			cam.updateMatrices();
 			changed = true;
 		}
@@ -238,7 +238,7 @@ CameraController.prototype.testOriginPlane = function(x,y, result)
 	var result = result || vec3.create();
 
 	//test against plane at 0,0,0
-	if( geo.testRayPlane( ray.origin, ray.direction, [0,0,0], [0,1,0], result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, LS.ZEROS, LS.TOP, result ) )
 		return true;
 	return false;
 }

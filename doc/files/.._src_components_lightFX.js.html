@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -148,6 +149,7 @@
 * @param {Object} object to configure from
 */
 
+/* DISABLED
 function LightFX(o)
 {
 	this.enabled = true;
@@ -221,7 +223,7 @@ LightFX.prototype.getVolumetricRenderInstance = function()
 	//material
 	var mat = this._volumetric_material;
 	if(!mat)
-		mat = this._volumetric_material = new Material({shader_name:&quot;volumetric_light&quot;, blending: Material.ADDITIVE_BLENDING });
+		mat = this._volumetric_material = new LS.Material({shader_name:&quot;volumetric_light&quot;, blending: Material.ADDITIVE_BLENDING });
 	vec3.copy( mat.color, light.color );
 	mat.opacity = this.volume_visibility;
 	RI.material = mat;
@@ -310,7 +312,7 @@ LightFX.onGlarePreRender = function( render_settings )
 	var coll = 0;
 	
 	if(this.test_visibility)
-		coll = LS.Picking.raycast( center, dir, { max_distance: dist } );
+		coll = LS.Physics.raycast( center, dir, { max_distance: dist } );
 
 	if(coll.length)
 	{
@@ -338,6 +340,8 @@ LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
 	if(this.glare_texture == old_name)
 		this.glare_texture = new_name;
 }
+
+*/
 
 //LS.registerComponent(LightFX);
 

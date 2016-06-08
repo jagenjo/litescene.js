@@ -605,7 +605,7 @@ if(typeof(LiteGraph) != "undefined")
 				case "Scale": transform.setScale(v); break;
 				case "Matrix": transform.fromMatrix(v); break;
 				case "Translate": transform.translate(v); break;
-				case "Translate Local": transform.translateLocal(v); break;
+				case "Translate Global": transform.translateGlobal(v); break;
 				case "RotateY": transform.rotateY(v); break;
 			}
 		}

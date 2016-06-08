@@ -492,6 +492,7 @@ Camera.prototype.lookAt = function(eye,center,up)
 	if( this._root && this._root.transform )
 	{
 		this._root.transform.lookAt(eye,center,up);
+		this._eye.set(LS.ZEROS);
 		this.focalLength = vec3.distance( eye, center );
 	}
 	else

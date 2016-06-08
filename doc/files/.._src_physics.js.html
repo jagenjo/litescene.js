@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -181,7 +182,7 @@ LS.Collision = Collision;
 * @namespace LS
 * @constructor
 */
-function PhysicsInstance(node, component)
+function PhysicsInstance( node, component )
 {
 	this.uid = LS.generateUId(&quot;PHSX&quot;); //unique identifier for this RI
 	this.layers = 3|0;
@@ -232,6 +233,7 @@ LS.PhysicsInstance = PhysicsInstance;
 
 /**
 * Physics is in charge of all physics testing methods
+* Right now is mostly used for testing collisions with rays agains the colliders in the scene
 *
 * @class Physics
 * @namespace LS
@@ -269,7 +271,7 @@ var Physics = {
 		if(!colliders)
 			return null;
 
-		var local_start = vec3.create();
+		var local_origin = vec3.create();
 		var local_direction = vec3.create();
 
 		//for every instance
@@ -300,11 +302,11 @@ var Physics = {
 			{
 				//ray to local instance coordinates
 				var inv = mat4.invert( mat4.create(), model );
-				mat4.multiplyVec3( local_start, inv, origin);
+				mat4.multiplyVec3( local_origin, inv, origin);
 				mat4.rotateVec3( local_direction, inv, direction);
 
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testRayBBox( local_start, local_direction, instance.oobb, null, collision_point, max_distance) )
+				if( !geo.testRayBBox( local_origin, local_direction, instance.oobb, null, collision_point, max_distance) )
 					continue;
 
 				//if mesh use Octree
@@ -313,7 +315,7 @@ var Physics = {
 					var octree = instance.mesh.octree;
 					if(!octree)
 						octree = instance.mesh.octree = new GL.Octree( instance.mesh );
-					var hit = octree.testRay( local_start, local_direction, 0.0, max_distance );
+					var hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
 					if(!hit)
 						continue;
 
@@ -358,7 +360,7 @@ var Physics = {
 		var colliders = options.colliders || scene._colliders;
 		var collisions = [];
 
-		var local_start = vec3.create();
+		var local_origin = vec3.create();
 
 		if(!colliders)
 			return null;
@@ -379,18 +381,18 @@ var Physics = {
 
 			//ray to local
 			var inv = mat4.invert( mat4.create(), model );
-			mat4.multiplyVec3( local_start, inv, origin);
+			mat4.multiplyVec3( local_origin, inv, origin);
 
 			//test in world space, is cheaper
 			if( instance.type == LS.PhysicsInstance.SPHERE)
 			{
-				if( vec3.distance( origin, local_start ) &gt; (radius + BBox.getRadius(instance.oobb)) )
+				if( vec3.distance( origin, local_origin ) &gt; (radius + BBox.getRadius(instance.oobb)) )
 					continue;
 			}
 			else //the rest test first with the local BBox
 			{
 				//test against OOBB (a little bit more expensive)
-				if( !geo.testSphereBBox( local_start, radius, instance.oobb) )
+				if( !geo.testSphereBBox( local_origin, radius, instance.oobb) )
 					continue;
 
 				if( instance.type == LS.PhysicsInstance.MESH )
@@ -398,7 +400,7 @@ var Physics = {
 					var octree = instance.mesh.octree;
 					if(!octree)
 						octree = instance.mesh.octree = new GL.Octree( instance.mesh );
-					if( !octree.testSphere( local_start, radius ) )
+					if( !octree.testSphere( local_origin, radius ) )
 						continue;
 				}
 			}
@@ -469,6 +471,103 @@ var Physics = {
 			}
 		}
 
+		return collisions;
+	},
+
+	/**
+	* Cast a ray that traverses the scene checking for collisions with RenderInstances instead of colliders
+	* Similar to Physics.raycast but using the RenderInstances (if options.triangle_collision it builds Octrees for the RIs whose OOBB collides with the ray)
+	* @method raycastRenderInstances
+	* @param {vec3} origin in world space
+	* @param {vec3} direction in world space
+	* @param {Object} options ( triangle_collision: true if you want to test against triangles, max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
+	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
+	*/
+	raycastRenderInstances: function( origin, direction, options )
+	{
+		options = options || {};
+		var layers = options.layers;
+		if(layers === undefined)
+			layers = 0xFFFF;
+		var max_distance = options.max_distance || Number.MAX_VALUE;
+		var scene = options.scene || LS.GlobalScene;
+
+		var triangle_collision = !!options.triangle_collision;
+		var first_collision = !!options.first_collision;
+		var compute_normal = !!options.normal;
+		var ignore_transparent = !!options.ignore_transparent;
+
+		var instances = scene._instances;
+		if(!instances || !instances.length)
+			return null;
+
+		var collisions = [];
+
+		var local_origin = vec3.create();
+		var local_direction = vec3.create();
+
+
+		//for every instance
+		for(var i = 0, l = instances.length; i &lt; l; ++i)
+		{
+			var instance = instances[i];
+
+			if(!(instance.flags &amp; RI_RAYCAST_ENABLED) || (layers &amp; instance.layers) === 0 )
+				continue;
+
+			if(instance.flags &amp; RI_BLEND &amp;&amp; ignore_transparent)
+				continue; //avoid semitransparent
+
+			//test against AABB
+			var collision_point = vec3.create();
+			if( !geo.testRayBBox( origin, direction, instance.aabb, null, collision_point, max_distance ) )
+				continue;
+
+			var model = instance.matrix;
+
+			//ray to local
+			var inv = mat4.invert( mat4.create(), model );
+			mat4.multiplyVec3( local_origin, inv, origin );
+			mat4.rotateVec3( local_direction, inv, direction );
+
+			//test against OOBB (a little bit more expensive)
+			if( !geo.testRayBBox( local_origin, local_direction, instance.oobb, null, collision_point, max_distance) )
+				continue;
+
+			//check which mesh to use
+			var collision_mesh = instance.collision_mesh;
+			var collision_normal = null;
+			
+			if(triangle_collision)
+				collision_mesh = instance.lod_mesh || instance.mesh;
+
+			//test against mesh
+			if( collision_mesh )
+			{
+				var mesh = collision_mesh;
+				var octree = mesh.octree;
+				if(!octree)
+					octree = mesh.octree = new GL.Octree( mesh );
+				var hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
+				if(!hit)
+					continue;
+				mat4.multiplyVec3( collision_point, model, hit.pos );
+				if(compute_normal)
+					collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
+			}
+			else
+				vec3.transformMat4(collision_point, collision_point, model);
+
+			//compute distance
+			var distance = vec3.distance( origin, collision_point );
+			if(distance &lt; max_distance)
+				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ) );
+
+			if(first_collision)
+				return collisions;
+		}
+
+		collisions.sort( LS.Collision.isCloser );
 		return collisions;
 	}
 }

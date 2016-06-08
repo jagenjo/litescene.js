@@ -10,7 +10,7 @@
 function Script(o)
 {
 	this.enabled = true;
-	this.code = "this.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}";
+	this.code = this.constructor.templates["component"];
 
 	this._script = new LScript();
 
@@ -37,6 +37,9 @@ Script.block_execution = false; //avoid executing code
 Script.catch_important_exceptions = true; //catch exception during parsing, otherwise configuration could fail
 
 Script.icon = "mini-icon-script.png";
+Script.templates = {
+	"component":"//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}"
+};
 
 Script["@code"] = {type:'script'};
 
@@ -59,11 +62,14 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 	Script.API_events_to_function[ event ] = data;
 }
 
+//init
 Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, "start" );
 Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
+//behaviour
 Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, "update" );
 Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
+//rendering
 Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" );
 Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, "collectRenderInstances" );
 Script.defineAPIFunction( "onRender", Script.BIND_TO_NODE, "beforeRenderInstances" );
@@ -72,11 +78,20 @@ Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
 Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
 Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
+//input
 Script.defineAPIFunction( "onMouseDown", Script.BIND_TO_SCENE, "mousedown" );
 Script.defineAPIFunction( "onMouseMove", Script.BIND_TO_SCENE, "mousemove" );
 Script.defineAPIFunction( "onMouseUp", Script.BIND_TO_SCENE, "mouseup" );
+Script.defineAPIFunction( "onMouseWheel", Script.BIND_TO_SCENE, "mousewheel" );
 Script.defineAPIFunction( "onKeyDown", Script.BIND_TO_SCENE, "keydown" );
+Script.defineAPIFunction( "onKeyUp", Script.BIND_TO_SCENE, "keyup" );
+Script.defineAPIFunction( "onGamepadConnected", Script.BIND_TO_SCENE, "gamepadconnected" );
+Script.defineAPIFunction( "onGamepadDisconnected", Script.BIND_TO_SCENE, "gamepaddisconnected" );
+Script.defineAPIFunction( "onButtonDown", Script.BIND_TO_SCENE, "buttondown" );
+Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
+//dtor
 Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
+
 
 Script.coding_help = "\n\
 For a complete guide check: <a href='https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md' target='blank'>Scripting Guide</a>\n\
@@ -194,7 +209,7 @@ Script.prototype.processCode = function( skip_events )
 		var old = this._stored_properties || this.getContextProperties();
 
 		//compiles and executes the context
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
 		if(!skip_events)
 			this.hookEvents();
 
@@ -436,6 +451,10 @@ Script.prototype.onAddedToScene = function( scene )
 	if( this._name && !LS.Script.active_scripts[ this._name ] )
 		LS.Script.active_scripts[ this._name ] = this;
 
+	//avoid to parse it again
+	if(this._script && this._script._context && this._script._context._initialized )
+		return;
+
 	if( !this.constructor.catch_important_exceptions )
 	{
 		this.processCode();
@@ -606,6 +625,10 @@ Object.defineProperty( ScriptFromFile.prototype, "name", {
 
 ScriptFromFile.prototype.onAddedToScene = function( scene )
 {
+	//avoid to parse it again
+	if(this._script && this._script._context && this._script._context._initialized )
+		return;
+
 	if( !this.constructor.catch_important_exceptions )
 	{
 		this.processCode();
@@ -656,7 +679,7 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 
 		//compiles and executes the context
 		var old = this._stored_properties || this.getContextProperties();
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
 		if(!skip_events)
 			this.hookEvents();
 		this.setContextProperties( old );

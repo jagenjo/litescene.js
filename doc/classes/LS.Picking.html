@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -212,10 +213,6 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getNodeAtCanvasPosition">getNodeAtCanvasPosition</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_raycast">raycast</a>
 
                             </li>
                     </ul>
@@ -372,7 +369,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_picking.js.html#l166"><code>..&#x2F;src&#x2F;picking.js:166</code></a>
+        <a href="../files/.._src_picking.js.html#l73"><code>..&#x2F;src&#x2F;picking.js:73</code></a>
         </p>
 
 
@@ -521,101 +518,6 @@ you tell what info you want to retrieve associated with this object if it is cli
             </ul>
         </div>
 
-
-
-</div>
-<div id="method_raycast" class="method item">
-    <h3 class="name"><code>raycast</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>origin</code>
-                </li>
-                <li class="arg">
-                        <code>direction</code>
-                </li>
-                <li class="arg">
-                        <code>options</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Array</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_picking.js.html#l73"><code>..&#x2F;src&#x2F;picking.js:73</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Cast a ray that traverses the scene checking for collisions with RenderInstances
-Similar to Physics.raycast but using only the bounding boxes of the visible meshes</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">origin</code>
-                        <span class="type">Vec3</span>
-
-
-                    <div class="param-description">
-                        <p>in world space</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">direction</code>
-                        <span class="type">Vec3</span>
-
-
-                    <div class="param-description">
-                        <p>in world space</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">options</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>( max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Array</span>:
-                    <p>array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]</p>
-
-            </div>
-        </div>
 
 
 </div>

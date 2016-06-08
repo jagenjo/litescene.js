@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -142,7 +143,7 @@
 
 /**
 * This class contains all the info about a resource and it works as a template for any resource class
-* Keep in mind that there are many resource classes like Meshes or Textures that dont inherit from this class.
+* Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.
 * This class is used mainly to generic file resources like text files (scripts, csvs, etc)
 *
 * @class Resource
@@ -185,7 +186,7 @@ Object.defineProperty( Resource.prototype, &quot;uid&quot;, {
 });
 
 /**
-* Returns an object with a representation of the resource internal data
+* Static method: Returns an object with a representation of the resource internal data
 * The order to obtain that object is:
 * 0. checks if getDataToStore function in resource
 * 1. test for _original_file (File or Blob)
@@ -289,6 +290,10 @@ Resource.prototype.getDataToStore = function()
 	return data;
 }
 
+/** Clone the resource
+* @method clone
+* @return {LS.Resource} the clone of the resource
+*/
 Resource.prototype.clone = function()
 {
 	var r = new LS.Resource();
@@ -303,6 +308,41 @@ Resource.prototype.getCategory = function()
 	if(ext == &quot;js&quot;)
 		return &quot;Script&quot;;
 	return &quot;Data&quot;;
+}
+
+Resource.prototype.assignToNode = function(node)
+{
+	if(!node || this.getCategory() != &quot;Script&quot;)
+		return false;
+
+	var filename = this.fullpath || this.filename;
+	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
+	node.addComponent( script_component );
+	return true;
+}
+
+/** Parses the resource data as subfiles (subfiles are fragments of the code identified by a slash followed by name string)
+* @method getAsSubfiles
+* @return {Object} the object that contains every subfile
+*/
+Resource.prototype.getAsSubfiles = function()
+{
+	if(!this._data)
+		return null;
+	return GL.processFileAtlas( this._data );
+}
+
+/** Parses the resource as HTML code and returns a HTMLElement containing the html code
+* @method getAsHTML
+* @return {HTMLElement} the root HTMLElement that contains the code
+*/
+Resource.prototype.getAsHTML = function()
+{
+	if(!this._data)
+		return null;
+	var container = document.createElement(&quot;div&quot;);
+	container.innerHTML = this._data;
+	return container;
 }
 
 Resource.hasPreview = false; //should this resource use a preview image?

@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -1034,8 +1035,13 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 		for(var i in this.preloaded_resources)
 			resources[ i ] = true;
 
+	//global scripts
+	for(var i = 0; i &lt; this.global_scripts.length; ++i)
+		if( this.global_scripts[i] )
+			resources[ this.global_scripts[i] ] = true;
+
 	//resources from nodes
-	for(var i in this._nodes)
+	for(var i = 0; i &lt; this._nodes.length; ++i)
 		this._nodes[i].getResources( resources );
 
 	//remove the resources that belong to packs or prefabs
@@ -1048,6 +1054,16 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 			if(resource &amp;&amp; (resource.from_prefab || resource.from_pack))
 				delete resources[i];
 		}
+
+	//check if any resource requires another resource (a material that requires textures)
+	for(var i in resources)
+	{
+		var resource = LS.ResourcesManager.resources[i];
+		if(!resource)
+			continue;
+		if(resource.getResources)
+			resource.getResources(resources);
+	}
 
 	//return as object
 	if(!as_array)
@@ -1508,11 +1524,13 @@ SceneTree.prototype.findNodeComponents = function( type )
 * returns a pack containing all the scene and resources, used to save a scene to harddrive
 *
 * @method toPack
-* @param {String} fullpath a fiven fullpath name
+* @param {String} fullpath a given fullpath name, it will be assigned to the scene with the appropiate extension
 * @return {LS.Pack} the pack
 */
-SceneTree.prototype.toPack = function( fullpath )
+SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 {
+	fullpath = fullpath || &quot;unnamed_scene&quot;;
+
 	//change name to valid name
 	var basename = LS.RM.removeExtension( fullpath, true );
 	var final_fullpath = basename + &quot;.SCENE.wbin&quot;;
@@ -1521,7 +1539,7 @@ SceneTree.prototype.toPack = function( fullpath )
 	var scene_json = JSON.stringify( this.serialize() );
 
 	//get all resources
-	var resources = this.getResources(null,true,true);
+	var resources = this.getResources(null,true, !force_all_resources );
 
 	//create pack
 	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { &quot;scene.json&quot;: scene_json } );
@@ -1530,6 +1548,14 @@ SceneTree.prototype.toPack = function( fullpath )
 
 	return pack;
 },
+
+SceneTree.prototype.updateStaticObjects = function()
+{
+	var old = LS.allow_static;
+	LS.allow_static = false;
+	this.collectData();
+	LS.allow_static = old;
+}
 
 LS.SceneTree = SceneTree;
 LS.Classes.SceneTree = SceneTree;

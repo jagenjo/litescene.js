@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -250,16 +251,16 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	}
 
 	//regular mouse dragging
-	if(!mouse_event.dragging)
+	if( mouse_event.eventType != &quot;mousemove&quot; || !mouse_event.dragging )
 		return;
 
 	var changed = false;
 
 	if(this.mode == CameraController.FIRSTPERSON)
 	{
-		cam.rotate(-mouse_event.deltax * this.rot_speed,[0,1,0]);
+		cam.rotate(-mouse_event.deltax * this.rot_speed,LS.TOP);
 		cam.updateMatrices();
-		var right = cam.getLocalVector([1,0,0]);
+		var right = cam.getLocalVector(LS.RIGHT);
 
 		if(is_global_camera)
 		{
@@ -293,7 +294,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			}
 			else
 			{
-				node.transform.translate( delta );
+				node.transform.translateGlobal( delta );
 				cam.updateMatrices();
 			}
 
@@ -348,9 +349,9 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			var center = vec3.create();
 			cam.getCenter( center );
 			if(is_global_camera)
-				cam.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+				cam.orbit( -mouse_event.deltax * this.rot_speed, LS.TOP, center );
 			else
-				node.transform.orbit( -mouse_event.deltax * this.rot_speed, [0,1,0], center );
+				node.transform.orbit( -mouse_event.deltax * this.rot_speed, LS.TOP, center );
 			changed = true;
 		}
 		else
@@ -362,7 +363,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 			if(is_global_camera)
 				cam.move( delta );
 			else
-				node.transform.translate( delta );
+				node.transform.translateGlobal( delta );
 			cam.updateMatrices();
 			changed = true;
 		}
@@ -379,7 +380,7 @@ CameraController.prototype.testOriginPlane = function(x,y, result)
 	var result = result || vec3.create();
 
 	//test against plane at 0,0,0
-	if( geo.testRayPlane( ray.start, ray.direction, [0,0,0], [0,1,0], result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, LS.ZEROS, LS.TOP, result ) )
 		return true;
 	return false;
 }
@@ -394,7 +395,7 @@ CameraController.prototype.testPerpendicularPlane = function(x,y, center, result
 	var result = result || vec3.create();
 
 	//test against plane
-	if( geo.testRayPlane( ray.start, ray.direction, center, front, result ) )
+	if( geo.testRayPlane( ray.origin, ray.direction, center, front, result ) )
 		return true;
 	return false;
 }

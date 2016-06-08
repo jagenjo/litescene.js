@@ -122,16 +122,29 @@ function Player(options)
 	//bind all the events 
 	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
 	this.gl.onupdate = LS.Player.prototype._onupdate.bind(this);
-	this.gl.onmousedown = LS.Player.prototype._onmouse.bind(this);
-	this.gl.onmousemove = LS.Player.prototype._onmouse.bind(this);
-	this.gl.onmouseup = LS.Player.prototype._onmouse.bind(this);
-	this.gl.onmousewheel = LS.Player.prototype._onmouse.bind(this);
-	this.gl.onkeydown = LS.Player.prototype._onkey.bind(this);
-	this.gl.onkeyup = LS.Player.prototype._onkey.bind(this);
+
+	var mouse_event_callback = LS.Player.prototype._onmouse.bind(this);
+	this.gl.onmousedown = mouse_event_callback;
+	this.gl.onmousemove = mouse_event_callback;
+	this.gl.onmouseup = mouse_event_callback;
+	this.gl.onmousewheel = mouse_event_callback;
+
+	var key_event_callback = LS.Player.prototype._onkey.bind(this);
+	this.gl.onkeydown = key_event_callback;
+	this.gl.onkeyup = key_event_callback;
+
+	var gamepad_event_callback = LS.Player.prototype._ongamepad.bind(this);
+	this.gl.ongamepadconnected = gamepad_event_callback;
+	this.gl.ongamepaddisconnected = gamepad_event_callback;
+	this.gl.ongamepadButtonDown = gamepad_event_callback;
+	this.gl.ongamepadButtonUp = gamepad_event_callback;
 
 	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+	gl.captureGamepad(true);
+
+	LS.Input.init();
 
 	//launch render loop
 	gl.animate();
@@ -219,9 +232,12 @@ Player.prototype.pause = function()
 
 Player.prototype.play = function()
 {
+	if(this.state == "playing")
+		return;
 	if(this.debug)
 		console.log("Start");
 	this.state = "playing";
+	LS.Input.reset(); //this force some events to be sent
 	this.scene.start();
 }
 
@@ -259,6 +275,7 @@ Player.prototype._onupdate = function(dt)
 		return;
 
 	LS.Tween.update(dt);
+	LS.Input.update(dt);
 
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
@@ -277,7 +294,7 @@ Player.prototype._onmouse = function(e)
 	if(this.state != "playing")
 		return;
 
-	LEvent.trigger( this.scene, e.eventType, e );
+	LEvent.trigger( this.scene, e.eventType || e.type, e );
 
 	//hardcoded event handlers in the player
 	if(this.onMouse)
@@ -293,10 +310,27 @@ Player.prototype._onkey = function(e)
 	if(this.onKey)
 	{
 		var r = this.onKey(e);
-		if(r) return;
+		if(r)
+			return;
 	}
 
-	LEvent.trigger( this.scene, e.eventType, e );
+	LEvent.trigger( this.scene, e.eventType || e.type, e );
+}
+
+Player.prototype._ongamepad = function(e)
+{
+	if(this.state != "playing")
+		return;
+
+	//hardcoded event handlers in the player
+	if(this.onGamepad)
+	{
+		var r = this.onGamepad(e);
+		if(r)
+			return;
+	}
+
+	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
 Player.prototype.renderLoadingBar = function()

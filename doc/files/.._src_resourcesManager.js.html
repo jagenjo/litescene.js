@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -345,7 +346,7 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Cleans resource name (removing double slashes)
+	* Cleans resource name (removing double slashes to avoid problems)
 	*
 	* @method cleanFullpath
 	* @param {String} fullpath
@@ -355,6 +356,13 @@ var ResourcesManager = {
 	{
 		if(!fullpath)
 			return &quot;&quot;;
+
+		if( fullpath.indexOf(&quot;//&quot;) == -1 )
+		{
+			if(fullpath.charCodeAt(0) == 47) // the &#x27;/&#x27; char
+				return fullpath.substr(1);
+			return fullpath;
+		}
 
 		//clean up the filename (to avoid problems with //)
 		if(fullpath.indexOf(&quot;://&quot;) == -1)
@@ -662,7 +670,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedSuccess, true );
+				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedEnd, true );
 			},
 			error: function(err) { 	
 				LS.ResourcesManager._resourceLoadedError(url,err);
@@ -714,7 +722,10 @@ var ResourcesManager = {
 		//ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
+			{
+				LS.ResourcesManager._resourceLoadedEnd( url, null ); //to remove it from loading 
 				return;
+			}
 
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
@@ -993,14 +1004,18 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Tells if it is loading resources
+	* Tells if it is loading resources (or an specific resource)
 	*
 	* @method isLoading
 	* @return {Boolean}
 	*/
-	isLoading: function()
+	isLoading: function( fullpath )
 	{
-		return this.num_resources_being_loaded &gt; 0;
+		if(!fullpath)
+			return this.num_resources_being_loaded &gt; 0;
+		if(this.resources_being_loaded[ fullpath ] || this.resources_being_processed[ fullpath ])
+			return true;
+		return false;
 	},	
 
 	/**
@@ -1122,25 +1137,28 @@ var ResourcesManager = {
 
 	//*************************************
 
-	//Called after a resource has been loaded successfully and processed
-	_resourceLoadedSuccess: function(url,res)
+	//Called after a resource has been loaded and processed
+	_resourceLoadedEnd: function(url,res)
 	{
 		if( LS.ResourcesManager.debug )
 			console.log(&quot;RES: &quot; + url + &quot; ---&gt; &quot; + LS.ResourcesManager.num_resources_being_loaded);
 
-		for(var i in LS.ResourcesManager.resources_being_loaded[url])
+		if(res)
 		{
-			if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-				LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
-		}
+			for(var i in LS.ResourcesManager.resources_being_loaded[url])
+			{
+				if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
+					LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
+			}
 
-		//triggers &#x27;once&#x27; callbacks
-		if(LS.ResourcesManager.resource_once_callbacks[ url ])
-		{
-			var v = LS.ResourcesManager.resource_once_callbacks[url];
-			for(var i in v)
-				v[i](url, res);
-			delete LS.ResourcesManager.resource_once_callbacks[url];
+			//triggers &#x27;once&#x27; callbacks
+			if(LS.ResourcesManager.resource_once_callbacks[ url ])
+			{
+				var v = LS.ResourcesManager.resource_once_callbacks[url];
+				for(var i in v)
+					v[i](url, res);
+				delete LS.ResourcesManager.resource_once_callbacks[url];
+			}
 		}
 
 		//two pases, one for launching, one for removing
@@ -1148,7 +1166,10 @@ var ResourcesManager = {
 		{
 			delete LS.ResourcesManager.resources_being_loaded[url];
 			LS.ResourcesManager.num_resources_being_loaded--;
-			LEvent.trigger( LS.ResourcesManager, &quot;resource_loaded&quot;, url );
+			if(res)
+				LEvent.trigger( LS.ResourcesManager, &quot;resource_loaded&quot;, url );
+			else
+				LEvent.trigger( LS.ResourcesManager, &quot;resource_problem_loading&quot;, url );
 			LEvent.trigger( LS.ResourcesManager, &quot;loading_resources_progress&quot;, 1.0 - LS.ResourcesManager.num_resources_being_loaded / LS.ResourcesManager._total_resources_to_load );
 			if( LS.ResourcesManager.num_resources_being_loaded == 0)
 			{

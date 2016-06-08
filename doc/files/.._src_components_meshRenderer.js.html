@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -197,6 +198,9 @@ function MeshRenderer(o)
 
 	this.material = null;
 
+	this._must_update_static = true; //used in static meshes
+	this._transform_version = -1;
+
 	if(o)
 		this.configure(o);
 
@@ -306,7 +310,7 @@ MeshRenderer.prototype.getMesh = function() {
 		return null;
 
 	if( this.mesh.constructor === String )
-		return LS.ResourcesManager.meshes[this.mesh];
+		return LS.ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
@@ -363,6 +367,13 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!RI)
 		this._RI = RI = new LS.RenderInstance( this._root, this );
 
+	var is_static = this._root.flags &amp;&amp; this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	//optimize
+	if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
+		return instances.push( RI );
+
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
@@ -379,10 +390,9 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var material = null;
 	if(this.material)
 		material = LS.ResourcesManager.getResource( this.material );
-	RI.setMaterial( material || this._root.getMaterial() );
-
-	//if(!mesh.indexBuffers[&quot;wireframe&quot;])
-	//	mesh.computeWireframe();
+	else
+		material = this._root.getMaterial();
+	RI.setMaterial( material );
 
 	//buffers from mesh and bounding
 	RI.setMesh( mesh, this.primitive );
@@ -420,10 +430,29 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.textured_points &amp;&amp; RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;])
 		delete RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;];
 
+	//mark it as ready once no more changes should be applied
+	if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this.isLoading() )
+	{
+		this._must_update_static = false;
+		this._transform_version = transform ? transform._version : 0;
+	}
+
 	instances.push( RI );
 }
 
-
+//test if any of the assets is being loaded
+MeshRenderer.prototype.isLoading = function()
+{
+	if( this.mesh &amp;&amp; LS.ResourcesManager.isLoading( this.mesh ))
+		return true;
+	if( this.lod_mesh &amp;&amp; LS.ResourcesManager.isLoading( this.lod_mesh ))
+		return true;
+	if( this.material &amp;&amp; LS.ResourcesManager.isLoading( this.material ))
+		return true;
+	if(this._root &amp;&amp; this._root.material &amp;&amp; this._root.material.constructor === String &amp;&amp; LS.ResourcesManager.isLoading( this._root.material ))
+		return true;
+	return false;
+}
 
 
 LS.registerComponent( MeshRenderer );

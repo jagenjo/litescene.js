@@ -22,6 +22,7 @@ var LS = {
 
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
+	Globals: {}, //global scope to share info among scripts
 
 	//for HTML GUI
 	_gui_element: null,

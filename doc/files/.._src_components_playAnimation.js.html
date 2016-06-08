@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -173,7 +174,7 @@ PlayAnimation.PAUSED = 4;
 
 PlayAnimation.MODES = {&quot;loop&quot;:PlayAnimation.LOOP, &quot;pingpong&quot;:PlayAnimation.PINGPONG, &quot;once&quot;:PlayAnimation.ONCE, &quot;paused&quot;:PlayAnimation.PAUSED };
 
-PlayAnimation[&quot;@animation&quot;] = { widget: &quot;resource&quot; };
+PlayAnimation[&quot;@animation&quot;] = { widget: &quot;animation&quot; };
 PlayAnimation[&quot;@root_node&quot;] = { type: &quot;node&quot; };
 PlayAnimation[&quot;@mode&quot;] = { type:&quot;enum&quot;, values: PlayAnimation.MODES };
 
@@ -262,20 +263,24 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		switch( this.mode )
 		{
 			case PlayAnimation.ONCE: 
-					time = end_time; 
-					//time = start_time; //reset after
-					LEvent.trigger( this, &quot;end_animation&quot; );
-					this.playing = false;
+				time = end_time; 
+				//time = start_time; //reset after
+				LEvent.trigger( this, &quot;end_animation&quot; );
+				this.playing = false;
 				break;
-			case PlayAnimation.LOOP: time = ((this.current_time - start_time) % duration) + start_time; break;
 			case PlayAnimation.PINGPONG:
-					if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
-						time = this.current_time % duration; 
-					else
-						time = duration - (this.current_time % duration);
-					break;
+				if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
+					time = this.current_time % duration; 
+				else
+					time = duration - (this.current_time % duration);
+				break;
+			case PlayAnimation.PINGPONG:
+				time = end_time; 
+				break;
+			case PlayAnimation.LOOP: 
 			default: 
-					time = end_time; 
+				time = ((this.current_time - start_time) % duration) + start_time;
+				LEvent.trigger( this, &quot;animation_loop&quot; );
 				break;
 		}
 	}

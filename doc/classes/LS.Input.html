@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Resource</title>
+    <title>LS.Input</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -136,12 +136,12 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Resource Class</h1>
+<h1>LS.Input Class</h1>
 <div class="box meta">
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_resource.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:2</code></a>
+            Defined in: <a href="../files/.._src_input.js.html#l2"><code>..&#x2F;src&#x2F;input.js:2</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -150,16 +150,14 @@
 
 
 <div class="box intro">
-    <p>This class contains all the info about a resource and it works as a template for any resource class
-Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.
-This class is used mainly to generic file resources like text files (scripts, csvs, etc)</p>
+    <p>Input is a static class used to read the input state (keyboard, mouse, gamepad, etc)</p>
 
 </div>
 
     <div class="constructor">
         <h2>Constructor</h2>
-<div id="method_LS.Resource" class="method item">
-    <h3 class="name"><code>LS.Resource</code></h3>
+<div id="method_LS.Input" class="method item">
+    <h3 class="name"><code>LS.Input</code></h3>
 
         <span class="paren">()</span>
 
@@ -173,7 +171,7 @@ This class is used mainly to generic file resources like text files (scripts, cs
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_resource.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:2</code></a>
+        <a href="../files/.._src_input.js.html#l2"><code>..&#x2F;src&#x2F;input.js:2</code></a>
         </p>
 
 
@@ -206,19 +204,23 @@ This class is used mainly to generic file resources like text files (scripts, cs
 
                     <ul class="index-list methods">
                             <li class="index-item method">
-                                <a href="#method_clone">clone</a>
+                                <a href="#method_getGamepad">getGamepad</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_getAsHTML">getAsHTML</a>
+                                <a href="#method_getGamepadAxis">getGamepadAxis</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_getAsSubfiles">getAsSubfiles</a>
+                                <a href="#method_isGamepadButtonPressed">isGamepadButtonPressed</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_Resource.getDataToStore">Resource.getDataToStore</a>
+                                <a href="#method_isMouseButtonPressed">isMouseButtonPressed</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_isMouseInRect">isMouseInRect</a>
 
                             </li>
                     </ul>
@@ -231,139 +233,13 @@ This class is used mainly to generic file resources like text files (scripts, cs
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
-<div id="method_clone" class="method item">
-    <h3 class="name"><code>clone</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type"><a href="../classes/LS.Resource.html" class="crosslink">LS.Resource</a></span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_resources_resource.js.html#l151"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:151</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type"><a href="../classes/LS.Resource.html" class="crosslink">LS.Resource</a></span>:
-                    <p>the clone of the resource</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getAsHTML" class="method item">
-    <h3 class="name"><code>getAsHTML</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">HTMLElement</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_resources_resource.js.html#l193"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:193</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">HTMLElement</span>:
-                    <p>the root HTMLElement that contains the code</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getAsSubfiles" class="method item">
-    <h3 class="name"><code>getAsSubfiles</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_resources_resource.js.html#l182"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:182</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>the object that contains every subfile</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_Resource.getDataToStore" class="method item">
-    <h3 class="name"><code>Resource.getDataToStore</code></h3>
+<div id="method_getGamepad" class="method item">
+    <h3 class="name"><code>getGamepad</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
                 <li class="arg">
-                        <code>resource</code>
+                        <code>index</code>
                 </li>
             </ul><span class="paren">)</span>
         </div>
@@ -381,7 +257,7 @@ This class is used mainly to generic file resources like text files (scripts, cs
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_resource.js.html#l46"><code>..&#x2F;src&#x2F;resources&#x2F;resource.js:46</code></a>
+        <a href="../files/.._src_input.js.html#l80"><code>..&#x2F;src&#x2F;input.js:80</code></a>
         </p>
 
 
@@ -389,19 +265,7 @@ This class is used mainly to generic file resources like text files (scripts, cs
     </div>
 
     <div class="description">
-        <p>Static method: Returns an object with a representation of the resource internal data
-The order to obtain that object is:</p>
-<ol start="0">
-<li>checks if getDataToStore function in resource</li>
-<li>test for _original_file (File or Blob)</li>
-<li>test for _original_data (ArrayBuffer)</li>
-<li>toBinary() (ArrayBuffer)</li>
-<li>toBlob() (Blob)</li>
-<li>toBase64() (String)</li>
-<li>serialize() (Object in JSON format)</li>
-<li>data property</li>
-<li>JSON.stringify(...)</li>
-</ol>
+        <p>Returns a gamepad snapshot if it is connected</p>
 
     </div>
 
@@ -410,12 +274,13 @@ The order to obtain that object is:</p>
 
             <ul class="params-list">
                 <li class="param">
-                        <code class="param-name">resource</code>
-                        <span class="type">Object</span>
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
 
 
                     <div class="param-description">
-                         
+                        <p>the index of the gamepad</p>
+
                     </div>
 
                 </li>
@@ -427,8 +292,368 @@ The order to obtain that object is:</p>
 
             <div class="returns-description">
                         <span class="type">Object</span>:
-                    <p>it has two fields: data and encoding</p>
+                    <p>gamepad snapshot with all the info</p>
 
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getGamepadAxis" class="method item">
+    <h3 class="name"><code>getGamepadAxis</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+                <li class="arg">
+                        <code>name</code>
+                </li>
+                <li class="arg">
+                        <code>raw</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_input.js.html#l93"><code>..&#x2F;src&#x2F;input.js:93</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns a gamepad snapshot if it is connected</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index of the gamepad</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the axis (also you could specify the number)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">raw</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] if you want the data unfiltered</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>axis value from -1 to 1</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_isGamepadButtonPressed" class="method item">
+    <h3 class="name"><code>isGamepadButtonPressed</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_input.js.html#l121"><code>..&#x2F;src&#x2F;input.js:121</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns if the given button of the specified gamepad is pressed</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index of the gamepad</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the button &quot;A&quot;,&quot;B&quot;,&quot;X&quot;,&quot;Y&quot;,&quot;LB&quot;,&quot;RB&quot;,&quot;BACK&quot;,&quot;START&quot;,&quot;LS&quot;,&quot;RS&quot; (also you could specify the number)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Boolean</span>:
+                    <p>if the button is pressed</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_isMouseButtonPressed" class="method item">
+    <h3 class="name"><code>isMouseButtonPressed</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_input.js.html#l146"><code>..&#x2F;src&#x2F;input.js:146</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns if the given mouse button is pressed</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the button  &quot;LEFT&quot;,&quot;MIDDLE,&quot;RIGHT&quot; (also you could specify the number)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Boolean</span>:
+                    <p>if the button is pressed</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_isMouseInRect" class="method item">
+    <h3 class="name"><code>isMouseInRect</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>x</code>
+                </li>
+                <li class="arg">
+                        <code>y</code>
+                </li>
+                <li class="arg">
+                        <code>width</code>
+                </li>
+                <li class="arg">
+                        <code>height</code>
+                </li>
+                <li class="arg">
+                        <code>flip</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_input.js.html#l64"><code>..&#x2F;src&#x2F;input.js:64</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns if the mouse is inside the rect defined by x,y, width,height</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">x</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>x coordinate of the mouse in canvas coordinates</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">y</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>y coordinate of the mouse in canvas coordinates (0 is bottom)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">width</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>rectangle width in pixels</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">height</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>rectangle height in pixels</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">flip</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] if you want to flip the y coordinate</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Boolean</span>:
             </div>
         </div>
 

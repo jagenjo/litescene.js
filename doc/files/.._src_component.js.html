@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -172,7 +173,20 @@ function Component(o)
 		this.configure(o);
 }
 
-//default methods inserted in components that doesnt have a configure or serialize method
+/**
+* Returns the node where this components is attached
+* @method getRootNode
+**/
+Component.prototype.getRootNode = function()
+{
+	return this._root;
+}
+
+/**
+* Configures the components based on an object that contains the serialized info
+* @method configure
+* @param {Object} o object with the serialized info
+**/
 Component.prototype.configure = function(o)
 { 
 	if(!o)
@@ -199,6 +213,11 @@ Component.prototype.configure = function(o)
 	LS.cloneObject(o, this, false, true); 
 }
 
+/**
+* Returns an object with all the info about this component in an object form
+* @method serialize
+* @return {Object} object with the serialized info
+**/
 Component.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this);
@@ -210,6 +229,7 @@ Component.prototype.serialize = function()
 /**
 * Create a clone of this node (the UID is removed to avoid collisions)
 * @method clone
+* @return {*} component clone
 **/
 Component.prototype.clone = function()
 {

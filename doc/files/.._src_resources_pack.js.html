@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -150,8 +151,8 @@
 function Pack(o)
 {
 	this.resource_names = []; 
-	this._data = {}; //here we store the original chunks from the WBin
-	this._resources_data = {};
+	this._data = {}; //the original chunks from the WBin, including the @JSON and @resource_names
+	this._resources_data = {}; //every resource in arraybuffer format
 	if(o)
 		this.configure(o);
 }
@@ -161,7 +162,7 @@ Pack.version = &quot;0.2&quot;; //used to know where the file comes from
 /**
 * configure the pack from an unpacked WBin
 * @method configure
-* @param {*} data
+* @param {Object} data an unpacked WBIN (object with every chunk)
 **/
 Pack.prototype.configure = function( data )
 {
@@ -262,6 +263,7 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	this._modified = true;
 }
 
+//adds to every resource in this pack info about where it came from (the pack)
 Pack.prototype.setResourcesLink = function( value )
 {
 	for(var i = 0; i &lt; this.resource_names.length; ++i)
@@ -277,8 +279,13 @@ Pack.prototype.setResourcesLink = function( value )
 	}
 }
 
+//adds a new resource (or array of resources) to this pack
 Pack.prototype.addResources = function( resource_names, mark_them )
 {
+	if(!resource_names)
+		return;
+	if(resource_names.constructor !== Array)
+		resource_names = [ resource_names ];
 	this.setResources( this.resource_names.concat( resource_names ), mark_them );
 }
 
@@ -351,14 +358,18 @@ Pack.packResources = function( resource_names, base_object )
 
 		if(!data)
 		{
-			console.warning(&quot;Wrong data in resource&quot;);
+			console.warn(&quot;Wrong data in resource&quot;);
 			continue;
 		}
 
 		if(data.constructor === Blob || data.constructor === File)
 		{
-			console.warning(&quot;WBin does not support to store File or Blob, please, use ArrayBuffer&quot;);
-			continue;
+			if(!data.data || data.data.constructor !== ArrayBuffer )
+			{
+				console.warn(&quot;WBin does not support to store File or Blob, please, use ArrayBuffer&quot;);
+				continue;
+			}
+			data = data.data; //because files have an arraybuffer with the data if it was read
 		}
 
 		to_binary[&quot;@RES_&quot; + final_resource_names.length ] = data;

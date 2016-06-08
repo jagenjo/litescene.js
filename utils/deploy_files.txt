@@ -6,6 +6,7 @@
 ../src/core.js
 ../src/defines.js
 ../src/network.js
+../src/input.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
 

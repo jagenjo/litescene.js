@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -151,7 +152,7 @@
 function Script(o)
 {
 	this.enabled = true;
-	this.code = &quot;this.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}&quot;;
+	this.code = this.constructor.templates[&quot;component&quot;];
 
 	this._script = new LScript();
 
@@ -178,6 +179,9 @@ Script.block_execution = false; //avoid executing code
 Script.catch_important_exceptions = true; //catch exception during parsing, otherwise configuration could fail
 
 Script.icon = &quot;mini-icon-script.png&quot;;
+Script.templates = {
+	&quot;component&quot;:&quot;//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}&quot;
+};
 
 Script[&quot;@code&quot;] = {type:&#x27;script&#x27;};
 
@@ -200,11 +204,14 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 	Script.API_events_to_function[ event ] = data;
 }
 
+//init
 Script.defineAPIFunction( &quot;onStart&quot;, Script.BIND_TO_SCENE, &quot;start&quot; );
 Script.defineAPIFunction( &quot;onFinish&quot;, Script.BIND_TO_SCENE, &quot;finish&quot; );
 Script.defineAPIFunction( &quot;onPrefabReady&quot;, Script.BIND_TO_NODE, &quot;prefabReady&quot; );
+//behaviour
 Script.defineAPIFunction( &quot;onUpdate&quot;, Script.BIND_TO_SCENE, &quot;update&quot; );
 Script.defineAPIFunction( &quot;onClicked&quot;, Script.BIND_TO_NODE, &quot;clicked&quot; );
+//rendering
 Script.defineAPIFunction( &quot;onSceneRender&quot;, Script.BIND_TO_SCENE, &quot;beforeRender&quot; );
 Script.defineAPIFunction( &quot;onCollectRenderInstances&quot;, Script.BIND_TO_NODE, &quot;collectRenderInstances&quot; );
 Script.defineAPIFunction( &quot;onRender&quot;, Script.BIND_TO_NODE, &quot;beforeRenderInstances&quot; );
@@ -213,7 +220,20 @@ Script.defineAPIFunction( &quot;onRenderGUI&quot;, Script.BIND_TO_SCENE, &quot;r
 Script.defineAPIFunction( &quot;onRenderHelpers&quot;, Script.BIND_TO_SCENE, &quot;renderHelpers&quot; );
 Script.defineAPIFunction( &quot;onEnableFrameContext&quot;, Script.BIND_TO_SCENE, &quot;enableFrameContext&quot; );
 Script.defineAPIFunction( &quot;onShowFrameContext&quot;, Script.BIND_TO_SCENE, &quot;showFrameContext&quot; );
+//input
+Script.defineAPIFunction( &quot;onMouseDown&quot;, Script.BIND_TO_SCENE, &quot;mousedown&quot; );
+Script.defineAPIFunction( &quot;onMouseMove&quot;, Script.BIND_TO_SCENE, &quot;mousemove&quot; );
+Script.defineAPIFunction( &quot;onMouseUp&quot;, Script.BIND_TO_SCENE, &quot;mouseup&quot; );
+Script.defineAPIFunction( &quot;onMouseWheel&quot;, Script.BIND_TO_SCENE, &quot;mousewheel&quot; );
+Script.defineAPIFunction( &quot;onKeyDown&quot;, Script.BIND_TO_SCENE, &quot;keydown&quot; );
+Script.defineAPIFunction( &quot;onKeyUp&quot;, Script.BIND_TO_SCENE, &quot;keyup&quot; );
+Script.defineAPIFunction( &quot;onGamepadConnected&quot;, Script.BIND_TO_SCENE, &quot;gamepadconnected&quot; );
+Script.defineAPIFunction( &quot;onGamepadDisconnected&quot;, Script.BIND_TO_SCENE, &quot;gamepaddisconnected&quot; );
+Script.defineAPIFunction( &quot;onButtonDown&quot;, Script.BIND_TO_SCENE, &quot;buttondown&quot; );
+Script.defineAPIFunction( &quot;onButtonUp&quot;, Script.BIND_TO_SCENE, &quot;buttonup&quot; );
+//dtor
 Script.defineAPIFunction( &quot;onDestroy&quot;, Script.BIND_TO_NODE, &quot;destroy&quot; );
+
 
 Script.coding_help = &quot;\n\
 For a complete guide check: &lt;a href=&#x27;https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md&#x27; target=&#x27;blank&#x27;&gt;Scripting Guide&lt;/a&gt;\n\
@@ -246,6 +266,24 @@ Object.defineProperty( Script.prototype, &quot;context&quot;, {
 		if(this._script)
 				return this._script._context;
 		return null;
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
+Object.defineProperty( Script.prototype, &quot;name&quot;, {
+	set: function(v){ 
+		console.error(&quot;Script: name cannot be assigned&quot;);
+	},
+	get: function() { 
+		if(!this._script.code)
+			return;
+		var line = this._script.code.substr(0,32);
+		if(line.indexOf(&quot;//@&quot;) != 0)
+			return null;
+		var last = line.indexOf(&quot;\n&quot;);
+		if(last == -1)
+			last = undefined;
+		return line.substr(3,last - 3);
 	},
 	enumerable: false //if it was enumerable it would be serialized
 });
@@ -313,7 +351,7 @@ Script.prototype.processCode = function( skip_events )
 		var old = this._stored_properties || this.getContextProperties();
 
 		//compiles and executes the context
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
 		if(!skip_events)
 			this.hookEvents();
 
@@ -555,6 +593,10 @@ Script.prototype.onAddedToScene = function( scene )
 	if( this._name &amp;&amp; !LS.Script.active_scripts[ this._name ] )
 		LS.Script.active_scripts[ this._name ] = this;
 
+	//avoid to parse it again
+	if(this._script &amp;&amp; this._script._context &amp;&amp; this._script._context._initialized )
+		return;
+
 	if( !this.constructor.catch_important_exceptions )
 	{
 		this.processCode();
@@ -591,15 +633,7 @@ Script.prototype.onRemovedFromScene = function(scene)
 //used in editor
 Script.prototype.getComponentTitle = function()
 {
-	if(!this._script.code)
-		return;
-	var line = this._script.code.substr(0,32);
-	if(line.indexOf(&quot;//@&quot;) != 0)
-		return null;
-	var last = line.indexOf(&quot;\n&quot;);
-	if(last == -1)
-		last = undefined;
-	return line.substr(3,last - 3);
+	return this.name; //name is a getter that reads the name from the code comment
 }
 
 
@@ -690,6 +724,8 @@ ScriptFromFile.coding_help = Script.coding_help;
 
 Object.defineProperty( ScriptFromFile.prototype, &quot;filename&quot;, {
 	set: function(v){ 
+		if(v) //to avoid double slashes
+			v = LS.ResourcesManager.cleanFullpath( v );
 		this._filename = v;
 		this.processCode();
 	},
@@ -711,8 +747,30 @@ Object.defineProperty( ScriptFromFile.prototype, &quot;context&quot;, {
 	enumerable: false //if it was enumerable it would be serialized
 });
 
+Object.defineProperty( ScriptFromFile.prototype, &quot;name&quot;, {
+	set: function(v){ 
+		console.error(&quot;Script: name cannot be assigned&quot;);
+	},
+	get: function() { 
+		if(!this._script.code)
+			return;
+		var line = this._script.code.substr(0,32);
+		if(line.indexOf(&quot;//@&quot;) != 0)
+			return null;
+		var last = line.indexOf(&quot;\n&quot;);
+		if(last == -1)
+			last = undefined;
+		return line.substr(3,last - 3);
+	},
+	enumerable: false //if it was enumerable it would be serialized
+});
+
 ScriptFromFile.prototype.onAddedToScene = function( scene )
 {
+	//avoid to parse it again
+	if(this._script &amp;&amp; this._script._context &amp;&amp; this._script._context._initialized )
+		return;
+
 	if( !this.constructor.catch_important_exceptions )
 	{
 		this.processCode();
@@ -763,14 +821,14 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 
 		//compiles and executes the context
 		var old = this._stored_properties || this.getContextProperties();
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene });
+		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
 		if(!skip_events)
 			this.hookEvents();
 		this.setContextProperties( old );
 		this._stored_properties = null;
 
 		//try to catch up with all the events missed while loading the script
-		if( !this._script._context._initialized )
+		if( this._script._context &amp;&amp; !this._script._context._initialized )
 		{
 			if( this._root &amp;&amp; this._script._context.onAddedToNode )
 			{
@@ -827,6 +885,12 @@ ScriptFromFile.prototype.getResources = function(res)
 		return;
 	ctx.getResources( res );
 }
+
+ScriptFromFile.prototype.getCodeResource = function()
+{
+	return LS.ResourcesManager.getResource( this.filename );
+}
+
 
 ScriptFromFile.prototype.getCode = function()
 {

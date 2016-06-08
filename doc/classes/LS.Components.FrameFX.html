@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/resources/prefab.js</title>
+    <title>LS.Components.FrameFX</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -136,304 +136,44 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/resources/prefab.js</h1>
+<h1>LS.Components.FrameFX Class</h1>
+<div class="box meta">
 
-<div class="file">
-    <pre class="code prettyprint linenums">
 
-/**
-* Prefab work in two ways: 
-* - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)
-* - When a node in the scene was created from a Prefab, the prefab is loaded so the associated resources are recovered, but the node structure is not modified.
-* 
-* @class Prefab
-* @constructor
-*/
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_components_frameFX.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;frameFX.js:1</code></a>
+        </div>
 
-function Prefab(o)
-{
-	this.resource_names = []; 
-	this.prefab_json = null;
-	this.prefab_data = null; //json object
-	this._resources_data = {}; //data as it was loaded from the WBin
+            Module: <a href="../modules/LS.html">LS</a>
 
-	if(o)
-		this.configure(o);
-}
+</div>
 
-Prefab.version = &quot;0.2&quot;; //used to know where the file comes from 
 
-/**
-* configure the prefab
-* @method configure
-* @param {*} data
-**/
+<div class="box intro">
+    <p>This component allow to create basic FX applied to the whole scene</p>
 
-Prefab.prototype.configure = function(data)
-{
-	if(!data)
-		throw(&quot;No prefab data found&quot;);
+</div>
 
-	if(data.hasOwnProperty(&quot;prefab_data&quot;))
-	{
-		this.prefab_data = data.prefab_data;
-		this.prefab_json = data.prefab_json || JSON.stringify( this.prefab_data );
-	}
-	else
-	{
-		//read from WBin info
-		var prefab_json = data[&quot;@json&quot;];
-		if(!prefab_json)
-		{
-			console.warn(&quot;No JSON found in prefab&quot;);
-			return;
-		}
 
-		var version = data[&quot;@version&quot;]; //not used yet
-		this.prefab_json = prefab_json;
-		this.prefab_data = JSON.parse( prefab_json );
-	}
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
 
-	this.resource_names = data[&quot;@resources_name&quot;] || data.resource_names;
+    </ul>
 
-	//extract resource names
-	if(this.resource_names)
-	{
-		var resources = {};
-		for(var i in this.resource_names)
-		{
-			if(!version) //legacy
-				resources[ this.resource_names[i] ] = data[ this.resource_names[i] ];
-			else
-				resources[ this.resource_names[i] ] = data[ &quot;@RES_&quot; + i ];
-		}
-		this._resources_data = resources;
-	}
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
 
-	//store resources in ResourcesManager
-	this.processResources();
-}
 
-Prefab.fromBinary = function(data)
-{
-	if(data.constructor == ArrayBuffer)
-		data = WBin.load(data, true);
 
-	return new LS.Prefab(data);
-}
 
-//given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
-Prefab.prototype.processResources = function()
-{
-	if(!this._resources_data)
-		return;
+        </div>
 
-	var resources = this._resources_data;
 
-	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
-	//another one contained in this Prefab
-	for(var resname in resources)
-	{
-		if( LS.ResourcesManager.resources[ resname ] )
-			continue; //already loaded
-		LS.ResourcesManager.resources_being_processed[ resname ] = true;
-	}
 
-	//process and store in ResourcesManager
-	for(var resname in resources)
-	{
-		if( LS.ResourcesManager.resources[resname] )
-			continue; //already loaded
 
-		var resdata = resources[resname];
-		if(!resdata)
-		{
-			console.warn(&quot;resource data in prefab is undefined, skipping it:&quot; + resname);
-			continue;
-		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: true } );
-	}
-}
-
-/**
-* Creates an instance of the object inside the prefab
-* @method createObject
-* @return object contained 
-**/
-
-Prefab.prototype.createObject = function()
-{
-	if(!this.prefab_json)
-		throw(&quot;No prefab_json data found&quot;);
-
-	var conf_data = JSON.parse(this.prefab_json);
-
-	if(!conf_data)
-	{
-		console.error(&quot;Prefab data is null&quot;);
-		return null;
-	}
-
-	var node = new LS.SceneNode();
-	node.configure(conf_data);
-	LS.ResourcesManager.loadResources( node.getResources({},true) );
-
-	if(this.fullpath)
-		node.prefab = this.fullpath;
-
-	return node;
-}
-
-/**
-* to create a new prefab, it packs all the data an instantiates the resource
-* @method Prefab.createPrefab
-* @param {String} filename a name for this prefab (if wbin is not appended, it will)
-* @param {Object} node_data an object containing all the node data to store
-* @param {Array} resource_names_list an array with the name of the resources to store
-* @return object containing the prefab data ready to be converted to WBin (it also stores _original_data with the WBin)
-**/
-Prefab.createPrefab = function( filename, node_data, resource_names_list )
-{
-	if(!filename)
-		return;
-
-	if(!node_data)
-		throw(&quot;No node_data in prefab&quot;);
-
-	filename = filename.replace(/ /gi,&quot;_&quot;);
-	resource_names_list = resource_names_list || [];
-
-	//LS.clearUIds( node_data ); //remove uids of nodes and components
-	node_data.object_type = &quot;SceneNode&quot;;
-
-	var prefab = new LS.Prefab();
-	var ext = LS.ResourcesManager.getExtension(filename);
-	if(ext != &quot;wbin&quot;)
-		filename += &quot;.wbin&quot;;
-
-	//checkfilenames and rename them to short names
-	prefab.filename = filename;
-	prefab.resource_names = resource_names_list;
-	prefab.prefab_data = node_data;
-	prefab.prefab_json = JSON.stringify( prefab.prefab_data );
-
-	//get all the resources and store them in a WBin
-	var bindata = LS.Prefab.packResources( resource_names_list, { &quot;@json&quot;: prefab.prefab_json, &quot;@version&quot;: Prefab.version } );
-	prefab._original_data = bindata;
-
-	return prefab;
-}
-
-//Given a list of resources and some base data, it creates a WBin with all the data
-Prefab.packResources = function( resource_names_list, base_data )
-{
-	var to_binary = base_data || {};
-	var resource_names = [];
-
-	if(resource_names_list &amp;&amp; resource_names_list.length)
-	{
-		for(var i = 0; i &lt; resource_names_list.length; ++i)
-		{
-			var res_name = resource_names_list[i];
-			var resource = LS.ResourcesManager.resources[ res_name ];
-			if(!resource)
-				continue;
-
-			var data = null;
-			if(resource._original_data) //must be string or bytes
-				data = resource._original_data;
-			else
-			{
-				var data_info = LS.Resource.getDataToStore( resource );
-				data = data_info.data;
-			}
-
-			if(!data)
-			{
-				console.warning(&quot;Wrong data in resource&quot;);
-				continue;
-			}
-
-			if(data.constructor === Blob || data.constructor === File)
-			{
-				console.warning(&quot;WBin does not support to store File or Blob, please convert to ArrayBuffer using FileReader&quot;);
-				continue;
-			}
-
-			to_binary[&quot;@RES_&quot; + resource_names.length ] = data;
-			resource_names.push( res_name );
-		}
-	}
-
-	to_binary[&quot;@resources_name&quot;] = resource_names;
-	return WBin.create( to_binary, &quot;Prefab&quot; );
-}
-
-Prefab.prototype.updateFromNode = function( node, clear_uids )
-{
-	var data = node.serialize(true);
-	if(clear_uids)
-		LS.clearUIds(data); //remove UIDs
-	this.prefab_data = data;
-	this.prefab_json = JSON.stringify( data );
-}
-
-Prefab.prototype.flagResources = function()
-{
-	if(!this.resource_names)
-		return;
-
-	for(var i = 0; i &lt; this.resource_names.length; ++i)
-	{
-		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
-		if(!resource)
-			continue;
-
-		resource.from_prefab = this.fullpath || this.filename || true;
-	}
-}
-
-Prefab.prototype.setResourcesLink = function( value )
-{
-	for(var i = 0; i &lt; this.resource_names.length; ++i)
-	{
-		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
-		if(!resource)
-			continue;
-		if(value)
-			resource.from_prefab = value;
-		else
-			delete resource.from_prefab;
-	}
-}
-
-//search for nodes using this prefab and creates the nodes
-Prefab.prototype.applyToNodes = function( scene )
-{
-	scene = scene || LS.GlobalScene;	
-	var name = this.fullpath || this.filename;
-
-	for(var i = 0; i &lt; scene._nodes.length; ++i)
-	{
-		var node = scene._nodes[i];
-		if(node.prefab != name)
-			continue;
-		node.reloadFromPrefab();
-	}
-}
-
-Prefab.prototype.getDataToStore = function()
-{
-	this.prefab_json = JSON.stringify( this.prefab_data );
-	return LS.Prefab.packResources( this.resource_names, { &quot;@json&quot;: this.prefab_json, &quot;@version&quot;: LS.Prefab.version } );
-}
-
-LS.Prefab = Prefab;
-LS.registerResourceClass( Prefab );
-
-    </pre>
+    </div>
 </div>
                     </div>
                 </div>

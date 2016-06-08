@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -185,7 +186,7 @@ WBin.LUMPHEADER_SIZE = 4+4+2+WBin.LUMPNAME_SIZE; //32 bytes: 4 start, 4 length, 
 
 WBin.CODES = {
 	&quot;ArrayBuffer&quot;:&quot;AB&quot;, &quot;Int8Array&quot;:&quot;I1&quot;, &quot;Uint8Array&quot;:&quot;i1&quot;, &quot;Int16Array&quot;:&quot;I2&quot;, &quot;Uint16Array&quot;:&quot;i2&quot;, &quot;Int32Array&quot;:&quot;I4&quot;, &quot;Uint32Array&quot;:&quot;i4&quot;,
-	&quot;Float32Array&quot;:&quot;F4&quot;, &quot;Float64Array&quot;: &quot;F8&quot;, &quot;Object&quot;:&quot;OB&quot;,&quot;String&quot;:&quot;ST&quot;,&quot;WString&quot;:&quot;WS&quot;,&quot;Number&quot;:&quot;NU&quot;, &quot;null&quot;:&quot;00&quot;
+	&quot;Float32Array&quot;:&quot;F4&quot;, &quot;Float64Array&quot;: &quot;F8&quot;, &quot;Object&quot;:&quot;OB&quot;,&quot;WideObject&quot;:&quot;WO&quot;,&quot;String&quot;:&quot;ST&quot;,&quot;WideString&quot;:&quot;WS&quot;,&quot;Number&quot;:&quot;NU&quot;, &quot;null&quot;:&quot;00&quot;
 };
 
 WBin.REVERSE_CODES = {};
@@ -285,9 +286,13 @@ WBin.create = function( origin, origin_class_name )
 
 		var data_length = 0;
 
-		//convert all to typed arrays
-		if(typeof(data) == &quot;string&quot;)
-			data = WBin.stringToUint8Array(data);
+		//convert any string related data to typed arrays
+		if( data &amp;&amp; data.constructor == String )
+		{
+			data = WBin.stringToTypedArray( data );
+			if(data.constructor === Uint16Array) //careful when wide characters found (international characters)
+				code = (code == &quot;OB&quot;) ? &quot;WO&quot; : &quot;WS&quot;;
+		}
 
 		//typed array
 		if(data.buffer &amp;&amp; data.buffer.constructor == ArrayBuffer)
@@ -401,14 +406,16 @@ WBin.load = function( data_array, skip_classname )
 		switch(data_class_name)
 		{
 			case &quot;null&quot;: break;
-			case &quot;String&quot;: lump_final = WBin.Uint8ArrayToString( lump_data ); break;
+			case &quot;WideString&quot;: 
+			case &quot;String&quot;: lump_final = WBin.TypedArrayToString( lump_data ); break;
 			case &quot;Number&quot;: 
 					if(header.version &lt; 0.3) //LEGACY: remove
-						lump_final = parseFloat( WBin.Uint8ArrayToString( lump_data ) );
+						lump_final = parseFloat( WBin.TypedArrayToString( lump_data ) );
 					else
 						lump_final = (new Float64Array( lump_data.buffer ))[0];
 					break;
-			case &quot;Object&quot;: lump_final = JSON.parse( WBin.Uint8ArrayToString( lump_data ) ); break;
+			case &quot;WideObject&quot;: 
+			case &quot;Object&quot;: lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
 			case &quot;ArrayBuffer&quot;: lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment
@@ -462,7 +469,7 @@ WBin.getHeaderInfo = function(data_array)
 	var version = WBin.readFloat32( data_array, 4);
 	var flags = new Uint8Array( data_array.subarray(8,10) );
 	var numlumps = WBin.readUint16(data_array, 10);
-	var classname = WBin.Uint8ArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
+	var classname = WBin.TypedArrayToString( data_array.subarray(12,12 + WBin.CLASSNAME_SIZE) );
 
 	var lumps = [];
 	for(var i = 0; i &lt; numlumps; ++i)
@@ -472,8 +479,8 @@ WBin.getHeaderInfo = function(data_array)
 		var lump = {};
 		lump.start = WBin.readUint32(lumpheader,0);
 		lump.size  = WBin.readUint32(lumpheader,4);
-		lump.code  = WBin.Uint8ArrayToString(lumpheader.subarray(8,10));
-		lump.name  = WBin.Uint8ArrayToString(lumpheader.subarray(10));
+		lump.code  = WBin.TypedArrayToString(lumpheader.subarray(8,10));
+		lump.name  = WBin.TypedArrayToString(lumpheader.subarray(10));
 		lumps.push(lump);
 	}
 
@@ -517,7 +524,7 @@ WBin.stringToUint8Array = function(str, fixed_length)
 	return r;
 }
 
-WBin.Uint8ArrayToString = function(typed_array, same_size)
+WBin.TypedArrayToString = function(typed_array, same_size)
 {
 	var r = &quot;&quot;;
 	for(var i = 0; i &lt; typed_array.length; i++)
@@ -526,6 +533,32 @@ WBin.Uint8ArrayToString = function(typed_array, same_size)
 		else
 			r += String.fromCharCode( typed_array[i] );
 	//return String.fromCharCode.apply(null,typed_array)
+	return r;
+}
+
+WBin.stringToTypedArray = function(str, fixed_length)
+{
+	var r = new Uint8Array( fixed_length ? fixed_length : str.length);
+	var warning = false;
+	for(var i = 0; i &lt; str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		if(c &gt; 255)
+			warning = true;
+		r[i] = c;
+	}
+
+	if(!warning)
+		return r;
+
+	//convert to 16bits per character
+	var r = new Uint16Array( fixed_length ? fixed_length : str.length);
+	for(var i = 0; i &lt; str.length; i++)
+	{
+		var c = str.charCodeAt(i);
+		r[i] = c;
+	}
+
 	return r;
 }
 

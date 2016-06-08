@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -162,6 +163,7 @@ function Transform( o )
 	this._global_matrix = mat4.create();
 
 	this._must_update_matrix = false; //matrix must be redone?
+	this._version = 0;
 
 	/* deprecated
 	if(Object.observe)
@@ -475,15 +477,50 @@ Transform.prototype.serialize = function()
 */
 Transform.prototype.identity = function()
 {
-	vec3.copy(this._position, [0,0,0]);
-	quat.copy(this._rotation, [0,0,0,1]);
-	vec3.copy(this._scaling, [1,1,1]);
+	vec3.copy(this._position, LS.ZEROS );
+	quat.identity( this._rotation );
+	vec3.copy(this._scaling, LS.ONES );
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
+	this._version += 1;
 	this._must_update_matrix = false;
 }
 
 Transform.prototype.reset = Transform.prototype.identity;
+
+/**
+* Sets the rotation to identity
+* @method resetRotation
+*/
+Transform.prototype.resetRotation = function()
+{
+	quat.identity( this._rotation );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the position to 0,0,0
+* @method resetPosition
+*/
+Transform.prototype.resetPosition = function()
+{
+	vec3.copy( this._position, LS.ZEROS );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
+/**
+* Sets the scale to 1,1,1
+* @method resetScale
+*/
+Transform.prototype.resetScale = function()
+{
+	vec3.copy( this._scaling, LS.ONES );
+	this._version += 1;
+	this._must_update_matrix = true;
+}
+
 
 /**
 * Returns a copy of the local position
@@ -594,6 +631,8 @@ Transform.prototype.updateMatrix = function()
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
 	this._must_update_matrix = false;
+	this._version += 1;
+	this.updateDescendants();
 }
 Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 
@@ -823,7 +862,7 @@ Transform.prototype.fromMatrix = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( this._position, M, LS.ZERO );
+		mat4.multiplyVec3( this._position, M, LS.ZEROS );
 
 		//compute scale
 		this._scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -849,6 +888,7 @@ Transform.prototype.fromMatrix = (function() {
 		if(m != this._local_matrix)
 			mat4.copy(this._local_matrix, m);
 		this._must_update_matrix = false;
+		this._version += 1;
 		this._on_change(true);
 	}
 })();
@@ -871,7 +911,7 @@ Transform.fromMatrix4ToTransformData = (function() {
 		//pos
 		var M = temp_mat4;
 		M.set(m);
-		mat4.multiplyVec3( position, M, LS.ZERO );
+		mat4.multiplyVec3( position, M, LS.ZEROS );
 
 		//extract scaling by 
 		scaling[0] = vec3.length( mat4.rotateVec3( temp_vec3, M, LS.RIGHT) );
@@ -934,7 +974,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	if(axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
-		quat.copy(this._rotation, q);
+		quat.copy(this._rotation, q_angle );
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -957,7 +997,7 @@ Transform.prototype.setScale = function(x,y,z)
 }
 
 /**
-* translates object in local coordinates (adds to the position)
+* translates object in local coordinates (using the rotation and the scale)
 * @method translate
 * @param {number} x 
 * @param {number} y
@@ -966,27 +1006,26 @@ Transform.prototype.setScale = function(x,y,z)
 Transform.prototype.translate = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.add( this._position, this._position, [x,y,z] );
+		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
 	else
-		vec3.add( this._position, this._position, x );
+		vec3.add( this._position, this._position, this.transformVector(x) );
 	this._must_update_matrix = true;
 	this._on_change();
 }
 
 /**
-* NOT TESTED
-* translates object in object coordinates (using the rotation and the scale)
-* @method translateLocal
+* translates object in local coordinates (adds to the position)
+* @method translateGlobal
 * @param {number} x 
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translateLocal = function(x,y,z)
+Transform.prototype.translateGlobal = function(x,y,z)
 {
 	if(arguments.length == 3)
-		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
+		vec3.add( this._position, this._position, [x,y,z] );
 	else
-		vec3.add( this._position, this._position, this.transformVector(x) );
+		vec3.add( this._position, this._position, x );
 	this._must_update_matrix = true;
 	this._on_change();
 }
@@ -1478,6 +1517,27 @@ Transform.prototype.applyTransformMatrix = function(matrix, center, is_global)
 }
 */
 
+//marks descendants to be updated
+Transform.prototype.updateDescendants = function()
+{
+	if(!this._root)
+		return;
+	var children = this._root._children;
+	if(!children)
+		return;
+
+	for(var i = 0; i &lt; children.length; ++i)
+	{
+		var node = children[i];
+		if(!node.transform)
+			continue;
+
+		node.transform._must_update_matrix = true;
+		node.transform._version += 1;
+		if(node._children &amp;&amp; node._children.length)
+			node.transform.updateDescendants();
+	}
+}
 
 
 LS.registerComponent( Transform );

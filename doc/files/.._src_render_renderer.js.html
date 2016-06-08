@@ -49,9 +49,9 @@
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GlobalFX.html">LS.Components.GlobalFX</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
@@ -69,6 +69,7 @@
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
                                 <li><a href="../classes/LS.Light.html">LS.Light</a></li>
@@ -197,7 +198,7 @@ var Renderer = {
 	_projection_matrix: mat4.create(),
 	_viewprojection_matrix: mat4.create(),
 	_2Dviewprojection_matrix: mat4.create(),
-	_mvp_matrix: mat4.create(),
+
 	_temp_matrix: mat4.create(),
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
@@ -223,6 +224,10 @@ var Renderer = {
 		//draw helps rendering debug stuff
 		LS.Draw.init();
 		LS.Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
+
+		//enable webglCanvas lib so it is easy to render in 2D
+		if(global.enableWebGLCanvas &amp;&amp; !gl.canvas.canvas2DtoWebGL_enabled)
+			global.enableWebGLCanvas( gl.canvas );
 
 		//there are different render passes, they have different render functions
 		this.registerRenderPass( &quot;color&quot;, { id: COLOR_PASS, render_instance: this.renderColorPassInstance } );
@@ -395,6 +400,7 @@ var Renderer = {
 	* @method renderFrame
 	* @param {Camera} camera 
 	* @param {Object} render_settings
+	* @param {SceneTree} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
@@ -409,17 +415,8 @@ var Renderer = {
 		//compute the rendering order
 		this.sortRenderInstances( camera, render_settings );
 
-		//scissors test for the gl.clear, otherwise the clear affects the full viewport
-		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
-		gl.enable(gl.SCISSOR_TEST);
-
-		//clear buffer 
-		var info = scene.info;
-		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-		if(render_settings.ignore_clear != true &amp;&amp; (camera.clear_color || camera.clear_depth) )
-			gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
-
-		gl.disable(gl.SCISSOR_TEST);
+		//clear buffer
+		this.clearBuffer( camera, render_settings );
 
 		//send before events
 		LEvent.trigger(scene, &quot;beforeRenderScene&quot;, camera );
@@ -479,7 +476,6 @@ var Renderer = {
 			}
 		}
 
-		//compute matrices
 		camera.updateMatrices();
 
 		//store matrices locally
@@ -493,9 +489,6 @@ var Renderer = {
 		//set as the current camera
 		this._current_camera = camera;
 
-		//prepare camera
-		camera.fillCameraShaderUniforms( scene );
-
 		//Draw allows to render debug info easily
 		Draw.reset(); //clear 
 		Draw.setCameraPosition( camera.getEye() );
@@ -503,6 +496,23 @@ var Renderer = {
 
 		LEvent.trigger( camera, &quot;afterEnabled&quot;, render_settings );
 		LEvent.trigger( scene, &quot;afterCameraEnabled&quot;, camera ); //used to change stuff according to the current camera (reflection textures)
+	},
+
+	//clear color using camerae info
+	clearBuffer: function( camera, render_settings )
+	{
+		if( render_settings.ignore_clear || (!camera.clear_color &amp;&amp; !camera.clear_depth) )
+			return;
+
+		//scissors test for the gl.clear, otherwise the clear affects the full viewport
+		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
+		gl.enable(gl.SCISSOR_TEST);
+
+		//clear buffer 
+		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
+		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
+
+		gl.disable(gl.SCISSOR_TEST);
 	},
 
 	sortRenderInstances: function( camera, render_settings )
@@ -585,7 +595,10 @@ var Renderer = {
 	{
 		var scene = this._current_scene;
 		if(!scene)
-			return console.warn(&quot;LS.Renderer.renderInstances: no scene found&quot;);
+		{
+			console.warn(&quot;LS.Renderer.renderInstances: no scene found&quot;);
+			return 0;
+		}
 
 		var pass = this._current_pass;
 		var camera = this._current_camera;
@@ -617,7 +630,7 @@ var Renderer = {
 
 		var render_instance_func = pass.render_instance;
 		if(!render_instance_func)
-			return;
+			return 0;
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i &lt; l; ++i)
@@ -656,6 +669,8 @@ var Renderer = {
 				instance._camera_visibility |= camera_index_flag;
 		}
 
+		var start = this._rendered_instances;
+
 		//for each render instance
 		for(var i = 0, l = render_instances.length; i &lt; l; ++i)
 		{
@@ -685,6 +700,8 @@ var Renderer = {
 
 		//and finally again
 		this.resetGLState( render_settings );
+
+		return this._rendered_instances - start;
 	},
 
 	/**
@@ -733,16 +750,14 @@ var Renderer = {
 	//this function is in charge of rendering the regular color pass (used also for reflections)
 	renderColorPassInstance: function( instance, render_settings )
 	{
-		var near_lights = this.getNearLights( instance, this._near_lights );
-
 		//render instance
 		var renderered = false;
 		if( instance.material &amp;&amp; instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, render_settings, near_lights );
+			renderered = instance.material.renderInstance( instance, render_settings );
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, near_lights );
+			this.renderStandardColorMultiPassLightingInstance( instance, render_settings );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -768,7 +783,7 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} lights array containing al the lights affecting this RI
 	*/
-	renderStandardColorMultiPassLightingInstance: function( instance, render_settings, lights )
+	renderStandardColorMultiPassLightingInstance: function( instance, render_settings )
 	{
 		var camera = this._current_camera;
 		var node = instance.node;
@@ -776,17 +791,13 @@ var Renderer = {
 		var scene = this._current_scene;
 		var renderer_uniforms = this._render_uniforms;
 		var instance_final_query = instance._final_query;
+		var lights = this.getNearLights( instance, this._near_lights );
 
 		//compute matrices
 		var model = instance.matrix;
-		if(instance.flags &amp; RI_IGNORE_VIEWPROJECTION)
-			this._mvp_matrix.set( model );
-		else
-			mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_settings);
@@ -824,6 +835,7 @@ var Renderer = {
 		{
 			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:&quot;&quot;, LAST_PASS:&quot;&quot;, USE_AMBIENT_ONLY:&quot;&quot; });
 			query.add( scene._query );
+			query.add( camera._query );
 			query.add( instance_final_query ); //contains node, material and instance macros
 
 			if( ignore_lights )
@@ -927,10 +939,9 @@ var Renderer = {
 
 		//compute matrices
 		var model = instance.matrix;
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
+
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var instance_final_query = instance._final_query;
 
@@ -992,10 +1003,8 @@ var Renderer = {
 		var model = instance.matrix;
 		var renderer_uniforms = this._render_uniforms;
 
-		mat4.multiply(this._mvp_matrix, this._viewprojection_matrix, model );
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-		renderer_uniforms.u_mvp = this._mvp_matrix;
 
 		var pick_color = LS.Picking.getNextPickingColor( node );
 
@@ -1071,7 +1080,7 @@ var Renderer = {
 				tex = this._missing_texture;
 
 			if(tex._locked) //locked textures are usually the render target where we are rendering right now, so we cannot read and write at the same texture
-				continue;
+				tex = this._missing_texture;
 
 			tex.bind( i );
 			this._active_samples[i] = tex;
@@ -1102,10 +1111,7 @@ var Renderer = {
 	*/
 	fillSceneShaderQuery: function( scene, render_settings )
 	{
-		var query = new ShaderQuery();
-
-		if( this._current_camera.type == Camera.ORTHOGRAPHIC )
-			query.setMacro(&quot;USE_ORTHOGRAPHIC_CAMERA&quot;);
+		var query = new LS.ShaderQuery();
 
 		//camera info
 		if( this._current_pass.id == COLOR_PASS )
@@ -1244,6 +1250,7 @@ var Renderer = {
 		{
 			var camera = cameras[i];
 			camera._rendering_index = i;
+			camera.prepare();
 		}
 
 		//meh!
@@ -1297,7 +1304,7 @@ var Renderer = {
 				}
 			}
 
-			//and finally, the alpha thing to determine if it is visible or not
+			//check if it has alpha, and put in right container
 			if(instance.flags &amp; RI_BLEND)
 				blend_instances.push(instance);
 			else
@@ -1381,6 +1388,7 @@ var Renderer = {
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
 		var scene = LS.Renderer._current_scene;
+		texture._locked = true;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -1390,12 +1398,16 @@ var Renderer = {
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
 			this.renderToCubemap( cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far );
 		this._current_target = null;
+		texture._locked = false;
 
 		function inner_draw_2d()
 		{
+			LS.Renderer.clearBuffer( cam, render_settings );
+			/*
 			gl.clearColor(cam.background_color[0], cam.background_color[1], cam.background_color[2], cam.background_color[3] );
 			if(render_settings.ignore_clear != true)
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			*/
 			//render scene
 			LS.Renderer.renderInstances( render_settings );
 		}
@@ -1434,7 +1446,6 @@ var Renderer = {
 				gl.clearColor(0,0,0,0);
 			else
 				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
-
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
 
