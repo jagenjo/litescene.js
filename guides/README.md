@@ -18,7 +18,7 @@ Some advanced topics:
 
 - [Post-processing](post-processing.md): How to apply postprocessing effects
 - [Render pipeline](render_pipeline.md): How does the render pipeline work
-- [Shaders}(shaders.md): How to write your own shaders
+- [Shaders](shaders.md): How to write your own shaders
 - [Tweening](tweening.md): how to interpolate values easily
 
 
