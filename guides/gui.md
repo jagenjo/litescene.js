@@ -116,6 +116,17 @@ this.onStart = function()
 }
 ```
 
+Or if you want to attach all the HTML to the GUI you can use ```LS.GUI.load("myfile.html", my_function)```:
+
+```javascript
+this.onStart = function()
+{
+  LS.GUI.load("myfile.html", function(html_root){
+    html_root.querySelector("#mypanel").addEventListener("click", my_click_function);
+  });
+}
+```
+
 ## Canvas GUIs ##
 
 But if you dont want to use HTML and prefeer to create immediate GUIs by rendering manually to the WebGL canvas, you can use Canvas2DToWebGL, a library that allows to use regular Canvas2D calls inside the WebGL Canvas, this way you can easily render simple GUIs.
