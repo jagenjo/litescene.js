@@ -1,7 +1,7 @@
 # Creating a GUI on top of your app #
 
 Usually when people start using LiteScene they wonder if the library includes a GUI system to create the interface of their applications.
-But the forgot that the web already has the best GUI system possible, and it is called HTML.
+But they forgot that the web already has the best GUI system possible, and it is called HTML.
 
 HTML is well documented, powerful, widely known, has lots of great features and it merges perfectly with the WebGL Canvas.
 
