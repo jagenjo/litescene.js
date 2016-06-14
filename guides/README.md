@@ -11,7 +11,7 @@ Here there is a list with the most commont topics to master LiteScene:
 - [Components](components.md): How to use the components system
 - [Scripting](scripting.md): How to create your own scripts
 - [Input](input.md): how to get user input
-- [GUI](GUI.md): how to add a GUI to your application
+- [GUI](gui.md): how to add a GUI to your application
 - [Resources](resources.md): How to handle resources (textures, meshes, etc)
 
 Some advanced topics:
@@ -61,10 +61,10 @@ The engine also allows different ways to do the same actions to help people, so 
 
 The engine is also meant to help the editor to understand what is going on in every component, this way users can create new components with personalized interfaces that helps them to setup their scenes, without the need to code them.
 
+## Limitations ##
 
+LiteScene is not meant to be used as a powerful 3D engine, it has its limitations regarding to number of objects in the scene or complexity of the interactions. If should be used in simple scenes with tens of objects at most.
 
-
- 
 ## LS Namespace ##
 
 The LS namespace is the global namespace where all the classes are contained, some generic methods are also here that could be helpful to control the global system.
@@ -77,5 +77,27 @@ Inside LS there are some important object that you should be aware:
 - Formats
 
 Some of the most important components (such as Script, Camera, Light and Transform) are stored also in the LS namespace besides being in LS.Components.
+
+
+## SceneTree and SceneNode
+
+To handle the objects in a scene the user must understand how to use the SceneTree and the SceneNode object.
+
+While SceneNode represent an object in the scene, SceneTree represents the scene itself.
+
+Every node could contain other nodes as children similar to how the DOM works.
+
+The SceneTree contains a root node (scene.root) where all the nodes in the scene are pending.
+
+For more info about the Scene read the [Scene guide](scene.md).
+
+## Components ##
+
+The behaviour of every node comes from the components attached to it.
+
+Cameras, Lights, MeshRenderers, etc, are all components that could be attached to any SceneNode to add functionalities.
+
+For more info about the Scene read the [Components guide](components.md).
+
 
 
