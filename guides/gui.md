@@ -25,10 +25,10 @@ First, do not add HTML elements to the GUI till the application starts (when the
 
 Second, all DOM elements must be attached to the GUI root element, this way the system can remove all DOM elements if the scene is reset.
 
-To get the GUI root element use the function ```LS.getGUIElement()```:
+To get the GUI root element use the function ```LS.GUI.getRoot()```:
 
 ```javascript
-var gui_root = LS.getGUIElement();
+var gui_root = LS.GUI.getRoot();
 gui_root.innerHTML = "<button>click me</button>";
 ```
 
@@ -50,7 +50,7 @@ Keep that in mind when working with GUI elements.
 ## Creating GUI panels ##
 
 Most of the time you would like to make just a floating div on top of the GUI to show some HTML information.
-To help in those cases the easier solution is using the ```LS.createElementGUI``` that behaves similar to ```document.createElement```, creating a tag of a given parameter, but it has some extra functionalities.
+To help in those cases the easier solution is using the ```LS.GUI.createElement``` that behaves similar to ```document.createElement```, creating a tag of a given parameter, but it has some extra functionalities.
 
 First the element will be attached automatically to the GUIElement so we dont have to do it.
 
@@ -61,7 +61,7 @@ Thirth, it will be anchored to the corner of our canvas that we specify (if not 
 Here is an example :
 
 ```javascript
-var panel = LS.createElementGUI("div","top-left");
+var panel = LS.GUI.createElement("div","top-left");
 panel.innerHTML = "<h3>HELLO!</h3>";
 ```
 
@@ -88,7 +88,7 @@ Here is one example:
 this.onStart = function()
 {
   LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.getGUIElement();
+    var gui_root = LS.GUI.getRoot();
     gui_root.innerHTML = res.data;
   });
 }
@@ -99,7 +99,7 @@ Or you can store several HTML elements and attach the ones that you need by retr
 this.onStart = function()
 {
   LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.getGUIElement();
+    var gui_root = LS.GUI.getRoot();
     var html = res.getAsHTML();
     gui_root.appendChild( html.querySelector("#mypanel") );
   });
@@ -111,7 +111,7 @@ this.onStart = function()
 {
   LS.ResourcesManagear.load("myfile.html", function(res){
     var html = res.getAsHTML();
-    LS.attachToGUI( html.querySelector("#mypanel"), "top-left" );
+    LS.GUI.attach( html.querySelector("#mypanel"), "top-left" );
   });
 }
 ```
