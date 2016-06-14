@@ -37,7 +37,25 @@ There are several components that are very important for any scene, they are:
 - **Light**: to iluminate the scene.
 
 ### Transform ##
+
+Transform is the component in charge of handling where a SceneNode is located spacially on the scene, where is heading and which is its size.
+
+It also provides methods to handle the different coordinates systems.
+
 ### Camera ##
+
+The Camera component adds a camera to the scene, which will be used by the Renderer to create a representation on the screen.
+
 ### MeshRenderer ##
+
+MeshRenderer is the component in charge of rendering meshes into the scene.
+
 ### Light ##
+
+Light is the component in charge of holds the info about the light sources. The behaviour depends on the rendering engine and shaders.
+
 ### Script and ScriptFromFile ##
+
+To add extra behaviour there are components that could be programmed from the editor.
+
+For more info read the [Scripting guide](scripting.md).
