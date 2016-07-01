@@ -7,6 +7,7 @@
 ../src/defines.js
 ../src/network.js
 ../src/input.js
+../src/gui.js
 ../src/resourcesManager.js
 ../src/shadersManager.js
 
@@ -40,6 +41,7 @@
 ../src/render/renderFrameContext.js
 ../src/render/renderer.js
 ../src/render/debug.js
+../src/render/deformer.js
 
 ../src/picking.js
 ../src/physics.js

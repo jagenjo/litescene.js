@@ -17,22 +17,26 @@ function SceneNode( name )
 		console.warn("SceneNode constructor first parameter must be a String with the name");
 	}
 
-	//Generic
+	//Generic identifying info
 	this._name = name || ("node_" + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId("NODE-");
 	this._classList = {}; //to store classes
 	this.layers = 3|0; //32 bits for layers (force to int)
 	this.node_type = null; //used to store a string defining the node info
 
-	this._components = []; //used for logic actions
-	this._missing_components = null;
-
+	//more generic info
 	this._prefab = null;
+	this._material = null;
+
+	//from Componentcontainer
+	this._components = []; //used for logic actions
+	this._missing_components = null; //used to store state of component that couldnt be created
+
+	//from CompositePattern
 	this._parentNode = null;
 	this._children = null;
+	this._in_tree = null;
 
-	this._material = null;
-	this.node_type = null;
 
 	//flags
 	this.flags = {
@@ -208,9 +212,16 @@ Object.defineProperty( SceneNode.prototype, 'prefab', {
 	set: function(name)
 	{
 		this._prefab = name;
+		if(!this._prefab)
+			return;
 		var prefab = LS.RM.getResource(name);
+		var that = this;
 		if(prefab)
 			this.reloadFromPrefab();
+		else 
+			LS.ResourcesManager.load( name, function(){
+				that.reloadFromPrefab();
+			});
 	},
 	get: function(){
 		return this._prefab;
@@ -297,6 +308,10 @@ Object.defineProperty( SceneNode.prototype, 'className', {
 	enumerable: true
 });
 
+/**
+* Destroys this node
+* @method destroy
+**/
 SceneNode.prototype.destroy = function()
 {
 	LEvent.trigger( this, "destroy" );
@@ -304,13 +319,21 @@ SceneNode.prototype.destroy = function()
 	if(this.children)
 		while(this.children.length)
 			this.children[0].destroy();
-	if(this._parent)
-		this._parent.removeChild( this );
+	if(this._parentNode)
+		this._parentNode.removeChild( this );
 }
 
-SceneNode.prototype.getLocator = function()
+/**
+* Returns the locator string of this node
+* @method getLocator
+* @param {string} property_name [optional] you can pass the name of a property in this node to get the locator of that one
+* @return {String} the locator string of this node
+**/
+SceneNode.prototype.getLocator = function( property_name )
 {
-	return this.uid;
+	if(!property_name)
+		return this.uid;
+	return this.uid + "/" + property_name;
 }
 
 SceneNode.prototype.getPropertyInfo = function( locator )
@@ -862,6 +885,10 @@ SceneNode.prototype.configure = function(info)
 	if(info.extra)
 		this.extra = info.extra;
 
+	if(info.editor)
+		this._editor = info.editor;
+
+
 	if(info.comments)
 		this.comments = info.comments;
 
@@ -969,6 +996,9 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 
 	if(this._children && (!this.prefab || ignore_prefab) )
 		o.children = this.serializeChildren();
+
+	if(this._editor)
+		o.editor = this._editor;
 
 	//save components
 	this.serializeComponents(o);

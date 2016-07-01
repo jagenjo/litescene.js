@@ -227,6 +227,11 @@ Prefab.packResources = function( resource_names_list, base_data )
 	return WBin.create( to_binary, "Prefab" );
 }
 
+Prefab.prototype.containsResources = function()
+{
+	return this.resource_names.length > 0;
+}
+
 Prefab.prototype.updateFromNode = function( node, clear_uids )
 {
 	var data = node.serialize(true);

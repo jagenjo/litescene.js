@@ -12,6 +12,10 @@ function CompositePattern()
 
 CompositePattern.prototype.compositeCtor = function()
 {
+	//this method is not called by SceneNode 
+	this._parentNode = null;
+	this._children = null;
+	this._in_tree = null;
 }
 
 /* use .scene instead
@@ -201,17 +205,20 @@ CompositePattern.prototype.serializeChildren = function()
 */
 CompositePattern.prototype.configureChildren = function(o)
 {
-	if(!o.children) return;
+	if(!o.children)
+		return;
 
-	for(var i in o.children)
+	for(var i = 0; i < o.children.length; ++i)
 	{
 		var c = o.children[i];
 
 		//create instance
 		var node = new this.constructor(c.id); //id is hardcoded...
-		//this is important because otherwise the event fired by addChild wont have uid info which is crucial in some cases
+		//we do this before because otherwise the event fired by addChild wont have all the info which is crucial in some cases in the editor
 		if(c.uid) 
 			node.uid = c.uid;
+		if(c.editor) 
+			node._editor = c.editor;
 		//add before configure, so every child has a scene tree
 		this.addChild(node);
 		//we configure afterwards otherwise children wouldnt have a scene tree to bind anything
@@ -230,21 +237,44 @@ CompositePattern.prototype.getParent = function()
 	return this._parentNode;
 }
 
+/**
+* returns a list with all direct children (if you want below that use getDescendants)
+* @method getChildren
+* @param {Array} Original array containing the children
+**/
 CompositePattern.prototype.getChildren = function()
 {
 	return this._children || [];
 }
 
+/**
+* returns the index of a child in the children array
+* @method getChildIndex
+* @param {SceneNode} child the child to search for
+* @return {number} the index of this child in the array, if it is not inside returns -1
+**/
 CompositePattern.prototype.getChildIndex = function( child )
 {
 	return this._children ? this._children.indexOf( child ) : -1;
 }
 
+/**
+* Returns the child in the index position
+* @method getChildByIndex
+* @param {number} index the index in the array 
+* @return {SceneNode} the child in that position
+**/
 CompositePattern.prototype.getChildByIndex = function( index )
 {
 	return this._children && this._children.length > index ? this._children[ index ] : null;
 }
 
+/**
+* Returns the child that matches that name
+* @method getChildByName
+* @param {String} name
+* @return {SceneNode} the child with that name otherwise returns null;
+**/
 CompositePattern.prototype.getChildByName = function( name )
 {
 	if(!this._children)
@@ -253,8 +283,15 @@ CompositePattern.prototype.getChildByName = function( name )
 	for(var i = 0; i < this._children.length; ++i)
 		if(this._children[i].name == name )
 			return this._children[i];
+
+	return null;
 }
 
+/**
+* Returns the path name of the node (a path name is a concatenation of the name of the nodes an its ancestors: "root|parent|child"
+* @method getPathName
+* @return {String} the pathname
+**/
 CompositePattern.prototype.getPathName = function()
 {
 	if(!this._in_tree)
@@ -264,23 +301,16 @@ CompositePattern.prototype.getPathName = function()
 		return "";
 
 	var path = this.name;
-	var parent = this.parentNode;
+	var parent = this._parentNode;
 	while(parent)
 	{
 		if(parent === this._in_tree.root )
 			return path;
 		path = parent.name + "|" + path;
-		parent = parent.parentNode;
+		parent = parent._parentNode;
 	}
 	return null;
 }
-
-/*
-CompositePattern.prototype.childNodes = function()
-{
-	return this._children || [];
-}
-*/
 
 //DOM style
 Object.defineProperty( CompositePattern.prototype, "childNodes", {
@@ -328,6 +358,79 @@ CompositePattern.prototype.getDescendants = function()
 		r = r.concat( this._children[i].getDescendants() );
 	return r;
 }
+
+/**
+* Swaps the index in the children array so it is before 
+* @method moveBefore
+* @param {SceneNode} sibling [optional] allows to put before given node, otherwise it will be moved one position before of current position
+* @return {number} new index
+**/
+CompositePattern.prototype.moveBefore = function( sibling )
+{
+	if(!this._parentNode || (sibling && this._parentNode !== sibling._parentNode) )
+		return -1;
+
+	var parent_children = this._parentNode._children;
+	var index = parent_children.indexOf( this );
+	if(index == -1)
+		throw("moveBefore node not found in parent, this is impossible");
+
+	var new_index = index - 1;
+	if(sibling)
+	{
+		new_index = parent_children.indexOf( sibling );
+		if(new_index == -1)
+			return -1;
+		new_index = new_index - 1; //before
+	}
+
+	if(index == new_index || new_index < 0)
+		return new_index; //nothing to do
+
+	parent_children.splice( index, 1 ); //remove
+	if(new_index > index) //sibling is after
+		new_index -= 1;
+	parent_children.splice( new_index, 0, this); //insert
+	LEvent.trigger(this._in_tree,"node_rearranged", this );
+	return new_index;
+}
+
+/**
+* Swaps the index in the children array so it is before 
+* @method moveAfter
+* @param {SceneNode} sibling [optional] allows to put after given node, otherwise it will be moved one position after current position
+* @return {number} new index
+**/
+CompositePattern.prototype.moveAfter = function( sibling )
+{
+	if(!this._parentNode || (sibling && this._parentNode !== sibling._parentNode) )
+		return -1;
+
+	var parent_children = this._parentNode._children;
+	var index = parent_children.indexOf( this );
+	if(index == -1)
+		throw("moveBefore node not found in parent, this is impossible");
+
+	var new_index = index + 1;
+	if(sibling)
+	{
+		new_index = parent_children.indexOf( sibling );
+		if(new_index == -1)
+			return -1;
+		new_index = new_index + 1; //before
+	}
+
+	if( index == new_index || new_index >= parent_children.length )
+		return new_index; //nothing to do
+
+	parent_children.splice( index, 1 ); //remove
+	if(new_index > index) //sibling is after
+		new_index -= 1;
+	parent_children.splice( new_index, 0, this); //insert
+	LEvent.trigger(this._in_tree,"node_rearranged", this );
+	return new_index;
+}
+
 
 //search for a node using a string that could be a name, a fullname or a uid
 CompositePattern.prototype.findNode = function( name_or_uid )

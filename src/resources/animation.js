@@ -25,6 +25,7 @@ function Animation(o)
 }
 
 Animation.DEFAULT_SCENE_NAME = "@scene";
+Animation.DEFAULT_DURATION = 10;
 
 Animation.prototype.createTake = function( name, duration )
 {
@@ -45,6 +46,15 @@ Animation.prototype.getTake = function( name )
 {
 	return this.takes[ name ];
 }
+
+Animation.prototype.getNumTakes = function()
+{
+	var num = 0;
+	for(var i in this.takes)
+		num++;
+	return num;
+}
+
 
 Animation.prototype.addTrackToTake = function(takename, track)
 {
@@ -198,7 +208,7 @@ function Take(o)
 {
 	this.name = null;
 	this.tracks = [];
-	this.duration = 10;
+	this.duration = LS.Animation.DEFAULT_DURATION;
 	
 	if(o)
 		this.configure(o);
@@ -272,15 +282,22 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			if(!info)
 				return;
 
-			//events
-			if(info.target) //components
-				LEvent.trigger( info.target, keyframe[1], keyframe[1][1] );
-			else if(info.node) //nodes
-				LEvent.trigger( info.node, keyframe[1][0], keyframe[1][1] );
+			var value = keyframe[1];
 
-			//functions
-			//if(info.node && info.target && info.target[ keyframe[1][0] ] )
-			//	info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
+			if(value[2] == 1) //on function call events the thirth value [2] is 1
+			{
+				//functions
+				if(info.node && info.target && info.target[ value[0] ] )
+					info.target[ value[0] ].call( info.target, value[1] );
+			}
+			else
+			{
+				//events
+				if(info.target) //components
+					LEvent.trigger( info.target, keyframe[1], keyframe[1][1] );
+				else if(info.node) //nodes
+					LEvent.trigger( info.node, keyframe[1][0], keyframe[1][1] );
+			}
 		}
 		else //regular tracks
 		{

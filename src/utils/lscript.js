@@ -14,7 +14,10 @@ function LScript()
 	this.extra_methods = null; //add object with methods here to attach methods
 }
 
+
 LScript.onerror = null; //global used to catch errors in scripts
+
+LScript.eval = function(argv_names,code) { return eval("(function("+argv_names+"){\n"+code+"\n})"); }; //not used
 
 LScript.catch_exceptions = false;
 LScript.show_errors_in_console = true;
@@ -46,37 +49,51 @@ LScript.prototype.compile = function( arg_vars, save_context_vars )
 	this._last_executed_code = code;
 
 	var old_context = this._context;
-	
-	try
+
+	if(!LScript.catch_exceptions)
 	{
-		this._class = new Function(argv_names, code);
+		this._class = new Function(argv_names, code);//<-- PARSING POINT HERE ***************************************
 		var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
 		this._context = new context_function(); //<-- EXECUTION POINT HERE ***************************************
 	}
-	catch (err)
+	else
 	{
-		this._class = null;
-		this._context = null;
-		if(LScript.show_errors_in_console)
+		try
 		{
-			var error_line = LScript.computeLineFromError(err);
-			console.error("Error in script\n" + err);
-			if( console.groupCollapsed )
-			{
-				console.groupCollapsed("Error line: " + error_line + " Watch code");
-				LScript.showCodeInConsole( this._last_executed_code, error_line );
-				console.groupEnd();
-			}
-			else
-				console.error("Error line: " + error_line);
+			//LScript.eval(argv_names,code);
+			this._class = new Function(argv_names, code);
+			var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
+			this._context = new context_function(); //<-- EXECUTION POINT HERE ***************************************
 		}
-		if(this.onerror)
-			this.onerror(err, this._last_executed_code);
-		if(LScript.onerror)
-			LScript.onerror(err, this._last_executed_code, this);
-		return false;
-	}
+		catch (err)
+		{
+			if(!this._class)
+			{
+				console.error("Parsing error in script\n" + err);
+			}
 
+			this._class = null;
+			this._context = null;
+			if(LScript.show_errors_in_console)
+			{
+				var error_line = LScript.computeLineFromError(err);
+				console.error("Error in script\n" + err);
+				if( console.groupCollapsed )
+				{
+					console.groupCollapsed("Error line: " + error_line + " Watch code");
+					LScript.showCodeInConsole( this._last_executed_code, error_line );
+					console.groupEnd();
+				}
+				else
+					console.error("Error line: " + error_line);
+			}
+			if(this.onerror)
+				this.onerror(err, this._last_executed_code);
+			if(LScript.onerror)
+				LScript.onerror(err, this._last_executed_code, this);
+			return false;
+		}
+	}
 
 	if(save_context_vars && old_context)
 	{
@@ -127,7 +144,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		else
 			console.error("Error line: " + error_line);
 		if(this.onerror)
-			this.onerror(err);
+			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code});
 		//throw new Error( err.stack ); //TEST THIS
 	}
 }

@@ -49,6 +49,19 @@ LS.Tween = {
 		if(object[property] === undefined)
 			throw("property not found in object, must be initialized to a value");
 
+		//cancel previous in case we already have one for this property
+		if(this.current_easings.length)
+		{
+			for(var i = 0; i < this.current_easings.length; ++i)
+			{
+				var easing = this.current_easings[i];
+				if( easing.object !== object || easing.property != property )
+					continue;
+				this.current_easings.splice(i,1); //remove old one
+				break;		
+			}
+		}
+
 		easing_function = easing_function || this.EASE_IN_OUT_QUAD;
 
 		//clone to avoid problems

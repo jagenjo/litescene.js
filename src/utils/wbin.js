@@ -156,7 +156,7 @@ WBin.create = function( origin, origin_class_name )
 		if(data.buffer && data.buffer.constructor == ArrayBuffer)
 		{
 			//clone the data, to avoid problems with shared arrays
-			data = new Uint8Array( new Uint8Array( data.buffer, data.buffer.byteOffset, data.buffer.byteLength ) ); 
+			data = new Uint8Array( new Uint8Array( data.buffer, data.byteOffset, data.byteLength ) ); 
 			data_length = data.byteLength;
 		}
 		else if(data.constructor == ArrayBuffer) //plain buffer
@@ -265,7 +265,8 @@ WBin.load = function( data_array, skip_classname )
 		{
 			case "null": break;
 			case "WideString": 
-			case "String": lump_final = WBin.TypedArrayToString( lump_data ); break;
+							lump_data = new Uint16Array( (new Uint8Array( lump_data )).buffer ); //no break
+			case "String":	lump_final = WBin.TypedArrayToString( lump_data ); break;
 			case "Number": 
 					if(header.version < 0.3) //LEGACY: remove
 						lump_final = parseFloat( WBin.TypedArrayToString( lump_data ) );
@@ -273,7 +274,8 @@ WBin.load = function( data_array, skip_classname )
 						lump_final = (new Float64Array( lump_data.buffer ))[0];
 					break;
 			case "WideObject": 
-			case "Object": lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
+							lump_data = new Uint16Array( (new Uint8Array( lump_data )).buffer ); //no break
+			case "Object":	lump_final = JSON.parse( WBin.TypedArrayToString( lump_data ) ); break;
 			case "ArrayBuffer": lump_final = new Uint8Array(lump_data).buffer; break; //clone
 			default:
 				lump_data = new Uint8Array(lump_data); //clone to avoid problems with bytes alignment

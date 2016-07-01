@@ -48,7 +48,7 @@ var Network = {
         xhr.onload = function(load)
 		{
 			var response = this.response;
-			if(this.status != 200)
+			if(this.status && this.status != 200) //status 0 is when working with local files
 			{
 				var err = "Error " + this.status;
 				if(request.error)

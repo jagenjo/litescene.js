@@ -26,19 +26,22 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function( info )
 {
-	if(info.components)
-		for(var i = 0, l = info.components.length; i < l; ++i)
+	if(!info.components)
+		return;
+
+	for(var i = 0, l = info.components.length; i < l; ++i)
+	{
+		var comp_info = info.components[i];
+		var comp_class = comp_info[0];
+		var comp = null;
+
+		//special case: this is the only component that comes by default
+		if(comp_class == "Transform" && i == 0 && this.transform) 
 		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-
-			//special case: this is the only component that comes by default
-			if(comp_class == "Transform" && i == 0) 
-			{
-				this.transform.configure(comp_info[1]);
-				continue;
-			}
-
+			comp = this.transform;
+		}
+		else
+		{
 			//search for the class
 			var classObject = LS.Components[comp_class];
 			if(!classObject){
@@ -48,20 +51,23 @@ ComponentContainer.prototype.configureComponents = function( info )
 				this._missing_components.push( comp_info );
 				continue;
 			}
-
 			//create component
-			var comp = new classObject(); //comp_info[1]
-
+			comp = new classObject(); //comp_info[1]
 			//attach to node
 			this.addComponent(comp);
-
-			//what about configure the comp after adding it? 
-			comp.configure( comp_info[1] );
-
-			//ensure the component uid is stored, some components may forgot about it
-			if( comp_info[1].uid && comp_info[1].uid !== comp.uid )
-				comp.uid = comp_info[1].uid;
 		}
+
+		//what about configure the comp after adding it? 
+		comp.configure( comp_info[1] );
+
+		//editor stuff
+		if( comp_info[1].editor )
+			comp._editor = comp_info[1].editor;
+
+		//ensure the component uid is stored, some components may forgot about it
+		if( comp_info[1].uid && comp_info[1].uid !== comp.uid )
+			comp.uid = comp_info[1].uid;
+	}
 }
 
 /**
@@ -70,7 +76,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 * @param {Object} o container where the components will be stored
 */
 
-ComponentContainer.prototype.serializeComponents = function(o)
+ComponentContainer.prototype.serializeComponents = function( o )
 {
 	if(!this._components)
 		return;
@@ -82,6 +88,9 @@ ComponentContainer.prototype.serializeComponents = function(o)
 		if( !comp.serialize )
 			continue;
 		var obj = comp.serialize();
+
+		if(comp._editor)
+			obj.editor = comp._editor;
 
 		//enforce uid storage
 		if(comp.hasOwnProperty("uid") && !obj.uid)
@@ -201,28 +210,39 @@ ComponentContainer.prototype.removeAllComponents = function()
 
 
 /**
-* Returns if the class has an instance of this component
+* Returns if the container has a component of this class
 * @method hasComponent
-* @param {bool} true if it has a component of this class
+* @param {String|Class} component_class the component to search for, could be a string or the class itself
+* @param {Boolean} search_missing [optional] true if you want to search in the missing components too
 */
-ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
+ComponentContainer.prototype.hasComponent = function( component_class, search_missing )
 {
-	if(!this._components)
+	if(!this._components && !this._missing_components)
 		return false;
 
-	//string
-	if( component_class.constructor === String)
+	//search in missing components
+	if(search_missing && this._missing_components && this._missing_components.length)
 	{
-		for(var i = 0, l = this._components.length; i < l; ++i)
-			if( this._components[i].constructor.name == component_class )
-			return true;
-		return false;
+		if(component_class.constructor !== String) //weird case
+			component_class = LS.getClassName( component_class );
+		for(var i = 0, l = this._missing_components.length; i < l; ++i)
+			if( this._missing_components[i][0] == component_class )
+				return true;
 	}
 
-	//class
+	//string
+	if( component_class.constructor === String )
+	{
+		component_class = LS.Components[ component_class ];
+		if(!component_class)
+			return false;
+	}
+
+	//search in components
 	for(var i = 0, l = this._components.length; i < l; ++i)
 		if( this._components[i].constructor === component_class )
-		return true;
+			return true;
+	
 	return false;
 }
 
@@ -238,6 +258,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 	if(!this._components || !component_class)
 		return null;
 
+	//convert string to class
 	if( component_class.constructor === String )
 	{
 		component_class = LS.Components[ component_class ];
@@ -245,6 +266,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 			return;
 	}
 
+	//search components
 	for(var i = 0, l = this._components.length; i < l; ++i)
 	{
 		if( this._components[i].constructor === component_class )
@@ -257,6 +279,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 			return this._components[i];
 		}
 	}
+
 	return null;
 }
 

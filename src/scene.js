@@ -28,10 +28,12 @@ function SceneTree()
 	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
+	//track with global animations of the scene
+	this.animation = null;
+
 	//FEATURES NOT YET FULLY IMPLEMENTED
 	this._paths = []; //FUTURE FEATURE: to store splines I think
 	this._local_resources = {}; //used to store resources that go with the scene
-	this.animation = null;
 
 	this.layer_names = ["main","secondary"];
 
@@ -184,7 +186,7 @@ SceneTree.prototype.configure = function(scene_info)
 		this.extra = scene_info.extra;
 
 	if(scene_info.root)
-		this.root.configure( scene_info.root );
+		this._root.configure( scene_info.root );
 
 	//LEGACY
 	if(scene_info.nodes)
@@ -252,6 +254,9 @@ SceneTree.prototype.configure = function(scene_info)
 	if(scene_info.components)
 		this.configureComponents( scene_info );
 
+	if(scene_info.editor)
+		this._editor = scene_info.editor;
+
 	//if(scene_info.animations)
 	//	this._root.animations = scene_info.animations;
 
@@ -296,6 +301,9 @@ SceneTree.prototype.serialize = function()
 	o.global_scripts = this.global_scripts.concat();
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
+
+	if( this._editor )
+		o.editor = this._editor;
 
 	this.serializeComponents( o );
 
@@ -636,9 +644,39 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 	return true;
 }
 
-
-SceneTree.prototype.getNodes = function()
+/**
+* all nodes are stored in an array, this function recomputes the array so they are in the right order in case one has changed order
+*
+* @method recomputeNodesArray
+*/
+SceneTree.prototype.recomputeNodesArray = function()
 {
+	var nodes = this._nodes;
+	var pos = 0;
+	inner( this._root );
+
+	function inner(node)
+	{
+		nodes[pos] = node;
+		pos+=1;
+		if(!node._children || !node._children.length)
+			return;
+		for(var i = 0; i < node._children.length; ++i)
+			inner( node._children[i] );
+	}
+}
+
+/**
+* Returns the array containing all the nodes in the scene
+*
+* @method getNodes
+* @param {bool} recompute [optional] in case you want to rearrange the nodes
+* @return {Array} array containing every SceneNode in the scene
+*/
+SceneTree.prototype.getNodes = function( recompute )
+{
+	if(recompute)
+		this.recomputeNodesArray();
 	return this._nodes;
 }
 
@@ -1407,12 +1445,29 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	return pack;
 },
 
+//WIP: this is in case we have static nodes in the scene
 SceneTree.prototype.updateStaticObjects = function()
 {
 	var old = LS.allow_static;
 	LS.allow_static = false;
 	this.collectData();
 	LS.allow_static = old;
+}
+
+/**
+* Creates and returns an scene animation track
+*
+* @method createAnimation
+* @return {LS.Animation} the animation track
+*/
+SceneTree.prototype.createAnimation = function()
+{
+	if(this.animation)
+		return this.animation;
+	this.animation = new LS.Animation();
+	this.animation.name = LS.Animation.DEFAULT_SCENE_NAME;
+	this.animation.createTake( "default", LS.Animation.DEFAULT_DURATION );
+	return this.animation;
 }
 
 LS.SceneTree = SceneTree;

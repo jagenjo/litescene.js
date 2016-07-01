@@ -62,7 +62,13 @@ function Player(options)
 	this.scene = LS.GlobalScene;
 	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
 
-	LS.catch_exceptions = true;
+	if(options.debug)
+	{
+		this.debug = true;
+		this.enableDebug();
+	}
+	else
+		LS.catch_exceptions = true;
 
 	if(options.resources)
 		LS.ResourcesManager.setPath( options.resources );
@@ -160,7 +166,7 @@ Player.PAUSED = 2;
 * @param {String} url url to the JSON file containing all the scene info
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.loadScene = function(url, on_complete)
+Player.prototype.loadScene = function(url, on_complete, on_progress)
 {
 	var that = this;
 	var scene = this.scene;
@@ -171,8 +177,8 @@ Player.prototype.loadScene = function(url, on_complete)
 		//start playing once loaded the json
 		if(that.autoplay)
 			that.play();
-		console.log("Scene playing");
-		that.loading_bar = -1;
+		//console.log("Scene playing");
+		that.loading = null;
 		if(on_complete)
 			on_complete();
 	}
@@ -185,6 +191,8 @@ Player.prototype.loadScene = function(url, on_complete)
 		if(e.total) //sometimes we dont have the total so we dont know the amount
 			partial_load = e.loaded / e.total;
 		that.loading.scene_bar = partial_load;
+		if(on_progress)
+			on_progress(partial_load);
 	}
 }
 
@@ -242,6 +250,7 @@ Player.prototype.play = function()
 		console.log("Start");
 	this.state = LS.Player.PLAYING;
 	LS.Input.reset(); //this force some events to be sent
+	LS.GUI.reset(); //clear GUI
 	this.scene.start();
 }
 
@@ -249,6 +258,7 @@ Player.prototype.stop = function()
 {
 	this.state = LS.Player.STOPPED;
 	this.scene.finish();
+	LS.GUI.reset(); //clear GUI
 }
 
 Player.prototype._ondraw = function()

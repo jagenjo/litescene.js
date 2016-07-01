@@ -61,6 +61,8 @@ var Renderer = {
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
 
+	_reflection_probes: [],
+
 	//fixed texture slots for global textures
 	SHADOWMAP_TEXTURE_SLOT: 6,
 	ENVIRONMENT_TEXTURE_SLOT: 5,
@@ -166,7 +168,7 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRender", render_settings );
 		scene.triggerInNodes("beforeRender", render_settings );
 
-		//get render instances, cameras, lights, materials and all rendering info ready: computeVisibility
+		//get render instances, cameras, lights, materials and all rendering info ready (computeVisibility)
 		this.processVisibleData( scene, render_settings, cameras );
 
 		//Define the main camera, the camera that should be the most important (used for LOD info, or shadowmaps)
@@ -463,9 +465,7 @@ var Renderer = {
 		var camera_index_flag = camera._rendering_index != -1 ? (1<<(camera._rendering_index)) : 0;
 		var apply_frustum_culling = render_settings.frustum_culling;
 		var frustum_planes = camera.updateFrustumPlanes();
-		var layers_filter = camera.layers;
-		if( render_settings.layers !== undefined )
-			layers_filter = render_settings.layers;
+		var layers_filter = camera.layers & render_settings.layers;
 
 		LEvent.trigger( scene, "beforeRenderInstances", render_settings );
 		scene.triggerInNodes( "beforeRenderInstances", render_settings );
@@ -1294,6 +1294,10 @@ var Renderer = {
 			texture = null;
 
 		var scene = this._current_scene;
+		var camera = this._cubemap_camera;
+		if(!camera)
+			camera = this._cubemap_camera = new LS.Camera();
+		camera.configure({ fov: 90, aspect: 1.0, near: near, far: far });
 
 		texture = texture || new GL.Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
@@ -1305,9 +1309,8 @@ var Renderer = {
 			else
 				gl.clearColor( background_color[0], background_color[1], background_color[2], background_color[3] );
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-			var cubemap_cam = new LS.Camera({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up, fov: 90, aspect: 1.0, near: near, far: far });
-
-			LS.Renderer.enableCamera( cubemap_cam, render_settings, true );
+			camera.configure({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up });
+			LS.Renderer.enableCamera( camera, render_settings, true );
 			LS.Renderer.renderInstances( render_settings );
 		});
 

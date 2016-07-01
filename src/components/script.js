@@ -322,11 +322,12 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 
 	var value = context[ varname ];
 	var extra_info = context[ "@" + varname ];
+	if(!extra_info)
+		extra_info = context.constructor[ "@" + varname ];
 
 	var type = "";
 	if(extra_info)
 		type = extra_info.type;
-
 
 	if(!type && value !== null && value !== undefined)
 	{
@@ -338,7 +339,12 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 			type = "vec" + value.length;
 		else if(value.constructor === Number)
 			type = "number";
+		else if(value.constructor === Function)
+			type = "function";
 	}
+
+	if(type == "function")
+		value = varname; //just to avoid doing assignments of functions
 
 	return {
 		node: this._root,
@@ -365,6 +371,10 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 		return;
 
 	if( context[ varname ] === undefined )
+		return;
+
+	//cannot assign functions this way
+	if( context[ varname ] && context[ varname ].constructor == Function )
 		return;
 
 	if(context[ varname ] && context[ varname ].set)
@@ -522,15 +532,20 @@ Script.prototype.onRemovedFromProject = function( project )
 */
 //*******************************
 
-Script.prototype.onError = function(err)
+Script.prototype.onError = function(e)
 {
 	var scene = this._root.scene;
 	if(!scene)
 		return;
 
-	LEvent.trigger( this, "code_error",err);
-	LEvent.trigger( scene, "code_error",[this,err]);
-	LEvent.trigger( Script, "code_error",[this,err]);
+	e.script = this;
+	e.node = this._root;
+
+	LEvent.trigger( this, "code_error",e);
+	LEvent.trigger( scene, "code_error",e);
+	LEvent.trigger( LS, "code_error",e);
+
+	//conditional this?
 	console.log("app finishing due to error in script");
 	scene.finish();
 }

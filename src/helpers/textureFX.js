@@ -66,6 +66,7 @@ TextureFX.available_fx = {
 		uniforms: {
 			difraction: { name: "u_difraction", type: "float", value: 1 }
 		},
+		next_pass: true,
 		code: "color.x = texture2D(u_texture, uv - to_center * 0.001 * u_difraction@ ).x;" + 
 			"color.z = texture2D(u_texture, uv + to_center * 0.001 * u_difraction@ ).z;"
 	},
@@ -105,7 +106,6 @@ TextureFX.available_fx = {
 			warp_texture: { name: "u_warp_texture", type: "sampler2D", widget: "Texture", value: "" }
 		},
 		uv_code:"uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv ).xy - vec2(0.5));"
-		//uv_code:"uv = uv + u_warp_amp@ * (vec2(0.5) + 0.5 * vec2( sin(uv.x * u_warp_freq@) * sin(uv.y * u_warp_freq@)));"
 	},
 	"LUT": {
 		name: "LUT",
@@ -115,7 +115,6 @@ TextureFX.available_fx = {
 			lut_texture: { name: "u_lut_texture", type: "sampler2D", filter: "nearest", wrap: "clamp", widget: "Texture", value: "" }
 		},
 		code:"color.xyz = mix(color.xyz, LUT( color.xyz, u_lut_texture@ ), u_lut_intensity@);"
-		//uv_code:"uv = uv + u_warp_amp@ * (vec2(0.5) + 0.5 * vec2( sin(uv.x * u_warp_freq@) * sin(uv.y * u_warp_freq@)));"
 	},
 	"pixelate": {
 		name: "Pixelate",
@@ -137,6 +136,7 @@ TextureFX.available_fx = {
 		uniforms: {
 			"Edges factor": { name: "u_edges_factor", type: "float", value: 1 }
 		},
+		next_pass: true,
 		code:"vec4 color@ = texture2D(u_texture, uv );\n\
 				vec4 color_up@ = texture2D(u_texture, uv + vec2(0., u_iviewport.y));\n\
 				vec4 color_right@ = texture2D(u_texture, uv + vec2(u_iviewport.x,0.));\n\

@@ -640,7 +640,7 @@ Material.prototype.updatePreview = function(size, options)
 
 	this.preview = preview;
 	if(preview.toDataURL)
-		this.preview_url = preview.toDataURL("image/png");
+		this._preview_url = preview.toDataURL("image/png");
 }
 
 Material.prototype.getLocator = function()

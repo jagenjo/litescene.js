@@ -177,13 +177,16 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	if(!this.shader)
 		return false;
 
+	//compute flags
+	var block_flags = instance.computeShaderBlockFlags();
+
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
 		return false;
 
 	//extract shader compiled
-	var shader = shader_code.getShader();
+	var shader = shader_code.getShader( null, block_flags );
 	if(!shader)
 		return false;
 

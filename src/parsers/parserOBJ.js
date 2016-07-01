@@ -38,6 +38,7 @@ var parserOBJ = {
 		var y   = 0.0;
 		var z   = 0.0;
 		var tokens = null;
+		var mtllib = null;
 
 		var hasPos = false;
 		var hasTex = false;
@@ -263,6 +264,9 @@ var parserOBJ = {
 					*/
 				}
 			}
+			else if (tokens[0] == "mtllib") {
+				mtllib = tokens[1];
+			}
 			else if (tokens[0] == "usemtl") {
 				if(group)
 					group.material = tokens[1];
@@ -320,10 +324,14 @@ var parserOBJ = {
 			mesh.triangles = new (support_uint && max_index > 256*256 ? Uint32Array : Uint16Array)(indicesArray);
 
 		//extra info
-		mesh.bounding = GL.Mesh.computeBounding(mesh.vertices);
+		mesh.bounding = GL.Mesh.computeBounding( mesh.vertices );
 		var info = {};
 		if(groups.length > 1)
+		{
 			info.groups = groups;
+			//compute bounding of groups? //TODO
+		}
+
 		mesh.info = info;
 		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
 			console.log("no radius found in mesh");
@@ -356,12 +364,14 @@ var parserMTL = {
 		for (var lineIndex = 0;  lineIndex < length; ++lineIndex)
 		{
 			var line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //trim
+			line = line.trim();
 
 			if (line[0] == "#" || line == "")
 				continue;
 
 			var tokens = line.split(" ");
 			var c = tokens[0];
+
 			switch(c)
 			{
 				case "newmtl":
@@ -377,8 +387,14 @@ var parserMTL = {
 				case "Ks":
 					current_material.specular_factor = parseFloat(tokens[1]); //readVector3(tokens);
 					break;
+				case "Ke":
+					current_material.emissive = readVector3(tokens); //readVector3(tokens);
+					break;
 				case "Ns": //glossiness
 					current_material.specular_gloss = parseFloat(tokens[1]);
+					break;
+				case "Tr": //reflection coefficient
+					current_material.reflection = parseFloat( tokens[1] );
 					break;
 				case "map_Kd":
 					current_material.textures["color"] = this.clearPath( tokens[1] );
@@ -389,12 +405,23 @@ var parserMTL = {
 				case "map_Ks":
 					current_material.textures["specular"] = this.clearPath( tokens[1] );
 					break;
+				case "bump":
+				case "map_bump":
+					current_material.textures["bump"] = this.clearPath( tokens[1] );
+					break;
 				case "d": //disolve is like transparency
+					current_material.opacity = parseFloat( tokens[1] );
+					break;
+				case "Tr": //reflection coefficient
 					current_material.opacity = parseFloat( tokens[1] );
 					break;
 				//Not supported stuff
 				case "illum": //illumination model (raytrace related)
+				case "Tf": //reflection by components
 				case "Ni": //refraction coefficient
+					break;
+				default:
+					console.log("Unknown MTL info: ", c);
 					break;
 			}
 		}
@@ -422,7 +449,7 @@ var parserMTL = {
 		var filename = LS.RM.getFilename(path);
 		if( LS.RM.resources_renamed_recently[filename] )
 			filename = LS.RM.resources_renamed_recently[filename];
-		return filename;
+		return filename.toLowerCase();
 	}
 };
 

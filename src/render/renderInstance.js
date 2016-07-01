@@ -75,12 +75,13 @@ function RenderInstance( node, component )
 
 	//info about the material
 	this.material = null;
-	//this.materials = null; //for multimaterial rendering, LONG FUTURE...
 
 	//for extra data for the shader
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
+	this.shader_blocks = [];
+	//this.deformers = []; //TODO
 
 	//TO DO: instancing
 	//this.uniforms_instancing = {};
@@ -345,6 +346,17 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.computeShaderBlockFlags = function()
+{
+	var r = 0;
+	for(var i = 0; i < this.shader_blocks.length; ++i)
+	{
+		var block = this.shader_blocks[i].block;
+		r |= block.flag_mask;
+	}
+	return r;
 }
 
 /*

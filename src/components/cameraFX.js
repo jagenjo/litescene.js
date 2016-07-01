@@ -7,9 +7,9 @@ function CameraFX( o )
 {
 	this.enabled = true;
 
-	this.use_antialiasing = false;
 	this.fx = new LS.TextureFX( o ? o.fx : null );
 	this.frame = new LS.RenderFrameContext();
+	this.use_antialiasing = false;
 
 	this.shader_material = null;
 
@@ -76,14 +76,14 @@ CameraFX.prototype.removeFX = function( fx )
 
 CameraFX.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, "enableFrameBuffer", this.onBeforeRender, this );
-	LEvent.bind( scene, "showFrameBuffer", this.onAfterRender, this );
+	LEvent.bind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.bind( scene, "showFrameContext", this.onAfterRender, this );
 }
 
 CameraFX.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, "enableFrameBuffer", this.onBeforeRender, this );
-	LEvent.unbind( scene, "showFrameBuffer", this.onAfterRender, this );
+	LEvent.unbind( scene, "enableFrameContext", this.onBeforeRender, this );
+	LEvent.unbind( scene, "showFrameContext", this.onAfterRender, this );
 
 	if( this._binded_camera )
 	{
@@ -129,8 +129,8 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 	{
 		if(this._binded_camera)
 			LEvent.unbindAll( this._binded_camera, this );
-		LEvent.bind( camera, "enableFrameBuffer", this.enableCameraFBO, this );
-		LEvent.bind( camera, "showFrameBuffer", this.showCameraFBO, this );
+		LEvent.bind( camera, "enableFrameContext", this.enableCameraFBO, this );
+		LEvent.bind( camera, "showFrameContext", this.showCameraFBO, this );
 	}
 	this._binded_camera = camera;
 }

@@ -59,12 +59,17 @@ function MeshRenderer(o)
 	this._must_update_static = true; //used in static meshes
 	this._transform_version = -1;
 
+	//used to render with several materials
+	this.use_submaterials = false;
+	this.submaterials = [];
+
 	if(o)
 		this.configure(o);
 
+	this._RI = new LS.RenderInstance( null, this );
+
 	if(!MeshRenderer._identity) //used to avoir garbage
 		MeshRenderer._identity = mat4.create();
-
 }
 
 Object.defineProperty( MeshRenderer.prototype, 'primitive', {
@@ -98,11 +103,15 @@ MeshRenderer["@submesh_id"] = { type:"enum", values: function() {
 	return t;
 }};
 
+MeshRenderer["@use_submaterials"] = { type: LS.TYPES.BOOLEAN, widget: null }; //avoid widget
+MeshRenderer["@submaterials"] = { widget: null }; //avoid 
+
 //we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
 MeshRenderer.prototype.onAddedToNode = function(node)
 {
 	if(!node.meshrenderer)
 		node.meshrenderer = this;
+	this._RI.node = node;
 	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
@@ -128,6 +137,9 @@ MeshRenderer.prototype.configure = function(o)
 	this.primitive = o.primitive; //gl.TRIANGLES
 	this.two_sided = !!o.two_sided;
 	this.material = o.material;
+	this.use_submaterials = !!o.use_submaterials;
+	if(o.submaterials)
+		this.submaterials = o.submaterials;
 	if(o.point_size !== undefined) //legacy
 		this.point_size = o.point_size;
 	this.textured_points = !!o.textured_points;
@@ -157,6 +169,9 @@ MeshRenderer.prototype.serialize = function()
 		o.submesh_id = this.submesh_id;
 	if(this.two_sided)
 		o.two_sided = this.two_sided;
+	if(this.use_submaterials)
+		o.use_submaterials = this.use_submaterials;
+	o.submaterials = this.submaterials;
 	o.point_size = this.point_size;
 	o.textured_points = this.textured_points;
 	o.material = this.material;
@@ -192,6 +207,15 @@ MeshRenderer.prototype.getResources = function(res)
 		res[this.mesh] = GL.Mesh;
 	if(typeof(this.lod_mesh) == "string")
 		res[this.lod_mesh] = GL.Mesh;
+	if(typeof(this.material) == "string")
+		res[this.material] = LS.Material;
+
+	if(this.use_submaterials)
+	{
+		for(var i  = 0; i < this.submaterials.length; ++i)
+			if(this.submaterials[i])
+				res[this.submaterials[i]] = LS.Material;
+	}
 	return res;
 }
 
@@ -221,16 +245,21 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this._root)
 		return;
 
-	var RI = this._RI;
-	if(!RI)
-		this._RI = RI = new LS.RenderInstance( this._root, this );
+	if(this.use_submaterials)
+	{
+		this.onCollectInstancesSubmaterials(instances);
+		return;
+	}
 
+	var RI = this._RI;
 	var is_static = this._root.flags && this._root.flags.is_static;
 	var transform = this._root.transform;
 
 	//optimize
 	if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
 		return instances.push( RI );
+
+
 
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
@@ -264,7 +293,6 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	else
 		RI.setRange(0,-1);
 
-
 	//used for raycasting
 	if(this.lod_mesh)
 	{
@@ -288,6 +316,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
 		delete RI.query.macros["USE_TEXTURED_POINTS"];
 
+
+
 	//mark it as ready once no more changes should be applied
 	if( is_static && LS.allow_static && !this.isLoading() )
 	{
@@ -296,6 +326,61 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	}
 
 	instances.push( RI );
+}
+
+MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
+{
+	if(!this._RIs)
+		this._RIs = [];
+
+	var mesh = this.getMesh();
+	if(!mesh)
+		return;
+
+	var groups = mesh.info.groups;
+	if(!groups)
+		return;
+
+	var global = this._root.transform._global_matrix;
+	var center = vec3.create();
+	mat4.multiplyVec3( center, global, LS.ZEROS );
+	var first_RI = null;
+
+	for(var i = 0; i < this.submaterials.length; ++i)
+	{
+		var submaterial_name = this.submaterials[i];
+		if(!submaterial_name)
+			continue;
+		var group = groups[i];
+		if(!group)
+			continue;
+		var material = LS.ResourcesManager.getResource( submaterial_name );
+		if(!material)
+			continue;
+
+		var RI = this._RIs[i];
+		if(!RI)
+			RI = this._RIs[i] = new LS.RenderInstance(this._root,this);
+
+		if(!first_RI)
+			RI.setMatrix( this._root.transform._global_matrix );
+		else
+			RI.setMatrix( first_RI.matrix, first_RI.normal_matrix );
+		RI.center.set(center);
+
+		//flags
+		RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
+		RI.applyNodeFlags();
+		if(this.two_sided)
+			RI.flags &= ~RI_CULL_FACE;
+		RI.setMaterial( material );
+		RI.setMesh( mesh, this.primitive );
+		RI.setRange( group.start, group.length );
+		instances.push(RI);
+
+		if(!first_RI)
+			first_RI = RI;
+	}
 }
 
 //test if any of the assets is being loaded

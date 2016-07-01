@@ -29,6 +29,8 @@ function RenderSettings( o )
 	this.render_gui = true; //render gui
 	this.render_helpers = true; //render helpers (for the editor)
 
+	this.layers = 0xFF; //this is masked with the camera layers when rendering
+
 	this.sort_instances_by_distance = true; //sort render instances by distance 
 	this.sort_instances_by_priority = true; //sort render instances by priority
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
@@ -51,6 +53,7 @@ function RenderSettings( o )
 RenderSettings.default_shadowmap_resolution = 1024;
 
 RenderSettings["@default_shadowmap_resolution"] = { widget: "combo", values: [0,256,512,1024,2048,4096] };
+RenderSettings["@layers"] = { type: "layers" };
 
 RenderSettings.prototype.serialize = function()
 {
@@ -62,6 +65,10 @@ RenderSettings.prototype.configure = function(o)
 	if(o)
 		for(var i in o)
 			this[i] = o[i];
+
+	//legacy
+	if(this.layers === null)
+		this.layers = 0xFF;
 }
 
 RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;

@@ -26,6 +26,7 @@ var ResourcesManager = {
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
+	keep_urls: false, //keep the local URLs of loaded files
 	allow_base_files: false, //allow to load files that are not in a subfolder
 
 	//some containers
@@ -1077,7 +1078,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 	if( data.constructor === String )
 		data = JSON.parse( data );
 
-	if( data.object_type )
+	if( data.object_type && !data.is_data )
 	{
 		var ctor = LS.Classes[ data.object_type ] || window[ data.object_type ];
 		if(ctor)
@@ -1199,7 +1200,12 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 			if(LS.ResourcesManager.keep_files)
 				texture._original_data = data;
 		}
-		URL.revokeObjectURL(objectURL); //free memory
+
+		if( !LS.ResourcesManager.keep_urls )
+			URL.revokeObjectURL( objectURL ); //free memory
+		else
+			texture._local_url = objectURL; //used in strange situations
+
 		if(callback)
 			callback(filename,texture,options);
 	}

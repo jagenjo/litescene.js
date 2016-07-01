@@ -17,6 +17,7 @@ var ShadersManager = {
 	default_xml_url: "data/shaders.xml",
 
 	snippets: {},//to save source snippets
+	shader_blocks: {},//to save shader block
 	compiled_programs: {}, //shaders already compiled and ready to use
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
@@ -26,6 +27,8 @@ var ShadersManager = {
 	default_shader: null, //a default shader to rely when a shader is not found
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
+
+	num_shaderblocks: 0, //used to know the index
 
 	/**
 	* Initializes the shader manager
@@ -42,6 +45,8 @@ var ShadersManager = {
 		this.compiled_programs = {};
 		this.compiled_shaders = {};
 		this.global_shaders = {};
+
+		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
@@ -541,6 +546,27 @@ var ShadersManager = {
 		return this.snippets[ id ];
 	},
 
+	registerShaderBlock: function(id, shader_block)
+	{
+		var block_id = -1;
+
+		if( this.shader_blocks[id] )
+		{
+			console.warn("There is already a ShaderBlock with that name, replacing it: ", id);
+			block_id = this.shader_blocks[id].flag_id;
+		}
+		else
+			block_id = this.num_shaderblocks++;
+		shader_block.flag_id = block_id;
+		shader_block.flag_mask = 1<<block_id;
+		this.shader_blocks[id] = shader_block;
+	},
+
+	getShaderBlock: function(id, shader_block)
+	{
+		return this.shader_blocks[id];
+	},
+
 	//this is global code for default shaders
 	common_vscode: "\n\
 		precision mediump float;\n\
@@ -726,19 +752,35 @@ LS.ShaderQuery = ShaderQuery;
 
 
 //work in progress
-//shaders should 
 
-function ShaderPart()
+function ShaderBlock( name )
 {
-	this.uid = 0// generate uid?
-
-	this.imports = null; //snippets to import
-
-	this.vertex_uniforms = null; //string like  uniform float u_data@;
-	this.vertex_code = null; //string
-
-	this.fragment_uniforms = null; //string like  uniform float u_data@;
-	this.fragment_code = null; //string
+	this.flag_id = -1;
+	this.flag_mask = 0;
+	if(!name)
+		throw("ShaderBlock must have a name");
+	this.name = name;
+	this.code_map = new Map();
 }
 
-LS.ShaderPart = ShaderPart;
+ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
+{
+	this.code_map.set( shader_type, { enabled: enabled_code || "", disabled: disabled_code || ""} );
+}
+
+ShaderBlock.prototype.getCode = function( shader_type, block_flags )
+{
+	block_flags = block_flags || 0;
+	var code = this.code_map.get( shader_type );
+	if(!code)
+		return null;
+	return (block_flags | this.flag_mask) ? code.enabled : code.disabled;
+}
+
+ShaderBlock.prototype.register = function()
+{
+	LS.ShadersManager.registerShaderBlock(this.name, this);
+}
+
+
+LS.ShaderBlock = ShaderBlock;

@@ -18,9 +18,20 @@ function ShaderCode( code )
 	this._subfiles = {};
 	this._compiled_shaders = {};
 
+	this._shaderblock_flags_num = 0;
+	this._shaderblock_flags = {};
+
 	if(code)
 		this.code = code;
 }
+
+//block types
+ShaderCode.CODE = 1;
+ShaderCode.PRAGMA = 2;
+
+//pargma types
+ShaderCode.INCLUDE = 1;
+ShaderCode.SHADERBLOCK = 2;
 
 Object.defineProperty( ShaderCode.prototype, "code", {
 	enumerable: true,
@@ -44,6 +55,8 @@ ShaderCode.prototype.processCode = function()
 	this._code_parts = {};
 	this._compiled_shaders = {};
 	this._init_function = null;
+	this._shaderblock_flags_num = 0;
+	this._shaderblock_flags = {};
 
 	var subfiles = GL.processFileAtlas( this._code );
 	this._subfiles = subfiles;
@@ -94,7 +107,7 @@ ShaderCode.prototype.processCode = function()
 			if(!code_part)
 				code_part = this._code_parts[name] = {};
 			//parse data (extract pragmas and stuff)
-			code_part[ extension ] = LS.ShaderCode.parseGLSLCode( subfile_data );
+			code_part[ extension ] = this.parseGLSLCode( subfile_data );
 		}
 	}
 
@@ -148,15 +161,19 @@ ShaderCode.prototype.getDataToStore = function()
 }
 
 //compile the shader, cache and return
-ShaderCode.prototype.getShader = function( render_mode, flags )
+ShaderCode.prototype.getShader = function( render_mode, block_flags )
 {
 	render_mode = render_mode || "default";
-	flags = flags || 0;
+	block_flags = block_flags || 0;
 
-	//search for a compiled version of the shader
-	var shader = this._compiled_shaders[ render_mode ];
-	if(shader)
-		return shader;
+	//search for a compiled version of the shader (by render_mode and block_flags)
+	var shaders_map = this._compiled_shaders[ render_mode ];
+	if(shaders_map)
+	{
+		var shader = shaders_map.get( block_flags );
+		if(shader)
+			return shader;
+	}
 
 	//search for the code
 	var code = this._code_parts[ render_mode ];
@@ -170,12 +187,12 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = this.getCodeFromSubfile( code.vs );
+		vs_code = this.getCodeFromSubfile( code.vs, GL.VERTEX_SHADER, block_flags );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = this.getCodeFromSubfile( code.fs );
+	var fs_code = this.getCodeFromSubfile( code.fs, GL.FRAGMENT_SHADER, block_flags );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
@@ -186,11 +203,15 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	if(!shader)
 		return null;
 
-	this._compiled_shaders[ render_mode ] = shader;
+	//cache as render_mode,flags
+	if( !this._compiled_shaders[ render_mode ] )
+		this._compiled_shaders[ render_mode ] = new Map();
+	this._compiled_shaders[ render_mode ].set( block_flags, shader );
+
 	return shader;
 }
 
-ShaderCode.prototype.compileShader = function( vs_code, fs_code)
+ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 {
 	if(!LS.catch_exceptions)
 		return new GL.Shader( vs_code, fs_code );
@@ -209,7 +230,8 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code)
 	return null;
 }
 
-ShaderCode.prototype.getCodeFromSubfile = function( subfile )
+//this function resolves all pragmas (includes, shaderblocks, etc) and returns the final code
+ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_flags )
 {
 	if( !subfile.is_dynamic )
 		return subfile.code;
@@ -220,14 +242,14 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile )
 	for(var i = 0; i < blocks.length; ++i)
 	{
 		var block = blocks[i];
-		if( block.type == 1 ) //regular code
+		if( block.type === ShaderCode.CODE ) //regular code
 		{
 			code += block.code;
 			continue;
 		}
 
-		//pragma
-		if(block.include)
+		//pragmas
+		if(block.include) //bring code from other files
 		{
 			var filename = block.include;
 			var ext = LS.ResourcesManager.getExtension( filename );
@@ -257,13 +279,25 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile )
 				code += "\n" + snippet_code.code + "\n";
 			}
 		}
+		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
+		{
+			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			if(!shader_block)
+			{
+				console.error("Shader uses unknown ShaderBLock: ", block.shader_block);
+				return null;
+			}
+
+			var block_code = shader_block.getCode( shader_type, block_flags );
+			code += "\n" + block_code + "\n";
+		}
 	}
 
 	return code;
 }
 
 //given a code with some pragmas, it separates them
-ShaderCode.parseGLSLCode = function( code )
+ShaderCode.prototype.parseGLSLCode = function( code )
 {
 	//remove comments
 	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
@@ -273,11 +307,12 @@ ShaderCode.parseGLSLCode = function( code )
 	var pragmas = {};
 	var uniforms = {};
 	var includes = {};
+	var shader_blocks = {};
 	var is_dynamic = false; //means this shader has no variations using pragmas or macros
 
 	var lines = code.split("\n");
 
-	/* REMOVED: fors could have problems
+	/* 
 	//clean (this helps in case a line contains two instructions, like "uniform float a; uniform float b;"
 	var clean_lines = [];
 	for(var i = 0; i < lines.length; i++)
@@ -323,14 +358,24 @@ ShaderCode.parseGLSLCode = function( code )
 		var t = line.split(" ");
 		if(t[0] == "#pragma")
 		{
+			//merge lines and add previous block
+			blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); 
+
 			is_dynamic = true;
 			pragmas[ t[2] ] = true;
 			var action = t[1];
-			blocks.push( { type: 1, code: current_block.join("\n") } ); //merge lines and add as block
 			current_block.length = 0;
-			var pragma_info = { type: 2, line: line, action: action, param: t[2] };
-			if( action == "include" && t[2] )
+			var pragma_info = { type: ShaderCode.PRAGMA, line: line, action: action, param: t[2] };
+			if( action == "include")
 			{
+				if(!t[2])
+				{
+					console.error("shader include without path");
+					continue;
+				}
+
+				pragma_info.action_type = ShaderCode.INCLUDE;
+				//resolve include
 				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
 				var fullname = include.split(":");
 				var filename = fullname[0];
@@ -339,6 +384,22 @@ ShaderCode.parseGLSLCode = function( code )
 				pragma_info.include_subfile = subfile;
 				includes[ pragma_info.include ] = true;
 			}
+			else if( action == "shaderblock" )
+			{
+				if(!t[2])
+				{
+					console.error("#pragma shaderblock without name");
+					continue;
+				}
+				pragma_info.action_type = ShaderCode.SHADERBLOCK;
+				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.shader_block = shader_block_name;
+				shader_blocks[ pragma_info.shader_block ] = true;
+				pragma_info.shader_block_flag = this._shaderblock_flags_num;
+				this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
+				this._shaderblock_flags_num += 1;
+			}
+
 			blocks.push( pragma_info ); //add pragma block
 		}
 		else
@@ -346,7 +407,7 @@ ShaderCode.parseGLSLCode = function( code )
 	}
 
 	if(current_block.length)
-		blocks.push( { type: 1, code: current_block.join("\n") } ); //merge lines and add as block
+		blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); //merge lines and add as block
 
 	return {
 		is_dynamic: is_dynamic,
@@ -354,7 +415,8 @@ ShaderCode.parseGLSLCode = function( code )
 		blocks: blocks,
 		pragmas: pragmas,
 		uniforms: uniforms,
-		includes: {}
+		includes: includes,
+		shader_blocks: shader_blocks
 	};
 }
 

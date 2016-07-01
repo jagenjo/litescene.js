@@ -165,20 +165,28 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 //not finished
 Component.prototype.createAction = function( name, callback, options )
 {
-	this[name] = callback;
-	this.constructor["@" + name ] = options || { button_text:"trigger", type:"button", callback: callback };
+	var safe_name = name.replace(/ /gi,"_"); //replace spaces
+	this[ safe_name ] = callback;
+	this.constructor["@" + safe_name ] = options || { type: "function", button_text: name, widget:"button", callback: callback };
 }
 
 
 /**
 * Returns the locator string of this component
 * @method getLocator
+* @param {string} property_name [optional] you can pass the name of a property in this component
 * @return {String} the locator string of this component
 **/
-Component.prototype.getLocator = function()
+Component.prototype.getLocator = function( property_name )
 {
 	if(!this._root)
 		return "";
+	if(property_name)
+	{
+		if(this[ property_name ] === undefined )
+			console.warn("No property found in this component with that name:",property_name);
+		return this._root.uid + "/" + this.uid + "/" + property_name;
+	}
 	return this._root.uid + "/" + this.uid;
 }
 

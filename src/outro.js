@@ -28,4 +28,4 @@ LS.newCameraNode = function(id)
 global.LS = LS;
 
 //*******************************/
-})( typeof(window) != "undefined" ? window : self ); //add support to nodejs 
+})( typeof(window) != "undefined" ? window : self ); //TODO: add support for commonjs

@@ -130,6 +130,44 @@ var LS = {
 	},
 
 	/**
+	* Replaces all components of one class in the scene with components of another class
+	*
+	* @method replaceComponentClass
+	* @param {SceneTree} scene where to apply the replace
+	* @param {String} old_class_name name of the class to be replaced
+	* @param {String} new_class_name name of the class that will be used instead
+	*/
+	replaceComponentClass: function( scene, old_class_name, new_class_name )
+	{
+		var proposed_class = LS.Components[ new_class_name ];
+		if(!proposed_class)
+			return false;
+
+		for(var i = 0; i < LS.GlobalScene._nodes.length; ++i)
+		{
+			var node = LS.GlobalScene._nodes[i];
+
+			if(!node.hasComponent( old_class_name, true ))
+				continue;
+
+			//this is a slow way but we dont care, this is used very rarely
+			var info = node.serialize();
+			info = { components: info.components }; //just want the components
+			for(var j = 0; j < info.components.length; ++j)
+			{
+				var compo_info = info.components[j];
+				if(compo_info[0] == old_class_name)
+					compo_info[0] = new_class_name;
+			}
+			//now force the node to be reloaded
+			node.removeAllComponents();
+			node.configure( info );
+		}
+
+		return true;
+	},
+
+	/**
 	* Register a resource class so we know which classes could be use as resources
 	*
 	* @method registerResourceClass
@@ -586,139 +624,6 @@ var LS = {
 		LEvent.trigger( LS, "materialclass_registered", material_class );
 		material_class.resource_type = "Material";
 		material_class.is_material = true;
-	},
-
-	/**
-	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.
-	*
-	* @method getGUIElement
-	* @return {HTMLElement} 
-	*/
-	getGUIElement: function()
-	{
-		if( this._gui_element )
-			return this._gui_element;
-
-		var gui = document.createElement("div");
-		gui.className = "litescene-gui";
-		gui.style.position = "absolute";
-		gui.style.top = "0";
-		gui.style.left = "0";
-
-		//normalize
-		gui.style.color = "#999";
-		gui.style.font = "20px Arial";
-
-		//make it fullsize
-		gui.style.width = "100%";
-		gui.style.height = "100%";
-		gui.style.overflow = "hidden";
-		gui.style.pointerEvents = "none";
-
-		if(!this._gui_style)
-		{
-			var style = this._gui_style = document.createElement("style");
-			style.appendChild(document.createTextNode(""));
-			document.head.appendChild(style);
-			style.sheet.insertRule(".litescene-gui button, .litescene-gui input { pointer-events: auto; }");
-		}
-
-		gl.canvas.parentNode.appendChild( gui );
-		
-		this._gui_element = gui;
-		return gui;
-	},
-
-	/**
-	* Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas
-	*
-	* @method createElementGUI
-	* @param {String} tag_type the tag type "div"
-	* @param {String} anchor "top-left", "top-right", "bottom-left", "bottom-right"
-	* @return {HTMLElement} 
-	*/
-	createElementGUI: function( tag_type, anchor )
-	{
-		tag_type = tag_type || "div";
-
-		var element = document.createElement("div");
-		element.style.pointerEvents = "auto";
-		return this.attachToGUI( element, anchor );
-	},
-
-	attachToGUI: function( element, anchor )
-	{
-		if(!element)
-		{
-			console.error("attachToGUI: element cannot be null");
-			return;
-		}
-
-		element.style.position = "absolute";
-
-		anchor = anchor || "top-left";
-
-		switch(anchor)
-		{
-			case "bottom":
-			case "bottom-left":
-				element.style.bottom = "0";
-				element.style.left = "0";
-				break;
-			case "bottom-right":
-				element.style.bottom = "0";
-				element.style.right = "0";
-				break;
-			case "bottom-middle":
-				element.style.bottom = "0";
-				element.style.width = "50%";
-				element.style.margin = "0 auto";
-				break;
-			case "right":
-			case "top-right":
-				element.style.top = "0";
-				element.style.right = "0";
-				break;
-			case "top-middle":
-				element.style.top = "0";
-				element.style.width = "50%";
-				element.style.margin = "0 auto";
-				break;
-			default:
-				console.warn("invalid GUI anchor position: ",anchor);
-			case "left":
-			case "top":
-			case "top-left":
-				element.style.top = "0";
-				element.style.left = "0";
-				break;
-		}
-
-		var gui_root = this.getGUIElement();
-		gui_root.appendChild( element );
-		return element;
-	},
-
-	/**
-	* Removes all the GUI elements from the DOM
-	*
-	* @method removeGUIElement
-	*/
-	removeGUIElement: function()
-	{
-		if( !this._gui_element )
-			return;
-
-		if(this._gui_element.parentNode)
-			this._gui_element.parentNode.removeChild( this._gui_element );
-		this._gui_element = null;
-
-		if(this._gui_style)
-		{
-			this._gui_style.parentNode.removeChild( this._gui_style );
-			this._gui_style = null;		
-		}
-		return;
 	},
 
 	/**

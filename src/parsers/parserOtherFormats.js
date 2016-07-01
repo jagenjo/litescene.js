@@ -1,5 +1,4 @@
-//3dcgart format (probably three.js)
-//Array.prototype.flatten1=function(){return this.reduce(function(a,b){return a.concat(b)},[])};
+//3dcgart format
 
 var parserCGArtMesh = { 
 	extension: 'cgart',
@@ -171,8 +170,6 @@ var parserCGArtMesh = {
 };
 
 LS.Formats.registerParser( parserCGArtMesh );
-
-
 
 
 //GR2

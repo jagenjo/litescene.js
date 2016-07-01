@@ -19,27 +19,29 @@ function SkinDeformer(o)
 	this._mesh = null;
 
 	//check how many floats can we put in a uniform
-	if(!SkinDeformer.num_supported_uniforms)
+	if(!SkinDeformer._initialized)
 	{
 		SkinDeformer.num_supported_uniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
 		SkinDeformer.num_supported_textures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
 		//check if GPU skinning is supported
 		if( SkinDeformer.num_supported_uniforms < SkinDeformer.MAX_BONES*3 && SkinDeformer.num_supported_textures == 0)
 			SkinDeformer.gpu_skinning_supported = false;
+		SkinDeformer._initialized = true;
 	}
 
 	if(o)
 		this.configure(o);
 
-	if(!MeshRenderer._identity) //used to avoir garbage
-		MeshRenderer._identity = mat4.create();
+	//this._deformer = new LS.Deformer();
 }
 
 SkinDeformer.icon = "mini-icon-stickman.png";
 
 SkinDeformer.MAX_BONES = 64;
+SkinDeformer.MAX_TEXTURE_BONES = 128; //do not change this, hardcoded in the shader
 SkinDeformer.gpu_skinning_supported = true;
 SkinDeformer.icon = "mini-icon-stickman.png";
+SkinDeformer.apply_to_normals_by_software = false;
 
 SkinDeformer["@skeleton_root_node"] = { type: "node" };
 
@@ -131,6 +133,7 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if(!render_instances.length)
 		return;
 
+	//take last one (although maybe using this._root.instances ...)
 	var last_RI = render_instances[ render_instances.length - 1];
 	
 	if(!this.enabled)
@@ -154,7 +157,8 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
-	else if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
+	
+	if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
 		//add skinning
 		RI.query.macros["USE_SKINNING"] = "";
@@ -182,17 +186,20 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			if(bones.length > SkinDeformer.MAX_BONES)
 				RI.query.macros["MAX_BONES"] = bones.length.toString();
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
+
+			RI.shader_blocks[0] = { block: LS.SkinDeformer.skinning_block, uniforms: { u_bones: u_bones } };
 		}
 		else if( SkinDeformer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
 		{
 			var texture = this._bones_texture;
 			if(!texture)
 			{
-				texture = this._bones_texture = new GL.Texture( 1, bones.length * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
+				texture = this._bones_texture = new GL.Texture( 1, SkinDeformer.MAX_TEXTURE_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
 
 			texture._data.set( u_bones );
+
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[":bones_" + this.uid ] = texture; //debug
 			RI.uniforms["u_bones"] = LS.Renderer.BONES_TEXTURE_SLOT;
@@ -325,8 +332,7 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 		}
 		
 		//we could also multiply the normal but this is already superslow...
-		/*
-		if(0)
+		if(SkinDeformer.apply_to_normals_by_software)
 		{
 			//apply weights
 			v[0] = v[1] = v[2] = 0.0; //reset
@@ -339,7 +345,6 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 					vec3.scaleAndAdd( v, v, temp, w[j] );
 				}
 		}
-		*/
 
 		//if(factor != 1) vec3.lerp( v, ov, v, factor);
 	}
@@ -375,3 +380,69 @@ SkinDeformer.prototype.getBones = function()
 
 LS.registerComponent( SkinDeformer );
 LS.SkinDeformer = SkinDeformer;
+
+SkinDeformer.skinning_enabled_shader_code = "\n\
+	//Skinning ******************* \n\
+	#ifndef MAX_BONES\n\
+		#define MAX_BONES 64\n\
+	#endif\n\
+	#ifdef USE_SKINNING_TEXTURE\n\
+		uniform sampler2D u_bones;\n\
+	#else\n\
+		uniform vec4 u_bones[ MAX_BONES * 3];\n\
+	#endif\n\
+	attribute vec4 a_weights;\n\
+	attribute vec4 a_bone_indices;\n\
+	\n\
+	void getMat(int id, inout mat4 m) {\n\
+	\n\
+		#ifdef USE_SKINNING_TEXTURE\n\
+			float i_max_texture_bones_offset = 1.0 / (128.0 * 3.0);\n\
+			m[0] = texture2D( u_bones, vec2( 0.0, (float(id*3)+0.5) * i_max_texture_bones_offset ) ); \n\
+			m[1] = texture2D( u_bones, vec2( 0.0, (float(id*3+1)+0.5) * i_max_texture_bones_offset ) );\n\
+			m[2] = texture2D( u_bones, vec2( 0.0, (float(id*3+2)+0.5) * i_max_texture_bones_offset ) );\n\
+		#else\n\
+			m[0] = u_bones[ id * 3];\n\
+			m[1] = u_bones[ id * 3 + 1];\n\
+			m[2] = u_bones[ id * 3 + 2];\n\
+		#endif\n\
+	}\n\
+	\n\
+	mat3 mat3_emu(mat4 m4) {\n\
+	  return mat3(\n\
+		  m4[0][0], m4[0][1], m4[0][2],\n\
+		  m4[1][0], m4[1][1], m4[1][2],\n\
+		  m4[2][0], m4[2][1], m4[2][2]);\n\
+	}\n\
+	\n\
+	void applySkinning(inout vec4 position, inout vec3 normal)\n\
+	{\n\
+		//toji version seems faster\n\
+		mat4 bone_matrix = mat4(0.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0, 0.0,0.0,0.0,0.0, 0.0,0.0,0.0,1.0);\n\
+		\n\
+		getMat( int(a_bone_indices.x), bone_matrix );\n\
+		mat4 result = a_weights.x * bone_matrix;\n\
+		getMat( int(a_bone_indices.y), bone_matrix);\n\
+		result = result + a_weights.y * bone_matrix;\n\
+		getMat( int(a_bone_indices.z), bone_matrix);\n\
+		result = result + a_weights.z * bone_matrix;\n\
+		getMat( int(a_bone_indices.w), bone_matrix);\n\
+		result = result + a_weights.w * bone_matrix;\n\
+		\n\
+		position.xyz = (position * result).xyz;\n\
+		normal = normal * mat3_emu(result);\n\
+	}\n\
+";
+
+SkinDeformer.skinning_disabled_shader_code = "\nvoid applySkinning( inout vec4 position, inout vec3 normal) {}\n";
+
+// ShaderBlocks used to inject to shader in runtime
+var skinning_block = new LS.ShaderBlock("skinning");
+skinning_block.addCode( GL.VERTEX_SHADER, SkinDeformer.skinning_enabled_shader_code, SkinDeformer.skinning_disabled_shader_code );
+skinning_block.register();
+SkinDeformer.skinning_block = skinning_block;
+
+var skinning_texture_block = new LS.ShaderBlock("skinning_texture");
+skinning_texture_block.addCode( GL.VERTEX_SHADER, "\n#define USE_SKINNING_TEXTURE\n" + SkinDeformer.skinning_enabled_shader_code, SkinDeformer.skinning_disabled_shader_code );
+skinning_texture_block.register();
+SkinDeformer.skinning_texture_block = skinning_texture_block;

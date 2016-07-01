@@ -109,7 +109,7 @@ Resource.getDataToStore = function( resource )
 		delete obj.filename;
 		delete obj.fullpath;
 		delete obj.remotepath;
-		delete obj.preview_url;
+		delete obj.preview_url; //just in case is an old resource
 		//convert to string
 		data = JSON.stringify( obj );
 	}
