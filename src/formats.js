@@ -185,6 +185,7 @@ LS.Formats.addSupportedFormat( "png,jpg,jpeg,webp,bmp,gif", { "native": true, da
 LS.Formats.addSupportedFormat( "wbin", { dataType: "arraybuffer" } );
 LS.Formats.addSupportedFormat( "json,js,txt,html,css,csv", { dataType: "text" } );
 LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": LS.ShaderCode  } );
+LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
 
 /*

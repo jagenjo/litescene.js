@@ -139,6 +139,8 @@ ShaderMaterial.prototype.processShaderCode = function()
 	for(var i in shader_code._global_uniforms)
 	{
 		var global = shader_code._global_uniforms[i];
+		if( global.disabled ) //in case this var is not found in the shader
+			continue;
 		this.createUniform( global.name, global.uniform, global.type, global.value, global.options );
 	}
 
@@ -148,6 +150,12 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 {
+	//get shader code
+	var shader = null;
+	var shader_code = this.getShaderCode();
+	if( shader_code )
+		shader = shader_code.getShader();
+
 	for(var i = 0; i < this._properties.length; ++i)
 	{
 		var new_prop = this._properties[i];
@@ -157,6 +165,23 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 		var old = old_properties[ new_prop.name ];
 		if(old.value === undefined)
 			continue;
+
+
+		//validate
+		if( shader )
+		{
+			var uniform_info = shader.uniformInfo[ new_prop.uniform ];
+			if(!uniform_info)
+				continue;
+			if(new_prop.value !== undefined)
+			{
+				if( !GL.Shader.validateValue( new_prop.value, uniform_info ) )
+				{
+					new_prop.value = undefined;
+					continue;
+				}
+			}
+		}
 
 		//this is to keep current values when coding the shader from the editor
 		if( new_prop.value && new_prop.value.set ) //special case for typed arrays avoiding generating GC
@@ -239,7 +264,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 
 ShaderMaterial.prototype.fillUniforms = function()
 {
-
 	//gather uniforms & samplers
 	var samplers = this._samplers;
 	samplers.length = 0;
@@ -249,6 +273,7 @@ ShaderMaterial.prototype.fillUniforms = function()
 	for(var i = 0; i < this._properties.length; ++i)
 	{
 		var p = this._properties[i];
+
 		if(p.is_texture)
 		{
 			this._uniforms[ p.uniform ] = samplers.length;
@@ -317,6 +342,15 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 	return;
 }
 
+//get shader code
+ShaderMaterial.prototype.getShaderCode = function()
+{
+	var shader_code = LS.ResourcesManager.getResource( this.shader );
+	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+		return null;
+	return shader_code;
+}
+
 /**
 * Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture
 * @method applyToTexture
@@ -329,8 +363,8 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 		return false;
 
 	//get shader code
-	var shader_code = LS.ResourcesManager.getResource( this.shader );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+	var shader_code = this.getShaderCode();
+	if(!shader_code)
 		return false;
 
 	//extract shader compiled

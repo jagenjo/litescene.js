@@ -196,8 +196,9 @@ Resource.prototype.getAsSubfiles = function()
 */
 Resource.prototype.getAsHTML = function()
 {
-	if(!this._data)
+	if(!this._data || this._data.constructor !== String)
 		return null;
+
 	var container = document.createElement("div");
 	container.innerHTML = this._data;
 	return container;

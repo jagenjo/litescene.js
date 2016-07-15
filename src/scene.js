@@ -1443,7 +1443,7 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	pack.category = "SceneTree";
 
 	return pack;
-},
+}
 
 //WIP: this is in case we have static nodes in the scene
 SceneTree.prototype.updateStaticObjects = function()

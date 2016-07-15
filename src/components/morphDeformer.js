@@ -69,8 +69,8 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 
 	if( this._valid_morphs.length <= 4 ) //use GPU
 		this.applyMorphTargetsByGPU( morph_RI, this._valid_morphs );
-//	else if( this._morph_texture_supported )
-//		this.applyMorphUsingTextures( morph_RI, this._valid_morphs );
+	else if( this._morph_texture_supported ) //use GPU with textures
+		this.applyMorphUsingTextures( morph_RI, this._valid_morphs );
 	else
 		this.applyMorphBySoftware( morph_RI, this._valid_morphs );
 }
@@ -110,8 +110,8 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	var morphs_buffers = {};
 	var morphs_weights = [];
 
-	//collect
-	for(var i = 0; i < valid_morphs.length; ++i)
+	//collect (max 4 if using streams)
+	for(var i = 0; i < valid_morphs.length && i < 4; ++i)
 	{
 		var morph = valid_morphs[i];
 		var morph_mesh = morph.mesh;
@@ -144,18 +144,42 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 
 	RI.query.macros["USE_MORPHING_STREAMS"] = "";
 
-	var weights = new Float32Array( 4 );
+	if(RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined)
+	{
+		delete RI.query.macros["USE_MORPHING_TEXTURE"];
+		delete RI.uniforms["u_morph_vertices_texture"];
+		delete RI.uniforms["u_morph_normals_texture"];
+		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
+		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
+	}
+
+	var weights = this._stream_weights;
+	if(!weights)
+		weights = this._stream_weights = new Float32Array( 4 );
+	else
+		weights.fill(0); //fill first because morphs_weights could have zero length
 	weights.set( morphs_weights );
 	RI.uniforms["u_morph_weights"] = weights;
 }
 
 MorphDeformer.prototype.disableMorphingGPU = function( RI )
 {
-	if( RI.query && ( RI.query.macros["USE_MORPHING_STREAMS"] !== undefined || RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined) )
+	if( !RI || !RI.query )
+		return;
+	
+	if ( RI.query.macros["USE_MORPHING_STREAMS"] !== undefined )
 	{
 		delete RI.query.macros["USE_MORPHING_STREAMS"];
-		delete RI.query.macros["USE_MORPHING_TEXTURE"];
 		delete RI.uniforms["u_morph_weights"];
+	}
+
+	if( RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined )
+	{
+		delete RI.query.macros["USE_MORPHING_TEXTURE"];
+		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
+		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
+		delete RI.uniforms["u_morph_vertices_texture"];
+		delete RI.uniforms["u_morph_normals_texture"];
 	}
 }
 
@@ -259,7 +283,7 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 {
 	var base_mesh = RI.mesh;
 	var base_vertices_buffer = base_mesh.vertexBuffers["vertices"];
-	var base_normals_buffer = base_mesh.vertexBuffers["vertices"];
+	var base_normals_buffer = base_mesh.vertexBuffers["normals"];
 
 	//create textures for the base mesh
 	if(!base_vertices_buffer._texture)
@@ -267,18 +291,27 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	if(!base_normals_buffer._texture)
 		base_normals_buffer._texture = this.createGeometryTexture( base_normals_buffer );
 
+	//LS.RM.textures[":debug_base_vertex"] = base_vertices_buffer._texture;
+	//LS.RM.textures[":debug_base_normal"] = base_normals_buffer._texture;
+
+
 	var morphs_textures = [];
 
-	//create the texture container
+	//create the texture container where all will be merged
 	if(!this._morphtarget_vertices_texture || this._morphtarget_vertices_texture.height != base_vertices_buffer._texture.height )
 	{
 		this._morphtarget_vertices_texture = new GL.Texture( base_vertices_buffer._texture.width, base_vertices_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
-		this._texture_size = vec4.fromValues( this._morphtarget_vertices_texture.width, this._morphtarget_vertices_texture.height, 
-			1 / this._morphtarget_vertices_texture.width, 1 / this._morphtarget_vertices_texture.height );
-	}
-	if(!this._morphtarget_normals_texture)
 		this._morphtarget_normals_texture = new GL.Texture( base_normals_buffer._texture.width, base_normals_buffer._texture.height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, no_flip: true });
 
+		//used in the shader
+		this._texture_size = vec4.fromValues( this._morphtarget_vertices_texture.width, this._morphtarget_vertices_texture.height, 
+			1 / this._morphtarget_vertices_texture.width, 1 / this._morphtarget_vertices_texture.height );
+
+		//LS.RM.textures[":debug_morph_vertex"] = this._morphtarget_vertices_texture;
+		//LS.RM.textures[":debug_morph_normal"] = this._morphtarget_normals_texture;
+	}
+
+	//prepare morph targets
 	for(var i = 0; i < valid_morphs.length; ++i)
 	{
 		var morph = valid_morphs[i];
@@ -298,6 +331,9 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 		if(!normals_buffer._texture)
 			normals_buffer._texture = this.createGeometryTexture( normals_buffer );
 
+		//LS.RM.textures[":debug_morph_vertex_" + i] = vertices_buffer._texture;
+		//LS.RM.textures[":debug_morph_normal_" + i] = normals_buffer._texture;
+
 		morphs_textures.push( { weight: morph.weight, vertices: vertices_buffer._texture, normals: normals_buffer._texture } );
 	}
 
@@ -306,6 +342,7 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	var shader = this.getMorphTextureShader();
 	shader.uniforms({ u_base_texture: 0, u_morph_texture: 1 });
 
+	gl.disable( gl.DEPTH_TEST );
 	gl.enable( gl.BLEND );
 	gl.blendFunc( gl.ONE, gl.ONE );
 
@@ -313,9 +350,12 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	var quad_mesh = GL.Mesh.getScreenQuad();
 
 	this._morphtarget_vertices_texture.drawTo( function(){
+		gl.clearColor( 0,0,0,0 );
+		gl.clear( gl.COLOR_BUFFER_BIT );
 		for(var i = 0; i < morphs_textures.length; ++i )
 		{
-			morphs_textures[i].vertices.bind(1);
+			var stream_texture = morphs_textures[i].vertices;
+			stream_texture.bind(1);
 			shader.uniforms({ u_weight: morphs_textures[i].weight });
 			shader.draw( quad_mesh, gl.TRIANGLES );
 		}
@@ -324,14 +364,16 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	base_normals_buffer._texture.bind(0);
 
 	this._morphtarget_normals_texture.drawTo( function(){
+		gl.clearColor( 0,0,0,0 );
+		gl.clear( gl.COLOR_BUFFER_BIT );
 		for(var i = 0; i < morphs_textures.length; ++i )
 		{
-			morphs_textures[i].normals.bind(1);
+			var stream_texture = morphs_textures[i].normals;
+			stream_texture.bind(1);
 			shader.uniforms({ u_weight: morphs_textures[i].weight });
 			shader.draw( quad_mesh, gl.TRIANGLES );
 		}
 	});
-
 
 	gl.disable( gl.BLEND );
 
@@ -347,14 +389,19 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	}
 
 	//modify the RI to have the displacement texture
-	RI.samplers["u_morph_vertexs_texture"] = this._morphtarget_vertices_texture;
-	RI.samplers["u_morph_normals_texture"] = this._morphtarget_normals_texture;
+	RI.uniforms["u_morph_vertices_texture"] = LS.Renderer.MORPHS_TEXTURE_SLOT;
+	RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = this._morphtarget_vertices_texture;
+
+	RI.uniforms["u_morph_normals_texture"] = LS.Renderer.MORPHS_TEXTURE2_SLOT;
+	RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = this._morphtarget_normals_texture;
+
 	RI.uniforms["u_morph_texture_size"] = this._texture_size;
 
-	//add the ids
+	//add the ids (the texture with 0,1,2, 3,4,5, ...)
 	RI.vertex_buffers["a_morphing_ids"] = this._ids_buffer;
 
 	//enable the algorithm
+	delete RI.query.macros["USE_MORPHING_STREAMS"];
 	RI.query.macros["USE_MORPHING_TEXTURE"] = "";
 }
 
@@ -366,7 +413,8 @@ MorphDeformer._blend_shader_fragment_code = "\n\
 	uniform float u_weight;\n\
 	varying vec2 v_coord;\n\
 	void main() {\n\
-		gl_FragColor = u_weight * (texture2D(u_morph_texture, v_coord) - texture2D(u_base_texture, v_coord));\n\
+		gl_FragColor = u_weight * ( texture2D(u_morph_texture, v_coord) - texture2D(u_base_texture, v_coord) );\n\
+		gl_FragColor.w = 1.0;\n\
 	}\n\
 ";
 
@@ -379,21 +427,22 @@ MorphDeformer.prototype.getMorphTextureShader  = function()
 
 MorphDeformer.prototype.createGeometryTexture = function( data_buffer )
 {
-	var data = data_buffer.data;
-	var buffer = data.buffer;
+	var stream_data = data_buffer.data;
+	var buffer = stream_data.buffer;
 
-	var size = buffer.byteLength;
 	var max_texture_size = gl.getParameter( gl.MAX_TEXTURE_SIZE );
 
-	var width = max_texture_size;
-	var height = Math.round( size / width );
+	var num_floats = stream_data.length; 
+	var num_vertex = num_floats / 3;
+	var width = Math.min( max_texture_size, num_vertex );
+	var height = Math.ceil( num_vertex / width );
+
+	var buffer_padded = new Float32Array( width * height * 3 );
+	buffer_padded.set( stream_data );
 	
-	var texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer, no_flip: true });
+	var texture = new GL.Texture( width, height, { format: gl.RGB, type: gl.FLOAT, filter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE, pixel_data: buffer_padded, no_flip: true });
 	return texture;
 }
-
-
-
 
 MorphDeformer.prototype.setMorphMesh = function(index, value)
 {

@@ -86,14 +86,17 @@ ShaderCode.prototype.processCode = function()
 			{
 				var line = lines[j].trim();
 				var words = line.split(" ");
+				var varname = words[0];
+				var uniform_name = words[1];
+				var property_type = words[2];
 				var value = words[3];
 				if( value !== undefined )
 					value = LS.stringToValue(value);
 				var options = null;
 				var options_index = line.indexOf("{");
 				if(options_index != -1)
-					options = LS.stringToValue(line.substr(options_index));
-				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: options };
+					options = LS.stringToValue( line.substr(options_index) );
+				this._global_uniforms[ varname ] = { name: varname, uniform: uniform_name, type: property_type, value: value, options: options };
 			}
 			continue;
 		}
@@ -112,7 +115,7 @@ ShaderCode.prototype.processCode = function()
 	}
 
 	//compile the shader before using it to ensure there is no errors
-	this.getShader();
+	var shader = this.getShader();
 
 	//process init code
 	if(init_code)
@@ -137,6 +140,10 @@ ShaderCode.prototype.processCode = function()
 				this._init_function = new Function( init_code );
 		}
 	}
+
+	//check that all uniforms are correct
+	this.validatePublicUniforms( shader );
+
 
 	//to alert all the materials out there using this shader that they must update themselves.
 	LEvent.trigger( LS.ShaderCode, "modified", this );
@@ -228,6 +235,20 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		}
 	}
 	return null;
+}
+
+ShaderCode.prototype.validatePublicUniforms = function( shader )
+{
+	for( var i in this._global_uniforms )
+	{
+		var property_info = this._global_uniforms[i];
+		var uniform_info = shader.uniformInfo[ property_info.uniform ];
+		if(!uniform_info)
+		{
+			info.disabled = true;
+			continue;
+		}
+	}
 }
 
 //this function resolves all pragmas (includes, shaderblocks, etc) and returns the final code

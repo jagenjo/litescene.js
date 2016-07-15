@@ -674,6 +674,46 @@ var LS = {
 			console.error( "Not a valid value: " + v );
 		}
 		return value;
+	},
+
+	isValueOfType: function( value, type )
+	{
+		if(value === null || value === undefined)
+		{
+			switch (type)
+			{
+				case "float": 
+				case "sampler2D": 
+				case "samplerCube":
+				case LS.TYPES.NUMBER: 
+				case LS.TYPES.VEC2: 
+				case LS.TYPES.VEC3:
+				case LS.TYPES.VEC4:
+				case LS.TYPES.COLOR:
+				case LS.TYPES.COLOR4:
+				case "mat3": 
+				case "mat4":
+					return false;
+			}
+			return true;
+		}
+
+		switch (type)
+		{
+			//used to validate shaders
+			case "float": 
+			case "sampler2D": 
+			case "samplerCube":
+			case LS.TYPES.NUMBER: return isNumber(value);
+			case LS.TYPES.VEC2: return value.length === 2;
+			case LS.TYPES.VEC3: return value.length === 3;
+			case LS.TYPES.VEC4: return value.length === 4;
+			case LS.TYPES.COLOR: return value.length === 3;
+			case LS.TYPES.COLOR4: return value.length === 4;
+			case "mat3": return value.length === 9;
+			case "mat4": return value.length === 16;
+		}
+		return true;
 	}
 }
 

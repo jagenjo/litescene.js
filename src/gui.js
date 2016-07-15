@@ -207,6 +207,11 @@ var GUI = {
 		LS.ResourcesManager.load( url, function(res){
 			var gui_root = LS.GUI.getRoot();
 			var html = res.getAsHTML();
+			if(!html)
+			{
+				console.error("html resource is not a string");
+				return;
+			}
 			html.style.pointerEvents = "none";
 			html.style.width = "100%";
 			html.style.height = "100%";

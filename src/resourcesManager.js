@@ -396,6 +396,56 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns an object containig all the resources and its data (used to export resources)
+	*
+	* @method getResourcesData
+	* @param {Array} resource_names an array containing the resources names
+	* @param {bool} allow_files [optional] used to allow to retrieve the data in File or Blob, otherwise only String and ArrayBuffer is supported
+	* @return {Object} object with name:data
+	*/
+	getResourcesData: function( resource_names, allow_files )
+	{
+		var result = {};
+
+		for(var i = 0; i < resource_names.length; ++i)
+		{
+			var res_name = resource_names[i];
+			var resource = LS.ResourcesManager.resources[ res_name ];
+			if(!resource)
+				continue;
+
+			var data = null;
+			if(resource._original_data) //must be string or bytes
+				data = resource._original_data;
+			else
+			{
+				var data_info = LS.Resource.getDataToStore( resource );
+				data = data_info.data;
+			}
+
+			if(!data)
+			{
+				console.warn("Wrong data in resource");
+				continue;
+			}
+
+			if(data.constructor === Blob || data.constructor === File)
+			{
+				if( !allow_files && (!data.data || data.data.constructor !== ArrayBuffer) )
+				{
+					console.warn("Not support to store File or Blob, please, use ArrayBuffer");
+					continue;
+				}
+				data = data.data; //because files have an arraybuffer with the data if it was read
+			}
+
+			result[ res_name ] = data;
+		}
+
+		return result;
+	},
+
+	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
 	* @method resourceModified
@@ -1105,6 +1155,30 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 	}
 	return resource;
 });
+
+//global formats: take a file and extract info
+LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data, options ) {
+	
+	if(!global.JSZip)
+		throw("JSZip not found. To use ZIPs you must have the JSZip.js library installed.");
+
+	var zip = new JSZip();
+	zip.loadAsync( data ).then(function(zip){
+		zip.forEach(function (relativePath, file){
+			var ext = LS.ResourcesManager.getExtension( relativePath );
+			var format = LS.Formats.supported[ ext ];
+			file.async( format && format.dataType == "text" ? "string" : "arraybuffer").then( function(filedata){
+				if( relativePath == "scene.json" )
+					LS.GlobalScene.configure( JSON.parse( filedata ) );
+				else
+					LS.ResourcesManager.processResource( relativePath, filedata );
+			});
+		});
+	});
+
+	return true;
+
+},"binary");
 
 //For resources without file extension (JSONs and WBINs)
 LS.ResourcesManager.processDataResource = function( url, data, options, callback )

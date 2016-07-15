@@ -73,7 +73,7 @@ var Renderer = {
 	//used in special cases
 	BONES_TEXTURE_SLOT: 3,
 	MORPHS_TEXTURE_SLOT: 2,
-
+	MORPHS_TEXTURE2_SLOT: 1,
 
 	//called from...
 	init: function()
@@ -107,6 +107,7 @@ var Renderer = {
 
 		this.BONES_TEXTURE_SLOT = max_texture_units - 7;
 		this.MORPHS_TEXTURE_SLOT = max_texture_units - 8;
+		this.MORPHS_TEXTURE2_SLOT = max_texture_units - 9;
 
 		this._active_samples.length = max_texture_units;
 	},
@@ -675,7 +676,8 @@ var Renderer = {
 		this.mergeSamplers([ scene._samplers, material._samplers, instance.samplers ], samplers);
 
 		//enable samplers and store where [TODO: maybe they are not used..., improve here]
-		this.bindSamplers( samplers );
+		if(samplers.length)
+			this.bindSamplers( samplers );
 
 		//find shader name
 		var shader_name = render_settings.default_shader_id;
@@ -745,7 +747,8 @@ var Renderer = {
 			var shader = LS.ShadersManager.resolve( query );
 
 			//light textures like shadowmap or projective texture
-			this.bindSamplers( light._samplers );
+			if(light._samplers.length)
+				this.bindSamplers( light._samplers );
 
 			//secondary pass flags to make it additive
 			if(iLight > 0)
