@@ -50,6 +50,7 @@ player.loadScene("scene.json");
 
 Documentation
 -------------
+Check the [guides](guides) folder for a better explanation of how does it works.
 The doc folder contains the documentation. 
 For info about [litegl.js](https://github.com/jagenjo/litegl.js) check the documentation in its repository.
 For info about [glMatrix](http://glmatrix.com) check the documentation in its website.
