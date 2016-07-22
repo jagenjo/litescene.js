@@ -1,6 +1,8 @@
 # Guide to develop for LiteScene #
 This guide intends to help people understand the Engine so they can take full advantage of it from the WebGLStudio platform.
+
 The most important thing to understand is that the engine is separated in several layers, every one of them is independent, so to better understand everything about LiteScene please first go to LiteGL.js which is the low-level layer in charge of accesing WebGL, and the one LiteScene uses to simplify the GPU calls.
+
 Read the parts of LiteGL related to events (LEvent) to ensure you understand the events system used by LiteScene.
 
 ## Guides ##
@@ -16,11 +18,13 @@ Here there is a list with the most commont topics to master LiteScene:
 
 Some advanced topics:
 
+- [Events](events.md): how to capture events from the system
 - [Post-processing](post-processing.md): How to apply postprocessing effects
 - [Render pipeline](render_pipeline.md): How does the render pipeline work
 - [Shaders](shaders.md): How to write your own shaders
 - [Animation](animation.md): How to create animations
 - [Tweening](tweening.md): how to interpolate values easily
+
 
 
 
