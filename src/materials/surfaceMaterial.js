@@ -4,6 +4,10 @@ function SurfaceMaterial( o )
 
 	this.shader_name = "surface";
 
+	this.blend_mode = LS.Blend.NORMAL;
+	this.alpha_test = false;
+	this.alpha_test_shadows = false;
+
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
@@ -404,6 +408,17 @@ SurfaceMaterial.prototype.getResources = function (res)
 	}
 
 	return res;
+}
+
+SurfaceMaterial.prototype.applyToRenderInstance = function(ri)
+{
+	if( this.blend_mode != LS.Blend.NORMAL )
+		ri.flags |= RI_BLEND;
+
+	if( this.blend_mode == LS.Blend.CUSTOM && this.blend_func )
+		ri.blend_func = this.blend_func;
+	else
+		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
 }
 
 

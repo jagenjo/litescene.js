@@ -58,10 +58,11 @@ function RenderInstance( node, component )
 	//where does it come from
 	this.node = node;
 	this.component = component;
-	this.priority = 10; //instances are rendered from higher to lower priority
+	this.priority = 10; //only used if the RenderQueue is in PRIORITY MODE, instances are rendered from higher to lower priority
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
+	//this will have to go...
 	this.blend_func = LS.BlendFunctions["normal"]; //Blend.funcs["add"], ...
 
 	//transformation
@@ -130,7 +131,7 @@ RenderInstance.prototype.computeNormalMatrix = function()
 RenderInstance.prototype.setMaterial = function(material)
 {
 	this.material = material;
-	if(material)
+	if(material && material.applyToRenderInstance)
 		material.applyToRenderInstance(this);
 }
 
@@ -353,6 +354,9 @@ RenderInstance.prototype.computeShaderBlockFlags = function()
 	var r = 0;
 	for(var i = 0; i < this.shader_blocks.length; ++i)
 	{
+		var shader_block = this.shader_blocks[i];
+		if(!shader_block)
+			continue;
 		var block = this.shader_blocks[i].block;
 		r |= block.flag_mask;
 	}

@@ -17,6 +17,7 @@ function SkinDeformer(o)
 	this.ignore_transform = true;
 
 	this._mesh = null;
+	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
 	if(!SkinDeformer._initialized)
@@ -263,6 +264,8 @@ SkinDeformer.prototype.disableSkinning = function( RI )
 		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		delete RI.samplers["u_bones"];
 	}
+
+	RI.shader_blocks[0] = null;
 }
 
 SkinDeformer.prototype.getMesh = function()

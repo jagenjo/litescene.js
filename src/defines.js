@@ -1,3 +1,7 @@
+
+if(typeof(GL) == "undefined")
+	throw("LiteSCENE requires to have litegl.js included before litescene.js");
+
 //blending mode
 var Blend = {
 	AUTOMATIC: "automatic",
@@ -10,9 +14,6 @@ var Blend = {
 }
 
 LS.Blend = Blend;
-
-if(typeof(GL) == "undefined")
-	throw("LiteSCENE requires to have litegl.js included before litescene.js");
 
 LS.BlendFunctions = {};
 

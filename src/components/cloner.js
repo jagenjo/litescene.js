@@ -112,7 +112,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		//genereate flags for the first instance
 		if(i == 0)
 		{
-			RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_AUTOUPDATE;
+			RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_AUTOUPDATE | RI_RAYCAST_ENABLED;
 			RI.applyNodeFlags();
 			flags = RI.flags;
 		}

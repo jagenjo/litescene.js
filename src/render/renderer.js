@@ -35,6 +35,8 @@ var Renderer = {
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: null,
 
+	_queues: [], //render queues in order
+
 	_main_camera: null,
 
 	_visible_cameras: null,
@@ -44,8 +46,10 @@ var Renderer = {
 	_active_samples: [],
 
 	//stats
+	_frame_cpu_time: 0,
 	_rendercalls: 0, //calls to instance.render
 	_rendered_instances: 0, //instances processed
+	_rendered_passes: 0,
 	_frame: 0,
 
 	//settings
@@ -110,6 +114,12 @@ var Renderer = {
 		this.MORPHS_TEXTURE2_SLOT = max_texture_units - 9;
 
 		this._active_samples.length = max_texture_units;
+
+		//set render queues
+		this.createRenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT );
+		this.createRenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR );
+		this.createRenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR );
+		this.createRenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.NO_SORT );
 	},
 
 	reset: function()
@@ -152,8 +162,10 @@ var Renderer = {
 		this._frame += 1;
 		scene._must_redraw = false;
 
+		var start_time = getTime();
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
+		this._rendered_passes = 0;
 
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
@@ -166,8 +178,8 @@ var Renderer = {
 		this._global_viewport.set( gl.viewport_data );
 
 		//Event: beforeRender used in actions that could affect which info is collected for the rendering
-		LEvent.trigger(scene, "beforeRender", render_settings );
-		scene.triggerInNodes("beforeRender", render_settings );
+		LEvent.trigger( scene, "beforeRender", render_settings );
+		//scene.triggerInNodes( "beforeRender", render_settings ); //TODO: remove
 
 		//get render instances, cameras, lights, materials and all rendering info ready (computeVisibility)
 		this.processVisibleData( scene, render_settings, cameras );
@@ -182,18 +194,19 @@ var Renderer = {
 
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, "renderShadows", render_settings );
-		scene.triggerInNodes("renderShadows", render_settings ); //TODO: remove
+		//scene.triggerInNodes("renderShadows", render_settings ); //TODO: remove
 
 		//Event: afterVisibility allows to cull objects according to the main camera
-		scene.triggerInNodes("afterVisibility", render_settings ); //TODO: remove	
+		LEvent.trigger(scene, "afterVisibility", render_settings );
+		//scene.triggerInNodes("afterVisibility", render_settings ); //TODO: remove	
 
 		//Event: renderReflections in case some realtime reflections are needed, this is the moment to render them inside textures
 		LEvent.trigger(scene, "renderReflections", render_settings );
-		scene.triggerInNodes("renderReflections", render_settings ); //TODO: remove
+		//scene.triggerInNodes("renderReflections", render_settings ); //TODO: remove
 
 		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
-		scene.triggerInNodes("beforeRenderMainPass", render_settings ); //TODO: remove
+		//scene.triggerInNodes("beforeRenderMainPass", render_settings ); //TODO: remove
 
 		//allows to overwrite renderer
 		if(this.custom_renderer && this.custom_renderer.render && render_settings.custom_renderer )
@@ -221,9 +234,11 @@ var Renderer = {
 		if(render_settings.render_gui)
 			LEvent.trigger( scene, "renderGUI", render_settings );
 
+		this._frame_cpu_time = getTime() - start_time;
+
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_settings );
-		scene.triggerInNodes("afterRender", render_settings ); //TODO: remove
+		//scene.triggerInNodes("afterRender", render_settings ); //TODO: remove
 	},
 
 	/**
@@ -274,14 +289,14 @@ var Renderer = {
 		this.enableCamera( camera, render_settings, render_settings.skip_viewport ); 
 
 		//compute the rendering order
-		this.sortRenderInstances( camera, render_settings );
+		this.sortRenderQueues( camera, render_settings );
 
 		//clear buffer
 		this.clearBuffer( camera, render_settings );
 
 		//send before events
 		LEvent.trigger(scene, "beforeRenderScene", camera );
-		scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
+		//scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "beforeRenderScene", camera );
 
 		//here we render all the instances
@@ -289,12 +304,21 @@ var Renderer = {
 
 		//send after events
 		LEvent.trigger(scene, "afterRenderScene", camera );
-		scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
+		//scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "afterRenderScene", camera );
 
 		//render helpers (guizmos)
 		if(render_settings.render_helpers)
 			LEvent.trigger(this, "renderHelpers", camera );
+	},
+
+	//shows a RenderFrameContext to the viewport (warning, some components may do it bypassing this function)
+	showRenderFrameContext: function( render_frame_context, camera )
+	{
+		//if( !this._current_render_settings.onPlayer)
+		//	return;
+		LEvent.trigger(this, "beforeShowFrameContext", render_frame_context );
+		render_frame_context.show();
 	},
 
 	/**
@@ -376,52 +400,29 @@ var Renderer = {
 		gl.disable(gl.SCISSOR_TEST);
 	},
 
-	sortRenderInstances: function( camera, render_settings )
+	sortRenderQueues: function( camera, render_settings )
 	{
-		//nothing to do
-		if(!render_settings.sort_instances_by_distance && !render_settings.sort_instances_by_priority)
-			return;
-
-		var opaque_instances = this._opaque_instances;
-		var blend_instances = this._blend_instances;
 		var instances = this._visible_instances;
 
+		//compute distance to camera
 		var camera_eye = camera.getEye();
-
-		//process render instances (add stuff if needed)
 		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
-			if(!instance)
+			if(instance)
+				instance._dist = vec3.dist( instance.center, camera_eye );
+		}
+
+		//sort queues
+		for(var i = 0, l = this._queues.length; i < l; ++i)
+		{
+			var queue = this._queues[i];
+			if(!queue || !queue.sort_mode)
 				continue;
-			instance._dist = vec3.dist( instance.center, camera_eye );
+			queue.sort();
 		}
-
-		//sort opaque from far to near, and blend from far to near
-		if(render_settings.sort_instances_by_distance) 
-		{
-			opaque_instances.sort(this._sort_near_to_far_func);
-			blend_instances.sort(this._sort_far_to_near_func);
-		}
-
-		 //sort by priority (we do this before merging because otherwise the distance sorting gets messed up
-		if(render_settings.sort_instances_by_priority)
-		{
-			opaque_instances.sort(this._sort_by_priority_and_near_to_far_func);
-			blend_instances.sort(this._sort_by_priority_and_far_to_near_func);
-		}
-
-		//merge them into a single final container
-		this._visible_instances = opaque_instances.concat( blend_instances );
 	},
 
-	//sorting functions used to sort RenderInstances before rendering
-	_sort_far_to_near_func: function(a,b) { return b._dist - a._dist; },
-	_sort_near_to_far_func: function(a,b) { return a._dist - b._dist; },
-	_sort_by_priority_func: function(a,b) { return b.priority - a.priority; },
-	_sort_by_priority_and_near_to_far_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (a._dist - b._dist) },
-	_sort_by_priority_and_far_to_near_func: function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
-	
 	/**
 	* To set gl state to a known and constant state in every render pass
 	*
@@ -461,6 +462,8 @@ var Renderer = {
 			return 0;
 		}
 
+		this._rendered_passes += 1;
+
 		var pass = this._current_pass;
 		var camera = this._current_camera;
 		var camera_index_flag = camera._rendering_index != -1 ? (1<<(camera._rendering_index)) : 0;
@@ -469,7 +472,7 @@ var Renderer = {
 		var layers_filter = camera.layers & render_settings.layers;
 
 		LEvent.trigger( scene, "beforeRenderInstances", render_settings );
-		scene.triggerInNodes( "beforeRenderInstances", render_settings );
+		//scene.triggerInNodes( "beforeRenderInstances", render_settings );
 
 		//compute global scene info
 		this.fillSceneShaderQuery( scene, render_settings );
@@ -477,9 +480,6 @@ var Renderer = {
 
 		//reset state of everything!
 		this.resetGLState( render_settings );
-
-		//this.updateVisibleInstances(scene,options);
-		var render_instances = instances || this._visible_instances;
 
 		LEvent.trigger( scene, "renderInstances", render_settings );
 		LEvent.trigger( this, "renderInstances", render_settings );
@@ -490,6 +490,8 @@ var Renderer = {
 		var render_instance_func = pass.render_instance;
 		if(!render_instance_func)
 			return 0;
+
+		var render_instances = instances || this._visible_instances;
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -530,23 +532,32 @@ var Renderer = {
 
 		var start = this._rendered_instances;
 
-		//for each render instance
-		for(var i = 0, l = render_instances.length; i < l; ++i)
+		//process render queues
+		for(var j = 0; j < this._queues.length; ++j)
 		{
-			//render instance
-			var instance = render_instances[i];
-
-			if(!instance._is_visible || !instance.mesh)
+			var queue = this._queues[j];
+			if(!queue)
 				continue;
+			var render_instances = this._queues[j].instances;
 
-			this._rendered_instances += 1;
+			//for each render instance
+			for(var i = 0, l = render_instances.length; i < l; ++i)
+			{
+				//render instance
+				var instance = render_instances[i];
 
-			//choose the appropiate render pass
-			render_instance_func.call( this, instance, render_settings ); //by default calls renderColorInstance but it could call renderShadowPassInstance
+				if( !instance._is_visible || !instance.mesh )
+					continue;
 
-			//some instances do a post render action
-			if(instance.onPostRender)
-				instance.onPostRender( render_settings );
+				this._rendered_instances += 1;
+
+				//choose the appropiate render pass
+				render_instance_func.call( this, instance, render_settings ); //by default calls renderColorInstance but it could call renderShadowPassInstance
+
+				//some instances do a post render action
+				if(instance.onPostRender)
+					instance.onPostRender( render_settings );
+			}
 		}
 
 		LEvent.trigger( scene, "renderScreenSpace", render_settings);
@@ -555,7 +566,7 @@ var Renderer = {
 		this.resetGLState( render_settings );
 
 		LEvent.trigger( scene, "afterRenderInstances", render_settings);
-		scene.triggerInNodes("afterRenderInstances", render_settings);
+		//scene.triggerInNodes("afterRenderInstances", render_settings);
 
 		//and finally again
 		this.resetGLState( render_settings );
@@ -947,10 +958,13 @@ var Renderer = {
 			this._active_samples[i] = tex;
 
 			//texture properties
-			if(sampler)
+			if(sampler && sampler._must_update )
 			{
 				if(sampler.minFilter)
-					gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+				{
+					if( sampler.minFilter !== gl.LINEAR_MIPMAP_LINEAR || (GL.isPowerOfTwo( tex.width ) && GL.isPowerOfTwo( tex.height )) )
+						gl.texParameteri(tex.texture_type, gl.TEXTURE_MIN_FILTER, sampler.minFilter);
+				}
 				if(sampler.magFilter)
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_MAG_FILTER, sampler.magFilter);
 				if(sampler.wrap)
@@ -958,6 +972,7 @@ var Renderer = {
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
 				}
+				sampler._must_update = false;
 			}
 		}
 	},
@@ -1123,13 +1138,16 @@ var Renderer = {
 				this._main_camera = new LS.Camera(); // ??
 		}
 
-		var opaque_instances = [];
-		var blend_instances = [];
 		var materials = {}; //I dont want repeated materials here
 
 		var instances = scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
 		var camera_eye = camera.getEye();
+
+		//clear render queues
+		for(var i = 0; i < this._queues.length; ++i)
+			if(this._queues[i])
+				this._queues[i].clear();
 
 		//process render instances (add stuff if needed)
 		for(var i = 0, l = instances.length; i < l; ++i)
@@ -1137,11 +1155,12 @@ var Renderer = {
 			var instance = instances[i];
 			if(!instance)
 				continue;
+
 			var node_flags = instance.node.flags;
 
 			if(!instance.mesh)
 			{
-				console.warn("RenderInstance must have mesh");
+				console.warn("RenderInstance must always have mesh");
 				continue;
 			}
 
@@ -1165,11 +1184,26 @@ var Renderer = {
 				}
 			}
 
-			//check if it has alpha, and put in right container
-			if(instance.flags & RI_BLEND)
-				blend_instances.push(instance);
+			//add to queues
+			var queue_index = instance.material.queue;
+			var queue = null;
+			if( queue_index === undefined || queue_index === LS.RenderQueue.DEFAULT )
+			{
+				//TODO: maybe this case should be treated directly in StandardMaterial
+				if( instance.flags & RI_BLEND )
+					queue = this._queues[ LS.RenderQueue.TRANSPARENT ];
+				else
+					queue = this._queues[ LS.RenderQueue.GEOMETRY ];
+			}
 			else
-				opaque_instances.push(instance);
+			{
+				queue = this._queues[ queue_index ];
+				if(!queue)
+					LS.Renderer.createRenderQueue( queue_index );
+			}
+			if(!queue)
+				continue;
+			queue.add( instance );
 
 			//node & mesh constant information
 			var query = instance.query;
@@ -1213,10 +1247,7 @@ var Renderer = {
 		}
 
 		//store all the info
-		this._opaque_instances = opaque_instances;
-		this._blend_instances = blend_instances;
-
-		this._visible_instances = this._opaque_instances.concat( this._blend_instances );
+		this._visible_instances = scene._instances;
 		this._visible_lights = scene._lights;
 		this._visible_cameras = cameras; 
 		this._visible_materials = materials;
@@ -1348,6 +1379,10 @@ var Renderer = {
 			scene.root.addChild( node );
 		}
 
+		if(!this._preview_material_render_settings)
+			this._preview_material_render_settings = new LS.RenderSettings({ skip_viewport: true, render_helpers: false, update_materials: true });
+		var render_settings = this._preview_material_render_settings;
+
 		if(options.background_color)
 			scene.root.camera.background_color.set(options.background_color);
 
@@ -1365,7 +1400,7 @@ var Renderer = {
 
 		if(options.to_viewport)
 		{
-			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true, render_helpers: false, update_materials: true }, scene );
+			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
 			return;
 		}
 
@@ -1377,7 +1412,7 @@ var Renderer = {
 		{
 			//it already clears everything
 			//just render
-			LS.Renderer.renderFrame( scene.root.camera, { skip_viewport: true, render_helpers: false }, scene );
+			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
 		});
 
 		var canvas = tex.toCanvas(null, true);
@@ -1435,6 +1470,23 @@ var Renderer = {
 		this.render_passes[ name ] = info;
 		if(!this._current_pass)
 			this._current_pass = info;
+	},
+
+	/**
+	* Adds a new RenderQueue to the Renderer.
+	*
+	* @method addRenderQueue
+	* @param {RenderQueue} name name of the render pass as in render_passes
+	* @return {Number} index of the render queue
+	*/
+	createRenderQueue: function( index, sorting )
+	{
+		if(index === undefined)
+			throw("RenderQueue must have index");
+		var queue = new LS.RenderQueue( sorting );
+		if( this._queues[ index ] )
+			console.warn("There is already a RenderQueue in slot ",index );
+		this._queues[ index ] = queue;
 	}
 };
 

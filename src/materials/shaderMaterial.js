@@ -11,6 +11,7 @@ function ShaderMaterial( o )
 	Material.call( this, null );
 
 	this._shader = null;
+	this._shader_version = -1;
 	this.flags = 0;
 
 	this._uniforms = {};
@@ -131,9 +132,21 @@ ShaderMaterial.prototype.processShaderCode = function()
 	}
 
 	//apply init 
-	if( shader_code._init_function )
+	if( shader_code._functions.init )
 	{
-		shader_code._init_function.call( this );
+		if(!LS.catch_exceptions)
+			shader_code._functions.init.call( this );
+		else
+		{
+			try
+			{
+				shader_code._functions.init.call( this );
+			}
+			catch (err)
+			{
+				LS.dispatchCodeError(err);
+			}
+		}
 	}
 
 	for(var i in shader_code._global_uniforms)
@@ -146,6 +159,8 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
+
+	this._shader_version = shader_code._version;
 }
 
 ShaderMaterial.prototype.assignOldProperties = function( old_properties )
@@ -210,6 +225,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
 		return false;
 
+	//this is in case the shader has been modified in the editor...
+	if( shader_code._version !== this._shader_version )
+		this.processShaderCode();
+
 	//extract shader compiled
 	var shader = shader_code.getShader( null, block_flags );
 	if(!shader)
@@ -234,8 +253,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	render_uniforms.u_normal_model = instance.normal_matrix; 
 
 	//global stuff
-	renderer.enableInstanceFlags( instance, render_settings );
-
+	this.render_state.enable();
+	/*
+	//renderer.enableInstanceFlags( instance, render_settings );
 	//set blend flags
 	if(this.blend_mode !== Blend.NORMAL)
 	{
@@ -245,6 +265,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	}
 	else
 		gl.disable( gl.BLEND );
+	*/
 
 	this.fillUniforms();
 

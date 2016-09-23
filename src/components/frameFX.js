@@ -9,6 +9,7 @@ function FrameFX(o)
 
 	this.fx = new LS.TextureFX( o ? o.fx : null );
 	this.frame = new LS.RenderFrameContext();
+	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;
 	this.shader_material = null;
 
@@ -110,6 +111,8 @@ FrameFX.prototype.showFBO = function()
 		return;
 
 	this.frame.disable();
+
+	LEvent.trigger( LS.Renderer, "beforeShowFrameContext", this.frame );
 
 	if(this.shader_material)
 	{

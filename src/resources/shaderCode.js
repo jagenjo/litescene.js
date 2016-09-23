@@ -12,7 +12,7 @@ function ShaderCode( code )
 {
 	this._code = null;
 
-	this._init_function = null;
+	this._functions = {};
 	this._global_uniforms = {};
 	this._code_parts = {};
 	this._subfiles = {};
@@ -20,6 +20,8 @@ function ShaderCode( code )
 
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
+
+	this._version = 0;
 
 	if(code)
 		this.code = code;
@@ -54,7 +56,7 @@ ShaderCode.prototype.processCode = function()
 	this._global_uniforms = {};
 	this._code_parts = {};
 	this._compiled_shaders = {};
-	this._init_function = null;
+	this._functions = {};
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
 
@@ -116,6 +118,8 @@ ShaderCode.prototype.processCode = function()
 
 	//compile the shader before using it to ensure there is no errors
 	var shader = this.getShader();
+	if(!shader)
+		return;
 
 	//process init code
 	if(init_code)
@@ -129,7 +133,7 @@ ShaderCode.prototype.processCode = function()
 			{
 				try
 				{
-					this._init_function = new Function( init_code );
+					this._functions.init = new Function( init_code );
 				}
 				catch (err)
 				{
@@ -137,7 +141,7 @@ ShaderCode.prototype.processCode = function()
 				}
 			}
 			else
-				this._init_function = new Function( init_code );
+				this._functions.init = new Function( init_code );
 		}
 	}
 
@@ -147,6 +151,7 @@ ShaderCode.prototype.processCode = function()
 
 	//to alert all the materials out there using this shader that they must update themselves.
 	LEvent.trigger( LS.ShaderCode, "modified", this );
+	this._version += 1;
 }
 
 //used when storing/retrieving the resource
@@ -239,6 +244,9 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 
 ShaderCode.prototype.validatePublicUniforms = function( shader )
 {
+	if(!shader)
+		throw("ShaderCode: Shader cannot be null");
+
 	for( var i in this._global_uniforms )
 	{
 		var property_info = this._global_uniforms[i];
@@ -479,6 +487,12 @@ ShaderCode.removeComments = function( code )
 	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
 }
 
+
+LS.ShaderCode = ShaderCode;
+LS.registerResourceClass( ShaderCode );
+
+// now some shadercode examples that could be helpful
+
 //Example code for a shader
 ShaderCode.examples = {};
 
@@ -531,7 +545,7 @@ void main() {\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
 	//normal\n\
-	v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \n\
@@ -551,10 +565,11 @@ uniform vec3 u_ambient_light;\n\
 //material\n\
 uniform vec4 u_material_color; //color and alpha\n\
 void main() {\n\
-	gl_FragColor = u_material_color;\n\
+	vec3 N = normalize( v_normal );\n\
+	vec3 L = vec3( 0.577, 0.577, 0.577 );\n\
+	vec4 color = u_material_color;\n\
+	color.xyz *= max(0.0, dot(N,L) );\n\
+	gl_FragColor = color;\n\
 }\n\
 \n\
 ";
-
-LS.ShaderCode = ShaderCode;
-LS.registerResourceClass( ShaderCode );

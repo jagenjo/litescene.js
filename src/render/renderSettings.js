@@ -31,8 +31,6 @@ function RenderSettings( o )
 
 	this.layers = 0xFF; //this is masked with the camera layers when rendering
 
-	this.sort_instances_by_distance = true; //sort render instances by distance 
-	this.sort_instances_by_priority = true; //sort render instances by priority
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility
 	this.depth_test = true;	//do depth test when rendering

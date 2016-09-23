@@ -197,7 +197,7 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 }
 
 /**
-* loads Scene from object or JSON
+* loads Scene from object or JSON taking into account external and global scripts
 * @method setScene
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
@@ -222,7 +222,15 @@ Player.prototype.setScene = function( scene_info, on_complete )
 	function inner_external_ready()
 	{
 		scene.configure( scene_info );
-		scene.loadResources( inner_all_loaded );
+		scene.loadResources( inner_all_resources_loaded );
+	}
+
+	function inner_all_resources_loaded()
+	{
+		if( LS.ShadersManager.ready )
+			inner_all_loaded();
+		else
+			LS.ShadersManager.on_ready = inner_all_loaded;
 	}
 
 	function inner_all_loaded()

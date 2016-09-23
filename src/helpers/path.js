@@ -9,7 +9,6 @@ Path.LINE = 1;
 Path.SPLINE = 2;
 Path.BEZIER = 3;
 
-
 Path.prototype.addPoint = function(p)
 {
 	var pos = vec3.create();
@@ -143,7 +142,7 @@ Path.interpolate = function ( p0, p1, p2, p3, t, t2, t3 ) {
 */
 
 
-Path.prototype.samplePoints = function(n)
+Path.prototype.samplePoints = function( n )
 {
 	if(n <= 0)
 	{
@@ -158,6 +157,26 @@ Path.prototype.samplePoints = function(n)
 	for(var i = 0; i < n; i++)
 		result[i] = this.computePoint(i/(n-1));
 	return result;
+}
+
+Path.prototype.samplePointsTyped = function( n, out )
+{
+	if(out && out.length < (n * 3))
+		n = Math.floor(out.length / 3);
+
+	if(n <= 0)
+	{
+		var segments = this.getSegments();
+		if(this.type == LS.Path.LINE)
+			n = segments + 1;
+		else
+			n = segments * 20;
+	}
+
+	out = out || new Float32Array( n * 3 );
+	for(var i = 0; i < n; i++)
+		this.computePoint(i/(n-1),out.subarray(i*3,i*3+3));
+	return out;
 }
 
 

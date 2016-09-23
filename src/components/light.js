@@ -259,7 +259,7 @@ Light._temp_front = vec3.create();
 Light.prototype.updateLightCamera = function()
 {
 	if(!this._light_camera)
-		this._light_camera = new Camera();
+		this._light_camera = new LS.Components.Camera();
 
 	var camera = this._light_camera;
 	camera.eye = this.getPosition(Light._temp_position);
@@ -271,7 +271,7 @@ Light.prototype.updateLightCamera = function()
 		vec3.set(up,0,0,1);
 	camera.up = up;
 
-	camera.type = this.type == Light.DIRECTIONAL ? Camera.ORTHOGRAPHIC : Camera.PERSPECTIVE;
+	camera.type = this.type == Light.DIRECTIONAL ? LS.Components.Camera.ORTHOGRAPHIC : LS.Components.Camera.PERSPECTIVE;
 
 	var closest_far = this.computeShadowmapFar();
 
@@ -413,10 +413,12 @@ Light.prototype.getFront = function( out )
 	return front;
 }
 
+/*
 Light.prototype.getLightRotationMatrix = function()
 {
-
+	//TODO
 }
+*/
 
 Light.prototype.getResources = function (res)
 {
@@ -857,3 +859,11 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 
 LS.registerComponent(Light);
 LS.Light = Light;
+
+//Light ShaderBlocks
+/*
+	Light Equation (Point, Spot, Directional)
+	Light Modifier (Cookies, Cell shading)
+	Light Attenuation (Linear, Exponential)
+	Light Shadowing (Hard, Soft)
+*/

@@ -376,30 +376,38 @@ var LS = {
 				else
 					o[i] = JSON.parse( JSON.stringify(v) ); //not safe to use concat or slice(0) because it doesnt clone content, only container
 			}
-			else //object: 
+			else //Object: 
 			{
-				if(v.toJSON)
-					o[i] = v.toJSON();
-				else if(recursive)
-					o[i] = LS.cloneObject( v, null, true );
-				else if(LS.catch_exceptions)
+				if(v.constructor !== Object && !target && !v.toJSON )
 				{
-					try
-					{
-						//prevent circular recursions //slow but safe
-						o[i] = JSON.parse( JSON.stringify(v) );
-					}
-					catch (err)
-					{
-						console.error(err);
-					}
+					console.warn("Cannot clone system classes");
+					continue;
 				}
-				else //slow but safe
-				{
+
+				if( v.toJSON )
+					o[i] = v.toJSON();
+				else if( recursive )
+					o[i] = LS.cloneObject( v, null, true );
+				else {
 					if(v.constructor !== Object && LS.Classes[ LS.getObjectClassName(v) ])
 						console.warn("Cannot clone internal classes: " + LS.getObjectClassName(v) );
-					else
+
+					if(LS.catch_exceptions)
+					{
+						try
+						{
+							//prevent circular recursions //slow but safe
+							o[i] = JSON.parse( JSON.stringify(v) );
+						}
+						catch (err)
+						{
+							console.error(err);
+						}
+					}
+					else //slow but safe
+					{
 						o[i] = JSON.parse( JSON.stringify(v) );
+					}
 				}
 			}
 		}
@@ -727,6 +735,19 @@ Object.defineProperty( LS, "catch_exceptions", {
 	get: function() { return this._catch_exceptions; },
 	enumerable: true
 });
+
+//ensures no exception is catched by the system (useful for developers)
+Object.defineProperty( LS, "block_scripts", { 
+	set: function(v){ 
+		LS._block_scripts = v; 
+		LScript.block_execution = v; 
+	},
+	get: function() { 
+		return !!LS._block_scripts;
+	},
+	enumerable: true
+});
+
 
 //Add some classes
 LS.Classes.WBin = LS.WBin = WBin;

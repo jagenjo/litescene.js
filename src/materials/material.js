@@ -18,7 +18,12 @@ function Material(o)
 
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.blend_mode = LS.Blend.NORMAL;
+
+	//render queue
+	this._queue = LS.RenderQueue.DEFAULT;
+
+	//render state 
+	this.render_state = new LS.RenderState();
 
 	//flags
 	this.alpha_test = false;
@@ -28,7 +33,8 @@ function Material(o)
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
 	this.textures = {};
 
-	this._query = new ShaderQuery();
+	//shaders query
+	this._query = new LS.ShaderQuery();
 
 	//properties with special storage (multiple vars shared among single properties)
 
@@ -44,12 +50,21 @@ function Material(o)
 		enumerable: true
 	});
 
+	Object.defineProperty( this, 'queue', {
+		get: function() { return this._queue; },
+		set: function(v) { 
+			if( isNaN(v) || !isNumber(v) )
+				return;
+			this._queue = v;
+		},
+		enumerable: true
+	});
+
 	if(o) 
 		this.configure(o);
 }
 
 Material["@color"] = { type:"color" };
-Material["@blend_mode"] = { type: "enum", values: LS.Blend };
 
 Material.icon = "mini-icon-material.png";
 
@@ -70,14 +85,6 @@ Material.COLOR = "color";
 * @default 1
 */
 Material.OPACITY = "opacity";
-
-/**
-* Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)
-* @property blend_mode
-* @type {String}
-* @default Blend.NORMAL
-*/
-Material.BLEND_MODE = "blend_mode";
 
 Material.SPECULAR_FACTOR = "specular_factor";
 /**
@@ -114,17 +121,6 @@ Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.C
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
 Material.texture_channels = []; //base material doesnt support any texture
-
-Material.prototype.applyToRenderInstance = function(ri)
-{
-	if(this.blend_mode != LS.Blend.NORMAL)
-		ri.flags |= RI_BLEND;
-
-	if(this.blend_mode == LS.Blend.CUSTOM && this.blend_func)
-		ri.blend_func = this.blend_func;
-	else
-		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
-}
 
 // RENDERING METHODS
 Material.prototype.fillShaderQuery = function(scene)
@@ -276,9 +272,6 @@ Material.prototype.getPropertiesInfo = function()
 	var o = {
 		color:"vec3",
 		opacity:"number",
-		blend_mode: "number",
-		alpha_test:"boolean",
-		alpha_test_shadows:"boolean",
 		uvs_matrix:"mat3"
 	};
 
@@ -308,30 +301,31 @@ Material.prototype.getProperty = function(name)
 */
 Material.prototype.setProperty = function( name, value )
 {
-	if(name.substr(0,4) == "tex_")
+	if( value === undefined )
+		return;
+
+	if( name.substr(0,4) == "tex_" )
 	{
 		if( (value && (value.constructor === String || value.constructor === GL.Texture)) || !value)
 			this.setTexture( name.substr(4), value );
 		return true;
 	}
 
-	switch(name)
+	switch( name )
 	{
 		//numbers
+		case "queue": 
 		case "opacity": 
 		case "specular_factor":
 		case "specular_gloss":
 		case "reflection": 
-			if(value.constructor === Number)
+			if(value !== null && value.constructor === Number)
 				this[name] = value; 
 			break;
 		//bools
 		//strings
-		case "alpha_test":
-		case "alpha_test_shadows":
-		case "blend_mode":
-			this[name] = value; 
-			break;
+		//	this[name] = value; 
+		//	break;
 		//vectors
 		case "uvs_matrix":
 		case "color": 
@@ -339,13 +333,16 @@ Material.prototype.setProperty = function( name, value )
 				this[name].set( value );
 			break;
 		case "textures":
-			//legacy
 			for(var i in value)
 			{
 				var tex = value[i];
-				if(typeof(tex) == "string")
+				if( tex && tex.constructor === String )
 					tex = { texture: tex, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 };
+				tex._must_update = true;
 				this.textures[i] = tex;
+				//this is to ensure there are no wrong characters in the texture name
+				if( this.textures[i] && this.textures[i].texture )
+					this.textures[i].texture = LS.ResourcesManager.cleanFullpath( this.textures[i].texture );
 			}
 			//this.textures = cloneObject(value);
 			break;
@@ -382,12 +379,12 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 
 	switch(varname)
 	{
+		case "queue": 
 		case "opacity": 
 		case "transparency":
 		case "specular_factor":
 		case "specular_gloss":
 		case "reflection": 
-		case "blend_mode":
 			type = "number"; break;
 		//bools
 		case "alpha_test":
@@ -433,19 +430,25 @@ Material.prototype.getTextureChannels = function()
 * @param {Object} sampler_options
 */
 Material.prototype.setTexture = function( channel, texture, sampler_options ) {
+
 	if(!channel)
 		throw("Material.prototype.setTexture channel must be specified");
 
 	if(!texture)
 	{
-		delete this.textures[channel];
+		delete this.textures[ channel ];
 		return;
 	}
 
-	var sampler = this.textures[channel];
+	//clean to avoid names with double slashes
+	if( texture.constructor === String )
+		texture = LS.ResourcesManager.cleanFullpath( texture );
+
+	//get current info
+	var sampler = this.textures[ channel ];
 	if(!sampler)
 		this.textures[channel] = sampler = { texture: texture, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
-	else if(sampler.texture == texture)
+	else if(sampler.texture == texture && !sampler_options)
 		return sampler;
 	else
 		sampler.texture = texture;
@@ -453,9 +456,10 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 	if(sampler_options)
 		for(var i in sampler_options)
 			sampler[i] = sampler_options[i];
+	sampler._must_update = true;
 
 	if(texture.constructor === String && texture[0] != ":")
-		LS.ResourcesManager.load(texture);
+		LS.ResourcesManager.load( texture );
 
 	return sampler;
 }

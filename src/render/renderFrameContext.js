@@ -16,6 +16,7 @@ function RenderFrameContext( o )
 	this.name = null; //if a name is provided all the textures will be stored
 
 	this.adjust_aspect = false;
+	this.clone_after_unbind = false; //used when the texture will be in the 3D scene
 
 	this._fbo = null;
 	this._color_texture = null;
@@ -25,6 +26,9 @@ function RenderFrameContext( o )
 	if(o)
 		this.configure(o);
 }
+
+RenderFrameContext.current = null;
+RenderFrameContext.stack = [];
 
 RenderFrameContext.DEFAULT_PRECISION = 0; //selected by the renderer
 RenderFrameContext.LOW_PRECISION = 1; //byte
@@ -71,6 +75,7 @@ RenderFrameContext.prototype.configure = function(o)
 	this.use_depth_texture = !!o.use_depth_texture;
 	this.num_extra_textures = o.num_extra_textures || 0;
 	this.name = o.name;
+	this.clone_after_unbind = !!o.clone_after_unbind;
 }
 
 RenderFrameContext.prototype.serialize = function()
@@ -83,6 +88,7 @@ RenderFrameContext.prototype.serialize = function()
 		adjust_aspect: this.adjust_aspect,
 		use_depth_texture:  this.use_depth_texture,
 		num_extra_textures:  this.num_extra_textures,
+		clone_after_unbind: this.clone_after_unbind,
 		name: this.name
 	};
 }
@@ -104,6 +110,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	var format = gl.RGBA;
 	var filter = this.filter_texture ? gl.LINEAR : gl.NEAREST ;
 	var type = 0;
+
 	switch( this.precision )
 	{
 		case RenderFrameContext.LOW_PRECISION:
@@ -214,6 +221,9 @@ RenderFrameContext.prototype.enableFBO = function()
 	this._old_aspect = LS.Renderer.global_aspect;
 	if(this.adjust_aspect)
 		LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (this._color_texture.width / this._color_texture.height);
+	if(LS.RenderFrameContext.current)
+		RenderFrameContext.stack.push( LS.RenderFrameContext.current );
+	LS.RenderFrameContext.current = this;
 }
 
 RenderFrameContext.prototype.disableFBO = function()
@@ -226,21 +236,42 @@ RenderFrameContext.prototype.disableFBO = function()
 		this._textures[i]._locked = false;
 	if(this._depth_texture)
 		this._depth_texture._locked = false;
+
 	if(this.name)
 	{
 		for(var i = 0; i < this._textures.length; ++i)
 		{
 			var name = this.name + (i > 0 ? i : "");
 			this._textures[i].filename = name;
-			LS.ResourcesManager.textures[ name ] = this._textures[i];
+
+			if(this.clone_after_unbind && i === 0)
+			{
+				if( !this._cloned_texture || 
+					this._cloned_texture.width !== this._textures[i].width || 
+					this._cloned_texture.height !== this._textures[i].height ||
+					this._cloned_texture.type !== this._textures[i].type )
+					this._cloned_texture = this._textures[i].clone();
+				else
+					this._textures[i].copyTo( this._cloned_texture );
+
+				LS.ResourcesManager.textures[ name ] = this._cloned_texture;
+			}
+			else
+				LS.ResourcesManager.textures[ name ] = this._textures[i];
 		}
 		if(this._depth_texture)
 		{
 			var name = this.name + "_depth";
 			this._depth_texture.filename = name;
 			LS.ResourcesManager.textures[ name ] = this._depth_texture;
+			//LS.ResourcesManager.textures[ ":depth" ] = this._depth_texture;
 		}
 	}
+
+	if( RenderFrameContext.stack.length )
+		LS.RenderFrameContext.current = RenderFrameContext.stack.pop();
+	else
+		LS.RenderFrameContext.current = null;
 }
 
 //Render the context of the fbo to the viewport (allows to apply FXAA)

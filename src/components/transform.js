@@ -402,8 +402,8 @@ Transform.prototype.getPosition = function(out)
 Transform.prototype.getGlobalPosition = function(out)
 {
 	out = out || vec3.create();
-	if(this._parent)
-		return mat4.multiplyVec3( out, this.getGlobalMatrix(), Transform.ZERO );
+	if(this._parent) 
+		return mat4.multiplyVec3( out, this.getGlobalMatrix(), Transform.ZERO ); //cannot reuse matrix in getGlobalMatrix, is recursive
 	return vec3.copy(out, this._position );
 }
 

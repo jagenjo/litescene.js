@@ -96,8 +96,9 @@ InteractiveController.prototype._onMouse = function(type, e)
 		if(this._clicked_node && e.eventType == "mousedown" && e.button == 0 )
 		{
 			console.log("Node clicked: " + this._clicked_node.name );
-			LEvent.trigger( this._clicked_node, "clicked", e );
-			LEvent.trigger( this._root.scene, "node_clicked", this._clicked_node );
+			LEvent.trigger( this._clicked_node, "clicked", this._clicked_node ); //event in node clicked
+			LEvent.trigger( this._root, "node_clicked", this._clicked_node ); //event in this node
+			LEvent.trigger( this._root.scene, "node_clicked", this._clicked_node ); //event in scene
 		}
 	}
 

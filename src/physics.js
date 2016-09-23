@@ -14,7 +14,7 @@
 * @param {vec3} position collision position
 * @param {number} distance
 */
-function Collision( node, instance, position, distance, normal )
+function Collision( node, instance, position, distance, normal, hit )
 {
 	this.position = vec3.create();
 	if(position)
@@ -23,6 +23,7 @@ function Collision( node, instance, position, distance, normal )
 	this.instance = instance || null; //could be a RenderInstance or a PhysicsInstance
 	this.distance = distance || 0; //distance from the ray start
 	this.normal = normal;
+	this.hit = hit; //contains info about the collision in local space
 }
 
 Collision.isCloser = function(a,b) { return a.distance - b.distance; }
@@ -147,6 +148,7 @@ var Physics = {
 				continue;
 
 			var model = instance.matrix;
+			var hit = null;
 
 			//spheres are tested in world space, is cheaper (if no non-uniform scales...)
 			if( instance.type == PhysicsInstance.SPHERE )
@@ -173,13 +175,14 @@ var Physics = {
 					var octree = instance.mesh.octree;
 					if(!octree)
 						octree = instance.mesh.octree = new GL.Octree( instance.mesh );
-					var hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
+					hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
 					if(!hit)
 						continue;
 
 					mat4.multiplyVec3( collision_point, model, hit.pos );
 					if(compute_normal)
 						collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
+
 				}
 				else //if just a BBox collision
 				{
@@ -188,7 +191,7 @@ var Physics = {
 			}
 
 			var distance = vec3.distance( origin, collision_point );
-			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ));
+			collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ));
 
 			if(first_collision)
 				return collisions;
@@ -382,6 +385,7 @@ var Physics = {
 				continue;
 
 			var model = instance.matrix;
+			var hit = null;
 
 			//ray to local
 			var inv = mat4.invert( mat4.create(), model );
@@ -406,7 +410,7 @@ var Physics = {
 				var octree = mesh.octree;
 				if(!octree)
 					octree = mesh.octree = new GL.Octree( mesh );
-				var hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
+				hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;
 				mat4.multiplyVec3( collision_point, model, hit.pos );
@@ -414,12 +418,12 @@ var Physics = {
 					collision_normal = mat4.rotateVec3( vec3.create(), model, hit.normal );
 			}
 			else
-				vec3.transformMat4(collision_point, collision_point, model);
+				vec3.transformMat4( collision_point, collision_point, model );
 
 			//compute distance
 			var distance = vec3.distance( origin, collision_point );
 			if(distance < max_distance)
-				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal ) );
+				collisions.push( new LS.Collision( instance.node, instance, collision_point, distance, collision_normal, hit ) );
 
 			if(first_collision)
 				return collisions;

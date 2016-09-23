@@ -175,14 +175,23 @@ var Network = {
 	* @param {Function} on_error
 	* @param {Function} on_progress (if several files are required, on_progress is called after every file is added to the DOM)
 	**/
-	requestScript: function(url, on_complete, on_error, on_progress )
+	requestScript: function( url, on_complete, on_error, on_progress )
 	{
-		if(typeof(url)=="string")
+		if( !url )
+			throw("No url");
+
+		if( LS._block_scripts )
+		{
+			console.error("Safety: LS.block_scripts enabled, cannot request script");
+			return;
+		}
+
+		if( url.constructor === String )
 			url = [url];
 
 		var total = url.length;
 		var size = total;
-		for(var i in url)
+		for( var i in url )
 		{
 			var script = document.createElement('script');
 			script.num = i;

@@ -205,7 +205,8 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Cleans resource name (removing double slashes to avoid problems)
+	* Cleans resource name (removing double slashes to avoid problems) 
+	* It is slow, so use it only in changes, not in getters
 	*
 	* @method cleanFullpath
 	* @param {String} fullpath
@@ -243,7 +244,7 @@ var ResourcesManager = {
 
 		for(var i in res)
 		{
-			if( i[0] == ":" || i[0] == "_" )
+			if( !i || i[0] == ":" || i[0] == "_" )
 				continue;
 			this.load( i, options );
 		}
@@ -509,6 +510,9 @@ var ResourcesManager = {
 	*/
 	load: function( url, options, on_complete )
 	{
+		if(!url)
+			return console.error("LS.ResourcesManager.load requires url");
+
 		//parameter swap...
 		if(options && options.constructor === Function && !on_complete )
 		{

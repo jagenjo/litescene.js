@@ -426,8 +426,9 @@ var Draw = {
 	* @param {Float32Array|Array} points
 	* @param {Float32Array|Array} colors [optional]
 	* @param {bool} strip [optional] if the lines are a line strip (one consecutive line)
+	* @param {bool} loop [optional] if strip, close loop
 	*/
-	renderLines: function(lines, colors, strip)
+	renderLines: function(lines, colors, strip, loop)
 	{
 		if(!lines || !lines.length) return;
 		var vertices = null;
@@ -438,8 +439,14 @@ var Draw = {
 		if(colors && (colors.length/4) != (vertices.length/3))
 			colors = null;
 
+		var type = gl.LINES;
+		if(loop)
+			type = gl.LINE_LOOP;
+		else if(strip)
+			type = gl.LINE_STRIP;
+
 		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors});
-		return this.renderMesh(mesh, strip ? gl.LINE_STRIP : gl.LINES, colors ? this.shader_color : this.shader, undefined, 0, vertices.length / 3 );
+		return this.renderMesh( mesh, type, colors ? this.shader_color : this.shader, undefined, 0, vertices.length / 3 );
 	},
 
 	/**

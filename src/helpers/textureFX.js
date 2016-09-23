@@ -11,7 +11,7 @@ function TextureFX( o )
 	this.filter = true;
 	this.fx = [];
 
-	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_texture_depth: 1, u_random: vec2.create() };
+	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_depth_texture: 1, u_random: vec2.create() };
 	if(o)
 		this.configure(o);
 }
@@ -51,6 +51,18 @@ TextureFX.available_fx = {
 			color_add: { name: "u_coloradd", type: "color3", value: [0.1,0.1,0.1] }
 		},
 		code:"color.xyz = color.xyz + u_coloradd@;"
+	},
+	"fog":{
+		name:"fog",
+		uniforms: {
+			fog_color: { name: "u_fog_color", type: "color3", value: [0.1,0.1,0.1] },
+			fog_start: { name: "u_fog_start", type: "float", value: 10 },
+			fog_density: { name: "u_fog_density", type: "float", precision: 0.00001, value: 0.001, step: 0.00001 },
+		},
+		code:"float z_n@ = 2.0 * texture2D( u_depth_texture, v_coord).x - 1.0;" +
+			"float cam_dist@ = 2.0 * u_depth_range.x * u_depth_range.y / (u_depth_range.y + u_depth_range.x - z_n@ * (u_depth_range.y - u_depth_range.x));" +
+			"float fog_factor@ = 1. - 1.0 / exp(max(0.0,cam_dist@ - u_fog_start@) * u_fog_density@);" +
+			"color.xyz = mix( color.xyz, u_fog_color@, fog_factor@ );"
 	},
 	"vigneting": {
 		name: "Vigneting",
@@ -150,7 +162,7 @@ TextureFX.available_fx = {
 			"near": { name: "u_near", type: "float", value: 0.01, step: 0.1 },
 			"far": { name: "u_far", type: "float", value: 1000, step: 1 }
 		},
-		code:"color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D(u_texture_depth, uv ).x * (u_far@ - u_near@)) );"
+		code:"color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D( u_depth_texture, uv ).x * (u_far@ - u_near@)) );"
 	},
 	"logarithmic": {
 		name: "Logarithmic",
@@ -487,11 +499,12 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 			#define color3 vec3\n\
 			#define color4 vec4\n\
 			uniform sampler2D u_texture;\n\
-			uniform sampler2D u_texture_depth;\n\
+			uniform sampler2D u_depth_texture;\n\
 			varying vec2 v_coord;\n\
 			uniform vec2 u_viewport;\n\
 			uniform vec2 u_iviewport;\n\
 			uniform float u_aspect;\n\
+			uniform vec2 u_depth_range;\n\
 			uniform vec2 u_random;\n\
 			vec2 uv;\n\
 			" + uniforms_code + "\n\
@@ -513,8 +526,12 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 
 	shader = this._last_shader;
 
-	if(shader.hasUniform("u_texture_depth"))
+	if(shader.hasUniform("u_depth_texture"))
+	{
 		depth_texture.bind(1);
+		if(depth_texture.near_far_planes)
+			uniforms.u_depth_range = depth_texture.near_far_planes;
+	}
 
 	color_texture.setParameter( gl.TEXTURE_MAG_FILTER, this.filter ? gl.LINEAR : gl.NEAREST );
 	color_texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );

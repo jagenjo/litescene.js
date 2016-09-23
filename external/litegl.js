@@ -94,6 +94,22 @@ GL.ONE_MINUS_CONSTANT_ALPHA = 32772;
 GL.VERTEX_SHADER = 35633;
 GL.FRAGMENT_SHADER = 35632;
 
+GL.CW = 2304;
+GL.CCW = 2305;
+
+GL.FRONT = 1028;
+GL.BACK = 1029;
+GL.FRONT_AND_BACK = 1032;
+
+GL.NEVER = 512;
+GL.LESS = 513;
+GL.EQUAL = 514;
+GL.LEQUAL = 515;
+GL.GREATER = 516;
+GL.NOTEQUAL = 517;
+GL.GEQUAL = 518;
+GL.ALWAYS = 519;
+
 GL.temp_vec3 = vec3.create();
 GL.temp2_vec3 = vec3.create();
 GL.temp_vec4 = vec4.create();
@@ -302,24 +318,28 @@ global.extendClass = GL.extendClass = function extendClass( target, origin ) {
 	}
 
 	if(origin.prototype) //copy prototype properties
-		for(var i in origin.prototype) //only enumerables
+	{
+		var prop_names = Object.getOwnPropertyNames( origin.prototype );
+		for(var i = 0; i < prop_names.length; ++i) //only enumerables
 		{
-			if(!origin.prototype.hasOwnProperty(i)) 
-				continue;
+			var name = prop_names[i];
+			//if(!origin.prototype.hasOwnProperty(name)) 
+			//	continue;
 
-			if(target.prototype.hasOwnProperty(i)) //avoid overwritting existing ones
+			if(target.prototype.hasOwnProperty(name)) //avoid overwritting existing ones
 				continue;
 
 			//copy getters 
-			if(origin.prototype.__lookupGetter__(i))
-				target.prototype.__defineGetter__(i, origin.prototype.__lookupGetter__(i));
+			if(origin.prototype.__lookupGetter__(name))
+				target.prototype.__defineGetter__(name, origin.prototype.__lookupGetter__(name));
 			else 
-				target.prototype[i] = origin.prototype[i];
+				target.prototype[name] = origin.prototype[name];
 
 			//and setters
-			if(origin.prototype.__lookupSetter__(i))
-				target.prototype.__defineSetter__(i, origin.prototype.__lookupSetter__(i));
+			if(origin.prototype.__lookupSetter__(name))
+				target.prototype.__defineSetter__(name, origin.prototype.__lookupSetter__(name));
 		}
+	}
 
 	if(!target.hasOwnProperty("superclass")) 
 		Object.defineProperty(target, "superclass", {
@@ -1530,6 +1550,18 @@ mat4.scaleAndAdd = function(out, mat, mat2, v)
 	out[8] = mat[8] + mat2[8] * v; 	out[9] = mat[9] + mat2[9] * v; 	out[10] = mat[10] + mat2[10] * v; 	out[11] = mat[11] + mat2[11] * v;
 	out[12] = mat[12] + mat2[12] * v;  out[13] = mat[13] + mat2[13] * v; 	out[14] = mat[14] + mat2[14] * v; 	out[15] = mat[15] + mat2[15] * v;
 	return out;
+}
+
+quat.fromAxisAngle = function(axis, rad)
+{
+	var out = quat.create();
+    rad = rad * 0.5;
+    var s = Math.sin(rad);
+    out[0] = s * axis[0];
+    out[1] = s * axis[1];
+    out[2] = s * axis[2];
+    out[3] = Math.cos(rad);
+    return out;
 }
 
 /*
@@ -4480,7 +4512,7 @@ Texture.prototype.copyTo = function( target_texture, shader, uniforms ) {
 	//reuse fbo
 	var fbo = gl.__copy_fbo;
 	if(!fbo)
-		fbo = gl.__copy_fbo || gl.createFramebuffer();
+		fbo = gl.__copy_fbo = gl.createFramebuffer();
 	gl.bindFramebuffer( gl.FRAMEBUFFER, fbo );
 
 	gl.viewport(0,0,target_texture.width, target_texture.height);
@@ -4623,7 +4655,7 @@ Texture.prototype.applyBlur = function( offsetx, offsety, intensity, temp_textur
 	//reuse fbo
 	var fbo = gl.__copy_fbo;
 	if(!fbo)
-		fbo = gl.__copy_fbo || gl.createFramebuffer();
+		fbo = gl.__copy_fbo = gl.createFramebuffer();
 	gl.bindFramebuffer( gl.FRAMEBUFFER, fbo );
 	gl.viewport(0,0, this.width, this.height);
 
@@ -5118,7 +5150,7 @@ Texture.prototype.getPixels = function( type, force_rgba, cubemap_face )
 	//reuse fbo
 	var fbo = gl.__copy_fbo;
 	if(!fbo)
-		fbo = gl.__copy_fbo || gl.createFramebuffer();
+		fbo = gl.__copy_fbo = gl.createFramebuffer();
 	gl.bindFramebuffer( gl.FRAMEBUFFER, fbo );
 
 	var buffer = null;
@@ -5389,9 +5421,9 @@ Texture.blend = function( a, b, factor, out )
 * @method Texture.getWhiteTexture
 * @return {Texture} the white texture
 */
-Texture.getWhiteTexture = function()
+Texture.getWhiteTexture = function( gl )
 {
-	var gl = this.gl;
+	gl = gl || global.gl;
 	var tex = gl.textures[":white"];
 	if(tex)
 		return tex;
@@ -5405,9 +5437,9 @@ Texture.getWhiteTexture = function()
 * @method Texture.getBlackTexture
 * @return {Texture} the black texture
 */
-Texture.getBlackTexture = function()
+Texture.getBlackTexture = function( gl )
 {
-	var gl = this.gl;
+	gl = gl || global.gl;
 	var tex = gl.textures[":black"];
 	if(tex)
 		return tex;
@@ -9078,6 +9110,7 @@ Octree.prototype.computeAABB = function(vertices)
 	return {min: min, max: max, size: vec3.sub( vec3.create(), max, min) };
 }
 
+//remove empty nodes
 Octree.prototype.trim = function(node)
 {
 	node = node || this.root;
@@ -9187,6 +9220,7 @@ Octree.testRayInNode = function( node, origin, direction )
 			test = Octree.hitTestTriangle( origin, direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9) );
 			if (test==null)
 				continue;
+			test.face = face;
 			if(prev_test)
 				prev_test.mergeWith( test );
 			else
@@ -9469,6 +9503,7 @@ global.HitTest = GL.HitTest = function HitTest(t, hit, normal) {
   this.t = arguments.length ? t : Number.MAX_VALUE;
   this.hit = hit;
   this.normal = normal;
+  this.face = null;
 }
 
 // ### .mergeWith(other)
@@ -9480,6 +9515,7 @@ HitTest.prototype = {
       this.t = other.t;
       this.hit = other.hit;
       this.normal = other.normal;
+	  this.face = other.face;
     }
   }
 };

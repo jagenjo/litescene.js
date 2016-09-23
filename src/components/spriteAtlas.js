@@ -76,8 +76,10 @@ SpriteAtlas.prototype.updateMesh = function()
 
 	var vertices_buffer = mesh.getBuffer("vertices");
 	var normals_buffer = mesh.getBuffer("normals");
+	var coords_buffer = mesh.getBuffer("coords");
 	var vertices = vertices_buffer.data;
 	var normals = normals_buffer.data;
+	var coords = coords_buffer.data;
 
 	var pos = 0;
 
@@ -101,9 +103,17 @@ SpriteAtlas.prototype.updateMesh = function()
 		for(var j = 0; j < 4; ++j)
 		{
 			var v_index = pos*4*3 + j*3;
-			vec3.transformMat4( vertices.subarray(v_index, v_index + 3), vertices_array[j], matrix );
+			var vertex = vertices.subarray(v_index, v_index + 3);
+			vertex.set( vertices_array[j] );
+			vertex[0] *= sprite._size[0]; vertex[1] *= sprite._size[1];
+			vec3.transformMat4( vertex, vertex, matrix );
 			normals.set( temp_vec3, v_index );
 		}
+
+		//var default_coords = new Float32Array([0,0, 1,1, 1,0, 0,1 ]);
+		var area = sprite._area;
+		var ax = area[0]; var ay = area[1]; var aw = area[2]; var ah = area[3];
+		coords.set( [ax,ay, ax + aw,ay + ah, ax + aw,ay, ax,ay + ah ], pos*4*2);
 
 		pos += 1;
 	}
@@ -113,6 +123,7 @@ SpriteAtlas.prototype.updateMesh = function()
 		//TODO: upload range only
 		vertices_buffer.upload();
 		normals_buffer.upload();
+		coords_buffer.upload();
 	}
 
 	this._last_index = pos * 6;

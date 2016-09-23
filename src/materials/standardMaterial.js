@@ -14,9 +14,13 @@
 
 function StandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the object, it is called later
+	Material.call(this,null); //do not pass the data object, it is called later
 
 	this.shader_name = "global";
+
+	this.blend_mode = LS.Blend.NORMAL;
+	this.alpha_test = false;
+	this.alpha_test_shadows = false;
 
 	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty("emissive", new Float32Array(3), "color" );
@@ -87,7 +91,7 @@ Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
 	enumerable: true
 });
 
-
+StandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
 StandardMaterial.NORMAL_TEXTURE = "normal";
@@ -130,6 +134,18 @@ struct SurfaceOutput {\n\
 };\n\
 ";
 
+StandardMaterial.prototype.applyToRenderInstance = function(ri)
+{
+	if( this.blend_mode != LS.Blend.NORMAL )
+		ri.flags |= RI_BLEND;
+
+	if( this.blend_mode == LS.Blend.CUSTOM && this.blend_func )
+		ri.blend_func = this.blend_func;
+	else
+		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
+}
+
+
 // RENDERING METHODS
 StandardMaterial.prototype.fillShaderQuery = function( scene )
 {
@@ -146,14 +162,6 @@ StandardMaterial.prototype.fillShaderQuery = function( scene )
 		var texture = Material.getTextureFromSampler( texture_info );
 		if(!texture) //loading or non-existant
 			continue;
-		
-		/*
-		if(i == "environment")
-		{
-			if(this.reflection_factor <= 0) 
-				continue;
-		}
-		else */
 
 		if(i == "normal")
 		{
@@ -337,7 +345,11 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "extra_surface_shader_code":
-			this[name] = value; 
+		case "alpha_test":
+		case "alpha_test_shadows":
+		case "blend_mode":
+			if(value !== null)
+				this[name] = value; 
 			break;
 		//vectors
 		case "ambient":	
@@ -370,6 +382,8 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 	//add some more
 	o.merge({
 		shader_name:  LS.TYPES.STRING,
+
+		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,
 		backlight_factor: LS.TYPES.NUMBER,
@@ -389,6 +403,8 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
+		alpha_test: LS.TYPES.BOOLEAN,
+		alpha_test_shadows: LS.TYPES.BOOLEAN,
 		specular_ontop: LS.TYPES.BOOLEAN,
 		normalmap_tangent: LS.TYPES.BOOLEAN,
 		reflection_specular: LS.TYPES.BOOLEAN,
@@ -412,6 +428,7 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 
 	switch(varname)
 	{
+		case "blend_mode":
 		case "backlight_factor":
 		case "reflection_factor":
 		case "reflection_fresnel":
@@ -435,6 +452,8 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "velvet_additive":
+		case "alpha_test":
+		case "alpha_test_shadows":
 			type = LS.TYPES.BOOLEAN; break;
 		default:
 			return null;

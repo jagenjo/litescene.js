@@ -253,7 +253,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onDropItem = function( event )
 	{
-		var node_id = event.dataTransfer.getData("node_id");
+		var node_id = event.dataTransfer.getData("node_uid");
 		if(!node_id)
 			return;
 		this.properties.node_id = node_id;
@@ -549,7 +549,7 @@ if(typeof(LiteGraph) != "undefined")
 	{
 		this.properties = {node_id:""};
 		if(LGraphSceneNode._current_node_id)
-			this.properties.node = LGraphSceneNode._current_node_id;
+			this.properties.node_id = LGraphSceneNode._current_node_id;
 		this.addInput("Transform", "Transform", { locked: true });
 		this.addOutput("Position","vec3");
 	}
@@ -571,9 +571,9 @@ if(typeof(LiteGraph) != "undefined")
 				return;
 
 			var node = this._node;
-			if(	this.properties.node )
+			if(	this.properties.node_id )
 			{
-				node = scene.getNode( this.properties.node );
+				node = scene.getNode( this.properties.node_id );
 				if(!node)
 					return;
 			}
@@ -870,15 +870,16 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	global.LGraphGlobal = function()
+	global.LGraphGlobal = function LGraphGlobal()
 	{
 		this.addOutput("Value");
-		this.properties = {name:"myvar", value: 0, type: "number", min:0, max:1 };
+		this.properties = {name:"myvar", value: 0, type: "number", widget: "default", min:0, max:1 };
 	}
 
 	LGraphGlobal.title = "Global";
 	LGraphGlobal.desc = "Global var for the graph";
 	LGraphGlobal["@type"] = { type:"enum", values:["number","string","node","vec2","vec3","vec4","color","texture"]};
+	LGraphGlobal["@widget"] = { type:"enum", values:[ "default", "slider", "pad" ]};
 
 	LGraphGlobal.prototype.onExecute = function()
 	{
@@ -898,7 +899,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	global.LGraphLocatorProperty = function()
+	global.LGraphLocatorProperty = function LGraphLocatorProperty()
 	{
 		this.addInput("in");
 		this.addOutput("out");

@@ -3,8 +3,8 @@ function Skybox(o)
 {
 	this.enabled = true;
 	this.texture = null;
-	this.intensity = 1;
 	this.material = null;
+	this._intensity = 1;
 	this.use_environment = true;
 	if(o)
 		this.configure(o);
@@ -26,11 +26,24 @@ Skybox.prototype.onRemovedFromNode = function(node)
 	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
 }
 
+Object.defineProperty( Skybox.prototype, "intensity", {
+	set: function(v){
+		this._intensity = v;
+		if(this._material)
+			this._material.color.set([v,v,v]);
+	},
+	get: function()
+	{
+		return this._intensity;
+	},
+	enumerable: true
+});
+
 Skybox.prototype.getResources = function(res)
 {
-	if(typeof(this.texture) == "string")
+	if(this.texture && this.texture.constructor === String)
 		res[this.texture] = GL.Texture;
-	if(typeof(this.material) == "string")
+	if(this.material && this.material.constructor === String)
 		res[this.material] = LS.Material;
 	return res;
 }
@@ -101,9 +114,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 		mat = this._material;
 		if(!mat)
-			mat = this._material = new LS.Material({use_scene_ambient:false});
-
-		vec3.copy( mat.color, [ this.intensity, this.intensity, this.intensity ] );
+			mat = this._material = new LS.Material({ queue: LS.RenderQueue.BACKGROUND, use_scene_ambient:false, queue: LS.RenderQueue.BACKGROUND, color: [ this.intensity, this.intensity, this.intensity ] });
 		var sampler = mat.setTexture( LS.Material.COLOR, texture );
 
 		if(texture && texture.texture_type == gl.TEXTURE_2D)

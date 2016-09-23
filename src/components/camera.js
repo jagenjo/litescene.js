@@ -63,6 +63,7 @@ function Camera(o)
 
 	//used for render to texture
 	this._frame = null;
+	this.show_frame = true;
 
 	if(o) 
 		this.configure(o);
@@ -1177,6 +1178,7 @@ Camera.prototype.configure = function(o)
 
 	if(o.render_to_texture !== undefined) this.render_to_texture = o.render_to_texture;
 	if(o.frame && this._frame) this._frame.configure( o.frame );
+	if(o.show_frame !== undefined) this.show_frame = o.show_frame;
 
 	this.updateMatrices( true );
 }
@@ -1199,7 +1201,8 @@ Camera.prototype.serialize = function()
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
-		frame: this._frame ? this._frame.serialize() : null
+		frame: this._frame ? this._frame.serialize() : null,
+		show_frame: this.show_frame
 	};
 
 	//clone
@@ -1283,6 +1286,8 @@ Camera.prototype.disableRenderFrameContext = function()
 	if(!this._frame)
 		return;
 	this._frame.disable();
+	if(this.show_frame)
+		LS.Renderer.showRenderFrameContext( this._frame, this );
 }
 
 Camera.prototype.prepare = function()

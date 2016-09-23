@@ -627,7 +627,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	var camera = LS.Renderer._current_camera;
 
 	if(!this._material)
-		this._material = new Material({ shader_name:"lowglobal" });
+		this._material = new LS.StandardMaterial({ shader_name:"lowglobal" });
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture(Material.COLOR, this.texture);
@@ -646,7 +646,11 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	if(this.follow_emitter)
 		mat4.translate( RI.matrix, ParticleEmissor._identity, this._root.transform._position );
 	else
+	{
 		mat4.copy( RI.matrix, ParticleEmissor._identity );
+		if(this._root.transform)
+			this._root.transform.getGlobalPosition( RI.center );
+	}
 
 	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());

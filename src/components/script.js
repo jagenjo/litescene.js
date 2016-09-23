@@ -68,6 +68,7 @@ Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
 //behaviour
 Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, "update" );
+Script.defineAPIFunction( "onNodeClicked", Script.BIND_TO_NODE, "node_clicked" );
 Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
 //rendering
 Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" );
@@ -103,7 +104,7 @@ Global vars:\n\
 Some of the common API functions:\n\
  + onStart: when the Scene starts\n\
  + onUpdate: when updating\n\
- + onClicked : if this node is clicked\n\
+ + onClicked : if this node is clicked (requires InteractiveController in root)\n\
  + onRender : before rendering the node\n\
  + onRenderGUI : to render something in the GUI using canvas2D\n\
  + onCollectRenderInstances: when collecting instances\n\
@@ -199,26 +200,46 @@ Script.prototype.setCode = function( code, skip_events )
 Script.prototype.processCode = function( skip_events )
 {
 	this._script.code = this.code;
-	if(this._root && !LS.Script.block_execution )
+	if(!this._root || LS.Script.block_execution )
+		return true;
+
+	//unbind old stuff
+	if(this._script && this._script._context)
+		this._script._context.unbindAll();
+
+	//save old state
+	var old = this._stored_properties || this.getContextProperties();
+
+	//compiles and executes the context
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	if(!skip_events)
+		this.hookEvents();
+
+	this.setContextProperties( old );
+	this._stored_properties = null;
+
+	//execute some starter functions
+	if( this._script._context && !this._script._context._initialized )
 	{
-		//unbind old stuff
-		if(this._script && this._script._context)
-			this._script._context.unbindAll();
+		if( this._root && this._script._context.onAddedToNode)
+			this._script._context.onAddedToNode( this._root );
 
-		//save old state
-		var old = this._stored_properties || this.getContextProperties();
+		if( this._root && this._root.scene )
+		{
+			if( this._script._context.onAddedToScene )
+				this._script._context.onAddedToScene( this._root.scene );
 
-		//compiles and executes the context
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
-		if(!skip_events)
-			this.hookEvents();
+			if( this._script._context.onBind )
+				this._script._context.onBind( this._root.scene );
 
-		this.setContextProperties( old );
-		this._stored_properties = null;
+			if( this._root.scene._state === LS.RUNNING && this._script._context.start )
+				this._script._context.start();
+		}
 
-		return ret;
+		this._script._context._initialized = true; //avoid initializing it twice
 	}
-	return true;
+
+	return ret;
 }
 
 Script.prototype.getContextProperties = function()
@@ -463,7 +484,11 @@ Script.prototype.onAddedToScene = function( scene )
 
 	//avoid to parse it again
 	if(this._script && this._script._context && this._script._context._initialized )
+	{
+		if(this._script._context.onBind)
+			this._script._context.onBind();
 		return;
+	}
 
 	if( !this.constructor.catch_important_exceptions )
 	{
@@ -481,6 +506,8 @@ Script.prototype.onAddedToScene = function( scene )
 	{
 		console.error(err);
 	}
+
+
 }
 
 Script.prototype.onRemovedFromScene = function(scene)
@@ -490,11 +517,13 @@ Script.prototype.onRemovedFromScene = function(scene)
 
 	//ensures no binded events
 	LEvent.unbindAll( scene, this );
-	if(this._context)
+	if( this._context )
 	{
 		LEvent.unbindAll( scene, this._context, this );
-		if(this._context.onRemovedFromScene)
-			this._context.onRemovedFromScene(scene);
+		if(this._script._context.onUnbind )
+			this._script._context.onUnbind( scene );
+		if(this._script._context.onRemovedFromScene )
+			this._context.onRemovedFromScene( scene );
 	}
 }
 
@@ -642,7 +671,14 @@ ScriptFromFile.prototype.onAddedToScene = function( scene )
 {
 	//avoid to parse it again
 	if(this._script && this._script._context && this._script._context._initialized )
+	{
+		if( this._script._context.onBind )
+			this._script._context.onBind( scene );
+		if( this._script._context.onAddedToScene )
+			this._script._context.onAddedToScene( scene );
+
 		return;
+	}
 
 	if( !this.constructor.catch_important_exceptions )
 	{
@@ -683,42 +719,46 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 	if( code === undefined || this._script.code == code )
 		return;
 
-	if(this._root && !LS.Script.block_execution )
+	if(!this._root || LS.Script.block_execution )
+		return true;
+
+	//assigned inside because otherwise if it gets modified before it is attached to the scene tree then it wont be compiled
+	this._script.code = code;
+
+	//unbind old stuff
+	if( this._script && this._script._context )
+		this._script._context.unbindAll();
+
+	//compiles and executes the context
+	var old = this._stored_properties || this.getContextProperties();
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	if(!skip_events)
+		this.hookEvents();
+	this.setContextProperties( old );
+	this._stored_properties = null;
+
+	//try to catch up with all the events missed while loading the script
+	if( this._script._context && !this._script._context._initialized )
 	{
-		//assigned inside because otherwise if it gets modified before it is attached to the scene tree then it wont be compiled
-		this._script.code = code;
+		if( this._root && this._script._context.onAddedToNode)
+			this._script._context.onAddedToNode( this._root );
 
-		//unbind old stuff
-		if( this._script && this._script._context )
-			this._script._context.unbindAll();
-
-		//compiles and executes the context
-		var old = this._stored_properties || this.getContextProperties();
-		var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
-		if(!skip_events)
-			this.hookEvents();
-		this.setContextProperties( old );
-		this._stored_properties = null;
-
-		//try to catch up with all the events missed while loading the script
-		if( this._script._context && !this._script._context._initialized )
+		if( this._root && this._root.scene )
 		{
-			if( this._root && this._script._context.onAddedToNode )
-			{
-				this._script._context.onAddedToNode( this._root );
-				if( this._root.scene && this._script._context.onAddedToScene )
-				{
-					this._script._context.onAddedToScene( this._root.scene );
-					if( this._root.scene._state === LS.RUNNING && this._script._context.start )
-						this._script._context.start();
-				}
-			}
-			this._script._context._initialized = true; //avoid initializing it twice
+			if( this._script._context.onAddedToScene )
+				this._script._context.onAddedToScene( this._root.scene );
+
+			if( this._script._context.onBind )
+				this._script._context.onBind( this._root.scene );
+
+			if( this._root.scene._state === LS.RUNNING && this._script._context.start )
+				this._script._context.start();
 		}
 
-		return ret;
+		this._script._context._initialized = true; //avoid initializing it twice
 	}
-	return true;
+
+	return ret;
 }
 
 ScriptFromFile.prototype.configure = function(o)

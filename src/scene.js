@@ -167,6 +167,9 @@ SceneTree.prototype.clear = function()
 */
 SceneTree.prototype.configure = function(scene_info)
 {
+	if(!scene_info || scene_info.constructor === String)
+		throw("SceneTree configure requires object");
+
 	this._root.removeAllComponents(); //remove light and camera
 
 	//this._components = [];
@@ -176,7 +179,7 @@ SceneTree.prototype.configure = function(scene_info)
 		this.uid = scene_info.uid;
 
 	if(scene_info.object_type != "SceneTree")
-		console.warn("Warning: object set to scene doesnt look like a propper one.");
+		console.warn("Warning: object set to scene doesnt look like a propper one.", scene_info);
 
 	if(scene_info.local_repository)
 		this.local_repository = scene_info.local_repository;
@@ -330,8 +333,87 @@ SceneTree.prototype.serialize = function()
 	return o;
 }
 
+
 /**
-* Loads a scene from a relative url pointing to a JSON description
+* Assigns a scene from a JSON description (or WBIN,ZIP)
+*
+* @method setFromJSON
+* @param {String} data JSON object containing the scene
+* @param {Function}[on_complete=null] the callback to call when the loading is complete
+* @param {Function}[on_error=null] the callback to call if there is a  loading error
+* @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
+* @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
+*/
+
+SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded )
+{
+	if(!data)
+		return;
+
+	var that = this;
+
+	if(data.constructor === String)
+	{
+		try
+		{
+			data = JSON.parse( data );
+		}
+		catch (err)
+		{
+			console.log("Error: " + err );
+			return;
+		}
+	}
+
+	var scripts = LS.SceneTree.getScriptsList( data, true );
+
+	//check JSON for special scripts
+	if ( scripts.length )
+		this.loadScripts( scripts, function(){ inner_success(response); }, on_error );
+	else
+		inner_success( data );
+
+
+	function inner_success( response )
+	{
+		if(on_complete)
+			on_complete(that);
+
+		that.init();
+		that.configure(response);
+		that.loadResources( inner_all_loaded );
+		/**
+		 * Fired when the scene has been loaded but before the resources
+		 * @event load
+		 */
+		LEvent.trigger(that,"load");
+
+		if(!LS.ResourcesManager.isLoading())
+			inner_all_loaded();
+	}
+
+	function inner_all_loaded()
+	{
+		if(on_resources_loaded)
+			on_resources_loaded(that);
+		/**
+		 * Fired after all resources have been loaded
+		 * @event loadCompleted
+		 */
+		LEvent.trigger( that, "loadCompleted");
+	}
+
+	function inner_error(err)
+	{
+		console.warn("Error in scene: " + url + " -> " + err);
+		if(on_error)
+			on_error(err);
+	}
+}
+
+
+/**
+* Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
 * Warning: this url is not passed through the LS.ResourcesManager so the url is absolute
 *
 * @method load
@@ -389,7 +471,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	function inner_json_loaded( response )
 	{
-		var scripts = LS.SceneTree.getScriptsList( response );
+		var scripts = LS.SceneTree.getScriptsList( response, true );
 
 		//check JSON for special scripts
 		if ( scripts.length )
@@ -436,7 +518,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 }
 
 //returns a list of all the scripts that must be loaded, in order and with the full path
-SceneTree.getScriptsList = function( root )
+SceneTree.getScriptsList = function( root, allow_local )
 {
 	var scripts = [];
 	if ( root.external_scripts && root.external_scripts.length )
@@ -448,7 +530,13 @@ SceneTree.getScriptsList = function( root )
 			var script_fullpath = root.global_scripts[i];
 			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != "js" )
 				continue;
+
 			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
+
+			var res = LS.ResourcesManager.getResource( script_fullpath );
+			if(res && allow_local)
+				script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+
 			scripts.push( script_url );
 		}
 	}
@@ -458,7 +546,51 @@ SceneTree.getScriptsList = function( root )
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 {
 	scripts = scripts || LS.SceneTree.getScriptsList( this );
-	LS.Network.requestScript( scripts, on_complete, on_error );
+
+	if(!scripts.length)
+	{
+		if(on_complete)
+			on_complete();
+		return;
+	}
+
+	if( LS._block_scripts )
+	{
+		console.error("Safety: LS.block_scripts enabled, cannot request script");
+		return;
+	}
+
+	//All this is to allow the use of scripts that are in memory (they came packed inside a WBin with the scene)
+	var final_scripts = [];
+	var revokable = [];
+
+	for(var i in scripts)
+	{
+		var script_fullpath = scripts[i];
+		var res = LS.ResourcesManager.getResource( script_fullpath );
+		if(!res)
+		{
+			final_scripts.push( script_fullpath );
+			continue;
+		}
+
+		var blob = new Blob([res.data]);
+		var objectURL = URL.createObjectURL( blob );
+		final_scripts.push( objectURL );
+		revokable.push( objectURL );
+	}
+
+	LS.Network.requestScript( final_scripts, inner_complete, on_error );
+
+	function inner_complete()
+	{
+		//revoke urls created
+		for(var i in revokable)
+			URL.revokeObjectURL( revokable[i] );
+
+		if(on_complete)
+			on_complete();
+	}
 }
 
 //used to ensure that components use the right class when the class comes from a global script
@@ -1259,7 +1391,7 @@ SceneTree.prototype.update = function(dt)
 	 * @param {number} dt
 	 */
 	LEvent.trigger(this,"update", dt);
-	this.triggerInNodes("update",dt, true);
+	//this.triggerInNodes("update",dt, true); //REMOVED
 
 	/**
 	 * Fired after updating the scene
@@ -1271,6 +1403,7 @@ SceneTree.prototype.update = function(dt)
 
 /**
 * triggers an event to all nodes in the scene
+* this is slow if the scene has too many nodes, thats why we use bindings
 *
 * @method triggerInNodes
 * @param {String} event_type event type name

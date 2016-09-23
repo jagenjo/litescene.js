@@ -419,7 +419,11 @@ var ShadersManager = {
 			//console.log( template[id] );
 		}
 
+		//we need to notify (LS.Player uses this)
 		this.ready = true;
+		if(this.on_ready)
+			this.on_ready();
+		LEvent.trigger( this, "ready" );
 	},
 	
 	//adds source code of a shader that could be compiled if needed
@@ -774,7 +778,7 @@ ShaderBlock.prototype.getCode = function( shader_type, block_flags )
 	var code = this.code_map.get( shader_type );
 	if(!code)
 		return null;
-	return (block_flags | this.flag_mask) ? code.enabled : code.disabled;
+	return (block_flags & this.flag_mask) ? code.enabled : code.disabled;
 }
 
 ShaderBlock.prototype.register = function()

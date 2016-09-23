@@ -6,9 +6,12 @@ function Sprite(o)
 	this.texture = null;
 	this.blend_mode = LS.Blend.ALPHA;
 
-	this.size = vec2.fromValues(100,100);
+	this._size = vec2.fromValues(100,100);
 	this.frame = null; //string
 	this.flip_x = false;
+	this.filtering = true;
+
+	this._area = vec4.fromValues(0,0,1,1);
 
 	this._atlas = null; //uid
 	this._atlas_component = null; //instance
@@ -22,6 +25,19 @@ Sprite.icon = "mini-icon-teapot.png";
 Sprite["@texture"] = { type:"texture" };
 Sprite["@blend_mode"] = { type: "enum", values: LS.Blend };
 Sprite["@atlas"] = { type: "component", filter: "SpriteAtlas" };
+Sprite["@area"] = { type: "vec4", step: 0.001 };
+
+Object.defineProperty( Sprite.prototype, "size", {
+	set: function(v){ this._size.set(v); },
+	get: function(){ return this._size; },
+	enumerable: true
+});
+
+Object.defineProperty( Sprite.prototype, "area", {
+	set: function(v){ this._area.set(v); },
+	get: function(){ return this._area; },
+	enumerable: true
+});
 
 Object.defineProperty( Sprite.prototype, "atlas", {
 	set: function(v){
@@ -110,7 +126,7 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 	//material
 	if(!this._material)
 		this._material = new LS.Material({ shader_name: "lowglobal" });
-	this._material.setTexture( "color", this.texture );
+	this._material.setTexture( "color", this.texture, { uvs: LS.Material.COORDS_UV_TRANSFORMED, magFilter: this.filtering ? gl.LINEAR : gl.NEAREST } );
 	this._material.blend_mode = this.blend_mode;
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
 
@@ -120,10 +136,15 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 	mat4.getTranslation( RI.center, this._root.transform._global_matrix );
 
 	//apply size and flip x 
-	temp_vec3[0] = this.size[0] * (this.flip_x ? 1 : -1);
-	temp_vec3[1] = this.size[1];
+	temp_vec3[0] = this._size[0] * (this.flip_x ? -1 : 1);
+	temp_vec3[1] = this._size[1];
 	temp_vec3[2] = 1;
 	mat4.scale( RI.matrix, RI.matrix, temp_vec3 );
+
+	//area
+	mat3.identity( this._material.uvs_matrix );
+	mat3.translate( this._material.uvs_matrix, this._material.uvs_matrix, this._area.subarray(0,2) );
+	mat3.scale( this._material.uvs_matrix, this._material.uvs_matrix, this._area.subarray(2,4) );
 
 	//flags
 	RI.flags = RI_DEFAULT_FLAGS;
