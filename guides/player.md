@@ -47,6 +47,7 @@ player.loadScene("scene.json");
 
 Some additional options you can pass to the player:
 
+- canvas: the canvas element where to attach the render context
 - loadingbar: if true it will show the loading bar (default false)
 - redraw: if false the scene wont be redraw constantly
 - autoresize: if true the canvas will always try to match the parentNode size
