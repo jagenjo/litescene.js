@@ -15,17 +15,16 @@ Here there is a list with the most commont topics to master LiteScene:
 - [Input](input.md): how to get user input
 - [GUI](gui.md): how to add a GUI to your application
 - [Resources](resources.md): How to handle resources (textures, meshes, etc)
+- [Player](player.md): how to use the player to embed your scene in any website
 
 Some advanced topics:
 
-- [Events](events.md): how to capture events from the system
-- [Post-processing](post-processing.md): How to apply postprocessing effects
+- [Events](events.md): how to capture events from the system to call your own callbacks
 - [Render pipeline](render_pipeline.md): How does the render pipeline work
 - [Shaders](shaders.md): How to write your own shaders
+- [Post-processing](post-processing.md): How to apply postprocessing effects
 - [Animation](animation.md): How to create animations
 - [Tweening](tweening.md): how to interpolate values easily
-
-
 
 
 ## Index ##
