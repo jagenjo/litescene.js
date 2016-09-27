@@ -1,6 +1,27 @@
 # Creating Shaders #
 
-You can create your own shaders for your materials.
+You can create your own shaders for your materials. This way the rendering is much faster (the pipeline doesnt have to guess the best shader for your material) and you have more control.
+
+Shaders are stored in the ```LS.ShaderCode``` class and used by some classes, mainly ```LS.ShaderMaterial``` and some FX components.
+
+Because shaders are usually defined by several parts (vertex shader, fragment shader, definition of external variables) they are written in a text file where every part is defined by the backlash character and the name of the part, like  ```\default.vs```, this blocks are called subfiles.
+
+## Javascript ##
+
+When creating a shader you may want to call some javascript functions to prepare the properties of the material containing the shader, for this purpose you can write a part in the file that contain that JS code, separated from the GLSL code of the shaders.
+
+The subfile should be called ```\js```
+
+```js
+\js
+  
+this.createUniform("Texture","matcap_texture","texture" );
+this.createUniform("Scale","u_tex_scale","number",1);
+this.render_state.depth_test = false;
+```
+
+This function will be called once the shader is assigned to the material.
+
 
 ## Example ##
 
@@ -10,7 +31,7 @@ You can create your own shaders for your materials.
   
 this.createUniform("Texture","matcap_texture","texture" );
 this.createUniform("Scale","u_tex_scale","number",1);
-
+this.render_state.cull_face = false;
 
 \default.vs
 
