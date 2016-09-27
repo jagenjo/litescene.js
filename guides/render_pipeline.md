@@ -112,6 +112,39 @@ When rendering an scene we want to be sure than an object can be affected by mul
 
 This means that for every light affecint the RenderInstance, the pipeline is going to render that instance. This could lead to bad performance when we have an scene with several meshes an lights.
 
+## RenderState ##
+
+Materials can control the way they are rendered by changing the flags in the GPU during rendering.
+
+This way a material can decide if it is z-culled, two-sided, blended, etc.
+
+The info about how it should be rendered is contained in the ```LS.RenderState``` class in the ```material.render_state``` property.
+
+Here is a list of flags you can tweak and its default value:
+
+```js
+	this.front_face = GL.CCW;
+	this.cull_face = true;
+
+	//depth buffer
+	this.depth_test = true;
+	this.depth_mask = true; //write in depth buffer
+	this.depth_func = GL.LESS;
+	//depth range: never used
+
+	//blend function
+	this.blend = false;
+	this.blendFunc0 = GL.SRC_ALPHA;
+	this.blendFunc1 = GL.ONE_MINUS_SRC_ALPHA;
+	//blend equation
+
+	//color mask
+	this.colorMask0 = true;
+	this.colorMask1 = true;
+	this.colorMask2 = true;
+	this.colorMask3 = true;
+```
+
 ## Post-processing Effects ##
 
 A camera could be rendered to the screen or to a texture, in which case the texture could have FX applied to it.
