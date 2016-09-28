@@ -1,9 +1,7 @@
 # Guide to develop for LiteScene #
-This guide intends to help people understand the Engine so they can take full advantage of it from the WebGLStudio platform.
+This guide intends to help people understand the engine so they can take full advantage of it from the WebGLStudio platform.
 
-The most important thing to understand is that the engine is separated in several layers, every one of them is independent, so to better understand everything about LiteScene please first go to LiteGL.js which is the low-level layer in charge of accesing WebGL, and the one LiteScene uses to simplify the GPU calls.
-
-Read the parts of LiteGL related to events (LEvent) to ensure you understand the events system used by LiteScene.
+The most important thing to understand is that the engine is separated in several layers, every one of them is independent, so to better understand everything about LiteScene please first go to [LiteGL.js](https://github.com/jagenjo/litegl.js) which is the low-level layer in charge of accesing WebGL, and the one LiteScene uses to simplify the GPU calls.
 
 ## Guides ##
 
@@ -27,20 +25,17 @@ Some advanced topics:
 - [Tweening](tweening.md): how to interpolate values easily
 
 
+
 ## Index ##
 * Features
 * Limitations
 * LS Namespace
 * SceneTree and SceneNode
 * Components
- * Cameras
  * Scripts
  * Graphs
 * Renderer
- * RenderInstance
- * Materials
 * ResourcesManager
-* ShadersManager
 * Player
 * Network
 * Formats
@@ -103,5 +98,40 @@ Cameras, Lights, MeshRenderers, etc, are all components that could be attached t
 
 For more info about the Scene read the [Components guide](components.md).
 
+### Scripts ###
 
+Scripts are a special component that contain code that should be executed. This is done to allow scenes to contain behaviour written by its author without the need to include external libraries.
 
+For more info about the scripts read the [Scripting guide](scripting.md).
+
+### Graphs ###
+
+Graphs are another interesting component similar to scripts because they allow the creator to insert some behaviours, but instead of using code it uses graphs made combining nodes. 
+
+For more info about the scripts read the [Graphs guide](graphs.md).
+
+## Renderer ##
+
+One of the main purposes of LiteScene is to provide a reliable render pipeline that can handle most common scenarios (multi-texture materials with several light sources, shadowmaps and reflections) but also giving total freedom to create your own rendering pipeline if you want.
+
+For this reason there are several classes that handle the rendering process like ```LS.Renderer```, ```LS.RenderInstance```, ```LS.RenderState```, ```LS.ShaderCode```, ```LS.RenderFrameContext``` plus the obvious ones: ```LS.Material```, ```LS.Light```, ```LS.Camera``` that could be tweaked in many ways.
+
+For more info about the rendering pipeline read the [Rendering guide](render_pipeline.md).
+
+## ResourcesManager ##
+
+There are many resources used by the application like Textures, Meshes and Shaders for rendering the frame, but also Scripts for behaviour, audios or data files.
+
+All this resources are loaded and stored in the ResourcesManager.
+
+For more info about the rendering pipeline read the [Resources Manager guide](resources_manager.md).
+
+## Player ##
+
+Once a scene has been created using an editor like WebGLStudio you want to embed it easily in your website without having to handle all the events and the main loop manually. For this reason there is the ```LS.Player``` class, that handles all the low-level actions plus loading and starting the scene.
+
+For more info about the player read the [Player guide](player.md).
+
+## Network ##
+
+To handle requesting files from the network we supply with a high-level class called Network.
