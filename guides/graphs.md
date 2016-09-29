@@ -10,6 +10,6 @@ This way you can set up simple behaviours without the need of using code and in 
 
 You can also use graphs to control the rendering postprocessing effects using the FXGraphComponent.
 
-![FX Graph](imgs/example-behaviour-graph.png "FX Graph")
+![FX Graph](imgs/example-fx-graph.png "FX Graph")
 
 To know more about graphs check [LiteGraph.js](https://github.com/jagenjo/litegraph.js)
