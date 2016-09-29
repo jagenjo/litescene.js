@@ -73,7 +73,7 @@ PointCloud.prototype.addPoint = function( position, color, size, frame_id )
 		data[8] = 0;
 
 	this._points.push( data );
-	this._dirty = true;
+	this._must_update = true;
 
 	return this._points.length - 1;
 }
@@ -99,7 +99,7 @@ PointCloud.prototype.setPoint = function(id, position, color, size, frame_id )
 	if(frame_id !== undefined )
 		data[8] = frame_id;
 
-	this._dirty = true;
+	this._must_update = true;
 }
 
 PointCloud.prototype.setPointsFromMesh = function( mesh )
@@ -111,7 +111,7 @@ PointCloud.prototype.setPointsFromMesh = function( mesh )
 PointCloud.prototype.removePoint = function(id)
 {
 	this._points.splice(id,1);
-	this._dirty = true;
+	this._must_update = true;
 }
 
 
@@ -228,9 +228,9 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	var camera = LS.Renderer._current_camera;
 
 	if(this._last_premultiply !== this.premultiplied_alpha )
-		this._dirty = true;
+		this._must_update = true;
 
-	if(this._dirty)
+	if(this._must_update)
 		this.updateMesh( camera );
 
 	if(!this._material)

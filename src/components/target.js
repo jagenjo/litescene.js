@@ -58,7 +58,7 @@ Target.prototype.updateOrientation = function(e)
 	/*
 	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
 	quat.lookAt( this._root.transform._rotation, dir, [0,1,0] );
-	this._root.transform._dirty = true;
+	this._root.transform._must_update = true;
 	*/
 
 	var eye = null;

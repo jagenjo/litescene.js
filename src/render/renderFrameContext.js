@@ -1,10 +1,12 @@
-/*	
-	RenderFrameContext
-	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
-	It helps to create the textures and bind them easily
-	Check the GlobalFX and CameraFX components to see it in action.
+/**	RenderFrameContext
+*	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
+*	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
+*	Check the FrameFX and CameraFX components to see it in action.
+*
+* @class RenderFrameContext
+* @namespace LS
+* @constructor
 */
-
 function RenderFrameContext( o )
 {
 	this.width = 0; //0 means the same size as the viewport, negative numbers mean reducing the texture in half N times
@@ -169,7 +171,11 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	this._fbo.setTextures( textures, this._depth_texture );
 }
 
-//Called before rendering the scene
+/**
+* Called to bind the rendering to this context, from now on all the render will be stored in the textures inside
+*
+* @method enable
+*/
 RenderFrameContext.prototype.enable = function( render_settings, viewport )
 {
 	var camera = LS.Renderer._current_camera;
@@ -189,19 +195,37 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	}
 }
 
+/**
+* Called to stop rendering to this context
+*
+* @method disable
+*/
 RenderFrameContext.prototype.disable = function()
 {
 	this.disableFBO();
 }
 
+/**
+* returns the texture containing the data rendered in this context
+*
+* @method getColorTexture
+* @param {number} index the number of the texture (in case there is more than one)
+* @return {GL.Texture} the texture
+*/
 RenderFrameContext.prototype.getColorTexture = function(num)
 {
-	return this._textures[ num || 0 ];
+	return this._textures[ num || 0 ] || null;
 }
 
+/**
+* returns the depth texture containing the depth data rendered in this context (in case the use_depth_texture is set to true)
+*
+* @method getDepthTexture
+* @return {GL.Texture} the depth texture
+*/
 RenderFrameContext.prototype.getDepthTexture = function()
 {
-	return this._depth_texture;
+	return this._depth_texture || null;
 }
 
 //helper in case you want have a Color and Depth texture
@@ -213,9 +237,9 @@ RenderFrameContext.prototype.enableFBO = function()
 	this._fbo.bind( true ); //changes viewport to full FBO size (saves old)
 
 	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._locked = true;
-	if(this._depth_texture)
-		this._depth_texture._locked = true;
+		this._textures[i]._in_current_fbo = true;
+	if(this._depth_texture) //in some cases you can read from the same buffer that is binded (if no writing is enabled)
+		this._depth_texture._in_current_fbo = true;
 
 	LS.Renderer._full_viewport.set( gl.viewport_data );
 	this._old_aspect = LS.Renderer.global_aspect;
@@ -233,9 +257,9 @@ RenderFrameContext.prototype.disableFBO = function()
 	LS.Renderer.global_aspect = this._old_aspect;
 
 	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._locked = false;
+		this._textures[i]._in_current_fbo = false;
 	if(this._depth_texture)
-		this._depth_texture._locked = false;
+		this._depth_texture._in_current_fbo = false;
 
 	if(this.name)
 	{
@@ -274,7 +298,12 @@ RenderFrameContext.prototype.disableFBO = function()
 		LS.RenderFrameContext.current = null;
 }
 
-//Render the context of the fbo to the viewport (allows to apply FXAA)
+/**
+* Render the context of the context to the viewport (allows to apply FXAA)
+*
+* @method show
+* @param {boolean} use_antialiasing in case you want to render with FXAA antialiasing
+*/
 RenderFrameContext.prototype.show = function( use_antialiasing )
 {
 	var texture = this._color_texture;
@@ -284,11 +313,19 @@ RenderFrameContext.prototype.show = function( use_antialiasing )
 		return;
 	}
 
-	var shader = GL.Shader.getFXAAShader();
 	var viewport = gl.getViewport();
+	var shader = GL.Shader.getFXAAShader();
 	var mesh = GL.Mesh.getScreenQuad();
 	texture.bind(0);
-	shader.uniforms( {u_texture:0, uViewportSize: viewport.subarray(2,4), u_iViewportSize: [1 / texture.width, 1 / texture.height]} ).draw( mesh );
+	shader.uniforms( { u_texture:0, uViewportSize: viewport.subarray(2,4), u_iViewportSize: [1 / texture.width, 1 / texture.height]} ).draw( mesh );
+}
+
+//Resets the current WebGL fbo so it renders to the screen
+RenderFrameContext.reset = function()
+{
+	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+	LS.RenderFrameContext.current = null;
+	LS.RenderFrameContext.stack.length = 0;
 }
 
 

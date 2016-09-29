@@ -1,6 +1,11 @@
-// Used to render debug information like skeletons, a grid, etc
-// I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor
-
+/**	DebugRender
+* Used to render debug information like skeletons, a grid, etc
+* I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor
+*
+* @class DebugRender
+* @namespace LS
+* @constructor
+*/
 function DebugRender()
 {
 	this.debug_points = []; //used for debugging, allows to draw points easily
@@ -16,6 +21,7 @@ function DebugRender()
 
 	this.grid_texture_url = "imgs/grid.png";
 
+	//this camera is used to render names
 	this.camera2D = new LS.Camera({eye:[0,0,0],center:[0,0,-1]});
 	this.createMeshes();
 
@@ -41,16 +47,25 @@ function DebugRender()
 		render_origin: true,
 		render_colliders_aabb: false
 	};
+
+	this._in_scene = false;
 }
 
 DebugRender.prototype.enable = function( scene )
 {
+	if(this._in_scene)
+		return;
+	scene = scene || LS.GlobalScene;
 	LEvent.bind( scene, "afterRenderInstances", this.onRender, this );
+	this._in_scene = scene;
 }
 
 DebugRender.prototype.disable = function( scene )
 {
-	LEvent.unbind( scene, "afterRenderInstances", this.onRender, this );
+	if(!this._in_scene)
+		return;
+	LEvent.unbind( this._in_scene, "afterRenderInstances", this.onRender, this );
+	this._in_scene = null;
 }
 
 DebugRender.prototype.onRender = function( e, render_settings )

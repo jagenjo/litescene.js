@@ -19,6 +19,7 @@ function StandardMaterial(o)
 	this.shader_name = "global";
 
 	this.blend_mode = LS.Blend.NORMAL;
+
 	this.alpha_test = false;
 	this.alpha_test_shadows = false;
 

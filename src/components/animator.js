@@ -45,7 +45,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 	{
 		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
 		quat.multiply( this._root.transform._rotation, R, this._default);
-		this._root.transform._dirty = true;
+		this._root.transform._must_update = true;
 	}
 	else
 	{

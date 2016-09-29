@@ -1,6 +1,70 @@
-//RenderState sets how a RenderInstance should be rendered by the GPU
-//It is stored in the material (although defined usually from ShaderCode) so the material can use it.
-function RenderState()
+/**
+* RenderState sets how a RenderInstance should be rendered by the GPU
+* It is stored in the material (although defined usually from ShaderCode) so the material can use it.
+*
+* @class RenderState
+* @namespace LS
+* @constructor
+*/
+
+function RenderState( o )
+{
+	this.init();
+
+	if(o)
+		this.configure(o);
+}
+
+Object.defineProperty( RenderState.prototype, "blendFunc", {
+	set: function(v)
+	{
+		if(!v || v.length != 2)
+			return;
+		this.blendFunc0 = v[0];
+		this.blendFunc1 = v[1];
+	},
+	get: function()
+	{
+		return [this.blendFunc0,this.blendFunc1];
+	},
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask", {
+	set: function(v)
+	{
+		if(!v || v.length != 4)
+			return;
+		this.colorMask0 = v[0];
+		this.colorMask1 = v[1];
+		this.colorMask2 = v[2];
+		this.colorMask3 = v[3];
+	},
+	get: function()
+	{
+		return [this.blendFunc0,this.blendFunc1];
+	},
+	enumerable: false
+});
+
+RenderState.default_state = {
+	front_face: GL.CCW,
+	cull_face: true,
+	depth_test: true,
+	depth_func: GL.LESS,
+	depth_mask: true,
+	blend: false,
+	blendFunc0: GL.SRC_ALPHA,
+	blendFunc1: GL.ONE_MINUS_SRC_ALPHA,
+	colorMask0: true,
+	colorMask1: true,
+	colorMask2: true,
+	colorMask3: true
+};
+
+RenderState.last_state = null;
+
+RenderState.prototype.init = function()
 {
 	//gpu flags
 	this.front_face = GL.CCW;
@@ -20,36 +84,17 @@ function RenderState()
 	//blend equation
 
 	//color mask
+	this.colorMask0 = true;
+	this.colorMask1 = true;
+	this.colorMask2 = true;
+	this.colorMask3 = true;
 
 	//stencil buffer
-	//TO DO
-
-	//pipeline flags are per node
-	/*
-	this.ignore_lights = false;
-	this.ignore_ambient = false;
-
-	this.seen_by_camera = true;
-	this.seen_by_reflections = true;
-	this.seen_by_picking = true;
-
-	this.cast_shadows = true;
-	this.receive_shadows = true;
-	*/
+	this.stencil_test = false;
+	this.stencil_func = 1;
+	this.stencil_ref = 1;
+	this.stencil_mask = 0xFF;
 }
-
-RenderState.default_state = {
-	front_face: GL.CCW,
-	cull_face: true,
-	depth_test: true,
-	depth_func: GL.LESS,
-	depth_mask: true,
-	blend: false,
-	blendFunc0: GL.SRC_ALPHA,
-	blendFunc1: GL.ONE_MINUS_SRC_ALPHA
-};
-
-RenderState.last_state = null;
 
 //helper, allows to set the blend mode from a string
 RenderState.prototype.setBlendMode = function( mode )
@@ -96,6 +141,12 @@ RenderState.enable = function( state, prev )
 			gl.disable( gl.BLEND );
 		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 
+		//color
+		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
+
+		//stencil
+		//TODO
+
 		this.last_state = state;
 		return;
 	}
@@ -135,6 +186,14 @@ RenderState.enable = function( state, prev )
 	if(prev.blendFunc0 !== state.blendFunc0 || prev.blendFunc1 !== state.blendFunc1)
 		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 
+	//color
+	if(prev.colorMask0 !== state.colorMask0 || prev.colorMask1 !== state.colorMask1 || prev.colorMask2 !== state.colorMask2 || prev.colorMask3 !== state.colorMask3 )
+		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
+
+	//stencil
+	//TODO
+
+	//save state
 	this.last_state = state;
 }
 
@@ -142,5 +201,18 @@ RenderState.reset = function()
 {
 	this.enable( this.default_state );
 }
+
+RenderState.prototype.serialize = function()
+{
+	return LS.cloneObject(this);
+}
+
+RenderState.prototype.toJSON = RenderState.prototype.serialize;
+
+RenderState.prototype.configure = function(o)
+{
+	LS.cloneObject(o,this);
+}
+
 
 LS.RenderState = RenderState;

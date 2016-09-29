@@ -1,8 +1,7 @@
-//Work in progress
-
-/**
-* helps apply basic effects to a texture with as fewer render calls as possible with low memory footprint
-* used by CameraFX but also available for any other use
+/** TextureFX
+* Helps apply a stack of FXs to a texture with as fewer render calls as possible with low memory footprint
+* Used by CameraFX and FrameFX but also available for any other use
+* You can add new FX to the FX pool if you want.
 * @class TextureFX
 */
 function TextureFX( o )
@@ -195,21 +194,25 @@ TextureFX.available_fx = {
 	},
 	"noiseBN": {
 		name: "Noise B&N",
-		functions: ["noise"],
 		uniforms: {
 			"noise": { name: "u_noise", type: "float", value: 0.1, step: 0.01 }
 		},
 		code:"color.xyz += u_noise@ * vec3( noise( (u_random + v_coord) * u_viewport) );"
 	}
 	/*
-	,
-	"fast_edges": {
-		name: "Edges (fast)",
-		code:"color.xyz = abs( dFdx(color.xyz) ) + abs( dFdy(color.xyz) );"
+	"blur": {
+			name: "Blur",
+			break_pass: true,
+			uniforms: {
+				"blur_intensity": { name: "u_blur_intensity", type: "float", value: 0.1, step: 0.01 }
+			},
+			local_callback: TextureFX.applyBlur
+		}
 	}
 	*/
 };
 
+//functions that could be used
 TextureFX.available_functions = {
 	pattern: "float pattern(float angle, float size) {\n\
 				float s = sin(angle * 3.1415), c = cos(angle * 3.1415);\n\
@@ -346,6 +349,7 @@ TextureFX.prototype.getResources = function(res)
 	return res;
 }
 
+//attach a new FX to the FX Stack
 TextureFX.prototype.addFX = function( name )
 {
 	if(!name)
@@ -358,11 +362,13 @@ TextureFX.prototype.addFX = function( name )
 	this.fx.push({ name: name });
 }
 
+//returns the Nth FX in the FX Stack
 TextureFX.prototype.getFX = function(index)
 {
 	return this.fx[ index ];
 }
 
+//rearranges an FX
 TextureFX.prototype.moveFX = function( fx, offset )
 {
 	offset = offset || -1;
@@ -381,6 +387,7 @@ TextureFX.prototype.moveFX = function( fx, offset )
 		this.fx.push(fx);
 }
 
+//removes an FX from the FX stack
 TextureFX.prototype.removeFX = function( fx )
 {
 	for(var i = 0; i < this.fx.length; i++)
@@ -393,6 +400,7 @@ TextureFX.prototype.removeFX = function( fx )
 	}
 }
 
+//executes the FX stack in the input texture and outputs the result in the output texture (or the screen)
 TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 {
 	var color_texture = input_texture;
@@ -423,6 +431,9 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 	uniforms.u_aspect = color_texture.width / color_texture.height;
 	uniforms.u_random[0] = Math.random();
 	uniforms.u_random[1] = Math.random();
+
+	//var passes = [];
+	//var current_pass = {};
 
 	var fx_id = 0;
 	for(var i = 0; i < fxs.length; i++)
@@ -567,6 +578,23 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 TextureFX.prototype.getTexture = function( name )
 {
 	return LS.ResourcesManager.getTexture( name );
+}
+
+TextureFX.registerFX = function( name, fx_info )
+{
+	if( !fx_info.name )
+		fx_info.name = name;
+	if( fx_info.code === undefined )
+		throw("TextureFX must have a code");
+	if( fx_info.uniforms && fx_info.code && fx_info.code.indexOf("@") )
+		console.warn("TextureFX using uniforms must use the character '@' at the end of every use to avoid collisions with other variables with the same name.");
+
+	TextureFX.available_fx[ name ] = fx_info;
+}
+
+TextureFX.registerFunction = function( name, code )
+{
+	TextureFX.available_functions[name] = code;
 }
 
 LS.TextureFX = TextureFX;

@@ -167,6 +167,10 @@ var Renderer = {
 		this._rendered_instances = 0;
 		this._rendered_passes = 0;
 
+		//to restore from a possible exception (not fully tested, remove if problem)
+		if(!render_settings.ignore_reset)
+			LS.RenderFrameContext.reset();
+
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
 		{
@@ -669,6 +673,9 @@ var Renderer = {
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
+		//just to be sure
+		LS.RenderState.reset();
+
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_settings);
 
@@ -951,7 +958,8 @@ var Renderer = {
 			if(!tex)
 				tex = this._missing_texture;
 
-			if(tex._locked) //locked textures are usually the render target where we are rendering right now, so we cannot read and write at the same texture
+			//avoid to read from the same texture we are rendering to (generates warnings)
+			if(tex._in_current_fbo) 
 				tex = this._missing_texture;
 
 			tex.bind( i );
@@ -1280,7 +1288,7 @@ var Renderer = {
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
 		var scene = LS.Renderer._current_scene;
-		texture._locked = true;
+		texture._in_current_fbo = true;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -1290,7 +1298,7 @@ var Renderer = {
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
 			this.renderToCubemap( cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far );
 		this._current_target = null;
-		texture._locked = false;
+		texture._in_current_fbo = false;
 
 		function inner_draw_2d()
 		{

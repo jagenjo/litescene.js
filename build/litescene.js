@@ -6145,29 +6145,27 @@ GL.Mesh.prototype.toBinary = function()
 /**
 * A Material is a class in charge of defining how to render an object, there are several classes for Materials
 * but this class is more like a template for other material classes.
+* The rendering of a material is handled by the material itself, otherwise by the rendering pipeline
 * @namespace LS
 * @class Material
 * @constructor
 * @param {String} object to configure from
 */
 
-function Material(o)
+function Material( o )
 {
 	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
+	this._must_update = true;
 
+	//materials have at least a basic color property and opacity
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 
-	//render queue
+	//render queue: which order should this be rendered
 	this._queue = LS.RenderQueue.DEFAULT;
 
-	//render state 
+	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
 	this.render_state = new LS.RenderState();
-
-	//flags
-	this.alpha_test = false;
-	this.alpha_test_shadows = false;
 
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
@@ -6299,7 +6297,6 @@ Material.prototype.fillUniforms = function( scene, options )
 
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
-	//uniforms.u_diffuse_color = this._diffuse;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_specular = vec2.create([1,50]);
@@ -6377,13 +6374,12 @@ Material.prototype.clone = function()
 * @param {Texture || url} texture_or_filename
 * @param {String} channel
 */
-Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, options)
+Material.prototype.loadAndSetTexture = function( channel, texture_or_filename, options )
 {
 	options = options || {};
 	var that = this;
-	//if(!this.material) this.material = new Material();
 
-	if( typeof(texture_or_filename) === "string" ) //it could be the url or the internal texture name 
+	if( texture_or_filename && texture_or_filename.constructor === String ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
 			LS.ResourcesManager.load(texture_or_filename,options, function(texture) {
@@ -6396,7 +6392,7 @@ Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, op
 	}
 	else //otherwise just assign whatever
 	{
-		this.setTexture(channel, texture_or_filename);
+		this.setTexture( channel, texture_or_filename );
 		if(options.on_complete)
 			options.on_complete();
 	}
@@ -6456,9 +6452,6 @@ Material.prototype.setProperty = function( name, value )
 		//numbers
 		case "queue": 
 		case "opacity": 
-		case "specular_factor":
-		case "specular_gloss":
-		case "reflection": 
 			if(value !== null && value.constructor === Number)
 				this[name] = value; 
 			break;
@@ -6522,14 +6515,7 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 		case "queue": 
 		case "opacity": 
 		case "transparency":
-		case "specular_factor":
-		case "specular_gloss":
-		case "reflection": 
 			type = "number"; break;
-		//bools
-		case "alpha_test":
-		case "alpha_test_shadows":
-			type = "boolean"; break;
 		//vectors
 		case "uvs_matrix":
 			type = "mat3"; break;
@@ -6794,6 +6780,7 @@ Material.prototype.getLocator = function()
 	return this.uid;
 }
 
+//this has been moved to ShaderCode?
 Material.processShaderCode = function(code)
 {
 	var lines = code.split("\n");
@@ -6886,6 +6873,7 @@ function StandardMaterial(o)
 	this.shader_name = "global";
 
 	this.blend_mode = LS.Blend.NORMAL;
+
 	this.alpha_test = false;
 	this.alpha_test_shadows = false;
 
@@ -7337,409 +7325,6 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 
 LS.registerMaterialClass( StandardMaterial );
 LS.StandardMaterial = StandardMaterial;
-function CustomMaterial( o )
-{
-	Material.call( this, null );
-
-	this.shader_name = "base";
-
-	this.vs_code = "";
-	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
-	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
-	o.Normal = IN.worldNormal;\n\
-	o.Emission = vec3(0.0);\n\
-	o.Specular = 1.0;\n\
-	o.Gloss = 40.0;\n\
-	o.Reflectivity = 0.0;\n\
-	o.Alpha = IN.color.a;\n}\n";
-
-	this._uniforms = {};
-
-	this.properties = []; //array of configurable properties
-	if(o) 
-		this.configure(o);
-
-	this.flags = 0;
-
-	this.computeCode();
-}
-
-CustomMaterial.icon = "mini-icon-material.png";
-CustomMaterial.coding_help = "\
-struct Input {\n\
-	vec4 color;\n\
-	vec3 vertex;\n\
-	vec3 normal;\n\
-	vec2 uv;\n\
-	vec2 uv1;\n\
-	\n\
-	vec3 camPos;\n\
-	vec3 viewDir;\n\
-	vec3 worldPos;\n\
-	vec3 worldNormal;\n\
-	vec4 screenPos;\n\
-};\n\
-\n\
-struct SurfaceOutput {\n\
-	vec3 Albedo; /*store the color output here*/\n\
-	vec3 Normal;\n\
-	vec3 Emission;\n\
-	float Specular;\n\
-	float Gloss;\n\
-	float Alpha;\n\
-	float Reflectivity;\n\
-};\n\
-";
-
-CustomMaterial.prototype.onCodeChange = function()
-{
-	this.computeCode();
-}
-
-CustomMaterial.prototype.getCode = function()
-{
-	return this.code;
-}
-
-CustomMaterial.prototype.computeCode = function()
-{
-	var uniforms_code = "";
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var code = "uniform ";
-		var prop = this.properties[i];
-		switch(prop.type)
-		{
-			case 'number': code += "float "; break;
-			case 'vec2': code += "vec2 "; break;
-			case 'color':
-			case 'vec3': code += "vec3 "; break;
-			case 'color4':
-			case 'vec4': code += "vec4 "; break;
-			case 'texture': code += "sampler2D "; break;
-			case 'cubemap': code += "samplerCube "; break;
-			default: continue;
-		}
-		code += prop.name + ";";
-		uniforms_code += code;
-	}
-
-	var lines = this.code.split("\n");
-	for(var i = 0, l = lines.length; i < l; ++i )
-		lines[i] = lines[i].split("//")[0]; //remove comments
-
-	this.surf_code = uniforms_code + lines.join("");
-}
-
-// RENDERING METHODS
-CustomMaterial.prototype.onModifyQuery = function( query )
-{
-	if(this._ps_uniforms_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_UNIFORMS)
-			query.macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
-		else
-			query.macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
-	}
-
-	if(this._ps_functions_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_FUNCTIONS)
-			query.macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
-		else
-			query.macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
-	}
-
-	if(this._ps_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_CODE)
-			query.macros.USE_PIXEL_SHADER_CODE += this._ps_code;
-		else
-			query.macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
-	}
-
-	query.macros.USE_SURFACE_SHADER = this.surf_code;
-}
-
-CustomMaterial.prototype.fillShaderQuery = function(scene)
-{
-	var query = this._query;
-	query.clear();
-	if( this.textures["environment"] )
-	{
-		var sampler = this.textures["environment"];
-		var tex = LS.getTexture( sampler.texture );
-		if(tex)
-			query.macros[ "USE_ENVIRONMENT_" + (tex.type == gl.TEXTURE_2D ? "TEXTURE" : "CUBEMAP") ] = sampler.uvs;
-	}
-}
-
-
-CustomMaterial.prototype.fillUniforms = function( scene, options )
-{
-	var samplers = [];
-
-	var last_texture_slot = 0;
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
-		{
-			if(!prop.value)
-				continue;
-
-			var tex_name = prop.type == "sampler" ? prop.value.texture : prop.value;
-			var texture = LS.getTexture( tex_name );
-			if(!texture)
-				texture = ":missing";
-			
-			samplers[ last_texture_slot ] = texture;
-			this._uniforms[ prop.name ] = last_texture_slot;
-			last_texture_slot++;
-		}
-		else
-			this._uniforms[ prop.name ] = prop.value;
-	}
-
-	this._uniforms.u_material_color = this._color;
-
-	/*
-	if(this.textures["environment"])
-	{
-		var sampler = this.textures["environment"];
-		var texture = LS.getTexture( sampler.texture );
-		if(texture)
-			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
-	}
-	*/
-
-	this._samplers = samplers;
-}
-
-CustomMaterial.prototype.configure = function(o) { 
-	LS.cloneObject(o, this);
-	this.computeCode();
-}
-
-/**
-* Event used to inform if one resource has changed its name
-* @method onResourceRenamed
-* @param {Object} resources object where all the resources are stored
-* @return {Texture}
-*/
-CustomMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-	//global
-	Material.prototype.onResourceRenamed.call( this, old_name, new_name, resource );
-
-	//specific
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if( prop.value == old_name)
-			prop.value = new_name;
-	}
-}
-
-
-/**
-* gets all the properties and its types
-* @method getPropertiesInfo
-* @return {Object} object with name:type
-*/
-CustomMaterial.prototype.getPropertiesInfo = function()
-{
-	var o = {
-		color: LS.TYPES.VEC3,
-		opacity: LS.TYPES.NUMBER,
-		shader_name: LS.TYPES.STRING,
-		blend_mode: LS.TYPES.NUMBER,
-		code: LS.TYPES.STRING
-	};
-
-	//from this material
-	for(var i in this.properties)
-	{
-		var prop = this.properties[i];
-		o[prop.name] = prop.type;
-	}	
-
-	return o;
-}
-
-/**
-* gets all the properties and its types
-* @method getProperty
-* @return {Object} object with name:type
-*/
-CustomMaterial.prototype.getProperty = function( name )
-{
-	if(this[name])
-		return this[name];
-
-	if( name.substr(0,4) == "tex_")
-	{
-		var tex = this.textures[ name.substr(4) ];
-		if(!tex) return null;
-		return tex.texture;
-	}
-
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.name == name)
-			return prop.value;
-	}	
-
-	return null;
-}
-
-/**
-* assign a value to a property in a safe way
-* @method setProperty
-* @param {Object} object to configure from
-*/
-CustomMaterial.prototype.setProperty = function(name, value)
-{
-	//redirect to base material
-	if( Material.prototype.setProperty.call(this,name,value) )
-		return true;
-
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.name != name)
-			continue;
-		prop.value = value;
-		return true;
-	}
-
-	return false;
-}
-
-/*
-CustomMaterial.prototype.setPropertyValueFromPath = function( path, value, offset )
-{
-	if( path.length < (offset+1) )
-		return;
-	return this.setProperty( path[offset], value );
-}
-*/
-
-CustomMaterial.prototype.getPropertyInfoFromPath = function( path )
-{
-	if( path.length < 1)
-		return;
-
-	var varname = path[0];
-
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.name != varname)
-			continue;
-
-		return {
-			node: this._root,
-			target: this,
-			name: prop.name,
-			value: prop.value,
-			type: prop.type
-		};
-	}
-
-	return;
-}
-
-
-CustomMaterial.prototype.getTextureChannels = function()
-{
-	var channels = [];
-
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler" )
-			continue;
-		channels.push( prop.name );
-	}
-
-	return channels;
-}
-
-/**
-* Assigns a texture to a channel
-* @method setTexture
-* @param {String} channel 
-* @param {Texture} texture
-*/
-CustomMaterial.prototype.setTexture = function( channel, texture, sampler_options ) {
-	if(!channel)
-		throw("CustomMaterial.prototype.setTexture channel must be specified");
-
-	var sampler = null;
-
-
-	//special case
-	if(channel == "environment")
-		return Material.prototype.setTexture.call(this, channel, texture, sampler_options );
-
-	for(var i = 0; i < this.properties.length; ++i)
-	{
-		var prop = this.properties[i];
-		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")
-			continue;
-
-		if(channel && prop.name != channel) //assign to the channel or if there is no channel just to the first one
-			continue;
-
-		//assign sampler
-		sampler = this.textures[ channel ];
-		if(!sampler)
-			sampler = this.textures[channel] = { texture: texture, uvs: "0", wrap: 0, minFilter: 0, magFilter: 0 }; //sampler
-
-		if(sampler_options)
-			for(var i in sampler_options)
-				sampler[i] = sampler_options[i];
-
-		prop.value = prop.type == "sampler" ? sampler : texture;
-		break;
-	}
-
-	//preload texture
-	if(texture && texture.constructor == String && texture[0] != ":")
-		LS.ResourcesManager.load( texture );
-
-	return sampler;
-}
-
-/**
-* Collects all the resources needed by this material (textures)
-* @method getResources
-* @param {Object} resources object where all the resources are stored
-* @return {Texture}
-*/
-CustomMaterial.prototype.getResources = function (res)
-{
-	for(var i = 0, l = this.properties.length; i < l; ++i )
-	{
-		var prop = this.properties[i];
-		if(prop.type != "texture" && prop.type != "cubemap" && prop.type != "sampler")
-			continue;
-		if(!prop.value)
-			continue;
-
-		var texture = prop.type == "sampler" ? prop.value.texture : prop.value;
-		if( typeof( texture ) == "string" )
-			res[ texture ] = GL.Texture;
-	}
-
-	return res;
-}
-
-
-LS.registerMaterialClass( CustomMaterial );
-LS.CustomMaterial = CustomMaterial;
 function SurfaceMaterial( o )
 {
 	Material.call( this, null );
@@ -8289,6 +7874,10 @@ ShaderMaterial.prototype.processShaderCode = function()
 	var old_properties = this._properties_by_name;
 	this._properties = [];
 	this._properties_by_name = {};
+
+	//reset material properties
+	this._queue = LS.RenderQueue.GEOMETRY;
+	this.render_state.init();
 
 	//clear old functions
 	for(var i in this)
@@ -13828,11 +13417,10 @@ Path.prototype.configure = function(o)
 
 
 LS.Path = Path;
-//Work in progress
-
-/**
-* helps apply basic effects to a texture with as fewer render calls as possible with low memory footprint
-* used by CameraFX but also available for any other use
+/** TextureFX
+* Helps apply a stack of FXs to a texture with as fewer render calls as possible with low memory footprint
+* Used by CameraFX and FrameFX but also available for any other use
+* You can add new FX to the FX pool if you want.
 * @class TextureFX
 */
 function TextureFX( o )
@@ -14025,21 +13613,25 @@ TextureFX.available_fx = {
 	},
 	"noiseBN": {
 		name: "Noise B&N",
-		functions: ["noise"],
 		uniforms: {
 			"noise": { name: "u_noise", type: "float", value: 0.1, step: 0.01 }
 		},
 		code:"color.xyz += u_noise@ * vec3( noise( (u_random + v_coord) * u_viewport) );"
 	}
 	/*
-	,
-	"fast_edges": {
-		name: "Edges (fast)",
-		code:"color.xyz = abs( dFdx(color.xyz) ) + abs( dFdy(color.xyz) );"
+	"blur": {
+			name: "Blur",
+			break_pass: true,
+			uniforms: {
+				"blur_intensity": { name: "u_blur_intensity", type: "float", value: 0.1, step: 0.01 }
+			},
+			local_callback: TextureFX.applyBlur
+		}
 	}
 	*/
 };
 
+//functions that could be used
 TextureFX.available_functions = {
 	pattern: "float pattern(float angle, float size) {\n\
 				float s = sin(angle * 3.1415), c = cos(angle * 3.1415);\n\
@@ -14176,6 +13768,7 @@ TextureFX.prototype.getResources = function(res)
 	return res;
 }
 
+//attach a new FX to the FX Stack
 TextureFX.prototype.addFX = function( name )
 {
 	if(!name)
@@ -14188,11 +13781,13 @@ TextureFX.prototype.addFX = function( name )
 	this.fx.push({ name: name });
 }
 
+//returns the Nth FX in the FX Stack
 TextureFX.prototype.getFX = function(index)
 {
 	return this.fx[ index ];
 }
 
+//rearranges an FX
 TextureFX.prototype.moveFX = function( fx, offset )
 {
 	offset = offset || -1;
@@ -14211,6 +13806,7 @@ TextureFX.prototype.moveFX = function( fx, offset )
 		this.fx.push(fx);
 }
 
+//removes an FX from the FX stack
 TextureFX.prototype.removeFX = function( fx )
 {
 	for(var i = 0; i < this.fx.length; i++)
@@ -14223,6 +13819,7 @@ TextureFX.prototype.removeFX = function( fx )
 	}
 }
 
+//executes the FX stack in the input texture and outputs the result in the output texture (or the screen)
 TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 {
 	var color_texture = input_texture;
@@ -14253,6 +13850,9 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 	uniforms.u_aspect = color_texture.width / color_texture.height;
 	uniforms.u_random[0] = Math.random();
 	uniforms.u_random[1] = Math.random();
+
+	//var passes = [];
+	//var current_pass = {};
 
 	var fx_id = 0;
 	for(var i = 0; i < fxs.length; i++)
@@ -14397,6 +13997,23 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 TextureFX.prototype.getTexture = function( name )
 {
 	return LS.ResourcesManager.getTexture( name );
+}
+
+TextureFX.registerFX = function( name, fx_info )
+{
+	if( !fx_info.name )
+		fx_info.name = name;
+	if( fx_info.code === undefined )
+		throw("TextureFX must have a code");
+	if( fx_info.uniforms && fx_info.code && fx_info.code.indexOf("@") )
+		console.warn("TextureFX using uniforms must use the character '@' at the end of every use to avoid collisions with other variables with the same name.");
+
+	TextureFX.available_fx[ name ] = fx_info;
+}
+
+TextureFX.registerFunction = function( name, code )
+{
+	TextureFX.available_functions[name] = code;
 }
 
 LS.TextureFX = TextureFX;
@@ -14769,9 +14386,73 @@ RenderSettings.prototype.configure = function(o)
 RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;
 
 LS.RenderSettings = RenderSettings;
-//RenderState sets how a RenderInstance should be rendered by the GPU
-//It is stored in the material (although defined usually from ShaderCode) so the material can use it.
-function RenderState()
+/**
+* RenderState sets how a RenderInstance should be rendered by the GPU
+* It is stored in the material (although defined usually from ShaderCode) so the material can use it.
+*
+* @class RenderState
+* @namespace LS
+* @constructor
+*/
+
+function RenderState( o )
+{
+	this.init();
+
+	if(o)
+		this.configure(o);
+}
+
+Object.defineProperty( RenderState.prototype, "blendFunc", {
+	set: function(v)
+	{
+		if(!v || v.length != 2)
+			return;
+		this.blendFunc0 = v[0];
+		this.blendFunc1 = v[1];
+	},
+	get: function()
+	{
+		return [this.blendFunc0,this.blendFunc1];
+	},
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask", {
+	set: function(v)
+	{
+		if(!v || v.length != 4)
+			return;
+		this.colorMask0 = v[0];
+		this.colorMask1 = v[1];
+		this.colorMask2 = v[2];
+		this.colorMask3 = v[3];
+	},
+	get: function()
+	{
+		return [this.blendFunc0,this.blendFunc1];
+	},
+	enumerable: false
+});
+
+RenderState.default_state = {
+	front_face: GL.CCW,
+	cull_face: true,
+	depth_test: true,
+	depth_func: GL.LESS,
+	depth_mask: true,
+	blend: false,
+	blendFunc0: GL.SRC_ALPHA,
+	blendFunc1: GL.ONE_MINUS_SRC_ALPHA,
+	colorMask0: true,
+	colorMask1: true,
+	colorMask2: true,
+	colorMask3: true
+};
+
+RenderState.last_state = null;
+
+RenderState.prototype.init = function()
 {
 	//gpu flags
 	this.front_face = GL.CCW;
@@ -14791,36 +14472,17 @@ function RenderState()
 	//blend equation
 
 	//color mask
+	this.colorMask0 = true;
+	this.colorMask1 = true;
+	this.colorMask2 = true;
+	this.colorMask3 = true;
 
 	//stencil buffer
-	//TO DO
-
-	//pipeline flags are per node
-	/*
-	this.ignore_lights = false;
-	this.ignore_ambient = false;
-
-	this.seen_by_camera = true;
-	this.seen_by_reflections = true;
-	this.seen_by_picking = true;
-
-	this.cast_shadows = true;
-	this.receive_shadows = true;
-	*/
+	this.stencil_test = false;
+	this.stencil_func = 1;
+	this.stencil_ref = 1;
+	this.stencil_mask = 0xFF;
 }
-
-RenderState.default_state = {
-	front_face: GL.CCW,
-	cull_face: true,
-	depth_test: true,
-	depth_func: GL.LESS,
-	depth_mask: true,
-	blend: false,
-	blendFunc0: GL.SRC_ALPHA,
-	blendFunc1: GL.ONE_MINUS_SRC_ALPHA
-};
-
-RenderState.last_state = null;
 
 //helper, allows to set the blend mode from a string
 RenderState.prototype.setBlendMode = function( mode )
@@ -14867,6 +14529,12 @@ RenderState.enable = function( state, prev )
 			gl.disable( gl.BLEND );
 		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 
+		//color
+		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
+
+		//stencil
+		//TODO
+
 		this.last_state = state;
 		return;
 	}
@@ -14906,6 +14574,14 @@ RenderState.enable = function( state, prev )
 	if(prev.blendFunc0 !== state.blendFunc0 || prev.blendFunc1 !== state.blendFunc1)
 		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 
+	//color
+	if(prev.colorMask0 !== state.colorMask0 || prev.colorMask1 !== state.colorMask1 || prev.colorMask2 !== state.colorMask2 || prev.colorMask3 !== state.colorMask3 )
+		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
+
+	//stencil
+	//TODO
+
+	//save state
 	this.last_state = state;
 }
 
@@ -14913,6 +14589,19 @@ RenderState.reset = function()
 {
 	this.enable( this.default_state );
 }
+
+RenderState.prototype.serialize = function()
+{
+	return LS.cloneObject(this);
+}
+
+RenderState.prototype.toJSON = RenderState.prototype.serialize;
+
+RenderState.prototype.configure = function(o)
+{
+	LS.cloneObject(o,this);
+}
+
 
 LS.RenderState = RenderState;
 /**
@@ -14979,6 +14668,7 @@ function RenderInstance( node, component )
 
 	//rendering flags
 	this.flags = RI_DEFAULT_FLAGS;
+	//this will have to go...
 	this.blend_func = LS.BlendFunctions["normal"]; //Blend.funcs["add"], ...
 
 	//transformation
@@ -15346,13 +15036,15 @@ RenderInstance.prototype.setCollisionMesh = function(mesh)
 
 
 LS.RenderInstance = RenderInstance;
-/*	
-	RenderFrameContext
-	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
-	It helps to create the textures and bind them easily
-	Check the GlobalFX and CameraFX components to see it in action.
+/**	RenderFrameContext
+*	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
+*	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
+*	Check the FrameFX and CameraFX components to see it in action.
+*
+* @class RenderFrameContext
+* @namespace LS
+* @constructor
 */
-
 function RenderFrameContext( o )
 {
 	this.width = 0; //0 means the same size as the viewport, negative numbers mean reducing the texture in half N times
@@ -15517,7 +15209,11 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	this._fbo.setTextures( textures, this._depth_texture );
 }
 
-//Called before rendering the scene
+/**
+* Called to bind the rendering to this context, from now on all the render will be stored in the textures inside
+*
+* @method enable
+*/
 RenderFrameContext.prototype.enable = function( render_settings, viewport )
 {
 	var camera = LS.Renderer._current_camera;
@@ -15537,19 +15233,37 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	}
 }
 
+/**
+* Called to stop rendering to this context
+*
+* @method disable
+*/
 RenderFrameContext.prototype.disable = function()
 {
 	this.disableFBO();
 }
 
+/**
+* returns the texture containing the data rendered in this context
+*
+* @method getColorTexture
+* @param {number} index the number of the texture (in case there is more than one)
+* @return {GL.Texture} the texture
+*/
 RenderFrameContext.prototype.getColorTexture = function(num)
 {
-	return this._textures[ num || 0 ];
+	return this._textures[ num || 0 ] || null;
 }
 
+/**
+* returns the depth texture containing the depth data rendered in this context (in case the use_depth_texture is set to true)
+*
+* @method getDepthTexture
+* @return {GL.Texture} the depth texture
+*/
 RenderFrameContext.prototype.getDepthTexture = function()
 {
-	return this._depth_texture;
+	return this._depth_texture || null;
 }
 
 //helper in case you want have a Color and Depth texture
@@ -15561,9 +15275,9 @@ RenderFrameContext.prototype.enableFBO = function()
 	this._fbo.bind( true ); //changes viewport to full FBO size (saves old)
 
 	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._locked = true;
-	if(this._depth_texture)
-		this._depth_texture._locked = true;
+		this._textures[i]._in_current_fbo = true;
+	if(this._depth_texture) //in some cases you can read from the same buffer that is binded (if no writing is enabled)
+		this._depth_texture._in_current_fbo = true;
 
 	LS.Renderer._full_viewport.set( gl.viewport_data );
 	this._old_aspect = LS.Renderer.global_aspect;
@@ -15581,9 +15295,9 @@ RenderFrameContext.prototype.disableFBO = function()
 	LS.Renderer.global_aspect = this._old_aspect;
 
 	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._locked = false;
+		this._textures[i]._in_current_fbo = false;
 	if(this._depth_texture)
-		this._depth_texture._locked = false;
+		this._depth_texture._in_current_fbo = false;
 
 	if(this.name)
 	{
@@ -15622,7 +15336,12 @@ RenderFrameContext.prototype.disableFBO = function()
 		LS.RenderFrameContext.current = null;
 }
 
-//Render the context of the fbo to the viewport (allows to apply FXAA)
+/**
+* Render the context of the context to the viewport (allows to apply FXAA)
+*
+* @method show
+* @param {boolean} use_antialiasing in case you want to render with FXAA antialiasing
+*/
 RenderFrameContext.prototype.show = function( use_antialiasing )
 {
 	var texture = this._color_texture;
@@ -15632,11 +15351,19 @@ RenderFrameContext.prototype.show = function( use_antialiasing )
 		return;
 	}
 
-	var shader = GL.Shader.getFXAAShader();
 	var viewport = gl.getViewport();
+	var shader = GL.Shader.getFXAAShader();
 	var mesh = GL.Mesh.getScreenQuad();
 	texture.bind(0);
-	shader.uniforms( {u_texture:0, uViewportSize: viewport.subarray(2,4), u_iViewportSize: [1 / texture.width, 1 / texture.height]} ).draw( mesh );
+	shader.uniforms( { u_texture:0, uViewportSize: viewport.subarray(2,4), u_iViewportSize: [1 / texture.width, 1 / texture.height]} ).draw( mesh );
+}
+
+//Resets the current WebGL fbo so it renders to the screen
+RenderFrameContext.reset = function()
+{
+	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+	LS.RenderFrameContext.current = null;
+	LS.RenderFrameContext.stack.length = 0;
 }
 
 
@@ -15861,6 +15588,10 @@ var Renderer = {
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 		this._rendered_passes = 0;
+
+		//to restore from a possible exception (not fully tested, remove if problem)
+		if(!render_settings.ignore_reset)
+			LS.RenderFrameContext.reset();
 
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
@@ -16364,6 +16095,9 @@ var Renderer = {
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
+		//just to be sure
+		LS.RenderState.reset();
+
 		//FLAGS: enable GL flags like cull_face, CCW, etc
 		this.enableInstanceFlags(instance, render_settings);
 
@@ -16646,7 +16380,8 @@ var Renderer = {
 			if(!tex)
 				tex = this._missing_texture;
 
-			if(tex._locked) //locked textures are usually the render target where we are rendering right now, so we cannot read and write at the same texture
+			//avoid to read from the same texture we are rendering to (generates warnings)
+			if(tex._in_current_fbo) 
 				tex = this._missing_texture;
 
 			tex.bind( i );
@@ -16975,7 +16710,7 @@ var Renderer = {
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
 		var scene = LS.Renderer._current_scene;
-		texture._locked = true;
+		texture._in_current_fbo = true;
 
 		if(texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -16985,7 +16720,7 @@ var Renderer = {
 		else if( texture.texture_type == gl.TEXTURE_CUBE_MAP)
 			this.renderToCubemap( cam.getEye(), texture.width, texture, render_settings, cam.near, cam.far );
 		this._current_target = null;
-		texture._locked = false;
+		texture._in_current_fbo = false;
 
 		function inner_draw_2d()
 		{
@@ -17188,9 +16923,14 @@ var Renderer = {
 //Add to global Scope
 LS.Renderer = Renderer;
 
-// Used to render debug information like skeletons, a grid, etc
-// I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor
-
+/**	DebugRender
+* Used to render debug information like skeletons, a grid, etc
+* I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor
+*
+* @class DebugRender
+* @namespace LS
+* @constructor
+*/
 function DebugRender()
 {
 	this.debug_points = []; //used for debugging, allows to draw points easily
@@ -17206,6 +16946,7 @@ function DebugRender()
 
 	this.grid_texture_url = "imgs/grid.png";
 
+	//this camera is used to render names
 	this.camera2D = new LS.Camera({eye:[0,0,0],center:[0,0,-1]});
 	this.createMeshes();
 
@@ -17231,16 +16972,25 @@ function DebugRender()
 		render_origin: true,
 		render_colliders_aabb: false
 	};
+
+	this._in_scene = false;
 }
 
 DebugRender.prototype.enable = function( scene )
 {
+	if(this._in_scene)
+		return;
+	scene = scene || LS.GlobalScene;
 	LEvent.bind( scene, "afterRenderInstances", this.onRender, this );
+	this._in_scene = scene;
 }
 
 DebugRender.prototype.disable = function( scene )
 {
-	LEvent.unbind( scene, "afterRenderInstances", this.onRender, this );
+	if(!this._in_scene)
+		return;
+	LEvent.unbind( this._in_scene, "afterRenderInstances", this.onRender, this );
+	this._in_scene = null;
 }
 
 DebugRender.prototype.onRender = function( e, render_settings )
@@ -18310,14 +18060,18 @@ function Transform( o )
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
-	this._must_update_matrix = false; //matrix must be redone?
+	this._uid = null;
+	this._root = null;
+	this._parent = null;
+
+	this._must_update = false; //local matrix must be redone
 	this._version = 0;
 
-	/* deprecated
+	/* JS feature deprecated
 	if(Object.observe)
 	{
 		var inner_transform_change = (function(c) { 
-			this._must_update_matrix = true;
+			this._must_update = true;
 		}).bind(this);
 		Object.observe( this._position, inner_transform_change );
 		Object.observe( this._rotation, inner_transform_change );
@@ -18328,6 +18082,8 @@ function Transform( o )
 
 	if(o)
 		this.configure(o);
+
+	//Object.seal(this);
 }
 
 Transform.temp_matrix = mat4.create();
@@ -18367,7 +18123,7 @@ Object.defineProperty( Transform.prototype, 'position', {
 	get: function() { return this._position; },
 	set: function(v) { 
 		this._position.set(v); 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: true
 });
@@ -18376,7 +18132,7 @@ Object.defineProperty( Transform.prototype, 'x', {
 	get: function() { return this._position[0]; },
 	set: function(v) { 
 		this._position[0] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18385,7 +18141,7 @@ Object.defineProperty( Transform.prototype, 'y', {
 	get: function() { return this._position[1]; },
 	set: function(v) { 
 		this._position[1] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18394,7 +18150,7 @@ Object.defineProperty( Transform.prototype, 'z', {
 	get: function() { return this._position[2]; },
 	set: function(v) { 
 		this._position[2] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18404,7 +18160,7 @@ Object.defineProperty( Transform.prototype, 'pitch', {
 	get: function() { return 0; },
 	set: function(v) { 
 		this.rotateX(v);
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18418,7 +18174,7 @@ Object.defineProperty( Transform.prototype, 'rotation', {
 	get: function() { return this._rotation; },
 	set: function(v) { 
 		this._rotation.set(v);
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: true //avoid problems
 });
@@ -18434,7 +18190,7 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 			this._scaling[0] = this._scaling[1] = this._scaling[2] = v;
 		else
 			this._scaling.set(v);
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: true
 });
@@ -18445,7 +18201,7 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 */
 Object.defineProperty( Transform.prototype, 'matrix', {
 	get: function() { 
-		if(this._must_update_matrix)
+		if(this._must_update)
 			this.updateMatrix();
 		return this._local_matrix;
 	},
@@ -18462,7 +18218,7 @@ Object.defineProperty( Transform.prototype, 'data', {
 	},
 	set: function(v) { 
 		this._data.set(v);	
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: false
 });
@@ -18473,7 +18229,7 @@ Object.defineProperty( Transform.prototype, 'xrotation', {
 		this.rotateX(v * DEG2RAD);
 		//this._rotation[0] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18483,7 +18239,7 @@ Object.defineProperty( Transform.prototype, 'yrotation', {
 		this.rotateY(v * DEG2RAD);
 		//this._rotation[1] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18493,7 +18249,7 @@ Object.defineProperty( Transform.prototype, 'zrotation', {
 		this.rotateZ(v * DEG2RAD);
 		//this._rotation[2] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -18531,10 +18287,10 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 */
 Object.defineProperty( Transform.prototype, 'mustUpdate', {
 	get: function() { 
-		return this._must_update_matrix;
+		return this._must_update;
 	},
 	set: function(v) { 
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: false
 });
@@ -18598,7 +18354,7 @@ Transform.prototype.configure = function(o)
 		quat.multiply(this._rotation, this._rotation, R ); 
 	}
 
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this.updateGlobalMatrix();
 	this._on_change();
 }
@@ -18631,7 +18387,7 @@ Transform.prototype.identity = function()
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._version += 1;
-	this._must_update_matrix = false;
+	this._must_update = false;
 }
 
 Transform.prototype.reset = Transform.prototype.identity;
@@ -18644,7 +18400,7 @@ Transform.prototype.resetRotation = function()
 {
 	quat.identity( this._rotation );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 /**
@@ -18655,7 +18411,7 @@ Transform.prototype.resetPosition = function()
 {
 	vec3.copy( this._position, LS.ZEROS );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 /**
@@ -18666,7 +18422,7 @@ Transform.prototype.resetScale = function()
 {
 	vec3.copy( this._scaling, LS.ONES );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 
@@ -18778,7 +18534,7 @@ Transform.prototype.updateMatrix = function()
 {
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
-	this._must_update_matrix = false;
+	this._must_update = false;
 	this._version += 1;
 	this.updateDescendants();
 }
@@ -18791,7 +18547,7 @@ Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 */
 Transform.prototype.updateGlobalMatrix = function (fast)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	if (this._parent)
 		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix( this._parent._global_matrix ), this._local_matrix );
@@ -18808,7 +18564,7 @@ Transform.prototype.updateGlobalMatrix = function (fast)
 Transform.prototype.getMatrix = function (out)
 {
 	out = out || mat4.create();
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return mat4.copy(out, this._local_matrix);
 }
@@ -18821,7 +18577,7 @@ Transform.prototype.getLocalMatrix = Transform.prototype.getMatrix; //alias
 */
 Transform.prototype.getLocalMatrixRef = function ()
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return this._local_matrix;
 }
@@ -18836,7 +18592,7 @@ Transform.prototype.getLocalMatrixRef = function ()
 */
 Transform.prototype.getGlobalMatrix = function (out, fast)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	out = out || mat4.create();
 	if (this._parent)
@@ -18972,7 +18728,7 @@ Transform.prototype.getGlobalMatrixWithoutScale = Transform.prototype.getGlobalT
 */
 Transform.prototype.getNormalMatrix = function (m)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 
 	m = m || mat4.create();
@@ -19035,7 +18791,7 @@ Transform.prototype.fromMatrix = (function() {
 
 		if(m != this._local_matrix)
 			mat4.copy(this._local_matrix, m);
-		this._must_update_matrix = false;
+		this._must_update = false;
 		this._version += 1;
 		this._on_change(true);
 	}
@@ -19091,7 +18847,7 @@ Transform.fromMatrix4ToTransformData = (function() {
 Transform.prototype.setRotationFromEuler = function(v)
 {
 	quat.fromEuler( this._rotation, v );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19108,7 +18864,7 @@ Transform.prototype.setPosition = function(x,y,z)
 		vec3.set(this._position, x,y,z);
 	else
 		vec3.copy(this._position, x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19123,7 +18879,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
 		quat.copy(this._rotation, q_angle );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19140,7 +18896,7 @@ Transform.prototype.setScale = function(x,y,z)
 		vec3.set(this._scaling, x,y,z);
 	else
 		vec3.set(this._scaling, x,x,x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19157,7 +18913,7 @@ Transform.prototype.translate = function(x,y,z)
 		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
 	else
 		vec3.add( this._position, this._position, this.transformVector(x) );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19174,7 +18930,7 @@ Transform.prototype.translateGlobal = function(x,y,z)
 		vec3.add( this._position, this._position, [x,y,z] );
 	else
 		vec3.add( this._position, this._position, x );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19192,7 +18948,7 @@ Transform.prototype.rotate = (function(){
 	{
 		quat.setAxisAngle( temp, axis, angle_in_deg * 0.0174532925 );
 		quat.multiply( this._rotation, this._rotation, temp );
-		this._must_update_matrix = true;
+		this._must_update = true;
 		this._on_change();
 	}
 })();
@@ -19205,7 +18961,7 @@ Transform.prototype.rotate = (function(){
 Transform.prototype.rotateX = function(angle_in_deg)
 {
 	quat.rotateX( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19217,7 +18973,7 @@ Transform.prototype.rotateX = function(angle_in_deg)
 Transform.prototype.rotateY = function(angle_in_deg)
 {
 	quat.rotateY( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19229,7 +18985,7 @@ Transform.prototype.rotateY = function(angle_in_deg)
 Transform.prototype.rotateZ = function(angle_in_deg)
 {
 	quat.rotateZ( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19244,7 +19000,7 @@ Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
 {
 	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925);
 	quat.multiply(this._rotation, R, this._rotation);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19256,7 +19012,7 @@ Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
 Transform.prototype.rotateQuat = function(quaternion)
 {
 	quat.multiply(this._rotation, this._rotation, quaternion);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19268,7 +19024,7 @@ Transform.prototype.rotateQuat = function(quaternion)
 Transform.prototype.rotateQuatGlobal = function(quaternion)
 {
 	quat.multiply(this._rotation, quaternion, this._rotation);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19285,7 +19041,7 @@ Transform.prototype.scale = function(x,y,z)
 		vec3.multiply(this._scaling, this._scaling, [x,y,z]);
 	else
 		vec3.multiply(this._scaling, this._scaling,x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19303,7 +19059,7 @@ Transform.interpolate = function(a,b,factor, result)
 	vec3.lerp(result._scaling, a._scaling, b._scaling, factor); //scale
 	vec3.lerp(result._position, a._position, b._position, factor); //position
 	quat.slerp(result._rotation, a._rotation, b._rotation, factor); //rotation
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -19329,7 +19085,7 @@ Transform.prototype.orbit = (function() {
 		vec3.transformQuat( tmp_vec3, tmp_vec3, R );
 		vec3.add(tmp_vec3, tmp_vec3, center );
 		this._position.set( tmp_vec3 );
-		this._must_update_matrix = true;
+		this._must_update = true;
 	};
 })();
 
@@ -19376,7 +19132,7 @@ Transform.prototype.lookAt = (function() {
 
 		quat.fromMat4( this._rotation, temp );
 		this._position.set( temp_pos );	
-		this._must_update_matrix = true;
+		this._must_update = true;
 
 		/*
 		mat4.lookAt(temp, pos, target, up);
@@ -19391,7 +19147,7 @@ Transform.prototype.lookAt = (function() {
 Transform.prototype._on_change = function(only_events)
 {
 	if(!only_events)
-		this._must_update_matrix = true;
+		this._must_update = true;
 	LEvent.trigger(this, "changed", this);
 	if(this._root)
 		LEvent.trigger(this._root, "transformChanged", this);
@@ -19434,7 +19190,8 @@ Transform.prototype.getRight = function(out) {
 */
 Transform.prototype.transformPoint = function(vec, dest) {
 	dest = dest || vec3.create();
-	if(this._must_update_matrix) this.updateMatrix();
+	if( this._must_update )
+		this.updateMatrix();
 	return mat4.multiplyVec3( dest, this._local_matrix, vec );
 }
 
@@ -19448,7 +19205,7 @@ Transform.prototype.transformPoint = function(vec, dest) {
 */
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
 }
@@ -19473,7 +19230,7 @@ Transform.prototype.globalToLocal = (function(){
 	var inv = mat4.create();
 	return function(vec, dest) {
 		dest = dest || vec3.create();
-		if(this._must_update_matrix)
+		if(this._must_update)
 			this.updateMatrix();
 		mat4.invert( inv, this.getGlobalMatrixRef() );
 		return mat4.multiplyVec3( dest, inv, vec );
@@ -19527,7 +19284,7 @@ Transform.prototype.applyTransform = function( transform, center, is_global )
 	//apply scale
 	vec3.multiply( this._scaling, this._scaling, transform._scaling );
 
-	this._must_update_matrix = true; //matrix must be redone?
+	this._must_update = true; //matrix must be redone?
 }
 
 
@@ -19622,7 +19379,7 @@ Transform.prototype.applyLocalTransformMatrix = function( M )
 	quat.normalize(q, q);
 	quat.multiply( this._rotation, q, this._rotation );
 
-	this._must_update_matrix = true; //matrix must be redone?
+	this._must_update = true; //matrix must be redone?
 	return;
 }
 
@@ -19680,7 +19437,7 @@ Transform.prototype.updateDescendants = function()
 		if(!node.transform)
 			continue;
 
-		node.transform._must_update_matrix = true;
+		node.transform._must_update = true;
 		node.transform._version += 1;
 		if(node._children && node._children.length)
 			node.transform.updateDescendants();
@@ -21500,9 +21257,19 @@ function Light(o)
 	this._top = vec3.clone( Light.UP_VECTOR );
 
 	//for caching purposes
-	this._query = new ShaderQuery();
-	this._uniforms = {};
+	this._query = new LS.ShaderQuery();
 	this._samplers = [];
+	this._uniforms = {
+		u_light_front: this._front,
+		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
+		u_light_position: this._position,
+		u_light_color: vec3.create(),
+		u_light_att: this._attenuation_info,
+		u_light_offset: this.offset,
+		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
+		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT,
+		u_light_matrix: this._light_matrix
+	};
 
 	if(o) 
 	{
@@ -21517,25 +21284,25 @@ Light["@extra_texture"] = { type:"Texture" };
 
 Object.defineProperty( Light.prototype, 'position', {
 	get: function() { return this._position; },
-	set: function(v) { this._position.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._position.set(v); },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'target', {
 	get: function() { return this._target; },
-	set: function(v) { this._target.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._target.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'up', {
 	get: function() { return this._up; },
-	set: function(v) { this._up.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._up.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'color', {
 	get: function() { return this._color; },
-	set: function(v) { this._color.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._color.set(v); },
 	enumerable: true
 });
 
@@ -21897,18 +21664,20 @@ Light.prototype.prepare = function( render_settings )
 		}
 	}
 
-
 	//PREPARE UNIFORMS
-	if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
-		uniforms.u_light_front = this._front;
+	//if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
+	//	uniforms.u_light_front = this._front;
 	if(this.type == Light.SPOT)
-		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
+	{
+		uniforms.u_light_angle[0] = this.angle * DEG2RAD;
+		uniforms.u_light_angle[1] = this.angle_end * DEG2RAD;
+		uniforms.u_light_angle[2] = Math.cos( this.angle * DEG2RAD * 0.5 );
+		uniforms.u_light_angle[3] = Math.cos( this.angle_end * DEG2RAD * 0.5 );
+	}
 
-	uniforms.u_light_position = this.position;
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
+	vec3.scale( uniforms.u_light_color, this.color, this.intensity );
 	this._attenuation_info[0] = this.att_start;
 	this._attenuation_info[1] = this.att_end;
-	uniforms.u_light_att = this._attenuation_info; //[this.att_start,this.att_end];
 	uniforms.u_light_offset = this.offset;
 
 	//extra code
@@ -24114,6 +23883,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			var texture = this._bones_texture;
 			if(!texture)
 			{
+				//TODO: to support more bones you could use a Nx3 texture instead of a 1x(N*3) 
 				texture = this._bones_texture = new GL.Texture( 1, SkinDeformer.MAX_TEXTURE_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}
@@ -25552,7 +25322,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 	{
 		var R = quat.setAxisAngle(quat.create(), this.axis, Math.sin( this.speed * scene._global_time * 2 * Math.PI) * this.swing_amplitude * DEG2RAD );
 		quat.multiply( this._root.transform._rotation, R, this._default);
-		this._root.transform._dirty = true;
+		this._root.transform._must_update = true;
 	}
 	else
 	{
@@ -25997,7 +25767,7 @@ Target.prototype.updateOrientation = function(e)
 	/*
 	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
 	quat.lookAt( this._root.transform._rotation, dir, [0,1,0] );
-	this._root.transform._dirty = true;
+	this._root.transform._must_update = true;
 	*/
 
 	var eye = null;
@@ -27987,7 +27757,7 @@ PointCloud.prototype.addPoint = function( position, color, size, frame_id )
 		data[8] = 0;
 
 	this._points.push( data );
-	this._dirty = true;
+	this._must_update = true;
 
 	return this._points.length - 1;
 }
@@ -28013,7 +27783,7 @@ PointCloud.prototype.setPoint = function(id, position, color, size, frame_id )
 	if(frame_id !== undefined )
 		data[8] = frame_id;
 
-	this._dirty = true;
+	this._must_update = true;
 }
 
 PointCloud.prototype.setPointsFromMesh = function( mesh )
@@ -28025,7 +27795,7 @@ PointCloud.prototype.setPointsFromMesh = function( mesh )
 PointCloud.prototype.removePoint = function(id)
 {
 	this._points.splice(id,1);
-	this._dirty = true;
+	this._must_update = true;
 }
 
 
@@ -28142,9 +27912,9 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	var camera = LS.Renderer._current_camera;
 
 	if(this._last_premultiply !== this.premultiplied_alpha )
-		this._dirty = true;
+		this._must_update = true;
 
-	if(this._dirty)
+	if(this._must_update)
 		this.updateMesh( camera );
 
 	if(!this._material)
@@ -28333,7 +28103,7 @@ LineCloud.prototype.addLine = function( start, end, start_color, end_color )
 		data.set([1,1,1,1],10);
 
 	this._lines.push( data );
-	this._dirty = true;
+	this._must_update = true;
 
 	return this._lines.length - 1;
 }
@@ -28352,13 +28122,13 @@ LineCloud.prototype.setLine = function(id, start, end, start_color, end_color )
 	if(end_color)
 		data.set(end_color,10);
 
-	this._dirty = true;
+	this._must_update = true;
 }
 
 LineCloud.prototype.removeLine = function(id)
 {
 	this._lines.splice(id,1);
-	this._dirty = true;
+	this._must_update = true;
 }
 
 
@@ -28430,7 +28200,7 @@ LineCloud.prototype.onCollectInstances = function(e, instances, options)
 
 	var camera = Renderer._current_camera;
 
-	if(this._dirty)
+	if(this._must_update)
 		this.updateMesh();
 
 	if(!this._material)
@@ -38219,6 +37989,8 @@ LS.Classes.SceneNode = SceneNode;
 	- autoresize: boolean to automatically resize the canvas when the window is resized
 	- autoplay: boolean to automatically start playing the scene once the load is completed
 	- loadingbar: boolean to show a loading bar
+	- debug: boolean allows to render debug info like nodes and skeletons
+
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -38304,19 +38076,19 @@ function Player(options)
 	{
 		this.loading = {
 			visible: true,
-			scene_bar: 0,
-			resources_bar: 0
+			scene_loaded: 0,
+			resources_loaded: 0
 		};
 		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
-			this.loading.resources_bar = 0.0; 
+			this.loading.resources_loaded = 0.0; 
 		}).bind(this) );
 		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
-			if( this.loading.resources_bar < v )
-				this.loading.resources_bar = v;
+			if( this.loading.resources_loaded < v )
+				this.loading.resources_loaded = v;
 		}).bind(this) );
 		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
 			this._total_loading = undefined; 
-			this.loading.resources_bar = 1; 
+			this.loading.resources_loaded = 1; 
 			this.loading.visible = false;
 		}).bind(this) );
 	}
@@ -38329,6 +38101,9 @@ function Player(options)
 
 	if( this.gl.ondraw )
 		throw("There is already a litegl attached to this context");
+
+	if(options.debug_render)
+		this.setDebugRender(true);
 
 	//bind all the events 
 	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
@@ -38395,7 +38170,7 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		var partial_load = 0;
 		if(e.total) //sometimes we dont have the total so we dont know the amount
 			partial_load = e.loaded / e.total;
-		that.loading.scene_bar = partial_load;
+		that.loading.scene_loaded = partial_load;
 		if(on_progress)
 			on_progress(partial_load);
 	}
@@ -38493,7 +38268,7 @@ Player.prototype._ondraw = function()
 		this.onDraw();
 
 	if(this.loading && this.loading.visible )
-		this.renderLoadingBar();
+		this.renderLoadingBar( this.loading );
 }
 
 Player.prototype._onupdate = function(dt)
@@ -38560,9 +38335,9 @@ Player.prototype._ongamepad = function(e)
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
-Player.prototype.renderLoadingBar = function()
+Player.prototype.renderLoadingBar = function( loading )
 {
-	if(!this.loading)
+	if(!loading)
 		return;
 
 	if(!global.enableWebGLCanvas)
@@ -38572,15 +38347,16 @@ Player.prototype.renderLoadingBar = function()
 		enableWebGLCanvas( gl.canvas );
 
 	gl.start2D();
+
 	var y = 0;//gl.drawingBufferHeight - 6;
 	gl.fillColor = [0,0,0,1];
 	gl.fillRect( 0, y, gl.drawingBufferWidth, 8);
 	//scene
-	gl.fillColor = this.loading.bar_color || [0.5,0.9,1.0,1.0];
-	gl.fillRect( 0, y, gl.drawingBufferWidth * this.loading.scene_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.5,0.9,1.0,1.0];
+	gl.fillRect( 0, y, gl.drawingBufferWidth * loading.scene_loaded, 4 );
 	//resources
-	gl.fillColor = this.loading.bar_color || [0.9,0.5,1.0,1.0];
-	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * this.loading.resources_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * loading.resources_loaded, 4 );
 	gl.finish2D();
 }
 
@@ -38589,6 +38365,22 @@ Player.prototype.enableDebug = function()
 	LS.Script.catch_important_exceptions = false;
 	LS.catch_exceptions = false;
 }
+
+Player.prototype.setDebugRender = function(v)
+{
+	if(!this.debug_render)
+	{
+		if(!v)
+			return;
+		this.debug_render = new LS.DebugRender();
+	}
+
+	if(v)
+		this.debug_render.enable();
+	else
+		this.debug_render.disable();
+}
+
 
 LS.Player = Player;
 

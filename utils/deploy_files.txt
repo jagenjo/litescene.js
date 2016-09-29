@@ -16,7 +16,6 @@
 
 ../src/materials/material.js
 ../src/materials/standardMaterial.js
-../src/materials/customMaterial.js
 ../src/materials/surfaceMaterial.js
 ../src/materials/shaderMaterial.js
 

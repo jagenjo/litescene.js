@@ -5,29 +5,28 @@
 /**
 * A Material is a class in charge of defining how to render an object, there are several classes for Materials
 * but this class is more like a template for other material classes.
+* The rendering of a material is handled by the material itself, otherwise by the rendering pipeline
 * @namespace LS
 * @class Material
 * @constructor
 * @param {String} object to configure from
 */
 
-function Material(o)
+function Material( o )
 {
 	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
+	this._must_update = true;
 
+	//materials have at least a basic color property and opacity
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 
-	//render queue
+	//render queue: which order should this be rendered
 	this._queue = LS.RenderQueue.DEFAULT;
 
-	//render state 
+	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
 	this.render_state = new LS.RenderState();
-
-	//flags
-	this.alpha_test = false;
-	this.alpha_test_shadows = false;
+	this._light_mode = 0;
 
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
@@ -159,7 +158,6 @@ Material.prototype.fillUniforms = function( scene, options )
 
 	uniforms.u_material_color = this._color;
 	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
-	//uniforms.u_diffuse_color = this._diffuse;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_specular = vec2.create([1,50]);
@@ -237,13 +235,12 @@ Material.prototype.clone = function()
 * @param {Texture || url} texture_or_filename
 * @param {String} channel
 */
-Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, options)
+Material.prototype.loadAndSetTexture = function( channel, texture_or_filename, options )
 {
 	options = options || {};
 	var that = this;
-	//if(!this.material) this.material = new Material();
 
-	if( typeof(texture_or_filename) === "string" ) //it could be the url or the internal texture name 
+	if( texture_or_filename && texture_or_filename.constructor === String ) //it could be the url or the internal texture name 
 	{
 		if(texture_or_filename[0] != ":")//load if it is not an internal texture
 			LS.ResourcesManager.load(texture_or_filename,options, function(texture) {
@@ -256,7 +253,7 @@ Material.prototype.loadAndSetTexture = function(channel, texture_or_filename, op
 	}
 	else //otherwise just assign whatever
 	{
-		this.setTexture(channel, texture_or_filename);
+		this.setTexture( channel, texture_or_filename );
 		if(options.on_complete)
 			options.on_complete();
 	}
@@ -316,9 +313,6 @@ Material.prototype.setProperty = function( name, value )
 		//numbers
 		case "queue": 
 		case "opacity": 
-		case "specular_factor":
-		case "specular_gloss":
-		case "reflection": 
 			if(value !== null && value.constructor === Number)
 				this[name] = value; 
 			break;
@@ -382,14 +376,7 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 		case "queue": 
 		case "opacity": 
 		case "transparency":
-		case "specular_factor":
-		case "specular_gloss":
-		case "reflection": 
 			type = "number"; break;
-		//bools
-		case "alpha_test":
-		case "alpha_test_shadows":
-			type = "boolean"; break;
 		//vectors
 		case "uvs_matrix":
 			type = "mat3"; break;
@@ -654,6 +641,7 @@ Material.prototype.getLocator = function()
 	return this.uid;
 }
 
+//this has been moved to ShaderCode?
 Material.processShaderCode = function(code)
 {
 	var lines = code.split("\n");

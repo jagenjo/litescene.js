@@ -122,6 +122,10 @@ ShaderMaterial.prototype.processShaderCode = function()
 	this._properties = [];
 	this._properties_by_name = {};
 
+	//reset material properties
+	this._queue = LS.RenderQueue.GEOMETRY;
+	this.render_state.init();
+
 	//clear old functions
 	for(var i in this)
 	{

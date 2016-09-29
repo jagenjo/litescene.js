@@ -14,6 +14,8 @@
 	- autoresize: boolean to automatically resize the canvas when the window is resized
 	- autoplay: boolean to automatically start playing the scene once the load is completed
 	- loadingbar: boolean to show a loading bar
+	- debug: boolean allows to render debug info like nodes and skeletons
+
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -99,19 +101,19 @@ function Player(options)
 	{
 		this.loading = {
 			visible: true,
-			scene_bar: 0,
-			resources_bar: 0
+			scene_loaded: 0,
+			resources_loaded: 0
 		};
 		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
-			this.loading.resources_bar = 0.0; 
+			this.loading.resources_loaded = 0.0; 
 		}).bind(this) );
 		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
-			if( this.loading.resources_bar < v )
-				this.loading.resources_bar = v;
+			if( this.loading.resources_loaded < v )
+				this.loading.resources_loaded = v;
 		}).bind(this) );
 		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
 			this._total_loading = undefined; 
-			this.loading.resources_bar = 1; 
+			this.loading.resources_loaded = 1; 
 			this.loading.visible = false;
 		}).bind(this) );
 	}
@@ -124,6 +126,9 @@ function Player(options)
 
 	if( this.gl.ondraw )
 		throw("There is already a litegl attached to this context");
+
+	if(options.debug_render)
+		this.setDebugRender(true);
 
 	//bind all the events 
 	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
@@ -190,7 +195,7 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		var partial_load = 0;
 		if(e.total) //sometimes we dont have the total so we dont know the amount
 			partial_load = e.loaded / e.total;
-		that.loading.scene_bar = partial_load;
+		that.loading.scene_loaded = partial_load;
 		if(on_progress)
 			on_progress(partial_load);
 	}
@@ -288,7 +293,7 @@ Player.prototype._ondraw = function()
 		this.onDraw();
 
 	if(this.loading && this.loading.visible )
-		this.renderLoadingBar();
+		this.renderLoadingBar( this.loading );
 }
 
 Player.prototype._onupdate = function(dt)
@@ -355,9 +360,9 @@ Player.prototype._ongamepad = function(e)
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
-Player.prototype.renderLoadingBar = function()
+Player.prototype.renderLoadingBar = function( loading )
 {
-	if(!this.loading)
+	if(!loading)
 		return;
 
 	if(!global.enableWebGLCanvas)
@@ -367,15 +372,16 @@ Player.prototype.renderLoadingBar = function()
 		enableWebGLCanvas( gl.canvas );
 
 	gl.start2D();
+
 	var y = 0;//gl.drawingBufferHeight - 6;
 	gl.fillColor = [0,0,0,1];
 	gl.fillRect( 0, y, gl.drawingBufferWidth, 8);
 	//scene
-	gl.fillColor = this.loading.bar_color || [0.5,0.9,1.0,1.0];
-	gl.fillRect( 0, y, gl.drawingBufferWidth * this.loading.scene_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.5,0.9,1.0,1.0];
+	gl.fillRect( 0, y, gl.drawingBufferWidth * loading.scene_loaded, 4 );
 	//resources
-	gl.fillColor = this.loading.bar_color || [0.9,0.5,1.0,1.0];
-	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * this.loading.resources_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * loading.resources_loaded, 4 );
 	gl.finish2D();
 }
 
@@ -384,5 +390,21 @@ Player.prototype.enableDebug = function()
 	LS.Script.catch_important_exceptions = false;
 	LS.catch_exceptions = false;
 }
+
+Player.prototype.setDebugRender = function(v)
+{
+	if(!this.debug_render)
+	{
+		if(!v)
+			return;
+		this.debug_render = new LS.DebugRender();
+	}
+
+	if(v)
+		this.debug_render.enable();
+	else
+		this.debug_render.disable();
+}
+
 
 LS.Player = Player;

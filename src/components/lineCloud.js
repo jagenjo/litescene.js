@@ -87,7 +87,7 @@ LineCloud.prototype.addLine = function( start, end, start_color, end_color )
 		data.set([1,1,1,1],10);
 
 	this._lines.push( data );
-	this._dirty = true;
+	this._must_update = true;
 
 	return this._lines.length - 1;
 }
@@ -106,13 +106,13 @@ LineCloud.prototype.setLine = function(id, start, end, start_color, end_color )
 	if(end_color)
 		data.set(end_color,10);
 
-	this._dirty = true;
+	this._must_update = true;
 }
 
 LineCloud.prototype.removeLine = function(id)
 {
 	this._lines.splice(id,1);
-	this._dirty = true;
+	this._must_update = true;
 }
 
 
@@ -184,7 +184,7 @@ LineCloud.prototype.onCollectInstances = function(e, instances, options)
 
 	var camera = Renderer._current_camera;
 
-	if(this._dirty)
+	if(this._must_update)
 		this.updateMesh();
 
 	if(!this._material)

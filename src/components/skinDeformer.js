@@ -195,6 +195,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			var texture = this._bones_texture;
 			if(!texture)
 			{
+				//TODO: to support more bones you could use a Nx3 texture instead of a 1x(N*3) 
 				texture = this._bones_texture = new GL.Texture( 1, SkinDeformer.MAX_TEXTURE_BONES * 3, { format: gl.RGBA, type: gl.FLOAT, filter: gl.NEAREST} ); //3 rows of 4 values per matrix
 				texture._data = new Float32Array( texture.width * texture.height * 4 );
 			}

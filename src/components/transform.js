@@ -20,14 +20,18 @@ function Transform( o )
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
-	this._must_update_matrix = false; //matrix must be redone?
+	this._uid = null;
+	this._root = null;
+	this._parent = null;
+
+	this._must_update = false; //local matrix must be redone
 	this._version = 0;
 
-	/* deprecated
+	/* JS feature deprecated
 	if(Object.observe)
 	{
 		var inner_transform_change = (function(c) { 
-			this._must_update_matrix = true;
+			this._must_update = true;
 		}).bind(this);
 		Object.observe( this._position, inner_transform_change );
 		Object.observe( this._rotation, inner_transform_change );
@@ -38,6 +42,8 @@ function Transform( o )
 
 	if(o)
 		this.configure(o);
+
+	//Object.seal(this);
 }
 
 Transform.temp_matrix = mat4.create();
@@ -77,7 +83,7 @@ Object.defineProperty( Transform.prototype, 'position', {
 	get: function() { return this._position; },
 	set: function(v) { 
 		this._position.set(v); 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: true
 });
@@ -86,7 +92,7 @@ Object.defineProperty( Transform.prototype, 'x', {
 	get: function() { return this._position[0]; },
 	set: function(v) { 
 		this._position[0] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -95,7 +101,7 @@ Object.defineProperty( Transform.prototype, 'y', {
 	get: function() { return this._position[1]; },
 	set: function(v) { 
 		this._position[1] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -104,7 +110,7 @@ Object.defineProperty( Transform.prototype, 'z', {
 	get: function() { return this._position[2]; },
 	set: function(v) { 
 		this._position[2] = v; 
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -114,7 +120,7 @@ Object.defineProperty( Transform.prototype, 'pitch', {
 	get: function() { return 0; },
 	set: function(v) { 
 		this.rotateX(v);
-		this._must_update_matrix = true; 
+		this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -128,7 +134,7 @@ Object.defineProperty( Transform.prototype, 'rotation', {
 	get: function() { return this._rotation; },
 	set: function(v) { 
 		this._rotation.set(v);
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: true //avoid problems
 });
@@ -144,7 +150,7 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 			this._scaling[0] = this._scaling[1] = this._scaling[2] = v;
 		else
 			this._scaling.set(v);
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: true
 });
@@ -155,7 +161,7 @@ Object.defineProperty( Transform.prototype, 'scaling', {
 */
 Object.defineProperty( Transform.prototype, 'matrix', {
 	get: function() { 
-		if(this._must_update_matrix)
+		if(this._must_update)
 			this.updateMatrix();
 		return this._local_matrix;
 	},
@@ -172,7 +178,7 @@ Object.defineProperty( Transform.prototype, 'data', {
 	},
 	set: function(v) { 
 		this._data.set(v);	
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: false
 });
@@ -183,7 +189,7 @@ Object.defineProperty( Transform.prototype, 'xrotation', {
 		this.rotateX(v * DEG2RAD);
 		//this._rotation[0] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -193,7 +199,7 @@ Object.defineProperty( Transform.prototype, 'yrotation', {
 		this.rotateY(v * DEG2RAD);
 		//this._rotation[1] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -203,7 +209,7 @@ Object.defineProperty( Transform.prototype, 'zrotation', {
 		this.rotateZ(v * DEG2RAD);
 		//this._rotation[2] = Math.sin(v * DEG2RAD * 0.5);
 		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update_matrix = true; 
+		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -241,10 +247,10 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 */
 Object.defineProperty( Transform.prototype, 'mustUpdate', {
 	get: function() { 
-		return this._must_update_matrix;
+		return this._must_update;
 	},
 	set: function(v) { 
-		this._must_update_matrix = true;
+		this._must_update = true;
 	},
 	enumerable: false
 });
@@ -308,7 +314,7 @@ Transform.prototype.configure = function(o)
 		quat.multiply(this._rotation, this._rotation, R ); 
 	}
 
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this.updateGlobalMatrix();
 	this._on_change();
 }
@@ -341,7 +347,7 @@ Transform.prototype.identity = function()
 	mat4.identity(this._local_matrix);
 	mat4.identity(this._global_matrix);
 	this._version += 1;
-	this._must_update_matrix = false;
+	this._must_update = false;
 }
 
 Transform.prototype.reset = Transform.prototype.identity;
@@ -354,7 +360,7 @@ Transform.prototype.resetRotation = function()
 {
 	quat.identity( this._rotation );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 /**
@@ -365,7 +371,7 @@ Transform.prototype.resetPosition = function()
 {
 	vec3.copy( this._position, LS.ZEROS );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 /**
@@ -376,7 +382,7 @@ Transform.prototype.resetScale = function()
 {
 	vec3.copy( this._scaling, LS.ONES );
 	this._version += 1;
-	this._must_update_matrix = true;
+	this._must_update = true;
 }
 
 
@@ -488,7 +494,7 @@ Transform.prototype.updateMatrix = function()
 {
 	mat4.fromRotationTranslation( this._local_matrix , this._rotation, this._position );
 	mat4.scale(this._local_matrix, this._local_matrix, this._scaling);
-	this._must_update_matrix = false;
+	this._must_update = false;
 	this._version += 1;
 	this.updateDescendants();
 }
@@ -501,7 +507,7 @@ Transform.prototype.updateLocalMatrix = Transform.prototype.updateMatrix;
 */
 Transform.prototype.updateGlobalMatrix = function (fast)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	if (this._parent)
 		mat4.multiply( this._global_matrix, fast ? this._parent._global_matrix : this._parent.getGlobalMatrix( this._parent._global_matrix ), this._local_matrix );
@@ -518,7 +524,7 @@ Transform.prototype.updateGlobalMatrix = function (fast)
 Transform.prototype.getMatrix = function (out)
 {
 	out = out || mat4.create();
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return mat4.copy(out, this._local_matrix);
 }
@@ -531,7 +537,7 @@ Transform.prototype.getLocalMatrix = Transform.prototype.getMatrix; //alias
 */
 Transform.prototype.getLocalMatrixRef = function ()
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return this._local_matrix;
 }
@@ -546,7 +552,7 @@ Transform.prototype.getLocalMatrixRef = function ()
 */
 Transform.prototype.getGlobalMatrix = function (out, fast)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	out = out || mat4.create();
 	if (this._parent)
@@ -682,7 +688,7 @@ Transform.prototype.getGlobalMatrixWithoutScale = Transform.prototype.getGlobalT
 */
 Transform.prototype.getNormalMatrix = function (m)
 {
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 
 	m = m || mat4.create();
@@ -745,7 +751,7 @@ Transform.prototype.fromMatrix = (function() {
 
 		if(m != this._local_matrix)
 			mat4.copy(this._local_matrix, m);
-		this._must_update_matrix = false;
+		this._must_update = false;
 		this._version += 1;
 		this._on_change(true);
 	}
@@ -801,7 +807,7 @@ Transform.fromMatrix4ToTransformData = (function() {
 Transform.prototype.setRotationFromEuler = function(v)
 {
 	quat.fromEuler( this._rotation, v );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -818,7 +824,7 @@ Transform.prototype.setPosition = function(x,y,z)
 		vec3.set(this._position, x,y,z);
 	else
 		vec3.copy(this._position, x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -833,7 +839,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 		quat.setAxisAngle( this._rotation, axis, q_angle );
 	else
 		quat.copy(this._rotation, q_angle );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -850,7 +856,7 @@ Transform.prototype.setScale = function(x,y,z)
 		vec3.set(this._scaling, x,y,z);
 	else
 		vec3.set(this._scaling, x,x,x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -867,7 +873,7 @@ Transform.prototype.translate = function(x,y,z)
 		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
 	else
 		vec3.add( this._position, this._position, this.transformVector(x) );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -884,7 +890,7 @@ Transform.prototype.translateGlobal = function(x,y,z)
 		vec3.add( this._position, this._position, [x,y,z] );
 	else
 		vec3.add( this._position, this._position, x );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -902,7 +908,7 @@ Transform.prototype.rotate = (function(){
 	{
 		quat.setAxisAngle( temp, axis, angle_in_deg * 0.0174532925 );
 		quat.multiply( this._rotation, this._rotation, temp );
-		this._must_update_matrix = true;
+		this._must_update = true;
 		this._on_change();
 	}
 })();
@@ -915,7 +921,7 @@ Transform.prototype.rotate = (function(){
 Transform.prototype.rotateX = function(angle_in_deg)
 {
 	quat.rotateX( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -927,7 +933,7 @@ Transform.prototype.rotateX = function(angle_in_deg)
 Transform.prototype.rotateY = function(angle_in_deg)
 {
 	quat.rotateY( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -939,7 +945,7 @@ Transform.prototype.rotateY = function(angle_in_deg)
 Transform.prototype.rotateZ = function(angle_in_deg)
 {
 	quat.rotateZ( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -954,7 +960,7 @@ Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
 {
 	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925);
 	quat.multiply(this._rotation, R, this._rotation);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -966,7 +972,7 @@ Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
 Transform.prototype.rotateQuat = function(quaternion)
 {
 	quat.multiply(this._rotation, this._rotation, quaternion);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -978,7 +984,7 @@ Transform.prototype.rotateQuat = function(quaternion)
 Transform.prototype.rotateQuatGlobal = function(quaternion)
 {
 	quat.multiply(this._rotation, quaternion, this._rotation);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -995,7 +1001,7 @@ Transform.prototype.scale = function(x,y,z)
 		vec3.multiply(this._scaling, this._scaling, [x,y,z]);
 	else
 		vec3.multiply(this._scaling, this._scaling,x);
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -1013,7 +1019,7 @@ Transform.interpolate = function(a,b,factor, result)
 	vec3.lerp(result._scaling, a._scaling, b._scaling, factor); //scale
 	vec3.lerp(result._position, a._position, b._position, factor); //position
 	quat.slerp(result._rotation, a._rotation, b._rotation, factor); //rotation
-	this._must_update_matrix = true;
+	this._must_update = true;
 	this._on_change();
 }
 
@@ -1039,7 +1045,7 @@ Transform.prototype.orbit = (function() {
 		vec3.transformQuat( tmp_vec3, tmp_vec3, R );
 		vec3.add(tmp_vec3, tmp_vec3, center );
 		this._position.set( tmp_vec3 );
-		this._must_update_matrix = true;
+		this._must_update = true;
 	};
 })();
 
@@ -1086,7 +1092,7 @@ Transform.prototype.lookAt = (function() {
 
 		quat.fromMat4( this._rotation, temp );
 		this._position.set( temp_pos );	
-		this._must_update_matrix = true;
+		this._must_update = true;
 
 		/*
 		mat4.lookAt(temp, pos, target, up);
@@ -1101,7 +1107,7 @@ Transform.prototype.lookAt = (function() {
 Transform.prototype._on_change = function(only_events)
 {
 	if(!only_events)
-		this._must_update_matrix = true;
+		this._must_update = true;
 	LEvent.trigger(this, "changed", this);
 	if(this._root)
 		LEvent.trigger(this._root, "transformChanged", this);
@@ -1144,7 +1150,8 @@ Transform.prototype.getRight = function(out) {
 */
 Transform.prototype.transformPoint = function(vec, dest) {
 	dest = dest || vec3.create();
-	if(this._must_update_matrix) this.updateMatrix();
+	if( this._must_update )
+		this.updateMatrix();
 	return mat4.multiplyVec3( dest, this._local_matrix, vec );
 }
 
@@ -1158,7 +1165,7 @@ Transform.prototype.transformPoint = function(vec, dest) {
 */
 Transform.prototype.transformPointGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
-	if(this._must_update_matrix)
+	if(this._must_update)
 		this.updateMatrix();
 	return mat4.multiplyVec3( dest, this.getGlobalMatrixRef(), vec );
 }
@@ -1183,7 +1190,7 @@ Transform.prototype.globalToLocal = (function(){
 	var inv = mat4.create();
 	return function(vec, dest) {
 		dest = dest || vec3.create();
-		if(this._must_update_matrix)
+		if(this._must_update)
 			this.updateMatrix();
 		mat4.invert( inv, this.getGlobalMatrixRef() );
 		return mat4.multiplyVec3( dest, inv, vec );
@@ -1237,7 +1244,7 @@ Transform.prototype.applyTransform = function( transform, center, is_global )
 	//apply scale
 	vec3.multiply( this._scaling, this._scaling, transform._scaling );
 
-	this._must_update_matrix = true; //matrix must be redone?
+	this._must_update = true; //matrix must be redone?
 }
 
 
@@ -1332,7 +1339,7 @@ Transform.prototype.applyLocalTransformMatrix = function( M )
 	quat.normalize(q, q);
 	quat.multiply( this._rotation, q, this._rotation );
 
-	this._must_update_matrix = true; //matrix must be redone?
+	this._must_update = true; //matrix must be redone?
 	return;
 }
 
@@ -1390,7 +1397,7 @@ Transform.prototype.updateDescendants = function()
 		if(!node.transform)
 			continue;
 
-		node.transform._must_update_matrix = true;
+		node.transform._must_update = true;
 		node.transform._version += 1;
 		if(node._children && node._children.length)
 			node.transform.updateDescendants();

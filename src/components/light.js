@@ -121,9 +121,19 @@ function Light(o)
 	this._top = vec3.clone( Light.UP_VECTOR );
 
 	//for caching purposes
-	this._query = new ShaderQuery();
-	this._uniforms = {};
+	this._query = new LS.ShaderQuery();
 	this._samplers = [];
+	this._uniforms = {
+		u_light_front: this._front,
+		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
+		u_light_position: this._position,
+		u_light_color: vec3.create(),
+		u_light_att: this._attenuation_info,
+		u_light_offset: this.offset,
+		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
+		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT,
+		u_light_matrix: this._light_matrix
+	};
 
 	if(o) 
 	{
@@ -138,25 +148,25 @@ Light["@extra_texture"] = { type:"Texture" };
 
 Object.defineProperty( Light.prototype, 'position', {
 	get: function() { return this._position; },
-	set: function(v) { this._position.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._position.set(v); },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'target', {
 	get: function() { return this._target; },
-	set: function(v) { this._target.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._target.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'up', {
 	get: function() { return this._up; },
-	set: function(v) { this._up.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._up.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, 'color', {
 	get: function() { return this._color; },
-	set: function(v) { this._color.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._color.set(v); },
 	enumerable: true
 });
 
@@ -518,18 +528,20 @@ Light.prototype.prepare = function( render_settings )
 		}
 	}
 
-
 	//PREPARE UNIFORMS
-	if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
-		uniforms.u_light_front = this._front;
+	//if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
+	//	uniforms.u_light_front = this._front;
 	if(this.type == Light.SPOT)
-		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
+	{
+		uniforms.u_light_angle[0] = this.angle * DEG2RAD;
+		uniforms.u_light_angle[1] = this.angle_end * DEG2RAD;
+		uniforms.u_light_angle[2] = Math.cos( this.angle * DEG2RAD * 0.5 );
+		uniforms.u_light_angle[3] = Math.cos( this.angle_end * DEG2RAD * 0.5 );
+	}
 
-	uniforms.u_light_position = this.position;
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
+	vec3.scale( uniforms.u_light_color, this.color, this.intensity );
 	this._attenuation_info[0] = this.att_start;
 	this._attenuation_info[1] = this.att_end;
-	uniforms.u_light_att = this._attenuation_info; //[this.att_start,this.att_end];
 	uniforms.u_light_offset = this.offset;
 
 	//extra code
