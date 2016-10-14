@@ -15,8 +15,8 @@ The subfile should be called ```\js```
 ```js
 \js
   
-this.createUniform("Texture","matcap_texture","texture" );
 this.createUniform("Scale","u_tex_scale","number",1);
+this.createSampler("Texture","u_texture", { magFilter: GL.NEAREST, missing: "white"} );
 this.render_state.depth_test = false;
 ```
 
