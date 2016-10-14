@@ -16,7 +16,7 @@ The subfile should be called ```\js```
 \js
   
 this.createUniform("Scale","u_tex_scale","number",1);
-this.createSampler("Texture","u_texture", { magFilter: GL.NEAREST, missing: "white"} );
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
 this.render_state.depth_test = false;
 ```
 
@@ -59,7 +59,7 @@ If you want to use an special rendering pass consider changing those, here is a 
 \js
   
 this.createUniform("Scale","u_tex_scale","number",1);
-this.createSampler("Texture","u_texture", { magFilter: GL.NEAREST, missing: "white"} );
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
 this.render_state.cull_face = false;
 
 \default.vs
