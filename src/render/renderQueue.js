@@ -32,10 +32,10 @@ RenderQueue.prototype.clear = function()
 }
 
 RenderQueue.DEFAULT = 0;
-RenderQueue.BACKGROUND = 10;
-RenderQueue.GEOMETRY = 20;
-RenderQueue.TRANSPARENT = 30;
-RenderQueue.OVERLAY = 40;
+RenderQueue.BACKGROUND = 5;
+RenderQueue.GEOMETRY = 10;
+RenderQueue.TRANSPARENT = 15;
+RenderQueue.OVERLAY = 20;
 
 RenderQueue.NO_SORT = 0;
 RenderQueue.SORT_NEAR_TO_FAR = 1;

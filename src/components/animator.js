@@ -8,6 +8,7 @@
 
 function Rotator(o)
 {
+	this.enabled = true;
 	this.speed = 10;
 	this.axis = [0,1,0];
 	this.local_space = true;
@@ -33,7 +34,9 @@ Rotator.prototype.onRemovedFromScene = function(scene)
 
 Rotator.prototype.onUpdate = function(e,dt)
 {
-	if(!this._root) return;
+	if(!this._root || !this.enabled)
+		return;
+
 	var scene = this._root.scene;
 
 	if(!this._default)
@@ -56,7 +59,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 	}
 
 	if(scene)
-		scene.refresh();
+		scene.requestFrame();
 }
 
 LS.registerComponent( Rotator );

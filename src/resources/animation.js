@@ -72,6 +72,7 @@ Animation.prototype.configure = function(data)
 
 	if(data.takes)
 	{
+		var num_takes = 0;
 		this.takes = {};
 		for(var i in data.takes)
 		{
@@ -83,7 +84,10 @@ Animation.prototype.configure = function(data)
 				this.addTake( take );
 				take.loadResources(); //load associated resources
 			}
+			num_takes++;
 		}
+		if(!num_takes)
+			this.createTake("default", LS.Animation.DEFAULT_DURATION );
 	}
 }
 
@@ -232,7 +236,7 @@ Take.prototype.configure = function( o )
 		this.duration = o.duration;
 }
 
-Take.prototype.serialize = function()
+Take.prototype.serialize = Take.prototype.toJSON = function()
 {
 	return LS.cloneObject(this, null, true);
 }

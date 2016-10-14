@@ -43,13 +43,6 @@ function SceneNode( name )
 		visible: true,
 		is_static: false,
 		selectable: true,
-		two_sided: false,
-		flip_normals: false,
-		cast_shadows: true,
-		receive_shadows: true,
-		ignore_lights: false,
-		depth_test: true,
-		depth_write: true
 	};
 
 	this.init(false,true);
@@ -73,14 +66,7 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		this.flags = {
 			visible: true,
 			is_static: false,
-			selectable: true,
-			two_sided: false,
-			flip_normals: false,
-			cast_shadows: true,
-			receive_shadows: true,
-			ignore_lights: false, //not_affected_by_lights
-			depth_test: true,
-			depth_write: true
+			selectable: true
 		};
 	}
 
@@ -452,12 +438,26 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			return r;
 	}
 
+	//to know the value of a property of the given target
 	if( target.getPropertyValue )
 		v = target.getPropertyValue( varname );
 
-	if(v === undefined && target[ varname ] === undefined)
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if (v === undefined && path.length > 2 && target[ varname ] && target[ varname ].getPropertyInfoFromPath )
+	{
+		var r = target[ varname ].getPropertyInfoFromPath( path.slice(2) );
+		if(r)
+		{
+			r.node = this;
+			return r;
+		}
+	}
+
+	if(v === undefined && target[ varname ] === undefined )
 		return null;
 
+	//if we dont have a value yet then take it directly from the object
 	var value = v !== undefined ? v : target[ varname ];
 
 	var extra_info = target.constructor[ "@" + varname ];
@@ -491,6 +491,7 @@ SceneNode.prototype.setPropertyValue = function( locator, value )
 	return this.setPropertyValueFromPath(path, value, 0);
 }
 
+//given a locator in path mode (array) and a value, it searches for the corresponding value and applies it
 SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
 	offset = offset || 0;
@@ -560,6 +561,11 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 
 	if( target[ varname ] === undefined )
 		return;
+
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if ( path.length > 2 && target[ varname ] && target[ varname ].setPropertyValueFromPath )
+		return target[ varname ].setPropertyValueFromPath( path, value, offset+2 );
 
 	//disabled because if the vars has a setter it wont be called using the array.set
 	//if( target[ varname ] !== null && target[ varname ].set )

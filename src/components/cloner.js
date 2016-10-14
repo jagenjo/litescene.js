@@ -109,15 +109,6 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	for(var i = 0, l = RIs.length; i < l; ++i)
 	{
 		var RI = RIs[i];
-		//genereate flags for the first instance
-		if(i == 0)
-		{
-			RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_AUTOUPDATE | RI_RAYCAST_ENABLED;
-			RI.applyNodeFlags();
-			flags = RI.flags;
-		}
-		else //for the rest just reuse the same as the first one
-			RI.flags = flags;
 
 		RI.setMesh(mesh);
 		if(this.lod_mesh)
@@ -127,7 +118,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 				RI.setLODMesh( lod_mesh );
 		}
 		RI.setMaterial( material );
-		instances[start_array_pos + i] = RI;
+		instances[ start_array_pos + i ] = RI;
 	}
 }
 

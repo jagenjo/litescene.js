@@ -71,7 +71,7 @@ CameraController.prototype.onUpdate = function(e)
 
 	if(this.smooth)
 	{
-		this._root.scene.refresh();
+		this._root.scene.requestFrame();
 	}
 }
 
@@ -95,7 +95,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		var wheel = mouse_event.wheel > 0 ? 1 : -1;
 		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
 		cam.updateMatrices();
-		node.scene.refresh();
+		node.scene.requestFrame();
 		return;
 	}
 
@@ -228,7 +228,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	}
 
 	if(changed)
-		this._root.scene.refresh();
+		this._root.scene.requestFrame();
 }
 
 CameraController.prototype.testOriginPlane = function(x,y, result)

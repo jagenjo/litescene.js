@@ -83,11 +83,17 @@ var Renderer = {
 	init: function()
 	{
 		//this is used in case a texture is missing
-		this._missing_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
+		this._black_texture = new GL.Texture(1,1, { pixel_data: [0,0,0,255] });
+		this._gray_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
+		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
+		this._missing_texture = this._gray_texture;
+		LS.ResourcesManager.textures[":black"] = this._black_texture;
+		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
+		LS.ResourcesManager.textures[":white"] = this._white_texture;
 
 		//draw helps rendering debug stuff
 		LS.Draw.init();
-		LS.Draw.onRequestFrame = function() { LS.GlobalScene.refresh(); }
+		LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
 
 		//enable webglCanvas lib so it is easy to render in 2D
 		if(global.enableWebGLCanvas && !gl.canvas.canvas2DtoWebGL_enabled)
@@ -437,17 +443,16 @@ var Renderer = {
 	{
 		render_settings = render_settings || this._current_render_settings;
 
+		//maybe we should use this function instead
+		//LS.RenderState.reset(); 
+
 		gl.enable( gl.CULL_FACE );
-		if(render_settings.depth_test)
-			gl.enable( gl.DEPTH_TEST );
-		else
-			gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.DEPTH_TEST );
 		gl.disable( gl.BLEND );
 		gl.depthFunc( gl.LESS );
 		gl.depthMask(true);
 		gl.frontFace(gl.CCW);
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
-		//gl.lineWidth(1);
 	},
 
 	/**
@@ -506,7 +511,7 @@ var Renderer = {
 			instance._is_visible = false;
 
 			//hidden nodes
-			if( pass.id == SHADOW_PASS && !(instance.flags & RI_CAST_SHADOWS) )
+			if( pass.id == SHADOW_PASS && !(instance.material.flags.cast_shadows) )
 				continue;
 			if( pass.id == PICKING_PASS && node_flags.selectable === false )
 				continue;
@@ -522,7 +527,7 @@ var Renderer = {
 				continue;
 
 			//test visibility against camera frustum
-			if(apply_frustum_culling && !(instance.flags & RI_IGNORE_FRUSTUM))
+			if( apply_frustum_culling && instance.use_bounding && !instance.material.flags.ignore_frustum )
 			{
 				if(geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE )
 					continue;
@@ -677,17 +682,8 @@ var Renderer = {
 		LS.RenderState.reset();
 
 		//FLAGS: enable GL flags like cull_face, CCW, etc
-		this.enableInstanceFlags(instance, render_settings);
-
-		//set blend flags
-		if(material.blend_mode !== Blend.NORMAL)
-		{
-			gl.enable( gl.BLEND );
-			if(instance.blend_func)
-				gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
-		}
-		else
-			gl.disable( gl.BLEND );
+		material._render_state.enable();
+		//this.enableInstanceFlags(instance, render_settings);
 
 		//merge all samplers
 		var samplers = [];
@@ -708,7 +704,7 @@ var Renderer = {
 		var num_lights = lights.length;
 
 		//no lights rendering (flat light)
-		var ignore_lights = node.flags.ignore_lights || !!(instance.flags & RI_IGNORE_LIGHTS) || render_settings.lights_disabled;
+		var ignore_lights = material.flags.ignore_lights || render_settings.lights_disabled;
 		if(!num_lights || ignore_lights)
 		{
 			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:"", LAST_PASS:"", USE_AMBIENT_ONLY:"" });
@@ -718,7 +714,7 @@ var Renderer = {
 
 			if( ignore_lights )
 				query.setMacro( "USE_IGNORE_LIGHTS" );
-			if(render_settings.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+			if( render_settings.clipping_plane )
 				query.setMacro( "USE_CLIPPING_PLANE" );
 
 			if( material.onModifyQuery )
@@ -729,9 +725,6 @@ var Renderer = {
 
 			//assign uniforms
 			shader.uniformsArray( [ scene._uniforms, camera._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ] );
-
-			if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-				shader.setUniform("u_viewprojection", mat4.IDENTITY );
 
 			//render
 			instance.render( shader );
@@ -756,7 +749,7 @@ var Renderer = {
 			query.add( light_query );
 			query.add( instance_final_query ); //contains node, material and instance macros
 
-			if(render_settings.clipping_plane && !(instance.flags & RI_IGNORE_CLIPPING_PLANE) )
+			if( render_settings.clipping_plane )
 				query.setMacro("USE_CLIPPING_PLANE");
 
 			if( material.onModifyQuery )
@@ -771,17 +764,9 @@ var Renderer = {
 			//secondary pass flags to make it additive
 			if(iLight > 0)
 			{
-				gl.enable(gl.BLEND);
+				gl.enable( gl.BLEND );
 				gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-				if(render_settings.depth_test)
-				{
-					gl.depthFunc( gl.LEQUAL );
-					//gl.depthMask(true);
-					if( node.flags.depth_test )
-						gl.enable( gl.DEPTH_TEST );
-					else
-						gl.disable( gl.DEPTH_TEST );
-				}
+				gl.depthFunc( gl.EQUAL );
 			}
 			//set depth func
 			if(material.depth_func)
@@ -825,36 +810,14 @@ var Renderer = {
 		var instance_final_query = instance._final_query;
 
 		//FLAGS
-		this.enableInstanceFlags( instance, render_settings );
+		material._render_state.enable();
+		//this.enableInstanceFlags( instance, render_settings );
 
 		var query = new ShaderQuery("depth");
 		query.add( scene._query );
 		query.add( instance_final_query ); //final = node + material + instance
 
-		//not fully supported yet
-		/*
-		if(material.alpha_test_shadows == true )
-		{
-			query.setMacro("USE_ALPHA_TEST","0.5");
-			var color = material.getTexture("color");
-			if(color)
-			{
-				var color_uvs = material.textures["color_uvs"] || Material.DEFAULT_UVS["color"] || "0";
-				query.setMacro("USE_COLOR_TEXTURE","uvs_" + color_uvs);
-				color.bind(0);
-			}
-
-			var opacity = material.getTexture("opacity");
-			if(opacity)	{
-				var opacity_uvs = material.textures["opacity_uvs"] || Material.DEFAULT_UVS["opacity"] || "0";
-				query.setMacro("USE_OPACITY_TEXTURE","uvs_" + opacity_uvs);
-				opacity.bind(1);
-			}
-			//shader.uniforms({ texture: 0, opacity_texture: 1 });
-		}
-		*/
-
-		var shader = ShadersManager.resolve( query );
+		var shader = LS.ShadersManager.resolve( query );
 
 		var samplers = [];
 		this.mergeSamplers([ material._samplers, instance.samplers ], samplers);
@@ -889,6 +852,7 @@ var Renderer = {
 
 		var query = new LS.ShaderQuery("flat");
 		query.add( scene._query );
+		query.add( material._query ); //?
 		query.add( instance._final_query );
 
 		var shader = ShadersManager.resolve( query );
@@ -951,12 +915,25 @@ var Renderer = {
 			else if(sampler.texture)
 				tex = sampler.texture;
 			else
-				continue;
+				continue; //dont know what this var type is?
 
 			if(tex.constructor === String)
 				tex = LS.ResourcesManager.textures[ tex ];
 			if(!tex)
-				tex = this._missing_texture;
+			{
+				if(sampler)
+				{
+					switch( sampler.missing )
+					{
+						case "black": tex = this._black_texture; break;
+						case "white": tex = this._white_texture; break;
+						case "gray": tex = this._gray_texture; break;
+						default: tex = this._missing_texture;
+					}
+				}
+				else
+					tex = this._missing_texture;
+			}
 
 			//avoid to read from the same texture we are rendering to (generates warnings)
 			if(tex._in_current_fbo) 
@@ -966,7 +943,7 @@ var Renderer = {
 			this._active_samples[i] = tex;
 
 			//texture properties
-			if(sampler && sampler._must_update )
+			if(sampler)// && sampler._must_update ) //disabled because samplers ALWAYS must set to the value, in case the same texture is used in several places in the scene
 			{
 				if(sampler.minFilter)
 				{
@@ -980,7 +957,7 @@ var Renderer = {
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
 				}
-				sampler._must_update = false;
+				//sampler._must_update = false;
 			}
 		}
 	},
@@ -1064,48 +1041,6 @@ var Renderer = {
 	},	
 
 	/**
-	* Switch WebGL flags according to the RenderInstance flags
-	*
-	* @method enableInstanceFlags
-	* @param {RenderInstance} instance
-	* @param {RenderSettings} render_settings
-	*/
-	enableInstanceFlags: function(instance, render_settings)
-	{
-		var flags = instance.flags;
-
-		//backface culling
-		if( flags & RI_CULL_FACE )
-			gl.enable( gl.CULL_FACE );
-		else
-			gl.disable( gl.CULL_FACE );
-
-		//  depth
-		if(render_settings.depth_test)
-		{
-			gl.depthFunc( gl.LEQUAL );
-			if( flags & RI_DEPTH_TEST )
-				gl.enable( gl.DEPTH_TEST );
-			else
-				gl.disable( gl.DEPTH_TEST );
-
-			if(flags & RI_DEPTH_WRITE)
-				gl.depthMask(true);
-			else
-				gl.depthMask(false);
-		}
-
-		//when to reverse the normals?
-		var order = gl.CCW;
-		if(flags & RI_CW)
-			order = gl.CW;
-		if(render_settings.reverse_backfacing)
-			order = order == gl.CW ? gl.CCW : gl.CW;
-		gl.frontFace(order);
-	},
-
-
-	/**
 	* Collects and process the rendering instances, cameras and lights that are visible
 	* Its a prepass shared among all rendering passes
 	* Warning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)
@@ -1175,6 +1110,8 @@ var Renderer = {
 			//materials
 			if(!instance.material)
 				instance.material = this.default_material;
+			if( materials[ instance.material.uid ] && instance.material !== materials[ instance.material.uid ] )
+				console.warn("Different Materials with same UID");
 			materials[ instance.material.uid ] = instance.material;
 
 			//add extra info
@@ -1198,7 +1135,7 @@ var Renderer = {
 			if( queue_index === undefined || queue_index === LS.RenderQueue.DEFAULT )
 			{
 				//TODO: maybe this case should be treated directly in StandardMaterial
-				if( instance.flags & RI_BLEND )
+				if( instance.material._render_state.blend )
 					queue = this._queues[ LS.RenderQueue.TRANSPARENT ];
 				else
 					queue = this._queues[ LS.RenderQueue.GEOMETRY ];
@@ -1215,10 +1152,6 @@ var Renderer = {
 
 			//node & mesh constant information
 			var query = instance.query;
-			if(instance.flags & RI_ALPHA_TEST || instance.material.alpha_test)
-				query.macros.USE_ALPHA_TEST = "0.5";
-			else if(query.macros["USE_ALPHA_TEST"])
-				delete query.macros["USE_ALPHA_TEST"];
 
 			var buffers = instance.vertex_buffers;
 			if(!("normals" in buffers))
@@ -1271,7 +1204,9 @@ var Renderer = {
 		for(var i in materials)
 		{
 			var material = materials[i];
-			material.prepareMaterial( scene );
+			material._last_frame_update = this._frame;
+			if( material.prepare )
+				material.prepare( scene );
 		}
 	},
 
@@ -1500,3 +1435,5 @@ var Renderer = {
 
 //Add to global Scope
 LS.Renderer = Renderer;
+
+

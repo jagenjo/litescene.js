@@ -5,7 +5,7 @@
 /**
 * A Material is a class in charge of defining how to render an object, there are several classes for Materials
 * but this class is more like a template for other material classes.
-* The rendering of a material is handled by the material itself, otherwise by the rendering pipeline
+* The rendering of a material is handled by the material itself, if not provided then uses the Renderer default one
 * @namespace LS
 * @class Material
 * @constructor
@@ -25,8 +25,9 @@ function Material( o )
 	this._queue = LS.RenderQueue.DEFAULT;
 
 	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
-	this.render_state = new LS.RenderState();
-	this._light_mode = 0;
+	//TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like outline render
+	this._render_state = new LS.RenderState();
+	this._light_mode = LS.Material.NO_LIGHTS;
 
 	//textures
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
@@ -34,6 +35,12 @@ function Material( o )
 
 	//shaders query
 	this._query = new LS.ShaderQuery();
+
+	this.flags = {
+		cast_shadows: true,
+		receive_shadows: true,
+		ignore_frustum: false
+	};
 
 	//properties with special storage (multiple vars shared among single properties)
 
@@ -59,6 +66,18 @@ function Material( o )
 		enumerable: true
 	});
 
+	Object.defineProperty( this, 'render_state', {
+		get: function() { return this._render_state; },
+		set: function(v) { 
+			if(!v)
+				return;
+			for(var i in v)
+				this._render_state[i] = v[i];
+		},
+		enumerable: true
+	});
+
+
 	if(o) 
 		this.configure(o);
 }
@@ -67,6 +86,10 @@ Material["@color"] = { type:"color" };
 
 Material.icon = "mini-icon-material.png";
 
+
+Material.NO_LIGHTS = 0;
+Material.ONE_LIGHT = 1;
+Material.SEVERAL_LIGHTS = 2;
 
 //material info attributes, use this to avoid errors when settings the attributes of a material
 
@@ -93,7 +116,6 @@ Material.SPECULAR_FACTOR = "specular_factor";
 * @default 10
 */
 Material.SPECULAR_GLOSS = "specular_gloss";
-
 
 Material.OPACITY_TEXTURE = "opacity";	//used for baked GI
 Material.COLOR_TEXTURE = "color";	//material color
@@ -340,6 +362,9 @@ Material.prototype.setProperty = function( name, value )
 			}
 			//this.textures = cloneObject(value);
 			break;
+		case "flags":
+			for(var i in value)
+				this.flags[i] = value[i];
 		case "transparency": //special cases
 			this.opacity = 1 - value;
 			break;
@@ -434,7 +459,14 @@ Material.prototype.setTexture = function( channel, texture, sampler_options ) {
 	//get current info
 	var sampler = this.textures[ channel ];
 	if(!sampler)
-		this.textures[channel] = sampler = { texture: texture, uvs: Material.DEFAULT_UVS[channel] || "0", wrap: 0, minFilter: 0, magFilter: 0 };
+		this.textures[channel] = sampler = { 
+			texture: texture, 
+			uvs: Material.DEFAULT_UVS[channel] || "0", 
+			wrap: 0, 
+			minFilter: 0, 
+			magFilter: 0,
+			missing: "white"
+		};
 	else if(sampler.texture == texture && !sampler_options)
 		return sampler;
 	else
@@ -698,13 +730,14 @@ Material.prototype.createProperty = function( name, value, type, options )
 	}
 }
 
-Material.prototype.prepareMaterial = function( scene )
+Material.prototype.prepare = function( scene )
 {
 	if(!this._uniforms)
 	{
 		this._uniforms = {};
 		this._samplers = [];
 	}
+
 	this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms
 }

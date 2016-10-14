@@ -330,13 +330,8 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 
 	RI.material = this.material || this._root.getMaterial();
 
-	RI.flags = RI_DEFAULT_FLAGS;
-	RI.applyNodeFlags();
-	if(this.two_sided)
-		RI.flags &= ~RI_CULL_FACE;
-
 	if( this.apply_skinning )
-		RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
+		RI.use_bounding = false; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
 
 	if(this.primitive == gl.POINTS)
 	{

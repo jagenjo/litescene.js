@@ -107,7 +107,7 @@ VRCameraController.prototype.onMessage = function(e)
 	this._orientation = q;
 
 	if(this._root.scene)
-		this._root.scene.refresh();
+		this._root.scene.requestFrame();
 }
 
 VRCameraController.prototype.onStop = function(e)

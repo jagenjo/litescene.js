@@ -20,9 +20,6 @@ function StandardMaterial(o)
 
 	this.blend_mode = LS.Blend.NORMAL;
 
-	this.alpha_test = false;
-	this.alpha_test_shadows = false;
-
 	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty("emissive", new Float32Array(3), "color" );
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
@@ -47,8 +44,25 @@ function StandardMaterial(o)
 	this.bumpmap_factor = 1.0;
 	this.use_scene_ambient = true;
 
+	//used to change the render state
+	this.flags = {
+		alpha_test: false,
+		alpha_test_shadows: false,
+		two_sided: false,
+		flip_normals: false,
+		depth_test: true,
+		depth_write: true,
+		ignore_lights: false,
+		cast_shadows: true,
+		receive_shadows: true,
+		ignore_frustum: false
+	};
+
 	//used for special fx 
 	this.extra_surface_shader_code = "";
+
+	this._uniforms = {};
+	this._samplers = [];
 
 	this.extra_uniforms = {};
 
@@ -135,17 +149,37 @@ struct SurfaceOutput {\n\
 };\n\
 ";
 
-StandardMaterial.prototype.applyToRenderInstance = function(ri)
+StandardMaterial.prototype.prepare = function( scene )
 {
+	var flags = this.flags;
+
+	//set flags in render state
+	this.render_state.cull_face = !flags.two_sided;
+	this.render_state.front_face = flags.flip_normals ? GL.CW : GL.CCW;
+	this.render_state.depth_test = flags.depth_test;
+	this.render_state.depth_write = flags.depth_write;
+
+	this.render_state.blend = this.blend_mode != LS.Blend.NORMAL;
 	if( this.blend_mode != LS.Blend.NORMAL )
-		ri.flags |= RI_BLEND;
+	{
+		var func = LS.BlendFunctions[ this.blend_mode ];
+		if(func)
+		{
+			this.render_state.blendFunc0 = func[0];
+			this.render_state.blendFunc1 = func[1];
+		}
+	}
 
-	if( this.blend_mode == LS.Blend.CUSTOM && this.blend_func )
-		ri.blend_func = this.blend_func;
-	else
-		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
+	this.fillShaderQuery( scene ); //update shader macros on this material
+	this.fillUniforms( scene ); //update uniforms
+
+	//set up macros
+	if( flags.alpha_test )
+		this._query.macros.USE_ALPHA_TEST = "0.5";
+	else if(this._query.macros["USE_ALPHA_TEST"])
+		delete this._query.macros["USE_ALPHA_TEST"];
+
 }
-
 
 // RENDERING METHODS
 StandardMaterial.prototype.fillShaderQuery = function( scene )
@@ -346,11 +380,16 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "extra_surface_shader_code":
-		case "alpha_test":
-		case "alpha_test_shadows":
 		case "blend_mode":
 			if(value !== null)
 				this[name] = value; 
+			break;
+		case "flags":
+			if(value)
+			{
+				for(var i in value)
+					this.flags[i] = value[i];
+			}
 			break;
 		//vectors
 		case "ambient":	
@@ -404,8 +443,6 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
-		alpha_test: LS.TYPES.BOOLEAN,
-		alpha_test_shadows: LS.TYPES.BOOLEAN,
 		specular_ontop: LS.TYPES.BOOLEAN,
 		normalmap_tangent: LS.TYPES.BOOLEAN,
 		reflection_specular: LS.TYPES.BOOLEAN,
@@ -453,8 +490,6 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "reflection_specular":
 		case "use_scene_ambient":
 		case "velvet_additive":
-		case "alpha_test":
-		case "alpha_test_shadows":
 			type = LS.TYPES.BOOLEAN; break;
 		default:
 			return null;

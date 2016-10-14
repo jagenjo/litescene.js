@@ -55,7 +55,8 @@ var Network = {
 					request.error(err);
 				return;
 			}
-
+	
+			//parse input
 			if(request.dataType == "json") //chrome doesnt support json format
 			{
 				try
@@ -82,12 +83,13 @@ var Network = {
 				}
 			}
 
+			//call callback
 			if(LS.catch_errors)
 			{
 				try
 				{
 					if(request.success)
-						request.success.call(this, response);
+						request.success.call(this, response, request.url);
 					LEvent.trigger(xhr,"done",response);
 				}
 				catch (err)
@@ -98,7 +100,7 @@ var Network = {
 			else
 			{
 				if(request.success)
-					request.success.call(this, response);
+					request.success.call(this, response, request.url);
 				LEvent.trigger(xhr,"done",response);
 			}
 		};
@@ -121,7 +123,7 @@ var Network = {
 	* @method requestText
 	* @param {string} url
 	* @param {object} params form params
-	* @param {function} callback
+	* @param {function} callback( data )
 	*/
 	requestText: function(url, data, callback, callback_error)
 	{
@@ -138,7 +140,7 @@ var Network = {
 	* @method requestJSON
 	* @param {string} url
 	* @param {object} params form params
-	* @param {function} callback
+	* @param {function} callback( json )
 	*/
 	requestJSON: function(url, data, callback, callback_error)
 	{
@@ -155,7 +157,7 @@ var Network = {
 	* @method requestFile
 	* @param {string} url
 	* @param {object} params form params
-	* @param {function} callback
+	* @param {function} callback( file )
 	*/
 	requestFile: function(url, data, callback, callback_error)
 	{

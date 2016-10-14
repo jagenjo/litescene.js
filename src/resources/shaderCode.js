@@ -18,7 +18,7 @@ function ShaderCode( code )
 	this._subfiles = {};
 	this._compiled_shaders = {};
 
-	this._shaderblock_flags_num = 0;
+	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
 	this._shaderblock_flags = {};
 
 	this._version = 0;
@@ -111,8 +111,21 @@ ShaderCode.prototype.processCode = function()
 			var code_part = this._code_parts[name];
 			if(!code_part)
 				code_part = this._code_parts[name] = {};
+
 			//parse data (extract pragmas and stuff)
-			code_part[ extension ] = this.parseGLSLCode( subfile_data );
+			var code_info = ShaderCode.parseGLSLCode( subfile_data );
+			for(var j in code_info)
+			{
+				var pragma_info = code_info[j];
+				if(!pragma_info || pragma_info.type != ShaderCode.PRAGMA)
+					continue;
+				//assign a flag position in case this block is enabled
+				pragma_info.shader_block_flag = this._shaderblock_flags_num; 
+				this._shaderblock_flags[ pragma_info.shader_block ] = pragma_info.shader_block_flag;
+				this._shaderblock_flags_num += 1;
+			}
+
+			code_part[ extension ] = code_info;
 		}
 	}
 
@@ -313,7 +326,7 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_
 			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
 			if(!shader_block)
 			{
-				console.error("Shader uses unknown ShaderBLock: ", block.shader_block);
+				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
 				return null;
 			}
 
@@ -326,7 +339,7 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_
 }
 
 //given a code with some pragmas, it separates them
-ShaderCode.prototype.parseGLSLCode = function( code )
+ShaderCode.parseGLSLCode = function( code )
 {
 	//remove comments
 	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
@@ -424,9 +437,9 @@ ShaderCode.prototype.parseGLSLCode = function( code )
 				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
 				pragma_info.shader_block = shader_block_name;
 				shader_blocks[ pragma_info.shader_block ] = true;
-				pragma_info.shader_block_flag = this._shaderblock_flags_num;
-				this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
-				this._shaderblock_flags_num += 1;
+				//pragma_info.shader_block_flag = this._shaderblock_flags_num;
+				//this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
+				//this._shaderblock_flags_num += 1;
 			}
 
 			blocks.push( pragma_info ); //add pragma block

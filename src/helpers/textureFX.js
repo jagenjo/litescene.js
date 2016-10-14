@@ -114,9 +114,11 @@ TextureFX.available_fx = {
 		name: "Warp",
 		uniforms: {
 			warp_amp: { name: "u_warp_amp", type: "float", value: 0.01, step: 0.001 },
+			warp_offset_x: { name: "u_warp_offset_x", type: "float", value: 0, step: 0.001 },
+			warp_offset_y: { name: "u_warp_offset_y", type: "float", value: 0, step: 0.001 },
 			warp_texture: { name: "u_warp_texture", type: "sampler2D", widget: "Texture", value: "" }
 		},
-		uv_code:"uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv ).xy - vec2(0.5));"
+		uv_code:"uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv + vec2(u_warp_offset_x@, u_warp_offset_y@) ).xy - vec2(0.5));"
 	},
 	"LUT": {
 		name: "LUT",
@@ -194,6 +196,7 @@ TextureFX.available_fx = {
 	},
 	"noiseBN": {
 		name: "Noise B&N",
+		functions: ["noise"],
 		uniforms: {
 			"noise": { name: "u_noise", type: "float", value: 0.1, step: 0.01 }
 		},
@@ -335,7 +338,7 @@ TextureFX.prototype.configure = function(o)
 		this.fx = o.fx.concat();
 }
 
-TextureFX.prototype.serialize = function()
+TextureFX.prototype.serialize = TextureFX.prototype.toJSON = function()
 {
 	return { 
 		apply_fxaa: this.apply_fxaa,
@@ -345,7 +348,22 @@ TextureFX.prototype.serialize = function()
 
 TextureFX.prototype.getResources = function(res)
 {
-	//TODO
+	var fxs = this.fx;
+	for(var i = 0; i < fxs.length; i++)
+	{
+		var fx = fxs[i];
+		var fx_info = TextureFX.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+		if(!fx_info.uniforms)
+			continue;
+		for(var j in fx_info.uniforms)
+		{
+			var uniform = fx_info.uniforms[j];
+			if(uniform.type == "sampler2D" && fx[j])
+				res[ fx[j] ] = GL.Texture;
+		}
+	}
 	return res;
 }
 
@@ -537,6 +555,14 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 
 	shader = this._last_shader;
 
+	//error compiling shader
+	if(!shader)
+	{
+		input_texture.toViewport();
+		return;
+	}
+
+	//set the depth texture for some FXs like fog or depth
 	if(shader.hasUniform("u_depth_texture"))
 	{
 		depth_texture.bind(1);
@@ -578,6 +604,68 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 TextureFX.prototype.getTexture = function( name )
 {
 	return LS.ResourcesManager.getTexture( name );
+}
+
+TextureFX.prototype.getPropertyInfoFromPath = function( path )
+{
+	if(path.length < 2)
+		return null;
+
+	var fx_num = parseInt( path[0] );
+
+	//fx not active
+	if(fx_num >= this.fx.length)
+		return null;
+	var fx = this.fx[ fx_num ];
+
+	var fx_info = TextureFX.available_fx[ fx.name ];
+	if(!fx_info)
+		return null;
+
+	var varname = path[1];
+	if(varname == "name")
+		return null;
+
+	var uniform = fx_info.uniforms[ varname ];
+	if(!uniform)
+		return null;
+
+	var type = uniform.type;
+
+	if(type == "float")
+		type = "number";
+	else if(type == "sampler2D")
+		type = "texture";
+
+	return {
+		target: fx,
+		name: varname,
+		value: fx[ varname ],
+		type: uniform.type || "number"
+	};
+}
+
+TextureFX.prototype.setPropertyValueFromPath = function( path, value, offset )
+{
+	offset = offset || 0;
+
+	if( path.length < (offset+1) )
+		return null;
+
+	var fx_num = parseInt( path[offset] );
+	if(fx_num >= this.fx.length)
+		return null;
+	var fx = this.fx[ fx_num ];
+	if(!fx)
+		return null;
+	
+	var varname = path[offset+1];
+	if (fx[ varname ] === undefined )
+		return null;
+
+	//to avoid incompatible types
+	if( fx[ varname ] !== undefined && value !== undefined && fx[ varname ].constructor === value.constructor )
+		fx[ varname ] = value;
 }
 
 TextureFX.registerFX = function( name, fx_info )

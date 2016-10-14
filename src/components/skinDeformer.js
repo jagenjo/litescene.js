@@ -252,7 +252,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		this._root.transform.getGlobalMatrix( RI.matrix );
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	RI.flags |= RI_IGNORE_FRUSTUM; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
+	RI.use_bounding = false;
 }
 
 SkinDeformer.prototype.disableSkinning = function( RI )

@@ -33,14 +33,14 @@ Target["@node_id"] = { type: 'node' };
 Target["@front"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "-Y": Target.NEGY,"+Y": Target.POSY,"-X": Target.NEGX,"+X": Target.POSX }};
 Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "-Y": Target.NEGY,"+Y": Target.POSY,"-X": Target.NEGX,"+X": Target.POSX }};
 
-Target.prototype.onAddedToNode = function(node)
+Target.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( node, "computeVisibility", this.updateOrientation, this);
+	LEvent.bind( scene, "beforeRenderInstances", this.updateOrientation, this);
 }
 
-Target.prototype.onRemovedFromNode = function(node)
+Target.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( node, "computeVisibility", this.updateOrientation, this);
+	LEvent.unbind( scene, "beforeRenderInstances", this.updateOrientation, this);
 }
 
 

@@ -1053,11 +1053,6 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 {
 	resources = resources || {};
 
-	//scene resources
-	for(var i in this.textures)
-		if(this.textures[i])
-			resources[ this.textures[i] ] = GL.Texture;
-
 	//resources that must be preloaded (because they will be used in the future)
 	if(this.preloaded_resources)
 		for(var i in this.preloaded_resources)
@@ -1236,6 +1231,7 @@ SceneTree.prototype.render = function(options)
 /**
 * This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
 * Mostly rendering stuff but also some collision info.
+* TO DO: refactor this so it doesnt redo the same task in every frame, only if changes are made
 * @method collectData
 */
 SceneTree.prototype.collectData = function()
@@ -1248,10 +1244,13 @@ SceneTree.prototype.collectData = function()
 	var cameras = this._cameras;
 	var colliders = this._colliders;
 
+	//empty containers
 	instances.length = 0;
 	lights.length = 0;
 	cameras.length = 0;
 	colliders.length = 0;
+
+	//TODO: move some of the node events to scene events
 
 	//collect render instances, lights and cameras
 	for(var i = 0, l = nodes.length; i < l; ++i)
@@ -1260,9 +1259,6 @@ SceneTree.prototype.collectData = function()
 
 		if(node.flags.visible == false) //skip invisibles
 			continue;
-
-		//trigger event 
-		LEvent.trigger(node, "computeVisibility"); //, {camera: camera} options: options }
 
 		//compute global matrix
 		if(node.transform)
@@ -1285,34 +1281,24 @@ SceneTree.prototype.collectData = function()
 			node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
-		LEvent.trigger(node,"collectRenderInstances", node._instances );
-		LEvent.trigger(node,"collectPhysicInstances", colliders );
-		//LEvent.trigger(node,"collectLights", lights );
-		//LEvent.trigger(node,"collectCameras", cameras );
+		LEvent.trigger( node,"collectRenderInstances", node._instances );
+		LEvent.trigger( node,"collectPhysicInstances", colliders );
 
 		instances.push.apply(instances, node._instances); //push inside
 	}
 
 	//we also collect from the scene itself 
-	LEvent.trigger(this, "collectRenderInstances", instances );
-	LEvent.trigger(this, "collectPhysicInstances", colliders );
-	LEvent.trigger(this, "collectLights", lights );
-	LEvent.trigger(this, "collectCameras", cameras );
+	LEvent.trigger( this, "collectRenderInstances", instances );
+	LEvent.trigger( this, "collectPhysicInstances", colliders );
+	LEvent.trigger( this, "collectLights", lights );
+	LEvent.trigger( this, "collectCameras", cameras );
 
-	//for each camera
-	/*
-	for(var i = 0, l = cameras.length; i < l; ++i)
-	{
-		var camera = cameras[i];
-	}
-	*/
-	
 	//for each render instance collected
 	for(var i = 0, l = instances.length; i < l; ++i)
 	{
 		var instance = instances[i];
 		//compute the axis aligned bounding box
-		if(!(instance.flags & RI_IGNORE_FRUSTUM))
+		if(instance.use_bounding) //no test if render_settings?
 			instance.updateAABB();
 	}
 
@@ -1447,12 +1433,14 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 /**
 * Marks that this scene must be rendered again
 *
-* @method refresh
+* @method requestFrame
 */
-SceneTree.prototype.refresh = function()
+SceneTree.prototype.requestFrame = function()
 {
 	this._must_redraw = true;
 }
+
+SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
 
 /**
 * returns current scene time (remember that scene time remains freezed if the scene is not running)

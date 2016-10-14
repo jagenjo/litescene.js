@@ -62,73 +62,21 @@ function Player(options)
 	this.canvas = this.gl.canvas;
 	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
 	this.scene = LS.GlobalScene;
-	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
-
-	if(options.debug)
-	{
-		this.debug = true;
-		this.enableDebug();
-	}
-	else
-		LS.catch_exceptions = true;
-
-	if(options.resources)
-		LS.ResourcesManager.setPath( options.resources );
-	else
-		console.warn("LS: no resources path specified");
 
 	LS.ShadersManager.init( options.shaders || "data/shaders.xml" );
 	if(!options.shaders)
 		console.warn("LS: no shaders folder specified, using default file.");
 
-	if(options.proxy)
-		LS.ResourcesManager.setProxy( options.proxy );
-	if(options.filesystems)
-	{
-		for(var i in options.filesystems)
-			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
-	}
-
-	if(options.autoresize)
-	{
-		window.addEventListener("resize", (function(){
-			this.canvas.width = canvas.parentNode.offsetWidth;
-			this.canvas.height = canvas.parentNode.offsetHeight;
-		}).bind(this));
-	}
-
-	if(options.loadingbar)
-	{
-		this.loading = {
-			visible: true,
-			scene_loaded: 0,
-			resources_loaded: 0
-		};
-		LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
-			this.loading.resources_loaded = 0.0; 
-		}).bind(this) );
-		LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
-			if( this.loading.resources_loaded < v )
-				this.loading.resources_loaded = v;
-		}).bind(this) );
-		LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
-			this._total_loading = undefined; 
-			this.loading.resources_loaded = 1; 
-			this.loading.visible = false;
-		}).bind(this) );
-	}
-
 	LS.Renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
-	this.force_redraw = options.redraw || false;
 	this.state = LS.Player.STOPPED;
 
 	if( this.gl.ondraw )
 		throw("There is already a litegl attached to this context");
 
-	if(options.debug_render)
-		this.setDebugRender(true);
+	//set options
+	this.configure( options );
 
 	//bind all the events 
 	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
@@ -159,6 +107,88 @@ function Player(options)
 
 	//launch render loop
 	gl.animate();
+}
+
+Player.prototype.loadConfig = function( url, on_complete )
+{
+	var that = this;
+	LS.Network.requestJSON( url, inner );
+	function inner( data )
+	{
+		that.configure( data );
+		if(on_complete)
+			on_complete(data);
+	}
+}
+
+Player.prototype.configure = function( options )
+{
+	var that = this;
+
+	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
+	if(options.debug)
+		this.enableDebug();
+	else
+		this.enableDebug(false);
+
+	if(options.resources !== undefined)
+		LS.ResourcesManager.setPath( options.resources );
+
+	if(options.proxy)
+		LS.ResourcesManager.setProxy( options.proxy );
+	if(options.filesystems)
+	{
+		for(var i in options.filesystems)
+			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
+	}
+
+	if(options.autoresize && !this._resize_callback)
+	{
+		this._resize_callback = (function(){
+			this.canvas.width = this.canvas.parentNode.offsetWidth;
+			this.canvas.height = this.canvas.parentNode.offsetHeight;
+		}).bind(this)
+		window.addEventListener("resize",this._resize_callback);
+	}
+
+	if(options.loadingbar)
+	{
+		if(!this.loading)
+		{
+			this.loading = {
+				visible: true,
+				scene_loaded: 0,
+				resources_loaded: 0
+			};
+			LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
+				if(!this.loading)
+					return;
+				this.loading.resources_loaded = 0.0; 
+			}).bind(this) );
+			LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
+				if(!this.loading)
+					return;
+				if( this.loading.resources_loaded < v )
+					this.loading.resources_loaded = v;
+			}).bind(this) );
+			LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
+				if(!this.loading)
+					return;
+				this._total_loading = undefined; 
+				this.loading.resources_loaded = 1; 
+				this.loading.visible = false;
+			}).bind(this) );
+		}
+	}
+	else if(options.loadingbar === false)
+		this.loading = null;	
+
+	this.force_redraw = options.redraw || false;
+	if(options.debug_render)
+		this.setDebugRender(true);
+
+	if(options.scene_url)
+		this.loadScene( options.scene_url );
 }
 
 Player.STOPPED = 0;
@@ -385,10 +415,11 @@ Player.prototype.renderLoadingBar = function( loading )
 	gl.finish2D();
 }
 
-Player.prototype.enableDebug = function()
+Player.prototype.enableDebug = function(v)
 {
-	LS.Script.catch_important_exceptions = false;
-	LS.catch_exceptions = false;
+	this.debug = !!v;
+	LS.Script.catch_important_exceptions = !v;
+	LS.catch_exceptions = !v;
 }
 
 Player.prototype.setDebugRender = function(v)

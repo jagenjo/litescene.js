@@ -149,7 +149,6 @@ SpriteAtlas.prototype.onCollectInstances = function(e, instances)
 	if(!this._last_index)
 		return;
 
-
 	//RI
 	var RI = this._render_instance;
 	if(!RI)
@@ -160,23 +159,12 @@ SpriteAtlas.prototype.onCollectInstances = function(e, instances)
 
 	//material
 	if(!this._material)
-		this._material = new LS.Material({ shader_name: "lowglobal" });
+		this._material = new LS.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
 	this._material.setTexture( "COLOR", this.texture );
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
 
 	//flags
-	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
-	RI.applyNodeFlags();
-	RI.flags &= ~RI_CULL_FACE; //two sided always
-
 	RI.setRange(0, this._last_index);
-
-	/*
-	if(this.blend_mode == LS.Blend.NORMAL)
-		RI.disableFlag( RI_BLEND );
-	else
-		RI.enableFlag( RI_BLEND );
-	*/
 
 	//opaque RIs
 	instances.push(RI);

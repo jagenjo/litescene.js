@@ -125,7 +125,7 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 
 	//material
 	if(!this._material)
-		this._material = new LS.Material({ shader_name: "lowglobal" });
+		this._material = new LS.StandardMaterial({ shader_name: "lowglobal", flags: { two_sided: true } });
 	this._material.setTexture( "color", this.texture, { uvs: LS.Material.COORDS_UV_TRANSFORMED, magFilter: this.filtering ? gl.LINEAR : gl.NEAREST } );
 	this._material.blend_mode = this.blend_mode;
 	RI.setMaterial( this._material ); //sets material and blend modes in render instance
@@ -146,14 +146,6 @@ Sprite.prototype.onCollectInstances = function(e, instances)
 	mat3.translate( this._material.uvs_matrix, this._material.uvs_matrix, this._area.subarray(0,2) );
 	mat3.scale( this._material.uvs_matrix, this._material.uvs_matrix, this._area.subarray(2,4) );
 
-	//flags
-	RI.flags = RI_DEFAULT_FLAGS;
-	RI.applyNodeFlags();
-	RI.flags &= ~RI_CULL_FACE; //two sided always
-	if(this.blend_mode == LS.Blend.NORMAL)
-		RI.disableFlag( RI_BLEND );
-	else
-		RI.enableFlag( RI_BLEND );
 	instances.push(RI);
 }
 

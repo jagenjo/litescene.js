@@ -68,10 +68,20 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 		if(!texture) 
 			return;
 		if(texture.constructor === String)
-			texture = LS.ResourcesManager.textures[texture];
+			texture = LS.ResourcesManager.textures[ texture ];
 
 		if(!this._material)
-			mat = this._material = new LS.Material({use_scene_ambient:false});
+			mat = this._material = new LS.StandardMaterial({shader: "lowglobal", 
+				queue: LS.RenderQueue.BACKGROUND, 
+				flags: {
+					cast_shadows: false,
+					ignore_lights: true,
+					two_sided: true,
+					depth_test: false,
+					ignore_frustum: true
+				},
+				use_scene_ambient:false
+			});
 		else
 			mat = this._material;
 
@@ -87,26 +97,13 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 
 	var RI = this._render_instance;
 	if(!RI)
-	{
-		this._render_instance = RI = new LS.RenderInstance(this._root, this);
-		RI.priority = 100; //render the first one (is a background)
-	}
+		this._render_instance = RI = new LS.RenderInstance( this._root, this );
 
 	RI.setMesh( mesh );
 	RI.setMaterial( mat );
 
-	RI.flags = RI_DEFAULT_FLAGS;
-	RI.applyNodeFlags();
-	RI.disableFlag( RI_CAST_SHADOWS ); //never cast shadows
-	RI.enableFlag( RI_IGNORE_LIGHTS ); //no lights
-	RI.enableFlag( RI_CW );
-	RI.disableFlag( RI_DEPTH_WRITE ); 
-	RI.disableFlag( RI_DEPTH_TEST ); 
-	RI.disableFlag( RI_CULL_FACE ); 
-	RI.enableFlag( RI_IGNORE_FRUSTUM );
-	RI.enableFlag( RI_IGNORE_VIEWPROJECTION );
-
 	instances.push(RI);
 }
 
-LS.registerComponent( BackgroundRenderer );
+//disabled till the viewprojection matrix issue is fixed
+//LS.registerComponent( BackgroundRenderer );

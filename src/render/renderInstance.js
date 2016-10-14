@@ -6,33 +6,6 @@
 * @constructor
 */
 
-//Flags to control rendering states
-//0-7: render state flags
-var RI_CULL_FACE =			1;		//for two sided
-var RI_CW =					1 << 1; //reverse normals
-var RI_DEPTH_TEST =			1 << 2; //use depth test
-var RI_DEPTH_WRITE = 		1 << 3; //write in the depth buffer
-var RI_ALPHA_TEST =			1 << 4; //do alpha test
-var RI_BLEND = 				1 << 5; //use blend function
-
-//8-16: rendering pipeline flags
-var RI_CAST_SHADOWS = 		1 << 8;	//render in shadowmaps
-var RI_RECEIVE_SHADOWS =	1 << 9;	//receive shadowmaps
-var RI_IGNORE_LIGHTS = 		1 << 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 << 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
-//var RI_RENDER_2D = 			1 << 12;//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_VIEWPROJECTION = 1 << 13; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 << 14; //ignore the plane clipping (in reflections)
-
-//16-24: instance properties
-var RI_RAYCAST_ENABLED = 1 << 16; //if it could be raycasted
-var RI_IGNORE_AUTOUPDATE = 1 << 17; //if it could update matrix from scene
-
-
-//default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
-//var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
-
 function RenderInstance( node, component )
 {
 	this._key = ""; //not used yet
@@ -60,11 +33,6 @@ function RenderInstance( node, component )
 	this.component = component;
 	this.priority = 10; //only used if the RenderQueue is in PRIORITY MODE, instances are rendered from higher to lower priority
 
-	//rendering flags
-	this.flags = RI_DEFAULT_FLAGS;
-	//this will have to go...
-	this.blend_func = LS.BlendFunctions["normal"]; //Blend.funcs["add"], ...
-
 	//transformation
 	this.matrix = mat4.create();
 	this.normal_matrix = mat4.create();
@@ -76,6 +44,7 @@ function RenderInstance( node, component )
 
 	//info about the material
 	this.material = null;
+	this.use_bounding = true;
 
 	//for extra data for the shader
 	this.query = new LS.ShaderQuery();
@@ -87,10 +56,9 @@ function RenderInstance( node, component )
 	//TO DO: instancing
 	//this.uniforms_instancing = {};
 
-	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
-	this._is_visible = false; //used during the rendering
-
 	//for internal use
+	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering (using bit operations)
+	this._is_visible = false; //used during the rendering to mark if it was seen
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
 }
@@ -179,10 +147,10 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 	if(mesh.bounding)
 	{
 		this.oobb.set( mesh.bounding ); //copy
-		this.flags &= ~RI_IGNORE_FRUSTUM; //test against frustum
+		this.use_bounding = true;
 	}
 	else
-		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
+		this.use_bounding = false;
 }
 
 //assigns a secondary mesh in case the object is too small on the screen
@@ -233,38 +201,6 @@ RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
 	this.range[1] = offset;
-}
-
-/**
-* takes the flags on the node and update the render instance flags
-*
-* @method applyNodeFlags
-*/
-RenderInstance.prototype.applyNodeFlags = function()
-{
-	var node_flags = this.node.flags;
-	this.layers = this.node.layers;
-
-	if(node_flags.two_sided == true) this.flags &= ~RI_CULL_FACE;
-	else this.flags |= RI_CULL_FACE;
-
-	if(node_flags.flip_normals == true) this.flags |= RI_CW;
-	else this.flags &= ~RI_CW;
-
-	if(node_flags.depth_test == false) this.flags &= ~RI_DEPTH_TEST;
-	else this.flags |= RI_DEPTH_TEST;
-
-	if(node_flags.depth_write == false) this.flags &= ~RI_DEPTH_WRITE;
-	else this.flags |= RI_DEPTH_WRITE;
-
-	//if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
-	//else this.flags &= ~RI_ALPHA_TEST;
-
-	if(node_flags.cast_shadows == false) this.flags &= ~RI_CAST_SHADOWS;
-	else this.flags |= RI_CAST_SHADOWS;
-
-	if(node_flags.receive_shadows == false) this.flags &= ~RI_RECEIVE_SHADOWS;	
-	else this.flags |= RI_RECEIVE_SHADOWS;	
 }
 
 /**
@@ -349,6 +285,7 @@ RenderInstance.prototype.render = function(shader)
 	  this.primitive, this.range[0], this.range[1] );
 }
 
+//checks the shader blocks attached to this instance and resolves the flags
 RenderInstance.prototype.computeShaderBlockFlags = function()
 {
 	var r = 0;
@@ -397,10 +334,10 @@ RenderInstance.prototype.renderInstancing = function( shader )
 }
 */
 
-RenderInstance.prototype.overlapsSphere = function(center, radius)
+RenderInstance.prototype.overlapsSphere = function( center, radius )
 {
 	//we dont know if the bbox of the instance is valid
-	if(this.flags & RI_IGNORE_FRUSTUM)
+	if( !this.use_bounding )
 		return true;
 	return geo.testSphereBBox( center, radius, this.aabb );
 }
@@ -418,15 +355,5 @@ RenderInstance.prototype.wasVisibleByCamera = function( camera )
 		return this._camera_visibility != 0;
 	return (this._camera_visibility | (1<<(camera._rendering_index))) ? true : false;
 }
-
-
-/* moved to PhysicsInstance
-RenderInstance.prototype.setCollisionMesh = function(mesh)
-{
-	this.flags |= RI_USE_MESH_AS_COLLIDER;
-	this.collision_mesh = mesh;
-}
-*/
-
 
 LS.RenderInstance = RenderInstance;

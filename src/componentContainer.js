@@ -93,7 +93,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 			obj.editor = comp._editor;
 
 		//enforce uid storage
-		if(comp.hasOwnProperty("uid") && !obj.uid)
+		if(comp.hasOwnProperty("_uid") && !obj.uid)
 			obj.uid = comp.uid;
 
 		o.components.push([LS.getObjectClassName(comp), obj]);

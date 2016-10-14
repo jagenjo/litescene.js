@@ -670,7 +670,7 @@ Light.prototype.getQuery = function(instance, render_settings)
 	else
 		delete query.macros["USE_SPECULAR_LIGHT"];
 
-	if(use_shadows && instance.flags & RI_RECEIVE_SHADOWS)
+	if(use_shadows && instance.material.flags.receive_shadows )
 	{
 		query.macros.USE_SHADOW_MAP = "";
 		if(this._shadowmap && this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
@@ -878,4 +878,167 @@ LS.Light = Light;
 	Light Modifier (Cookies, Cell shading)
 	Light Attenuation (Linear, Exponential)
 	Light Shadowing (Hard, Soft)
+*/
+
+/*
+Light._enabled_shader_code = "\n\
+	uniform vec3 u_light_position;\n\
+	uniform vec4 u_light_params; //type, \n\
+	uniform vec3 u_light_front;\n\
+	uniform vec3 u_light_color;\n\
+	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
+	uniform vec2 u_light_att; //start,end \n\
+	\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)
+	{
+		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)
+		vec3 E = (u_camera_eye - v_pos);
+		float cam_dist = length(E);
+
+		#ifdef USE_ORTHOGRAPHIC_CAMERA
+			E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes
+		#else
+			E /= cam_dist;
+		#endif
+
+		vec3 L = (u_light_position - v_pos);
+		float light_distance = length(L);
+		L /= light_distance;
+
+		#ifdef USE_DIRECTIONAL_LIGHT
+			L = -u_light_front;
+		#endif
+
+		vec3 R = reflect(E,N);
+
+		float NdotL = 1.0;
+		#ifdef USE_DIFFUSE_LIGHT
+			NdotL = dot(N,L);
+		#endif
+		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);
+		LIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );
+
+		LIGHT.Attenuation = 1.0;
+		#ifdef USE_LINEAR_ATTENUATION
+			LIGHT.Attenuation = 100.0 / light_distance;
+		#endif
+
+		#ifdef USE_RANGE_ATTENUATION
+			#ifndef USE_DIRECTIONAL_LIGHT
+				if(light_distance >= u_light_att.y)
+					LIGHT.Attenuation = 0.0;
+				else if(light_distance >= u_light_att.x)
+					LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);
+			#endif
+		#endif
+
+		#ifdef USE_LIGHT_TEXTURE
+			vec2 light_sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5);
+			LIGHT.Color *= texture2D(light_texture,light_sample).xyz;
+
+			#ifndef USE_SPOT_CONE
+				if (light_sample.x < 0.001 || light_sample.y < 0.001 || light_sample.x > 0.999 || light_sample.y > 0.999)
+					LIGHT.Attenuation = 0.0;
+			#endif
+		#endif
+
+		#ifdef USE_LIGHT_CUBEMAP
+			LIGHT.Color *= textureCube( light_cubemap, -L ).xyz;
+		#endif
+
+		#ifdef USE_SPOT_LIGHT
+			#ifdef USE_SPOT_CONE
+				LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );
+			#endif
+		#endif
+
+		#ifndef USE_AMBIENT_ONLY
+			#ifdef USE_LIGHT_OFFSET
+				NdotL += u_light_offset;
+			#endif
+
+			#ifdef USE_BACKLIGHT
+				//if(NdotL > 0.0 != gl_FrontFacing)	NdotL *= u_backlight_factor;
+				if(NdotL < 0.0 && gl_FrontFacing)	NdotL *= u_backlight_factor;
+			#else
+				//if(NdotL > 0.0 != gl_FrontFacing) NdotL = 0.0;
+				//NdotL = max(0.0, NdotL * (gl_FrontFacing ? 1.0 : 0.0 ));
+				NdotL = max(0.0, NdotL);
+			#endif
+
+			LIGHT.Diffuse = abs(NdotL);
+		#endif
+
+		//REFLECTION (ENVIRONMENT)
+		LIGHT.Reflection = u_background_color.xyz;
+		float reflection_gloss = 0.0; //expressed in mipmap offset
+
+		#ifdef LAST_PASS
+		if(o.Reflectivity > 0.0)
+		{
+			#ifdef USE_SPECULAR_IN_REFLECTION
+				reflection_gloss = max(0.0, (20.0 - o.Gloss) / 4.0);
+			#endif
+
+			//compute reflection color from environment
+			#if defined(USE_ENVIRONMENT_TEXTURE) || defined(USE_ENVIRONMENT_CUBEMAP)
+
+				#ifdef USE_ENVIRONMENT_TEXTURE
+					vec2 uvs_0 = v_uvs; vec2 uvs_1 = v_uvs; vec2 uvs_transformed = v_uvs;
+					vec2 uvs_polar_reflected = polarToCartesian(-R);
+					vec2 uvs_screen = (v_screenpos.xy / v_screenpos.w) * 0.5 + 0.5;
+					vec2 screen_centered = uvs_screen;
+					vec2 uvs_flipped_screen = vec2(1.0 - uvs_screen.x, uvs_screen.y);
+					vec2 env_uv = USE_ENVIRONMENT_TEXTURE;
+					LIGHT.Reflection = texture2D( environment_texture, env_uv, reflection_gloss ).xyz;
+
+					//LIGHT.Reflection = texture2D( environment_texture, uvs_polar_reflected ).xyz;
+				#else //USE_ENVIRONMENT_CUBEMAP
+					LIGHT.Reflection = textureCube( environment_cubemap, -R, 0.0).xyz;
+				#endif
+
+			#endif //environment
+		}
+		#endif //lastpass
+
+		#ifdef USE_IGNORE_LIGHTS
+			LIGHT.Color = vec3(1.0);
+			LIGHT.Ambient = vec3(0.0);
+			LIGHT.Diffuse = 1.0;
+			LIGHT.Specular = 0.0;
+		#endif
+
+		#ifdef USE_EXTRA_LIGHT_SHADER_CODE
+			USE_EXTRA_LIGHT_SHADER_CODE
+		#endif
+
+		//FINAL LIGHT FORMULA ************************* 
+
+		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;
+
+		vec3 final_color = o.Albedo * total_light;
+
+		#ifdef FIRST_PASS
+			final_color += o.Emission;
+		#endif
+
+		#ifndef USE_SPECULAR_ONTOP
+			final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);
+		#endif
+
+		//apply reflection
+		#ifdef LAST_PASS
+			if(o.Reflectivity > 0.0)
+				final_color = mix( final_color, LIGHT.Reflection, max(0.0,o.Reflectivity) );
+		#endif
+		return max( final_color, vec3(0.0) );
+	}
+";
+
+
+var light_block = new LS.ShaderBlock("light");
+light_block.addCode( GL.VERTEX_SHADER, Light._enabled_shader_code, Light._disabled_shader_code );
+light_block.register();
+Light.shader_block = light_block;
+
 */

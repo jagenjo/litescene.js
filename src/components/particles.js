@@ -511,7 +511,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 			else
 				color[3] = a;
 
-			if(a < 0.001) continue;
+			if(a < 0.001)
+				continue;
 		}
 
 		var s = p.size * size_curve[(f*size_curve.length)<<0]; //getCurveValueAt(this.particle_size_curve,0,1,0,f);
@@ -654,9 +655,6 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-
-	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
-	RI.applyNodeFlags();
 
 	RI.setMaterial( material );
 

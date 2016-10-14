@@ -151,16 +151,24 @@ var Picking = {
 		gl.clearColor(0,0,0,0);
 		gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-		//gl.viewport(x-20,y-20,40,40);
 		this._picking_next_color_id = 0;
 		LS.Renderer.setRenderPass("picking");
 		picking_render_settings.layers = layers;
 
 		//check instances colliding with cursor using a ray against AABBs
-		//TODO
+		var instances = null;
+		if(1) //not tested yet
+		{
+			instances = [];
+			var ray = camera.getRayInPixel( mouse_pos[0], mouse_pos[1] );
+			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
+			instances.length = instances_collisions.length;
+			for(var i = 0; i < instances_collisions.length; ++i)
+				instances[i] = instances_collisions[i].instance;
+			//console.log("Instances ray collided:", instances_collisions.length);
+		}
 
-		LS.Renderer.renderInstances( picking_render_settings )//, cursor_instances );
-		//gl.scissor(0,0,gl.canvas.width,gl.canvas.height);
+		LS.Renderer.renderInstances( picking_render_settings, instances );
 
 		LEvent.trigger( scene, "renderPicking", mouse_pos );
 		LEvent.trigger( LS.Renderer, "renderPicking", mouse_pos );
@@ -170,3 +178,8 @@ var Picking = {
 };
 
 LS.Picking = Picking;
+
+
+//helper
+//to visualize picking buffer
+//LS.Renderer.registerRenderPass( "color", { id: 1, render_instance: LS.Renderer.renderPickingPassInstance } );

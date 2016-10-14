@@ -371,10 +371,11 @@ var LS = {
 			}
 			else if ( v.constructor === Array ) //clone regular array (container and content!)
 			{
+				//not safe to use concat or slice(0) because it doesnt clone content, only container
 				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
 					o[i].set(v);
 				else
-					o[i] = JSON.parse( JSON.stringify(v) ); //not safe to use concat or slice(0) because it doesnt clone content, only container
+					o[i] = LS.cloneObject( v ); 
 			}
 			else //Object: 
 			{
@@ -423,6 +424,10 @@ var LS = {
 	{
 		if(root.uid)
 			delete root.uid;
+
+		//remove for embeded materials
+		if(root.material && root.material.uid)
+			delete root.material.uid;
 
 		var components = root.components;
 		if(!components && root.getComponents)
@@ -782,7 +787,7 @@ var LSQ = {
 			}
 		}
 
-		scene.refresh();
+		scene.requestFrame();
 	},
 
 	/**

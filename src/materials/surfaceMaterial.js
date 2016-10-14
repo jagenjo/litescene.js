@@ -5,8 +5,19 @@ function SurfaceMaterial( o )
 	this.shader_name = "surface";
 
 	this.blend_mode = LS.Blend.NORMAL;
-	this.alpha_test = false;
-	this.alpha_test_shadows = false;
+
+	this.flags = {
+		alpha_test: false,
+		alpha_test_shadows: false,
+		two_sided: false,
+		flip_normals: false,
+		depth_test: true,
+		depth_write: true,
+		ignore_lights: false,
+		cast_shadows: true,
+		receive_shadows: true,
+		ignore_frustum: false
+	};
 
 	this.vs_code = "";
 	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
@@ -25,10 +36,11 @@ function SurfaceMaterial( o )
 	if(o) 
 		this.configure(o);
 
-	this.flags = 0;
-
 	this.computeCode();
 }
+
+SurfaceMaterial.prototype.applyFlagsToRenderState = StandardMaterial.prototype.applyFlagsToRenderState;
+SurfaceMaterial.prototype.prepare = StandardMaterial.prototype.prepare;
 
 SurfaceMaterial.icon = "mini-icon-material.png";
 SurfaceMaterial.coding_help = "\
@@ -143,7 +155,8 @@ SurfaceMaterial.prototype.fillShaderQuery = function(scene)
 
 SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var samplers = [];
+	var samplers = this._samplers;
+	samplers.length = 0;
 
 	var last_texture_slot = 0;
 	for(var i = 0, l = this.properties.length; i < l; ++i )
@@ -152,12 +165,14 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
 		{
 			if(!prop.value)
-				continue;
-
-			var tex_name = prop.type == "sampler" ? prop.value.texture : prop.value;
-			var texture = LS.getTexture( tex_name );
-			if(!texture)
-				texture = ":missing";
+				texture = ":black";
+			else
+			{
+				var tex_name = prop.type == "sampler" ? prop.value.texture : prop.value;
+				var texture = LS.getTexture( tex_name );
+				if(!texture)
+					texture = ":missing";
+			}
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;
@@ -177,12 +192,12 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
 	}
 	*/
-
-	this._samplers = samplers;
 }
 
 SurfaceMaterial.prototype.configure = function(o) { 
-	LS.cloneObject(o, this);
+	if(o.flags !== undefined && o.flags.constructor === Number)
+		delete o["flags"]; //LEGACY
+	LS.cloneObject( o, this );
 	this.computeCode();
 }
 
@@ -409,18 +424,6 @@ SurfaceMaterial.prototype.getResources = function (res)
 
 	return res;
 }
-
-SurfaceMaterial.prototype.applyToRenderInstance = function(ri)
-{
-	if( this.blend_mode != LS.Blend.NORMAL )
-		ri.flags |= RI_BLEND;
-
-	if( this.blend_mode == LS.Blend.CUSTOM && this.blend_func )
-		ri.blend_func = this.blend_func;
-	else
-		ri.blend_func = LS.BlendFunctions[ this.blend_mode ];
-}
-
 
 LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;

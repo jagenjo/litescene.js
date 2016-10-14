@@ -739,7 +739,7 @@ var ResourcesManager = {
 	*/
 	processFinalResource: function( fullpath, resource, options, on_complete, was_loaded )
 	{
-		if(!resource)
+		if(!resource || resource.constructor === String)
 			return LS.ResourcesManager._resourceLoadedError( fullpath, "error processing the resource" );
 
 		//EXTEND add properties as basic resource ********************************
@@ -820,7 +820,7 @@ var ResourcesManager = {
 		if(!resource.is_preview)
 			LEvent.trigger(this,"resource_registered", resource);
 
-		LS.GlobalScene.refresh(); //render scene
+		LS.GlobalScene.requestFrame(); //render scene
 	},	
 
 	/**
@@ -851,7 +851,7 @@ var ResourcesManager = {
 			resource.setResourcesLink(null);
 
 		LEvent.trigger(this,"resource_unregistered", resource);
-		LS.GlobalScene.refresh(); //render scene
+		LS.GlobalScene.requestFrame(); //render scene
 		return true;
 	},
 
@@ -1090,6 +1090,9 @@ var ResourcesManager = {
 				LS.ResourcesManager._total_resources_to_load = 0;
 			}
 		}
+
+		//request frame
+		LS.GlobalScene.requestFrame(); 
 	},
 
 	_resourceLoadedError: function( url, error )
@@ -1146,7 +1149,10 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 				resource = new ctor( data );
 		}
 		else
-			console.warn( "JSON object_type class not found: " + data.object_type );
+		{
+			console.error( "JSON object_type class not found: " + data.object_type );
+			return null;
+		}
 	}
 	else
 	{
@@ -1455,7 +1461,8 @@ LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename
 	//store
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
-	material.prepareMaterial( LS.GlobalScene );
+	if(material.prepare)
+		material.prepare( LS.GlobalScene );
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pack ) {

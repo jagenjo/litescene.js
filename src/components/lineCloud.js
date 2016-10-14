@@ -214,9 +214,6 @@ LineCloud.prototype.onCollectInstances = function(e, instances, options)
 	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
-	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
-	RI.applyNodeFlags();
-
 	RI.setMaterial( material );
 	RI.setMesh( this._mesh, gl.LINES );
 	var primitives = this._lines.length * 2;

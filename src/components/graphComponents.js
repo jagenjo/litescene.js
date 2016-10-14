@@ -109,6 +109,7 @@ GraphComponent.prototype.onAddedToScene = function( scene )
 	this._graph._scene = scene;
 	LEvent.bind( scene , "init", this.onSceneEvent, this );
 	LEvent.bind( scene , "start", this.onSceneEvent, this );
+	LEvent.bind( scene , "finish", this.onSceneEvent, this );
 	LEvent.bind( scene , "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.bind( scene , "update", this.onSceneEvent, this );
 }
@@ -118,6 +119,7 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 	this._graph._scene = null;
 	LEvent.unbind( scene, "init", this.onSceneEvent, this );
 	LEvent.unbind( scene, "start", this.onSceneEvent, this );
+	LEvent.unbind( scene, "finish", this.onSceneEvent, this );
 	LEvent.unbind( scene, "beforeRenderMainPass", this.onSceneEvent, this );
 	LEvent.unbind( scene, "update", this.onSceneEvent, this );
 }
@@ -135,7 +137,15 @@ GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
 	if(event_type == "init")
 		this._graph.sendEventToAllNodes("onInit");
 	if(event_type == "start")
+	{
 		this._graph.sendEventToAllNodes("onStart");
+		this._graph.status = LGraph.STATUS_RUNNING;
+	}
+	if(event_type == "finish")
+	{
+		this._graph.sendEventToAllNodes("onStop");
+		this._graph.status = LGraph.STATUS_STOPPED;
+	}
 
 	if(this.on_event == event_type)
 		this.runGraph();
@@ -154,7 +164,7 @@ GraphComponent.prototype.runGraph = function()
 	if(this._graph)
 		this._graph.runStep(1);
 	if(this.force_redraw)
-		this._root.scene.refresh();
+		this._root.scene.requestFrame();
 }
 
 GraphComponent.prototype.getGraph = function()

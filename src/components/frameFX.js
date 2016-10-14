@@ -35,6 +35,7 @@ FrameFX.prototype.serialize = function()
 {
 	return { 
 		enabled: this.enabled,
+		uid: this.uid,
 		frame: this.frame.serialize(),
 		shader_material: this.shader_material,
 		use_antialiasing: this.use_antialiasing,
@@ -45,8 +46,7 @@ FrameFX.prototype.serialize = function()
 
 FrameFX.prototype.getResources = function(res)
 {
-	//TODO
-	return res;
+	return this.fx.getResources(res);
 }
 
 FrameFX.prototype.addFX = function( name )

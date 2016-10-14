@@ -35,12 +35,7 @@ function MeshRenderer(o)
 	* @default -1;
 	*/
 	this._primitive = -1;
-	/**
-	* If faces are two sided
-	* @property two_sided {boolean}
-	* @default -1;
-	*/
-	this.two_sided = false;
+
 	/**
 	* When rendering points the point size, if positive is in world space, if negative is in screen space
 	* @property point_size {number}
@@ -135,7 +130,6 @@ MeshRenderer.prototype.configure = function(o)
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided;
 	this.material = o.material;
 	this.use_submaterials = !!o.use_submaterials;
 	if(o.submaterials)
@@ -167,8 +161,6 @@ MeshRenderer.prototype.serialize = function()
 		o.primitive = this.primitive;
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
-	if(this.two_sided)
-		o.two_sided = this.two_sided;
 	if(this.use_submaterials)
 		o.use_submaterials = this.use_submaterials;
 	o.submaterials = this.submaterials;
@@ -266,13 +258,6 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 
-	//flags
-	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
-	RI.applyNodeFlags();
-
-	if(this.two_sided)
-		RI.flags &= ~RI_CULL_FACE;
-
 	//material (after flags because it modifies the flags)
 	var material = null;
 	if(this.material)
@@ -369,10 +354,6 @@ MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
 		RI.center.set(center);
 
 		//flags
-		RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
-		RI.applyNodeFlags();
-		if(this.two_sided)
-			RI.flags &= ~RI_CULL_FACE;
 		RI.setMaterial( material );
 		RI.setMesh( mesh, this.primitive );
 		RI.setRange( group.start, group.length );

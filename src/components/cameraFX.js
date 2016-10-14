@@ -51,8 +51,7 @@ CameraFX.prototype.serialize = function()
 
 CameraFX.prototype.getResources = function(res)
 {
-	//TODO: get res from FX
-	return res;
+	return this.fx.getResources(res);
 }
 
 CameraFX.prototype.addFX = function( name )

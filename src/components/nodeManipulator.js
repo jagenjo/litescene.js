@@ -51,7 +51,7 @@ NodeManipulator.prototype.onMouse = function(e, mouse_event)
 	var right = camera.getLocalVector( LS.Components.Transform.RIGHT );
 	this._root.transform.rotateGlobal( mouse_event.deltax * this.rot_speed[0], LS.Components.Transform.UP );
 	this._root.transform.rotateGlobal( mouse_event.deltay * this.rot_speed[1], right );
-	scene.refresh();
+	scene.requestFrame();
 
 	//this._root.transform.rotate(mouse_event.deltax * this.rot_speed[0], [0,1,0] );
 	//this._root.transform.rotateLocal(-mouse_event.deltay * this.rot_speed[1], [1,0,0] );

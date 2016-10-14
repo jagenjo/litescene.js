@@ -12,7 +12,7 @@ function ShaderMaterial( o )
 
 	this._shader = null;
 	this._shader_version = -1;
-	this.flags = 0;
+	this._shader_flags = 0; //?
 
 	this._uniforms = {};
 	this._samplers = [];
@@ -69,8 +69,16 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 
 	var prop = { name: name, uniform: uniform, value: value, type: type, is_texture: 0 };
 
-	if(type.toLowerCase() == "texture" || type == "sampler2D" || type == "samplerCube")
+	if(type.toLowerCase() == "texture" || type == "sampler2D" || type == "samplerCube" || type == "sampler")
 		prop.is_texture = (type == "samplerCube") ? 2 : 1;
+
+	if(prop.is_texture)
+	{
+		prop.sampler = {};
+		prop.type = "sampler";
+		prop.sampler_slot = this._samplers.length;
+		this._samplers.push( prop.sampler );
+	}
 
 	if(options)
 		for(var i in options)
@@ -80,6 +88,39 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 	this._properties_by_name[ name ] = prop;
 }
 
+ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options  )
+{
+	if(!name || !uniform)
+		throw("parameter missing in createSampler");
+
+	var sampler = {};
+
+	var prop = { name: name, uniform: uniform, value: sampler, type: "sampler", is_texture: 1, sampler_slot: -1 };
+
+	if(sampler_options)
+	{
+		if(sampler_options.filter)
+		{
+			sampler.magFilter = sampler_options.filter;
+			sampler.minFilter = sampler_options.filter;
+			delete sampler_options.filter;
+		}
+
+		if(sampler_options.wrap)
+		{
+			sampler.wrapS = sampler_options.wrap;
+			sampler.wrapT = sampler_options.wrap;
+			delete sampler_options.wrap;
+		}
+
+		for(var i in sampler_options)
+			sampler[i] = sampler_options[i];
+	}
+	prop.sampler_slot = this._samplers.length;
+	this._properties.push( prop );
+	this._properties_by_name[ name ] = prop;
+	this._samplers.push( prop.value );
+}
 
 ShaderMaterial.prototype.setProperty = function(name, value)
 {
@@ -90,7 +131,19 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 	if(name == "shader")
 		this.shader = value;
 	else if(name == "properties")
-		this.properties = value;
+	{
+		this.properties.length = 0;
+		this._properties_by_name = {};
+		for(var i = 0; i < value.length; ++i)
+		{
+			var prop = value[i];
+			if(prop.is_texture && prop.value && prop.value.constructor === String)
+				prop.value = { texture: prop.value };
+			this.properties[i] = prop;
+			this._properties_by_name[ prop.name ] = prop;
+			this._samplers.push( prop.value );
+		}
+	}
 	else if( this._properties_by_name[ name ] )
 	{
 		var p = this._properties_by_name[ name ];
@@ -108,8 +161,9 @@ ShaderMaterial.prototype.processShaderCode = function()
 {
 	if(!this._shader)
 	{
-		this._properties = [];
+		this._properties.length = 0;
 		this._properties_by_name = {};
+		this._samplers.length = 0;
 		return false;
 	}
 
@@ -119,8 +173,9 @@ ShaderMaterial.prototype.processShaderCode = function()
 		return false;
 
 	var old_properties = this._properties_by_name;
-	this._properties = [];
+	this._properties.length = 0;
 	this._properties_by_name = {};
+	this._samplers.length = 0;
 
 	//reset material properties
 	this._queue = LS.RenderQueue.GEOMETRY;
@@ -221,8 +276,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	if(!this.shader)
 		return false;
 
-	//compute flags
-	var block_flags = instance.computeShaderBlockFlags();
+	var lights = null;
+	if(this._light_mode !== Material.NO_LIGHTS)
+		lights = LS.Renderer.getNearLights( instance );
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
@@ -232,6 +288,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
+
+	//compute flags
+	var block_flags = instance.computeShaderBlockFlags();
 
 	//extract shader compiled
 	var shader = shader_code.getShader( null, block_flags );
@@ -244,8 +303,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 
 	//compute matrices
 	var model = instance.matrix;
-	if(instance.flags & RI_IGNORE_VIEWPROJECTION)
-		renderer._viewprojection_matrix.set( model ); //warning?
 
 	//node matrix info
 	var instance_final_query = instance._final_query;
@@ -258,18 +315,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 
 	//global stuff
 	this.render_state.enable();
-	/*
-	//renderer.enableInstanceFlags( instance, render_settings );
-	//set blend flags
-	if(this.blend_mode !== Blend.NORMAL)
-	{
-		gl.enable( gl.BLEND );
-		if(instance.blend_func)
-			gl.blendFunc( instance.blend_func[0], instance.blend_func[1] );
-	}
-	else
-		gl.disable( gl.BLEND );
-	*/
 
 	this.fillUniforms();
 
@@ -332,7 +377,17 @@ ShaderMaterial.prototype.getResources = function ( res )
 	{
 		var p = this._properties[i];
 		if(p.value && p.is_texture)
-			res[ p.value ] = GL.Texture;
+		{
+			if(!p.value)
+				continue;
+			var name = null;
+			if(p.value.texture)
+				name = 	p.value.texture;
+			else
+				name = res[ p.value ];
+			if(name && name.constructor === String)
+				res[name] = GL.Texture;
+		}
 	}
 	return res;
 }
@@ -378,6 +433,8 @@ ShaderMaterial.prototype.getShaderCode = function()
 
 /**
 * Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture
+* The ShaderCode must contain a "fx" method.
+* Similar to the method BlitTexture in Unity
 * @method applyToTexture
 * @param {Texture} input_texture
 * @param {Texture} output_texture [optional] where to store the result, if omitted it will be shown in the viewport
@@ -420,3 +477,7 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 
 LS.registerMaterialClass( ShaderMaterial );
 LS.ShaderMaterial = ShaderMaterial;
+
+
+//Register ShaderBlocks
+//TODO?

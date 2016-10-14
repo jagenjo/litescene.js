@@ -97,25 +97,36 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	}
 	else
 	{
-		var texture = null;
+		var texture_name = null;
 		if (this.use_environment)
-			texture = LS.Renderer._current_scene.info.textures["environment"];
+			texture_name = LS.Renderer._current_scene.info.textures["environment"];
 		else
-			texture = this.texture;
+			texture_name = this.texture;
 
-		if(!texture)
+		if(!texture_name)
 			return;
 
-		if(texture.constructor === String)
-			texture = LS.ResourcesManager.textures[texture];
-
+		var texture = LS.ResourcesManager.textures[ texture_name ];
 		if(!texture)
 			return;
 
 		mat = this._material;
 		if(!mat)
-			mat = this._material = new LS.Material({ queue: LS.RenderQueue.BACKGROUND, use_scene_ambient:false, queue: LS.RenderQueue.BACKGROUND, color: [ this.intensity, this.intensity, this.intensity ] });
-		var sampler = mat.setTexture( LS.Material.COLOR, texture );
+			mat = this._material = new LS.StandardMaterial({ 
+				queue: LS.RenderQueue.BACKGROUND, 
+				flags: { 
+					two_sided: true, 
+					cast_shadows: false, 
+					receive_shadows: false,
+					ignore_frustum: true,
+					ignore_lights: true,
+					depth_test: false 
+					},
+				use_scene_ambient:false,
+				queue: LS.RenderQueue.BACKGROUND,
+				color: [ this.intensity, this.intensity, this.intensity ]
+			});
+		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
 
 		if(texture && texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -128,13 +139,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 			sampler.uvs = "0";
 	}
 
-	RI.setMesh(mesh);
-
-	RI.flags = RI_DEFAULT_FLAGS;
-	RI.applyNodeFlags();
-	RI.enableFlag( RI_CW | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM | RI_IGNORE_CLIPPING_PLANE); 
-	RI.disableFlag( RI_CAST_SHADOWS | RI_DEPTH_WRITE | RI_DEPTH_TEST ); 
-
+	RI.setMesh( mesh );
 	RI.setMaterial( mat );
 
 	instances.push(RI);

@@ -278,8 +278,6 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
-	RI.flags = RI_DEFAULT_FLAGS | RI_IGNORE_FRUSTUM;
-	RI.applyNodeFlags();
 	RI.uniforms.u_point_size = this.size;
 	//RI.query.macros["USE_POINTS"] = "";
 

@@ -152,7 +152,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 
 	var scene = this._root.scene;
 	if(scene)
-		scene.refresh();
+		scene.requestFrame();
 }
 
 

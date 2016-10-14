@@ -373,10 +373,10 @@ var Physics = {
 		{
 			var instance = instances[i];
 
-			if(!(instance.flags & RI_RAYCAST_ENABLED) || (layers & instance.layers) === 0 )
+			if((layers & instance.layers) === 0 ) //|| !(instance.flags & RI_RAYCAST_ENABLED) 
 				continue;
 
-			if(instance.flags & RI_BLEND && ignore_transparent)
+			if(instance.material && instance.material.render_state.blend && ignore_transparent)
 				continue; //avoid semitransparent
 
 			//test against AABB
@@ -397,19 +397,15 @@ var Physics = {
 				continue;
 
 			//check which mesh to use
-			var collision_mesh = instance.collision_mesh;
 			var collision_normal = null;
 			
-			if(triangle_collision)
-				collision_mesh = instance.lod_mesh || instance.mesh;
-
 			//test against mesh
-			if( collision_mesh )
+			if( triangle_collision )
 			{
-				var mesh = collision_mesh;
-				var octree = mesh.octree;
+				var collision_mesh = instance.lod_mesh || instance.mesh;
+				var octree = collision_mesh.octree;
 				if(!octree)
-					octree = mesh.octree = new GL.Octree( mesh );
+					octree = collision_mesh.octree = new GL.Octree( collision_mesh );
 				hit = octree.testRay( local_origin, local_direction, 0.0, max_distance );
 				if(!hit)
 					continue;

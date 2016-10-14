@@ -755,10 +755,14 @@ LS.ShaderQuery = ShaderQuery;
 
 
 
-//work in progress
-
+// WIP
+// A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
+// SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
+// it will be inserted in the material
 function ShaderBlock( name )
 {
+	this.dependency_blocks = [];
+
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
@@ -769,6 +773,8 @@ function ShaderBlock( name )
 
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
 {
+	this.checkDependencies( enabled_code );
+	this.checkDependencies( disabled_code );
 	this.code_map.set( shader_type, { enabled: enabled_code || "", disabled: disabled_code || ""} );
 }
 
@@ -786,5 +792,12 @@ ShaderBlock.prototype.register = function()
 	LS.ShadersManager.registerShaderBlock(this.name, this);
 }
 
+ShaderBlock.prototype.checkDependencies = function( code )
+{
+//TODO
+}
+
 
 LS.ShaderBlock = ShaderBlock;
+
+
