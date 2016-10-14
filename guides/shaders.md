@@ -15,8 +15,8 @@ The subfile should be called ```\js```
 ```js
 \js
   
-this.createUniform("Texture","matcap_texture","texture" );
 this.createUniform("Scale","u_tex_scale","number",1);
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
 this.render_state.depth_test = false;
 ```
 
@@ -58,8 +58,8 @@ If you want to use an special rendering pass consider changing those, here is a 
 
 \js
   
-this.createUniform("Texture","matcap_texture","texture" );
 this.createUniform("Scale","u_tex_scale","number",1);
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
 this.render_state.cull_face = false;
 
 \default.vs
@@ -114,7 +114,7 @@ uniform vec3 u_background_color;
 uniform vec3 u_ambient_light;
 
 uniform mat4 u_view;
-uniform sampler2D matcap_texture;
+uniform sampler2D u_texture;
 uniform float u_tex_scale;
 uniform vec3 u_camera_eye;
 
@@ -130,7 +130,7 @@ void main() {
   
   vec2 coord = view_normal.xy;
 
-  vec3 matcap_color = texture2D( matcap_texture, coord * 0.48 * u_tex_scale + vec2(0.5) ).xyz;
+  vec3 matcap_color = texture2D( u_texture, coord * 0.48 * u_tex_scale + vec2(0.5) ).xyz;
   
 	gl_FragColor = vec4( matcap_color * u_material_color.xyz, 1.0);
 
