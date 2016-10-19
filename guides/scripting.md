@@ -65,6 +65,12 @@ this.bind( scene, "update", myfunction );
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
 
+### Input ###
+
+You can bind events for actions performed by the user (like mousedown, keydown, etc) or read the input system directly (using the LS.Input object).
+
+Check the [Input guide](input.md) to see more information abour reading the input.
+
 ### API exported methods ###
 
 However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
