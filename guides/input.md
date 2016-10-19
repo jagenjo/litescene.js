@@ -1,8 +1,19 @@
 # Input #
 
-LiteScene lets you add controllers to the nodes to handle user interaction, but sometimes you want to access the user raw input like the mouse coordinates or the gamepad axis.
+When using the Script component we can read the input using the auto-event handlers like ```onMouseDown```, ```onMouseMove```, ```onMouseUp```, ```onKeyDown```, ```onKeyUp```, ```onButtonDown```, ```onButtonUp```.
 
-Keep in mind that you can capture the events yourselve or use methods like onMouseDown or onKeyDown from the 
+```javascript
+
+this.onKeyDown = function(e)
+{
+	if(e.keyCode == 39)
+		console.log("Right");
+}
+```
+
+Or if the component is made by ours we can bind the events for "mousedown","mousemove","mouseup","keyup","keydown", etc.
+
+But sometimes you want to read the user raw input like the mouse coordinates, keyboard keys pressed or the gamepad axis.
 
 In these situations you can use the ```LS.Input``` class to see the input state of:
 - ```LS.Input.Mouse``` to read the mouse state
