@@ -30,12 +30,12 @@ All this steps are necesary because different types of resources require differe
 Adding new file formats requires several steps:
 
 - Creating an object with all the info for the file format like:
-  * extension: a String with the filename extension that is associated with this format
-  * type: which type of resource
-  * resource: the classname to instantiate for this resource
-  * format: it is "text" or "binary"
-  * dataType: which dataType to request when requesting to server
-  * parse: the callback in charge of converting the data in something suitable by the system.
+  * **extension**: a String with the filename extension that is associated with this format
+  * **type**: which type of resource
+  * **resource**: the classname to instantiate for this resource
+  * **format**: it is "text" or "binary"
+  * **dataType**: which dataType to request when requesting to server
+  * **parse**: the callback in charge of converting the data in something suitable by the system.
 - Registering it to LS.Formats with ```LS.Formats.registerParser( MyParser );```
 - If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor( extension, callback )```
 - If you want a postprocessor you need to call to ```LS.ResourcesManager.registerResourcePostProcessor( resource_classname, callback```
