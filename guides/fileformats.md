@@ -4,12 +4,14 @@ LiteScene supports several file formats to store Meshes, Textures and Data from 
 
 But the idea of LiteScene is to make it easy to add support to new file formats just by adding the file format parser to the system.
 
+There are some classes in the system in charge of loading and parsing, they are ```LS.ResourcesManager``` (to load, process, and store files), and ```LS.Formats``` (to store information about how to parse a file).
+
 To understand better the file parsing we need to see the steps taken by the LS.ResourcesManager to load a file.
 
 ## How the resources loading works ##
 
-- Call ```LS.ResourcesManager.load``` passing the url
-- ```load``` will check the file extension info using ```LS.Formats.getFileFormatInfo( extension );``` to see if it has to force a dataType in the request.
+- We call ```LS.ResourcesManager.load``` passing the url of the resource we want to load.
+- ```load``` will check the file extension info using ```LS.Formats.getFileFormatInfo( extension );``` to see if it has to force a dataType in the request. This will check for the info registered with this file format (the one passed to ```LS.Formats.addSupportedFormat```).
 - Once the file is received it will be passed to ```LS.ResourcesManager.processResource```
 - If the resource extension has a preprocessor callback it is executed. A preprocessor must return the data ready.
   * If the preprocessor returns true it means it has to wait because it is async, once finished it will call ```processFinalResource```
