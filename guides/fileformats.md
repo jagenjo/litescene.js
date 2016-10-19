@@ -39,8 +39,8 @@ Adding new file formats requires several steps:
   * **dataType**: which dataType to request when requesting to server
   * **parse**: the callback in charge of converting the data in something suitable by the system.
 - Registering it to LS.Formats with ```LS.Formats.addSupportedFormat( "extension", MyFormatInfo );```
-- If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor( extension, callback )```
-- If you want a postprocessor you need to call to ```LS.ResourcesManager.registerResourcePostProcessor( resource_classname, callback```
+- If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor(extension, callback)```
+- If you want a postprocessor you need to call to ```LS.ResourcesManager.registerResourcePostProcessor( resource_classname, callback)``` but that shouldn't be necessary because all resources have already its own postprocessor.
 
 
 
