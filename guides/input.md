@@ -2,15 +2,6 @@
 
 When using the Script component we can read the input using the auto-event handlers like ```onMouseDown```, ```onMouseMove```, ```onMouseUp```, ```onKeyDown```, ```onKeyUp```, ```onButtonDown```, ```onButtonUp```.
 
-```javascript
-
-this.onKeyDown = function(e)
-{
-	if(e.keyCode == 39)
-		console.log("Right");
-}
-```
-
 Or if the component is made by ours we can bind the events for "mousedown","mousemove","mouseup","keyup","keydown", etc.
 
 But sometimes you want to read the user raw input like the mouse coordinates, keyboard keys pressed or the gamepad axis.
@@ -85,6 +76,39 @@ You can catch the events easily from the scripts using the events provided for t
 - ```onGamepadDisconnected```: when a gamepad is disconnected
 - ```onButtonDown```: when a gamepad button is pressed
 - ```onButtonUp```: when a gamepad button is unpressed
+
+All this functions receive the system event by parameter.
+
+```javascript
+
+this.onKeyDown = function(e)
+{
+	if(e.keyCode == 39)
+		console.log("Right");
+}
+```
+
+or if we are using a component:
+
+```javascript
+
+this.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "mousedown", this.onMouse, this );
+}
+
+this.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "mousedown", this.onMouse, this );
+}
+
+this.onMouse = function(e)
+{
+	console.log("mouse clicked");
+}
+
+```
+
 
 ## Example ##
 
