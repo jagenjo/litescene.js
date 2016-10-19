@@ -64,16 +64,16 @@ if( LS.Input.isGamepadButtonPressed(0,"A") ) //returns if the "A" button of the 
 
 You can catch the events easily from the scripts using the events provided for that purpose:
 
-- onMouseDown: when a mouse button is pressed
-- onMouseUp: when a mouse button is unpressed
-- onMouseMove: when the mouse moves
-- onMouseWheel: when the mouse wheel rotates
-- onKeyDown: when a key is unpressed
-- onKeyUp: when a key is pressed
-- onGamepadConnected: when a gamepad is connected
-- onGamepadDisconnected: when a gamepad is disconnected
-- onButtonDown: when a gamepad button is pressed
-- onButtonUp: when a gamepad button is unpressed
+- ```onMouseDown```: when a mouse button is pressed
+- ```onMouseUp```: when a mouse button is unpressed
+- ```onMouseMove```: when the mouse moves
+- ```onMouseWheel```: when the mouse wheel rotates
+- ```onKeyDown```: when a key is unpressed
+- ```onKeyUp```: when a key is pressed
+- ```onGamepadConnected```: when a gamepad is connected
+- ```onGamepadDisconnected```: when a gamepad is disconnected
+- ```onButtonDown```: when a gamepad button is pressed
+- ```onButtonUp```: when a gamepad button is unpressed
 
 ## Example ##
 
