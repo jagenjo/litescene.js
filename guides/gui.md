@@ -144,3 +144,27 @@ this.onRenderGUI = function()
   ctx.finish2D();
 }
 ```
+
+And if you want to check if the mouse is in a screen position you can use some of the ```LS.Input``` functions:
+
+```javascript
+this.onRenderGUI = function()
+{
+  var ctx = gl;
+  ctx.start2D();
+  if( LS.Input.Mouse.isInsideRect( 100, 100, 120,80, true ) )
+  {
+    ctx.canvas.style.cursor = "pointer";
+	  ctx.fillColor = [0.5,0.5,0.7,0.75];
+  }
+  else
+  {
+		ctx.fillColor = [0.2,0.2,0.3,0.75];  
+		ctx.canvas.style.cursor = "";
+  }  
+  ctx.fillText( "Hello", 100,100 );
+  ctx.finish2D();
+}
+```
+
+Check ```LS.Input``` guides for more info of how to handle input.
