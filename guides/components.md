@@ -11,7 +11,7 @@ All the component classes are stored in ```LS.Components```.
 To create a component you just instatiate the class:
 
 ```Javascript
-var my_component = new Ls.Components.Camera();
+var my_component = new LS.Components.Camera();
 node.addComponent( my_component );
 ```
 
