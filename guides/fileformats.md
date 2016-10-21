@@ -12,29 +12,29 @@ To understand better the file parsing we need to see the steps taken by the LS.R
 
 - We call ```LS.ResourcesManager.load``` passing the url of the resource we want to load.
 - ```load``` will check the file extension info using ```LS.Formats.getFileFormatInfo( extension );``` to see if it has to force a dataType in the request. This will check for the info registered with this file format (the one passed to ```LS.Formats.addSupportedFormat```).
-- Once the file is received it will be passed to ```LS.ResourcesManager.processResource```
-- If the resource extension has a preprocessor callback it is executed. A preprocessor must return the data ready.
-  * If the preprocessor returns true it means it has to wait because it is async, once finished it will call ```processFinalResource```
+- Once the file is received it will be passed to ```LS.ResourcesManager.processResource``` to be processed.
+- If the resource extension has a preprocessor callback it is executed. A preprocessor is a function that takes the data requested and transforms it to make it ready to be used.
+  * If the preprocessor returns true it means it has to wait because the processing is async, once finished it will call ```processFinalResource```
 - If no preprocessor:
  * If if is a Mesh calls ```processTextMesh``` which will call to the file format ```parse``` function
  * If it is a Scene calls ```processTextSCene```  which will call to the file format ```parse``` function
  * If it is a Texture calls ```processImage```  which will call to the file format ```parse``` function
  * If the format_info has a parse method call it
-- It it is neither of those types then it is stored as a plain ```LS.Resource``` asumming it is just data.
+- If it is neither of those types then it is stored as a plain ```LS.Resource``` asumming it is just data.
 - Once processed it calls ```processFinalResource``` which is in charge of storing the resource in the adequate container.
-- then the resource is registered in the system using the ```registerResource``` function
+- Then the resource is registered in the system using the ```registerResource``` function
 - Which will call to its postprocessor callback if it has any (mostly to store the resource propertly, compute extra data, etc)
 
-All this steps are necesary because different types of resources require different actions, and also because different file types require the same actions.
+All this steps are necesary because different types of resources require different actions, and also because different file types share  the same actions.
 
 ## Guide to add new file formats ##
 
 Adding new file formats requires several steps:
 
 - Creating an object with all the info for the file format like:
-  * **extension**: a String with the filename extension that is associated with this format
+  * **extension**: a String with the filename extension that is associated with this format (or comma separated extensions)
   * **type**: which type of resource
-  * **resource**: the classname to instantiate for this resource
+  * **resource**: the classname to instantiate for this resource (p.e. Mesh, Texture, ...)
   * **format**: it is "text" or "binary"
   * **dataType**: which dataType to request when requesting to server
   * **parse**: the callback in charge of converting the data in something suitable by the system.
