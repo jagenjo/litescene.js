@@ -191,5 +191,5 @@ If you have created your own component class from within an script and by any re
 
 ## Documentation ##
 
-To know more about the APIs accessible from LiteScene check the documation websites for (LiteGL)[https://github.com/jagenjo/litegl.js], (LiteScene)[https://github.com/jagenjo/litescene.js] and (LiteGraph)[https://github.com/jagenjo/litegraph.js].
+To know more about the APIs accessible from LiteScene check the documation websites for [LiteGL](https://github.com/jagenjo/litegl.js), [LiteScene](https://github.com/jagenjo/litescene.js) and [LiteGraph](https://github.com/jagenjo/litegraph.js).
 
