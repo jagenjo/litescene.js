@@ -88,7 +88,7 @@ LS.Draw.pop(); //recover old coordinates system
 Every render will try to use the global properties to define the color, alpha and point size:
 
 ```javascript
-LS.Draw.setColor(1,0,0); //you can pass a fourth parameter with the alpha
+LS.Draw.setColor([1,0,0]); //you can pass a fourth parameter with the alpha
 LS.Draw.setAlpha(0.5);
 LS.Draw.setPointSize(10); //in pixels
 ```
