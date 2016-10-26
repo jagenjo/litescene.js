@@ -101,5 +101,8 @@ Also if you want to change the camera position you can also pass a camera althou
 LS.Draw.setCamera( mycamera );
 ```
 
+## Documentation 
+
+Check the [LS.Draw](http://webglstudio.org/doc/litescene/classes/LS.Draw.html) documentation for better explanation of every function.
 
 
