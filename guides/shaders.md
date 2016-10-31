@@ -15,9 +15,10 @@ The subfile should be called ```\js```
 ```js
 \js
   
-this.createUniform("Scale","u_tex_scale","number",1);
-this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
-this.render_state.depth_test = false;
+this.createUniform("Scale","u_tex_scale","number",1); //create a uniform for the shader
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} ); //create a sampler (texture) for the shader
+this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare)
+this.render_state.depth_test = false; //the flags to use when rendering
 ```
 
 This function will be called once the shader is assigned to the material.
@@ -51,8 +52,34 @@ If you want to use an special rendering pass consider changing those, here is a 
 	this.colorMask3 = true;
 ```
 
+## onPrepare ##
+
+Sometimes we want our material to perform some actions before rendering (like extracting information from the scene and send it to the shader).
+
+To do that you can create a ```onPrepare``` function, this function will be called before rendering the scene, when all materials are being prepared.
+
+Here is one example that passes the matrix of a camera to the material:
+
+```javascript
+this.createSampler("Texture","u_texture");
+this.createProperty("Camera", null, LS.TYPES.COMPONENT);
+
+this.onPrepare = function( scene )
+{
+  if(!this.Camera)
+    return;
+  var camera = scene.findComponentByUId( this.Camera );
+  if(!camera)
+    return;
+  if(!this._uniforms.u_textureprojection_matrix)
+    this._uniforms.u_textureprojection_matrix = mat4.create();
+  camera.getViewProjectionMatrix( this._uniforms.u_textureprojection_matrix );
+}
+```
 
 ## Shader Example ##
+
+Here is a full example of a regular shader:
 
 ```c++
 
