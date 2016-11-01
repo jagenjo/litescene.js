@@ -10,11 +10,16 @@ Because shaders are usually defined by several parts (vertex shader, fragment sh
 
 When creating a shader you may want to call some javascript functions to prepare the properties of the material containing the shader, for this purpose you can write a part in the file that contain that JS code, separated from the GLSL code of the shaders.
 
-The subfile should be called ```\js```
+The main functions are:
+ - ```createUniform( label, uniform_name, type, default_value )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code. The type must be of ```LS.TYPES``` keeping in mind that it has to be able to be passed to the shader.
+ - ```createSampler( label, uniform_name, texture_options )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code.
+ - ```createProperty( name, default_value, options )```: this will create a var that is not passed to the shader (used in conjuction with onPrepare).
+
+The subfile to contain this calls should be called ```\js```
 
 ```js
 \js
-  
+
 this.createUniform("Scale","u_tex_scale","number",1); //create a uniform for the shader
 this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} ); //create a sampler (texture) for the shader
 this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare)
