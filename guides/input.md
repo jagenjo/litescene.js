@@ -99,6 +99,12 @@ this.onKeyDown = function(e)
 	if(e.keyCode == 39)
 		console.log("Right");
 }
+
+this.onMouseDown = function(type, event)
+{
+	if( event.which == GL.LEFT_MOUSE_BUTTON )
+		console.log("Left mouse button pressed!");
+}
 ```
 
 or if we are using a component:
@@ -107,18 +113,17 @@ or if we are using a component:
 
 this.onAddedToScene = function(scene)
 {
-	LEvent.bind( scene, "mousedown", this.onMouse, this );
+	LEvent.bind( scene, "mousedown", this.myMouseCallback, this );
 }
 
 this.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind( scene, "mousedown", this.onMouse, this );
+	LEvent.unbind( scene, "mousedown", this.myMouseCallback, this );
 }
 
-this.onMouse = function(type, event)
+this.myMouseCallback = function(type, event)
 {
-	if( type == "mousedown" )
-		console.log("mouse button clicked:", event.button );
+	console.log("mouse button clicked:", event.button );
 }
 ```
 
