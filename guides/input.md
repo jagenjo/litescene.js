@@ -21,7 +21,20 @@ To access the mouse coordinates there is several ways:
 - ```clientx```: x coordinate in client coordinates 
 - ```clienty```: y coordinate in client coordinates (0 is the top canvas position)
 
-To get the mouse buttons state you can read the ```LS.Input.Mouse.buttons``` and mask to read every button state, or use the ```leftButton```,```middleButton``` and ```rightButton``` flags to check the state.
+To get the mouse buttons state you can read the ```LS.Input.Mouse.buttons``` and mask to read every button state:
+
+```javascript
+if( LS.Input.Mouse.buttons | GL.LEFT_MOUSE_BUTTON )
+	//...
+```
+
+or use the ```left_button```,```middle_button``` and ```right_button``` flags to check the state.
+
+```javascript
+if( LS.Input.Mouse.left_button )
+	//...
+```
+
 
 ## Touch events ##
 
@@ -102,11 +115,11 @@ this.onRemovedFromScene = function(scene)
 	LEvent.unbind( scene, "mousedown", this.onMouse, this );
 }
 
-this.onMouse = function(e)
+this.onMouse = function(type, event)
 {
-	console.log("mouse clicked");
+	if( type == "mousedown" )
+		console.log("mouse button clicked:", event.button );
 }
-
 ```
 
 
