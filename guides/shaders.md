@@ -109,6 +109,34 @@ this.onPrepare = function( scene )
 }
 ```
 
+## Pragmas
+
+You can use some special pragmas designed to allow the user to include external code, this is helpful to reuse GLSL code between different ShaderCodes.
+
+### pragma include
+
+This is the most basic pragma an lets you import a GLSL file stored in a resource GLSL file. The content will be copyed directly:
+
+```c++
+	#pragma include "guest/shaders/noise_functions.glsl"
+```
+
+### pragma shaderblock
+
+This feature is still a Work In Progress but it lets different components in the system interact with the material by including some code (but only if the shader allows it).
+
+To do this first the shader must accept to have the shaderblock supported by using the shaderblock pragma. And also call the functions associated by that shaderblock:
+
+```c++
+	//global
+	#pragma shaderblock "skinning"
+	
+	//inside the main...
+	//...
+	 applySkinning( vertex4, v_normal );  
+```
+
+
 ## Shader Example ##
 
 Here is a full example of a regular shader:
