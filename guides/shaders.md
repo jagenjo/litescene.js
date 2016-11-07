@@ -121,6 +121,12 @@ This is the most basic pragma an lets you import a GLSL file stored in a resourc
 	#pragma include "guest/shaders/noise_functions.glsl"
 ```
 
+You can also include a subfile:
+
+```c++
+	#pragma include "guest/shaders/noise_functions.glsl:subfilename"
+```
+
 ### pragma shaderblock
 
 This feature is still a Work In Progress but it lets different components in the system interact with the material by including some code (but only if the shader allows it).
