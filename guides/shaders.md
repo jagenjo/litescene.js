@@ -57,6 +57,33 @@ If you want to use an special rendering pass consider changing those, here is a 
 	this.colorMask3 = true;
 ```
 
+## RenderQueue ##
+
+To stablish the rendering order you must use the ```this.queue``` property.
+
+This property is a number associated to a render queue in the system. There are queues for GEOMETRY and TRANSPARENT by default. The bigger the number the later it will be rendered.
+
+You can type your own value or use one of the enumerated options:
+```LS.RenderQueue.DEFAULT```: means no render queue specified, the system will try to guess it.
+```LS.RenderQueue.BACKGROUND```: for object that are in the background like skyboxes (value 5)
+```LS.RenderQueue.GEOMETRY```: for regular non-transparent geometry (value 10)
+```LS.RenderQueue.TRANSPARENT```: for semitransparent objects (blend activated) (value 15)
+```LS.RenderQueue.OVERLAY```: for render calls in the screen space. (value 20)
+
+You can also add or substract to the queue number to reorder inside the same queue:
+
+```javascript
+	this.queue = LS.RenderQueue.TRANSPARENT + 1;
+```
+
+One example setting the alpha and the rendering order:
+
+```javascript
+\js
+	this.render_state.blend = true;
+	this.queue = LS.RenderQueue.TRANSPARENT;
+```
+
 ## onPrepare ##
 
 Sometimes we want our material to perform some actions before rendering (like extracting information from the scene and send it to the shader).
