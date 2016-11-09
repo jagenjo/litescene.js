@@ -21,16 +21,17 @@ UIDs are created using random numbers, incremental numbers and timestamps so the
 ```Javascript
 node.name = "Ball";
 console.log( node.uid ); //will show something similar to: "@NODE--72553e-27b-1a284aa-5"
+```
 
 ### Inserting nodes inside nodes ###
 
-SceneNodes belongs like a tree structure, where every node can have other nodes inside, to do this we can attach a node to another node:
+SceneNodes belongs to a tree like structure, where every node can have other nodes inside, to do this we can attach a node to another node:
 
 ```Javascript
 node.addChild( other_node ); //adds other node inside node
 ```
 
-Child nodes are stored in node.children and the parent node of a node is stored in parentNode.
+Child nodes are stored in ```node.children``` and the parent node of a node is stored in ```node.parentNode```.
 Check the documentation for more info about how to attach or remove nodes from a node.
 
 
@@ -38,7 +39,7 @@ Check the documentation for more info about how to attach or remove nodes from a
 
 Every node belongs to several layers (or none), this helps filter which object should react or be visible with our scene.
 
-Layers are stored using a number where every bit represent to which layer belongs. The layers names are stored in the SceneTree.
+Layers are stored using a number where every bit represent to which layer belongs (to a maxium of 32). The layers names are stored in the SceneTree.
 
 ```Javascript
 node.layers |= 1; //adds the layer 1 to this object
@@ -54,4 +55,14 @@ This contains a root SceneNode where all the nodes of the scene are located.
 
 To access the root node you can go to ```LS.GlobalScene.root```
 
+## Scene information ##
 
+You can access several information from the Scene like:
+- **time**: the time the scene has been running in seconds (this value only increases if it is in play mode).
+- **global_time**: the system time in seconds (similar to getTime()).
+- **frame**: the current frame number (how many times the function ```LS.Renderer.render``` has been rendered with this scene).
+- **layer_names**: an array containing the name for every layer.
+
+## Documentation ##
+
+For a more detailed description check the documentation.

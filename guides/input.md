@@ -1,8 +1,10 @@
 # Input #
 
-LiteScene lets you add controllers to the nodes to handle user interaction, but sometimes you want to access the user raw input like the mouse coordinates or the gamepad axis.
+When using the Script component we can read the input using the auto-event handlers like ```onMouseDown```, ```onMouseMove```, ```onMouseUp```, ```onKeyDown```, ```onKeyUp```, ```onButtonDown```, ```onButtonUp```.
 
-Keep in mind that you can capture the events yourselve or use methods like onMouseDown or onKeyDown from the 
+Or if the component is made by ours we can bind the events for "mousedown","mousemove","mouseup","keyup","keydown", etc.
+
+But sometimes you want to read the user raw input like the mouse coordinates, keyboard keys pressed or the gamepad axis.
 
 In these situations you can use the ```LS.Input``` class to see the input state of:
 - ```LS.Input.Mouse``` to read the mouse state
@@ -19,7 +21,20 @@ To access the mouse coordinates there is several ways:
 - ```clientx```: x coordinate in client coordinates 
 - ```clienty```: y coordinate in client coordinates (0 is the top canvas position)
 
-To get the mouse buttons state you can read the ```LS.Input.Mouse.buttons``` and mask to read every button state, or use the ```leftButton```,```middleButton``` and ```rightButton``` flags to check the state.
+To get the mouse buttons state you can read the ```LS.Input.Mouse.buttons``` and mask to read every button state:
+
+```javascript
+if( LS.Input.Mouse.buttons | GL.LEFT_MOUSE_BUTTON )
+	//...
+```
+
+or use the ```left_button```,```middle_button``` and ```right_button``` flags to check the state.
+
+```javascript
+if( LS.Input.Mouse.left_button )
+	//...
+```
+
 
 ## Touch events ##
 
@@ -64,16 +79,54 @@ if( LS.Input.isGamepadButtonPressed(0,"A") ) //returns if the "A" button of the 
 
 You can catch the events easily from the scripts using the events provided for that purpose:
 
-- onMouseDown: when a mouse button is pressed
-- onMouseUp: when a mouse button is unpressed
-- onMouseMove: when the mouse moves
-- onMouseWheel: when the mouse wheel rotates
-- onKeyDown: when a key is unpressed
-- onKeyUp: when a key is pressed
-- onGamepadConnected: when a gamepad is connected
-- onGamepadDisconnected: when a gamepad is disconnected
-- onButtonDown: when a gamepad button is pressed
-- onButtonUp: when a gamepad button is unpressed
+- ```onMouseDown```: when a mouse button is pressed
+- ```onMouseUp```: when a mouse button is unpressed
+- ```onMouseMove```: when the mouse moves
+- ```onMouseWheel```: when the mouse wheel rotates
+- ```onKeyDown```: when a key is unpressed
+- ```onKeyUp```: when a key is pressed
+- ```onGamepadConnected```: when a gamepad is connected
+- ```onGamepadDisconnected```: when a gamepad is disconnected
+- ```onButtonDown```: when a gamepad button is pressed
+- ```onButtonUp```: when a gamepad button is unpressed
+
+All this functions receive the system event by parameter.
+
+```javascript
+
+this.onKeyDown = function(e)
+{
+	if(e.keyCode == 39)
+		console.log("Right");
+}
+
+this.onMouseDown = function(type, event)
+{
+	if( event.which == GL.LEFT_MOUSE_BUTTON )
+		console.log("Left mouse button pressed!");
+}
+```
+
+or if we are using a component:
+
+```javascript
+
+this.onAddedToScene = function(scene)
+{
+	LEvent.bind( scene, "mousedown", this.myMouseCallback, this );
+}
+
+this.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind( scene, "mousedown", this.myMouseCallback, this );
+}
+
+this.myMouseCallback = function(type, event)
+{
+	console.log("mouse button clicked:", event.button );
+}
+```
+
 
 ## Example ##
 

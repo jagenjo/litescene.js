@@ -18,11 +18,31 @@ Every script has its own execution context usually referred as the script contex
 
 The context is created when the component is configured and the code loaded.
 
-To access the context of a script component just access the context property:
+When programming inside a LS.Script, the context is the ```this``` of your code:
 
 ```javascript
+this.foo = 100; //adds a property foo to the script context
+```
+
+To access the context of another script component just access the context property throught the component:
+
+```javascript
+var node = scene.getNode("mynode");
+var script_component = node.getComponent( LS.Script ); //or LS.ScriptFromFile, depending on the component used
 script_component.context.foo = 10;
 ```
+
+Check the section below to know other ways to access a context of another component.
+
+### Global vars of every script ###
+
+Besides all the objects of the system, every script has three globals vars associated to that script:
+
+- **scene**: the scene where the node of this script component is attached, (usually the same as ```LS.GlobalScene``` )
+- **node**: the node where this script component is attached, (equivalent to ```component._root``` )
+- **component**: the script component itself
+
+So feel free to access them from inside your script at any time.
 
 ### Local vars and functions ###
 
@@ -65,6 +85,12 @@ this.bind( scene, "update", myfunction );
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
 
+### Input ###
+
+You can bind events for actions performed by the user (like mousedown, keydown, etc) or read the input system directly (using the LS.Input object).
+
+Check the [Input guide](input.md) to see more information abour reading the input.
+
 ### API exported methods ###
 
 However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
@@ -96,9 +122,17 @@ Keep in mind that you are free to bind to any events of the system that you want
 
 ### Serialization ###
 
-Any data attached to the context whose name doesn't start with the character underscore "_" will be serialized automatically when storing the scene and restored when the context is created. Keep in mind that when serializing any property it is stored as a base type, so avoid setting public variables of special classes, only store properties of the common types like String, Number, Bool, or Arrays of basic types.
+Any data attached to the context whose name doesn't start with the character underscore "```_```" will be serialized automatically when storing the scene and restored when the context is created. Keep in mind that when serializing any property it is stored as a base type, so avoid setting public variables of special classes, only store properties of the common types like String, Number, Bool, or Arrays of basic types.
 
 If you want to store stuff that shouldn't be serialized remember to use a name starting with underscore.
+
+### Naming Scripts
+
+If you want to add a name to your script (which could be useful from the editor and to access it remotely), you can add the next line at the beginning of your script:
+
+```javascript
+//@my_script_name
+``` 
 
 ### Accessing other scripts from scripts ###
 
@@ -114,12 +148,18 @@ var foo = component.context.foo; //read context property
 
 Although you are free to register the components in some global container when the context is created so they are easier to retrieve.
 
+```javascript
+//from inside the script you want to make accesible to other scripts
+LS.Globals.my_special_script_context = this;
+```
+
+
 ### Script considerations ###
 
 When coding scripts for LiteScene there are several things you must take into account:
 - Remember to unbind every event you bind, otherwise the editor could have erratic behaviour.
 - When using LS.Component.Script keep in mind that when the context is created (when your global code is executed) if you try to access to the scene tree to retrieve information (like nodes) it is possible that this info is not yet available because it hasnt been parsed yet.
-- You can name the scripts by putting the name in the first like inside a comment like this: ```//@script_name ``` this may be useful if you are using the WebGLStudio editor as the name will be shown instead of the component class name.
+- Scripts onlu exists if they are attached to a node, when they are detached all the data not serialized will be lost.
 
 ## Global Scripts ##
 
@@ -145,7 +185,11 @@ To do that I will recommend to insert the components inside the components folde
 
 You must add also the path to the component in the deploy_files.txt inside the utils, and run the script pack.sh (to create litescene.js) or build.sh (to create litescene.js and litescene.min.js).
 
+### Missing Components ###
+
+If you have created your own component class from within an script and by any reason when loading a scene the system cannot find the component specified in the JSON of the scene (maybe the component changed its name, or the script wasnt loaded), the data wont be lost an it will be stored aside so it stays in the JSON if you serialize that again.
+
 ## Documentation ##
 
-To know more about the APIs accessible from LiteScene check the documation websites for LiteGL, LiteScene and LiteGraph.
+To know more about the APIs accessible from LiteScene check the documation websites for [LiteGL](https://github.com/jagenjo/litegl.js), [LiteScene](https://github.com/jagenjo/litescene.js) and [LiteGraph](https://github.com/jagenjo/litegraph.js).
 

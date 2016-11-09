@@ -10,14 +10,20 @@ Because shaders are usually defined by several parts (vertex shader, fragment sh
 
 When creating a shader you may want to call some javascript functions to prepare the properties of the material containing the shader, for this purpose you can write a part in the file that contain that JS code, separated from the GLSL code of the shaders.
 
-The subfile should be called ```\js```
+The main functions are:
+ - ```createUniform( label, uniform_name, type, default_value )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code. The type must be of ```LS.TYPES``` keeping in mind that it has to be able to be passed to the shader.
+ - ```createSampler( label, uniform_name, texture_options )```: this will make the uniform with the ```uniform_name``` accessible from the editor and the code.
+ - ```createProperty( name, default_value, options )```: this will create a var that is not passed to the shader (used in conjuction with onPrepare).
+
+The subfile to contain this calls should be called ```\js```
 
 ```js
 \js
-  
-this.createUniform("Scale","u_tex_scale","number",1);
-this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
-this.render_state.depth_test = false;
+
+this.createUniform("Scale","u_tex_scale","number",1); //create a uniform for the shader
+this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} ); //create a sampler (texture) for the shader
+this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare)
+this.render_state.depth_test = false; //the flags to use when rendering
 ```
 
 This function will be called once the shader is assigned to the material.
@@ -51,8 +57,95 @@ If you want to use an special rendering pass consider changing those, here is a 
 	this.colorMask3 = true;
 ```
 
+## RenderQueue ##
+
+To stablish the rendering order you must use the ```this.queue``` property.
+
+This property is a number associated to a render queue in the system. There are queues for GEOMETRY and TRANSPARENT by default. The bigger the number the later it will be rendered.
+
+You can type your own value or use one of the enumerated options:
+```LS.RenderQueue.DEFAULT```: means no render queue specified, the system will try to guess it.
+```LS.RenderQueue.BACKGROUND```: for object that are in the background like skyboxes (value 5)
+```LS.RenderQueue.GEOMETRY```: for regular non-transparent geometry (value 10)
+```LS.RenderQueue.TRANSPARENT```: for semitransparent objects (blend activated) (value 15)
+```LS.RenderQueue.OVERLAY```: for render calls in the screen space. (value 20)
+
+You can also add or substract to the queue number to reorder inside the same queue:
+
+```javascript
+	this.queue = LS.RenderQueue.TRANSPARENT + 1;
+```
+
+One example setting the alpha and the rendering order:
+
+```javascript
+\js
+	this.render_state.blend = true;
+	this.queue = LS.RenderQueue.TRANSPARENT;
+```
+
+## onPrepare ##
+
+Sometimes we want our material to perform some actions before rendering (like extracting information from the scene and send it to the shader).
+
+To do that you can create a ```onPrepare``` function, this function will be called before rendering the scene, when all materials are being prepared.
+
+Here is one example that passes the matrix of a camera to the material:
+
+```javascript
+this.createSampler("Texture","u_texture");
+this.createProperty("Camera", null, LS.TYPES.COMPONENT);
+
+this.onPrepare = function( scene )
+{
+  if(!this.Camera)
+    return;
+  var camera = scene.findComponentByUId( this.Camera );
+  if(!camera)
+    return;
+  if(!this._uniforms.u_textureprojection_matrix)
+    this._uniforms.u_textureprojection_matrix = mat4.create();
+  camera.getViewProjectionMatrix( this._uniforms.u_textureprojection_matrix );
+}
+```
+
+## Pragmas
+
+You can use some special pragmas designed to allow the user to include external code, this is helpful to reuse GLSL code between different ShaderCodes.
+
+### pragma include
+
+This is the most basic pragma an lets you import a GLSL file stored in a resource GLSL file. The content will be copyed directly:
+
+```c++
+	#pragma include "guest/shaders/noise_functions.glsl"
+```
+
+You can also include a subfile:
+
+```c++
+	#pragma include "guest/shaders/noise_functions.glsl:subfilename"
+```
+
+### pragma shaderblock
+
+This feature is still a Work In Progress but it lets different components in the system interact with the material by including some code (but only if the shader allows it).
+
+To do this first the shader must accept to have the shaderblock supported by using the shaderblock pragma. And also call the functions associated by that shaderblock:
+
+```c++
+	//global
+	#pragma shaderblock "skinning"
+	
+	//inside the main...
+	//...
+	 applySkinning( vertex4, v_normal );  
+```
+
 
 ## Shader Example ##
+
+Here is a full example of a regular shader:
 
 ```c++
 

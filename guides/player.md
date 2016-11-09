@@ -12,7 +12,7 @@ The Player is in charge of several tasks:
 - Capture the input and send it to the specific callbacks
 - Handle the GUI elements so they overlap properly with the scene
 
-And because it is just one single class it is very easy to create a website that launches once scene:
+And because it is just one single class it is very easy to create a website that launches one scene:
 
 ### Usage ###
 
@@ -22,10 +22,11 @@ Include the libraries and dependencies:
 ```html
 <script src="external/gl-matrix-min.js"></script>
 <script src="external/litegl.min.js"></script>
+<script src="external/Canvas2DtoWebGL.js"></script>
 <script src="js/litescene.js"></script>
 ```
 
-Create the player
+Create the player:
 ```js
 var player = new LS.Player({
 	width:800, height:600,
@@ -47,11 +48,11 @@ player.loadScene("scene.json");
 
 Some additional options you can pass to the player:
 
-- canvas: the canvas element where to attach the render context
-- loadingbar: if true it will show the loading bar (default false)
-- redraw: if false the scene wont be redraw constantly
-- autoresize: if true the canvas will always try to match the parentNode size
-- autoplay: if false the player wont play the scene unless you do it manually
+- **canvas**: the canvas element where to attach the render context
+- **loadingbar**: if true it will show the loading bar (default false)
+- **redraw**: if false the scene wont be redraw constantly
+- **autoresize**: if true the canvas will always try to match the parentNode size
+- **autoplay**: if false the player wont play the scene unless you do it manually
 
 In case you want to overwrite the loading bar gizmo shown while loading the scene, you must overwrite the player.renderLoadingBar:
 
