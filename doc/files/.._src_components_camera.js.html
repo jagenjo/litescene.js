@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -161,18 +167,20 @@ function Camera(o)
 	this._type = Camera.PERSPECTIVE;
 
 	//contain the eye, center, up if local space
-	this._eye = vec3.fromValues(0,100, 100); //TODO: change to position
-	this._center = vec3.fromValues(0,0,0);	//TODO: change to target
-	this._up = vec3.fromValues(0,1,0);
+	this._eye = vec3.clone( Camera.DEFAULT_EYE ); //TODO: change to position
+	this._center = vec3.clone( Camera.DEFAULT_CENTER );	//TODO: change to target
+	this._up = vec3.clone( Camera.DEFAULT_UP );
 
 	//in global coordinates
-	this._global_eye = vec3.fromValues(0,100,100);
-	this._global_center = vec3.fromValues(0,0,0);
-	this._global_up = vec3.fromValues(0,1,0);
-	this._global_front = vec3.fromValues(0,0,-1);
+	this._global_eye = vec3.clone(this._eye);
+	this._global_center = vec3.clone(this._center);
+	this._global_up = vec3.clone(this._up);
+	this._global_front = vec3.create();
+	vec3.sub( this._global_front, this._global_center, this._global_eye );
+	vec3.normalize( this._global_front, this._global_front );
 
 	//clipping planes
-	this._near = 1;
+	this._near = 0.1;
 	this._far = 1000;
 
 	//orthographics planes (near and far took from ._near and ._far)
@@ -205,6 +213,7 @@ function Camera(o)
 
 	//used for render to texture
 	this._frame = null;
+	this.show_frame = true;
 
 	if(o) 
 		this.configure(o);
@@ -232,6 +241,10 @@ Camera.icon = &quot;mini-icon-camera.png&quot;;
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
+
+Camera.DEFAULT_EYE = [0,0,0];
+Camera.DEFAULT_CENTER = [0,0,-100];
+Camera.DEFAULT_UP = [0,1,0];
 
 Camera[&quot;@type&quot;] = { type: &quot;enum&quot;, values: { &quot;perspective&quot;: Camera.PERSPECTIVE, &quot;orthographic&quot;: Camera.ORTHOGRAPHIC, &quot;ortho2D&quot;: Camera.ORTHO2D } };
 Camera[&quot;@eye&quot;] = { type: &quot;vec3&quot;, widget: &quot;position&quot; };
@@ -335,6 +348,7 @@ Object.defineProperty( Camera.prototype, &quot;center&quot;, {
 
 /**
 * The distance between the center and the eye point
+* When focalLength is modified it will change the center so it matches the distance.
 * @property focalLength {Number}
 * @default (depends)
 */
@@ -559,12 +573,14 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
+	LEvent.bind( node, &quot;transformChanged&quot;, this.onNodeMoved, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
 {
 	if(node.camera == this)
 		delete node.camera;
+	LEvent.unbind( node, &quot;transformChanged&quot;, this.onNodeMoved, this );
 }
 
 Camera.prototype.onAddedToScene = function(scene)
@@ -585,6 +601,11 @@ Camera.prototype.onRemovedFromScene = function(scene)
 		LEvent.unbind(this, &quot;showFrameContext&quot;, this.disableRenderFrameContext, this );
 		this._binded_render_frame = false;
 	}
+}
+
+Camera.prototype.onNodeMoved = function()
+{
+	this._must_update_view_matrix = true;
 }
 
 Camera.prototype.isRenderedToTexture = function()
@@ -629,13 +650,14 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 * @param {vec3} center
 * @param {vec3} up
 */
-Camera.prototype.lookAt = function(eye,center,up)
+Camera.prototype.lookAt = function( eye, center, up )
 {
 	if( this._root &amp;&amp; this._root.transform )
 	{
 		this._root.transform.lookAt(eye,center,up);
 		this._eye.set(LS.ZEROS);
-		this.focalLength = vec3.distance( eye, center );
+		this._up.set([0,1,0]);
+		this.focalLength = vec3.distance( eye, center ); //changes the center
 	}
 	else
 	{
@@ -643,6 +665,20 @@ Camera.prototype.lookAt = function(eye,center,up)
 		vec3.copy(this._center, center);
 		vec3.copy(this._up,up);
 	}
+	this._must_update_view_matrix = true;
+}
+
+/**
+* resets eye, center and up, so they are in [0,0,0],[0,0,-focalDist] and [0,1,0]
+* @method resetVectors
+* @param {number} focalDist [optional] it not set it will be 1
+*/
+Camera.prototype.resetVectors = function(focalDist)
+{
+	focalDist = focalDist || 1;
+	this._eye.set([0,0,0]);
+	this._center.set([0,0,-focalDist]);
+	this._up.set([0,1,0]);
 	this._must_update_view_matrix = true;
 }
 
@@ -751,12 +787,13 @@ Camera.prototype.getProjectionMatrix = function(m)
 * returns the view projection matrix
 * @method getViewProjectionMatrix
 * @param {mat4} m optional output container
+* @param {boolean} force optional force to update
 * @return {mat4} matrix
 */
-Camera.prototype.getViewProjectionMatrix = function(m)
+Camera.prototype.getViewProjectionMatrix = function(m, force)
 {
 	m = m || mat4.create();
-	if(this._must_update_view_matrix || this._must_update_projection_matrix)
+	if(this._must_update_view_matrix || this._must_update_projection_matrix || force )
 		this.updateMatrices();
 	return mat4.copy( m, this._viewprojection_matrix );
 }
@@ -1178,7 +1215,7 @@ Camera.prototype.setViewportInPixels = function(left,bottom,width,height)
 
 
 /**
-* Converts from 3D to 2D
+* Converts a 3D point to its 2D position in canvas space
 * @method project
 * @param {vec3} vec 3D position we want to proyect to 2D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
@@ -1205,13 +1242,27 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 }
 
 /**
-* Converts from 2D to 3D
+* Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
 * @method unproject
 * @param {vec3} vec 2D position we want to proyect to 3D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
 * @return {vec3} the coordinates in 2D
 */
+
+/**
+* It tells you the 2D position of a node center in the screen
+* @method projectNodeCenter
+* @param {vec3} vec 3D position we want to proyect to 2D
+* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
+* @param {vec3} result where to store the result, if omited it is created
+* @return {vec3} the coordinates in 2D
+*/
+Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reverse )
+{
+	var center = node.transform ? node.transform.getGlobalPosition() : LS.ZEROS;
+	return this.project( center, viewport, result, skip_reverse );
+}
 
 Camera.prototype.unproject = function( vec, viewport, result )
 {
@@ -1319,6 +1370,7 @@ Camera.prototype.configure = function(o)
 
 	if(o.render_to_texture !== undefined) this.render_to_texture = o.render_to_texture;
 	if(o.frame &amp;&amp; this._frame) this._frame.configure( o.frame );
+	if(o.show_frame !== undefined) this.show_frame = o.show_frame;
 
 	this.updateMatrices( true );
 }
@@ -1341,7 +1393,8 @@ Camera.prototype.serialize = function()
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
-		frame: this._frame ? this._frame.serialize() : null
+		frame: this._frame ? this._frame.serialize() : null,
+		show_frame: this.show_frame
 	};
 
 	//clone
@@ -1425,6 +1478,8 @@ Camera.prototype.disableRenderFrameContext = function()
 	if(!this._frame)
 		return;
 	this._frame.disable();
+	if(this.show_frame)
+		LS.Renderer.showRenderFrameContext( this._frame, this );
 }
 
 Camera.prototype.prepare = function()

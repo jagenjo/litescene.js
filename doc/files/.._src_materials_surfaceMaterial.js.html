@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -146,6 +152,21 @@ function SurfaceMaterial( o )
 
 	this.shader_name = &quot;surface&quot;;
 
+	this.blend_mode = LS.Blend.NORMAL;
+
+	this.flags = {
+		alpha_test: false,
+		alpha_test_shadows: false,
+		two_sided: false,
+		flip_normals: false,
+		depth_test: true,
+		depth_write: true,
+		ignore_lights: false,
+		cast_shadows: true,
+		receive_shadows: true,
+		ignore_frustum: false
+	};
+
 	this.vs_code = &quot;&quot;;
 	this.code = &quot;void surf(in Input IN, inout SurfaceOutput o) {\n\
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
@@ -163,10 +184,11 @@ function SurfaceMaterial( o )
 	if(o) 
 		this.configure(o);
 
-	this.flags = 0;
-
 	this.computeCode();
 }
+
+SurfaceMaterial.prototype.applyFlagsToRenderState = StandardMaterial.prototype.applyFlagsToRenderState;
+SurfaceMaterial.prototype.prepare = StandardMaterial.prototype.prepare;
 
 SurfaceMaterial.icon = &quot;mini-icon-material.png&quot;;
 SurfaceMaterial.coding_help = &quot;\
@@ -281,7 +303,8 @@ SurfaceMaterial.prototype.fillShaderQuery = function(scene)
 
 SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var samplers = [];
+	var samplers = this._samplers;
+	samplers.length = 0;
 
 	var last_texture_slot = 0;
 	for(var i = 0, l = this.properties.length; i &lt; l; ++i )
@@ -290,12 +313,14 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot; || prop.type == &quot;sampler&quot;)
 		{
 			if(!prop.value)
-				continue;
-
-			var tex_name = prop.type == &quot;sampler&quot; ? prop.value.texture : prop.value;
-			var texture = LS.getTexture( tex_name );
-			if(!texture)
-				texture = &quot;:missing&quot;;
+				texture = &quot;:black&quot;;
+			else
+			{
+				var tex_name = prop.type == &quot;sampler&quot; ? prop.value.texture : prop.value;
+				var texture = LS.getTexture( tex_name );
+				if(!texture)
+					texture = &quot;:missing&quot;;
+			}
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;
@@ -315,12 +340,12 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 			samplers[ &quot;environment&quot; + (texture.texture_type == gl.TEXTURE_2D ? &quot;_texture&quot; : &quot;_cubemap&quot;) ] = sampler;
 	}
 	*/
-
-	this._samplers = samplers;
 }
 
 SurfaceMaterial.prototype.configure = function(o) { 
-	LS.cloneObject(o, this);
+	if(o.flags !== undefined &amp;&amp; o.flags.constructor === Number)
+		delete o[&quot;flags&quot;]; //LEGACY
+	LS.cloneObject( o, this );
 	this.computeCode();
 }
 
@@ -547,7 +572,6 @@ SurfaceMaterial.prototype.getResources = function (res)
 
 	return res;
 }
-
 
 LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;

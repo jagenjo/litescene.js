@@ -1,145 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>../src/utils/draw.js</title>
-    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
-    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
-    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
-    <link rel="icon" href="../assets/favicon.ico">
-    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
-</head>
-<body class="yui3-skin-sam">
-
-<div id="doc">
-    <div id="hd" class="yui3-g header">
-        <div class="yui3-u-3-4">
-                <h1><img src="../assets/css/logo.png" title="" width="117" height="52"></h1>
-        </div>
-        <div class="yui3-u-1-4 version">
-            <em>API Docs for: </em>
-        </div>
-    </div>
-    <div id="bd" class="yui3-g">
-
-        <div class="yui3-u-1-4">
-            <div id="docs-sidebar" class="sidebar apidocs">
-                <div id="api-list">
-                    <h2 class="off-left">APIs</h2>
-                    <div id="api-tabview" class="tabview">
-                        <ul class="tabs">
-                            <li><a href="#api-classes">Classes</a></li>
-                            <li><a href="#api-modules">Modules</a></li>
-                        </ul>
-                
-                        <div id="api-tabview-filter">
-                            <input type="search" id="api-filter" placeholder="Type to filter APIs">
-                        </div>
-                
-                        <div id="api-tabview-panel">
-                            <ul id="api-classes" class="apis classes">
-                                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
-                                <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
-                                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
-                                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
-                                <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
-                                <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
-                                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
-                                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
-                                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
-                                <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
-                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
-                                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
-                                <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
-                                <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
-                                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
-                                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
-                                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
-                                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
-                                <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
-                                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
-                                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
-                                <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
-                                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
-                                <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
-                                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
-                                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
-                                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
-                                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
-                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
-                                <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
-                                <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
-                                <li><a href="../classes/LS.Light.html">LS.Light</a></li>
-                                <li><a href="../classes/LS.LightFX.html">LS.LightFX</a></li>
-                                <li><a href="../classes/LS.LS.html">LS.LS</a></li>
-                                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
-                                <li><a href="../classes/LS.Material.html">LS.Material</a></li>
-                                <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
-                                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
-                                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
-                                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
-                                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
-                                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
-                                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
-                                <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
-                                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
-                                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
-                                <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
-                                <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
-                                <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
-                                <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
-                                <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
-                                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
-                                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
-                                <li><a href="../classes/LSQ.html">LSQ</a></li>
-                            </ul>
-                
-                
-                            <ul id="api-modules" class="apis modules">
-                                <li><a href="../modules/LS.html">LS</a></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="yui3-u-3-4">
-                <div id="api-options">
-                    Show:
-                    <label for="api-show-inherited">
-                        <input type="checkbox" id="api-show-inherited" checked>
-                        Inherited
-                    </label>
-            
-                    <label for="api-show-protected">
-                        <input type="checkbox" id="api-show-protected">
-                        Protected
-                    </label>
-            
-                    <label for="api-show-private">
-                        <input type="checkbox" id="api-show-private">
-                        Private
-                    </label>
-                    <label for="api-show-deprecated">
-                        <input type="checkbox" id="api-show-deprecated">
-                        Deprecated
-                    </label>
-            
-                </div>
-            
-            <div class="apidocs">
-                <div id="docs-main">
-                    <div class="content">
-<h1 class="file-heading">File: ../src/utils/draw.js</h1>
-
-<div class="file">
-    <pre class="code prettyprint linenums">
 //this module is in charge of rendering basic objects like lines, points, and primitives
 //it works over litegl (no need of scene)
 //carefull, it is very slow
@@ -194,7 +52,7 @@ var Draw = {
 		var coords = [[0,1],[1,1],[1,0],[0,0]];
 		this.quad_mesh = GL.Mesh.load({vertices:vertices, coords: coords});
 
-		var vertex_shader = &#x27;\
+		var vertex_shader = '\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			#ifdef USE_COLOR\n\
@@ -223,9 +81,9 @@ var Draw = {
 				#endif\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&#x27;;
+			';
 
-		var pixel_shader = &#x27;\
+		var pixel_shader = '\
 			precision mediump float;\n\
 			uniform vec4 u_color;\n\
 			#ifdef USE_COLOR\n\
@@ -239,12 +97,12 @@ var Draw = {
 				vec4 color = u_color;\n\
 				#ifdef USE_TEXTURE\n\
 				  color *= texture2D(u_texture, v_coord);\n\
-				  if(color.a &lt; 0.1)\n\
+				  if(color.a < 0.1)\n\
 					discard;\n\
 			    #endif\n\
 				#ifdef USE_POINTS\n\
 				    float dist = length( gl_PointCoord.xy - vec2(0.5) );\n\
-					if( dist &gt; 0.45 )\n\
+					if( dist > 0.45 )\n\
 						discard;\n\
 			    #endif\n\
 				#ifdef USE_COLOR\n\
@@ -252,19 +110,19 @@ var Draw = {
 				#endif\n\
 				gl_FragColor = color;\n\
 			}\
-		&#x27;;
+		';
 
 		//create shaders
 		this.shader = new Shader( vertex_shader, pixel_shader );
 
-		this.shader_color = new Shader(vertex_shader,pixel_shader,{&quot;USE_COLOR&quot;:&quot;&quot;});
-		this.shader_texture = new Shader(vertex_shader,pixel_shader,{&quot;USE_TEXTURE&quot;:&quot;&quot;});
-		this.shader_points = new Shader(vertex_shader,pixel_shader,{&quot;USE_POINTS&quot;:&quot;&quot;});
-		this.shader_points_color = new Shader(vertex_shader,pixel_shader,{&quot;USE_COLOR&quot;:&quot;&quot;,&quot;USE_POINTS&quot;:&quot;&quot;});
-		this.shader_points_color_size = new Shader(vertex_shader,pixel_shader,{&quot;USE_COLOR&quot;:&quot;&quot;,&quot;USE_SIZE&quot;:&quot;&quot;,&quot;USE_POINTS&quot;:&quot;&quot;});
+		this.shader_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":""});
+		this.shader_texture = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":""});
+		this.shader_points = new Shader(vertex_shader,pixel_shader,{"USE_POINTS":""});
+		this.shader_points_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_POINTS":""});
+		this.shader_points_color_size = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_SIZE":"","USE_POINTS":""});
 
 
-		this.shader_image = new Shader(&#x27;\
+		this.shader_image = new Shader('\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			uniform mat4 u_mvp;\n\
@@ -273,21 +131,21 @@ var Draw = {
 				gl_PointSize = u_point_size;\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&#x27;,&#x27;\
+			','\
 			precision mediump float;\n\
 			uniform vec4 u_color;\n\
 			uniform sampler2D u_texture;\n\
 			void main() {\n\
 			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
-			  if(tex.a &lt; 0.1)\n\
+			  if(tex.a < 0.1)\n\
 				discard;\n\
 			  gl_FragColor = u_color * tex;\n\
 			}\
-		&#x27;);
+		');
 
 
 
-		this.shader_points_color_texture_size = new Shader(&#x27;\
+		this.shader_points_color_texture_size = new Shader('\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			attribute vec4 a_color;\n\
@@ -300,22 +158,22 @@ var Draw = {
 				gl_PointSize = u_point_size * a_extra;\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&#x27;,&#x27;\
+			','\
 			precision mediump float;\n\
 			uniform vec4 u_color;\n\
 			varying vec4 v_color;\n\
 			uniform sampler2D u_texture;\n\
 			void main() {\n\
 			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
-			  if(tex.a &lt; 0.1)\n\
+			  if(tex.a < 0.1)\n\
 				discard;\n\
 			  vec4 color = u_color * v_color * tex;\n\
 			  gl_FragColor = color;\n\
 			}\
-		&#x27;);
+		');
 
 		//create shaders
-		this.shader_phong = new Shader(&#x27;\
+		this.shader_phong = new Shader('\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			attribute vec3 a_normal;\n\
@@ -328,7 +186,7 @@ var Draw = {
 				v_normal = (u_model * vec4(a_vertex + a_normal,1.0)).xyz - v_pos;\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&#x27;,&#x27;\
+			','\
 			precision mediump float;\n\
 			uniform vec3 u_ambient_color;\n\
 			uniform vec3 u_light_color;\n\
@@ -341,12 +199,12 @@ var Draw = {
 				float NdotL = max(0.0, dot(N,u_light_dir));\n\
 				gl_FragColor = u_color * vec4(u_ambient_color + u_light_color * NdotL, 1.0);\n\
 			}\
-		&#x27;);
+		');
 
 		this.shader_phong.uniforms({u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] });
 
 		//create shaders
-		this.shader_depth = new Shader(&#x27;\
+		this.shader_depth = new Shader('\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			varying vec4 v_pos;\n\
@@ -356,7 +214,7 @@ var Draw = {
 				v_pos = u_model * vec4(a_vertex,1.0);\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&#x27;,&#x27;\
+			','\
 			precision mediump float;\n\
 			varying vec4 v_pos;\n\
 			\n\
@@ -374,7 +232,7 @@ var Draw = {
 				float depth = (v_pos.z / v_pos.w) * 0.5 + 0.5;\n\
 				gl_FragColor = PackDepth32(depth);\n\
 			}\
-		&#x27;);
+		');
 
 		this.ready = true;
 	},
@@ -382,28 +240,28 @@ var Draw = {
 	/**
 	* A helper to create shaders when you only want to specify some basic shading
 	* @method createSurfaceShader
-	* @param {string} surface_function GLSL code like: &quot;vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } &quot;;
+	* @param {string} surface_function GLSL code like: "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
 	* @param {object} macros [optional] object containing the macros and value
 	* @param {object} uniforms [optional] object with name and type
 	* @return {GL.Shader} the resulting shader
 	*/
 	createSurfaceShader: function( surface_function, uniforms, macros )
 	{
-		//&quot;vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } &quot;;
+		//"vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { return vec4(1.0); } ";
 
-		if( surface_function.indexOf(&quot;surface_function&quot;) == -1 )
-			surface_function = &quot;vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { &quot; + surface_function + &quot;\n } &quot;;
+		if( surface_function.indexOf("surface_function") == -1 )
+			surface_function = "vec4 surface_function( vec3 pos, vec3 normal, vec2 coord ) { " + surface_function + "\n } ";
 
 		if(uniforms)
 		{
 			if (uniforms.constructor === String)
-				surface_function = uniforms + &quot;;\n&quot; + surface_function;
+				surface_function = uniforms + ";\n" + surface_function;
 			else
 				for(var i in uniforms)
-					surface_function += &quot;uniform &quot; + uniforms[i] + &quot; &quot; + i + &quot;;\n&quot;;
+					surface_function += "uniform " + uniforms[i] + " " + i + ";\n";
 		}
 
-		var vertex_shader = &quot;\
+		var vertex_shader = "\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			attribute vec3 a_normal;\n\
@@ -419,9 +277,9 @@ var Draw = {
 				v_normal = (u_model * vec4(a_normal,0.0)).xyz;\n\
 				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
 			}\
-			&quot;;
+			";
 
-		var pixel_shader = &quot;\
+		var pixel_shader = "\
 			precision mediump float;\n\
 			varying vec2 v_coord;\n\
 			varying vec3 v_pos;\n\
@@ -429,11 +287,11 @@ var Draw = {
 			uniform vec4 u_color;\n\
 			uniform vec3 u_camera_position;\n\
 			uniform sampler2D u_texture;\n\
-			&quot;+ surface_function +&quot;\n\
+			"+ surface_function +"\n\
 			void main() {\n\
 				gl_FragColor = surface_function(v_pos,v_normal,v_coord);\n\
 			}\
-		&quot;;	
+		";	
 
 		return new GL.Shader( vertex_shader, pixel_shader, macros );
 	},
@@ -464,7 +322,7 @@ var Draw = {
 	*/
 	setColor: function(color)
 	{
-		for(var i = 0; i &lt; color.length; i++)
+		for(var i = 0; i < color.length; i++)
 			this.color[i] = color[i];
 	},
 
@@ -521,7 +379,7 @@ var Draw = {
 	popCamera: function()
 	{
 		if(this.camera_stack.length == 0)
-			throw(&quot;too many pops&quot;);
+			throw("too many pops");
 		this.viewprojection_matrix.set( this.camera_stack.pop() );
 	},
 
@@ -568,8 +426,9 @@ var Draw = {
 	* @param {Float32Array|Array} points
 	* @param {Float32Array|Array} colors [optional]
 	* @param {bool} strip [optional] if the lines are a line strip (one consecutive line)
+	* @param {bool} loop [optional] if strip, close loop
 	*/
-	renderLines: function(lines, colors, strip)
+	renderLines: function(lines, colors, strip, loop)
 	{
 		if(!lines || !lines.length) return;
 		var vertices = null;
@@ -577,11 +436,17 @@ var Draw = {
 		vertices = lines.constructor == Float32Array ? lines : this.linearize(lines);
 		if(colors)
 			colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
-		if(colors &amp;&amp; (colors.length/4) != (vertices.length/3))
+		if(colors && (colors.length/4) != (vertices.length/3))
 			colors = null;
 
+		var type = gl.LINES;
+		if(loop)
+			type = gl.LINE_LOOP;
+		else if(strip)
+			type = gl.LINE_STRIP;
+
 		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors});
-		return this.renderMesh(mesh, strip ? gl.LINE_STRIP : gl.LINES, colors ? this.shader_color : this.shader, undefined, 0, vertices.length / 3 );
+		return this.renderMesh( mesh, type, colors ? this.shader_color : this.shader, undefined, 0, vertices.length / 3 );
 	},
 
 	/**
@@ -605,9 +470,9 @@ var Draw = {
 		else
 			vertices = new Float32Array(points);
 
-		if(colors &amp;&amp; colors.constructor != Float32Array)
+		if(colors && colors.constructor != Float32Array)
 		{
-			if(colors.constructor === Array &amp;&amp; colors[0].constructor === Number)
+			if(colors.constructor === Array && colors[0].constructor === Number)
 				colors = new Float32Array( colors );
 			else
 				colors = this.linearize(colors);
@@ -672,10 +537,10 @@ var Draw = {
 			vertices = new Float32Array(points);
 
 		if(!colors)
-			throw(&quot;colors required in Draw.renderPointsWithSize&quot;);
+			throw("colors required in Draw.renderPointsWithSize");
 		colors = colors.constructor == Float32Array ? colors : this.linearize(colors);
 		if(!sizes)
-			throw(&quot;sizes required in Draw.renderPointsWithSize&quot;);
+			throw("sizes required in Draw.renderPointsWithSize");
 		sizes = sizes.constructor == Float32Array ? sizes : this.linearize(sizes);
 
 		var mesh = this.toGlobalMesh({vertices: vertices, colors: colors, extra: sizes});
@@ -699,7 +564,7 @@ var Draw = {
 	},
 
 	/**
-	* Render points with color, size, and texture binded in 0
+	* Render a wireframe rectangle of width x height 
 	* @method renderRectangle
 	* @param {number} width
 	* @param {number} height
@@ -722,7 +587,7 @@ var Draw = {
 
 		var offset =  2 * Math.PI / num_segments;
 
-		for(var i = 0; i &lt; num_segments; i++)
+		for(var i = 0; i < num_segments; i++)
 		{
 			temp[0] = Math.sin(offset * i) * radius;
 			if(in_z)
@@ -781,7 +646,7 @@ var Draw = {
 
 		var delta = 1.0 / segments * Math.PI * 2;
 
-		for(var i = 0; i &lt; segments; i++)
+		for(var i = 0; i < segments; i++)
 		{
 			temp.set([ Math.sin( i * delta) * radius, Math.cos( i * delta) * radius, 0]);
 			vertices.set(temp, i*18);
@@ -842,7 +707,7 @@ var Draw = {
 	renderWireBox: function(sizex,sizey,sizez)
 	{
 		var mesh = this.createWireBoxMesh(sizex,sizey,sizez, true);
-		return this.renderMesh( mesh, gl.LINES, undefined, &quot;indices&quot;, 0, this._global_mesh_last_size );
+		return this.renderMesh( mesh, gl.LINES, undefined, "indices", 0, this._global_mesh_last_size );
 	},
 
 	createSolidBoxMesh: function( sizex,sizey,sizez, use_global)
@@ -871,20 +736,38 @@ var Draw = {
 		return this.renderMesh( mesh, gl.TRIANGLES, undefined, undefined, 0, this._global_mesh_last_size );
 	},
 
+	/**
+	* Renders a wire cube of size size
+	* @method renderWireCube
+	* @param {number} size
+	*/
 	renderWireCube: function(size)
 	{
 		return this.renderWireBox(size,size,size);
 	},
 
+	/**
+	* Renders a solid cube of size size
+	* @method renderSolidCube
+	* @param {number} size
+	*/
 	renderSolidCube: function(size)
 	{
 		return this.renderSolidCube(size,size,size);
 	},
 
+	/**
+	* Renders a solid plane (could be textured or even with an specific shader)
+	* @method renderPlane
+	* @param {vec3} position
+	* @param {vec2} size
+	* @param {GL.Texture} texture
+	* @param {GL.Shader} shader
+	*/
 	renderPlane: function( position, size, texture, shader)
 	{
 		if(!position || !size)
-			throw(&quot;LS.Draw.renderPlane param missing&quot;);
+			throw("LS.Draw.renderPlane param missing");
 
 		this.push();
 		this.translate(position);
@@ -892,7 +775,7 @@ var Draw = {
 		if(texture)
 			texture.bind(0);
 
-		if(!shader &amp;&amp; texture)
+		if(!shader && texture)
 			shader = this.shader_texture;
 
 		this.renderMesh(this.quad_mesh, gl.TRIANGLE_FAN, shader );
@@ -909,7 +792,7 @@ var Draw = {
 		num = num || 10;
 		var vertices = new Float32Array( (num*2+1) * 4 * 3);
 		var pos = 0;
-		for(var i = -num; i &lt;= num; i++)
+		for(var i = -num; i <= num; i++)
 		{
 			vertices.set( [i*dist,0,dist*num], pos);
 			vertices.set( [i*dist,0,-dist*num],pos+3);
@@ -920,6 +803,12 @@ var Draw = {
 		return GL.Mesh.load({vertices: vertices});
 	},
 
+	/**
+	* Renders a grid of lines
+	* @method renderGrid
+	* @param {number} dist distance between lines
+	* @param {number} num number of lines
+	*/
 	renderGrid: function(dist,num)
 	{
 		var mesh = this.createGridMesh(dist,num);
@@ -935,7 +824,7 @@ var Draw = {
 		var vertices = new Float32Array( (segments+2) * 3);
 		vertices.set(in_z ? [0,0,height] : [0,height,0], 0);
 
-		for(var i = 0; i &lt;= segments; i++)
+		for(var i = 0; i <= segments; i++)
 		{
 			quat.setAxisAngle(R,axis, 2 * Math.PI * (i/segments) );
 			vec3.transformQuat(temp, [0,0,radius], R );
@@ -972,7 +861,7 @@ var Draw = {
 		var temp = vec3.create();
 		var vertices = new Float32Array( (segments+1) * 3 * 2);
 
-		for(var i = 0; i &lt;= segments; i++)
+		for(var i = 0; i <= segments; i++)
 		{
 			quat.setAxisAngle(R, axis, 2 * Math.PI * (i/segments) );
 			vec3.transformQuat(temp, [0,0,radius], R );
@@ -1012,11 +901,11 @@ var Draw = {
 	renderImage: function( position, image, size, fixed_size )
 	{
 		if(!position || !image)
-			throw(&quot;LS.Draw.renderImage param missing&quot;);
+			throw("LS.Draw.renderImage param missing");
 		size = size || 10;
 		var texture = null;
 
-		if(typeof(image) == &quot;string&quot;)
+		if(typeof(image) == "string")
 		{
 			texture = this.images[image];
 			if(texture == null)
@@ -1072,23 +961,23 @@ var Draw = {
 	* @method renderMesh
 	* @param {GL.Mesh} mesh
 	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
-	* @param {string} indices [optional=&quot;triangles&quot;] the name of the buffer in the mesh with the indices
+	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
 	* @param {number} range_start [optional] in case of rendering a range, the start primitive
 	* @param {number} range_length [optional] in case of rendering a range, the number of primitives
 	*/
 	renderMesh: function( mesh, primitive, shader, indices, range_start, range_length )
 	{
 		if(!this.ready)
-			throw (&quot;Draw.js not initialized, call Draw.init()&quot;);
+			throw ("Draw.js not initialized, call Draw.init()");
 		if(!mesh)
-			throw (&quot;LS.Draw.renderMesh mesh cannot be null&quot;);
+			throw ("LS.Draw.renderMesh mesh cannot be null");
 
 		if(!shader)
 		{
-			if(mesh === this._global_mesh &amp;&amp; this._global_mesh_ignore_colors )
+			if(mesh === this._global_mesh && this._global_mesh_ignore_colors )
 				shader = this.shader;
 			else
-				shader = mesh.vertexBuffers[&quot;colors&quot;] ? this.shader_color : this.shader;
+				shader = mesh.vertexBuffers["colors"] ? this.shader_color : this.shader;
 		}
 
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
@@ -1141,7 +1030,7 @@ var Draw = {
 		var spacing = atlas.atlas.spacing;
 
 		var num_valid_chars = 0;
-		for(var i = 0; i &lt; l; ++i)
+		for(var i = 0; i < l; ++i)
 			if(atlas.atlas[ text.charCodeAt(i) ] != null)
 				num_valid_chars++;
 
@@ -1150,7 +1039,7 @@ var Draw = {
 
 		var pos = 0;
 		var x = 0, y = 0;
-		for(var i = 0; i &lt; l; ++i)
+		for(var i = 0; i < l; ++i)
 		{
 			var c = atlas.atlas[ text.charCodeAt(i) ];
 			if(!c)
@@ -1194,31 +1083,34 @@ var Draw = {
 		var fontsize = (canvas.width * 0.09)|0;
 		var char_size = (canvas.width * 0.1)|0;
 
-		//$(&quot;body&quot;).append(canvas);
-		var ctx = canvas.getContext(&quot;2d&quot;);
+		//$("body").append(canvas);
+		var ctx = canvas.getContext("2d");
 		//ctx.fillRect(0,0,canvas.width,canvas.height);
-		ctx.fillStyle = &quot;white&quot;;
-		ctx.font = fontsize + &quot;px Courier New&quot;;
-		ctx.textAlign = &quot;center&quot;;
+		ctx.fillStyle = "white";
+		ctx.font = fontsize + "px Courier New";
+		ctx.textAlign = "center";
 		var x = 0;
 		var y = 0;
 		var xoffset = 0.5, yoffset = fontsize * -0.3;
 		var atlas = {char_size: char_size, spacing: char_size * 0.6};
 
-		for(var i = 6; i &lt; 100; i++)//valid characters
+		for(var i = 6; i < 100; i++)//valid characters
 		{
 			var character = String.fromCharCode(i+27);
 			atlas[i+27] = [x/canvas.width, 1-(y+char_size)/canvas.height, (x+char_size)/canvas.width, 1-(y)/canvas.height];
-			ctx.fillText(character,Math.floor(x+char_size*xoffset),Math.floor(y+char_size+yoffset),char_size);
+			ctx.fillText( character,Math.floor(x+char_size*xoffset),Math.floor(y+char_size+yoffset),char_size);
 			x += char_size;
-			if((x + char_size) &gt; canvas.width)
+			if((x + char_size) > canvas.width)
 			{
 				x = 0;
 				y += char_size;
 			}
 		}
 
-		this.font_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.NEAREST, minFilter: gl.LINEAR} );
+		this.font_atlas = GL.Texture.fromImage(canvas, {magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR} );
+		gl.colorMask(true,true,true,false);
+		this.font_atlas.fill([1,1,1,0]);
+		gl.colorMask(true,true,true,true);
 		this.font_atlas.atlas = atlas;
 	},
 
@@ -1227,7 +1119,7 @@ var Draw = {
 		var n = array[0].length;
 		var result = new Float32Array(array.length * n);
 		var l = array.length;
-		for(var i = 0; i &lt; l; ++i)
+		for(var i = 0; i < l; ++i)
 			result.set(array[i], i*n);
 		return result;
 	},
@@ -1238,8 +1130,8 @@ var Draw = {
 	*/
 	push: function()
 	{
-		if(this.model_matrix.byteOffset &gt;= (this.stack.byteLength - 16*4))
-			throw(&quot;matrices stack overflow&quot;);
+		if(this.model_matrix.byteOffset >= (this.stack.byteLength - 16*4))
+			throw("matrices stack overflow");
 
 		var old = this.model_matrix;
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset + 16*4,16);
@@ -1253,7 +1145,7 @@ var Draw = {
 	pop: function()
 	{
 		if(this.model_matrix.byteOffset == 0)
-			throw(&quot;too many pops&quot;);
+			throw("too many pops");
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16);
 	},
 
@@ -1294,7 +1186,7 @@ var Draw = {
 	{
 		if(arguments.length == 3)
 			mat4.translate(this.model_matrix,this.model_matrix,[x,y,z]);
-		else  //one argument: x -&gt; vec3
+		else  //one argument: x -> vec3
 			mat4.translate(this.model_matrix,this.model_matrix,x);
 	},
 
@@ -1310,7 +1202,7 @@ var Draw = {
 	{
 		if(arguments.length == 4)
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, [x,y,z]);
-		else //two arguments: x -&gt; vec3
+		else //two arguments: x -> vec3
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, x);
 	},
 
@@ -1387,7 +1279,7 @@ var Draw = {
 			var mesh_buffer = this._global_mesh.getBuffer( i );
 			if(!mesh_buffer)
 			{
-				console.warn(&quot;Draw: global mesh lacks one buffer: &quot; + i );
+				console.warn("Draw: global mesh lacks one buffer: " + i );
 				continue;
 			}
 
@@ -1398,9 +1290,9 @@ var Draw = {
 				buffer_data = new Float32Array( buffer_data ); //force typed arrays
 
 			//some data would be lost here
-			if(buffer_data.length &gt; mesh_buffer.data.length)
+			if(buffer_data.length > mesh_buffer.data.length)
 			{
-				console.warn(&quot;Draw: data is too big, resizing&quot; );
+				console.warn("Draw: data is too big, resizing" );
 				this.resizeGlobalMesh();
 				mesh_buffer = this._global_mesh.getBuffer( i );
 				buffer_data = buffer_data.subarray(0,mesh_buffer.data.length);
@@ -1413,19 +1305,19 @@ var Draw = {
 
 		if(indices)
 		{
-			var mesh_buffer = this._global_mesh.getIndexBuffer(&quot;indices&quot;);			
+			var mesh_buffer = this._global_mesh.getIndexBuffer("indices");			
 			mesh_buffer.setData( indices );
 			this._global_mesh_last_size = indices.length;
 		}
 		else
-			this._global_mesh_last_size = buffers[&quot;vertices&quot;].length / 3;
+			this._global_mesh_last_size = buffers["vertices"].length / 3;
 		return this._global_mesh;
 	},
 
 	resizeGlobalMesh: function()
 	{
 		if(!this._global_mesh)
-			throw(&quot;No global mesh to resize&quot;);
+			throw("No global mesh to resize");
 
 		//global mesh: to reuse memory and save fragmentation
 		this._global_mesh_max_vertices = this._global_mesh_max_vertices * 2;
@@ -1444,23 +1336,5 @@ var Draw = {
 
 };
 
-if(typeof(LS) != &quot;undefined&quot;)
+if(typeof(LS) != "undefined")
 	LS.Draw = Draw;
-    </pre>
-</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-<script src="../assets/vendor/prettify/prettify-min.js"></script>
-<script>prettyPrint();</script>
-<script src="../assets/js/yui-prettify.js"></script>
-<script src="../assets/../api.js"></script>
-<script src="../assets/js/api-filter.js"></script>
-<script src="../assets/js/api-list.js"></script>
-<script src="../assets/js/api-search.js"></script>
-<script src="../assets/js/apidocs.js"></script>
-</body>
-</html>

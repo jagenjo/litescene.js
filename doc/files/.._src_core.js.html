@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -199,8 +205,9 @@ var LS = {
 		return v.match(exp);
 	},
 
-	valid_property_types: [&quot;String&quot;,&quot;Number&quot;,&quot;Boolean&quot;,&quot;color&quot;,&quot;vec2&quot;,&quot;vec3&quot;,&quot;vec4&quot;,&quot;quat&quot;,&quot;mat3&quot;,&quot;mat4&quot;,&quot;Resource&quot;,&quot;Animation&quot;,&quot;Texture&quot;,&quot;Prefab&quot;,&quot;Mesh&quot;,&quot;ShaderCode&quot;],
-
+	valid_property_types: [&quot;String&quot;,&quot;Number&quot;,&quot;Boolean&quot;,&quot;color&quot;,&quot;vec2&quot;,&quot;vec3&quot;,&quot;vec4&quot;,&quot;quat&quot;,&quot;mat3&quot;,&quot;mat4&quot;,&quot;Resource&quot;,&quot;Animation&quot;,&quot;Texture&quot;,&quot;Prefab&quot;,&quot;Mesh&quot;,&quot;ShaderCode&quot;,&quot;node&quot;,&quot;component&quot;],
+	
+	//used when creating a property to a component, to see if the type is valid
 	validatePropertyType: function(v)
 	{
 		if(	this.valid_property_types.indexOf(v) == -1 )
@@ -269,6 +276,44 @@ var LS = {
 	{
 		var name = this.getClassName( comp_class );
 		return !!this.Components[name];
+	},
+
+	/**
+	* Replaces all components of one class in the scene with components of another class
+	*
+	* @method replaceComponentClass
+	* @param {SceneTree} scene where to apply the replace
+	* @param {String} old_class_name name of the class to be replaced
+	* @param {String} new_class_name name of the class that will be used instead
+	*/
+	replaceComponentClass: function( scene, old_class_name, new_class_name )
+	{
+		var proposed_class = LS.Components[ new_class_name ];
+		if(!proposed_class)
+			return false;
+
+		for(var i = 0; i &lt; scene._nodes.length; ++i)
+		{
+			var node = scene._nodes[i];
+
+			if(!node.hasComponent( old_class_name, true ))
+				continue;
+
+			//this is a slow way but we dont care, this is used very rarely
+			var info = node.serialize();
+			info = { components: info.components }; //just want the components
+			for(var j = 0; j &lt; info.components.length; ++j)
+			{
+				var compo_info = info.components[j];
+				if(compo_info[0] == old_class_name)
+					compo_info[0] = new_class_name;
+			}
+			//now force the node to be reloaded
+			node.removeAllComponents();
+			node.configure( info );
+		}
+
+		return true;
 	},
 
 	/**
@@ -475,35 +520,44 @@ var LS = {
 			}
 			else if ( v.constructor === Array ) //clone regular array (container and content!)
 			{
+				//not safe to use concat or slice(0) because it doesnt clone content, only container
 				if( o[i] &amp;&amp; o[i].set &amp;&amp; o[i].length &gt;= v.length ) //reuse old container
 					o[i].set(v);
 				else
-					o[i] = JSON.parse( JSON.stringify(v) ); //not safe to use concat or slice(0) because it doesnt clone content, only container
+					o[i] = LS.cloneObject( v ); 
 			}
-			else //object: 
+			else //Object: 
 			{
-				if(v.toJSON)
-					o[i] = v.toJSON();
-				else if(recursive)
-					o[i] = LS.cloneObject( v, null, true );
-				else if(LS.catch_exceptions)
+				if(v.constructor !== Object &amp;&amp; !target &amp;&amp; !v.toJSON )
 				{
-					try
-					{
-						//prevent circular recursions //slow but safe
-						o[i] = JSON.parse( JSON.stringify(v) );
-					}
-					catch (err)
-					{
-						console.error(err);
-					}
+					console.warn(&quot;Cannot clone system classes&quot;);
+					continue;
 				}
-				else //slow but safe
-				{
+
+				if( v.toJSON )
+					o[i] = v.toJSON();
+				else if( recursive )
+					o[i] = LS.cloneObject( v, null, true );
+				else {
 					if(v.constructor !== Object &amp;&amp; LS.Classes[ LS.getObjectClassName(v) ])
 						console.warn(&quot;Cannot clone internal classes: &quot; + LS.getObjectClassName(v) );
-					else
+
+					if(LS.catch_exceptions)
+					{
+						try
+						{
+							//prevent circular recursions //slow but safe
+							o[i] = JSON.parse( JSON.stringify(v) );
+						}
+						catch (err)
+						{
+							console.error(err);
+						}
+					}
+					else //slow but safe
+					{
 						o[i] = JSON.parse( JSON.stringify(v) );
+					}
 				}
 			}
 		}
@@ -519,6 +573,10 @@ var LS = {
 	{
 		if(root.uid)
 			delete root.uid;
+
+		//remove for embeded materials
+		if(root.material &amp;&amp; root.material.uid)
+			delete root.material.uid;
 
 		var components = root.components;
 		if(!components &amp;&amp; root.getComponents)
@@ -731,139 +789,6 @@ var LS = {
 	},
 
 	/**
-	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.
-	*
-	* @method getGUIElement
-	* @return {HTMLElement} 
-	*/
-	getGUIElement: function()
-	{
-		if( this._gui_element )
-			return this._gui_element;
-
-		var gui = document.createElement(&quot;div&quot;);
-		gui.className = &quot;litescene-gui&quot;;
-		gui.style.position = &quot;absolute&quot;;
-		gui.style.top = &quot;0&quot;;
-		gui.style.left = &quot;0&quot;;
-
-		//normalize
-		gui.style.color = &quot;#999&quot;;
-		gui.style.font = &quot;20px Arial&quot;;
-
-		//make it fullsize
-		gui.style.width = &quot;100%&quot;;
-		gui.style.height = &quot;100%&quot;;
-		gui.style.overflow = &quot;hidden&quot;;
-		gui.style.pointerEvents = &quot;none&quot;;
-
-		if(!this._gui_style)
-		{
-			var style = this._gui_style = document.createElement(&quot;style&quot;);
-			style.appendChild(document.createTextNode(&quot;&quot;));
-			document.head.appendChild(style);
-			style.sheet.insertRule(&quot;.litescene-gui button, .litescene-gui input { pointer-events: auto; }&quot;);
-		}
-
-		gl.canvas.parentNode.appendChild( gui );
-		
-		this._gui_element = gui;
-		return gui;
-	},
-
-	/**
-	* Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas
-	*
-	* @method createElementGUI
-	* @param {String} tag_type the tag type &quot;div&quot;
-	* @param {String} anchor &quot;top-left&quot;, &quot;top-right&quot;, &quot;bottom-left&quot;, &quot;bottom-right&quot;
-	* @return {HTMLElement} 
-	*/
-	createElementGUI: function( tag_type, anchor )
-	{
-		tag_type = tag_type || &quot;div&quot;;
-
-		var element = document.createElement(&quot;div&quot;);
-		element.style.pointerEvents = &quot;auto&quot;;
-		return this.attachToGUI( element, anchor );
-	},
-
-	attachToGUI: function( element, anchor )
-	{
-		if(!element)
-		{
-			console.error(&quot;attachToGUI: element cannot be null&quot;);
-			return;
-		}
-
-		element.style.position = &quot;absolute&quot;;
-
-		anchor = anchor || &quot;top-left&quot;;
-
-		switch(anchor)
-		{
-			case &quot;bottom&quot;:
-			case &quot;bottom-left&quot;:
-				element.style.bottom = &quot;0&quot;;
-				element.style.left = &quot;0&quot;;
-				break;
-			case &quot;bottom-right&quot;:
-				element.style.bottom = &quot;0&quot;;
-				element.style.right = &quot;0&quot;;
-				break;
-			case &quot;bottom-middle&quot;:
-				element.style.bottom = &quot;0&quot;;
-				element.style.width = &quot;50%&quot;;
-				element.style.margin = &quot;0 auto&quot;;
-				break;
-			case &quot;right&quot;:
-			case &quot;top-right&quot;:
-				element.style.top = &quot;0&quot;;
-				element.style.right = &quot;0&quot;;
-				break;
-			case &quot;top-middle&quot;:
-				element.style.top = &quot;0&quot;;
-				element.style.width = &quot;50%&quot;;
-				element.style.margin = &quot;0 auto&quot;;
-				break;
-			default:
-				console.warn(&quot;invalid GUI anchor position: &quot;,anchor);
-			case &quot;left&quot;:
-			case &quot;top&quot;:
-			case &quot;top-left&quot;:
-				element.style.top = &quot;0&quot;;
-				element.style.left = &quot;0&quot;;
-				break;
-		}
-
-		var gui_root = this.getGUIElement();
-		gui_root.appendChild( element );
-		return element;
-	},
-
-	/**
-	* Removes all the GUI elements from the DOM
-	*
-	* @method removeGUIElement
-	*/
-	removeGUIElement: function()
-	{
-		if( !this._gui_element )
-			return;
-
-		if(this._gui_element.parentNode)
-			this._gui_element.parentNode.removeChild( this._gui_element );
-		this._gui_element = null;
-
-		if(this._gui_style)
-		{
-			this._gui_style.parentNode.removeChild( this._gui_style );
-			this._gui_style = null;		
-		}
-		return;
-	},
-
-	/**
 	* Returns an script context using the script name (not the node name), usefull to pass data between scripts.
 	*
 	* @method getScript
@@ -911,6 +836,46 @@ var LS = {
 			console.error( &quot;Not a valid value: &quot; + v );
 		}
 		return value;
+	},
+
+	isValueOfType: function( value, type )
+	{
+		if(value === null || value === undefined)
+		{
+			switch (type)
+			{
+				case &quot;float&quot;: 
+				case &quot;sampler2D&quot;: 
+				case &quot;samplerCube&quot;:
+				case LS.TYPES.NUMBER: 
+				case LS.TYPES.VEC2: 
+				case LS.TYPES.VEC3:
+				case LS.TYPES.VEC4:
+				case LS.TYPES.COLOR:
+				case LS.TYPES.COLOR4:
+				case &quot;mat3&quot;: 
+				case &quot;mat4&quot;:
+					return false;
+			}
+			return true;
+		}
+
+		switch (type)
+		{
+			//used to validate shaders
+			case &quot;float&quot;: 
+			case &quot;sampler2D&quot;: 
+			case &quot;samplerCube&quot;:
+			case LS.TYPES.NUMBER: return isNumber(value);
+			case LS.TYPES.VEC2: return value.length === 2;
+			case LS.TYPES.VEC3: return value.length === 3;
+			case LS.TYPES.VEC4: return value.length === 4;
+			case LS.TYPES.COLOR: return value.length === 3;
+			case LS.TYPES.COLOR4: return value.length === 4;
+			case &quot;mat3&quot;: return value.length === 9;
+			case &quot;mat4&quot;: return value.length === 16;
+		}
+		return true;
 	}
 }
 
@@ -924,6 +889,19 @@ Object.defineProperty( LS, &quot;catch_exceptions&quot;, {
 	get: function() { return this._catch_exceptions; },
 	enumerable: true
 });
+
+//ensures no exception is catched by the system (useful for developers)
+Object.defineProperty( LS, &quot;block_scripts&quot;, { 
+	set: function(v){ 
+		LS._block_scripts = v; 
+		LScript.block_execution = v; 
+	},
+	get: function() { 
+		return !!LS._block_scripts;
+	},
+	enumerable: true
+});
+
 
 //Add some classes
 LS.Classes.WBin = LS.WBin = WBin;
@@ -942,10 +920,11 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @param {*} value value to assign to property
 	*/
-	set: function( locator, value, root )
+	set: function( locator, value, root, scene )
 	{
+		scene = scene || LS.GlobalScene;
 		if(!root)
-			LS.GlobalScene.setPropertyValue( locator, value );
+			scene.setPropertyValue( locator, value );
 		else
 		{
 			if(root.constructor === LS.SceneNode)
@@ -958,7 +937,7 @@ var LSQ = {
 			}
 		}
 
-		scene.refresh();
+		scene.requestFrame();
 	},
 
 	/**
@@ -969,11 +948,12 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @return {*} value of the property
 	*/
-	get: function( locator, root )
+	get: function( locator, root, scene )
 	{
+		scene = scene || LS.GlobalScene;
 		var info;
 		if(!root)
-			info = LS.GlobalScene.getPropertyInfo( locator );
+			info = scene.getPropertyInfo( locator );
 		else
 		{
 			if(root.constructor === LS.SceneNode)
@@ -998,7 +978,7 @@ var LSQ = {
 	* @param {String} locator the locator string to shortify
 	* @return {String} the locator using names instead of UIDs
 	*/
-	shortify: function( locator )
+	shortify: function( locator, scene )
 	{
 		if(!locator)
 			return;
@@ -1010,7 +990,9 @@ var LSQ = {
 		if( t[0][0] != LS._uid_prefix )
 			return locator;
 
-		node = LS.GlobalScene._nodes_by_uid[ t[0] ];
+		scene = scene || LS.GlobalScene;
+
+		node = scene._nodes_by_uid[ t[0] ];
 		if(!node) //node not found
 			return locator;
 
@@ -1027,6 +1009,14 @@ var LSQ = {
 		return t.join(&quot;/&quot;);
 	},
 
+	/**
+	* Assigns a value using the getLocatorInfo object instead of searching it again
+	* This is faster but if the locator points to a different object it wont work.
+	*
+	* @method setFromInfo
+	* @param {Object} info information of a location (obtain using scene.getLocatorInfo
+	* @param {*} value to assign
+	*/
 	setFromInfo: function( info, value )
 	{
 		if(!info || !info.target)

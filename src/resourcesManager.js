@@ -236,6 +236,7 @@ var ResourcesManager = {
 	* @method loadResources
 	* @param {Object} resources contains all the resources, associated with its type
 	* @param {Object}[options={}] options to apply to the loaded resources
+	* @return {number} the actual amount of resources being loaded (this differs fromt he resources passed because some could be already in memory)
 	*/
 	loadResources: function(res, options )
 	{
@@ -251,6 +252,9 @@ var ResourcesManager = {
 
 		this._total_resources_to_load = this.num_resources_being_loaded;
 		LEvent.trigger( this, "start_loading_resources", this._total_resources_to_load );
+		if(!this._total_resources_to_load) //all resources were already in memory
+			LEvent.trigger( this, "end_loading_resources" );
+		return this._total_resources_to_load;
 	},	
 
 	/**
@@ -321,7 +325,7 @@ var ResourcesManager = {
 				case 'https':
 					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
-					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 ) //proxy external files
+					if(this.proxy && this.skip_proxy_extensions.indexOf( extension ) == -1 && (!options || (options && !options.ignore_proxy)) ) //proxy external files
 						return this.proxy + url; //this.proxy + url.substr(pos+3); //"://"
 					return full_url;
 					break;
@@ -463,7 +467,7 @@ var ResourcesManager = {
 			return;
 		}
 
-
+		//if the file has been modified we cannot keep using the original data
 		delete resource._original_data;
 		delete resource._original_file;
 
@@ -471,7 +475,8 @@ var ResourcesManager = {
 			resource._modified = true;
 
 		LEvent.trigger(this, "resource_modified", resource );
-		
+
+		//TODO: from_prefab and from_pack should be the sabe property
 		if(resource.from_pack)
 		{
 			if (resource.from_pack.constructor === String)
@@ -481,6 +486,16 @@ var ResourcesManager = {
 					this.resourceModified(pack);
 			}
 		}
+		if(resource.from_prefab)
+		{
+			if (resource.from_prefab.constructor === String)
+			{
+				var prefab = LS.ResourcesManager.getResource( resource.from_prefab );
+				if(prefab)
+					this.resourceModified(prefab);
+			}
+		}
+
 
 	},
 
@@ -632,7 +647,7 @@ var ResourcesManager = {
 		var resource = null;
 		var extension = this.getExtension( url );
 
-		//ugly but I dont see a work around to create this
+		//callback to embede a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
 			{
@@ -662,7 +677,7 @@ var ResourcesManager = {
 
 		//special preprocessor
 		var preprocessor_callback = this.resource_pre_callbacks[ extension.toLowerCase() ];
-		if(preprocessor_callback)
+		if( preprocessor_callback )
 		{
 			//this callback should return the resource or true if it is processing it
 			var resource = preprocessor_callback( url, data, options, process_final );
@@ -682,10 +697,10 @@ var ResourcesManager = {
 			switch( format_info.type )
 			{
 				case "scene":
-					resource = LS.ResourcesManager.processASCIIScene( url, data, options, process_final );
+					resource = LS.ResourcesManager.processTextScene( url, data, options, process_final );
 					break;
 				case "mesh":
-					resource = LS.ResourcesManager.processASCIIMesh( url, data, options, process_final );
+					resource = LS.ResourcesManager.processTextMesh( url, data, options, process_final );
 					break;
 				case "texture":
 				case "image":
@@ -1031,6 +1046,7 @@ var ResourcesManager = {
 	* @method onceLoaded
 	* @param {String} fullpath of the resource you want to get the notification once is loaded
 	* @param {Function} callback the function to call, it will be called as callback( fullpath, resource )
+	* @return (number) index of the position in the array, use this index to cancel the event 
 	*/
 	onceLoaded: function( fullpath, callback )
 	{
@@ -1042,10 +1058,26 @@ var ResourcesManager = {
 		}
 
 		//avoid repeating
-		for(var i in array)
-			if( array[i] == callback )
-				return;
+		if( array.indexOf( callback ) != -1 )
+			return;
+
 		array.push( callback );
+		return array.length - 1;
+	},
+
+	/**
+	* Cancels the binding of a onceLoaded
+	*
+	* @method cancelOnceLoaded
+	* @param {String} fullpath fullpath of the resource you want to cancel the binding
+	* @param {number} index the index of the callback to cancel (as it was returned by onceLoaded)
+	*/
+	cancelOnceLoaded: function( fullpath, index )
+	{
+		var array = this.resource_once_callbacks[ fullpath ];
+		if(!array)
+			return;
+		array[ index ] = null;
 	},
 
 	//*************************************
@@ -1058,18 +1090,22 @@ var ResourcesManager = {
 
 		if(res)
 		{
-			for(var i in LS.ResourcesManager.resources_being_loaded[url])
-			{
-				if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-					LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
-			}
+			//trigger all associated load callbacks
+			var callbacks_array = LS.ResourcesManager.resources_being_loaded[url];
+			if(callbacks_array)
+				for(var i = 0; i < callbacks_array.length; ++i )
+				{
+					if( callbacks_array[i].callback != null )
+						callbacks_array[i].callback( res, url );
+				}
 
 			//triggers 'once' callbacks
-			if(LS.ResourcesManager.resource_once_callbacks[ url ])
+			var callbacks_array = LS.ResourcesManager.resource_once_callbacks[url];
+			if(callbacks_array)
 			{
-				var v = LS.ResourcesManager.resource_once_callbacks[url];
-				for(var i in v)
-					v[i](url, res);
+				for(var i = 0; i < callbacks_array.length; ++i)
+					if(callbacks_array[i]) //could be null if it has been canceled
+						callbacks_array[i](url, res);
 				delete LS.ResourcesManager.resource_once_callbacks[url];
 			}
 		}
@@ -1364,8 +1400,8 @@ LS.ResourcesManager.processTexture = function(filename, img, options)
 	return texture;
 }
 
-//Transform ascii mesh data in a regular GL.Mesh
-LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
+//Transform text mesh data in a regular GL.Mesh
+LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 
 	var mesh_data = LS.Formats.parse( filename, data, options );
 
@@ -1380,7 +1416,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 }
 
 //Transform scene data in a SceneNode
-LS.ResourcesManager.processASCIIScene = function( filename, data, options ) {
+LS.ResourcesManager.processTextScene = function( filename, data, options ) {
 	//options = options || {};
 
 	var scene_data = LS.Formats.parse( filename, data, options );
@@ -1420,13 +1456,6 @@ LS.ResourcesManager.processASCIIScene = function( filename, data, options ) {
 	return node;
 }
 
-//LS.ResourcesManager.registerResourcePreProcessor("jpg,jpeg,png,webp,gif", LS.ResourcesManager.processImage, "binary","Texture");
-//LS.ResourcesManager.registerResourcePreProcessor("dds,tga", LS.ResourcesManager.processImageNonNative );
-//LS.ResourcesManager.registerResourcePreProcessor("obj,ase", LS.ResourcesManager.processASCIIMesh, "text","Mesh");
-//LS.ResourcesManager.registerResourcePreProcessor("stl", LS.ResourcesManager.processASCIIMesh, "binary","Mesh");
-//LS.ResourcesManager.registerResourcePreProcessor("dae", LS.ResourcesManager.processASCIIScene, "text", "SceneTree");
-
-
 // Post processors **********************************************************************************
 // Take a resource already processed and does some final actions (like validate, register or compute metadata)
 
@@ -1453,12 +1482,12 @@ LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mes
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("Texture", function( filename, texture ) {
-	//store
+	//store in appropiate container
 	LS.ResourcesManager.textures[filename] = texture;
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("Material", function( filename, material ) {
-	//store
+	//store in appropiate containers
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
 	if(material.prepare)
@@ -1471,12 +1500,12 @@ LS.ResourcesManager.registerResourcePostProcessor("Pack", function( filename, pa
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("Prefab", function( filename, prefab ) {
-	//apply to nodes in the scene
+	//apply to nodes in the scene that use this prefab
 	prefab.applyToNodes();
 });
 
 LS.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filename, shader_code ) {
-	//apply to materials
+	//apply to materials that are using this ShaderCode
 	shader_code.applyToMaterials();
 });
 

@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -142,44 +148,17 @@
     <pre class="code prettyprint linenums">
 /**
 * RenderInstance contains info of one object to be rendered on the scene.
+* It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)
 *
 * @class RenderInstance
 * @namespace LS
 * @constructor
 */
 
-//Flags to control rendering states
-//0-7: render state flags
-var RI_CULL_FACE =			1;		//for two sided
-var RI_CW =					1 &lt;&lt; 1; //reverse normals
-var RI_DEPTH_TEST =			1 &lt;&lt; 2; //use depth test
-var RI_DEPTH_WRITE = 		1 &lt;&lt; 3; //write in the depth buffer
-var RI_ALPHA_TEST =			1 &lt;&lt; 4; //do alpha test
-var RI_BLEND = 				1 &lt;&lt; 5; //use blend function
-
-//8-16: rendering pipeline flags
-var RI_CAST_SHADOWS = 		1 &lt;&lt; 8;	//render in shadowmaps
-var RI_RECEIVE_SHADOWS =	1 &lt;&lt; 9;	//receive shadowmaps
-var RI_IGNORE_LIGHTS = 		1 &lt;&lt; 10;//render without taking into account light info
-var RI_IGNORE_FRUSTUM = 	1 &lt;&lt; 11;//render even when outside of frustum //CHANGE TO VALID_BOUNDINGBOX
-//var RI_RENDER_2D = 			1 &lt;&lt; 12;//render in screen space using the position projection (similar to billboard)
-var RI_IGNORE_VIEWPROJECTION = 1 &lt;&lt; 13; //do not multiply by viewprojection, use model as mvp
-var RI_IGNORE_CLIPPING_PLANE = 1 &lt;&lt; 14; //ignore the plane clipping (in reflections)
-
-//16-24: instance properties
-var RI_RAYCAST_ENABLED = 1 &lt;&lt; 16; //if it could be raycasted
-var RI_IGNORE_AUTOUPDATE = 1 &lt;&lt; 17; //if it could update matrix from scene
-
-
-//default flags for any instance
-var RI_DEFAULT_FLAGS = RI_CULL_FACE | RI_DEPTH_TEST | RI_DEPTH_WRITE | RI_CAST_SHADOWS | RI_RECEIVE_SHADOWS;
-//var RI_2D_FLAGS = RI_RENDER_2D | RI_CULL_FACE | RI_BLEND | RI_IGNORE_LIGHTS | RI_IGNORE_FRUSTUM;
-
 function RenderInstance( node, component )
 {
-	this._key = &quot;&quot;; //not used yet
 	this.uid = LS.generateUId(&quot;RINS&quot;); //unique identifier for this RI
-	this.layers = 3;
+	this.layers = 3; //in layer 1 and 2 by default
 	this.index = -1; //used to know the rendering order
 
 	//info about the mesh
@@ -200,11 +179,7 @@ function RenderInstance( node, component )
 	//where does it come from
 	this.node = node;
 	this.component = component;
-	this.priority = 10; //instances are rendered from higher to lower priority
-
-	//rendering flags
-	this.flags = RI_DEFAULT_FLAGS;
-	this.blend_func = LS.BlendFunctions[&quot;normal&quot;]; //Blend.funcs[&quot;add&quot;], ...
+	this.priority = 10; //only used if the RenderQueue is in PRIORITY MODE, instances are rendered from higher to lower priority
 
 	//transformation
 	this.matrix = mat4.create();
@@ -216,33 +191,25 @@ function RenderInstance( node, component )
 	this.aabb = BBox.create(); //axis aligned bounding box
 
 	//info about the material
-	this.material = null;
-	//this.materials = null; //for multimaterial rendering, LONG FUTURE...
+	this.material = null; //the material, cannot be a string
+	this.use_bounding = true; //in case it has vertex shader deformers the bounding box is not usable
 
 	//for extra data for the shader
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
+	this.shader_blocks = [];
+	//this.deformers = []; //TODO
 
 	//TO DO: instancing
 	//this.uniforms_instancing = {};
 
-	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering
-	this._is_visible = false; //used during the rendering
-
 	//for internal use
+	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering (using bit operations)
+	this._is_visible = false; //used during the rendering to mark if it was seen
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
 }
-
-/*
-//not used
-RenderInstance.prototype.generateKey = function(step, options)
-{
-	this._key = step + &quot;|&quot; + this.node.uid + &quot;|&quot; + this.material.uid + &quot;|&quot;;
-	return this._key;
-}
-*/
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
@@ -271,7 +238,7 @@ RenderInstance.prototype.computeNormalMatrix = function()
 RenderInstance.prototype.setMaterial = function(material)
 {
 	this.material = material;
-	if(material)
+	if(material &amp;&amp; material.applyToRenderInstance)
 		material.applyToRenderInstance(this);
 }
 
@@ -319,10 +286,10 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 	if(mesh.bounding)
 	{
 		this.oobb.set( mesh.bounding ); //copy
-		this.flags &amp;= ~RI_IGNORE_FRUSTUM; //test against frustum
+		this.use_bounding = true;
 	}
 	else
-		this.flags |= RI_IGNORE_FRUSTUM; //no frustum, no test
+		this.use_bounding = false;
 }
 
 //assigns a secondary mesh in case the object is too small on the screen
@@ -373,38 +340,6 @@ RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
 	this.range[1] = offset;
-}
-
-/**
-* takes the flags on the node and update the render instance flags
-*
-* @method applyNodeFlags
-*/
-RenderInstance.prototype.applyNodeFlags = function()
-{
-	var node_flags = this.node.flags;
-	this.layers = this.node.layers;
-
-	if(node_flags.two_sided == true) this.flags &amp;= ~RI_CULL_FACE;
-	else this.flags |= RI_CULL_FACE;
-
-	if(node_flags.flip_normals == true) this.flags |= RI_CW;
-	else this.flags &amp;= ~RI_CW;
-
-	if(node_flags.depth_test == false) this.flags &amp;= ~RI_DEPTH_TEST;
-	else this.flags |= RI_DEPTH_TEST;
-
-	if(node_flags.depth_write == false) this.flags &amp;= ~RI_DEPTH_WRITE;
-	else this.flags |= RI_DEPTH_WRITE;
-
-	//if(node_flags.alpha_test == true) this.flags |= RI_ALPHA_TEST;
-	//else this.flags &amp;= ~RI_ALPHA_TEST;
-
-	if(node_flags.cast_shadows == false) this.flags &amp;= ~RI_CAST_SHADOWS;
-	else this.flags |= RI_CAST_SHADOWS;
-
-	if(node_flags.receive_shadows == false) this.flags &amp;= ~RI_RECEIVE_SHADOWS;	
-	else this.flags |= RI_RECEIVE_SHADOWS;	
 }
 
 /**
@@ -489,6 +424,21 @@ RenderInstance.prototype.render = function(shader)
 	  this.primitive, this.range[0], this.range[1] );
 }
 
+//checks the shader blocks attached to this instance and resolves the flags
+RenderInstance.prototype.computeShaderBlockFlags = function()
+{
+	var r = 0;
+	for(var i = 0; i &lt; this.shader_blocks.length; ++i)
+	{
+		var shader_block = this.shader_blocks[i];
+		if(!shader_block)
+			continue;
+		var block = this.shader_blocks[i].block;
+		r |= block.flag_mask;
+	}
+	return r;
+}
+
 /*
 RenderInstance.prototype.renderInstancing = function( shader )
 {
@@ -523,10 +473,10 @@ RenderInstance.prototype.renderInstancing = function( shader )
 }
 */
 
-RenderInstance.prototype.overlapsSphere = function(center, radius)
+RenderInstance.prototype.overlapsSphere = function( center, radius )
 {
 	//we dont know if the bbox of the instance is valid
-	if(this.flags &amp; RI_IGNORE_FRUSTUM)
+	if( !this.use_bounding )
 		return true;
 	return geo.testSphereBBox( center, radius, this.aabb );
 }
@@ -544,16 +494,6 @@ RenderInstance.prototype.wasVisibleByCamera = function( camera )
 		return this._camera_visibility != 0;
 	return (this._camera_visibility | (1&lt;&lt;(camera._rendering_index))) ? true : false;
 }
-
-
-/* moved to PhysicsInstance
-RenderInstance.prototype.setCollisionMesh = function(mesh)
-{
-	this.flags |= RI_USE_MESH_AS_COLLIDER;
-	this.collision_mesh = mesh;
-}
-*/
-
 
 LS.RenderInstance = RenderInstance;
     </pre>

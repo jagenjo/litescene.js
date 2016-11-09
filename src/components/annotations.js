@@ -29,7 +29,7 @@ AnnotationComponent.onShowPointAnnotation = function (node, note)
 			on_close: inner_update_note.bind(note), 
 			on_delete: function(info) { 
 				comp.removeAnnotation(info.item);
-				LS.GlobalScene.requestFrame();
+				this._root.scene.requestFrame();
 			},
 			on_focus: function(info) { 
 				AnnotationModule.focusInAnnotation(info.item);

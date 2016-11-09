@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -156,7 +162,10 @@ function LScript()
 	this.extra_methods = null; //add object with methods here to attach methods
 }
 
+
 LScript.onerror = null; //global used to catch errors in scripts
+
+LScript.eval = function(argv_names,code) { return eval(&quot;(function(&quot;+argv_names+&quot;){\n&quot;+code+&quot;\n})&quot;); }; //not used
 
 LScript.catch_exceptions = false;
 LScript.show_errors_in_console = true;
@@ -188,37 +197,51 @@ LScript.prototype.compile = function( arg_vars, save_context_vars )
 	this._last_executed_code = code;
 
 	var old_context = this._context;
-	
-	try
+
+	if(!LScript.catch_exceptions)
 	{
-		this._class = new Function(argv_names, code);
+		this._class = new Function(argv_names, code);//&lt;-- PARSING POINT HERE ***************************************
 		var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
 		this._context = new context_function(); //&lt;-- EXECUTION POINT HERE ***************************************
 	}
-	catch (err)
+	else
 	{
-		this._class = null;
-		this._context = null;
-		if(LScript.show_errors_in_console)
+		try
 		{
-			var error_line = LScript.computeLineFromError(err);
-			console.error(&quot;Error in script\n&quot; + err);
-			if( console.groupCollapsed )
-			{
-				console.groupCollapsed(&quot;Error line: &quot; + error_line + &quot; Watch code&quot;);
-				LScript.showCodeInConsole( this._last_executed_code, error_line );
-				console.groupEnd();
-			}
-			else
-				console.error(&quot;Error line: &quot; + error_line);
+			//LScript.eval(argv_names,code);
+			this._class = new Function(argv_names, code);
+			var context_function = LScript.applyToConstructor( this._class, argv_values, this.extra_methods ); //bind globals and methods to context
+			this._context = new context_function(); //&lt;-- EXECUTION POINT HERE ***************************************
 		}
-		if(this.onerror)
-			this.onerror(err, this._last_executed_code);
-		if(LScript.onerror)
-			LScript.onerror(err, this._last_executed_code, this);
-		return false;
-	}
+		catch (err)
+		{
+			if(!this._class)
+			{
+				console.error(&quot;Parsing error in script\n&quot; + err);
+			}
 
+			this._class = null;
+			this._context = null;
+			if(LScript.show_errors_in_console)
+			{
+				var error_line = LScript.computeLineFromError(err);
+				console.error(&quot;Error in script\n&quot; + err);
+				if( console.groupCollapsed )
+				{
+					console.groupCollapsed(&quot;Error line: &quot; + error_line + &quot; Watch code&quot;);
+					LScript.showCodeInConsole( this._last_executed_code, error_line );
+					console.groupEnd();
+				}
+				else
+					console.error(&quot;Error line: &quot; + error_line);
+			}
+			if(this.onerror)
+				this.onerror(err, this._last_executed_code);
+			if(LScript.onerror)
+				LScript.onerror(err, this._last_executed_code, this);
+			return false;
+		}
+	}
 
 	if(save_context_vars &amp;&amp; old_context)
 	{
@@ -269,7 +292,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		else
 			console.error(&quot;Error line: &quot; + error_line);
 		if(this.onerror)
-			this.onerror(err);
+			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code});
 		//throw new Error( err.stack ); //TEST THIS
 	}
 }

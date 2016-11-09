@@ -176,4 +176,4 @@ var parserASE = {
 	}
 };
 
-LS.Formats.registerParser( parserASE );
+LS.Formats.addSupportedFormat( "ase", parserASE );

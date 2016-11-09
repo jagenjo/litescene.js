@@ -27,6 +27,8 @@ function ShaderCode( code )
 		this.code = code;
 }
 
+ShaderCode.help_url = "https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md";
+
 //block types
 ShaderCode.CODE = 1;
 ShaderCode.PRAGMA = 2;
@@ -485,7 +487,7 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 	}
 
 	//embeded materials
-	var nodes = LS.GlobalScene.getNodes();
+	var nodes = scene.getNodes();
 	for(var i = 0; i < nodes.length; ++i)
 	{
 		var node = nodes[i];
@@ -493,6 +495,9 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 			node.material.processShaderCode();
 	}
 }
+
+//used in editor
+ShaderCode.prototype.hasEditableText = function() { return true; }
 
 ShaderCode.removeComments = function( code )
 {
@@ -523,6 +528,11 @@ ShaderCode.examples.fx = "\n\
 ";
 
 ShaderCode.examples.color = "\n\
+\n\
+\\js\n\
+//define exported uniforms from the shader (name, uniform, widget)\n\
+this.createUniform(\"Number\",\"u_number\",\"number\");\n\
+this.createSampler(\"Texture\",\"u_texture\");\n\
 \n\
 \\default.vs\n\
 \n\
@@ -574,6 +584,9 @@ uniform vec4 u_clipping_plane;\n\
 uniform float u_time;\n\
 uniform vec3 u_background_color;\n\
 uniform vec3 u_ambient_light;\n\
+\n\
+uniform float u_number;\n\
+uniform sampler2D u_texture;\n\
 \n\
 //material\n\
 uniform vec4 u_material_color; //color and alpha\n\

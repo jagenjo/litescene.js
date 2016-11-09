@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -205,6 +211,10 @@ It also contains the parsers and methods in charge of processing them</p>
 
                     <ul class="index-list methods">
                             <li class="index-item method">
+                                <a href="#method_cancelOnceLoaded">cancelOnceLoaded</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_cleanFullpath">cleanFullpath</a>
 
                             </li>
@@ -238,6 +248,10 @@ It also contains the parsers and methods in charge of processing them</p>
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getResource">getResource</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getResourcesData">getResourcesData</a>
 
                             </li>
                             <li class="index-item method">
@@ -338,6 +352,74 @@ It also contains the parsers and methods in charge of processing them</p>
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
+<div id="method_cancelOnceLoaded" class="method item">
+    <h3 class="name"><code>cancelOnceLoaded</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>fullpath</code>
+                </li>
+                <li class="arg">
+                        <code>index</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resourcesManager.js.html#l1068"><code>..&#x2F;src&#x2F;resourcesManager.js:1068</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Cancels the binding of a onceLoaded</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">fullpath</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>fullpath of the resource you want to cancel the binding</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index of the callback to cancel (as it was returned by onceLoaded)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_cleanFullpath" class="method item">
     <h3 class="name"><code>cleanFullpath</code></h3>
 
@@ -362,7 +444,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l206"><code>..&#x2F;src&#x2F;resourcesManager.js:206</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l207"><code>..&#x2F;src&#x2F;resourcesManager.js:207</code></a>
         </p>
 
 
@@ -370,7 +452,8 @@ It also contains the parsers and methods in charge of processing them</p>
     </div>
 
     <div class="description">
-        <p>Cleans resource name (removing double slashes to avoid problems)</p>
+        <p>Cleans resource name (removing double slashes to avoid problems)
+It is slow, so use it only in changes, not in getters</p>
 
     </div>
 
@@ -427,7 +510,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l187"><code>..&#x2F;src&#x2F;resourcesManager.js:187</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l188"><code>..&#x2F;src&#x2F;resourcesManager.js:188</code></a>
         </p>
 
 
@@ -495,7 +578,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l111"><code>..&#x2F;src&#x2F;resourcesManager.js:111</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l112"><code>..&#x2F;src&#x2F;resourcesManager.js:112</code></a>
         </p>
 
 
@@ -572,7 +655,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l154"><code>..&#x2F;src&#x2F;resourcesManager.js:154</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l155"><code>..&#x2F;src&#x2F;resourcesManager.js:155</code></a>
         </p>
 
 
@@ -637,7 +720,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l172"><code>..&#x2F;src&#x2F;resourcesManager.js:172</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l173"><code>..&#x2F;src&#x2F;resourcesManager.js:173</code></a>
         </p>
 
 
@@ -705,7 +788,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l287"><code>..&#x2F;src&#x2F;resourcesManager.js:287</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l293"><code>..&#x2F;src&#x2F;resourcesManager.js:293</code></a>
         </p>
 
 
@@ -780,7 +863,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l896"><code>..&#x2F;src&#x2F;resourcesManager.js:896</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l966"><code>..&#x2F;src&#x2F;resourcesManager.js:966</code></a>
         </p>
 
 
@@ -843,7 +926,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l52"><code>..&#x2F;src&#x2F;resourcesManager.js:52</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l53"><code>..&#x2F;src&#x2F;resourcesManager.js:53</code></a>
         </p>
 
 
@@ -912,7 +995,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l357"><code>..&#x2F;src&#x2F;resourcesManager.js:357</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l363"><code>..&#x2F;src&#x2F;resourcesManager.js:363</code></a>
         </p>
 
 
@@ -965,6 +1048,86 @@ It also contains the parsers and methods in charge of processing them</p>
 
 
 </div>
+<div id="method_getResourcesData" class="method item">
+    <h3 class="name"><code>getResourcesData</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>resource_names</code>
+                </li>
+                <li class="arg">
+                        <code>allow_files</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resourcesManager.js.html#l403"><code>..&#x2F;src&#x2F;resourcesManager.js:403</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns an object containig all the resources and its data (used to export resources)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">resource_names</code>
+                        <span class="type">Array</span>
+
+
+                    <div class="param-description">
+                        <p>an array containing the resources names</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">allow_files</code>
+                        <span class="type">Bool</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] used to allow to retrieve the data in File or Blob, otherwise only String and ArrayBuffer is supported</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Object</span>:
+                    <p>object with name:data</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_getResourceType" class="method item">
     <h3 class="name"><code>getResourceType</code></h3>
 
@@ -989,7 +1152,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l379"><code>..&#x2F;src&#x2F;resourcesManager.js:379</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l385"><code>..&#x2F;src&#x2F;resourcesManager.js:385</code></a>
         </p>
 
 
@@ -1054,7 +1217,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l913"><code>..&#x2F;src&#x2F;resourcesManager.js:913</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l983"><code>..&#x2F;src&#x2F;resourcesManager.js:983</code></a>
         </p>
 
 
@@ -1118,7 +1281,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l803"><code>..&#x2F;src&#x2F;resourcesManager.js:803</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l873"><code>..&#x2F;src&#x2F;resourcesManager.js:873</code></a>
         </p>
 
 
@@ -1177,7 +1340,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l879"><code>..&#x2F;src&#x2F;resourcesManager.js:879</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l949"><code>..&#x2F;src&#x2F;resourcesManager.js:949</code></a>
         </p>
 
 
@@ -1218,7 +1381,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l864"><code>..&#x2F;src&#x2F;resourcesManager.js:864</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l934"><code>..&#x2F;src&#x2F;resourcesManager.js:934</code></a>
         </p>
 
 
@@ -1268,7 +1431,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l450"><code>..&#x2F;src&#x2F;resourcesManager.js:450</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l517"><code>..&#x2F;src&#x2F;resourcesManager.js:517</code></a>
         </p>
 
 
@@ -1340,6 +1503,9 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             </ul><span class="paren">)</span>
         </div>
 
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
 
 
 
@@ -1350,7 +1516,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l231"><code>..&#x2F;src&#x2F;resourcesManager.js:231</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l233"><code>..&#x2F;src&#x2F;resourcesManager.js:233</code></a>
         </p>
 
 
@@ -1392,6 +1558,15 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             </ul>
         </div>
 
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the actual amount of resources being loaded (this differs fromt he resources passed because some could be already in memory)</p>
+
+            </div>
+        </div>
 
 
 </div>
@@ -1409,6 +1584,9 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             </ul><span class="paren">)</span>
         </div>
 
+        <span class="returns-inline">
+            <span class="type"></span>
+        </span>
 
 
 
@@ -1419,7 +1597,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l973"><code>..&#x2F;src&#x2F;resourcesManager.js:973</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1043"><code>..&#x2F;src&#x2F;resourcesManager.js:1043</code></a>
         </p>
 
 
@@ -1460,6 +1638,14 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             </ul>
         </div>
 
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                    <p>(number) index of the position in the array, use this index to cancel the event</p>
+
+            </div>
+        </div>
 
 
 </div>
@@ -1493,7 +1679,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l676"><code>..&#x2F;src&#x2F;resourcesManager.js:676</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l746"><code>..&#x2F;src&#x2F;resourcesManager.js:746</code></a>
         </p>
 
 
@@ -1590,7 +1776,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l557"><code>..&#x2F;src&#x2F;resourcesManager.js:557</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l627"><code>..&#x2F;src&#x2F;resourcesManager.js:627</code></a>
         </p>
 
 
@@ -1683,7 +1869,7 @@ It is called for every single resource that comes from an external source (URL) 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l343"><code>..&#x2F;src&#x2F;resourcesManager.js:343</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l349"><code>..&#x2F;src&#x2F;resourcesManager.js:349</code></a>
         </p>
 
 
@@ -1753,7 +1939,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l726"><code>..&#x2F;src&#x2F;resourcesManager.js:726</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l796"><code>..&#x2F;src&#x2F;resourcesManager.js:796</code></a>
         </p>
 
 
@@ -1820,7 +2006,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l98"><code>..&#x2F;src&#x2F;resourcesManager.js:98</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l99"><code>..&#x2F;src&#x2F;resourcesManager.js:99</code></a>
         </p>
 
 
@@ -1895,7 +2081,7 @@ This job could be done inside the parser but it is better to do it separatedly s
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l74"><code>..&#x2F;src&#x2F;resourcesManager.js:74</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l75"><code>..&#x2F;src&#x2F;resourcesManager.js:75</code></a>
         </p>
 
 
@@ -1988,7 +2174,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l133"><code>..&#x2F;src&#x2F;resourcesManager.js:133</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l134"><code>..&#x2F;src&#x2F;resourcesManager.js:134</code></a>
         </p>
 
 
@@ -2071,7 +2257,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l822"><code>..&#x2F;src&#x2F;resourcesManager.js:822</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l892"><code>..&#x2F;src&#x2F;resourcesManager.js:892</code></a>
         </p>
 
 
@@ -2149,7 +2335,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l62"><code>..&#x2F;src&#x2F;resourcesManager.js:62</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l63"><code>..&#x2F;src&#x2F;resourcesManager.js:63</code></a>
         </p>
 
 
@@ -2186,7 +2372,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l397"><code>..&#x2F;src&#x2F;resourcesManager.js:397</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l453"><code>..&#x2F;src&#x2F;resourcesManager.js:453</code></a>
         </p>
 
 
@@ -2239,7 +2425,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l435"><code>..&#x2F;src&#x2F;resourcesManager.js:435</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l502"><code>..&#x2F;src&#x2F;resourcesManager.js:502</code></a>
         </p>
 
 
@@ -2292,7 +2478,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l254"><code>..&#x2F;src&#x2F;resourcesManager.js:254</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l260"><code>..&#x2F;src&#x2F;resourcesManager.js:260</code></a>
         </p>
 
 
@@ -2346,7 +2532,7 @@ By default it will use the website home address</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l266"><code>..&#x2F;src&#x2F;resourcesManager.js:266</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l272"><code>..&#x2F;src&#x2F;resourcesManager.js:272</code></a>
         </p>
 
 
@@ -2403,7 +2589,7 @@ request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&g
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l771"><code>..&#x2F;src&#x2F;resourcesManager.js:771</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l841"><code>..&#x2F;src&#x2F;resourcesManager.js:841</code></a>
         </p>
 
 

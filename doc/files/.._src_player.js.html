@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -156,6 +162,8 @@
 	- autoresize: boolean to automatically resize the canvas when the window is resized
 	- autoplay: boolean to automatically start playing the scene once the load is completed
 	- loadingbar: boolean to show a loading bar
+	- debug: boolean allows to render debug info like nodes and skeletons
+
 	Optional callbacks to attach
 	============================
 	- onPreDraw: executed before drawing a frame
@@ -202,64 +210,21 @@ function Player(options)
 	this.canvas = this.gl.canvas;
 	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
 	this.scene = LS.GlobalScene;
-	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
-
-	LS.catch_exceptions = true;
-
-	if(options.resources)
-		LS.ResourcesManager.setPath( options.resources );
-	else
-		console.warn(&quot;LS: no resources path specified&quot;);
 
 	LS.ShadersManager.init( options.shaders || &quot;data/shaders.xml&quot; );
 	if(!options.shaders)
 		console.warn(&quot;LS: no shaders folder specified, using default file.&quot;);
 
-	if(options.proxy)
-		LS.ResourcesManager.setProxy( options.proxy );
-	if(options.filesystems)
-	{
-		for(var i in options.filesystems)
-			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
-	}
-
-	if(options.autoresize)
-	{
-		window.addEventListener(&quot;resize&quot;, (function(){
-			this.canvas.width = canvas.parentNode.offsetWidth;
-			this.canvas.height = canvas.parentNode.offsetHeight;
-		}).bind(this));
-	}
-
-	if(options.loadingbar)
-	{
-		this.loading = {
-			visible: true,
-			scene_bar: 0,
-			resources_bar: 0
-		};
-		LEvent.bind( LS.ResourcesManager, &quot;start_loading_resources&quot;, (function(e,v){ 
-			this.loading.resources_bar = 0.0; 
-		}).bind(this) );
-		LEvent.bind( LS.ResourcesManager, &quot;loading_resources_progress&quot;, (function(e,v){ 
-			if( this.loading.resources_bar &lt; v )
-				this.loading.resources_bar = v;
-		}).bind(this) );
-		LEvent.bind( LS.ResourcesManager, &quot;end_loading_resources&quot;, (function(e,v){ 
-			this._total_loading = undefined; 
-			this.loading.resources_bar = 1; 
-			this.loading.visible = false;
-		}).bind(this) );
-	}
-
 	LS.Renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
-	this.force_redraw = options.redraw || false;
-	this.state = &quot;playing&quot;;
+	this.state = LS.Player.STOPPED;
 
 	if( this.gl.ondraw )
 		throw(&quot;There is already a litegl attached to this context&quot;);
+
+	//set options
+	this.configure( options );
 
 	//bind all the events 
 	this.gl.ondraw = LS.Player.prototype._ondraw.bind(this);
@@ -284,7 +249,7 @@ function Player(options)
 	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
-	gl.captureGamepad(true);
+	gl.captureGamepads(true);
 
 	LS.Input.init();
 
@@ -292,13 +257,102 @@ function Player(options)
 	gl.animate();
 }
 
+Player.prototype.loadConfig = function( url, on_complete )
+{
+	var that = this;
+	LS.Network.requestJSON( url, inner );
+	function inner( data )
+	{
+		that.configure( data );
+		if(on_complete)
+			on_complete(data);
+	}
+}
+
+Player.prototype.configure = function( options )
+{
+	var that = this;
+
+	this.autoplay = options.autoplay !== undefined ? options.autoplay : true;
+	if(options.debug)
+		this.enableDebug();
+	else
+		this.enableDebug(false);
+
+	if(options.resources !== undefined)
+		LS.ResourcesManager.setPath( options.resources );
+
+	if(options.proxy)
+		LS.ResourcesManager.setProxy( options.proxy );
+	if(options.filesystems)
+	{
+		for(var i in options.filesystems)
+			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
+	}
+
+	if(options.allow_base_files)
+		LS.ResourcesManager.allow_base_files = options.allow_base_files;
+
+	if(options.autoresize &amp;&amp; !this._resize_callback)
+	{
+		this._resize_callback = (function(){
+			this.canvas.width = this.canvas.parentNode.offsetWidth;
+			this.canvas.height = this.canvas.parentNode.offsetHeight;
+		}).bind(this)
+		window.addEventListener(&quot;resize&quot;,this._resize_callback);
+	}
+
+	if(options.loadingbar)
+	{
+		if(!this.loading)
+		{
+			this.loading = {
+				visible: true,
+				scene_loaded: 0,
+				resources_loaded: 0
+			};
+			LEvent.bind( LS.ResourcesManager, &quot;start_loading_resources&quot;, (function(e,v){ 
+				if(!this.loading)
+					return;
+				this.loading.resources_loaded = 0.0; 
+			}).bind(this) );
+			LEvent.bind( LS.ResourcesManager, &quot;loading_resources_progress&quot;, (function(e,v){ 
+				if(!this.loading)
+					return;
+				if( this.loading.resources_loaded &lt; v )
+					this.loading.resources_loaded = v;
+			}).bind(this) );
+			LEvent.bind( LS.ResourcesManager, &quot;end_loading_resources&quot;, (function(e,v){ 
+				if(!this.loading)
+					return;
+				this._total_loading = undefined; 
+				this.loading.resources_loaded = 1; 
+				this.loading.visible = false;
+			}).bind(this) );
+		}
+	}
+	else if(options.loadingbar === false)
+		this.loading = null;	
+
+	this.force_redraw = options.redraw || false;
+	if(options.debug_render)
+		this.setDebugRender(true);
+
+	if(options.scene_url)
+		this.loadScene( options.scene_url );
+}
+
+Player.STOPPED = 0;
+Player.PLAYING = 1;
+Player.PAUSED = 2;
+
 /**
 * Loads an scene and triggers start
 * @method loadScene
 * @param {String} url url to the JSON file containing all the scene info
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.loadScene = function(url, on_complete)
+Player.prototype.loadScene = function(url, on_complete, on_progress)
 {
 	var that = this;
 	var scene = this.scene;
@@ -309,8 +363,8 @@ Player.prototype.loadScene = function(url, on_complete)
 		//start playing once loaded the json
 		if(that.autoplay)
 			that.play();
-		console.log(&quot;Scene playing&quot;);
-		that.loading_bar = -1;
+		//console.log(&quot;Scene playing&quot;);
+		that.loading = null;
 		if(on_complete)
 			on_complete();
 	}
@@ -322,21 +376,29 @@ Player.prototype.loadScene = function(url, on_complete)
 		var partial_load = 0;
 		if(e.total) //sometimes we dont have the total so we dont know the amount
 			partial_load = e.loaded / e.total;
-		that.loading.scene_bar = partial_load;
+		that.loading.scene_loaded = partial_load;
+		if(on_progress)
+			on_progress(partial_load);
 	}
 }
 
 /**
-* loads Scene from object or JSON
+* loads Scene from object or JSON taking into account external and global scripts
 * @method setScene
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.setScene = function( scene_info, on_complete )
+Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 {
 	var that = this;
 	var scene = this.scene;
-	if(typeof(scene_info) == &quot;string&quot;)
+
+	//reset old scene
+	if(this.state == LS.Player.PLAYING)
+		this.stop();
+	scene.clear();
+
+	if(scene_info &amp;&amp; scene_info.constructor === String )
 		scene_info = JSON.parse(scene_info);
 
 	var scripts = LS.SceneTree.getScriptsList( scene_info );
@@ -352,46 +414,58 @@ Player.prototype.setScene = function( scene_info, on_complete )
 	function inner_external_ready()
 	{
 		scene.configure( scene_info );
-		scene.loadResources( inner_all_loaded );
+		scene.loadResources( inner_all_resources_loaded );
+	}
+
+	function inner_all_resources_loaded()
+	{
+		if( LS.ShadersManager.ready )
+			inner_all_loaded();
+		else
+			LS.ShadersManager.on_ready = inner_all_loaded;
 	}
 
 	function inner_all_loaded()
 	{
+		if( on_before_play )
+			on_before_play( scene );
 		if(that.autoplay)
 			that.play();
 		scene._must_redraw = true;
 		console.log(&quot;Scene playing&quot;);
 		if(on_complete)
-			on_complete();
+			on_complete( scene );
 	}
 }
 
 
 Player.prototype.pause = function()
 {
-	this.state = &quot;paused&quot;;
+	this.state = LS.Player.PAUSED;
 }
 
 Player.prototype.play = function()
 {
-	if(this.state == &quot;playing&quot;)
+	if(this.state == LS.Player.PLAYING)
 		return;
 	if(this.debug)
 		console.log(&quot;Start&quot;);
-	this.state = &quot;playing&quot;;
+	this.state = LS.Player.PLAYING;
 	LS.Input.reset(); //this force some events to be sent
+	LS.GUI.reset(); //clear GUI
 	this.scene.start();
 }
 
 Player.prototype.stop = function()
 {
-	this.state = &quot;stopped&quot;;
+	this.state = LS.Player.STOPPED;
 	this.scene.finish();
+	LS.GUI.reset(); //clear GUI
 }
 
 Player.prototype._ondraw = function()
 {
-	if(this.state != &quot;playing&quot;)
+	if(this.state != LS.Player.PLAYING)
 		return;
 
 	if(this.onPreDraw)
@@ -408,12 +482,12 @@ Player.prototype._ondraw = function()
 		this.onDraw();
 
 	if(this.loading &amp;&amp; this.loading.visible )
-		this.renderLoadingBar();
+		this.renderLoadingBar( this.loading );
 }
 
 Player.prototype._onupdate = function(dt)
 {
-	if(this.state != &quot;playing&quot;)
+	if(this.state != LS.Player.PLAYING)
 		return;
 
 	LS.Tween.update(dt);
@@ -433,7 +507,7 @@ Player.prototype._onupdate = function(dt)
 Player.prototype._onmouse = function(e)
 {
 	//console.log(e);
-	if(this.state != &quot;playing&quot;)
+	if(this.state != LS.Player.PLAYING)
 		return;
 
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
@@ -445,7 +519,7 @@ Player.prototype._onmouse = function(e)
 
 Player.prototype._onkey = function(e)
 {
-	if(this.state != &quot;playing&quot;)
+	if(this.state != LS.Player.PLAYING)
 		return;
 
 	//hardcoded event handlers in the player
@@ -461,7 +535,7 @@ Player.prototype._onkey = function(e)
 
 Player.prototype._ongamepad = function(e)
 {
-	if(this.state != &quot;playing&quot;)
+	if(this.state != LS.Player.PLAYING)
 		return;
 
 	//hardcoded event handlers in the player
@@ -475,9 +549,9 @@ Player.prototype._ongamepad = function(e)
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
-Player.prototype.renderLoadingBar = function()
+Player.prototype.renderLoadingBar = function( loading )
 {
-	if(!this.loading)
+	if(!loading)
 		return;
 
 	if(!global.enableWebGLCanvas)
@@ -487,23 +561,41 @@ Player.prototype.renderLoadingBar = function()
 		enableWebGLCanvas( gl.canvas );
 
 	gl.start2D();
+
 	var y = 0;//gl.drawingBufferHeight - 6;
 	gl.fillColor = [0,0,0,1];
 	gl.fillRect( 0, y, gl.drawingBufferWidth, 8);
 	//scene
-	gl.fillColor = this.loading.bar_color || [0.5,0.9,1.0,1.0];
-	gl.fillRect( 0, y, gl.drawingBufferWidth * this.loading.scene_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.5,0.9,1.0,1.0];
+	gl.fillRect( 0, y, gl.drawingBufferWidth * loading.scene_loaded, 4 );
 	//resources
-	gl.fillColor = this.loading.bar_color || [0.9,0.5,1.0,1.0];
-	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * this.loading.resources_bar, 4 );
+	gl.fillColor = loading.bar_color || [0.9,0.5,1.0,1.0];
+	gl.fillRect( 0, y + 4, gl.drawingBufferWidth * loading.resources_loaded, 4 );
 	gl.finish2D();
 }
 
-Player.prototype.enableDebug = function()
+Player.prototype.enableDebug = function(v)
 {
-	LS.Script.catch_important_exceptions = false;
-	LS.catch_exceptions = false;
+	this.debug = !!v;
+	LS.Script.catch_important_exceptions = !v;
+	LS.catch_exceptions = !v;
 }
+
+Player.prototype.setDebugRender = function(v)
+{
+	if(!this.debug_render)
+	{
+		if(!v)
+			return;
+		this.debug_render = new LS.DebugRender();
+	}
+
+	if(v)
+		this.debug_render.enable();
+	else
+		this.debug_render.disable();
+}
+
 
 LS.Player = Player;
 

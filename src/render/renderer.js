@@ -189,7 +189,6 @@ var Renderer = {
 
 		//Event: beforeRender used in actions that could affect which info is collected for the rendering
 		LEvent.trigger( scene, "beforeRender", render_settings );
-		//scene.triggerInNodes( "beforeRender", render_settings ); //TODO: remove
 
 		//get render instances, cameras, lights, materials and all rendering info ready (computeVisibility)
 		this.processVisibleData( scene, render_settings, cameras );
@@ -204,19 +203,15 @@ var Renderer = {
 
 		//Event: renderShadowmaps helps to generate shadowMaps that need some camera info (which could be not accessible during processVisibleData)
 		LEvent.trigger(scene, "renderShadows", render_settings );
-		//scene.triggerInNodes("renderShadows", render_settings ); //TODO: remove
 
 		//Event: afterVisibility allows to cull objects according to the main camera
 		LEvent.trigger(scene, "afterVisibility", render_settings );
-		//scene.triggerInNodes("afterVisibility", render_settings ); //TODO: remove	
 
 		//Event: renderReflections in case some realtime reflections are needed, this is the moment to render them inside textures
 		LEvent.trigger(scene, "renderReflections", render_settings );
-		//scene.triggerInNodes("renderReflections", render_settings ); //TODO: remove
 
 		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
-		//scene.triggerInNodes("beforeRenderMainPass", render_settings ); //TODO: remove
 
 		//allows to overwrite renderer
 		if(this.custom_renderer && this.custom_renderer.render && render_settings.custom_renderer )
@@ -248,7 +243,6 @@ var Renderer = {
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_settings );
-		//scene.triggerInNodes("afterRender", render_settings ); //TODO: remove
 	},
 
 	/**
@@ -306,16 +300,14 @@ var Renderer = {
 
 		//send before events
 		LEvent.trigger(scene, "beforeRenderScene", camera );
-		//scene.triggerInNodes("beforeRenderScene", camera ); //TODO remove
 		LEvent.trigger(this, "beforeRenderScene", camera );
 
 		//here we render all the instances
 		this.renderInstances(render_settings);
 
 		//send after events
-		LEvent.trigger(scene, "afterRenderScene", camera );
-		//scene.triggerInNodes("afterRenderScene", camera ); //TODO remove
-		LEvent.trigger(this, "afterRenderScene", camera );
+		LEvent.trigger( scene, "afterRenderScene", camera );
+		LEvent.trigger( this, "afterRenderScene", camera );
 
 		//render helpers (guizmos)
 		if(render_settings.render_helpers)
@@ -914,10 +906,12 @@ var Renderer = {
 			}
 			else if(sampler.texture)
 				tex = sampler.texture;
-			else
-				continue; //dont know what this var type is?
+			else //dont know what this var type is?
+			{
+				//continue; //if we continue the sampler slot will remain empty which could lead to problems
+			}
 
-			if(tex.constructor === String)
+			if(tex && tex.constructor === String)
 				tex = LS.ResourcesManager.textures[ tex ];
 			if(!tex)
 			{
@@ -1308,6 +1302,12 @@ var Renderer = {
 	{
 		options = options || {};
 
+		if(!material)
+		{
+			console.error("No material provided to renderMaterialPreview");
+			return;
+		}
+
 		//create scene
 		var scene = this._material_scene;
 		if(!scene)
@@ -1339,7 +1339,15 @@ var Renderer = {
 		if(options.rotate)
 			node.transform.rotateY( options.rotate );
 
-		node.material = material;
+		var new_material = null;
+		if( material.constructor === String )
+			new_material = material;
+		else
+		{
+			new_material = new material.constructor();
+			new_material.configure( material.serialize() );
+		}
+		node.material = new_material;
 
 		if(options.to_viewport)
 		{

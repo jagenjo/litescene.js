@@ -85,7 +85,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(!cam)
 		return;
 
-	var is_global_camera = !node.transform;
+	var is_global_camera = node._is_root;
 
 	if(!mouse_event)
 		mouse_event = e;

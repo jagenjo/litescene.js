@@ -1,5 +1,6 @@
 /**
 * RenderInstance contains info of one object to be rendered on the scene.
+* It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)
 *
 * @class RenderInstance
 * @namespace LS
@@ -8,9 +9,8 @@
 
 function RenderInstance( node, component )
 {
-	this._key = ""; //not used yet
 	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
-	this.layers = 3;
+	this.layers = 3; //in layer 1 and 2 by default
 	this.index = -1; //used to know the rendering order
 
 	//info about the mesh
@@ -43,8 +43,8 @@ function RenderInstance( node, component )
 	this.aabb = BBox.create(); //axis aligned bounding box
 
 	//info about the material
-	this.material = null;
-	this.use_bounding = true;
+	this.material = null; //the material, cannot be a string
+	this.use_bounding = true; //in case it has vertex shader deformers the bounding box is not usable
 
 	//for extra data for the shader
 	this.query = new LS.ShaderQuery();
@@ -62,15 +62,6 @@ function RenderInstance( node, component )
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
 }
-
-/*
-//not used
-RenderInstance.prototype.generateKey = function(step, options)
-{
-	this._key = step + "|" + this.node.uid + "|" + this.material.uid + "|";
-	return this._key;
-}
-*/
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)

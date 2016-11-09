@@ -30,7 +30,7 @@ Object.defineProperty( Skybox.prototype, "intensity", {
 	set: function(v){
 		this._intensity = v;
 		if(this._material)
-			this._material.color.set([v,v,v]);
+			this._material._color.set([v,v,v,1]);
 	},
 	get: function()
 	{
@@ -123,8 +123,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 					depth_test: false 
 					},
 				use_scene_ambient:false,
-				queue: LS.RenderQueue.BACKGROUND,
-				color: [ this.intensity, this.intensity, this.intensity ]
+				color: [ this.intensity, this.intensity, this.intensity, 1 ]
 			});
 		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
 

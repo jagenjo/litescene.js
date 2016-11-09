@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -168,19 +174,22 @@ function ComponentContainer()
 
 ComponentContainer.prototype.configureComponents = function( info )
 {
-	if(info.components)
-		for(var i = 0, l = info.components.length; i &lt; l; ++i)
+	if(!info.components)
+		return;
+
+	for(var i = 0, l = info.components.length; i &lt; l; ++i)
+	{
+		var comp_info = info.components[i];
+		var comp_class = comp_info[0];
+		var comp = null;
+
+		//special case: this is the only component that comes by default
+		if(comp_class == &quot;Transform&quot; &amp;&amp; i == 0 &amp;&amp; this.transform) 
 		{
-			var comp_info = info.components[i];
-			var comp_class = comp_info[0];
-
-			//special case: this is the only component that comes by default
-			if(comp_class == &quot;Transform&quot; &amp;&amp; i == 0) 
-			{
-				this.transform.configure(comp_info[1]);
-				continue;
-			}
-
+			comp = this.transform;
+		}
+		else
+		{
 			//search for the class
 			var classObject = LS.Components[comp_class];
 			if(!classObject){
@@ -190,20 +199,23 @@ ComponentContainer.prototype.configureComponents = function( info )
 				this._missing_components.push( comp_info );
 				continue;
 			}
-
 			//create component
-			var comp = new classObject(); //comp_info[1]
-
+			comp = new classObject(); //comp_info[1]
 			//attach to node
 			this.addComponent(comp);
-
-			//what about configure the comp after adding it? 
-			comp.configure( comp_info[1] );
-
-			//ensure the component uid is stored, some components may forgot about it
-			if( comp_info[1].uid &amp;&amp; comp_info[1].uid !== comp.uid )
-				comp.uid = comp_info[1].uid;
 		}
+
+		//what about configure the comp after adding it? 
+		comp.configure( comp_info[1] );
+
+		//editor stuff
+		if( comp_info[1].editor )
+			comp._editor = comp_info[1].editor;
+
+		//ensure the component uid is stored, some components may forgot about it
+		if( comp_info[1].uid &amp;&amp; comp_info[1].uid !== comp.uid )
+			comp.uid = comp_info[1].uid;
+	}
 }
 
 /**
@@ -212,7 +224,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 * @param {Object} o container where the components will be stored
 */
 
-ComponentContainer.prototype.serializeComponents = function(o)
+ComponentContainer.prototype.serializeComponents = function( o )
 {
 	if(!this._components)
 		return;
@@ -225,8 +237,11 @@ ComponentContainer.prototype.serializeComponents = function(o)
 			continue;
 		var obj = comp.serialize();
 
+		if(comp._editor)
+			obj.editor = comp._editor;
+
 		//enforce uid storage
-		if(comp.hasOwnProperty(&quot;uid&quot;) &amp;&amp; !obj.uid)
+		if(comp.hasOwnProperty(&quot;_uid&quot;) &amp;&amp; !obj.uid)
 			obj.uid = comp.uid;
 
 		o.components.push([LS.getObjectClassName(comp), obj]);
@@ -274,12 +289,23 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	//link component with container
 	component._root = this;
 
+	//must have uid
+	if( !component.uid )
+		component.uid = LS.generateUId(&quot;COMP-&quot;);
+
 	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
-	if(this.constructor == LS.SceneNode &amp;&amp; component.onAddedToNode)
+	if( component.onAddedToNode)
 		component.onAddedToNode(this);
 
-	if( (this._in_tree || this.constructor == LS.SceneTree) &amp;&amp; component.onAddedToScene)
-		component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	if( this._in_tree )
+	{
+		if( component.uid )
+			this._in_tree._components_by_uid[ component.uid ] = component;
+		else
+			console.warn(&quot;component without uid?&quot;, component);
+		if(	component.onAddedToScene )
+			component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	}
 
 	//link node with component
 	if(!this._components) 
@@ -292,8 +318,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	else
 		this._components.push( component );
 
-	if( !component.uid )
-		component.uid = LS.generateUId(&quot;COMP-&quot;);
+	LEvent.trigger( this, &quot;componentAdded&quot;, component );
 
 	return component;
 }
@@ -312,11 +337,15 @@ ComponentContainer.prototype.removeComponent = function(component)
 	component._root = null;
 
 	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
-	if(this.constructor == LS.SceneNode &amp;&amp; component.onRemovedFromNode)
+	if( component.onRemovedFromNode )
 		component.onRemovedFromNode(this);
 
-	if((this._in_tree || this.constructor == LS.SceneTree) &amp;&amp; component.onRemovedFromScene)
-		component.onRemovedFromScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	if( this._in_tree )
+	{
+		delete this._in_tree._components_by_uid[ component.uid ];
+		if(component.onRemovedFromScene)
+			component.onRemovedFromScene( this._in_tree );
+	}
 
 	//remove all events
 	LEvent.unbindAll(this,component);
@@ -327,6 +356,8 @@ ComponentContainer.prototype.removeComponent = function(component)
 		this._components.splice(pos,1);
 	else
 		console.warn(&quot;removeComponent: Component not found in node&quot;);
+
+	LEvent.trigger( this, &quot;componentRemoved&quot;, component );
 }
 
 /**
@@ -343,28 +374,39 @@ ComponentContainer.prototype.removeAllComponents = function()
 
 
 /**
-* Returns if the class has an instance of this component
+* Returns if the container has a component of this class
 * @method hasComponent
-* @param {bool} true if it has a component of this class
+* @param {String|Class} component_class the component to search for, could be a string or the class itself
+* @param {Boolean} search_missing [optional] true if you want to search in the missing components too
 */
-ComponentContainer.prototype.hasComponent = function(component_class) //class, not string with the name of the class
+ComponentContainer.prototype.hasComponent = function( component_class, search_missing )
 {
-	if(!this._components)
+	if(!this._components &amp;&amp; !this._missing_components)
 		return false;
 
-	//string
-	if( component_class.constructor === String)
+	//search in missing components
+	if(search_missing &amp;&amp; this._missing_components &amp;&amp; this._missing_components.length)
 	{
-		for(var i = 0, l = this._components.length; i &lt; l; ++i)
-			if( this._components[i].constructor.name == component_class )
-			return true;
-		return false;
+		if(component_class.constructor !== String) //weird case
+			component_class = LS.getClassName( component_class );
+		for(var i = 0, l = this._missing_components.length; i &lt; l; ++i)
+			if( this._missing_components[i][0] == component_class )
+				return true;
 	}
 
-	//class
+	//string
+	if( component_class.constructor === String )
+	{
+		component_class = LS.Components[ component_class ];
+		if(!component_class)
+			return false;
+	}
+
+	//search in components
 	for(var i = 0, l = this._components.length; i &lt; l; ++i)
 		if( this._components[i].constructor === component_class )
-		return true;
+			return true;
+	
 	return false;
 }
 
@@ -380,6 +422,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 	if(!this._components || !component_class)
 		return null;
 
+	//convert string to class
 	if( component_class.constructor === String )
 	{
 		component_class = LS.Components[ component_class ];
@@ -387,6 +430,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 			return;
 	}
 
+	//search components
 	for(var i = 0, l = this._components.length; i &lt; l; ++i)
 	{
 		if( this._components[i].constructor === component_class )
@@ -399,6 +443,7 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 			return this._components[i];
 		}
 	}
+
 	return null;
 }
 

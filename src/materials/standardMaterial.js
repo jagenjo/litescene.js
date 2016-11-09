@@ -20,8 +20,9 @@ function StandardMaterial(o)
 
 	this.blend_mode = LS.Blend.NORMAL;
 
-	this.createProperty("ambient", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.createProperty("emissive", new Float32Array(3), "color" );
+	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
+	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
+	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" );
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 
@@ -82,6 +83,12 @@ Object.defineProperty( StandardMaterial.prototype, 'detail_scale', {
 	enumerable: true
 });
 
+Object.defineProperty( StandardMaterial.prototype, 'emissive_extra', {
+	get: function() { return this._emissive[3]; },
+	set: function(v) { this._emissive[3] = v; },
+	enumerable: true
+});
+
 Object.defineProperty( StandardMaterial.prototype, 'extra_factor', {
 	get: function() { return this._extra_data[3]; },
 	set: function(v) { this._extra_data[3] = v; },
@@ -96,7 +103,10 @@ Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
 
 Object.defineProperty( StandardMaterial.prototype, 'specular_factor', {
 	get: function() { return this._specular_data[0]; },
-	set: function(v) { this._specular_data[0] = v; },
+	set: function(v) { 
+		if( v != null && v.constructor === Number)
+			this._specular_data[0] = v;
+	},
 	enumerable: true
 });
 
@@ -153,20 +163,22 @@ StandardMaterial.prototype.prepare = function( scene )
 {
 	var flags = this.flags;
 
-	//set flags in render state
-	this.render_state.cull_face = !flags.two_sided;
-	this.render_state.front_face = flags.flip_normals ? GL.CW : GL.CCW;
-	this.render_state.depth_test = flags.depth_test;
-	this.render_state.depth_write = flags.depth_write;
+	var render_state = this._render_state;
 
-	this.render_state.blend = this.blend_mode != LS.Blend.NORMAL;
+	//set flags in render state
+	render_state.cull_face = !flags.two_sided;
+	render_state.front_face = flags.flip_normals ? GL.CW : GL.CCW;
+	render_state.depth_test = flags.depth_test;
+	render_state.depth_mask = flags.depth_write;
+
+	render_state.blend = this.blend_mode != LS.Blend.NORMAL;
 	if( this.blend_mode != LS.Blend.NORMAL )
 	{
 		var func = LS.BlendFunctions[ this.blend_mode ];
 		if(func)
 		{
-			this.render_state.blendFunc0 = func[0];
-			this.render_state.blendFunc1 = func[1];
+			render_state.blendFunc0 = func[0];
+			render_state.blendFunc1 = func[1];
 		}
 	}
 
@@ -286,7 +298,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	else
 		uniforms.u_ambient_color = this.ambient;
 
-	uniforms.u_emissive_color = this.emissive || vec3.create();
+	uniforms.u_emissive_color = this.emissive || vec4.create();
 	uniforms.u_specular = this._specular_data;
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
 	uniforms.u_backlight_factor = this.backlight_factor;
@@ -372,6 +384,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "displacementmap_factor":
 		case "extra_factor":
 		case "detail_factor":
+		case "emissive_extra":
 		//strings
 		case "shader_name":
 		//bools
@@ -433,6 +446,7 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 		normalmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
+		emissive_extra: LS.TYPES.NUMBER,
 		extra_factor: LS.TYPES.NUMBER,
 		extra_surface_shader_code: LS.TYPES.STRING,
 
@@ -473,6 +487,7 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "velvet_exp":
 		case "normalmap_factor":
 		case "displacementmap_factor":
+		case "emissive_extra":
 		case "extra_factor":
 		case "detail_factor":
 			type = LS.TYPES.NUMBER; break;

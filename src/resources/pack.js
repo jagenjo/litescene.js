@@ -256,6 +256,12 @@ Pack.prototype.flagResources = function()
 	}
 }
 
+Pack.prototype.getDataToStore = function()
+{
+	return LS.Pack.packResources( this.resource_names, { "@version": LS.Pack.version } );
+}
+
+
 LS.Pack = Pack;
 LS.registerResourceClass( Pack );
 

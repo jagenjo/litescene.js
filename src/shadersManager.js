@@ -758,7 +758,7 @@ LS.ShaderQuery = ShaderQuery;
 // WIP
 // A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
 // SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
-// it will be inserted in the material
+// it will be inserted in the material in the line of the pragma
 function ShaderBlock( name )
 {
 	this.dependency_blocks = [];

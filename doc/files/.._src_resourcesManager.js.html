@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -168,6 +174,7 @@ var ResourcesManager = {
 	ignore_cache: false, //change to true to ignore server cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
+	keep_urls: false, //keep the local URLs of loaded files
 	allow_base_files: false, //allow to load files that are not in a subfolder
 
 	//some containers
@@ -346,7 +353,8 @@ var ResourcesManager = {
 	},
 
 	/**
-	* Cleans resource name (removing double slashes to avoid problems)
+	* Cleans resource name (removing double slashes to avoid problems) 
+	* It is slow, so use it only in changes, not in getters
 	*
 	* @method cleanFullpath
 	* @param {String} fullpath
@@ -376,6 +384,7 @@ var ResourcesManager = {
 	* @method loadResources
 	* @param {Object} resources contains all the resources, associated with its type
 	* @param {Object}[options={}] options to apply to the loaded resources
+	* @return {number} the actual amount of resources being loaded (this differs fromt he resources passed because some could be already in memory)
 	*/
 	loadResources: function(res, options )
 	{
@@ -384,13 +393,16 @@ var ResourcesManager = {
 
 		for(var i in res)
 		{
-			if( i[0] == &quot;:&quot; || i[0] == &quot;_&quot; )
+			if( !i || i[0] == &quot;:&quot; || i[0] == &quot;_&quot; )
 				continue;
 			this.load( i, options );
 		}
 
 		this._total_resources_to_load = this.num_resources_being_loaded;
 		LEvent.trigger( this, &quot;start_loading_resources&quot;, this._total_resources_to_load );
+		if(!this._total_resources_to_load) //all resources were already in memory
+			LEvent.trigger( this, &quot;end_loading_resources&quot; );
+		return this._total_resources_to_load;
 	},	
 
 	/**
@@ -461,7 +473,7 @@ var ResourcesManager = {
 				case &#x27;https&#x27;:
 					var full_url = url;
 					var extension = this.getExtension( url ).toLowerCase();
-					if(this.proxy &amp;&amp; this.skip_proxy_extensions.indexOf( extension ) == -1 ) //proxy external files
+					if(this.proxy &amp;&amp; this.skip_proxy_extensions.indexOf( extension ) == -1 &amp;&amp; (!options || (options &amp;&amp; !options.ignore_proxy)) ) //proxy external files
 						return this.proxy + url; //this.proxy + url.substr(pos+3); //&quot;://&quot;
 					return full_url;
 					break;
@@ -537,6 +549,56 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Returns an object containig all the resources and its data (used to export resources)
+	*
+	* @method getResourcesData
+	* @param {Array} resource_names an array containing the resources names
+	* @param {bool} allow_files [optional] used to allow to retrieve the data in File or Blob, otherwise only String and ArrayBuffer is supported
+	* @return {Object} object with name:data
+	*/
+	getResourcesData: function( resource_names, allow_files )
+	{
+		var result = {};
+
+		for(var i = 0; i &lt; resource_names.length; ++i)
+		{
+			var res_name = resource_names[i];
+			var resource = LS.ResourcesManager.resources[ res_name ];
+			if(!resource)
+				continue;
+
+			var data = null;
+			if(resource._original_data) //must be string or bytes
+				data = resource._original_data;
+			else
+			{
+				var data_info = LS.Resource.getDataToStore( resource );
+				data = data_info.data;
+			}
+
+			if(!data)
+			{
+				console.warn(&quot;Wrong data in resource&quot;);
+				continue;
+			}
+
+			if(data.constructor === Blob || data.constructor === File)
+			{
+				if( !allow_files &amp;&amp; (!data.data || data.data.constructor !== ArrayBuffer) )
+				{
+					console.warn(&quot;Not support to store File or Blob, please, use ArrayBuffer&quot;);
+					continue;
+				}
+				data = data.data; //because files have an arraybuffer with the data if it was read
+			}
+
+			result[ res_name ] = data;
+		}
+
+		return result;
+	},
+
+	/**
 	* Marks the resource as modified, used in editor to know when a resource data should be updated
 	*
 	* @method resourceModified
@@ -553,7 +615,7 @@ var ResourcesManager = {
 			return;
 		}
 
-
+		//if the file has been modified we cannot keep using the original data
 		delete resource._original_data;
 		delete resource._original_file;
 
@@ -561,7 +623,8 @@ var ResourcesManager = {
 			resource._modified = true;
 
 		LEvent.trigger(this, &quot;resource_modified&quot;, resource );
-		
+
+		//TODO: from_prefab and from_pack should be the sabe property
 		if(resource.from_pack)
 		{
 			if (resource.from_pack.constructor === String)
@@ -571,6 +634,16 @@ var ResourcesManager = {
 					this.resourceModified(pack);
 			}
 		}
+		if(resource.from_prefab)
+		{
+			if (resource.from_prefab.constructor === String)
+			{
+				var prefab = LS.ResourcesManager.getResource( resource.from_prefab );
+				if(prefab)
+					this.resourceModified(prefab);
+			}
+		}
+
 
 	},
 
@@ -600,6 +673,9 @@ var ResourcesManager = {
 	*/
 	load: function( url, options, on_complete )
 	{
+		if(!url)
+			return console.error(&quot;LS.ResourcesManager.load requires url&quot;);
+
 		//parameter swap...
 		if(options &amp;&amp; options.constructor === Function &amp;&amp; !on_complete )
 		{
@@ -719,7 +795,7 @@ var ResourcesManager = {
 		var resource = null;
 		var extension = this.getExtension( url );
 
-		//ugly but I dont see a work around to create this
+		//callback to embede a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
 			if(!resource)
 			{
@@ -749,7 +825,7 @@ var ResourcesManager = {
 
 		//special preprocessor
 		var preprocessor_callback = this.resource_pre_callbacks[ extension.toLowerCase() ];
-		if(preprocessor_callback)
+		if( preprocessor_callback )
 		{
 			//this callback should return the resource or true if it is processing it
 			var resource = preprocessor_callback( url, data, options, process_final );
@@ -769,10 +845,10 @@ var ResourcesManager = {
 			switch( format_info.type )
 			{
 				case &quot;scene&quot;:
-					resource = LS.ResourcesManager.processASCIIScene( url, data, options, process_final );
+					resource = LS.ResourcesManager.processTextScene( url, data, options, process_final );
 					break;
 				case &quot;mesh&quot;:
-					resource = LS.ResourcesManager.processASCIIMesh( url, data, options, process_final );
+					resource = LS.ResourcesManager.processTextMesh( url, data, options, process_final );
 					break;
 				case &quot;texture&quot;:
 				case &quot;image&quot;:
@@ -826,7 +902,7 @@ var ResourcesManager = {
 	*/
 	processFinalResource: function( fullpath, resource, options, on_complete, was_loaded )
 	{
-		if(!resource)
+		if(!resource || resource.constructor === String)
 			return LS.ResourcesManager._resourceLoadedError( fullpath, &quot;error processing the resource&quot; );
 
 		//EXTEND add properties as basic resource ********************************
@@ -907,7 +983,7 @@ var ResourcesManager = {
 		if(!resource.is_preview)
 			LEvent.trigger(this,&quot;resource_registered&quot;, resource);
 
-		LS.GlobalScene.refresh(); //render scene
+		LS.GlobalScene.requestFrame(); //render scene
 	},	
 
 	/**
@@ -938,7 +1014,7 @@ var ResourcesManager = {
 			resource.setResourcesLink(null);
 
 		LEvent.trigger(this,&quot;resource_unregistered&quot;, resource);
-		LS.GlobalScene.refresh(); //render scene
+		LS.GlobalScene.requestFrame(); //render scene
 		return true;
 	},
 
@@ -1118,6 +1194,7 @@ var ResourcesManager = {
 	* @method onceLoaded
 	* @param {String} fullpath of the resource you want to get the notification once is loaded
 	* @param {Function} callback the function to call, it will be called as callback( fullpath, resource )
+	* @return (number) index of the position in the array, use this index to cancel the event 
 	*/
 	onceLoaded: function( fullpath, callback )
 	{
@@ -1129,10 +1206,26 @@ var ResourcesManager = {
 		}
 
 		//avoid repeating
-		for(var i in array)
-			if( array[i] == callback )
-				return;
+		if( array.indexOf( callback ) != -1 )
+			return;
+
 		array.push( callback );
+		return array.length - 1;
+	},
+
+	/**
+	* Cancels the binding of a onceLoaded
+	*
+	* @method cancelOnceLoaded
+	* @param {String} fullpath fullpath of the resource you want to cancel the binding
+	* @param {number} index the index of the callback to cancel (as it was returned by onceLoaded)
+	*/
+	cancelOnceLoaded: function( fullpath, index )
+	{
+		var array = this.resource_once_callbacks[ fullpath ];
+		if(!array)
+			return;
+		array[ index ] = null;
 	},
 
 	//*************************************
@@ -1145,18 +1238,22 @@ var ResourcesManager = {
 
 		if(res)
 		{
-			for(var i in LS.ResourcesManager.resources_being_loaded[url])
-			{
-				if( LS.ResourcesManager.resources_being_loaded[url][i].callback != null )
-					LS.ResourcesManager.resources_being_loaded[url][i].callback( res, url );
-			}
+			//trigger all associated load callbacks
+			var callbacks_array = LS.ResourcesManager.resources_being_loaded[url];
+			if(callbacks_array)
+				for(var i = 0; i &lt; callbacks_array.length; ++i )
+				{
+					if( callbacks_array[i].callback != null )
+						callbacks_array[i].callback( res, url );
+				}
 
 			//triggers &#x27;once&#x27; callbacks
-			if(LS.ResourcesManager.resource_once_callbacks[ url ])
+			var callbacks_array = LS.ResourcesManager.resource_once_callbacks[url];
+			if(callbacks_array)
 			{
-				var v = LS.ResourcesManager.resource_once_callbacks[url];
-				for(var i in v)
-					v[i](url, res);
+				for(var i = 0; i &lt; callbacks_array.length; ++i)
+					if(callbacks_array[i]) //could be null if it has been canceled
+						callbacks_array[i](url, res);
 				delete LS.ResourcesManager.resource_once_callbacks[url];
 			}
 		}
@@ -1177,6 +1274,9 @@ var ResourcesManager = {
 				LS.ResourcesManager._total_resources_to_load = 0;
 			}
 		}
+
+		//request frame
+		LS.GlobalScene.requestFrame(); 
 	},
 
 	_resourceLoadedError: function( url, error )
@@ -1219,7 +1319,7 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 	if( data.constructor === String )
 		data = JSON.parse( data );
 
-	if( data.object_type )
+	if( data.object_type &amp;&amp; !data.is_data )
 	{
 		var ctor = LS.Classes[ data.object_type ] || window[ data.object_type ];
 		if(ctor)
@@ -1233,7 +1333,10 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 				resource = new ctor( data );
 		}
 		else
-			console.warn( &quot;JSON object_type class not found: &quot; + data.object_type );
+		{
+			console.error( &quot;JSON object_type class not found: &quot; + data.object_type );
+			return null;
+		}
 	}
 	else
 	{
@@ -1246,6 +1349,30 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 	}
 	return resource;
 });
+
+//global formats: take a file and extract info
+LS.ResourcesManager.registerResourcePreProcessor(&quot;zip&quot;, function( filename, data, options ) {
+	
+	if(!global.JSZip)
+		throw(&quot;JSZip not found. To use ZIPs you must have the JSZip.js library installed.&quot;);
+
+	var zip = new JSZip();
+	zip.loadAsync( data ).then(function(zip){
+		zip.forEach(function (relativePath, file){
+			var ext = LS.ResourcesManager.getExtension( relativePath );
+			var format = LS.Formats.supported[ ext ];
+			file.async( format &amp;&amp; format.dataType == &quot;text&quot; ? &quot;string&quot; : &quot;arraybuffer&quot;).then( function(filedata){
+				if( relativePath == &quot;scene.json&quot; )
+					LS.GlobalScene.configure( JSON.parse( filedata ) );
+				else
+					LS.ResourcesManager.processResource( relativePath, filedata );
+			});
+		});
+	});
+
+	return true;
+
+},&quot;binary&quot;);
 
 //For resources without file extension (JSONs and WBINs)
 LS.ResourcesManager.processDataResource = function( url, data, options, callback )
@@ -1341,7 +1468,12 @@ LS.ResourcesManager.processImage = function( filename, data, options, callback )
 			if(LS.ResourcesManager.keep_files)
 				texture._original_data = data;
 		}
-		URL.revokeObjectURL(objectURL); //free memory
+
+		if( !LS.ResourcesManager.keep_urls )
+			URL.revokeObjectURL( objectURL ); //free memory
+		else
+			texture._local_url = objectURL; //used in strange situations
+
 		if(callback)
 			callback(filename,texture,options);
 	}
@@ -1416,8 +1548,8 @@ LS.ResourcesManager.processTexture = function(filename, img, options)
 	return texture;
 }
 
-//Transform ascii mesh data in a regular GL.Mesh
-LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
+//Transform text mesh data in a regular GL.Mesh
+LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 
 	var mesh_data = LS.Formats.parse( filename, data, options );
 
@@ -1432,7 +1564,7 @@ LS.ResourcesManager.processASCIIMesh = function(filename, data, options) {
 }
 
 //Transform scene data in a SceneNode
-LS.ResourcesManager.processASCIIScene = function( filename, data, options ) {
+LS.ResourcesManager.processTextScene = function( filename, data, options ) {
 	//options = options || {};
 
 	var scene_data = LS.Formats.parse( filename, data, options );
@@ -1472,13 +1604,6 @@ LS.ResourcesManager.processASCIIScene = function( filename, data, options ) {
 	return node;
 }
 
-//LS.ResourcesManager.registerResourcePreProcessor(&quot;jpg,jpeg,png,webp,gif&quot;, LS.ResourcesManager.processImage, &quot;binary&quot;,&quot;Texture&quot;);
-//LS.ResourcesManager.registerResourcePreProcessor(&quot;dds,tga&quot;, LS.ResourcesManager.processImageNonNative );
-//LS.ResourcesManager.registerResourcePreProcessor(&quot;obj,ase&quot;, LS.ResourcesManager.processASCIIMesh, &quot;text&quot;,&quot;Mesh&quot;);
-//LS.ResourcesManager.registerResourcePreProcessor(&quot;stl&quot;, LS.ResourcesManager.processASCIIMesh, &quot;binary&quot;,&quot;Mesh&quot;);
-//LS.ResourcesManager.registerResourcePreProcessor(&quot;dae&quot;, LS.ResourcesManager.processASCIIScene, &quot;text&quot;, &quot;SceneTree&quot;);
-
-
 // Post processors **********************************************************************************
 // Take a resource already processed and does some final actions (like validate, register or compute metadata)
 
@@ -1505,15 +1630,16 @@ LS.ResourcesManager.registerResourcePostProcessor(&quot;Mesh&quot;, function(fil
 });
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;Texture&quot;, function( filename, texture ) {
-	//store
+	//store in appropiate container
 	LS.ResourcesManager.textures[filename] = texture;
 });
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;Material&quot;, function( filename, material ) {
-	//store
+	//store in appropiate containers
 	LS.ResourcesManager.materials[filename] = material;
 	LS.ResourcesManager.materials_by_uid[ material.uid ] = material;
-	material.prepareMaterial( LS.GlobalScene );
+	if(material.prepare)
+		material.prepare( LS.GlobalScene );
 });
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;Pack&quot;, function( filename, pack ) {
@@ -1522,12 +1648,12 @@ LS.ResourcesManager.registerResourcePostProcessor(&quot;Pack&quot;, function( fi
 });
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;Prefab&quot;, function( filename, prefab ) {
-	//apply to nodes in the scene
+	//apply to nodes in the scene that use this prefab
 	prefab.applyToNodes();
 });
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;ShaderCode&quot;, function( filename, shader_code ) {
-	//apply to materials
+	//apply to materials that are using this ShaderCode
 	shader_code.applyToMaterials();
 });
 

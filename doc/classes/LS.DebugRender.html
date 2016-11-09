@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.TextureFX</title>
+    <title>LS.DebugRender</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -136,12 +142,12 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Components.TextureFX Class</h1>
+<h1>LS.DebugRender Class</h1>
 <div class="box meta">
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_helpers_textureFX.js.html#l3"><code>..&#x2F;src&#x2F;helpers&#x2F;textureFX.js:3</code></a>
+            Defined in: <a href="../files/.._src_render_debug.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;debug.js:1</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -150,11 +156,44 @@
 
 
 <div class="box intro">
-    <p>helps apply basic effects to a texture with as fewer render calls as possible with low memory footprint
-used by CameraFX but also available for any other use</p>
+    <p>Used to render debug information like skeletons, a grid, etc
+I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor</p>
 
 </div>
 
+    <div class="constructor">
+        <h2>Constructor</h2>
+<div id="method_LS.DebugRender" class="method item">
+    <h3 class="name"><code>LS.DebugRender</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_debug.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;debug.js:1</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+
+</div>
+    </div>
 
 <div id="classdocs" class="tabview">
     <ul class="api-class-tabs">
@@ -172,7 +211,27 @@ used by CameraFX but also available for any other use</p>
 
                     <ul class="index-list methods">
                             <li class="index-item method">
-                                <a href="#method_configure">configure</a>
+                                <a href="#method_getPropertiesInfo">getPropertiesInfo</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getProperty">getProperty</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getResources">getResources</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_onResourceRenamed">onResourceRenamed</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setProperty">setProperty</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setTexture">setTexture</a>
 
                             </li>
                     </ul>
@@ -185,13 +244,227 @@ used by CameraFX but also available for any other use</p>
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
-<div id="method_configure" class="method item">
-    <h3 class="name"><code>configure</code></h3>
+<div id="method_getPropertiesInfo" class="method item">
+    <h3 class="name"><code>getPropertiesInfo</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l204"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:204</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>gets all the properties and its types</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Object</span>:
+                    <p>object with name:type</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getProperty" class="method item">
+    <h3 class="name"><code>getProperty</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l250"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:250</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>gets all the properties and its types</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Object</span>:
+                    <p>object with name:type</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getResources" class="method item">
+    <h3 class="name"><code>getResources</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
                 <li class="arg">
-                        <code>o</code>
+                        <code>resources</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l404"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:404</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Collects all the resources needed by this material (textures)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">resources</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>object where all the resources are stored</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Texture</span>:
+            </div>
+        </div>
+
+
+</div>
+<div id="method_onResourceRenamed" class="method item">
+    <h3 class="name"><code>onResourceRenamed</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>resources</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l229"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:229</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Event used to inform if one resource has changed its name</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">resources</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>object where all the resources are stored</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Texture</span>:
+            </div>
+        </div>
+
+
+</div>
+<div id="method_setProperty" class="method item">
+    <h3 class="name"><code>setProperty</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>object</code>
                 </li>
             </ul><span class="paren">)</span>
         </div>
@@ -206,7 +479,7 @@ used by CameraFX but also available for any other use</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_helpers_textureFX.js.html#l311"><code>..&#x2F;src&#x2F;helpers&#x2F;textureFX.js:311</code></a>
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l277"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:277</code></a>
         </p>
 
 
@@ -214,7 +487,7 @@ used by CameraFX but also available for any other use</p>
     </div>
 
     <div class="description">
-        <p>Returns the first component of this container that is of the same class</p>
+        <p>assign a value to a property in a safe way</p>
 
     </div>
 
@@ -223,13 +496,79 @@ used by CameraFX but also available for any other use</p>
 
             <ul class="params-list">
                 <li class="param">
-                        <code class="param-name">o</code>
+                        <code class="param-name">object</code>
                         <span class="type">Object</span>
 
 
                     <div class="param-description">
-                        <p>object with the configuration info from a previous serialization</p>
+                        <p>to configure from</p>
 
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_setTexture" class="method item">
+    <h3 class="name"><code>setTexture</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>channel</code>
+                </li>
+                <li class="arg">
+                        <code>texture</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_surfaceMaterial.js.html#l358"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:358</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Assigns a texture to a channel</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">channel</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">texture</code>
+                        <span class="type">Texture</span>
+
+
+                    <div class="param-description">
+                         
                     </div>
 
                 </li>

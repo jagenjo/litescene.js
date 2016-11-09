@@ -110,6 +110,10 @@ GL.NOTEQUAL = 517;
 GL.GEQUAL = 518;
 GL.ALWAYS = 519;
 
+GL.STREAM_DRAW = 35040;
+GL.STATIC_DRAW = 35044;
+GL.DYNAMIC_DRAW = 35048;
+
 GL.temp_vec3 = vec3.create();
 GL.temp2_vec3 = vec3.create();
 GL.temp_vec4 = vec4.create();
@@ -504,6 +508,33 @@ global.hexColorToRGBA = (function() {
 		transparent: [0,0,0,0]
 	};
 
+	function hue2rgb( p, q, t ){
+		if(t < 0) t += 1;
+		if(t > 1) t -= 1;
+		if(t < 1/6) return p + (q - p) * 6 * t;
+		if(t < 1/2) return q;
+		if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+		return p;
+	}
+
+	function hslToRgb( h, s, l, out ){
+		var r, g, b;
+		out = out || vec3.create();
+		if(s == 0){
+			r = g = b = l; // achromatic
+		}else{
+			var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+			var p = 2 * l - q;
+			r = hue2rgb(p, q, h + 1/3);
+			g = hue2rgb(p, q, h);
+			b = hue2rgb(p, q, h - 1/3);
+		}
+		out[0] = r;
+		out[1] = g;
+		out[2] = b;
+		return out;
+	}
+
 	return function( hex, color, alpha )
 	{
 	alpha = (alpha === undefined ? 1 : alpha);
@@ -539,6 +570,16 @@ global.hexColorToRGBA = (function() {
 		return color;
 	}
 
+	var pos = hex.indexOf("hsla(");
+	if(pos != -1)
+	{
+		var str = hex.substr(5);
+		str = str.split(",");
+		hslToRgb( parseInt( str[0] ) / 360, parseInt( str[1] ) / 100, parseInt( str[2] ) / 100, color );
+		color[3] = parseFloat( str[3] ) * alpha;
+		return color;
+	}
+
 	color[3] = alpha;
 
 	//rgb colors
@@ -552,6 +593,16 @@ global.hexColorToRGBA = (function() {
 		color[2] = parseInt( str[2] ) / 255;
 		return color;
 	}
+
+	var pos = hex.indexOf("hsl(");
+	if(pos != -1)
+	{
+		var str = hex.substr(5);
+		str = str.split(",");
+		hslToRgb( parseInt( str[0] ) / 360, parseInt( str[1] ) / 100, parseInt( str[2] ) / 100, color );
+		return color;
+	}
+
 
 	//the rest
 	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
@@ -1762,7 +1813,7 @@ GL.Indexer.prototype = {
 * A data buffer to be stored in the GPU
 * @class Buffer
 * @constructor
-* @param {String} target gl.ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER
+* @param {Number} target gl.ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER
 * @param {ArrayBufferView} data the data in typed-array format
 * @param {number} spacing number of numbers per component (3 per vertex, 2 per uvs...), default 3
 * @param {enum} stream_type default gl.STATIC_DRAW (other: gl.DYNAMIC_DRAW, gl.STREAM_DRAW 
@@ -1803,7 +1854,7 @@ GL.Buffer.prototype.forEach = function(callback)
 
 /**
 * Applies a mat4 transform to every triplets in the buffer (assuming they are points)
-* No upload is performed (to ensure efficiency in case there are several operations performed
+* No upload is performed (to ensure efficiency in case there are several operations performed)
 * @method applyTransform
 * @param {mat4} mat
 */
@@ -1812,8 +1863,8 @@ GL.Buffer.prototype.applyTransform = function(mat)
 	var d = this.data;
 	for (var i = 0, s = this.spacing, l = d.length; i < l; i += s)
 	{
-		var s = d.subarray(i,i+s);
-		vec3.transformMat4(s,s,mat);
+		var v = d.subarray(i,i+s);
+		vec3.transformMat4(v,v,mat);
 	}
 	return this; //to concatenate
 }
@@ -4575,8 +4626,9 @@ Texture.prototype.toViewport = function(shader, uniforms)
 * Fills the texture with a constant color (uses gl.clear)
 * @method fill
 * @param {vec4} color rgba
+* @param {boolean} skip_mipmaps if true the mipmaps wont be updated
 */
-Texture.prototype.fill = function(color)
+Texture.prototype.fill = function(color, skip_mipmaps )
 {
 	var old_color = gl.getParameter( gl.COLOR_CLEAR_VALUE );
 	gl.clearColor( color[0], color[1], color[2], color[3] );
@@ -4584,6 +4636,12 @@ Texture.prototype.fill = function(color)
 		gl.clear( gl.COLOR_BUFFER_BIT );	
 	});
 	gl.clearColor( old_color[0], old_color[1], old_color[2], old_color[3] );
+
+	if (!skip_mipmaps && this.minFilter && this.minFilter != gl.NEAREST && this.minFilter != gl.LINEAR ) {
+		this.bind();
+		gl.generateMipmap( this.texture_type );
+		this.has_mipmaps = true;
+	}
 }
 
 /**
@@ -5663,7 +5721,7 @@ FBO.prototype.update = function( skip_disable )
 	}
 
 	//bind buffers for the colors
-	if(color_textures)
+	if(color_textures && color_textures.length)
 	{
 		this.order = []; //draw_buffers request the use of an array with the order of the attachments
 		for(var i = 0; i < color_textures.length; i++)
@@ -6844,12 +6902,24 @@ GL.create = function(options) {
 			canvas = options.canvas;
 	}
 	else
+	{
+		var root = null;
+		if(options.container)
+			root = options.container.constructor === String ? document.querySelector( options.container ) : options.container;
+		if(root && !options.width)
+		{
+			var rect = root.getBoundingClientRect();
+			options.width = rect.width;
+			options.height = rect.height;
+		}
+
 		canvas = createCanvas(  options.width || 800, options.height || 600 );
+		if(root)
+			root.appendChild(canvas);
+	}
 
 	if (!('alpha' in options)) options.alpha = false;
-	try { global.gl = canvas.getContext('webgl', options); } catch (e) {}
-	try { global.gl = global.gl || canvas.getContext('experimental-webgl', options); } catch (e) {}
-	if (!global.gl) { throw 'WebGL not supported'; }
+
 
 	/**
 	* the webgl context returned by GL.create, its a WebGLRenderingContext with some extra methods added
@@ -6857,7 +6927,18 @@ GL.create = function(options) {
 	*/
 	var gl = global.gl;
 
+	if(options.webgl2)
+	{
+		try { gl = canvas.getContext('webgl2', options); } catch (e) {}
+		try { gl = gl || canvas.getContext('experimental-webgl2', options); } catch (e) {}
+	}
+	try { gl = gl || canvas.getContext('webgl', options); } catch (e) {}
+	try { gl = gl || canvas.getContext('experimental-webgl', options); } catch (e) {}
+	if (!gl) { throw 'WebGL not supported'; }
+
+	global.gl = gl;
 	canvas.is_webgl = true;
+	canvas.gl = gl;
 	gl.context_id = this.last_context_id++;
 
 	//get some common extensions
@@ -8051,6 +8132,49 @@ global.geo = {
 	distance2PointToPlane: function(point, plane)
 	{
 		return (vec3.dot(point,plane) + plane[3])/(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
+	},
+
+	/**
+	* Projects a 3D point on a 3D line
+	* @method projectPointOnLine
+	* @param {vec3} P
+	* @param {vec3} A line start
+	* @param {vec3} B line end
+	* @param {vec3} result to store result (optional)
+	* @return {vec3} projectec point
+	*/
+	projectPointOnLine: function( P, A, B, result )
+	{
+		result = result || vec3.create();
+		//A + dot(AP,AB) / dot(AB,AB) * AB
+		var AP = vec3.fromValues( P[0] - A[0], P[1] - A[1], P[2] - A[2]);
+		var AB = vec3.fromValues( B[0] - A[0], B[1] - A[1], B[2] - A[2]);
+		var div = vec3.dot(AP,AB) / vec3.dot(AB,AB);
+		result[0] = A[0] + div[0] * AB[0];
+		result[1] = A[1] + div[1] * AB[1];
+		result[2] = A[2] + div[2] * AB[2];
+		return result;
+	},
+
+	/**
+	* Projects a 2D point on a 2D line
+	* @method project2DPointOnLine
+	* @param {vec2} P
+	* @param {vec2} A line start
+	* @param {vec2} B line end
+	* @param {vec2} result to store result (optional)
+	* @return {vec2} projectec point
+	*/
+	project2DPointOnLine: function( P, A, B, result )
+	{
+		result = result || vec2.create();
+		//A + dot(AP,AB) / dot(AB,AB) * AB
+		var AP = vec2.fromValues(P[0] - A[0], P[1] - A[1]);
+		var AB = vec2.fromValues(B[0] - A[0], B[1] - A[1]);
+		var div = vec2.dot(AP,AB) / vec2.dot(AB,AB);
+		result[0] = A[0] + div[0] * AB[0];
+		result[1] = A[1] + div[1] * AB[1];
+		return result;
 	},
 
 	/**

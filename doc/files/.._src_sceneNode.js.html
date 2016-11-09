@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -159,38 +165,39 @@ function SceneNode( name )
 		console.warn(&quot;SceneNode constructor first parameter must be a String with the name&quot;);
 	}
 
-	//Generic
+	//Generic identifying info
 	this._name = name || (&quot;node_&quot; + (Math.random() * 10000).toFixed(0)); //generate random number
 	this._uid = LS.generateUId(&quot;NODE-&quot;);
 	this._classList = {}; //to store classes
 	this.layers = 3|0; //32 bits for layers (force to int)
 	this.node_type = null; //used to store a string defining the node info
 
-	this._components = []; //used for logic actions
-	this._missing_components = null;
-
+	//more generic info
 	this._prefab = null;
+	this._material = null;
+
+	//from Componentcontainer
+	this._components = []; //used for logic actions
+	this._missing_components = null; //used to store state of component that couldnt be created
+
+	//from CompositePattern
 	this._parentNode = null;
 	this._children = null;
+	this._in_tree = null;
 
-	this._material = null;
-	this.node_type = null;
 
 	//flags
 	this.flags = {
 		visible: true,
 		is_static: false,
 		selectable: true,
-		two_sided: false,
-		flip_normals: false,
-		cast_shadows: true,
-		receive_shadows: true,
-		ignore_lights: false,
-		depth_test: true,
-		depth_write: true
 	};
 
 	this.init(false,true);
+
+	/** Fired here (from Transform) when the node transform changes
+	 * @event transformChanged
+	 */
 }
 
 SceneNode.prototype.init = function( keep_components, keep_info )
@@ -211,14 +218,7 @@ SceneNode.prototype.init = function( keep_components, keep_info )
 		this.flags = {
 			visible: true,
 			is_static: false,
-			selectable: true,
-			two_sided: false,
-			flip_normals: false,
-			cast_shadows: true,
-			receive_shadows: true,
-			ignore_lights: false, //not_affected_by_lights
-			depth_test: true,
-			depth_write: true
+			selectable: true
 		};
 	}
 
@@ -330,15 +330,20 @@ Object.defineProperty( SceneNode.prototype, &#x27;is_static&#x27;, {
 Object.defineProperty( SceneNode.prototype, &#x27;material&#x27;, {
 	set: function(v)
 	{
+		if( this._material == v )
+			return;
+
 		this._material = v;
-		if(!v)
-			return;
-		if(v.constructor === String)
-			return;
-		if(v._root &amp;&amp; v._root != this) //has root and its not me
-			console.warn( &quot;Cannot assign a material of one SceneNode to another, you must clone it or register it&quot; )
-		else
-			v._root = this; //link
+		if(v)
+		{
+			if(v.constructor === String)
+				return;
+			if(v._root &amp;&amp; v._root != this) //has root and its not me
+				console.warn( &quot;Cannot assign a material of one SceneNode to another, you must clone it or register it&quot; )
+			else
+				v._root = this; //link
+		}
+		LEvent.trigger( this, &quot;materialChanged&quot; );
 	},
 	get: function(){
 		return this._material;
@@ -350,9 +355,16 @@ Object.defineProperty( SceneNode.prototype, &#x27;prefab&#x27;, {
 	set: function(name)
 	{
 		this._prefab = name;
+		if(!this._prefab)
+			return;
 		var prefab = LS.RM.getResource(name);
+		var that = this;
 		if(prefab)
 			this.reloadFromPrefab();
+		else 
+			LS.ResourcesManager.load( name, function(){
+				that.reloadFromPrefab();
+			});
 	},
 	get: function(){
 		return this._prefab;
@@ -439,6 +451,10 @@ Object.defineProperty( SceneNode.prototype, &#x27;className&#x27;, {
 	enumerable: true
 });
 
+/**
+* Destroys this node
+* @method destroy
+**/
 SceneNode.prototype.destroy = function()
 {
 	LEvent.trigger( this, &quot;destroy&quot; );
@@ -446,13 +462,21 @@ SceneNode.prototype.destroy = function()
 	if(this.children)
 		while(this.children.length)
 			this.children[0].destroy();
-	if(this._parent)
-		this._parent.removeChild( this );
+	if(this._parentNode)
+		this._parentNode.removeChild( this );
 }
 
-SceneNode.prototype.getLocator = function()
+/**
+* Returns the locator string of this node
+* @method getLocator
+* @param {string} property_name [optional] you can pass the name of a property in this node to get the locator of that one
+* @return {String} the locator string of this node
+**/
+SceneNode.prototype.getLocator = function( property_name )
 {
-	return this.uid;
+	if(!property_name)
+		return this.uid;
+	return this.uid + &quot;/&quot; + property_name;
 }
 
 SceneNode.prototype.getPropertyInfo = function( locator )
@@ -571,12 +595,26 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			return r;
 	}
 
+	//to know the value of a property of the given target
 	if( target.getPropertyValue )
 		v = target.getPropertyValue( varname );
 
-	if(v === undefined &amp;&amp; target[ varname ] === undefined)
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if (v === undefined &amp;&amp; path.length &gt; 2 &amp;&amp; target[ varname ] &amp;&amp; target[ varname ].getPropertyInfoFromPath )
+	{
+		var r = target[ varname ].getPropertyInfoFromPath( path.slice(2) );
+		if(r)
+		{
+			r.node = this;
+			return r;
+		}
+	}
+
+	if(v === undefined &amp;&amp; target[ varname ] === undefined )
 		return null;
 
+	//if we dont have a value yet then take it directly from the object
 	var value = v !== undefined ? v : target[ varname ];
 
 	var extra_info = target.constructor[ &quot;@&quot; + varname ];
@@ -610,6 +648,7 @@ SceneNode.prototype.setPropertyValue = function( locator, value )
 	return this.setPropertyValueFromPath(path, value, 0);
 }
 
+//given a locator in path mode (array) and a value, it searches for the corresponding value and applies it
 SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
 	offset = offset || 0;
@@ -679,6 +718,11 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 
 	if( target[ varname ] === undefined )
 		return;
+
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if ( path.length &gt; 2 &amp;&amp; target[ varname ] &amp;&amp; target[ varname ].setPropertyValueFromPath )
+		return target[ varname ].setPropertyValueFromPath( path, value, offset+2 );
 
 	//disabled because if the vars has a setter it wont be called using the array.set
 	//if( target[ varname ] !== null &amp;&amp; target[ varname ].set )
@@ -969,6 +1013,8 @@ SceneNode.prototype.configure = function(info)
 		this.addMeshComponents( info.mesh, info );
 
 	//transform in matrix format could come from importers so we leave it
+	if((info.position || info.model || info.transform) &amp;&amp; !this.transform)
+		this.addComponent( new LS.Transform() );
 	if(info.position) 
 		this.transform.position = info.position;
 	if(info.model) 
@@ -1003,6 +1049,10 @@ SceneNode.prototype.configure = function(info)
 	//extra user info
 	if(info.extra)
 		this.extra = info.extra;
+
+	if(info.editor)
+		this._editor = info.editor;
+
 
 	if(info.comments)
 		this.comments = info.comments;
@@ -1111,6 +1161,9 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 
 	if(this._children &amp;&amp; (!this.prefab || ignore_prefab) )
 		o.children = this.serializeChildren();
+
+	if(this._editor)
+		o.editor = this._editor;
 
 	//save components
 	this.serializeComponents(o);

@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -167,12 +173,18 @@ function Animation(o)
 }
 
 Animation.DEFAULT_SCENE_NAME = &quot;@scene&quot;;
+Animation.DEFAULT_DURATION = 10;
 
 Animation.prototype.createTake = function( name, duration )
 {
+	if(!name)
+		throw(&quot;Animation Take name missing&quot;);
+
 	var take = new Animation.Take();
 	take.name = name;
-	take.duration = duration || 0;
+	take.duration = duration;
+	if(duration === undefined)
+		take.duration = Animation.DEFAULT_DURATION;
 	this.addTake( take );
 	return take;
 }
@@ -187,6 +199,35 @@ Animation.prototype.getTake = function( name )
 {
 	return this.takes[ name ];
 }
+
+Animation.prototype.renameTake = function( old_name, new_name )
+{
+	var take = this.takes[ old_name ];
+	if(!take)
+		return;
+	delete this.takes[ old_name ];
+	take.name = new_name;
+	this.takes[ new_name ] = take;
+	LEvent.trigger( this, &quot;take_renamed&quot;, [old_name, new_name] );
+}
+
+Animation.prototype.removeTake = function( name )
+{
+	var take = this.takes[ name ];
+	if(!take)
+		return;
+	delete this.takes[ name ];
+	LEvent.trigger( this, &quot;take_removed&quot;, name );
+}
+
+Animation.prototype.getNumTakes = function()
+{
+	var num = 0;
+	for(var i in this.takes)
+		num++;
+	return num;
+}
+
 
 Animation.prototype.addTrackToTake = function(takename, track)
 {
@@ -204,6 +245,7 @@ Animation.prototype.configure = function(data)
 
 	if(data.takes)
 	{
+		var num_takes = 0;
 		this.takes = {};
 		for(var i in data.takes)
 		{
@@ -215,7 +257,10 @@ Animation.prototype.configure = function(data)
 				this.addTake( take );
 				take.loadResources(); //load associated resources
 			}
+			num_takes++;
 		}
+		if(!num_takes)
+			this.createTake(&quot;default&quot;, LS.Animation.DEFAULT_DURATION );
 	}
 }
 
@@ -340,7 +385,7 @@ function Take(o)
 {
 	this.name = null;
 	this.tracks = [];
-	this.duration = 10;
+	this.duration = LS.Animation.DEFAULT_DURATION;
 	
 	if(o)
 		this.configure(o);
@@ -364,7 +409,7 @@ Take.prototype.configure = function( o )
 		this.duration = o.duration;
 }
 
-Take.prototype.serialize = function()
+Take.prototype.serialize = Take.prototype.toJSON = function()
 {
 	return LS.cloneObject(this, null, true);
 }
@@ -394,8 +439,10 @@ Take.prototype.createTrack = function( data )
 * @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene )
 {
+	scene = scene || LS.GlobalScene;
+
 	for(var i = 0; i &lt; this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
@@ -410,19 +457,26 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 				return;
 
 			//need info to search for node
-			var info = LS.GlobalScene.getPropertyInfoFromPath( track._property_path );
+			var info = scene.getPropertyInfoFromPath( track._property_path );
 			if(!info)
 				return;
 
-			//events
-			if(info.target) //components
-				LEvent.trigger( info.target, keyframe[1], keyframe[1][1] );
-			else if(info.node) //nodes
-				LEvent.trigger( info.node, keyframe[1][0], keyframe[1][1] );
+			var value = keyframe[1];
 
-			//functions
-			//if(info.node &amp;&amp; info.target &amp;&amp; info.target[ keyframe[1][0] ] )
-			//	info.target[ keyframe[1][0] ].call( info.target, keyframe[1][1] );
+			if(value[2] == 1) //on function call events the thirth value [2] is 1
+			{
+				//functions
+				if(info.node &amp;&amp; info.target &amp;&amp; info.target[ value[0] ] )
+					info.target[ value[0] ].call( info.target, value[1] );
+			}
+			else
+			{
+				//events
+				if(info.target) //components
+					LEvent.trigger( info.target, keyframe[1], keyframe[1][1] );
+				else if(info.node) //nodes
+					LEvent.trigger( info.node, keyframe[1][0], keyframe[1][1] );
+			}
 		}
 		else //regular tracks
 		{
@@ -430,7 +484,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			var sample = track.getSample( current_time, !ignore_interpolation );
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
-				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
+				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
 		}
 	}
 }
@@ -833,41 +887,46 @@ Track.prototype.clear = function()
 	this.packed_data = false;
 }
 
-
 //used to change every track so instead of using UIDs for properties it uses node names
 //this is used when you want to apply the same animation to different nodes in the scene
-Track.prototype.convertIDtoName = function( use_basename, root )
+Track.prototype.getIDasName = function( use_basename, root )
 {
 	if( !this._property_path || !this._property_path.length )
-		return false;
+		return null;
 
 	if(this._property_path[0][0] !== LS._uid_prefix)
-		return false; //is already using names
+		return null; //is already using names
 
 	var node = LSQ.get( this._property_path[0], root );
 	if(!node)
 	{
-		console.warn(&quot;convertIDtoName: node not found in LS.GlobalScene: &quot; + this._property_path[0] );
+		console.warn(&quot;getIDasName: node not found in LS.GlobalScene: &quot; + this._property_path[0] );
 		return false;
 	}
 
 	if(!node.name)
 	{
-		console.warn(&quot;convertIDtoName: node without name?&quot;);
+		console.warn(&quot;getIDasName: node without name?&quot;);
 		return false;
 	}
 
+	var result = this._property_path.concat();
 	if(use_basename)
-	{
-		this._property_path[0] = node.name;
-		this._property = this._property_path.join(&quot;/&quot;);
-	}
+		result[0] = node.name;
 	else
-	{
-		this._property_path[0] = node.fullname;
-		this._property = this._property_path.join(&quot;/&quot;);
-	}
+		result[0] = node.fullname;
+	return result.join(&quot;/&quot;);
+}
 
+//used to change every track so instead of using UIDs for properties it uses node names
+//this is used when you want to apply the same animation to different nodes in the scene
+Track.prototype.convertIDtoName = function( use_basename, root )
+{
+	var name = this.getIDasName( use_basename, root );
+	if(!name)
+		return false;
+	this._property = name;
+	this._property_path = this._property.split(&quot;/&quot;);
 	return true;
 }
 
@@ -1429,9 +1488,11 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 }
 
 
-Track.prototype.getPropertyInfo = function()
+Track.prototype.getPropertyInfo = function( scene )
 {
-	return LS.GlobalScene.getPropertyInfo( this.property );
+	scene = scene || LS.GlobalScene;
+
+	return scene.getPropertyInfo( this.property );
 }
 
 Track.prototype.getSampledData = function( start_time, end_time, num_samples )

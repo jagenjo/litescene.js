@@ -169,7 +169,7 @@ var parserCGArtMesh = {
 	}
 };
 
-LS.Formats.registerParser( parserCGArtMesh );
+LS.Formats.addSupportedFormat( "cgart", parserCGArtMesh );
 
 
 //GR2
@@ -196,6 +196,6 @@ var parserGR2 = {
 	}
 };
 
-LS.Formats.registerParser( parserGR2 );
+LS.Formats.addSupportedFormat( "gr2", parserGR2 );
 
 

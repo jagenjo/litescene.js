@@ -141,12 +141,23 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	//link component with container
 	component._root = this;
 
+	//must have uid
+	if( !component.uid )
+		component.uid = LS.generateUId("COMP-");
+
 	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
-	if(this.constructor == LS.SceneNode && component.onAddedToNode)
+	if( component.onAddedToNode)
 		component.onAddedToNode(this);
 
-	if( (this._in_tree || this.constructor == LS.SceneTree) && component.onAddedToScene)
-		component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	if( this._in_tree )
+	{
+		if( component.uid )
+			this._in_tree._components_by_uid[ component.uid ] = component;
+		else
+			console.warn("component without uid?", component);
+		if(	component.onAddedToScene )
+			component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	}
 
 	//link node with component
 	if(!this._components) 
@@ -159,8 +170,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	else
 		this._components.push( component );
 
-	if( !component.uid )
-		component.uid = LS.generateUId("COMP-");
+	LEvent.trigger( this, "componentAdded", component );
 
 	return component;
 }
@@ -179,11 +189,15 @@ ComponentContainer.prototype.removeComponent = function(component)
 	component._root = null;
 
 	//not very clean, ComponetContainer shouldnt know about LS.SceneNode, but this is more simple
-	if(this.constructor == LS.SceneNode && component.onRemovedFromNode)
+	if( component.onRemovedFromNode )
 		component.onRemovedFromNode(this);
 
-	if((this._in_tree || this.constructor == LS.SceneTree) && component.onRemovedFromScene)
-		component.onRemovedFromScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+	if( this._in_tree )
+	{
+		delete this._in_tree._components_by_uid[ component.uid ];
+		if(component.onRemovedFromScene)
+			component.onRemovedFromScene( this._in_tree );
+	}
 
 	//remove all events
 	LEvent.unbindAll(this,component);
@@ -194,6 +208,8 @@ ComponentContainer.prototype.removeComponent = function(component)
 		this._components.splice(pos,1);
 	else
 		console.warn("removeComponent: Component not found in node");
+
+	LEvent.trigger( this, "componentRemoved", component );
 }
 
 /**

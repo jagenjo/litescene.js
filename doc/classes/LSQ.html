@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -141,7 +147,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_core.js.html#l789"><code>..&#x2F;src&#x2F;core.js:789</code></a>
+            Defined in: <a href="../files/.._src_core.js.html#l761"><code>..&#x2F;src&#x2F;core.js:761</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -176,6 +182,10 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_set">set</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setFromInfo">setFromInfo</a>
 
                             </li>
                             <li class="index-item method">
@@ -216,7 +226,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l822"><code>..&#x2F;src&#x2F;core.js:822</code></a>
+        <a href="../files/.._src_core.js.html#l795"><code>..&#x2F;src&#x2F;core.js:795</code></a>
         </p>
 
 
@@ -283,7 +293,7 @@ Example: var value = LSQ.get(&quot;mynode|a_child/MeshRenderer/enabled&quot;);</
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l795"><code>..&#x2F;src&#x2F;core.js:795</code></a>
+        <a href="../files/.._src_core.js.html#l767"><code>..&#x2F;src&#x2F;core.js:767</code></a>
         </p>
 
 
@@ -328,6 +338,75 @@ Example:  LSQ.set(&quot;mynode|a_child/MeshRenderer/enabled&quot;,false);</p>
 
 
 </div>
+<div id="method_setFromInfo" class="method item">
+    <h3 class="name"><code>setFromInfo</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>info</code>
+                </li>
+                <li class="arg">
+                        <code>value</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_core.js.html#l864"><code>..&#x2F;src&#x2F;core.js:864</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Assigns a value using the getLocatorInfo object instead of searching it again
+This is faster but if the locator points to a different object it wont work.</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">info</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>information of a location (obtain using scene.getLocatorInfo</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">value</code>
+                        <span class="type"></span>
+
+
+                    <div class="param-description">
+                        <p>to assign</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_shortify" class="method item">
     <h3 class="name"><code>shortify</code></h3>
 
@@ -352,7 +431,7 @@ Example:  LSQ.set(&quot;mynode|a_child/MeshRenderer/enabled&quot;,false);</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l851"><code>..&#x2F;src&#x2F;core.js:851</code></a>
+        <a href="../files/.._src_core.js.html#l825"><code>..&#x2F;src&#x2F;core.js:825</code></a>
         </p>
 
 

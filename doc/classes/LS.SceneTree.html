@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -221,6 +227,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_createAnimation">createAnimation</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_filterNodes">filterNodes</a>
 
                             </li>
@@ -273,6 +283,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_getNodes">getNodes</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_getPropertyInfo">getPropertyInfo</a>
 
                             </li>
@@ -297,11 +311,15 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_loadFromResources">loadFromResources</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_loadResources">loadResources</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_refresh">refresh</a>
+                                <a href="#method_recomputeNodesArray">recomputeNodesArray</a>
 
                             </li>
                             <li class="index-item method">
@@ -313,7 +331,15 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_requestFrame">requestFrame</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_serialize">serialize</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setFromJSON">setFromJSON</a>
 
                             </li>
                             <li class="index-item method">
@@ -358,6 +384,10 @@
 
                             </li>
                             <li class="index-item event">
+                                <a href="#event_change">change</a>
+
+                            </li>
+                            <li class="index-item event">
                                 <a href="#event_clear">clear</a>
 
                             </li>
@@ -375,6 +405,14 @@
                             </li>
                             <li class="index-item event">
                                 <a href="#event_load">load</a>
+
+                            </li>
+                            <li class="index-item event">
+                                <a href="#event_load">load</a>
+
+                            </li>
+                            <li class="index-item event">
+                                <a href="#event_loadCompleted">loadCompleted</a>
 
                             </li>
                             <li class="index-item event">
@@ -429,7 +467,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l978"><code>..&#x2F;src&#x2F;scene.js:978</code></a>
+        <a href="../files/.._src_scene.js.html#l1180"><code>..&#x2F;src&#x2F;scene.js:1180</code></a>
         </p>
 
 
@@ -477,7 +515,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l132"><code>..&#x2F;src&#x2F;scene.js:132</code></a>
+        <a href="../files/.._src_scene.js.html#l152"><code>..&#x2F;src&#x2F;scene.js:152</code></a>
         </p>
 
 
@@ -509,7 +547,7 @@ and trigger a &quot;clear&quot; LEvent</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1066"><code>..&#x2F;src&#x2F;scene.js:1066</code></a>
+        <a href="../files/.._src_scene.js.html#l1268"><code>..&#x2F;src&#x2F;scene.js:1268</code></a>
         </p>
 
 
@@ -518,7 +556,8 @@ and trigger a &quot;clear&quot; LEvent</p>
 
     <div class="description">
         <p>This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
-Mostly rendering stuff but also some collision info.</p>
+Mostly rendering stuff but also some collision info.
+TO DO: refactor this so it doesnt redo the same task in every frame, only if changes are made</p>
 
     </div>
 
@@ -547,7 +586,7 @@ Mostly rendering stuff but also some collision info.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l158"><code>..&#x2F;src&#x2F;scene.js:158</code></a>
+        <a href="../files/.._src_scene.js.html#l178"><code>..&#x2F;src&#x2F;scene.js:178</code></a>
         </p>
 
 
@@ -557,7 +596,7 @@ Mostly rendering stuff but also some collision info.</p>
     <div class="description">
         <p>Configure the Scene using an object (the object can be obtained from the function serialize)
 Inserts the nodes, configure them, and change the parameters
-Destroys previously existing info</p>
+ATTENTION: Destroys all previously existing info</p>
 
     </div>
 
@@ -579,6 +618,49 @@ Destroys previously existing info</p>
             </ul>
         </div>
 
+
+
+</div>
+<div id="method_createAnimation" class="method item">
+    <h3 class="name"><code>createAnimation</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type"><a href="../classes/LS.Animation.html" class="crosslink">LS.Animation</a></span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l1614"><code>..&#x2F;src&#x2F;scene.js:1614</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Creates and returns an scene animation track</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type"><a href="../classes/LS.Animation.html" class="crosslink">LS.Animation</a></span>:
+                    <p>the animation track</p>
+
+            </div>
+        </div>
 
 
 </div>
@@ -606,7 +688,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l714"><code>..&#x2F;src&#x2F;scene.js:714</code></a>
+        <a href="../files/.._src_scene.js.html#l921"><code>..&#x2F;src&#x2F;scene.js:921</code></a>
         </p>
 
 
@@ -672,7 +754,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l730"><code>..&#x2F;src&#x2F;scene.js:730</code></a>
+        <a href="../files/.._src_scene.js.html#l937"><code>..&#x2F;src&#x2F;scene.js:937</code></a>
         </p>
 
 
@@ -738,7 +820,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l748"><code>..&#x2F;src&#x2F;scene.js:748</code></a>
+        <a href="../files/.._src_scene.js.html#l955"><code>..&#x2F;src&#x2F;scene.js:955</code></a>
         </p>
 
 
@@ -804,7 +886,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1348"><code>..&#x2F;src&#x2F;scene.js:1348</code></a>
+        <a href="../files/.._src_scene.js.html#l1543"><code>..&#x2F;src&#x2F;scene.js:1543</code></a>
         </p>
 
 
@@ -867,7 +949,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1032"><code>..&#x2F;src&#x2F;scene.js:1032</code></a>
+        <a href="../files/.._src_scene.js.html#l1234"><code>..&#x2F;src&#x2F;scene.js:1234</code></a>
         </p>
 
 
@@ -924,7 +1006,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1247"><code>..&#x2F;src&#x2F;scene.js:1247</code></a>
+        <a href="../files/.._src_scene.js.html#l1439"><code>..&#x2F;src&#x2F;scene.js:1439</code></a>
         </p>
 
 
@@ -990,7 +1072,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l539"><code>..&#x2F;src&#x2F;scene.js:539</code></a>
+        <a href="../files/.._src_scene.js.html#l697"><code>..&#x2F;src&#x2F;scene.js:697</code></a>
         </p>
 
 
@@ -1056,7 +1138,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l558"><code>..&#x2F;src&#x2F;scene.js:558</code></a>
+        <a href="../files/.._src_scene.js.html#l716"><code>..&#x2F;src&#x2F;scene.js:716</code></a>
         </p>
 
 
@@ -1122,7 +1204,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1329"><code>..&#x2F;src&#x2F;scene.js:1329</code></a>
+        <a href="../files/.._src_scene.js.html#l1524"><code>..&#x2F;src&#x2F;scene.js:1524</code></a>
         </p>
 
 
@@ -1188,7 +1270,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l645"><code>..&#x2F;src&#x2F;scene.js:645</code></a>
+        <a href="../files/.._src_scene.js.html#l852"><code>..&#x2F;src&#x2F;scene.js:852</code></a>
         </p>
 
 
@@ -1254,7 +1336,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l699"><code>..&#x2F;src&#x2F;scene.js:699</code></a>
+        <a href="../files/.._src_scene.js.html#l906"><code>..&#x2F;src&#x2F;scene.js:906</code></a>
         </p>
 
 
@@ -1320,7 +1402,7 @@ Destroys previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l674"><code>..&#x2F;src&#x2F;scene.js:674</code></a>
+        <a href="../files/.._src_scene.js.html#l881"><code>..&#x2F;src&#x2F;scene.js:881</code></a>
         </p>
 
 
@@ -1387,7 +1469,7 @@ If more than one object has the same name, the first one added to the tree is re
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l687"><code>..&#x2F;src&#x2F;scene.js:687</code></a>
+        <a href="../files/.._src_scene.js.html#l894"><code>..&#x2F;src&#x2F;scene.js:894</code></a>
         </p>
 
 
@@ -1429,6 +1511,72 @@ If more than one object has the same name, the first one added to the tree is re
 
 
 </div>
+<div id="method_getNodes" class="method item">
+    <h3 class="name"><code>getNodes</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>recompute</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l838"><code>..&#x2F;src&#x2F;scene.js:838</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns the array containing all the nodes in the scene</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">recompute</code>
+                        <span class="type">Bool</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] in case you want to rearrange the nodes</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Array</span>:
+                    <p>array containing every SceneNode in the scene</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_getPropertyInfo" class="method item">
     <h3 class="name"><code>getPropertyInfo</code></h3>
 
@@ -1453,7 +1601,7 @@ If more than one object has the same name, the first one added to the tree is re
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l771"><code>..&#x2F;src&#x2F;scene.js:771</code></a>
+        <a href="../files/.._src_scene.js.html#l978"><code>..&#x2F;src&#x2F;scene.js:978</code></a>
         </p>
 
 
@@ -1520,7 +1668,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l799"><code>..&#x2F;src&#x2F;scene.js:799</code></a>
+        <a href="../files/.._src_scene.js.html#l1006"><code>..&#x2F;src&#x2F;scene.js:1006</code></a>
         </p>
 
 
@@ -1583,7 +1731,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l875"><code>..&#x2F;src&#x2F;scene.js:875</code></a>
+        <a href="../files/.._src_scene.js.html#l1082"><code>..&#x2F;src&#x2F;scene.js:1082</code></a>
         </p>
 
 
@@ -1635,7 +1783,7 @@ includes the nodes, components and preloads</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1286"><code>..&#x2F;src&#x2F;scene.js:1286</code></a>
+        <a href="../files/.._src_scene.js.html#l1481"><code>..&#x2F;src&#x2F;scene.js:1481</code></a>
         </p>
 
 
@@ -1678,7 +1826,7 @@ includes the nodes, components and preloads</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l81"><code>..&#x2F;src&#x2F;scene.js:81</code></a>
+        <a href="../files/.._src_scene.js.html#l97"><code>..&#x2F;src&#x2F;scene.js:97</code></a>
         </p>
 
 
@@ -1737,7 +1885,7 @@ Call it to clear the scene content</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l325"><code>..&#x2F;src&#x2F;scene.js:325</code></a>
+        <a href="../files/.._src_scene.js.html#l414"><code>..&#x2F;src&#x2F;scene.js:414</code></a>
         </p>
 
 
@@ -1745,8 +1893,123 @@ Call it to clear the scene content</p>
     </div>
 
     <div class="description">
-        <p>Loads a scene from a relative url pointing to a JSON description
+        <p>Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
 Warning: this url is not passed through the LS.ResourcesManager so the url is absolute</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>where the JSON object containing the scene is stored</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_complete=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>the callback to call when the loading is complete</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_error=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>the callback to call if there is a  loading error</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_progress=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>it is called while loading the scene info (not the associated resources)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_resources_loaded=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>it is called when all the resources had been loaded</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_loadFromResources" class="method item">
+    <h3 class="name"><code>loadFromResources</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>url</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_complete=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_error=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_progress=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_resources_loaded=null]</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l520"><code>..&#x2F;src&#x2F;scene.js:520</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
+It uses the resources folder as the root folder (in comparison with the regular load function)</p>
 
     </div>
 
@@ -1840,7 +2103,7 @@ Warning: this url is not passed through the LS.ResourcesManager so the url is ab
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l937"><code>..&#x2F;src&#x2F;scene.js:937</code></a>
+        <a href="../files/.._src_scene.js.html#l1139"><code>..&#x2F;src&#x2F;scene.js:1139</code></a>
         </p>
 
 
@@ -1875,8 +2138,8 @@ and load them in bulk using the ResourceManager</p>
 
 
 </div>
-<div id="method_refresh" class="method item">
-    <h3 class="name"><code>refresh</code></h3>
+<div id="method_recomputeNodesArray" class="method item">
+    <h3 class="name"><code>recomputeNodesArray</code></h3>
 
         <span class="paren">()</span>
 
@@ -1890,7 +2153,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1276"><code>..&#x2F;src&#x2F;scene.js:1276</code></a>
+        <a href="../files/.._src_scene.js.html#l804"><code>..&#x2F;src&#x2F;scene.js:804</code></a>
         </p>
 
 
@@ -1898,7 +2161,7 @@ and load them in bulk using the ResourceManager</p>
     </div>
 
     <div class="description">
-        <p>Marks that this scene must be rendered again</p>
+        <p>all nodes are stored in an array, this function recomputes the array so they are in the right order in case one has changed order</p>
 
     </div>
 
@@ -1927,7 +2190,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l989"><code>..&#x2F;src&#x2F;scene.js:989</code></a>
+        <a href="../files/.._src_scene.js.html#l1191"><code>..&#x2F;src&#x2F;scene.js:1191</code></a>
         </p>
 
 
@@ -1975,7 +2238,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1056"><code>..&#x2F;src&#x2F;scene.js:1056</code></a>
+        <a href="../files/.._src_scene.js.html#l1258"><code>..&#x2F;src&#x2F;scene.js:1258</code></a>
         </p>
 
 
@@ -1984,6 +2247,37 @@ and load them in bulk using the ResourceManager</p>
 
     <div class="description">
         <p>renders the scene using the assigned renderer</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_requestFrame" class="method item">
+    <h3 class="name"><code>requestFrame</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l1468"><code>..&#x2F;src&#x2F;scene.js:1468</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Marks that this scene must be rendered again</p>
 
     </div>
 
@@ -2009,7 +2303,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l267"><code>..&#x2F;src&#x2F;scene.js:267</code></a>
+        <a href="../files/.._src_scene.js.html#l287"><code>..&#x2F;src&#x2F;scene.js:287</code></a>
         </p>
 
 
@@ -2033,6 +2327,120 @@ It calls the serialize method in every node</p>
 
             </div>
         </div>
+
+
+</div>
+<div id="method_setFromJSON" class="method item">
+    <h3 class="name"><code>setFromJSON</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>data</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_complete=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_error=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_progress=null]</code>
+                </li>
+                <li class="arg">
+                        <code class="optional">[on_resources_loaded=null]</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l336"><code>..&#x2F;src&#x2F;scene.js:336</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Assigns a scene from a JSON description (or WBIN,ZIP)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">data</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>JSON object containing the scene</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_complete=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>the callback to call when the loading is complete</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_error=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>the callback to call if there is a  loading error</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_progress=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>it is called while loading the scene info (not the associated resources)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name optional">[on_resources_loaded=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>it is called when all the resources had been loaded</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
 
 
 </div>
@@ -2066,7 +2474,7 @@ It calls the serialize method in every node</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l825"><code>..&#x2F;src&#x2F;scene.js:825</code></a>
+        <a href="../files/.._src_scene.js.html#l1032"><code>..&#x2F;src&#x2F;scene.js:1032</code></a>
         </p>
 
 
@@ -2164,7 +2572,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l841"><code>..&#x2F;src&#x2F;scene.js:841</code></a>
+        <a href="../files/.._src_scene.js.html#l1048"><code>..&#x2F;src&#x2F;scene.js:1048</code></a>
         </p>
 
 
@@ -2261,7 +2669,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1001"><code>..&#x2F;src&#x2F;scene.js:1001</code></a>
+        <a href="../files/.._src_scene.js.html#l1203"><code>..&#x2F;src&#x2F;scene.js:1203</code></a>
         </p>
 
 
@@ -2318,7 +2726,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1381"><code>..&#x2F;src&#x2F;scene.js:1381</code></a>
+        <a href="../files/.._src_scene.js.html#l1576"><code>..&#x2F;src&#x2F;scene.js:1576</code></a>
         </p>
 
 
@@ -2384,7 +2792,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1234"><code>..&#x2F;src&#x2F;scene.js:1234</code></a>
+        <a href="../files/.._src_scene.js.html#l1425"><code>..&#x2F;src&#x2F;scene.js:1425</code></a>
         </p>
 
 
@@ -2392,7 +2800,8 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     </div>
 
     <div class="description">
-        <p>triggers an event to all nodes in the scene</p>
+        <p>triggers an event to all nodes in the scene
+this is slow if the scene has too many nodes, thats why we use bindings</p>
 
     </div>
 
@@ -2446,7 +2855,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1226"><code>..&#x2F;src&#x2F;scene.js:1226</code></a>
+                            <a href="../files/.._src_scene.js.html#l1417"><code>..&#x2F;src&#x2F;scene.js:1417</code></a>
                             </p>
                     
                     
@@ -2471,7 +2880,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l357"><code>..&#x2F;src&#x2F;scene.js:357</code></a>
+                            <a href="../files/.._src_scene.js.html#l446"><code>..&#x2F;src&#x2F;scene.js:446</code></a>
                             </p>
                     
                     
@@ -2496,7 +2905,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1205"><code>..&#x2F;src&#x2F;scene.js:1205</code></a>
+                            <a href="../files/.._src_scene.js.html#l1396"><code>..&#x2F;src&#x2F;scene.js:1396</code></a>
                             </p>
                     
                     
@@ -2526,6 +2935,48 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                     
                     
                     </div>
+                    <div id="event_change" class="events item">
+                        <h3 class="name"><code>change</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/.._src_scene.js.html#l279"><code>..&#x2F;src&#x2F;scene.js:279</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>Fired when something changes in the scene</p>
+                    
+                        </div>
+                    
+                            <div class="params">
+                                <h4>Event Payload:</h4>
+                    
+                                <ul class="params-list">
+                                    <li class="param">
+                                            <code class="param-name">scene_info</code>
+                                            <span class="type">Object</span>
+                    
+                    
+                                        <div class="param-description">
+                                            <p>contains all the info to do the configuration</p>
+                    
+                                        </div>
+                    
+                                    </li>
+                                </ul>
+                            </div>
+                    
+                    
+                    </div>
                     <div id="event_clear" class="events item">
                         <h3 class="name"><code>clear</code></h3>
                         <span class="type"></span>
@@ -2537,7 +2988,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l149"><code>..&#x2F;src&#x2F;scene.js:149</code></a>
+                            <a href="../files/.._src_scene.js.html#l169"><code>..&#x2F;src&#x2F;scene.js:169</code></a>
                             </p>
                     
                     
@@ -2562,7 +3013,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l258"><code>..&#x2F;src&#x2F;scene.js:258</code></a>
+                            <a href="../files/.._src_scene.js.html#l273"><code>..&#x2F;src&#x2F;scene.js:273</code></a>
                             </p>
                     
                     
@@ -2604,7 +3055,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1044"><code>..&#x2F;src&#x2F;scene.js:1044</code></a>
+                            <a href="../files/.._src_scene.js.html#l1246"><code>..&#x2F;src&#x2F;scene.js:1246</code></a>
                             </p>
                     
                     
@@ -2645,7 +3096,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1014"><code>..&#x2F;src&#x2F;scene.js:1014</code></a>
+                            <a href="../files/.._src_scene.js.html#l1216"><code>..&#x2F;src&#x2F;scene.js:1216</code></a>
                             </p>
                     
                     
@@ -2686,7 +3137,32 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l401"><code>..&#x2F;src&#x2F;scene.js:401</code></a>
+                            <a href="../files/.._src_scene.js.html#l490"><code>..&#x2F;src&#x2F;scene.js:490</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>Fired when the scene has been loaded but before the resources</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="event_load" class="events item">
+                        <h3 class="name"><code>load</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/.._src_scene.js.html#l384"><code>..&#x2F;src&#x2F;scene.js:384</code></a>
                             </p>
                     
                     
@@ -2711,7 +3187,32 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l415"><code>..&#x2F;src&#x2F;scene.js:415</code></a>
+                            <a href="../files/.._src_scene.js.html#l398"><code>..&#x2F;src&#x2F;scene.js:398</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>Fired after all resources have been loaded</p>
+                    
+                        </div>
+                    
+                    
+                    
+                    </div>
+                    <div id="event_loadCompleted" class="events item">
+                        <h3 class="name"><code>loadCompleted</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/.._src_scene.js.html#l504"><code>..&#x2F;src&#x2F;scene.js:504</code></a>
                             </p>
                     
                     
@@ -2736,7 +3237,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l603"><code>..&#x2F;src&#x2F;scene.js:603</code></a>
+                            <a href="../files/.._src_scene.js.html#l766"><code>..&#x2F;src&#x2F;scene.js:766</code></a>
                             </p>
                     
                     
@@ -2777,7 +3278,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l628"><code>..&#x2F;src&#x2F;scene.js:628</code></a>
+                            <a href="../files/.._src_scene.js.html#l793"><code>..&#x2F;src&#x2F;scene.js:793</code></a>
                             </p>
                     
                     
@@ -2818,7 +3319,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l315"><code>..&#x2F;src&#x2F;scene.js:315</code></a>
+                            <a href="../files/.._src_scene.js.html#l325"><code>..&#x2F;src&#x2F;scene.js:325</code></a>
                             </p>
                     
                     
@@ -2860,7 +3361,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1022"><code>..&#x2F;src&#x2F;scene.js:1022</code></a>
+                            <a href="../files/.._src_scene.js.html#l1224"><code>..&#x2F;src&#x2F;scene.js:1224</code></a>
                             </p>
                     
                     
@@ -2901,7 +3402,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1217"><code>..&#x2F;src&#x2F;scene.js:1217</code></a>
+                            <a href="../files/.._src_scene.js.html#l1408"><code>..&#x2F;src&#x2F;scene.js:1408</code></a>
                             </p>
                     
                     

@@ -53,4 +53,4 @@ var parserTGA = {
 	}
 };
 
-LS.Formats.registerParser( parserTGA );
+LS.Formats.addSupportedFormat( "tga", parserTGA );

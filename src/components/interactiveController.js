@@ -99,6 +99,8 @@ InteractiveController.prototype._onMouse = function(type, e)
 			LEvent.trigger( this._clicked_node, "clicked", this._clicked_node ); //event in node clicked
 			LEvent.trigger( this._root, "node_clicked", this._clicked_node ); //event in this node
 			LEvent.trigger( this._root.scene, "node_clicked", this._clicked_node ); //event in scene
+			if(this.onNodeClicked) //extra method, if you inject a new method in this component
+				this.onNodeClicked( this._clicked_node );
 		}
 	}
 

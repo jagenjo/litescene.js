@@ -285,6 +285,10 @@ var parserDAE = {
 				material.opacity = material.transparency; //why? dont know but works
 		}
 
+		//collada supports materials with colors as specular_factor but StandardMaterial only support one value
+		if(material.specular_factor && material.specular_factor.length)
+			material.specular_factor = material.specular_factor[0];
+
 		if(material.textures)
 		{
 			for(var i in material.textures)
@@ -303,4 +307,4 @@ var parserDAE = {
 	}
 };
 
-LS.Formats.registerParser( parserDAE );
+LS.Formats.addSupportedFormat( "dae", parserDAE );

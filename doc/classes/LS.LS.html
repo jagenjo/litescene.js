@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -180,10 +186,6 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_createElementGUI">createElementGUI</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_extendClass">extendClass</a>
 
                             </li>
@@ -193,10 +195,6 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getClassName">getClassName</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getGUIElement">getGUIElement</a>
 
                             </li>
                             <li class="index-item method">
@@ -228,7 +226,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_removeGUIElement">removeGUIElement</a>
+                                <a href="#method_replaceComponentClass">replaceComponentClass</a>
 
                             </li>
                             <li class="index-item method">
@@ -292,7 +290,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l371"><code>..&#x2F;src&#x2F;core.js:371</code></a>
+        <a href="../files/.._src_core.js.html#l419"><code>..&#x2F;src&#x2F;core.js:419</code></a>
         </p>
 
 
@@ -352,7 +350,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l253"><code>..&#x2F;src&#x2F;core.js:253</code></a>
+        <a href="../files/.._src_core.js.html#l292"><code>..&#x2F;src&#x2F;core.js:292</code></a>
         </p>
 
 
@@ -411,84 +409,6 @@
 
 
 </div>
-<div id="method_createElementGUI" class="method item">
-    <h3 class="name"><code>createElementGUI</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>tag_type</code>
-                </li>
-                <li class="arg">
-                        <code>anchor</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">HTMLElement</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_core.js.html#l632"><code>..&#x2F;src&#x2F;core.js:632</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">tag_type</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                        <p>the tag type &quot;div&quot;</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">anchor</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                        <p>&quot;top-left&quot;, &quot;top-right&quot;, &quot;bottom-left&quot;, &quot;bottom-right&quot;</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">HTMLElement</span>:
-            </div>
-        </div>
-
-
-</div>
 <div id="method_extendClass" class="method item">
     <h3 class="name"><code>extendClass</code></h3>
 
@@ -513,7 +433,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l218"><code>..&#x2F;src&#x2F;core.js:218</code></a>
+        <a href="../files/.._src_core.js.html#l257"><code>..&#x2F;src&#x2F;core.js:257</code></a>
         </p>
 
 
@@ -622,7 +542,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l436"><code>..&#x2F;src&#x2F;core.js:436</code></a>
+        <a href="../files/.._src_core.js.html#l488"><code>..&#x2F;src&#x2F;core.js:488</code></a>
         </p>
 
 
@@ -664,47 +584,6 @@
 
 
 </div>
-<div id="method_getGUIElement" class="method item">
-    <h3 class="name"><code>getGUIElement</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">HTMLElement</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_core.js.html#l591"><code>..&#x2F;src&#x2F;core.js:591</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically remove if the app finishes.</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">HTMLElement</span>:
-            </div>
-        </div>
-
-
-</div>
 <div id="method_getObjectClassName" class="method item">
     <h3 class="name"><code>getObjectClassName</code></h3>
 
@@ -729,7 +608,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l411"><code>..&#x2F;src&#x2F;core.js:411</code></a>
+        <a href="../files/.._src_core.js.html#l463"><code>..&#x2F;src&#x2F;core.js:463</code></a>
         </p>
 
 
@@ -795,7 +674,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l461"><code>..&#x2F;src&#x2F;core.js:461</code></a>
+        <a href="../files/.._src_core.js.html#l513"><code>..&#x2F;src&#x2F;core.js:513</code></a>
         </p>
 
 
@@ -860,7 +739,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l724"><code>..&#x2F;src&#x2F;core.js:724</code></a>
+        <a href="../files/.._src_core.js.html#l643"><code>..&#x2F;src&#x2F;core.js:643</code></a>
         </p>
 
 
@@ -926,7 +805,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l119"><code>..&#x2F;src&#x2F;core.js:119</code></a>
+        <a href="../files/.._src_core.js.html#l120"><code>..&#x2F;src&#x2F;core.js:120</code></a>
         </p>
 
 
@@ -989,7 +868,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l83"><code>..&#x2F;src&#x2F;core.js:83</code></a>
+        <a href="../files/.._src_core.js.html#l84"><code>..&#x2F;src&#x2F;core.js:84</code></a>
         </p>
 
 
@@ -1043,7 +922,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l568"><code>..&#x2F;src&#x2F;core.js:568</code></a>
+        <a href="../files/.._src_core.js.html#l620"><code>..&#x2F;src&#x2F;core.js:620</code></a>
         </p>
 
 
@@ -1097,7 +976,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l132"><code>..&#x2F;src&#x2F;core.js:132</code></a>
+        <a href="../files/.._src_core.js.html#l171"><code>..&#x2F;src&#x2F;core.js:171</code></a>
         </p>
 
 
@@ -1130,10 +1009,22 @@
 
 
 </div>
-<div id="method_removeGUIElement" class="method item">
-    <h3 class="name"><code>removeGUIElement</code></h3>
+<div id="method_replaceComponentClass" class="method item">
+    <h3 class="name"><code>replaceComponentClass</code></h3>
 
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>scene</code>
+                </li>
+                <li class="arg">
+                        <code>old_class_name</code>
+                </li>
+                <li class="arg">
+                        <code>new_class_name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
 
 
 
@@ -1145,7 +1036,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l702"><code>..&#x2F;src&#x2F;core.js:702</code></a>
+        <a href="../files/.._src_core.js.html#l133"><code>..&#x2F;src&#x2F;core.js:133</code></a>
         </p>
 
 
@@ -1153,10 +1044,49 @@
     </div>
 
     <div class="description">
-        <p>Removes all the GUI elements from the DOM</p>
+        <p>Replaces all components of one class in the scene with components of another class</p>
 
     </div>
 
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">scene</code>
+                        <span class="type">SceneTree</span>
+
+
+                    <div class="param-description">
+                        <p>where to apply the replace</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">old_class_name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>name of the class to be replaced</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">new_class_name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>name of the class that will be used instead</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
 
 
 
@@ -1188,7 +1118,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l149"><code>..&#x2F;src&#x2F;core.js:149</code></a>
+        <a href="../files/.._src_core.js.html#l188"><code>..&#x2F;src&#x2F;core.js:188</code></a>
         </p>
 
 
@@ -1267,7 +1197,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l196"><code>..&#x2F;src&#x2F;core.js:196</code></a>
+        <a href="../files/.._src_core.js.html#l235"><code>..&#x2F;src&#x2F;core.js:235</code></a>
         </p>
 
 
@@ -1347,7 +1277,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l174"><code>..&#x2F;src&#x2F;core.js:174</code></a>
+        <a href="../files/.._src_core.js.html#l213"><code>..&#x2F;src&#x2F;core.js:213</code></a>
         </p>
 
 
@@ -1480,7 +1410,7 @@ valid characters are letters, numbers, spaces, dash, underscore and dot</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l74"><code>..&#x2F;src&#x2F;core.js:74</code></a>
+        <a href="../files/.._src_core.js.html#l75"><code>..&#x2F;src&#x2F;core.js:75</code></a>
         </p>
 
 
@@ -1506,7 +1436,7 @@ valid characters are letters, numbers, spaces, dash, underscore and dot</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l559"><code>..&#x2F;src&#x2F;core.js:559</code></a>
+        <a href="../files/.._src_core.js.html#l611"><code>..&#x2F;src&#x2F;core.js:611</code></a>
         </p>
 
 

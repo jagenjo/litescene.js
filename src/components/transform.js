@@ -361,6 +361,7 @@ Transform.prototype.resetRotation = function()
 	quat.identity( this._rotation );
 	this._version += 1;
 	this._must_update = true;
+	this._on_change();
 }
 
 /**
@@ -372,6 +373,7 @@ Transform.prototype.resetPosition = function()
 	vec3.copy( this._position, LS.ZEROS );
 	this._version += 1;
 	this._must_update = true;
+	this._on_change(true);
 }
 
 /**
@@ -383,6 +385,7 @@ Transform.prototype.resetScale = function()
 	vec3.copy( this._scaling, LS.ONES );
 	this._version += 1;
 	this._must_update = true;
+	this._on_change(true);
 }
 
 
@@ -825,7 +828,7 @@ Transform.prototype.setPosition = function(x,y,z)
 	else
 		vec3.copy(this._position, x);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -840,7 +843,7 @@ Transform.prototype.setRotation = function(q_angle,axis)
 	else
 		quat.copy(this._rotation, q_angle );
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -857,7 +860,7 @@ Transform.prototype.setScale = function(x,y,z)
 	else
 		vec3.set(this._scaling, x,x,x);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -874,7 +877,7 @@ Transform.prototype.translate = function(x,y,z)
 	else
 		vec3.add( this._position, this._position, this.transformVector(x) );
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -891,7 +894,7 @@ Transform.prototype.translateGlobal = function(x,y,z)
 	else
 		vec3.add( this._position, this._position, x );
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -909,7 +912,7 @@ Transform.prototype.rotate = (function(){
 		quat.setAxisAngle( temp, axis, angle_in_deg * 0.0174532925 );
 		quat.multiply( this._rotation, this._rotation, temp );
 		this._must_update = true;
-		this._on_change();
+		this._on_change(true);
 	}
 })();
 
@@ -922,7 +925,7 @@ Transform.prototype.rotateX = function(angle_in_deg)
 {
 	quat.rotateX( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -946,7 +949,7 @@ Transform.prototype.rotateZ = function(angle_in_deg)
 {
 	quat.rotateZ( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 
@@ -961,7 +964,7 @@ Transform.prototype.rotateGlobal = function(angle_in_deg, axis)
 	var R = quat.setAxisAngle(quat.create(), axis, angle_in_deg * 0.0174532925);
 	quat.multiply(this._rotation, R, this._rotation);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -973,7 +976,7 @@ Transform.prototype.rotateQuat = function(quaternion)
 {
 	quat.multiply(this._rotation, this._rotation, quaternion);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -985,7 +988,7 @@ Transform.prototype.rotateQuatGlobal = function(quaternion)
 {
 	quat.multiply(this._rotation, quaternion, this._rotation);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -1002,7 +1005,7 @@ Transform.prototype.scale = function(x,y,z)
 	else
 		vec3.multiply(this._scaling, this._scaling,x);
 	this._must_update = true;
-	this._on_change();
+	this._on_change(true);
 }
 
 /**
@@ -1108,6 +1111,11 @@ Transform.prototype._on_change = function(only_events)
 {
 	if(!only_events)
 		this._must_update = true;
+	/**
+	 * Fired when the node has changed its transform
+	 *
+	 * @event changed
+	 */
 	LEvent.trigger(this, "changed", this);
 	if(this._root)
 		LEvent.trigger(this._root, "transformChanged", this);
@@ -1340,7 +1348,7 @@ Transform.prototype.applyLocalTransformMatrix = function( M )
 	quat.multiply( this._rotation, q, this._rotation );
 
 	this._must_update = true; //matrix must be redone?
-	return;
+	this._on_change();
 }
 
 
@@ -1394,9 +1402,8 @@ Transform.prototype.updateDescendants = function()
 	for(var i = 0; i < children.length; ++i)
 	{
 		var node = children[i];
-		if(!node.transform)
+		if(!node.transform) //bug: what if the children doesnt have a transform but the grandchilden does?! TODO FIX THIS
 			continue;
-
 		node.transform._must_update = true;
 		node.transform._version += 1;
 		if(node._children && node._children.length)

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.Spherize</title>
+    <title>LS.RenderFrameContext</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -136,12 +142,12 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Components.Spherize Class</h1>
+<h1>LS.RenderFrameContext Class</h1>
 <div class="box meta">
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_components_spherize.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;spherize.js:1</code></a>
+            Defined in: <a href="../files/.._src_render_renderFrameContext.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:1</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -150,22 +156,18 @@
 
 
 <div class="box intro">
-    <p>Spherize deforms a mesh, it is an example of a deformer, a component that modifies the meshes of one node</p>
+    <p>This class is used when you want to render the scene not to the screen but to some texture for postprocessing
+It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
+Check the FrameFX and CameraFX components to see it in action.</p>
 
 </div>
 
     <div class="constructor">
         <h2>Constructor</h2>
-<div id="method_LS.Components.Spherize" class="method item">
-    <h3 class="name"><code>LS.Components.Spherize</code></h3>
+<div id="method_LS.RenderFrameContext" class="method item">
+    <h3 class="name"><code>LS.RenderFrameContext</code></h3>
 
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>object</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
+        <span class="paren">()</span>
 
 
 
@@ -177,7 +179,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_spherize.js.html#l1"><code>..&#x2F;src&#x2F;components&#x2F;spherize.js:1</code></a>
+        <a href="../files/.._src_render_renderFrameContext.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:1</code></a>
         </p>
 
 
@@ -188,23 +190,6 @@
         
     </div>
 
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
 
 
 
@@ -227,11 +212,23 @@
 
                     <ul class="index-list methods">
                             <li class="index-item method">
-                                <a href="#method_configure">configure</a>
+                                <a href="#method_disable">disable</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_serialize">serialize</a>
+                                <a href="#method_enable">enable</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getColorTexture">getColorTexture</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getDepthTexture">getDepthTexture</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_show">show</a>
 
                             </li>
                     </ul>
@@ -244,13 +241,184 @@
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
-<div id="method_configure" class="method item">
-    <h3 class="name"><code>configure</code></h3>
+<div id="method_disable" class="method item">
+    <h3 class="name"><code>disable</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_renderFrameContext.js.html#l210"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:210</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Called to stop rendering to this context</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_enable" class="method item">
+    <h3 class="name"><code>enable</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_renderFrameContext.js.html#l186"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:186</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Called to bind the rendering to this context, from now on all the render will be stored in the textures inside</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_getColorTexture" class="method item">
+    <h3 class="name"><code>getColorTexture</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
                 <li class="arg">
-                        <code>object</code>
+                        <code>index</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">GL.Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_renderFrameContext.js.html#l220"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:220</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the texture containing the data rendered in this context</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the number of the texture (in case there is more than one)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">GL.Texture</span>:
+                    <p>the texture</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getDepthTexture" class="method item">
+    <h3 class="name"><code>getDepthTexture</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">GL.Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_renderFrameContext.js.html#l232"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:232</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the depth texture containing the depth data rendered in this context (in case the use_depth_texture is set to true)</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">GL.Texture</span>:
+                    <p>the depth texture</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_show" class="method item">
+    <h3 class="name"><code>show</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>use_antialiasing</code>
                 </li>
             </ul><span class="paren">)</span>
         </div>
@@ -265,7 +433,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_skinnedMeshRenderer.js.html#l80"><code>..&#x2F;src&#x2F;components&#x2F;skinnedMeshRenderer.js:80</code></a>
+        <a href="../files/.._src_render_renderFrameContext.js.html#l313"><code>..&#x2F;src&#x2F;render&#x2F;renderFrameContext.js:313</code></a>
         </p>
 
 
@@ -273,7 +441,7 @@
     </div>
 
     <div class="description">
-        <p>Configure from a serialized object</p>
+        <p>Render the context of the context to the viewport (allows to apply FXAA)</p>
 
     </div>
 
@@ -282,12 +450,12 @@
 
             <ul class="params-list">
                 <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
+                        <code class="param-name">use_antialiasing</code>
+                        <span class="type">Boolean</span>
 
 
                     <div class="param-description">
-                        <p>with the serialized info</p>
+                        <p>in case you want to render with FXAA antialiasing</p>
 
                     </div>
 
@@ -295,49 +463,6 @@
             </ul>
         </div>
 
-
-
-</div>
-<div id="method_serialize" class="method item">
-    <h3 class="name"><code>serialize</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_components_skinnedMeshRenderer.js.html#l103"><code>..&#x2F;src&#x2F;components&#x2F;skinnedMeshRenderer.js:103</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Serialize the object</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with the serialized info</p>
-
-            </div>
-        </div>
 
 
 </div>

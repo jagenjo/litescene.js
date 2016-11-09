@@ -7,7 +7,7 @@ function CameraFX( o )
 {
 	this.enabled = true;
 
-	this.fx = new LS.TextureFX( o ? o.fx : null );
+	this.fx = new LS.FXStack( o ? o.fx : null );
 	this.frame = new LS.RenderFrameContext();
 	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;
@@ -112,7 +112,7 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 		if( !this._binded_camera || this._binded_camera.uid != this.camera_uid )
 			camera = this._binded_camera;
 		else
-			camera = LS.GlobalScene.findComponentByUId( this.camera_uid );
+			camera = this._root.scene.findComponentByUId( this.camera_uid );
 	}
 
 	if(!camera)

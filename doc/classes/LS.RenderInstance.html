@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -150,7 +156,8 @@
 
 
 <div class="box intro">
-    <p>RenderInstance contains info of one object to be rendered on the scene.</p>
+    <p>RenderInstance contains info of one object to be rendered on the scene.
+It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)</p>
 
 </div>
 
@@ -204,10 +211,6 @@
 
                     <ul class="index-list methods">
                             <li class="index-item method">
-                                <a href="#method_applyNodeFlags">applyNodeFlags</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_computeNormalMatrix">computeNormalMatrix</a>
 
                             </li>
@@ -224,31 +227,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_getPropertiesInfo">getPropertiesInfo</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getProperty">getProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getResources">getResources</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_onResourceRenamed">onResourceRenamed</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_render">render</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_setProperty">setProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_setTexture">setTexture</a>
 
                             </li>
                             <li class="index-item method">
@@ -273,37 +252,6 @@
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
-<div id="method_applyNodeFlags" class="method item">
-    <h3 class="name"><code>applyNodeFlags</code></h3>
-
-        <span class="paren">()</span>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l236"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:236</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>takes the flags on the node and update the render instance flags</p>
-
-    </div>
-
-
-
-
-</div>
 <div id="method_computeNormalMatrix" class="method item">
     <h3 class="name"><code>computeNormalMatrix</code></h3>
 
@@ -319,7 +267,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l116"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:116</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l77"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:77</code></a>
         </p>
 
 
@@ -346,9 +294,6 @@
             </ul><span class="paren">)</span>
         </div>
 
-        <span class="returns-inline">
-            <span class="type">Boolean</span>
-        </span>
 
 
 
@@ -359,7 +304,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l290"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:290</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l197"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:197</code></a>
         </p>
 
 
@@ -367,7 +312,7 @@
     </div>
 
     <div class="description">
-        <p>Tells if a flag is enabled</p>
+        <p>Enable flag in the flag bit field</p>
 
     </div>
 
@@ -389,15 +334,6 @@
             </ul>
         </div>
 
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Boolean</span>:
-                    <p>flag value</p>
-
-            </div>
-        </div>
 
 
 </div>
@@ -422,7 +358,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l279"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:279</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l208"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:208</code></a>
         </p>
 
 
@@ -466,6 +402,9 @@
             </ul><span class="paren">)</span>
         </div>
 
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
 
 
 
@@ -476,7 +415,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l268"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:268</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l219"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:219</code></a>
         </p>
 
 
@@ -484,7 +423,7 @@
     </div>
 
     <div class="description">
-        <p>Enable flag in the flag bit field</p>
+        <p>Tells if a flag is enabled</p>
 
     </div>
 
@@ -506,218 +445,13 @@
             </ul>
         </div>
 
-
-
-</div>
-<div id="method_getPropertiesInfo" class="method item">
-    <h3 class="name"><code>getPropertiesInfo</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l185"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:185</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-
         <div class="returns">
             <h4>Returns:</h4>
 
             <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with name:type</p>
+                        <span class="type">Boolean</span>:
+                    <p>flag value</p>
 
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getProperty" class="method item">
-    <h3 class="name"><code>getProperty</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l231"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:231</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with name:type</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getResources" class="method item">
-    <h3 class="name"><code>getResources</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>resources</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l385"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:385</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Collects all the resources needed by this material (textures)</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Texture</span>:
-            </div>
-        </div>
-
-
-</div>
-<div id="method_onResourceRenamed" class="method item">
-    <h3 class="name"><code>onResourceRenamed</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>resources</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l210"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:210</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Event used to inform if one resource has changed its name</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Texture</span>:
             </div>
         </div>
 
@@ -744,7 +478,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l324"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:324</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l253"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:253</code></a>
         </p>
 
 
@@ -776,126 +510,6 @@
 
 
 </div>
-<div id="method_setProperty" class="method item">
-    <h3 class="name"><code>setProperty</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>object</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l258"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:258</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>assign a value to a property in a safe way</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-<div id="method_setTexture" class="method item">
-    <h3 class="name"><code>setTexture</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>channel</code>
-                </li>
-                <li class="arg">
-                        <code>texture</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_surfaceMaterial.js.html#l339"><code>..&#x2F;src&#x2F;materials&#x2F;surfaceMaterial.js:339</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Assigns a texture to a channel</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">channel</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">texture</code>
-                        <span class="type">Texture</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
 <div id="method_update" class="method item">
     <h3 class="name"><code>update</code></h3>
 
@@ -911,7 +525,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l312"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:312</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l241"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:241</code></a>
         </p>
 
 
@@ -942,7 +556,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l302"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:302</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l231"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:231</code></a>
         </p>
 
 
@@ -982,7 +596,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l392"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:392</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l336"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:336</code></a>
         </p>
 
 

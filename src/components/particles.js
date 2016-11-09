@@ -72,6 +72,7 @@ function ParticleEmissor(o)
 	this.follow_emitter = false;
 	this.sort_in_z = true; //slower
 	this.stop_update = false; //do not move particles
+	this.ignore_lights = false; 
 
 	if(o)
 		this.configure(o);
@@ -346,10 +347,13 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 
 	//compute mesh
 	if(!this.align_always && !do_not_updatemesh)
+	{
 		this.updateMesh( LS.Renderer._current_camera );
+		this._root.scene.requestFrame();
+	}
 
 	//send change
-	LEvent.trigger( this._root.scene , "change");
+	LEvent.trigger( this._root.scene , "change"); //??
 }
 
 ParticleEmissor.prototype.createMesh = function ()
@@ -631,11 +635,13 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		this._material = new LS.StandardMaterial({ shader_name:"lowglobal" });
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
-	this._material.setTexture(Material.COLOR, this.texture);
+	this._material.setTexture( "color", this.texture );
 	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
 	this._material.soft_particles = this.soft_particles;
 	this._material.constant_diffuse = true;
 	this._material.uvs_matrix[0] = this._material.uvs_matrix[4] = 1 / this.texture_grid_size;
+	this._material.flags.depth_write = false;
+	this._material.flags.ignore_lights = this.ignore_lights;
 
 	if(!this._mesh)
 		return null;

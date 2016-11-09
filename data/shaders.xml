@@ -64,7 +64,7 @@
 	<snippet id="computeLight">
 		<![CDATA[
 		//***** compute Light
-			vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)
+			vec3 computeLight( in SurfaceOutput o, in Input IN, inout FinalLight LIGHT )
 			{
 				vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)
 
@@ -1711,7 +1711,7 @@
 
 			uniform vec4 u_material_color;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_emissive_color;
+			uniform vec4 u_emissive_color;
 
 			uniform vec3 u_light_position;
 			uniform vec3 u_light_front;
@@ -1951,12 +1951,6 @@
 						color = color * (1.0 - velvet_factor) + u_velvet_info.xyz * velvet_factor;
 				#endif
 
-				//Emissive *********
-				o.Emission = u_emissive_color;
-				#ifdef USE_EMISSIVE_TEXTURE
-					o.Emission *= texture2D( emissive_texture, USE_EMISSIVE_TEXTURE ).xyz;
-				#endif
-
 				//Reflection ***************
 				o.Reflectivity = abs( u_reflection_info.x ) * pow( 1.0 - clamp(0.0, EdotN, 1.0), u_reflection_info.y );
 				#ifdef USE_REFLECTIVITY_TEXTURE
@@ -1973,6 +1967,13 @@
 						LIGHT.Ambient *= textureCube( irradiance_cubemap, N).xyz;
 					#endif
 				#endif
+
+				//Emissive *********
+				o.Emission = u_emissive_color.xyz;
+				#ifdef USE_EMISSIVE_TEXTURE
+					o.Emission *= texture2D( emissive_texture, USE_EMISSIVE_TEXTURE ).xyz;
+				#endif
+				o.Emission = mix( o.Emission, o.Emission * o.Albedo, u_emissive_color.a ); //to allow to control if emission is affected by albedo
 
 				IN.vertex = v_local_pos;
 				IN.normal = v_local_normal;
@@ -1995,7 +1996,12 @@
 				#endif
 
 				//Compute light equation **********************************************************
-				vec3 final_color = computeLight(o,IN, LIGHT);
+				vec3 final_color = computeLight( o, IN, LIGHT );
+
+				#ifdef USE_SPECULAR_ON_ALPHA
+					alpha += LIGHT.Specular;
+				#endif
+
 				//*********************************************************************************
 
 				#ifdef USE_FOG
@@ -2014,7 +2020,7 @@
 		</code>
 	</shader>
 
-	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_OMNI_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,USE_POINTS,USE_POINT_CLOUD,USE_TEXTURED_POINTS,FIRST_PASS,LAST_PASS,USE_SKINNING,MAX_BONES,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
+	<shader id="lowglobal" tags="instance" macros="USE_COLOR_TEXTURE,USE_OPACITY_TEXTURE,USE_SPECULAR_TEXTURE,USE_AMBIENT_TEXTURE,USE_EMISSIVE_TEXTURE,USE_ALPHA_TEST,USE_IGNORE_LIGHTS,USE_DIRECTIONAL_LIGHT,USE_SPOT_LIGHT,USE_OMNI_LIGHT,USE_LINEAR_ATTENUATION,USE_DIFFUSE_LIGHT,USE_RANGE_ATTENUATION,USE_AMBIENT_ONLY,USE_VELVET,NO_NORMALS,NO_COORDS,USE_COLOR_STREAM,USE_FOG,USE_CLIPPING_PLANE,USE_TEXTURE_MATRIX,USE_SPOT_CONE,USE_SOFT_PARTICLES,USE_POINTS,USE_POINT_CLOUD,USE_TEXTURED_POINTS,FIRST_PASS,LAST_PASS,USE_SKINNING,MAX_BONES,USE_SKINNING_TEXTURE"  multipass="true" imports="true">
 		<code type="vertex_shader">
 		<![CDATA[
 			precision highp float;
@@ -2044,7 +2050,7 @@
 
 			uniform vec2 u_specular;
 			uniform vec3 u_ambient_color;
-			uniform vec3 u_emissive_color;
+			uniform vec4 u_emissive_color;
 
 			uniform vec4 u_viewport;
 
@@ -2159,7 +2165,11 @@
 					light += u_light_color * att * spec_factor;
 				#endif
 
-				light += u_emissive_color;
+				light += u_emissive_color.xyz;
+
+				#ifdef USE_IGNORE_LIGHTS
+					light = vec3(1.0);
+				#endif
 
 				float velvet_factor = 0.0;
 				#ifdef USE_VELVET

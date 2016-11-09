@@ -84,4 +84,4 @@ var parserSTL = {
 	}
 };
 
-LS.Formats.registerParser( parserSTL );
+LS.Formats.addSupportedFormat( "stl", parserSTL );

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/helpers/textureFX.js</title>
+    <title>../src/helpers/FXstack.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -136,29 +142,31 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/helpers/textureFX.js</h1>
+<h1 class="file-heading">File: ../src/helpers/FXstack.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-//Work in progress
-
-/**
-* helps apply basic effects to a texture with as fewer render calls as possible with low memory footprint
-* used by CameraFX but also available for any other use
-* @class TextureFX
+/** FXStack
+* Helps apply a stack of FXs to a texture with as fewer render calls as possible with low memory footprint
+* Used by CameraFX and FrameFX but also available for any other use
+* You can add new FX to the FX pool if you want.
+* @class FXStack
 */
-function TextureFX( o )
+function FXStack( o )
 {
 	this.apply_fxaa = false;
 	this.filter = true;
 	this.fx = [];
 
-	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_texture_depth: 1, u_random: vec2.create() };
+	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_depth_texture: 1, u_random: vec2.create() };
+
+	this._passes = []; //WIP
+
 	if(o)
 		this.configure(o);
 }
 
-TextureFX.available_fx = {
+FXStack.available_fx = {
 	&quot;brightness_contrast&quot;: {
 		name: &quot;Brightness &amp; Contrast&quot;,
 		uniforms: {
@@ -166,6 +174,16 @@ TextureFX.available_fx = {
 			contrast: { name: &quot;u_contrast&quot;, type: &quot;float&quot;, value: 1, step: 0.01 }
 		},
 		code:&quot;color.xyz = (color.xyz * u_brightness@ - vec3(0.5)) * u_contrast@ + vec3(0.5);&quot;
+	},
+	&quot;hue_saturation&quot;: {
+		name: &quot;Hue &amp; Saturation&quot;,
+		functions: [&quot;HSV&quot;],
+		uniforms: {
+			hue: { name: &quot;u_hue&quot;, type: &quot;float&quot;, value: 0, step: 0.01 },
+			saturation: { name: &quot;u_saturation&quot;, type: &quot;float&quot;, value: 1, step: 0.01 },
+			brightness: { name: &quot;u_brightness&quot;, type: &quot;float&quot;, value: 0, step: 0.01 }
+		},
+		code:&quot;color.xyz = rgb2hsv(color.xyz); color.xz += vec2(u_hue@,u_brightness@); color.y *= u_saturation@; color.xyz = hsv2rgb(color.xyz);&quot;
 	},
 	&quot;invert&quot;: {
 		name: &quot;Invert color&quot;,
@@ -194,6 +212,18 @@ TextureFX.available_fx = {
 		},
 		code:&quot;color.xyz = color.xyz + u_coloradd@;&quot;
 	},
+	&quot;fog&quot;:{
+		name:&quot;fog&quot;,
+		uniforms: {
+			fog_color: { name: &quot;u_fog_color&quot;, type: &quot;color3&quot;, value: [0.1,0.1,0.1] },
+			fog_start: { name: &quot;u_fog_start&quot;, type: &quot;float&quot;, value: 10 },
+			fog_density: { name: &quot;u_fog_density&quot;, type: &quot;float&quot;, precision: 0.00001, value: 0.001, step: 0.00001 }
+		},
+		code:&quot;float z_n@ = 2.0 * texture2D( u_depth_texture, v_coord).x - 1.0;&quot; +
+			&quot;float cam_dist@ = 2.0 * u_depth_range.x * u_depth_range.y / (u_depth_range.y + u_depth_range.x - z_n@ * (u_depth_range.y - u_depth_range.x));&quot; +
+			&quot;float fog_factor@ = 1. - 1.0 / exp(max(0.0,cam_dist@ - u_fog_start@) * u_fog_density@);&quot; +
+			&quot;color.xyz = mix( color.xyz, u_fog_color@, fog_factor@ );&quot;
+	},
 	&quot;vigneting&quot;: {
 		name: &quot;Vigneting&quot;,
 		uniforms: {
@@ -208,6 +238,7 @@ TextureFX.available_fx = {
 		uniforms: {
 			difraction: { name: &quot;u_difraction&quot;, type: &quot;float&quot;, value: 1 }
 		},
+		next_pass: true,
 		code: &quot;color.x = texture2D(u_texture, uv - to_center * 0.001 * u_difraction@ ).x;&quot; + 
 			&quot;color.z = texture2D(u_texture, uv + to_center * 0.001 * u_difraction@ ).z;&quot;
 	},
@@ -240,14 +271,24 @@ TextureFX.available_fx = {
 		},
 		uv_code:&quot;float r2 = u_aspect * u_aspect * (uv.x-0.5) * (uv.x-0.5) + (uv.y-0.5) * (uv.y-0.5); float distort@ = 1. + r2 * (u_lens_k@ + u_lens_kcube@ * sqrt(r2)); uv = vec2( u_lens_scale@ * distort@ * (uv.x-0.5) + 0.5, u_lens_scale@  * distort@ * (uv.y-0.5) + 0.5 );&quot;
 	},
+	&quot;image&quot;: {
+		name: &quot;Image&quot;,
+		uniforms: {
+			image_texture: { name: &quot;u_image_texture&quot;, type: &quot;sampler2D&quot;, widget: &quot;Texture&quot;, value: &quot;&quot; },
+			image_alpha: { name: &quot;u_image_alpha&quot;, type: &quot;float&quot;, value: 1, step: 0.001 },
+			image_scale: { name: &quot;u_image_scale&quot;, type: &quot;vec2&quot;, value: [1,1], step: 0.001 }
+		},
+		code:&quot;vec4 image@ = texture2D( u_image_texture@, (uv - vec2(0.5)) * u_image_scale@ + vec2(0.5)); color.xyz = mix(color.xyz, image@.xyz, image@.a * u_image_alpha@ );&quot;
+	},
 	&quot;warp&quot;: {
 		name: &quot;Warp&quot;,
 		uniforms: {
 			warp_amp: { name: &quot;u_warp_amp&quot;, type: &quot;float&quot;, value: 0.01, step: 0.001 },
+			warp_offset_x: { name: &quot;u_warp_offset_x&quot;, type: &quot;float&quot;, value: 0, step: 0.001 },
+			warp_offset_y: { name: &quot;u_warp_offset_y&quot;, type: &quot;float&quot;, value: 0, step: 0.001 },
 			warp_texture: { name: &quot;u_warp_texture&quot;, type: &quot;sampler2D&quot;, widget: &quot;Texture&quot;, value: &quot;&quot; }
 		},
-		uv_code:&quot;uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv ).xy - vec2(0.5));&quot;
-		//uv_code:&quot;uv = uv + u_warp_amp@ * (vec2(0.5) + 0.5 * vec2( sin(uv.x * u_warp_freq@) * sin(uv.y * u_warp_freq@)));&quot;
+		uv_code:&quot;uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv + vec2(u_warp_offset_x@, u_warp_offset_y@) ).xy - vec2(0.5));&quot;
 	},
 	&quot;LUT&quot;: {
 		name: &quot;LUT&quot;,
@@ -257,7 +298,6 @@ TextureFX.available_fx = {
 			lut_texture: { name: &quot;u_lut_texture&quot;, type: &quot;sampler2D&quot;, filter: &quot;nearest&quot;, wrap: &quot;clamp&quot;, widget: &quot;Texture&quot;, value: &quot;&quot; }
 		},
 		code:&quot;color.xyz = mix(color.xyz, LUT( color.xyz, u_lut_texture@ ), u_lut_intensity@);&quot;
-		//uv_code:&quot;uv = uv + u_warp_amp@ * (vec2(0.5) + 0.5 * vec2( sin(uv.x * u_warp_freq@) * sin(uv.y * u_warp_freq@)));&quot;
 	},
 	&quot;pixelate&quot;: {
 		name: &quot;Pixelate&quot;,
@@ -279,6 +319,7 @@ TextureFX.available_fx = {
 		uniforms: {
 			&quot;Edges factor&quot;: { name: &quot;u_edges_factor&quot;, type: &quot;float&quot;, value: 1 }
 		},
+		next_pass: true,
 		code:&quot;vec4 color@ = texture2D(u_texture, uv );\n\
 				vec4 color_up@ = texture2D(u_texture, uv + vec2(0., u_iviewport.y));\n\
 				vec4 color_right@ = texture2D(u_texture, uv + vec2(u_iviewport.x,0.));\n\
@@ -292,7 +333,7 @@ TextureFX.available_fx = {
 			&quot;near&quot;: { name: &quot;u_near&quot;, type: &quot;float&quot;, value: 0.01, step: 0.1 },
 			&quot;far&quot;: { name: &quot;u_far&quot;, type: &quot;float&quot;, value: 1000, step: 1 }
 		},
-		code:&quot;color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D(u_texture_depth, uv ).x * (u_far@ - u_near@)) );&quot;
+		code:&quot;color.xyz = vec3( (2.0 * u_near@) / (u_far@ + u_near@ - texture2D( u_depth_texture, uv ).x * (u_far@ - u_near@)) );&quot;
 	},
 	&quot;logarithmic&quot;: {
 		name: &quot;Logarithmic&quot;,
@@ -332,15 +373,20 @@ TextureFX.available_fx = {
 		code:&quot;color.xyz += u_noise@ * vec3( noise( (u_random + v_coord) * u_viewport) );&quot;
 	}
 	/*
-	,
-	&quot;fast_edges&quot;: {
-		name: &quot;Edges (fast)&quot;,
-		code:&quot;color.xyz = abs( dFdx(color.xyz) ) + abs( dFdy(color.xyz) );&quot;
+	&quot;blur&quot;: {
+			name: &quot;Blur&quot;,
+			break_pass: true,
+			uniforms: {
+				&quot;blur_intensity&quot;: { name: &quot;u_blur_intensity&quot;, type: &quot;float&quot;, value: 0.1, step: 0.01 }
+			},
+			local_callback: FXStack.applyBlur
+		}
 	}
 	*/
 };
 
-TextureFX.available_functions = {
+//functions that could be used
+FXStack.available_functions = {
 	pattern: &quot;float pattern(float angle, float size) {\n\
 				float s = sin(angle * 3.1415), c = cos(angle * 3.1415);\n\
 				vec2 tex = v_coord * u_viewport.xy;\n\
@@ -447,7 +493,24 @@ TextureFX.available_functions = {
 			vec2 u = f * f * (3.0 - 2.0 * f);\n\
 			return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;\n\
 		}\n\
-	&quot;
+	&quot;,
+	HSV: &quot;vec3 rgb2hsv(vec3 c)\n\
+		{\n\
+			vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);\n\
+			vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));\n\
+			vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));\n\
+			\n\
+			float d = q.x - min(q.w, q.y);\n\
+			float e = 1.0e-10;\n\
+			return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);\n\
+		}\n\
+		\n\
+		vec3 hsv2rgb(vec3 c)\n\
+		{\n\
+			vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);\n\
+			vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);\n\
+			return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);\n\
+		}&quot;
 }
 
 /**
@@ -455,14 +518,14 @@ TextureFX.available_functions = {
 * @method configure
 * @param {Object} o object with the configuration info from a previous serialization
 */
-TextureFX.prototype.configure = function(o)
+FXStack.prototype.configure = function(o)
 {
 	this.apply_fxaa = !!o.apply_fxaa;
 	if(o.fx)
 		this.fx = o.fx.concat();
 }
 
-TextureFX.prototype.serialize = function()
+FXStack.prototype.serialize = FXStack.prototype.toJSON = function()
 {
 	return { 
 		apply_fxaa: this.apply_fxaa,
@@ -470,30 +533,48 @@ TextureFX.prototype.serialize = function()
 	};
 }
 
-TextureFX.prototype.getResources = function(res)
+FXStack.prototype.getResources = function(res)
 {
-	//TODO
+	var fxs = this.fx;
+	for(var i = 0; i &lt; fxs.length; i++)
+	{
+		var fx = fxs[i];
+		var fx_info = FXStack.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+		if(!fx_info.uniforms)
+			continue;
+		for(var j in fx_info.uniforms)
+		{
+			var uniform = fx_info.uniforms[j];
+			if(uniform.type == &quot;sampler2D&quot; &amp;&amp; fx[j])
+				res[ fx[j] ] = GL.Texture;
+		}
+	}
 	return res;
 }
 
-TextureFX.prototype.addFX = function( name )
+//attach a new FX to the FX Stack
+FXStack.prototype.addFX = function( name )
 {
 	if(!name)
 		return;
-	if( !TextureFX.available_fx[ name ] )
+	if( !FXStack.available_fx[ name ] )
 	{
-		console.warn( &quot;TextureFX not found: &quot; + name );
+		console.warn( &quot;FXStack not found: &quot; + name );
 		return;
 	}
 	this.fx.push({ name: name });
 }
 
-TextureFX.prototype.getFX = function(index)
+//returns the Nth FX in the FX Stack
+FXStack.prototype.getFX = function(index)
 {
 	return this.fx[ index ];
 }
 
-TextureFX.prototype.moveFX = function( fx, offset )
+//rearranges an FX
+FXStack.prototype.moveFX = function( fx, offset )
 {
 	offset = offset || -1;
 
@@ -511,7 +592,8 @@ TextureFX.prototype.moveFX = function( fx, offset )
 		this.fx.push(fx);
 }
 
-TextureFX.prototype.removeFX = function( fx )
+//removes an FX from the FX stack
+FXStack.prototype.removeFX = function( fx )
 {
 	for(var i = 0; i &lt; this.fx.length; i++)
 	{
@@ -523,7 +605,8 @@ TextureFX.prototype.removeFX = function( fx )
 	}
 }
 
-TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
+//executes the FX stack in the input texture and outputs the result in the output texture (or the screen)
+FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 {
 	var color_texture = input_texture;
 	var depth_texture = options.depth_texture;
@@ -554,12 +637,15 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 	uniforms.u_random[0] = Math.random();
 	uniforms.u_random[1] = Math.random();
 
+	//var passes = [];
+	//var current_pass = {};
+
 	var fx_id = 0;
 	for(var i = 0; i &lt; fxs.length; i++)
 	{
 		var fx = fxs[i];
 		fx_id = i;
-		var fx_info = TextureFX.available_fx[ fx.name ];
+		var fx_info = FXStack.available_fx[ fx.name ];
 		if(!fx_info)
 			continue;
 		if(update_shader)
@@ -599,8 +685,16 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 							gl.texParameteri( tex.texture_type, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
 							gl.texParameteri( tex.texture_type, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
 						}
-						texture_slot++;
 					}
+					else
+					{
+						//bind something to avoid problems
+						tex = LS.Renderer._missing_texture;
+						if(tex)
+							tex.bind( texture_slot );
+					}
+
+					texture_slot++;
 				}
 				else
 					uniforms[ varname ] = fx[j] !== undefined ? fx[j] : uniform.value;
@@ -614,10 +708,10 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 		var functions_code = &quot;&quot;;
 		for(var i in included_functions)
 		{
-			var func = TextureFX.available_functions[ i ];
+			var func = FXStack.available_functions[ i ];
 			if(!func)
 			{
-				console.error(&quot;TextureFX: Function not found: &quot; + i);
+				console.error(&quot;FXStack: Function not found: &quot; + i);
 				continue;
 			}
 			functions_code += func + &quot;\n&quot;;
@@ -629,11 +723,12 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 			#define color3 vec3\n\
 			#define color4 vec4\n\
 			uniform sampler2D u_texture;\n\
-			uniform sampler2D u_texture_depth;\n\
+			uniform sampler2D u_depth_texture;\n\
 			varying vec2 v_coord;\n\
 			uniform vec2 u_viewport;\n\
 			uniform vec2 u_iviewport;\n\
 			uniform float u_aspect;\n\
+			uniform vec2 u_depth_range;\n\
 			uniform vec2 u_random;\n\
 			vec2 uv;\n\
 			&quot; + uniforms_code + &quot;\n\
@@ -655,8 +750,20 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 
 	shader = this._last_shader;
 
-	if(shader.hasUniform(&quot;u_texture_depth&quot;))
+	//error compiling shader
+	if(!shader)
+	{
+		input_texture.toViewport();
+		return;
+	}
+
+	//set the depth texture for some FXs like fog or depth
+	if(shader.hasUniform(&quot;u_depth_texture&quot;))
+	{
 		depth_texture.bind(1);
+		if(depth_texture.near_far_planes)
+			uniforms.u_depth_range = depth_texture.near_far_planes;
+	}
 
 	color_texture.setParameter( gl.TEXTURE_MAG_FILTER, this.filter ? gl.LINEAR : gl.NEAREST );
 	color_texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
@@ -689,12 +796,93 @@ TextureFX.prototype.applyFX = function( input_texture, output_texture, options )
 	}
 }
 
-TextureFX.prototype.getTexture = function( name )
+FXStack.prototype.getTexture = function( name )
 {
 	return LS.ResourcesManager.getTexture( name );
 }
 
-LS.TextureFX = TextureFX;
+FXStack.prototype.getPropertyInfoFromPath = function( path )
+{
+	if(path.length &lt; 2)
+		return null;
+
+	var fx_num = parseInt( path[0] );
+
+	//fx not active
+	if(fx_num &gt;= this.fx.length)
+		return null;
+	var fx = this.fx[ fx_num ];
+
+	var fx_info = FXStack.available_fx[ fx.name ];
+	if(!fx_info)
+		return null;
+
+	var varname = path[1];
+	if(varname == &quot;name&quot;)
+		return null;
+
+	var uniform = fx_info.uniforms[ varname ];
+	if(!uniform)
+		return null;
+
+	var type = uniform.type;
+
+	if(type == &quot;float&quot;)
+		type = &quot;number&quot;;
+	else if(type == &quot;sampler2D&quot;)
+		type = &quot;texture&quot;;
+
+	return {
+		target: fx,
+		name: varname,
+		value: fx[ varname ],
+		type: uniform.type || &quot;number&quot;
+	};
+}
+
+FXStack.prototype.setPropertyValueFromPath = function( path, value, offset )
+{
+	offset = offset || 0;
+
+	if( path.length &lt; (offset+1) )
+		return null;
+
+	var fx_num = parseInt( path[offset] );
+	if(fx_num &gt;= this.fx.length)
+		return null;
+	var fx = this.fx[ fx_num ];
+	if(!fx)
+		return null;
+	
+	var varname = path[offset+1];
+	if (fx[ varname ] === undefined )
+		return null;
+
+	//to avoid incompatible types
+	if( fx[ varname ] !== undefined &amp;&amp; value !== undefined &amp;&amp; fx[ varname ].constructor === value.constructor )
+		fx[ varname ] = value;
+}
+
+FXStack.registerFX = function( name, fx_info )
+{
+	if( !fx_info.name )
+		fx_info.name = name;
+	if( fx_info.code === undefined )
+		throw(&quot;FXStack must have a code&quot;);
+	if( fx_info.uniforms &amp;&amp; fx_info.code &amp;&amp; fx_info.code.indexOf(&quot;@&quot;) )
+		console.warn(&quot;FXStack using uniforms must use the character &#x27;@&#x27; at the end of every use to avoid collisions with other variables with the same name.&quot;);
+
+	FXStack.available_fx[ name ] = fx_info;
+}
+
+//for common functions shared among different FXs...
+FXStack.registerFunction = function( name, code )
+{
+	FXStack.available_functions[name] = code;
+}
+
+LS.FXStack = FXStack;
+LS.TextureFX = FXStack; //LEGACY
     </pre>
 </div>
                     </div>

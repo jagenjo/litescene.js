@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -151,7 +157,8 @@
 
 <div class="box intro">
     <p>A Material is a class in charge of defining how to render an object, there are several classes for Materials
-but this class is more like a template for other material classes.</p>
+but this class is more like a template for other material classes.
+The rendering of a material is handled by the material itself, if not provided then uses the Renderer default one</p>
 
 </div>
 
@@ -249,10 +256,6 @@ but this class is more like a template for other material classes.</p>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_getPropertiesInfo">getPropertiesInfo</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_getProperty">getProperty</a>
 
                             </li>
@@ -262,14 +265,6 @@ but this class is more like a template for other material classes.</p>
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getProperty">getProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getProperty">getProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getResources">getResources</a>
 
                             </li>
                             <li class="index-item method">
@@ -305,10 +300,6 @@ but this class is more like a template for other material classes.</p>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_onResourceRenamed">onResourceRenamed</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_registerMaterial">registerMaterial</a>
 
                             </li>
@@ -318,14 +309,6 @@ but this class is more like a template for other material classes.</p>
                             </li>
                             <li class="index-item method">
                                 <a href="#method_setProperty">setProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_setProperty">setProperty</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_setTexture">setTexture</a>
 
                             </li>
                             <li class="index-item method">
@@ -351,10 +334,6 @@ but this class is more like a template for other material classes.</p>
                     <h3>Properties</h3>
 
                     <ul class="index-list properties">
-                            <li class="index-item property">
-                                <a href="#property_blend_mode">blend_mode</a>
-
-                            </li>
                             <li class="index-item property">
                                 <a href="#property_color">color</a>
 
@@ -394,7 +373,7 @@ but this class is more like a template for other material classes.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l225"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:225</code></a>
+        <a href="../files/.._src_materials_material.js.html#l240"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:240</code></a>
         </p>
 
 
@@ -440,7 +419,7 @@ but this class is more like a template for other material classes.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l198"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:198</code></a>
+        <a href="../files/.._src_materials_material.js.html#l213"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:213</code></a>
         </p>
 
 
@@ -500,7 +479,7 @@ but this class is more like a template for other material classes.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l664"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:664</code></a>
+        <a href="../files/.._src_materials_material.js.html#l687"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:687</code></a>
         </p>
 
 
@@ -508,7 +487,7 @@ but this class is more like a template for other material classes.</p>
     </div>
 
     <div class="description">
-        <p>Creates a new property in this material class, but helps with some special cases
+        <p>Creates a new property in this material class. Helps with some special cases
 like when we have a Float32Array property and we dont want it to be replaced by another array, but setted</p>
 
     </div>
@@ -616,50 +595,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l206"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:206</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with name:type</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getPropertiesInfo" class="method item">
-    <h3 class="name"><code>getPropertiesInfo</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_material.js.html#l269"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:269</code></a>
+        <a href="../files/.._src_materials_material.js.html#l283"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:283</code></a>
         </p>
 
 
@@ -702,93 +638,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l231"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:231</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with name:type</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getProperty" class="method item">
-    <h3 class="name"><code>getProperty</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_material.js.html#l304"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:304</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>gets all the properties and its types</p>
-
-    </div>
-
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>object with name:type</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getProperty" class="method item">
-    <h3 class="name"><code>getProperty</code></h3>
-
-        <span class="paren">()</span>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_material.js.html#l291"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:291</code></a>
+        <a href="../files/.._src_materials_material.js.html#l315"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:315</code></a>
         </p>
 
 
@@ -856,19 +706,13 @@ like when we have a Float32Array property and we dont want it to be replaced by 
 
 
 </div>
-<div id="method_getResources" class="method item">
-    <h3 class="name"><code>getResources</code></h3>
+<div id="method_getProperty" class="method item">
+    <h3 class="name"><code>getProperty</code></h3>
 
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>resources</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
+        <span class="paren">()</span>
 
         <span class="returns-inline">
-            <span class="type">Texture</span>
+            <span class="type">Object</span>
         </span>
 
 
@@ -880,7 +724,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l377"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:377</code></a>
+        <a href="../files/.._src_materials_material.js.html#l302"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:302</code></a>
         </p>
 
 
@@ -888,33 +732,18 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     </div>
 
     <div class="description">
-        <p>Collects all the resources needed by this material (textures)</p>
+        <p>gets all the properties and its types</p>
 
     </div>
 
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
 
         <div class="returns">
             <h4>Returns:</h4>
 
             <div class="returns-description">
-                        <span class="type">Texture</span>:
+                        <span class="type">Object</span>:
+                    <p>object with name:type</p>
+
             </div>
         </div>
 
@@ -944,7 +773,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l550"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:550</code></a>
+        <a href="../files/.._src_materials_material.js.html#l572"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:572</code></a>
         </p>
 
 
@@ -1008,7 +837,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l484"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:484</code></a>
+        <a href="../files/.._src_materials_material.js.html#l506"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:506</code></a>
         </p>
 
 
@@ -1066,7 +895,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l416"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:416</code></a>
+        <a href="../files/.._src_materials_material.js.html#l424"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:424</code></a>
         </p>
 
 
@@ -1115,7 +944,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l510"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:510</code></a>
+        <a href="../files/.._src_materials_material.js.html#l532"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:532</code></a>
         </p>
 
 
@@ -1179,7 +1008,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l238"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:238</code></a>
+        <a href="../files/.._src_materials_material.js.html#l253"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:253</code></a>
         </p>
 
 
@@ -1236,7 +1065,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l587"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:587</code></a>
+        <a href="../files/.._src_materials_material.js.html#l609"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:609</code></a>
         </p>
 
 
@@ -1249,134 +1078,6 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     </div>
 
 
-
-
-</div>
-<div id="method_onResourceRenamed" class="method item">
-    <h3 class="name"><code>onResourceRenamed</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>resources</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l185"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:185</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Event used to inform if one resource has changed its name</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Texture</span>:
-            </div>
-        </div>
-
-
-</div>
-<div id="method_onResourceRenamed" class="method item">
-    <h3 class="name"><code>onResourceRenamed</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>resources</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Texture</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_material.js.html#l569"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:569</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Event used to inform if one resource has changed its name</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">resources</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>object where all the resources are stored</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Texture</span>:
-            </div>
-        </div>
 
 
 </div>
@@ -1444,6 +1145,70 @@ like when we have a Float32Array property and we dont want it to be replaced by 
 
 
 </div>
+<div id="method_onResourceRenamed" class="method item">
+    <h3 class="name"><code>onResourceRenamed</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>resources</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Texture</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_materials_material.js.html#l591"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:591</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Event used to inform if one resource has changed its name</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">resources</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>object where all the resources are stored</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Texture</span>:
+            </div>
+        </div>
+
+
+</div>
 <div id="method_registerMaterial" class="method item">
     <h3 class="name"><code>registerMaterial</code></h3>
 
@@ -1465,7 +1230,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l599"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:599</code></a>
+        <a href="../files/.._src_materials_material.js.html#l621"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:621</code></a>
         </p>
 
 
@@ -1516,7 +1281,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l212"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:212</code></a>
+        <a href="../files/.._src_materials_material.js.html#l227"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:227</code></a>
         </p>
 
 
@@ -1538,60 +1303,6 @@ like when we have a Float32Array property and we dont want it to be replaced by 
 
             </div>
         </div>
-
-
-</div>
-<div id="method_setProperty" class="method item">
-    <h3 class="name"><code>setProperty</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>object</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l258"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:258</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>assign a value to a property in a safe way</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">object</code>
-                        <span class="type">Object</span>
-
-
-                    <div class="param-description">
-                        <p>to configure from</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
 
 
 </div>
@@ -1743,7 +1454,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l428"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:428</code></a>
+        <a href="../files/.._src_materials_material.js.html#l436"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:436</code></a>
         </p>
 
 
@@ -1796,72 +1507,6 @@ like when we have a Float32Array property and we dont want it to be replaced by 
 
 
 </div>
-<div id="method_setTexture" class="method item">
-    <h3 class="name"><code>setTexture</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>channel</code>
-                </li>
-                <li class="arg">
-                        <code>texture</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_customMaterial.js.html#l331"><code>..&#x2F;src&#x2F;materials&#x2F;customMaterial.js:331</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Assigns a texture to a channel</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">channel</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">texture</code>
-                        <span class="type">Texture</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
 <div id="method_setTextureInfo" class="method item">
     <h3 class="name"><code>setTextureInfo</code></h3>
 
@@ -1886,7 +1531,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l535"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:535</code></a>
+        <a href="../files/.._src_materials_material.js.html#l557"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:557</code></a>
         </p>
 
 
@@ -1957,7 +1602,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l463"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:463</code></a>
+        <a href="../files/.._src_materials_material.js.html#l485"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:485</code></a>
         </p>
 
 
@@ -2017,32 +1662,6 @@ like when we have a Float32Array property and we dont want it to be replaced by 
             <div id="properties" class="api-class-tabpanel">
                 <h2 class="off-left">Properties</h2>
 
-<div id="property_blend_mode" class="property item">
-    <h3 class="name"><code>blend_mode</code></h3>
-    <span class="type">String</span>
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_materials_material.js.html#l74"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:74</code></a>
-        </p>
-
-
-    </div>
-
-    <div class="description">
-        <p>Blend mode, it could be any of Blend options (NORMAL,ALPHA, ADD, SCREEN)</p>
-
-    </div>
-
-        <p><strong>Default:</strong> Blend.NORMAL</p>
-
-
-</div>
 <div id="property_color" class="property item">
     <h3 class="name"><code>color</code></h3>
     <span class="type">Vec3</span>
@@ -2054,7 +1673,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l59"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:59</code></a>
+        <a href="../files/.._src_materials_material.js.html#l95"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:95</code></a>
         </p>
 
 
@@ -2080,7 +1699,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l66"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:66</code></a>
+        <a href="../files/.._src_materials_material.js.html#l102"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:102</code></a>
         </p>
 
 
@@ -2106,7 +1725,7 @@ like when we have a Float32Array property and we dont want it to be replaced by 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_materials_material.js.html#l83"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:83</code></a>
+        <a href="../files/.._src_materials_material.js.html#l111"><code>..&#x2F;src&#x2F;materials&#x2F;material.js:111</code></a>
         </p>
 
 

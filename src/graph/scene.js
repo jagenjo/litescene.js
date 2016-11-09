@@ -915,7 +915,7 @@ if(typeof(LiteGraph) != "undefined")
 		var locator = this.properties.locator;
 		if(!this.properties.locator)
 			return;
-		var scene = this.graph.scene || LS.GlobalScene;
+		var scene = this.graph._scene || LS.GlobalScene;
 		return this._locator_info = scene.getPropertyInfo( locator );
 	}
 

@@ -39,6 +39,10 @@ var Input = {
 		RIGHT:2
 	},
 
+	LEFT_MOUSE_BUTTON: 1,
+	MIDDLE_MOUSE_BUTTON: 2,
+	RIGHT_MOUSE_BUTTON: 3,
+
 	Keyboard: [],
 	Mouse: {},
 	Gamepads: [],

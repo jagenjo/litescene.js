@@ -74,9 +74,11 @@ DebugRender.prototype.onRender = function( e, render_settings )
 }
 
 //we pass a callback to check if something is selected
-DebugRender.prototype.render = function( camera, is_selected_callback )
+DebugRender.prototype.render = function( camera, is_selected_callback, scene )
 {
 	var settings = this.settings;
+
+	scene = scene || LS.GlobalScene;
 
 	gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
 	gl.enable( gl.DEPTH_TEST );
@@ -91,19 +93,22 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 
 	if(settings.render_origin)
 	{
-		LS.Draw.setColor([0.2,0.2,0.2,1.0]);
+		LS.Draw.setColor([0.3,0.3,0.3,1.0]);
 		LS.Draw.push();
 		LS.Draw.scale(0.01,0.01,0.01);
+		LS.Draw.rotate(-90,[1,0,0]);
+		gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
 		LS.Draw.renderText("Origin");
+		gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
 		LS.Draw.pop();
 	}
 
 	if(settings.render_components)
 	{
 		//Node components
-		for(var i = 0, l = LS.GlobalScene._nodes.length; i < l; ++i)
+		for(var i = 0, l = scene._nodes.length; i < l; ++i)
 		{
-			var node = LS.GlobalScene._nodes[i];
+			var node = scene._nodes[i];
 			var is_node_selected = node._is_selected;
 			selected_node = node;
 			if(node.renderEditor)
@@ -122,16 +127,16 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 
 	//render local things		
 	var zero = vec3.create();
-	for(var i = 0, l = LS.GlobalScene._nodes.length; i < l; ++i)
+	for(var i = 0, l = scene._nodes.length; i < l; ++i)
 	{
-		var node = LS.GlobalScene._nodes[i];
-		if(!node.transform) 
+		var node = scene._nodes[i];
+		if(node._is_root || !node.flags.visible ) 
 			continue;
 
-		var global = node.transform.getGlobalMatrixRef();
+		var global = node.transform ? node.transform.getGlobalMatrixRef() : mat4.create();
 		var pos = mat4.multiplyVec3( vec3.create(), global, zero ); //create a new one to store them
 
-		if( settings.render_null_nodes )
+		if( settings.render_null_nodes)
 		{
 			if( node._is_selected )
 				this.renderPoint( pos, true, this.colors.selected );
@@ -161,9 +166,9 @@ DebugRender.prototype.render = function( camera, is_selected_callback )
 	}
 
 	if(settings.render_colliders)
-		this.renderColliders();
+		this.renderColliders( scene );
 	if(settings.render_paths)
-		this.renderPaths();
+		this.renderPaths( scene );
 
 	//Render primitives (points, lines, text) ***********************
 
@@ -287,9 +292,12 @@ DebugRender.prototype.renderGrid = function()
 	if(!this.grid_shader)
 	{
 		//this.grid_shader = LS.Draw.createSurfaceShader("float PI2 = 6.283185307179586; return vec4( vec3( max(0.0, cos(pos.x * PI2 * 0.1) - 0.95) * 10.0 + max(0.0, cos(pos.z * PI2 * 0.1) - 0.95) * 10.0 ),1.0);");
-		this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));return u_color * vec4(vec3(1.0),brightness);");
-		this.grid_shader_xy = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xy + f).x * 0.6 + texture2D(u_texture, pos.xy * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xy * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xy - pos.xy));return u_color * vec4(vec3(1.0),brightness);");
-		this.grid_shader_yz = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.yz + f).x * 0.6 + texture2D(u_texture, pos.yz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.yz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.yz - pos.yz));return u_color * vec4(vec3(1.0),brightness);");
+		this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));vec4 color = u_color * vec4(vec3(1.0),brightness); if( abs(pos.x) < 0.025 ) color *= vec4(0.4,0.4,1.0,1.0); if( abs(pos.z) < 0.025 ) color *= vec4(1.0,0.4,0.4,1.0); return color;");
+		//this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));vec4 color = u_color * vec4(vec3(1.0),brightness); return color;");
+		this.grid_shader_xy = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xy + f).x * 0.6 + texture2D(u_texture, pos.xy * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xy * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xy - pos.xy));vec4 color = u_color * vec4(vec3(1.0),brightness);  if( abs(pos.x) < 0.025 ) color *= vec4(0.4,1.0,0.4,1.0); if( abs(pos.y) < 0.025 ) color *= vec4(1.0,0.4,0.4,1.0); return color;");
+		//this.grid_shader_xy = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xy + f).x * 0.6 + texture2D(u_texture, pos.xy * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xy * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xy - pos.xy));return u_color * vec4(vec3(1.0),brightness);");
+		this.grid_shader_yz = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.yz + f).x * 0.6 + texture2D(u_texture, pos.yz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.yz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.yz - pos.yz)); vec4 color = u_color * vec4(vec3(1.0),brightness);  if( abs(pos.y) < 0.025 ) color *= vec4(0.4, 0.4, 1.0, 1.0); if( abs(pos.z) < 0.025 ) color *= vec4(0.4,1.0,0.4,1.0); return color;");
+		//this.grid_shader_yz = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.yz + f).x * 0.6 + texture2D(u_texture, pos.yz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.yz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.yz - pos.yz));return u_color * vec4(vec3(1.0),brightness);");
 		this.grid_shader.uniforms({u_texture:0});
 
 		if( this.grid_img && this.grid_img.loaded )
@@ -326,16 +334,16 @@ DebugRender.prototype.renderGrid = function()
 		LS.Draw.setColor([1,1,1, this.settings.grid_alpha ]);
 		LS.Draw.translate( LS.Draw.camera_position[0], 0, LS.Draw.camera_position[2] ); //follow camera
 		LS.Draw.scale( 10000, 10000, 10000 );
-		LS.Draw.renderMesh( this.plane_mesh, gl.TRIANGLES, settings.grid_plane == "xy" ? this.grid_shader_xy : this.grid_shader );
+		LS.Draw.renderMesh( this.plane_mesh, gl.TRIANGLES, settings.grid_plane == "xy" ? this.grid_shader_xy : (settings.grid_plane == "yz" ? this.grid_shader_yz : this.grid_shader) );
 		gl.depthMask( true );
 	}
 
 	LS.Draw.pop();
 }
 
-DebugRender.prototype.renderColliders = function()
+DebugRender.prototype.renderColliders = function( scene )
 {
-	var scene = LS.GlobalScene;
+	scene = scene || LS.GlobalScene;
 	if(!scene._colliders)
 		return;
 
@@ -388,9 +396,10 @@ DebugRender.prototype.renderColliders = function()
 	}
 }
 
-DebugRender.prototype.renderPaths = function()
+DebugRender.prototype.renderPaths = function( scene )
 {
-	var scene = LS.GlobalScene;
+	scene = scene || LS.GlobalScene;
+
 	if(!scene._paths)
 		return;
 

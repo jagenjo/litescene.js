@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/spherize.js</title>
+    <title>../src/components/cameraDirector.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -136,141 +142,48 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/components/spherize.js</h1>
+<h1 class="file-heading">File: ../src/components/cameraDirector.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
 /**
-* Spherize deforms a mesh, it is an example of a deformer, a component that modifies the meshes of one node
-* @class Spherize
+* CameraDirector allows to switch between scene cameras easily
+* @class CameraDirector
 * @constructor
 * @param {String} object to configure from
 */
 
-function Spherize(o)
+function CameraDirector(o)
 {
 	this.enabled = true;
-	this._num_id = LS._last_uid++;
-	this.radius = 10;
-	this.center = vec3.create();
-	this.factor = 0.5;
-
-	this._uniforms_code = Spherize._uniforms_code.replaceAll({&quot;@&quot;: this._num_id});
-	this._code = Spherize._code.replaceAll({&quot;@&quot;: this._num_id});
-	
-	if(o)
-		this.configure(o);
+	this.current_camera_uid = &quot;&quot;;
+	this.configure(o);
 }
 
-Spherize[&quot;@factor&quot;] = { type: &quot;number&quot;, step: 0.001 };
-Spherize[&quot;@center&quot;] = { type: &quot;position&quot;, step: 0.001 };
+CameraDirector.icon = &quot;mini-icon-cameracontroller.png&quot;;
 
-Spherize.icon = &quot;mini-icon-circle.png&quot;;
-
-Spherize.prototype.onAddedToNode = function( node )
+CameraDirector.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( node, &quot;computingShaderQuery&quot;, this.onShaderQuery, this);
-	LEvent.bind( node, &quot;computingShaderUniforms&quot;, this.onUniforms, this);
+	LEvent.bind( scene, &quot;update&quot;,this.onUpdate,this);
 }
 
-
-Spherize.prototype.onRemovedFromNode = function(node)
+CameraDirector.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbindAll(node,this);
+	LEvent.unbindAll( scene, this );
 }
 
-Spherize._uniforms_code = &quot;uniform vec3 u_spherize_center@; uniform float u_spherize_radius@; uniform float u_spherize_factor@;&quot;;
-Spherize._code = &quot;\
-	vec3 off@ = vertex4.xyz - u_spherize_center@;\
-    float dist@ = length(off@);\
-	vec3 vn@ = off@ / dist@;\
-	float factor@ = max(0.0, u_spherize_factor@ / dist@ );\
-	vertex4.xyz = mix(vertex4.xyz, vn@ * u_spherize_radius@, factor@);\
-	v_normal = (mix(v_normal, vn@, clamp(0.0,1.0,factor@)));\
-&quot;;
-
-Spherize.prototype.onShaderQuery = function(e, query)
+CameraDirector.prototype.onUpdate = function(e)
 {
-	if(!this.enabled)
+	if(!this._root || !this.enabled) 
 		return;
-
-	if(query.macros.USE_VERTEX_SHADER_UNIFORMS)
-		query.macros.USE_VERTEX_SHADER_UNIFORMS += this._uniforms_code;
-	else
-		query.macros.USE_VERTEX_SHADER_UNIFORMS = this._uniforms_code;
-
-	if(query.macros.USE_VERTEX_SHADER_CODE)
-		query.macros.USE_VERTEX_SHADER_CODE += this._code;
-	else
-		query.macros.USE_VERTEX_SHADER_CODE = this._code;
 }
 
-Spherize.prototype.onUniforms = function(e, uniforms)
+CameraDirector.prototype.showProperties = function( inspector )
 {
-	if(!this.enabled)
-		return;
-
-	uniforms[&quot;u_spherize_center&quot; + this._num_id ] = this.center;
-	uniforms[&quot;u_spherize_radius&quot; + this._num_id ] = this.radius;
-	uniforms[&quot;u_spherize_factor&quot; + this._num_id ] = this.factor;
 }
 
-Spherize.prototype.renderEditor = function(node_selected, component_selected)
-{
-	if(!this.enabled)
-		return;
+LS.registerComponent( CameraDirector );
 
-	//if node is selected, render frustrum
-	if (node_selected &amp;&amp; this.enabled)
-	{
-		Draw.setPointSize(6);
-		Draw.setColor([0.33,0.874,0.56, component_selected ? 0.8 : 0.5 ]);
-		var pos = vec3.clone(this.center);
-		if(this._root &amp;&amp; this._root.transform)
-			vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
-		Draw.renderRoundPoints( pos );
-	}
-}
-
-//Mostly used for gizmos
-Spherize.prototype.getTransformMatrix = function( element )
-{
-	if( !this._root || !this._root.transform )
-		return null; //use the node transform
-
-	var p = null;
-	if (element == &quot;center&quot;)
-		p = this.center;
-	else
-		return false;
-
-	var T = mat4.clone( this._root.transform._global_matrix );
-	mat4.translate( T, T, p );
-	return T;
-}
-
-Spherize.prototype.renderPicking = function(ray)
-{
-	var pos = vec3.clone(this.center);
-	if(this._root &amp;&amp; this._root.transform)
-		vec3.transformMat4( pos, pos, this._root.transform._global_matrix );
-	EditorView.addPickingPoint( pos, 4, { instance: this, info: &quot;center&quot; } );
-}
-
-Spherize.prototype.applyTransformMatrix = function( matrix, center, element )
-{
-	if( !this._root || !this._root.transform )
-		return false; //ignore transform
-
-	if (element != &quot;center&quot;)
-		return false;
-
-	var p = this.center;
-	mat4.multiplyVec3( p, matrix, p );
-	return true;
-}
-
-LS.registerComponent( Spherize );
     </pre>
 </div>
                     </div>

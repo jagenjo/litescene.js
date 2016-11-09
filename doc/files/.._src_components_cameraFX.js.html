@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -149,9 +155,10 @@ function CameraFX( o )
 {
 	this.enabled = true;
 
-	this.use_antialiasing = false;
-	this.fx = new LS.TextureFX( o ? o.fx : null );
+	this.fx = new LS.FXStack( o ? o.fx : null );
 	this.frame = new LS.RenderFrameContext();
+	this.frame.use_depth_texture = true;
+	this.use_antialiasing = false;
 
 	this.shader_material = null;
 
@@ -192,8 +199,7 @@ CameraFX.prototype.serialize = function()
 
 CameraFX.prototype.getResources = function(res)
 {
-	//TODO: get res from FX
-	return res;
+	return this.fx.getResources(res);
 }
 
 CameraFX.prototype.addFX = function( name )
@@ -218,14 +224,14 @@ CameraFX.prototype.removeFX = function( fx )
 
 CameraFX.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, &quot;enableFrameBuffer&quot;, this.onBeforeRender, this );
-	LEvent.bind( scene, &quot;showFrameBuffer&quot;, this.onAfterRender, this );
+	LEvent.bind( scene, &quot;enableFrameContext&quot;, this.onBeforeRender, this );
+	LEvent.bind( scene, &quot;showFrameContext&quot;, this.onAfterRender, this );
 }
 
 CameraFX.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, &quot;enableFrameBuffer&quot;, this.onBeforeRender, this );
-	LEvent.unbind( scene, &quot;showFrameBuffer&quot;, this.onAfterRender, this );
+	LEvent.unbind( scene, &quot;enableFrameContext&quot;, this.onBeforeRender, this );
+	LEvent.unbind( scene, &quot;showFrameContext&quot;, this.onAfterRender, this );
 
 	if( this._binded_camera )
 	{
@@ -254,7 +260,7 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 		if( !this._binded_camera || this._binded_camera.uid != this.camera_uid )
 			camera = this._binded_camera;
 		else
-			camera = LS.GlobalScene.findComponentByUId( this.camera_uid );
+			camera = this._root.scene.findComponentByUId( this.camera_uid );
 	}
 
 	if(!camera)
@@ -271,8 +277,8 @@ CameraFX.prototype.onBeforeRender = function(e, render_settings)
 	{
 		if(this._binded_camera)
 			LEvent.unbindAll( this._binded_camera, this );
-		LEvent.bind( camera, &quot;enableFrameBuffer&quot;, this.enableCameraFBO, this );
-		LEvent.bind( camera, &quot;showFrameBuffer&quot;, this.showCameraFBO, this );
+		LEvent.bind( camera, &quot;enableFrameContext&quot;, this.enableCameraFBO, this );
+		LEvent.bind( camera, &quot;showFrameContext&quot;, this.showCameraFBO, this );
 	}
 	this._binded_camera = camera;
 }
@@ -310,6 +316,8 @@ CameraFX.prototype.showFBO = function()
 		return;
 
 	this.frame.disable();
+
+	LEvent.trigger( LS.Renderer, &quot;beforeShowFrameContext&quot;, this.frame );
 
 	if(this.shader_material)
 	{

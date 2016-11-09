@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -213,11 +219,39 @@ creating a tree-like structure.</p>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_getChildByIndex">getChildByIndex</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getChildByName">getChildByName</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getChildIndex">getChildIndex</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getChildren">getChildren</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_getDescendants">getDescendants</a>
 
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getParent">getParent</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getPathName">getPathName</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_moveAfter">moveAfter</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_moveBefore">moveBefore</a>
 
                             </li>
                             <li class="index-item method">
@@ -269,7 +303,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l24"><code>..&#x2F;src&#x2F;compositePattern.js:24</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l28"><code>..&#x2F;src&#x2F;compositePattern.js:28</code></a>
         </p>
 
 
@@ -341,7 +375,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l196"><code>..&#x2F;src&#x2F;compositePattern.js:196</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l200"><code>..&#x2F;src&#x2F;compositePattern.js:200</code></a>
         </p>
 
 
@@ -366,6 +400,257 @@ creating a tree-like structure.</p>
 
 
 </div>
+<div id="method_getChildByIndex" class="method item">
+    <h3 class="name"><code>getChildByIndex</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">SceneNode</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l261"><code>..&#x2F;src&#x2F;compositePattern.js:261</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns the child in the index position</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the index in the array</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">SceneNode</span>:
+                    <p>the child in that position</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getChildByName" class="method item">
+    <h3 class="name"><code>getChildByName</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">SceneNode</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l272"><code>..&#x2F;src&#x2F;compositePattern.js:272</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns the child that matches that name</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">SceneNode</span>:
+                    <p>the child with that name otherwise returns null;</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getChildIndex" class="method item">
+    <h3 class="name"><code>getChildIndex</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>child</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l250"><code>..&#x2F;src&#x2F;compositePattern.js:250</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the index of a child in the children array</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">child</code>
+                        <span class="type">SceneNode</span>
+
+
+                    <div class="param-description">
+                        <p>the child to search for</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the index of this child in the array, if it is not inside returns -1</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getChildren" class="method item">
+    <h3 class="name"><code>getChildren</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>Original</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l240"><code>..&#x2F;src&#x2F;compositePattern.js:240</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns a list with all direct children (if you want below that use getDescendants)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">Original</code>
+                        <span class="type">Array</span>
+
+
+                    <div class="param-description">
+                        <p>array containing the children</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_getDescendants" class="method item">
     <h3 class="name"><code>getDescendants</code></h3>
 
@@ -384,7 +669,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l316"><code>..&#x2F;src&#x2F;compositePattern.js:316</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l346"><code>..&#x2F;src&#x2F;compositePattern.js:346</code></a>
         </p>
 
 
@@ -427,7 +712,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l222"><code>..&#x2F;src&#x2F;compositePattern.js:222</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l229"><code>..&#x2F;src&#x2F;compositePattern.js:229</code></a>
         </p>
 
 
@@ -452,6 +737,181 @@ creating a tree-like structure.</p>
 
 
 </div>
+<div id="method_getPathName" class="method item">
+    <h3 class="name"><code>getPathName</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l290"><code>..&#x2F;src&#x2F;compositePattern.js:290</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns the path name of the node (a path name is a concatenation of the name of the nodes an its ancestors: &quot;root|parent|child&quot;</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">String</span>:
+                    <p>the pathname</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_moveAfter" class="method item">
+    <h3 class="name"><code>moveAfter</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>sibling</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l398"><code>..&#x2F;src&#x2F;compositePattern.js:398</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Swaps the index in the children array so it is before</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">sibling</code>
+                        <span class="type">SceneNode</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] allows to put after given node, otherwise it will be moved one position after current position</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>new index</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_moveBefore" class="method item">
+    <h3 class="name"><code>moveBefore</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>sibling</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l362"><code>..&#x2F;src&#x2F;compositePattern.js:362</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Swaps the index in the children array so it is before</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">sibling</code>
+                        <span class="type">SceneNode</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] allows to put before given node, otherwise it will be moved one position before of current position</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>new index</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_removeAllChildren" class="method item">
     <h3 class="name"><code>removeAllChildren</code></h3>
 
@@ -467,7 +927,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l169"><code>..&#x2F;src&#x2F;compositePattern.js:169</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l173"><code>..&#x2F;src&#x2F;compositePattern.js:173</code></a>
         </p>
 
 
@@ -513,7 +973,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l112"><code>..&#x2F;src&#x2F;compositePattern.js:112</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l116"><code>..&#x2F;src&#x2F;compositePattern.js:116</code></a>
         </p>
 
 
@@ -595,7 +1055,7 @@ creating a tree-like structure.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_compositePattern.js.html#l181"><code>..&#x2F;src&#x2F;compositePattern.js:181</code></a>
+        <a href="../files/.._src_compositePattern.js.html#l185"><code>..&#x2F;src&#x2F;compositePattern.js:185</code></a>
         </p>
 
 

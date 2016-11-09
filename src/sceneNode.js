@@ -46,6 +46,10 @@ function SceneNode( name )
 	};
 
 	this.init(false,true);
+
+	/** Fired here (from Transform) when the node transform changes
+	 * @event transformChanged
+	 */
 }
 
 SceneNode.prototype.init = function( keep_components, keep_info )
@@ -178,15 +182,20 @@ Object.defineProperty( SceneNode.prototype, 'is_static', {
 Object.defineProperty( SceneNode.prototype, 'material', {
 	set: function(v)
 	{
+		if( this._material == v )
+			return;
+
 		this._material = v;
-		if(!v)
-			return;
-		if(v.constructor === String)
-			return;
-		if(v._root && v._root != this) //has root and its not me
-			console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
-		else
-			v._root = this; //link
+		if(v)
+		{
+			if(v.constructor === String)
+				return;
+			if(v._root && v._root != this) //has root and its not me
+				console.warn( "Cannot assign a material of one SceneNode to another, you must clone it or register it" )
+			else
+				v._root = this; //link
+		}
+		LEvent.trigger( this, "materialChanged" );
 	},
 	get: function(){
 		return this._material;
@@ -856,6 +865,8 @@ SceneNode.prototype.configure = function(info)
 		this.addMeshComponents( info.mesh, info );
 
 	//transform in matrix format could come from importers so we leave it
+	if((info.position || info.model || info.transform) && !this.transform)
+		this.addComponent( new LS.Transform() );
 	if(info.position) 
 		this.transform.position = info.position;
 	if(info.model) 

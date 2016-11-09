@@ -246,6 +246,7 @@ function FXGraphComponent(o)
 
 		this._graph_viewport_node = LiteGraph.createNode("texture/toviewport","Viewport");
 		this._graph_viewport_node.pos[0] = 500;
+		this._graph_viewport_node.properties.disable_alpha = true;
 		this._graph.add( this._graph_viewport_node );
 
 		this._graph_frame_node.connect(0, this._graph_viewport_node );

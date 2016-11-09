@@ -57,8 +57,9 @@ var LS = {
 		return v.match(exp);
 	},
 
-	valid_property_types: ["String","Number","Boolean","color","vec2","vec3","vec4","quat","mat3","mat4","Resource","Animation","Texture","Prefab","Mesh","ShaderCode"],
-
+	valid_property_types: ["String","Number","Boolean","color","vec2","vec3","vec4","quat","mat3","mat4","Resource","Animation","Texture","Prefab","Mesh","ShaderCode","node","component"],
+	
+	//used when creating a property to a component, to see if the type is valid
 	validatePropertyType: function(v)
 	{
 		if(	this.valid_property_types.indexOf(v) == -1 )
@@ -143,9 +144,9 @@ var LS = {
 		if(!proposed_class)
 			return false;
 
-		for(var i = 0; i < LS.GlobalScene._nodes.length; ++i)
+		for(var i = 0; i < scene._nodes.length; ++i)
 		{
-			var node = LS.GlobalScene._nodes[i];
+			var node = scene._nodes[i];
 
 			if(!node.hasComponent( old_class_name, true ))
 				continue;
@@ -771,10 +772,11 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @param {*} value value to assign to property
 	*/
-	set: function( locator, value, root )
+	set: function( locator, value, root, scene )
 	{
+		scene = scene || LS.GlobalScene;
 		if(!root)
-			LS.GlobalScene.setPropertyValue( locator, value );
+			scene.setPropertyValue( locator, value );
 		else
 		{
 			if(root.constructor === LS.SceneNode)
@@ -798,11 +800,12 @@ var LSQ = {
 	* @param {String} locator the locator string identifying the property
 	* @return {*} value of the property
 	*/
-	get: function( locator, root )
+	get: function( locator, root, scene )
 	{
+		scene = scene || LS.GlobalScene;
 		var info;
 		if(!root)
-			info = LS.GlobalScene.getPropertyInfo( locator );
+			info = scene.getPropertyInfo( locator );
 		else
 		{
 			if(root.constructor === LS.SceneNode)
@@ -827,7 +830,7 @@ var LSQ = {
 	* @param {String} locator the locator string to shortify
 	* @return {String} the locator using names instead of UIDs
 	*/
-	shortify: function( locator )
+	shortify: function( locator, scene )
 	{
 		if(!locator)
 			return;
@@ -839,7 +842,9 @@ var LSQ = {
 		if( t[0][0] != LS._uid_prefix )
 			return locator;
 
-		node = LS.GlobalScene._nodes_by_uid[ t[0] ];
+		scene = scene || LS.GlobalScene;
+
+		node = scene._nodes_by_uid[ t[0] ];
 		if(!node) //node not found
 			return locator;
 
@@ -856,6 +861,14 @@ var LSQ = {
 		return t.join("/");
 	},
 
+	/**
+	* Assigns a value using the getLocatorInfo object instead of searching it again
+	* This is faster but if the locator points to a different object it wont work.
+	*
+	* @method setFromInfo
+	* @param {Object} info information of a location (obtain using scene.getLocatorInfo
+	* @param {*} value to assign
+	*/
 	setFromInfo: function( info, value )
 	{
 		if(!info || !info.target)

@@ -19,13 +19,12 @@ function Material( o )
 
 	//materials have at least a basic color property and opacity
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
-	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 
 	//render queue: which order should this be rendered
 	this._queue = LS.RenderQueue.DEFAULT;
 
 	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
-	//TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like outline render
+	//TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
 	this._render_state = new LS.RenderState();
 	this._light_mode = LS.Material.NO_LIGHTS;
 
@@ -179,7 +178,7 @@ Material.prototype.fillUniforms = function( scene, options )
 	var samplers = [];
 
 	uniforms.u_material_color = this._color;
-	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : this._diffuse;
+	uniforms.u_ambient_color = scene.info ? scene.info.ambient_color : LS.ONES;
 	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	uniforms.u_specular = vec2.create([1,50]);
@@ -686,7 +685,7 @@ Material.processShaderCode = function(code)
 }
 
 /**
-* Creates a new property in this material class, but helps with some special cases
+* Creates a new property in this material class. Helps with some special cases
 * like when we have a Float32Array property and we dont want it to be replaced by another array, but setted
 * @method createProperty
 * @param {String} name the property name as it should be accessed ( p.e.  "color" -> material.color )
@@ -708,6 +707,9 @@ Material.prototype.createProperty = function( name, value, type, options )
 		LS.cloneObject( options, this.constructor[ "@" + name ] );
 	}
 
+	if(value == null)
+		return;
+
 	//basic type
 	if(value.constructor === Number || value.constructor === String || value.constructor === Boolean)
 	{
@@ -715,8 +717,8 @@ Material.prototype.createProperty = function( name, value, type, options )
 		return;
 	}
 
-	//vector type
-	if(value.constructor === Float32Array)
+	//for vector type
+	if(value.constructor === Float32Array )
 	{
 		var private_name = "_" + name;
 		value = new Float32Array( value ); //clone
@@ -725,7 +727,8 @@ Material.prototype.createProperty = function( name, value, type, options )
 		Object.defineProperty( this, name, {
 			get: function() { return value; },
 			set: function(v) { value.set( v ); },
-			enumerable: true
+			enumerable: true,
+			configurable: true
 		});
 	}
 }
@@ -737,6 +740,9 @@ Material.prototype.prepare = function( scene )
 		this._uniforms = {};
 		this._samplers = [];
 	}
+
+	if(this.onPrepare)
+		this.onPrepare(scene);
 
 	this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms

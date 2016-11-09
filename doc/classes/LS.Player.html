@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -165,14 +171,15 @@ There is a list of options
 - autoresize: boolean to automatically resize the canvas when the window is resized
 - autoplay: boolean to automatically start playing the scene once the load is completed
 - loadingbar: boolean to show a loading bar
-Optional callbacks to attach
+- debug: boolean allows to render debug info like nodes and skeletons</p>
+<pre class="code prettyprint"><code>Optional callbacks to attach
 ============================
 - onPreDraw: executed before drawing a frame
 - onDraw: executed after drawing a frame
 - onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
 - onUpdate(dt): executed after updating the scene (delta_time as parameter)
 - onMouse(e): when a mouse event is triggered
-- onKey(e): when a key event is triggered</p>
+- onKey(e): when a key event is triggered</code></pre>
 
 </div>
 
@@ -290,7 +297,7 @@ Optional callbacks to attach
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_player.js.html#l153"><code>..&#x2F;src&#x2F;player.js:153</code></a>
+        <a href="../files/.._src_player.js.html#l201"><code>..&#x2F;src&#x2F;player.js:201</code></a>
         </p>
 
 
@@ -358,7 +365,7 @@ Optional callbacks to attach
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_player.js.html#l187"><code>..&#x2F;src&#x2F;player.js:187</code></a>
+        <a href="../files/.._src_player.js.html#l237"><code>..&#x2F;src&#x2F;player.js:237</code></a>
         </p>
 
 
@@ -366,7 +373,7 @@ Optional callbacks to attach
     </div>
 
     <div class="description">
-        <p>loads Scene from object or JSON</p>
+        <p>loads Scene from object or JSON taking into account external and global scripts</p>
 
     </div>
 

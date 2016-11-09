@@ -142,6 +142,9 @@ Player.prototype.configure = function( options )
 			LS.ResourcesManager.registerFileSystem( i, options.filesystems[i] );
 	}
 
+	if(options.allow_base_files)
+		LS.ResourcesManager.allow_base_files = options.allow_base_files;
+
 	if(options.autoresize && !this._resize_callback)
 	{
 		this._resize_callback = (function(){
@@ -237,10 +240,16 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 * @param {Object} scene
 * @param {Function} on_complete callback trigged when the scene and the resources are loaded
 */
-Player.prototype.setScene = function( scene_info, on_complete )
+Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 {
 	var that = this;
 	var scene = this.scene;
+
+	//reset old scene
+	if(this.state == LS.Player.PLAYING)
+		this.stop();
+	scene.clear();
+
 	if(scene_info && scene_info.constructor === String )
 		scene_info = JSON.parse(scene_info);
 
@@ -270,12 +279,14 @@ Player.prototype.setScene = function( scene_info, on_complete )
 
 	function inner_all_loaded()
 	{
+		if( on_before_play )
+			on_before_play( scene );
 		if(that.autoplay)
 			that.play();
 		scene._must_redraw = true;
 		console.log("Scene playing");
 		if(on_complete)
-			on_complete();
+			on_complete( scene );
 	}
 }
 

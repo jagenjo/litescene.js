@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -156,12 +162,15 @@
 
 function StandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the object, it is called later
+	Material.call(this,null); //do not pass the data object, it is called later
 
 	this.shader_name = &quot;global&quot;;
 
-	this.createProperty(&quot;ambient&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
-	this.createProperty(&quot;emissive&quot;, new Float32Array(3), &quot;color&quot; );
+	this.blend_mode = LS.Blend.NORMAL;
+
+	this.createProperty( &quot;diffuse&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
+	this.createProperty( &quot;ambient&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
+	this.createProperty( &quot;emissive&quot;, new Float32Array([0,0,0,0]), &quot;color&quot; );
 	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 
@@ -184,8 +193,25 @@ function StandardMaterial(o)
 	this.bumpmap_factor = 1.0;
 	this.use_scene_ambient = true;
 
+	//used to change the render state
+	this.flags = {
+		alpha_test: false,
+		alpha_test_shadows: false,
+		two_sided: false,
+		flip_normals: false,
+		depth_test: true,
+		depth_write: true,
+		ignore_lights: false,
+		cast_shadows: true,
+		receive_shadows: true,
+		ignore_frustum: false
+	};
+
 	//used for special fx 
 	this.extra_surface_shader_code = &quot;&quot;;
+
+	this._uniforms = {};
+	this._samplers = [];
 
 	this.extra_uniforms = {};
 
@@ -205,6 +231,12 @@ Object.defineProperty( StandardMaterial.prototype, &#x27;detail_scale&#x27;, {
 	enumerable: true
 });
 
+Object.defineProperty( StandardMaterial.prototype, &#x27;emissive_extra&#x27;, {
+	get: function() { return this._emissive[3]; },
+	set: function(v) { this._emissive[3] = v; },
+	enumerable: true
+});
+
 Object.defineProperty( StandardMaterial.prototype, &#x27;extra_factor&#x27;, {
 	get: function() { return this._extra_data[3]; },
 	set: function(v) { this._extra_data[3] = v; },
@@ -219,7 +251,10 @@ Object.defineProperty( StandardMaterial.prototype, &#x27;extra_color&#x27;, {
 
 Object.defineProperty( StandardMaterial.prototype, &#x27;specular_factor&#x27;, {
 	get: function() { return this._specular_data[0]; },
-	set: function(v) { this._specular_data[0] = v; },
+	set: function(v) { 
+		if( v != null &amp;&amp; v.constructor === Number)
+			this._specular_data[0] = v;
+	},
 	enumerable: true
 });
 
@@ -229,7 +264,7 @@ Object.defineProperty( StandardMaterial.prototype, &#x27;specular_gloss&#x27;, {
 	enumerable: true
 });
 
-
+StandardMaterial[&quot;@blend_mode&quot;] = { type: &quot;enum&quot;, values: LS.Blend };
 
 StandardMaterial.DETAIL_TEXTURE = &quot;detail&quot;;
 StandardMaterial.NORMAL_TEXTURE = &quot;normal&quot;;
@@ -272,6 +307,40 @@ struct SurfaceOutput {\n\
 };\n\
 &quot;;
 
+StandardMaterial.prototype.prepare = function( scene )
+{
+	var flags = this.flags;
+
+	var render_state = this._render_state;
+
+	//set flags in render state
+	render_state.cull_face = !flags.two_sided;
+	render_state.front_face = flags.flip_normals ? GL.CW : GL.CCW;
+	render_state.depth_test = flags.depth_test;
+	render_state.depth_mask = flags.depth_write;
+
+	render_state.blend = this.blend_mode != LS.Blend.NORMAL;
+	if( this.blend_mode != LS.Blend.NORMAL )
+	{
+		var func = LS.BlendFunctions[ this.blend_mode ];
+		if(func)
+		{
+			render_state.blendFunc0 = func[0];
+			render_state.blendFunc1 = func[1];
+		}
+	}
+
+	this.fillShaderQuery( scene ); //update shader macros on this material
+	this.fillUniforms( scene ); //update uniforms
+
+	//set up macros
+	if( flags.alpha_test )
+		this._query.macros.USE_ALPHA_TEST = &quot;0.5&quot;;
+	else if(this._query.macros[&quot;USE_ALPHA_TEST&quot;])
+		delete this._query.macros[&quot;USE_ALPHA_TEST&quot;];
+
+}
+
 // RENDERING METHODS
 StandardMaterial.prototype.fillShaderQuery = function( scene )
 {
@@ -288,14 +357,6 @@ StandardMaterial.prototype.fillShaderQuery = function( scene )
 		var texture = Material.getTextureFromSampler( texture_info );
 		if(!texture) //loading or non-existant
 			continue;
-		
-		/*
-		if(i == &quot;environment&quot;)
-		{
-			if(this.reflection_factor &lt;= 0) 
-				continue;
-		}
-		else */
 
 		if(i == &quot;normal&quot;)
 		{
@@ -385,7 +446,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	else
 		uniforms.u_ambient_color = this.ambient;
 
-	uniforms.u_emissive_color = this.emissive || vec3.create();
+	uniforms.u_emissive_color = this.emissive || vec4.create();
 	uniforms.u_specular = this._specular_data;
 	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
 	uniforms.u_backlight_factor = this.backlight_factor;
@@ -471,6 +532,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case &quot;displacementmap_factor&quot;:
 		case &quot;extra_factor&quot;:
 		case &quot;detail_factor&quot;:
+		case &quot;emissive_extra&quot;:
 		//strings
 		case &quot;shader_name&quot;:
 		//bools
@@ -479,7 +541,16 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case &quot;reflection_specular&quot;:
 		case &quot;use_scene_ambient&quot;:
 		case &quot;extra_surface_shader_code&quot;:
-			this[name] = value; 
+		case &quot;blend_mode&quot;:
+			if(value !== null)
+				this[name] = value; 
+			break;
+		case &quot;flags&quot;:
+			if(value)
+			{
+				for(var i in value)
+					this.flags[i] = value[i];
+			}
 			break;
 		//vectors
 		case &quot;ambient&quot;:	
@@ -512,6 +583,8 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 	//add some more
 	o.merge({
 		shader_name:  LS.TYPES.STRING,
+
+		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,
 		backlight_factor: LS.TYPES.NUMBER,
@@ -521,6 +594,7 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 		normalmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
+		emissive_extra: LS.TYPES.NUMBER,
 		extra_factor: LS.TYPES.NUMBER,
 		extra_surface_shader_code: LS.TYPES.STRING,
 
@@ -554,12 +628,14 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 
 	switch(varname)
 	{
+		case &quot;blend_mode&quot;:
 		case &quot;backlight_factor&quot;:
 		case &quot;reflection_factor&quot;:
 		case &quot;reflection_fresnel&quot;:
 		case &quot;velvet_exp&quot;:
 		case &quot;normalmap_factor&quot;:
 		case &quot;displacementmap_factor&quot;:
+		case &quot;emissive_extra&quot;:
 		case &quot;extra_factor&quot;:
 		case &quot;detail_factor&quot;:
 			type = LS.TYPES.NUMBER; break;

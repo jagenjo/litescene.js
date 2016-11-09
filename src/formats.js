@@ -33,12 +33,6 @@ LS.Formats = {
 		}
 	},
 
-	//register a parser in case the system needs to parse a file
-	registerParser: function( parser )
-	{
-		this.addSupportedFormat( parser.extension, parser );
-	},
-
 	/**
 	* Parse some data and returns the resulting resource
 	* 

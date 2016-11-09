@@ -271,7 +271,7 @@ var parserOBJ = {
 				if(group)
 					group.material = tokens[1];
 			}
-			else if (tokens[0] == "o" || tokens[0] == "s") {
+			else if ( tokens[0] == "s" ) { //tokens[0] == "o"
 				//ignore
 			}
 			else
@@ -339,9 +339,7 @@ var parserOBJ = {
 	}
 };
 
-LS.Formats.registerParser( parserOBJ );
-
-
+LS.Formats.addSupportedFormat( "obj", parserOBJ );
 
 
 //***** MTL parser *****************
@@ -453,4 +451,4 @@ var parserMTL = {
 	}
 };
 
-LS.Formats.registerParser( parserMTL );
+LS.Formats.addSupportedFormat( "mtl", parserMTL );

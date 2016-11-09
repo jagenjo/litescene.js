@@ -45,7 +45,8 @@ Object.defineProperty( Sprite.prototype, "atlas", {
 		if(v && v.constructor === String) //find it by uid
 		{
 			this._atlas = v;
-			compo = LS.GlobalScene.findComponentByUId( v );
+			var scene = this._root.scene || LS.GlobalScene;
+			compo = scene.findComponentByUId( v );
 			if(compo && compo.constructor != LS.Components.SpriteAtlas)
 			{
 				console.warn("Atlas must be of type SpriteAtlas");

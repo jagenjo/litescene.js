@@ -204,6 +204,11 @@ Resource.prototype.getAsHTML = function()
 	return container;
 }
 
+Resource.prototype.hasEditableText = function()
+{
+	return this._data && this._data.constructor === String;
+}
+
 Resource.hasPreview = false; //should this resource use a preview image?
 
 LS.Resource = Resource;

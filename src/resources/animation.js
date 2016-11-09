@@ -29,9 +29,14 @@ Animation.DEFAULT_DURATION = 10;
 
 Animation.prototype.createTake = function( name, duration )
 {
+	if(!name)
+		throw("Animation Take name missing");
+
 	var take = new Animation.Take();
 	take.name = name;
-	take.duration = duration || 0;
+	take.duration = duration;
+	if(duration === undefined)
+		take.duration = Animation.DEFAULT_DURATION;
 	this.addTake( take );
 	return take;
 }
@@ -45,6 +50,26 @@ Animation.prototype.addTake = function(take)
 Animation.prototype.getTake = function( name )
 {
 	return this.takes[ name ];
+}
+
+Animation.prototype.renameTake = function( old_name, new_name )
+{
+	var take = this.takes[ old_name ];
+	if(!take)
+		return;
+	delete this.takes[ old_name ];
+	take.name = new_name;
+	this.takes[ new_name ] = take;
+	LEvent.trigger( this, "take_renamed", [old_name, new_name] );
+}
+
+Animation.prototype.removeTake = function( name )
+{
+	var take = this.takes[ name ];
+	if(!take)
+		return;
+	delete this.takes[ name ];
+	LEvent.trigger( this, "take_removed", name );
 }
 
 Animation.prototype.getNumTakes = function()
@@ -266,8 +291,10 @@ Take.prototype.createTrack = function( data )
 * @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene )
 {
+	scene = scene || LS.GlobalScene;
+
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
@@ -282,7 +309,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 				return;
 
 			//need info to search for node
-			var info = LS.GlobalScene.getPropertyInfoFromPath( track._property_path );
+			var info = scene.getPropertyInfoFromPath( track._property_path );
 			if(!info)
 				return;
 
@@ -309,7 +336,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			var sample = track.getSample( current_time, !ignore_interpolation );
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
-				track._target = LS.GlobalScene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
+				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
 		}
 	}
 }
@@ -712,41 +739,46 @@ Track.prototype.clear = function()
 	this.packed_data = false;
 }
 
-
 //used to change every track so instead of using UIDs for properties it uses node names
 //this is used when you want to apply the same animation to different nodes in the scene
-Track.prototype.convertIDtoName = function( use_basename, root )
+Track.prototype.getIDasName = function( use_basename, root )
 {
 	if( !this._property_path || !this._property_path.length )
-		return false;
+		return null;
 
 	if(this._property_path[0][0] !== LS._uid_prefix)
-		return false; //is already using names
+		return null; //is already using names
 
 	var node = LSQ.get( this._property_path[0], root );
 	if(!node)
 	{
-		console.warn("convertIDtoName: node not found in LS.GlobalScene: " + this._property_path[0] );
+		console.warn("getIDasName: node not found in LS.GlobalScene: " + this._property_path[0] );
 		return false;
 	}
 
 	if(!node.name)
 	{
-		console.warn("convertIDtoName: node without name?");
+		console.warn("getIDasName: node without name?");
 		return false;
 	}
 
+	var result = this._property_path.concat();
 	if(use_basename)
-	{
-		this._property_path[0] = node.name;
-		this._property = this._property_path.join("/");
-	}
+		result[0] = node.name;
 	else
-	{
-		this._property_path[0] = node.fullname;
-		this._property = this._property_path.join("/");
-	}
+		result[0] = node.fullname;
+	return result.join("/");
+}
 
+//used to change every track so instead of using UIDs for properties it uses node names
+//this is used when you want to apply the same animation to different nodes in the scene
+Track.prototype.convertIDtoName = function( use_basename, root )
+{
+	var name = this.getIDasName( use_basename, root );
+	if(!name)
+		return false;
+	this._property = name;
+	this._property_path = this._property.split("/");
 	return true;
 }
 
@@ -1308,9 +1340,11 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 }
 
 
-Track.prototype.getPropertyInfo = function()
+Track.prototype.getPropertyInfo = function( scene )
 {
-	return LS.GlobalScene.getPropertyInfo( this.property );
+	scene = scene || LS.GlobalScene;
+
+	return scene.getPropertyInfo( this.property );
 }
 
 Track.prototype.getSampledData = function( start_time, end_time, num_samples )

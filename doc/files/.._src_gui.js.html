@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>../src/gui.js</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="icon" href="../assets/favicon.ico">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+                <h1><img src="../assets/css/logo.png" title="" width="117" height="52"></h1>
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+                    <h2 class="off-left">APIs</h2>
+                    <div id="api-tabview" class="tabview">
+                        <ul class="tabs">
+                            <li><a href="#api-classes">Classes</a></li>
+                            <li><a href="#api-modules">Modules</a></li>
+                        </ul>
+                
+                        <div id="api-tabview-filter">
+                            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+                        </div>
+                
+                        <div id="api-tabview-panel">
+                            <ul id="api-classes" class="apis classes">
+                                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+                                <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
+                                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+                                <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
+                                <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
+                                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
+                                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
+                                <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
+                                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
+                                <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
+                                <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+                                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
+                                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+                                <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+                                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+                                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+                                <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
+                                <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+                                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
+                                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
+                                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+                                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
+                                <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
+                                <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
+                                <li><a href="../classes/LS.Light.html">LS.Light</a></li>
+                                <li><a href="../classes/LS.LightFX.html">LS.LightFX</a></li>
+                                <li><a href="../classes/LS.LS.html">LS.LS</a></li>
+                                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+                                <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
+                                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+                                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+                                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+                                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
+                                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
+                                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
+                                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+                                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
+                                <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
+                                <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+                                <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
+                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
+                                <li><a href="../classes/LSQ.html">LSQ</a></li>
+                            </ul>
+                
+                
+                            <ul id="api-modules" class="apis modules">
+                                <li><a href="../modules/LS.html">LS</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+                    Show:
+                    <label for="api-show-inherited">
+                        <input type="checkbox" id="api-show-inherited" checked>
+                        Inherited
+                    </label>
+            
+                    <label for="api-show-protected">
+                        <input type="checkbox" id="api-show-protected">
+                        Protected
+                    </label>
+            
+                    <label for="api-show-private">
+                        <input type="checkbox" id="api-show-private">
+                        Private
+                    </label>
+                    <label for="api-show-deprecated">
+                        <input type="checkbox" id="api-show-deprecated">
+                        Deprecated
+                    </label>
+            
+                </div>
+            
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+<h1 class="file-heading">File: ../src/gui.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+
+/**
+* GUI is a static class used to attach HTML elements on top of the 3D Canvas in a safe way
+*
+* @class GUI
+* @namespace LS
+* @constructor
+*/
+var GUI = {
+
+	_root: null, //root DOM element containing the GUI
+
+	/**
+	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically removed if the app finishes.
+	*
+	* @method getRoot
+	* @return {HTMLElement} 
+	*/
+	getRoot: function()
+	{
+		if( this._root )
+		{
+			if(!this._root.parentNode &amp;&amp; gl.canvas.parentNode)
+				gl.canvas.parentNode.appendChild( gui );
+			return this._root;
+		}
+
+		if(LS.GlobalScene._state != LS.RUNNING)
+			console.warn(&quot;GUI element created before the scene is playing. Only create the GUI elements from onStart or after, otherwise the GUI elements will be lost.&quot;);
+
+		var gui = document.createElement(&quot;div&quot;);
+		gui.className = &quot;litescene-gui&quot;;
+		gui.style.position = &quot;absolute&quot;;
+		gui.style.top = &quot;0&quot;;
+		gui.style.left = &quot;0&quot;;
+
+		//normalize
+		gui.style.color = &quot;#999&quot;;
+		gui.style.font = &quot;20px Arial&quot;;
+
+		//make it fullsize
+		gui.style.width = &quot;100%&quot;;
+		gui.style.height = &quot;100%&quot;;
+		gui.style.overflow = &quot;hidden&quot;;
+		gui.style.pointerEvents = &quot;none&quot;;
+
+		if(!this._style)
+		{
+			var style = this._style = document.createElement(&quot;style&quot;);
+			style.appendChild(document.createTextNode(&quot;&quot;));
+			document.head.appendChild(style);
+			style.sheet.insertRule(&quot;.litescene-gui button, .litescene-gui input { pointer-events: auto; }&quot;,0);
+		}
+
+		//append on top of the canvas
+		gl.canvas.parentNode.appendChild( gui );
+		
+		this._root = gui;
+		return gui;
+	},
+
+	/**
+	* Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas
+	*
+	* @method createElement
+	* @param {String} tag_type the tag type &quot;div&quot;
+	* @param {String} anchor &quot;top-left&quot;, &quot;top-right&quot;, &quot;bottom-left&quot;, &quot;bottom-right&quot; or &quot;none&quot;
+	* @return {HTMLElement} 
+	*/
+	createElement: function( tag_type, anchor )
+	{
+		tag_type = tag_type || &quot;div&quot;;
+
+		var element = document.createElement(tag_type);
+		element.style.pointerEvents = &quot;auto&quot;;
+		return this.attach( element, anchor );
+	},
+
+	/**
+	* attach HTMLElement to GUI Root in the anchor position specified
+	*
+	* @method attach
+	* @param {HTMLElement} element
+	* @param {String} anchor &quot;top-left&quot;, &quot;top-right&quot;, &quot;bottom-left&quot;, &quot;bottom-right&quot; or &quot;none&quot;
+	*/
+	attach: function( element, anchor )
+	{
+		if(!element)
+		{
+			console.error(&quot;attachToGUI: element cannot be null&quot;);
+			return;
+		}
+
+		element.style.position = &quot;absolute&quot;;
+
+		anchor = anchor || &quot;none&quot;; //&quot;top-left&quot;;
+
+		switch(anchor)
+		{
+			case &quot;bottom&quot;:
+			case &quot;bottom-left&quot;:
+				element.style.bottom = &quot;0&quot;;
+				element.style.left = &quot;0&quot;;
+				break;
+			case &quot;bottom-right&quot;:
+				element.style.bottom = &quot;0&quot;;
+				element.style.right = &quot;0&quot;;
+				break;
+			case &quot;bottom-middle&quot;:
+				element.style.bottom = &quot;0&quot;;
+				element.style.width = &quot;50%&quot;;
+				element.style.margin = &quot;0 auto&quot;;
+				break;
+			case &quot;right&quot;:
+			case &quot;top-right&quot;:
+				element.style.top = &quot;0&quot;;
+				element.style.right = &quot;0&quot;;
+				break;
+			case &quot;top-middle&quot;:
+				element.style.top = &quot;0&quot;;
+				element.style.width = &quot;50%&quot;;
+				element.style.margin = &quot;0 auto&quot;;
+				break;
+			case &quot;left&quot;:
+			case &quot;top&quot;:
+			case &quot;top-left&quot;:
+				element.style.top = &quot;0&quot;;
+				element.style.left = &quot;0&quot;;
+				break;
+			case &quot;none&quot;: break;
+			default:
+				console.warn(&quot;invalid GUI anchor position: &quot;,anchor);
+		}
+
+		var gui_root = this.getRoot();
+		gui_root.appendChild( element );
+		return element;
+	},
+
+	/**
+	* Removes an element from the GUI (same as  element.parentNode.removeChild( element ); )
+	*
+	* @method detach
+	* @param {HTMLElement} element HTML element to detach from the GUI
+	*/
+	detach: function( element )
+	{
+		if(element &amp;&amp; element.parentNode )
+			element.parentNode.removeChild( element );
+	},
+
+	/**
+	* Removes all the GUI elements from the DOM
+	*
+	* @method reset
+	*/
+	reset: function()
+	{
+		if( !this._root )
+			return;
+
+		if(this._root.parentNode)
+			this._root.parentNode.removeChild( this._root );
+		this._root = null;
+
+		if(this._style)
+		{
+			this._style.parentNode.removeChild( this._style );
+			this._style = null;		
+		}
+		return;
+	},
+
+	/**
+	* shows the GUI 
+	*
+	* @method show
+	*/
+	show: function()
+	{
+		if(!this._root)
+			return;
+		this._root.style.display = &quot;&quot;;
+
+	},
+
+	/**
+	* hides the GUI (but it is still existing) 
+	*
+	* @method hide
+	*/
+	hide: function()
+	{
+		if(!this._root)
+			return;
+		this._root.style.display = &quot;none&quot;;
+	},
+
+	/**
+	* Loads resource containing the HTML code for the GUI and attachs it inside a div to the hud
+	*
+	* @method load
+	* @param {String} url the url of the resource containing all the HTML code
+	* @param {Function} on_complete callback that will be called once the HTML has been loaded and attached to the doom, it receives the HTMLElement containing all the HTML
+	*/
+	load: function( url, on_complete )
+	{
+		LS.ResourcesManager.load( url, function(res){
+			var gui_root = LS.GUI.getRoot();
+			var html = res.getAsHTML();
+			if(!html)
+			{
+				console.error(&quot;html resource is not a string&quot;);
+				return;
+			}
+			html.style.pointerEvents = &quot;none&quot;;
+			html.style.width = &quot;100%&quot;;
+			html.style.height = &quot;100%&quot;;
+			gui_root.appendChild( html );
+
+			LS.GUI.replaceHTMLSources( gui_root );
+
+			if(on_complete)
+				on_complete( html, res );
+		});
+	},
+
+	//WIP: allows to use resources 
+	replaceHTMLSources: function(root)
+	{
+		//fetch all the tags with a src attribute
+		var elements = root.querySelectorAll(&quot;*[src]&quot;);
+		for(var i = 0; i &lt; elements.length; ++i)
+		{
+			var element = elements[i];
+			var src = element.getAttribute(&quot;src&quot;);
+
+			//check if the src contains a @
+			if(!src || src[0] != &quot;@&quot; )
+				continue;
+
+			src = src.substr(1);
+			//replace that with a local URL to that resource in case is loaded
+			var resource = LS.ResourcesManager.getResource( src );
+			if( resource &amp;&amp; resource._local_url )
+				src = resource._local_url;
+			else
+				src = LS.ResourcesManager.getFullURL( src );
+			element.setAttribute(&quot;src&quot;, src );
+		}
+
+	}
+};
+
+LS.GUI = GUI;
+    </pre>
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

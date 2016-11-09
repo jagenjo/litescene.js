@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -150,39 +156,35 @@
 */
 function MeshRenderer(o)
 {
-	this.enabled = true;
+	this._enabled = true;
 
 	/**
 	* The name of the mesh to render
 	* @property mesh {string}
 	* @default null;
 	*/
-	this.mesh = null;
+	this._mesh = null;
 	/**
 	* The name of the mesh to render in case the mesh is far away, this mesh is also used for collision testing if using raycast to RenderInstances
 	* @property lod_mesh {string}
 	* @default null;
 	*/
-	this.lod_mesh = null;
+	this._lod_mesh = null;
 	/**
 	* The id of the submesh group to render, if the id is -1 then all the mesh is rendered.
 	* @property submesh_id {number}
 	* @default -1;
 	*/
-	this.submesh_id = -1;
-	this.material = null;
+	this._submesh_id = -1;
+
+	this._material = null;
 	/**
 	* The GL primitive to use when rendering this mesh (gl.POINTS, gl.TRIANGLES, etc), -1 is default, it also supports the option 10 which means Wireframe
 	* @property primitive {number}
 	* @default -1;
 	*/
 	this._primitive = -1;
-	/**
-	* If faces are two sided
-	* @property two_sided {boolean}
-	* @default -1;
-	*/
-	this.two_sided = false;
+
 	/**
 	* When rendering points the point size, if positive is in world space, if negative is in screen space
 	* @property point_size {number}
@@ -196,18 +198,30 @@ function MeshRenderer(o)
 	*/
 	this.textured_points = false;
 
-	this.material = null;
-
 	this._must_update_static = true; //used in static meshes
 	this._transform_version = -1;
+
+	//used to render with several materials
+	this.use_submaterials = false;
+	this.submaterials = [];
 
 	if(o)
 		this.configure(o);
 
-	if(!MeshRenderer._identity) //used to avoir garbage
-		MeshRenderer._identity = mat4.create();
-
+	this._RI = new LS.RenderInstance( null, this );
+	//this._RIs = [];
+	this._is_attached = false;
 }
+
+Object.defineProperty( MeshRenderer.prototype, &#x27;enabled&#x27;, {
+	get: function() { return this._enabled; },
+	set: function(v) { 
+		v = !!v;
+		this._enabled = v;
+		this.checkRenderInstances();
+	},
+	enumerable: true
+});
 
 Object.defineProperty( MeshRenderer.prototype, &#x27;primitive&#x27;, {
 	get: function() { return this._primitive; },
@@ -216,6 +230,34 @@ Object.defineProperty( MeshRenderer.prototype, &#x27;primitive&#x27;, {
 		if( v &lt; -1 || v &gt; 10 )
 			return;
 		this._primitive = v;
+		this.updateRIs();
+	},
+	enumerable: true
+});
+
+Object.defineProperty( MeshRenderer.prototype, &#x27;material&#x27;, {
+	get: function() { return this._material; },
+	set: function(v) { 
+		this._material = v;
+		this.updateRIs();
+	},
+	enumerable: true
+});
+
+Object.defineProperty( MeshRenderer.prototype, &#x27;mesh&#x27;, {
+	get: function() { return this._mesh; },
+	set: function(v) { 
+		this._mesh = v;
+		this.updateRIs();
+	},
+	enumerable: true
+});
+
+Object.defineProperty( MeshRenderer.prototype, &#x27;lod_mesh&#x27;, {
+	get: function() { return this._lod_mesh; },
+	set: function(v) { 
+		this._lod_mesh = v;
+		this.updateRIs();
 	},
 	enumerable: true
 });
@@ -240,20 +282,33 @@ MeshRenderer[&quot;@submesh_id&quot;] = { type:&quot;enum&quot;, values: functio
 	return t;
 }};
 
+MeshRenderer[&quot;@use_submaterials&quot;] = { type: LS.TYPES.BOOLEAN, widget: null }; //avoid widget
+MeshRenderer[&quot;@submaterials&quot;] = { widget: null }; //avoid 
+
 //we bind to onAddedToNode because the event is triggered per node so we know which RIs belong to which node
-MeshRenderer.prototype.onAddedToNode = function(node)
+MeshRenderer.prototype.onAddedToScene = function( scene )
 {
-	if(!node.meshrenderer)
-		node.meshrenderer = this;
-	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	this.checkRenderInstances();
 }
 
-MeshRenderer.prototype.onRemovedFromNode = function(node)
+MeshRenderer.prototype.onRemovedFromScene = function( scene )
 {
-	if(node.meshrenderer)
-		delete node[&quot;meshrenderer&quot;];
-	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+	this.checkRenderInstances();
 }
+
+MeshRenderer.prototype.onAddedToNode = function( node )
+{
+	LEvent.bind( node, &quot;materialChanged&quot;, this.updateRIs, this );
+	LEvent.bind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this );
+	this._RI.node = node;
+}
+
+MeshRenderer.prototype.onRemovedFromNode = function( node )
+{
+	LEvent.unbind( node, &quot;materialChanged&quot;, this.updateRIs, this );
+	LEvent.unbind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this );
+}
+
 
 /**
 * Configure from a serialized object
@@ -268,8 +323,10 @@ MeshRenderer.prototype.configure = function(o)
 	this.lod_mesh = o.lod_mesh;
 	this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
-	this.two_sided = !!o.two_sided;
 	this.material = o.material;
+	this.use_submaterials = !!o.use_submaterials;
+	if(o.submaterials)
+		this.submaterials = o.submaterials;
 	if(o.point_size !== undefined) //legacy
 		this.point_size = o.point_size;
 	this.textured_points = !!o.textured_points;
@@ -297,8 +354,9 @@ MeshRenderer.prototype.serialize = function()
 		o.primitive = this.primitive;
 	if(this.submesh_id)
 		o.submesh_id = this.submesh_id;
-	if(this.two_sided)
-		o.two_sided = this.two_sided;
+	if(this.use_submaterials)
+		o.use_submaterials = this.use_submaterials;
+	o.submaterials = this.submaterials;
 	o.point_size = this.point_size;
 	o.textured_points = this.textured_points;
 	o.material = this.material;
@@ -334,6 +392,15 @@ MeshRenderer.prototype.getResources = function(res)
 		res[this.mesh] = GL.Mesh;
 	if(typeof(this.lod_mesh) == &quot;string&quot;)
 		res[this.lod_mesh] = GL.Mesh;
+	if(typeof(this.material) == &quot;string&quot;)
+		res[this.material] = LS.Material;
+
+	if(this.use_submaterials)
+	{
+		for(var i  = 0; i &lt; this.submaterials.length; ++i)
+			if(this.submaterials[i])
+				res[this.submaterials[i]] = LS.Material;
+	}
 	return res;
 }
 
@@ -349,42 +416,45 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 				this.morph_targets[i].mesh = new_name;
 }
 
-//MeshRenderer.prototype.getRenderInstance = function(options)
-MeshRenderer.prototype.onCollectInstances = function(e, instances)
+MeshRenderer.prototype.checkRenderInstances = function()
 {
-	if(!this.enabled)
-		return;
+	return;
 
-	var mesh = this.getAnyMesh();
-	if(!mesh)
-		return null;
+	var should_be_attached = this._enabled &amp;&amp; this._root.scene;
+
+	if( should_be_attached &amp;&amp; !this._is_attached )
+	{
+		this._root.scene.attachSceneElement( this._RI );
+		this._is_attached = true;
+	}
+	else if( !should_be_attached &amp;&amp; this._is_attached )
+	{
+		this._root.scene.detachSceneElement( this._RI );
+		this._is_attached = false;
+	}
+}
+
+//called everytime something affecting this RIs configuration changes
+MeshRenderer.prototype.updateRIs = function()
+{
+	return;
 
 	var node = this._root;
-	if(!this._root)
+	if(!node)
 		return;
 
 	var RI = this._RI;
-	if(!RI)
-		this._RI = RI = new LS.RenderInstance( this._root, this );
-
 	var is_static = this._root.flags &amp;&amp; this._root.flags.is_static;
 	var transform = this._root.transform;
 
-	//optimize
-	if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
-		return instances.push( RI );
+	//optimize: TODO
+	//if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
+	//	return instances.push( RI );
 
 	//matrix: do not need to update, already done
 	RI.setMatrix( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
-	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
-
-	//flags
-	RI.flags = RI_DEFAULT_FLAGS | RI_RAYCAST_ENABLED;
-	RI.applyNodeFlags();
-
-	if(this.two_sided)
-		RI.flags &amp;= ~RI_CULL_FACE;
+	//this._root.transform.getGlobalMatrix( RI.matrix );
+	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
 
 	//material (after flags because it modifies the flags)
 	var material = null;
@@ -395,17 +465,26 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	RI.setMaterial( material );
 
 	//buffers from mesh and bounding
-	RI.setMesh( mesh, this.primitive );
-
-	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null &amp;&amp; mesh.info &amp;&amp; mesh.info.groups)
+	var mesh = LS.ResourcesManager.getMesh( this._mesh );
+	if( mesh )
 	{
-		var group = mesh.info.groups[this.submesh_id];
-		if(group)
-			RI.setRange( group.start, group.length );
+		RI.setMesh( mesh, this.primitive );
+		if(this._submesh_id != -1 &amp;&amp; this._submesh_id != null &amp;&amp; mesh.info &amp;&amp; mesh.info.groups)
+		{
+			var group = mesh.info.groups[this._submesh_id];
+			if(group)
+				RI.setRange( group.start, group.length );
+		}
+		else
+			RI.setRange(0,-1);
 	}
 	else
+	{
+		RI.setMesh( null );
 		RI.setRange(0,-1);
-
+		if(this._once_binding_index != null)
+			this._once_binding_index = LS.ResourcesManager.onceLoaded( this._mesh, this.updateRIs.bind(this ) );
+	}
 
 	//used for raycasting
 	if(this.lod_mesh)
@@ -430,6 +509,96 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	if(!this.textured_points &amp;&amp; RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;])
 		delete RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;];
 
+
+
+	//mark it as ready once no more changes should be applied
+	if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this.isLoading() )
+	{
+		this._must_update_static = false;
+		this._transform_version = transform ? transform._version : 0;
+	}
+}
+
+//*
+//MeshRenderer.prototype.getRenderInstance = function(options)
+MeshRenderer.prototype.onCollectInstances = function(e, instances)
+{
+	if(!this._enabled)
+		return;
+
+	if(this.use_submaterials)
+	{
+		this.onCollectInstancesSubmaterials(instances);
+		return;
+	}
+
+	var mesh = this.getAnyMesh();
+	if(!mesh)
+		return null;
+
+	var node = this._root;
+	if(!this._root)
+		return;
+
+	var RI = this._RI;
+	var is_static = this._root.flags &amp;&amp; this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	//optimize
+	//if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
+	//	return instances.push( RI );
+
+
+	//matrix: do not need to update, already done
+	RI.setMatrix( this._root.transform._global_matrix );
+	//this._root.transform.getGlobalMatrix(RI.matrix);
+	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+
+	//material (after flags because it modifies the flags)
+	var material = null;
+	if(this.material)
+		material = LS.ResourcesManager.getResource( this.material );
+	else
+		material = this._root.getMaterial();
+	RI.setMaterial( material );
+
+	//buffers from mesh and bounding
+	RI.setMesh( mesh, this.primitive );
+
+	if(this.submesh_id != -1 &amp;&amp; this.submesh_id != null &amp;&amp; mesh.info &amp;&amp; mesh.info.groups)
+	{
+		var group = mesh.info.groups[this.submesh_id];
+		if(group)
+			RI.setRange( group.start, group.length );
+	}
+	else
+		RI.setRange(0,-1);
+
+	//used for raycasting
+	if(this.lod_mesh)
+	{
+		if( this.lod_mesh.constructor === String )
+			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
+		else
+			RI.collision_mesh = this.lod_mesh;
+		RI.setLODMesh( RI.collision_mesh );
+	}
+	else
+		RI.collision_mesh = mesh;
+
+	if(this.primitive == gl.POINTS)
+	{
+		RI.uniforms.u_point_size = this.point_size;
+		RI.query.macros[&quot;USE_POINTS&quot;] = &quot;&quot;;
+		if(this.textured_points)
+			RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;] = &quot;&quot;;
+	}
+	
+	if(!this.textured_points &amp;&amp; RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;])
+		delete RI.query.macros[&quot;USE_TEXTURED_POINTS&quot;];
+
+
+
 	//mark it as ready once no more changes should be applied
 	if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this.isLoading() )
 	{
@@ -439,6 +608,58 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 	instances.push( RI );
 }
+
+MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
+{
+	if(!this._RIs)
+		this._RIs = [];
+
+	var mesh = this.getMesh();
+	if(!mesh)
+		return;
+
+	var groups = mesh.info.groups;
+	if(!groups)
+		return;
+
+	var global = this._root.transform._global_matrix;
+	var center = vec3.create();
+	mat4.multiplyVec3( center, global, LS.ZEROS );
+	var first_RI = null;
+
+	for(var i = 0; i &lt; this.submaterials.length; ++i)
+	{
+		var submaterial_name = this.submaterials[i];
+		if(!submaterial_name)
+			continue;
+		var group = groups[i];
+		if(!group)
+			continue;
+		var material = LS.ResourcesManager.getResource( submaterial_name );
+		if(!material)
+			continue;
+
+		var RI = this._RIs[i];
+		if(!RI)
+			RI = this._RIs[i] = new LS.RenderInstance(this._root,this);
+
+		if(!first_RI)
+			RI.setMatrix( this._root.transform._global_matrix );
+		else
+			RI.setMatrix( first_RI.matrix, first_RI.normal_matrix );
+		RI.center.set(center);
+
+		//flags
+		RI.setMaterial( material );
+		RI.setMesh( mesh, this.primitive );
+		RI.setRange( group.start, group.length );
+		instances.push(RI);
+
+		if(!first_RI)
+			first_RI = RI;
+	}
+}
+//*/
 
 //test if any of the assets is being loaded
 MeshRenderer.prototype.isLoading = function()

@@ -33,4 +33,4 @@ var parserJSMesh = {
 	}
 };
 
-LS.Formats.registerParser(parserJSMesh);
+LS.Formats.addSupportedFormat( "jsmesh", parserJSMesh );

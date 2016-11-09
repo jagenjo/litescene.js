@@ -151,4 +151,4 @@ var parserBVH = {
 	}
 };
 
-LS.Formats.registerParser( parserBVH );
+LS.Formats.addSupportedFormat( "bvh", parserBVH );

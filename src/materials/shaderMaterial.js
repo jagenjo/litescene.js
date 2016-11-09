@@ -49,10 +49,22 @@ Object.defineProperty( ShaderMaterial.prototype, "properties", {
 		this._properties = v;
 		this._properties_by_name = {};
 		for(var i in this._properties)
-			this._properties_by_name[ this._properties[i].name ] = this._properties[i];
+		{
+			var p = this._properties[i];
+			this._properties_by_name[ p.name ] = p;
+		}
 	}
 });
 
+/**
+* Makes one shader variable (uniform) public so it can be assigned from the engine (or edited from the editor)
+* @method createUniform
+* @param {String} name the property name as it should be shown
+* @param {String} uniform the uniform name in the shader
+* @param {String} type the var type in case we want to edit it (use LS.TYPES)
+* @param {*} value
+* @param {Object} options an object containing all the possible options (used mostly for widgets)
+*/
 ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, options )
 {
 	if(!name || !uniform)
@@ -88,6 +100,13 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 	this._properties_by_name[ name ] = prop;
 }
 
+/**
+* Similar to createUniform but for textures, it helps specifying sampler options
+* @method createSampler
+* @param {String} name the property name as it should be shown
+* @param {String} uniform the uniform name in the shader
+* @param {Object} options an object containing all the possible options (used mostly for widgets)
+*/
 ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options  )
 {
 	if(!name || !uniform)
@@ -122,6 +141,87 @@ ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_option
 	this._samplers.push( prop.value );
 }
 
+/**
+* Creates a property for this material, this property wont be passed to the shader but can be used from source code.
+* You must used this function if you want the data to be stored when serializing or changing the ShaderCode
+* @method createProperty
+* @param {String} name the property name as it should be shown
+* @param {*} value the default value
+* @param {String} type the data type (use LS.TYPES)
+* @param {Object} options an object containing all the possible options (used mostly for widgets)
+*/
+ShaderMaterial.prototype.createProperty = function( name, value, type, options )
+{
+	var prop = this._properties_by_name[ name ];
+	if(prop && prop.type == type) //already exist with the same type
+		return;
+
+	prop = { name: name, type: type, internal: true, value: value };
+	if(options)
+		for(var i in options)
+			prop[i] = options[i];
+
+	this._properties.push( prop );
+	this._properties_by_name[ name ] = prop;
+
+	Object.defineProperty( this, name, {
+		get: function() { 
+			var prop = this._properties_by_name[ name ]; //fetch it because could have been overwritten
+			if(prop)
+				return prop.value;
+		},
+		set: function(v) { 
+			var prop = this._properties_by_name[ name ]; //fetch it because could have been overwritten
+			if(!prop)
+				return;
+			if(prop.value && prop.value.set) //for typed arrays
+				prop.value.set( v );
+			else
+				prop.value = v;
+		},
+		enumerable: false, //must not be serialized
+		configurable: true //allows to overwrite this property
+	});
+}
+
+//called when preparing materials before rendering the scene
+ShaderMaterial.prototype.prepare = function( scene )
+{
+	this.fillUniforms();
+
+	if( this.onPrepare )
+		this.onPrepare( scene );
+}
+
+//called when filling uniforms from prepare
+ShaderMaterial.prototype.fillUniforms = function()
+{
+	//gather uniforms & samplers
+	var samplers = this._samplers;
+	samplers.length = 0;
+
+	this._uniforms.u_material_color = this._color;
+
+	for(var i = 0; i < this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.internal) //internal is a property that is not for the shader (is for internal computations)
+			continue;
+
+		if(p.is_texture)
+		{
+			this._uniforms[ p.uniform ] = samplers.length;
+			if(p.value)
+				samplers.push( p.value );
+			else
+				samplers.push( " " ); //force missing texture
+		}
+		else
+			this._uniforms[ p.uniform ] = p.value;
+	}
+}
+
+//assigns a value to a property
 ShaderMaterial.prototype.setProperty = function(name, value)
 {
 	//redirect to base material
@@ -146,17 +246,18 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 	}
 	else if( this._properties_by_name[ name ] )
 	{
-		var p = this._properties_by_name[ name ];
-		if( !p.value || !p.value.length)
-			p.value = value;
+		var prop = this._properties_by_name[ name ];
+		if( !prop.value || !prop.value.length)
+			prop.value = value;
 		else
-			p.value.set( value );
+			prop.value.set( value );
 	}
 	else
 		return false;
 	return true;
 }
 
+//check the ShaderCode associated and applies it to this material (keeping the state of the properties)
 ShaderMaterial.prototype.processShaderCode = function()
 {
 	if(!this._shader)
@@ -222,6 +323,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 	this._shader_version = shader_code._version;
 }
 
+//used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
 ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 {
 	//get shader code
@@ -242,7 +344,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 
 
 		//validate
-		if( shader )
+		if( !old.internal && shader )
 		{
 			var uniform_info = shader.uniformInfo[ new_prop.uniform ];
 			if(!uniform_info)
@@ -271,6 +373,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 	}
 }
 
+//called from LS.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, lights )
 {
 	if(!this.shader)
@@ -316,10 +419,8 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//global stuff
 	this.render_state.enable();
 
-	this.fillUniforms();
-
-	if(this.prepare_render)
-		this.prepare_render( instance );
+	if(this.onRenderInstance)
+		this.onRenderInstance( instance );
 
 	//assign
 	LS.Renderer.bindSamplers(  this._samplers );
@@ -330,31 +431,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	renderer._rendercalls += 1;
 
 	return true;
-}
-
-ShaderMaterial.prototype.fillUniforms = function()
-{
-	//gather uniforms & samplers
-	var samplers = this._samplers;
-	samplers.length = 0;
-
-	this._uniforms.u_material_color = this._color;
-
-	for(var i = 0; i < this._properties.length; ++i)
-	{
-		var p = this._properties[i];
-
-		if(p.is_texture)
-		{
-			this._uniforms[ p.uniform ] = samplers.length;
-			if(p.value)
-				samplers.push( p.value );
-			else
-				samplers.push( " " ); //force missing texture
-		}
-		else
-			this._uniforms[ p.uniform ] = p.value;
-	}
 }
 
 ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings )

@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -159,6 +165,7 @@ var ShadersManager = {
 	default_xml_url: &quot;data/shaders.xml&quot;,
 
 	snippets: {},//to save source snippets
+	shader_blocks: {},//to save shader block
 	compiled_programs: {}, //shaders already compiled and ready to use
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
@@ -168,6 +175,8 @@ var ShadersManager = {
 	default_shader: null, //a default shader to rely when a shader is not found
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
+
+	num_shaderblocks: 0, //used to know the index
 
 	/**
 	* Initializes the shader manager
@@ -184,6 +193,8 @@ var ShadersManager = {
 		this.compiled_programs = {};
 		this.compiled_shaders = {};
 		this.global_shaders = {};
+
+		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + &quot;#define WEBGL&quot; + String.fromCharCode(10);
@@ -556,7 +567,11 @@ var ShadersManager = {
 			//console.log( template[id] );
 		}
 
+		//we need to notify (LS.Player uses this)
 		this.ready = true;
+		if(this.on_ready)
+			this.on_ready();
+		LEvent.trigger( this, &quot;ready&quot; );
 	},
 	
 	//adds source code of a shader that could be compiled if needed
@@ -681,6 +696,27 @@ var ShadersManager = {
 	getSnippet: function(id)
 	{
 		return this.snippets[ id ];
+	},
+
+	registerShaderBlock: function(id, shader_block)
+	{
+		var block_id = -1;
+
+		if( this.shader_blocks[id] )
+		{
+			console.warn(&quot;There is already a ShaderBlock with that name, replacing it: &quot;, id);
+			block_id = this.shader_blocks[id].flag_id;
+		}
+		else
+			block_id = this.num_shaderblocks++;
+		shader_block.flag_id = block_id;
+		shader_block.flag_mask = 1&lt;&lt;block_id;
+		this.shader_blocks[id] = shader_block;
+	},
+
+	getShaderBlock: function(id, shader_block)
+	{
+		return this.shader_blocks[id];
 	},
 
 	//this is global code for default shaders
@@ -867,23 +903,53 @@ LS.ShaderQuery = ShaderQuery;
 
 
 
-//work in progress
-//shaders should 
-
-function ShaderPart()
+// WIP
+// A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
+// SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock &quot;sb_name&quot;
+// it will be inserted in the material in the line of the pragma
+function ShaderBlock( name )
 {
-	this.uid = 0// generate uid?
+	this.dependency_blocks = [];
 
-	this.imports = null; //snippets to import
-
-	this.vertex_uniforms = null; //string like  uniform float u_data@;
-	this.vertex_code = null; //string
-
-	this.fragment_uniforms = null; //string like  uniform float u_data@;
-	this.fragment_code = null; //string
+	this.flag_id = -1;
+	this.flag_mask = 0;
+	if(!name)
+		throw(&quot;ShaderBlock must have a name&quot;);
+	this.name = name;
+	this.code_map = new Map();
 }
 
-LS.ShaderPart = ShaderPart;
+ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
+{
+	this.checkDependencies( enabled_code );
+	this.checkDependencies( disabled_code );
+	this.code_map.set( shader_type, { enabled: enabled_code || &quot;&quot;, disabled: disabled_code || &quot;&quot;} );
+}
+
+ShaderBlock.prototype.getCode = function( shader_type, block_flags )
+{
+	block_flags = block_flags || 0;
+	var code = this.code_map.get( shader_type );
+	if(!code)
+		return null;
+	return (block_flags &amp; this.flag_mask) ? code.enabled : code.disabled;
+}
+
+ShaderBlock.prototype.register = function()
+{
+	LS.ShadersManager.registerShaderBlock(this.name, this);
+}
+
+ShaderBlock.prototype.checkDependencies = function( code )
+{
+//TODO
+}
+
+
+LS.ShaderBlock = ShaderBlock;
+
+
+
     </pre>
 </div>
                     </div>

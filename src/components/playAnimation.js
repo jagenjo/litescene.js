@@ -41,8 +41,8 @@ PlayAnimation.prototype.configure = function(o)
 	if(o.play) //LEGACY
 		delete o.play;
 
-	if(o.enabled)
-		this.enabled = true;
+	if(o.enabled !== undefined)
+		this.enabled = !!o.enabled;
 	if(o.range) 
 		this.range = o.range.concat();
 	if(o.mode !== undefined) 
@@ -214,7 +214,7 @@ PlayAnimation.prototype.applyAnimation = function( time, last_time )
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene );
 }
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)

@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -154,15 +160,30 @@ function ShaderCode( code )
 {
 	this._code = null;
 
-	this._init_function = null;
+	this._functions = {};
 	this._global_uniforms = {};
 	this._code_parts = {};
 	this._subfiles = {};
 	this._compiled_shaders = {};
 
+	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
+	this._shaderblock_flags = {};
+
+	this._version = 0;
+
 	if(code)
 		this.code = code;
 }
+
+ShaderCode.help_url = &quot;https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md&quot;;
+
+//block types
+ShaderCode.CODE = 1;
+ShaderCode.PRAGMA = 2;
+
+//pargma types
+ShaderCode.INCLUDE = 1;
+ShaderCode.SHADERBLOCK = 2;
 
 Object.defineProperty( ShaderCode.prototype, &quot;code&quot;, {
 	enumerable: true,
@@ -185,7 +206,9 @@ ShaderCode.prototype.processCode = function()
 	this._global_uniforms = {};
 	this._code_parts = {};
 	this._compiled_shaders = {};
-	this._init_function = null;
+	this._functions = {};
+	this._shaderblock_flags_num = 0;
+	this._shaderblock_flags = {};
 
 	var subfiles = GL.processFileAtlas( this._code );
 	this._subfiles = subfiles;
@@ -215,14 +238,17 @@ ShaderCode.prototype.processCode = function()
 			{
 				var line = lines[j].trim();
 				var words = line.split(&quot; &quot;);
+				var varname = words[0];
+				var uniform_name = words[1];
+				var property_type = words[2];
 				var value = words[3];
 				if( value !== undefined )
 					value = LS.stringToValue(value);
 				var options = null;
 				var options_index = line.indexOf(&quot;{&quot;);
 				if(options_index != -1)
-					options = LS.stringToValue(line.substr(options_index));
-				this._global_uniforms[ words[0] ] = { name: words[0], uniform: words[1], type: words[2], value: value, options: options };
+					options = LS.stringToValue( line.substr(options_index) );
+				this._global_uniforms[ varname ] = { name: varname, uniform: uniform_name, type: property_type, value: value, options: options };
 			}
 			continue;
 		}
@@ -235,13 +261,28 @@ ShaderCode.prototype.processCode = function()
 			var code_part = this._code_parts[name];
 			if(!code_part)
 				code_part = this._code_parts[name] = {};
+
 			//parse data (extract pragmas and stuff)
-			code_part[ extension ] = LS.ShaderCode.parseGLSLCode( subfile_data );
+			var code_info = ShaderCode.parseGLSLCode( subfile_data );
+			for(var j in code_info)
+			{
+				var pragma_info = code_info[j];
+				if(!pragma_info || pragma_info.type != ShaderCode.PRAGMA)
+					continue;
+				//assign a flag position in case this block is enabled
+				pragma_info.shader_block_flag = this._shaderblock_flags_num; 
+				this._shaderblock_flags[ pragma_info.shader_block ] = pragma_info.shader_block_flag;
+				this._shaderblock_flags_num += 1;
+			}
+
+			code_part[ extension ] = code_info;
 		}
 	}
 
 	//compile the shader before using it to ensure there is no errors
-	this.getShader();
+	var shader = this.getShader();
+	if(!shader)
+		return;
 
 	//process init code
 	if(init_code)
@@ -255,7 +296,7 @@ ShaderCode.prototype.processCode = function()
 			{
 				try
 				{
-					this._init_function = new Function( init_code );
+					this._functions.init = new Function( init_code );
 				}
 				catch (err)
 				{
@@ -263,12 +304,17 @@ ShaderCode.prototype.processCode = function()
 				}
 			}
 			else
-				this._init_function = new Function( init_code );
+				this._functions.init = new Function( init_code );
 		}
 	}
 
+	//check that all uniforms are correct
+	this.validatePublicUniforms( shader );
+
+
 	//to alert all the materials out there using this shader that they must update themselves.
 	LEvent.trigger( LS.ShaderCode, &quot;modified&quot;, this );
+	this._version += 1;
 }
 
 //used when storing/retrieving the resource
@@ -290,15 +336,19 @@ ShaderCode.prototype.getDataToStore = function()
 }
 
 //compile the shader, cache and return
-ShaderCode.prototype.getShader = function( render_mode, flags )
+ShaderCode.prototype.getShader = function( render_mode, block_flags )
 {
 	render_mode = render_mode || &quot;default&quot;;
-	flags = flags || 0;
+	block_flags = block_flags || 0;
 
-	//search for a compiled version of the shader
-	var shader = this._compiled_shaders[ render_mode ];
-	if(shader)
-		return shader;
+	//search for a compiled version of the shader (by render_mode and block_flags)
+	var shaders_map = this._compiled_shaders[ render_mode ];
+	if(shaders_map)
+	{
+		var shader = shaders_map.get( block_flags );
+		if(shader)
+			return shader;
+	}
 
 	//search for the code
 	var code = this._code_parts[ render_mode ];
@@ -312,12 +362,12 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = this.getCodeFromSubfile( code.vs );
+		vs_code = this.getCodeFromSubfile( code.vs, GL.VERTEX_SHADER, block_flags );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = this.getCodeFromSubfile( code.fs );
+	var fs_code = this.getCodeFromSubfile( code.fs, GL.FRAGMENT_SHADER, block_flags );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
@@ -328,11 +378,15 @@ ShaderCode.prototype.getShader = function( render_mode, flags )
 	if(!shader)
 		return null;
 
-	this._compiled_shaders[ render_mode ] = shader;
+	//cache as render_mode,flags
+	if( !this._compiled_shaders[ render_mode ] )
+		this._compiled_shaders[ render_mode ] = new Map();
+	this._compiled_shaders[ render_mode ].set( block_flags, shader );
+
 	return shader;
 }
 
-ShaderCode.prototype.compileShader = function( vs_code, fs_code)
+ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 {
 	if(!LS.catch_exceptions)
 		return new GL.Shader( vs_code, fs_code );
@@ -351,7 +405,25 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code)
 	return null;
 }
 
-ShaderCode.prototype.getCodeFromSubfile = function( subfile )
+ShaderCode.prototype.validatePublicUniforms = function( shader )
+{
+	if(!shader)
+		throw(&quot;ShaderCode: Shader cannot be null&quot;);
+
+	for( var i in this._global_uniforms )
+	{
+		var property_info = this._global_uniforms[i];
+		var uniform_info = shader.uniformInfo[ property_info.uniform ];
+		if(!uniform_info)
+		{
+			info.disabled = true;
+			continue;
+		}
+	}
+}
+
+//this function resolves all pragmas (includes, shaderblocks, etc) and returns the final code
+ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_flags )
 {
 	if( !subfile.is_dynamic )
 		return subfile.code;
@@ -362,14 +434,14 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile )
 	for(var i = 0; i &lt; blocks.length; ++i)
 	{
 		var block = blocks[i];
-		if( block.type == 1 ) //regular code
+		if( block.type === ShaderCode.CODE ) //regular code
 		{
 			code += block.code;
 			continue;
 		}
 
-		//pragma
-		if(block.include)
+		//pragmas
+		if(block.include) //bring code from other files
 		{
 			var filename = block.include;
 			var ext = LS.ResourcesManager.getExtension( filename );
@@ -399,6 +471,18 @@ ShaderCode.prototype.getCodeFromSubfile = function( subfile )
 				code += &quot;\n&quot; + snippet_code.code + &quot;\n&quot;;
 			}
 		}
+		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
+		{
+			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			if(!shader_block)
+			{
+				console.error(&quot;ShaderCode uses unknown ShaderBlock: &quot;, block.shader_block);
+				return null;
+			}
+
+			var block_code = shader_block.getCode( shader_type, block_flags );
+			code += &quot;\n&quot; + block_code + &quot;\n&quot;;
+		}
 	}
 
 	return code;
@@ -415,11 +499,12 @@ ShaderCode.parseGLSLCode = function( code )
 	var pragmas = {};
 	var uniforms = {};
 	var includes = {};
+	var shader_blocks = {};
 	var is_dynamic = false; //means this shader has no variations using pragmas or macros
 
 	var lines = code.split(&quot;\n&quot;);
 
-	/* REMOVED: fors could have problems
+	/* 
 	//clean (this helps in case a line contains two instructions, like &quot;uniform float a; uniform float b;&quot;
 	var clean_lines = [];
 	for(var i = 0; i &lt; lines.length; i++)
@@ -465,14 +550,24 @@ ShaderCode.parseGLSLCode = function( code )
 		var t = line.split(&quot; &quot;);
 		if(t[0] == &quot;#pragma&quot;)
 		{
+			//merge lines and add previous block
+			blocks.push( { type: ShaderCode.CODE, code: current_block.join(&quot;\n&quot;) } ); 
+
 			is_dynamic = true;
 			pragmas[ t[2] ] = true;
 			var action = t[1];
-			blocks.push( { type: 1, code: current_block.join(&quot;\n&quot;) } ); //merge lines and add as block
 			current_block.length = 0;
-			var pragma_info = { type: 2, line: line, action: action, param: t[2] };
-			if( action == &quot;include&quot; &amp;&amp; t[2] )
+			var pragma_info = { type: ShaderCode.PRAGMA, line: line, action: action, param: t[2] };
+			if( action == &quot;include&quot;)
 			{
+				if(!t[2])
+				{
+					console.error(&quot;shader include without path&quot;);
+					continue;
+				}
+
+				pragma_info.action_type = ShaderCode.INCLUDE;
+				//resolve include
 				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
 				var fullname = include.split(&quot;:&quot;);
 				var filename = fullname[0];
@@ -481,6 +576,22 @@ ShaderCode.parseGLSLCode = function( code )
 				pragma_info.include_subfile = subfile;
 				includes[ pragma_info.include ] = true;
 			}
+			else if( action == &quot;shaderblock&quot; )
+			{
+				if(!t[2])
+				{
+					console.error(&quot;#pragma shaderblock without name&quot;);
+					continue;
+				}
+				pragma_info.action_type = ShaderCode.SHADERBLOCK;
+				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.shader_block = shader_block_name;
+				shader_blocks[ pragma_info.shader_block ] = true;
+				//pragma_info.shader_block_flag = this._shaderblock_flags_num;
+				//this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
+				//this._shaderblock_flags_num += 1;
+			}
+
 			blocks.push( pragma_info ); //add pragma block
 		}
 		else
@@ -488,7 +599,7 @@ ShaderCode.parseGLSLCode = function( code )
 	}
 
 	if(current_block.length)
-		blocks.push( { type: 1, code: current_block.join(&quot;\n&quot;) } ); //merge lines and add as block
+		blocks.push( { type: ShaderCode.CODE, code: current_block.join(&quot;\n&quot;) } ); //merge lines and add as block
 
 	return {
 		is_dynamic: is_dynamic,
@@ -496,7 +607,8 @@ ShaderCode.parseGLSLCode = function( code )
 		blocks: blocks,
 		pragmas: pragmas,
 		uniforms: uniforms,
-		includes: {}
+		includes: includes,
+		shader_blocks: shader_blocks
 	};
 }
 
@@ -523,7 +635,7 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 	}
 
 	//embeded materials
-	var nodes = LS.GlobalScene.getNodes();
+	var nodes = scene.getNodes();
 	for(var i = 0; i &lt; nodes.length; ++i)
 	{
 		var node = nodes[i];
@@ -532,11 +644,20 @@ ShaderCode.prototype.applyToMaterials = function( scene )
 	}
 }
 
+//used in editor
+ShaderCode.prototype.hasEditableText = function() { return true; }
+
 ShaderCode.removeComments = function( code )
 {
 	// /^\s*[\r\n]/gm
 	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, &#x27;&#x27;);
 }
+
+
+LS.ShaderCode = ShaderCode;
+LS.registerResourceClass( ShaderCode );
+
+// now some shadercode examples that could be helpful
 
 //Example code for a shader
 ShaderCode.examples = {};
@@ -555,6 +676,11 @@ ShaderCode.examples.fx = &quot;\n\
 &quot;;
 
 ShaderCode.examples.color = &quot;\n\
+\n\
+\\js\n\
+//define exported uniforms from the shader (name, uniform, widget)\n\
+this.createUniform(\&quot;Number\&quot;,\&quot;u_number\&quot;,\&quot;number\&quot;);\n\
+this.createSampler(\&quot;Texture\&quot;,\&quot;u_texture\&quot;);\n\
 \n\
 \\default.vs\n\
 \n\
@@ -590,7 +716,7 @@ void main() {\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
 	//normal\n\
-	v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \n\
@@ -607,16 +733,20 @@ uniform float u_time;\n\
 uniform vec3 u_background_color;\n\
 uniform vec3 u_ambient_light;\n\
 \n\
+uniform float u_number;\n\
+uniform sampler2D u_texture;\n\
+\n\
 //material\n\
 uniform vec4 u_material_color; //color and alpha\n\
 void main() {\n\
-	gl_FragColor = u_material_color;\n\
+	vec3 N = normalize( v_normal );\n\
+	vec3 L = vec3( 0.577, 0.577, 0.577 );\n\
+	vec4 color = u_material_color;\n\
+	color.xyz *= max(0.0, dot(N,L) );\n\
+	gl_FragColor = color;\n\
 }\n\
 \n\
 &quot;;
-
-LS.ShaderCode = ShaderCode;
-LS.registerResourceClass( ShaderCode );
     </pre>
 </div>
                     </div>

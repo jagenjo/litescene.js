@@ -159,12 +159,14 @@ var Picking = {
 		var instances = null;
 		if(1) //not tested yet
 		{
-			instances = [];
 			var ray = camera.getRayInPixel( mouse_pos[0], mouse_pos[1] );
 			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
-			instances.length = instances_collisions.length;
-			for(var i = 0; i < instances_collisions.length; ++i)
-				instances[i] = instances_collisions[i].instance;
+			if( instances_collisions )
+			{
+				instances = Array( instances_collisions.length );
+				for(var i = 0; i < instances_collisions.length; ++i)
+					instances[i] = instances_collisions[i].instance;
+			}
 			//console.log("Instances ray collided:", instances_collisions.length);
 		}
 

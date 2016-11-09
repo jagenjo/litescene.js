@@ -7,7 +7,7 @@ function FrameFX(o)
 {
 	this.enabled = true;
 
-	this.fx = new LS.TextureFX( o ? o.fx : null );
+	this.fx = new LS.FXStack( o ? o.fx : null );
 	this.frame = new LS.RenderFrameContext();
 	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;

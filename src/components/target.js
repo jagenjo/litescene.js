@@ -35,31 +35,33 @@ Target["@up"] = { type: 'enum', values: { "-Z": Target.NEGZ,"+Z": Target.POSZ, "
 
 Target.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind( scene, "beforeRenderInstances", this.updateOrientation, this);
+	LEvent.bind( scene, "beforeRender", this.onBeforeRender, this);
+	//beforeRenderInstances because in case we want to face the camera we need it to be per camera, no per scene
+	LEvent.bind( scene, "beforeRenderInstances", this.onBeforeRender, this);
 }
 
 Target.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind( scene, "beforeRenderInstances", this.updateOrientation, this);
+	LEvent.unbind( scene, "beforeRender", this.onBeforeRender, this);
+	LEvent.unbind( scene, "beforeRenderInstances", this.onBeforeRender, this);
 }
 
-
-Target.prototype.updateOrientation = function(e)
+Target.prototype.onBeforeRender = function(e)
 {
 	if(!this.enabled)
 		return;
 
+	if( (this.face_camera && e == "beforeRenderInstances") || (!this.face_camera && e == "beforeRender") )
+		this.updateOrientation();
+}
+
+Target.prototype.updateOrientation = function()
+{
 	if(!this._root || !this._root.transform ) 
 		return;
 	var scene = this._root.scene;
 
 	var transform = this._root.transform;
-
-	/*
-	var dir = vec3.subtract( info.camera.getEye(), this._root.transform.getPosition(), vec3.create() );
-	quat.lookAt( this._root.transform._rotation, dir, [0,1,0] );
-	this._root.transform._must_update = true;
-	*/
 
 	var eye = null;
 	var target_position = null;
@@ -113,6 +115,8 @@ Target.prototype.updateOrientation = function(e)
 		case Target.NEGZ:
 		default:
 	}
+
+	transform._on_change();
 }
 
 LS.registerComponent( Target );

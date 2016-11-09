@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -263,9 +269,19 @@ function Light(o)
 	this._top = vec3.clone( Light.UP_VECTOR );
 
 	//for caching purposes
-	this._query = new ShaderQuery();
-	this._uniforms = {};
+	this._query = new LS.ShaderQuery();
 	this._samplers = [];
+	this._uniforms = {
+		u_light_front: this._front,
+		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
+		u_light_position: this._position,
+		u_light_color: vec3.create(),
+		u_light_att: this._attenuation_info,
+		u_light_offset: this.offset,
+		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
+		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT,
+		u_light_matrix: this._light_matrix
+	};
 
 	if(o) 
 	{
@@ -275,30 +291,31 @@ function Light(o)
 	}
 }
 
-Light[&quot;@projective_texture&quot;] = { type:&quot;Texture&quot; };
-Light[&quot;@extra_texture&quot;] = { type:&quot;Texture&quot; };
+Light[&quot;@projective_texture&quot;] = { type: LS.TYPES.TEXTURE };
+Light[&quot;@extra_texture&quot;] = { type: LS.TYPES.TEXTURE };
+Light[&quot;@color&quot;] = { type: LS.TYPES.COLOR };
 
 Object.defineProperty( Light.prototype, &#x27;position&#x27;, {
 	get: function() { return this._position; },
-	set: function(v) { this._position.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._position.set(v); },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, &#x27;target&#x27;, {
 	get: function() { return this._target; },
-	set: function(v) { this._target.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._target.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, &#x27;up&#x27;, {
 	get: function() { return this._up; },
-	set: function(v) { this._up.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._up.set(v);  },
 	enumerable: true
 });
 
 Object.defineProperty( Light.prototype, &#x27;color&#x27;, {
 	get: function() { return this._color; },
-	set: function(v) { this._color.set(v); /*this._must_update_matrix = true;*/ },
+	set: function(v) { this._color.set(v); },
 	enumerable: true
 });
 
@@ -401,7 +418,7 @@ Light._temp_front = vec3.create();
 Light.prototype.updateLightCamera = function()
 {
 	if(!this._light_camera)
-		this._light_camera = new Camera();
+		this._light_camera = new LS.Components.Camera();
 
 	var camera = this._light_camera;
 	camera.eye = this.getPosition(Light._temp_position);
@@ -413,7 +430,7 @@ Light.prototype.updateLightCamera = function()
 		vec3.set(up,0,0,1);
 	camera.up = up;
 
-	camera.type = this.type == Light.DIRECTIONAL ? Camera.ORTHOGRAPHIC : Camera.PERSPECTIVE;
+	camera.type = this.type == Light.DIRECTIONAL ? LS.Components.Camera.ORTHOGRAPHIC : LS.Components.Camera.PERSPECTIVE;
 
 	var closest_far = this.computeShadowmapFar();
 
@@ -555,10 +572,12 @@ Light.prototype.getFront = function( out )
 	return front;
 }
 
+/*
 Light.prototype.getLightRotationMatrix = function()
 {
-
+	//TODO
 }
+*/
 
 Light.prototype.getResources = function (res)
 {
@@ -658,18 +677,20 @@ Light.prototype.prepare = function( render_settings )
 		}
 	}
 
-
 	//PREPARE UNIFORMS
-	if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
-		uniforms.u_light_front = this._front;
+	//if(this.type == Light.DIRECTIONAL || this.type == Light.SPOT)
+	//	uniforms.u_light_front = this._front;
 	if(this.type == Light.SPOT)
-		uniforms.u_light_angle = [ this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ];
+	{
+		uniforms.u_light_angle[0] = this.angle * DEG2RAD;
+		uniforms.u_light_angle[1] = this.angle_end * DEG2RAD;
+		uniforms.u_light_angle[2] = Math.cos( this.angle * DEG2RAD * 0.5 );
+		uniforms.u_light_angle[3] = Math.cos( this.angle_end * DEG2RAD * 0.5 );
+	}
 
-	uniforms.u_light_position = this.position;
-	uniforms.u_light_color = vec3.scale( uniforms.u_light_color || vec3.create(), this.color, this.intensity );
+	vec3.scale( uniforms.u_light_color, this.color, this.intensity );
 	this._attenuation_info[0] = this.att_start;
 	this._attenuation_info[1] = this.att_end;
-	uniforms.u_light_att = this._attenuation_info; //[this.att_start,this.att_end];
 	uniforms.u_light_offset = this.offset;
 
 	//extra code
@@ -798,7 +819,7 @@ Light.prototype.getQuery = function(instance, render_settings)
 	else
 		delete query.macros[&quot;USE_SPECULAR_LIGHT&quot;];
 
-	if(use_shadows &amp;&amp; instance.flags &amp; RI_RECEIVE_SHADOWS)
+	if(use_shadows &amp;&amp; instance.material.flags.receive_shadows )
 	{
 		query.macros.USE_SHADOW_MAP = &quot;&quot;;
 		if(this._shadowmap &amp;&amp; this._shadowmap.texture_type == gl.TEXTURE_CUBE_MAP)
@@ -999,6 +1020,113 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 
 LS.registerComponent(Light);
 LS.Light = Light;
+
+//Light ShaderBlocks
+/*
+	Light Equation (Point, Spot, Directional)
+	Light Modifiers (Cookies, Cell shading)
+	Light Attenuation (Linear, Exponential)
+	Light Shadowing (Hard, Soft)
+*/
+
+Light._enabled_shaderblock = &quot;\n\
+	uniform vec3 u_light_position;\n\
+	uniform vec4 u_light_params; //type, \n\
+	uniform vec3 u_light_front;\n\
+	uniform vec3 u_light_color;\n\
+	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
+	uniform vec2 u_light_att; //start,end \n\
+	\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	{\n\
+		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)\n\
+		vec3 E = (u_camera_eye - v_pos);\n\
+		float cam_dist = length(E);\n\
+		\n\
+		#ifdef USE_ORTHOGRAPHIC_CAMERA\n\
+			E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes\n\
+		#else\n\
+			E /= cam_dist;\n\
+		#endif\n\
+		\n\
+		vec3 L = (u_light_position - v_pos);\n\
+		float light_distance = length(L);\n\
+		L /= light_distance;\n\
+		\n\
+		#ifdef USE_DIRECTIONAL_LIGHT\n\
+			L = -u_light_front;\n\
+		#endif\n\
+		\n\
+		vec3 R = reflect(E,N);\n\
+		\n\
+		float NdotL = 1.0;\n\
+		#ifdef USE_DIFFUSE_LIGHT\n\
+			NdotL = dot(N,L);\n\
+		#endif\n\
+		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);\n\
+		LIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );\n\
+		\n\
+		LIGHT.Attenuation = 1.0;\n\
+		#ifdef USE_LINEAR_ATTENUATION\n\
+			LIGHT.Attenuation = 100.0 / light_distance;\n\
+		#endif\n\
+		\n\
+		#ifdef USE_RANGE_ATTENUATION\n\
+			#ifndef USE_DIRECTIONAL_LIGHT\n\
+				if(light_distance &gt;= u_light_att.y)\n\
+					LIGHT.Attenuation = 0.0;\n\
+				else if(light_distance &gt;= u_light_att.x)\n\
+					LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
+			#endif\n\
+		#endif\n\
+		\n\
+		#ifdef USE_SPOT_LIGHT\n\
+			#ifdef USE_SPOT_CONE\n\
+				LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );\n\
+			#endif\n\
+		#endif\n\
+		\n\
+		NdotL = max( 0.0, NdotL );\n\
+		LIGHT.Diffuse = abs(NdotL);\n\
+		\n\
+		#ifdef USE_IGNORE_LIGHTS\n\
+			LIGHT.Color = vec3(1.0);\n\
+			LIGHT.Ambient = vec3(0.0);\n\
+			LIGHT.Diffuse = 1.0;\n\
+			LIGHT.Specular = 0.0;\n\
+		#endif\n\
+		//FINAL LIGHT FORMULA ************************* \n\
+		\n\
+		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
+		\n\
+		vec3 final_color = o.Albedo * total_light;\n\
+		\n\
+		#ifdef FIRST_PASS\n\
+			final_color += o.Emission;\n\
+		#endif\n\
+		\n\
+		#ifndef USE_SPECULAR_ONTOP\n\
+			final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
+		#endif\n\
+		\n\
+		return max( final_color, vec3(0.0) );\n\
+	}\n\
+&quot;;
+
+Light._disabled_shaderblock = &quot;\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	{\n\
+		return vec3(1.0);\n\
+	}\n\
+&quot;;
+
+
+var light_block = new LS.ShaderBlock(&quot;light&quot;);
+light_block.addCode( GL.VERTEX_SHADER, Light._enabled_shaderblock, Light._disabled_shaderblock );
+light_block.register();
+Light.shader_block = light_block;
+
+
     </pre>
 </div>
                     </div>

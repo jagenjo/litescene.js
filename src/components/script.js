@@ -27,6 +27,7 @@ function Script(o)
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_functions = [];
 	this._last_error = null;
+	this._breakpoint_on_call = false;
 
 	if(o)
 		this.configure(o);
@@ -75,8 +76,8 @@ Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" 
 Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, "collectRenderInstances" ); //TODO: move to SCENE
 Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, "beforeRenderInstances" );
 Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, "afterRenderInstances" );
-Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
+Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
 Script.defineAPIFunction( "onShowFrameContext", Script.BIND_TO_SCENE, "showFrameContext" );
 //input
@@ -414,9 +415,7 @@ Script.prototype.hookEvents = function()
 	var node = this._root;
 	if(!node)
 		throw("hooking events of a Script without a node");
-	var scene = node.scene;
-	if(!scene)
-		scene = LS.GlobalScene; //hack
+	var scene = node.scene || LS.GlobalScene; //hack
 
 	//script context
 	var context = this.getContext();
@@ -462,6 +461,11 @@ Script.prototype.onScriptEvent = function(event_type, params)
 	var event_info = LS.Script.API_events_to_function[ event_type ];
 	if(!event_info)
 		return; //????
+	if(this._breakpoint_on_call)
+	{
+		this._breakpoint_on_call = false;
+		{{debugger}} //stops the execution if the console is open
+	}
 	return this._script.callMethod( event_info.name, params );
 }
 
@@ -824,10 +828,12 @@ ScriptFromFile.prototype.setCode = function( code, skip_events )
 
 ScriptFromFile.updateComponents = function( script, skip_events )
 {
-	if(!script)
+	if( !script || !script._root )
 		return;
+
 	var filename = script.filename;
-	var components = LS.GlobalScene.findNodeComponents( LS.ScriptFromFile );
+	var scene = script._root.scene || LS.GlobalScene;
+	var components = scene.findNodeComponents( LS.ScriptFromFile );
 	for(var i = 0; i < components.length; ++i)
 	{
 		var compo = components[i];

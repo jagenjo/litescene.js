@@ -13,6 +13,7 @@ function RenderFrameContext( o )
 	this.height = 0; //0 means the same size as the viewport
 	this.precision = RenderFrameContext.DEFAULT_PRECISION;
 	this.filter_texture = true; //magFilter
+	this.format = GL.RGBA;
 	this.use_depth_texture = false;
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored
@@ -48,6 +49,13 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 	"high": RenderFrameContext.HIGH_PRECISION
 	}
 };
+
+RenderFrameContext["@format"] = { widget: "combo", values: { 
+	"RGB": GL.RGB,
+	"RGBA": GL.RGBA
+	}
+};
+
 RenderFrameContext["@num_extra_textures"] = { type: "number", step: 1, min: 0, max: 4, precision: 0 };
 RenderFrameContext["@name"] = { type: "string" };
 
@@ -71,6 +79,7 @@ RenderFrameContext.prototype.configure = function(o)
 {
 	this.width = o.width || 0;
 	this.height = o.height || 0;
+	this.format = o.format || GL.RGBA;
 	this.precision = o.precision || 0;
 	this.filter_texture = !!o.filter_texture;
 	this.adjust_aspect = !!o.adjust_aspect;
@@ -87,6 +96,7 @@ RenderFrameContext.prototype.serialize = function()
 		height:  this.height,
 		filter_texture: this.filter_texture,
 		precision:  this.precision,
+		format: this.format,
 		adjust_aspect: this.adjust_aspect,
 		use_depth_texture:  this.use_depth_texture,
 		num_extra_textures:  this.num_extra_textures,
@@ -109,7 +119,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	else if(final_height < 0)
 		final_height = viewport_height >> Math.abs( this.height ); //subsampling
 
-	var format = gl.RGBA;
+	var format = this.format;
 	var filter = this.filter_texture ? gl.LINEAR : gl.NEAREST ;
 	var type = 0;
 
@@ -129,7 +139,9 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	var textures = this._textures;
 
 	//for the color: check that the texture size matches
-	if(!this._color_texture || this._color_texture.width != final_width || this._color_texture.height != final_height || this._color_texture.type != type)
+	if( !this._color_texture || 
+		this._color_texture.width != final_width || this._color_texture.height != final_height || 
+		this._color_texture.type != type || this._color_texture.format != format )
 		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 	else
 		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
@@ -140,7 +152,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	for(var i = 0; i < total_extra; ++i) //MAX is 4
 	{
 		var extra_texture = textures[1 + i];
-		if( (!extra_texture || extra_texture.width != final_width || extra_texture.height != final_height || extra_texture.type != type) )
+		if( (!extra_texture || extra_texture.width != final_width || extra_texture.height != final_height || extra_texture.type != type || extra_texture.format != format) )
 			extra_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
 		else
 			extra_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );

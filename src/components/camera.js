@@ -19,18 +19,20 @@ function Camera(o)
 	this._type = Camera.PERSPECTIVE;
 
 	//contain the eye, center, up if local space
-	this._eye = vec3.fromValues(0,100, 100); //TODO: change to position
-	this._center = vec3.fromValues(0,0,0);	//TODO: change to target
-	this._up = vec3.fromValues(0,1,0);
+	this._eye = vec3.clone( Camera.DEFAULT_EYE ); //TODO: change to position
+	this._center = vec3.clone( Camera.DEFAULT_CENTER );	//TODO: change to target
+	this._up = vec3.clone( Camera.DEFAULT_UP );
 
 	//in global coordinates
-	this._global_eye = vec3.fromValues(0,100,100);
-	this._global_center = vec3.fromValues(0,0,0);
-	this._global_up = vec3.fromValues(0,1,0);
-	this._global_front = vec3.fromValues(0,0,-1);
+	this._global_eye = vec3.clone(this._eye);
+	this._global_center = vec3.clone(this._center);
+	this._global_up = vec3.clone(this._up);
+	this._global_front = vec3.create();
+	vec3.sub( this._global_front, this._global_center, this._global_eye );
+	vec3.normalize( this._global_front, this._global_front );
 
 	//clipping planes
-	this._near = 1;
+	this._near = 0.1;
 	this._far = 1000;
 
 	//orthographics planes (near and far took from ._near and ._far)
@@ -91,6 +93,10 @@ Camera.icon = "mini-icon-camera.png";
 Camera.PERSPECTIVE = 1;
 Camera.ORTHOGRAPHIC = 2; //orthographic adapted to aspect ratio of viewport
 Camera.ORTHO2D = 3; //orthographic with manually defined left,right,top,bottom
+
+Camera.DEFAULT_EYE = [0,0,0];
+Camera.DEFAULT_CENTER = [0,0,-100];
+Camera.DEFAULT_UP = [0,1,0];
 
 Camera["@type"] = { type: "enum", values: { "perspective": Camera.PERSPECTIVE, "orthographic": Camera.ORTHOGRAPHIC, "ortho2D": Camera.ORTHO2D } };
 Camera["@eye"] = { type: "vec3", widget: "position" };
@@ -194,6 +200,7 @@ Object.defineProperty( Camera.prototype, "center", {
 
 /**
 * The distance between the center and the eye point
+* When focalLength is modified it will change the center so it matches the distance.
 * @property focalLength {Number}
 * @default (depends)
 */
@@ -418,12 +425,14 @@ Camera.prototype.onAddedToNode = function(node)
 {
 	if(!node.camera)
 		node.camera = this;
+	LEvent.bind( node, "transformChanged", this.onNodeMoved, this );
 }
 
 Camera.prototype.onRemovedFromNode = function(node)
 {
 	if(node.camera == this)
 		delete node.camera;
+	LEvent.unbind( node, "transformChanged", this.onNodeMoved, this );
 }
 
 Camera.prototype.onAddedToScene = function(scene)
@@ -444,6 +453,11 @@ Camera.prototype.onRemovedFromScene = function(scene)
 		LEvent.unbind(this, "showFrameContext", this.disableRenderFrameContext, this );
 		this._binded_render_frame = false;
 	}
+}
+
+Camera.prototype.onNodeMoved = function()
+{
+	this._must_update_view_matrix = true;
 }
 
 Camera.prototype.isRenderedToTexture = function()
@@ -488,13 +502,14 @@ Camera.prototype.onCollectCameras = function(e, cameras)
 * @param {vec3} center
 * @param {vec3} up
 */
-Camera.prototype.lookAt = function(eye,center,up)
+Camera.prototype.lookAt = function( eye, center, up )
 {
 	if( this._root && this._root.transform )
 	{
 		this._root.transform.lookAt(eye,center,up);
 		this._eye.set(LS.ZEROS);
-		this.focalLength = vec3.distance( eye, center );
+		this._up.set([0,1,0]);
+		this.focalLength = vec3.distance( eye, center ); //changes the center
 	}
 	else
 	{
@@ -502,6 +517,20 @@ Camera.prototype.lookAt = function(eye,center,up)
 		vec3.copy(this._center, center);
 		vec3.copy(this._up,up);
 	}
+	this._must_update_view_matrix = true;
+}
+
+/**
+* resets eye, center and up, so they are in [0,0,0],[0,0,-focalDist] and [0,1,0]
+* @method resetVectors
+* @param {number} focalDist [optional] it not set it will be 1
+*/
+Camera.prototype.resetVectors = function(focalDist)
+{
+	focalDist = focalDist || 1;
+	this._eye.set([0,0,0]);
+	this._center.set([0,0,-focalDist]);
+	this._up.set([0,1,0]);
 	this._must_update_view_matrix = true;
 }
 
@@ -610,12 +639,13 @@ Camera.prototype.getProjectionMatrix = function(m)
 * returns the view projection matrix
 * @method getViewProjectionMatrix
 * @param {mat4} m optional output container
+* @param {boolean} force optional force to update
 * @return {mat4} matrix
 */
-Camera.prototype.getViewProjectionMatrix = function(m)
+Camera.prototype.getViewProjectionMatrix = function(m, force)
 {
 	m = m || mat4.create();
-	if(this._must_update_view_matrix || this._must_update_projection_matrix)
+	if(this._must_update_view_matrix || this._must_update_projection_matrix || force )
 		this.updateMatrices();
 	return mat4.copy( m, this._viewprojection_matrix );
 }
@@ -1037,7 +1067,7 @@ Camera.prototype.setViewportInPixels = function(left,bottom,width,height)
 
 
 /**
-* Converts from 3D to 2D
+* Converts a 3D point to its 2D position in canvas space
 * @method project
 * @param {vec3} vec 3D position we want to proyect to 2D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
@@ -1064,13 +1094,27 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 }
 
 /**
-* Converts from 2D to 3D
+* Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
 * @method unproject
 * @param {vec3} vec 2D position we want to proyect to 3D
 * @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
 * @param {vec3} result where to store the result, if omited it is created
 * @return {vec3} the coordinates in 2D
 */
+
+/**
+* It tells you the 2D position of a node center in the screen
+* @method projectNodeCenter
+* @param {vec3} vec 3D position we want to proyect to 2D
+* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
+* @param {vec3} result where to store the result, if omited it is created
+* @return {vec3} the coordinates in 2D
+*/
+Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reverse )
+{
+	var center = node.transform ? node.transform.getGlobalPosition() : LS.ZEROS;
+	return this.project( center, viewport, result, skip_reverse );
+}
 
 Camera.prototype.unproject = function( vec, viewport, result )
 {

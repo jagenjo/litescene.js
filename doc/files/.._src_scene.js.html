@@ -46,11 +46,13 @@
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
                                 <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
@@ -61,14 +63,16 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.Spherize.html">LS.Components.Spherize</a></li>
+                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
-                                <li><a href="../classes/LS.Components.TextureFX.html">LS.Components.TextureFX</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
                                 <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
@@ -85,8 +89,10 @@
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
                                 <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
@@ -159,6 +165,7 @@ function SceneTree()
 	this._nodes_by_name = {&quot;root&quot;:this._root};
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
+	this._components_by_uid = {};
 
 	//used to stored info when collecting from nodes
 	this._instances = [];
@@ -166,14 +173,19 @@ function SceneTree()
 	this._cameras = [];
 	this._colliders = [];
 
+	//work in progress, not finished yet. This will contain all the objects
+	this._spatial_container = new LS.SpatialContainer();
+
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
 	this.global_scripts = []; //scripts that are located in the resources folder and must be loaded before launching the app
 	this.preloaded_resources = {}; //resources that must be loaded, appart from the ones in the components
 
+	//track with global animations of the scene
+	this.animation = null;
+
 	//FEATURES NOT YET FULLY IMPLEMENTED
 	this._paths = []; //FUTURE FEATURE: to store splines I think
 	this._local_resources = {}; //used to store resources that go with the scene
-	this.animation = null;
 
 	this.layer_names = [&quot;main&quot;,&quot;secondary&quot;];
 
@@ -183,7 +195,7 @@ function SceneTree()
 	this.init();
 }
 
-LS.extendClass( SceneTree, ComponentContainer ); //scene could also have components
+//LS.extendClass( SceneTree, ComponentContainer ); //scene could also have components
 
 Object.defineProperty( SceneTree.prototype, &quot;root&quot;, {
 	enumerable: true,
@@ -215,6 +227,16 @@ Object.defineProperty( SceneTree.prototype, &quot;globalTime&quot;, {
 	}
 });
 
+Object.defineProperty( SceneTree.prototype, &quot;frame&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._frame;
+	},
+	set: function(v) {
+		throw(&quot;Cannot set frame directly&quot;);
+	}
+});
+
 //Some useful events
 SceneTree.supported_events = [&quot;start&quot;,&quot;update&quot;,&quot;finish&quot;,&quot;clear&quot;,&quot;beforeReload&quot;,&quot;change&quot;,&quot;afterRender&quot;,&quot;configure&quot;,&quot;nodeAdded&quot;,&quot;nodeChangeParent&quot;,&quot;nodeComponentRemoved&quot;,&quot;reload&quot;,&quot;renderPicking&quot;,&quot;scene_loaded&quot;,&quot;serialize&quot;];
 
@@ -243,11 +265,15 @@ SceneTree.prototype.init = function()
 	this._nodes_by_name = { &quot;root&quot;: this._root };
 	this._nodes_by_uid = {};
 	this._nodes_by_uid[ this._root.uid ] = this._root;
+	this._components_by_uid = {};
+
+	//WIP
+	this._spatial_container.clear();
 
 	//default components
 	this.info = new LS.Components.GlobalInfo();
 	this._root.addComponent( this.info );
-	this._root.addComponent( new LS.Camera() );
+	this._root.addComponent( new LS.Camera({ eye:[0,100,100], center:[0,0,0]} ) );
 	this._root.addComponent( new LS.Light({ position: vec3.fromValues(100,100,100), target: vec3.fromValues(0,0,0) }) );
 
 	this._frame = 0;
@@ -300,14 +326,17 @@ SceneTree.prototype.clear = function()
 /**
 * Configure the Scene using an object (the object can be obtained from the function serialize)
 * Inserts the nodes, configure them, and change the parameters
-* Destroys previously existing info
+* ATTENTION: Destroys all previously existing info
 *
 * @method configure
 * @param {Object} scene_info the object containing all the info about the nodes and config of the scene
 */
-SceneTree.prototype.configure = function(scene_info)
+SceneTree.prototype.configure = function( scene_info )
 {
-	this._root.removeAllComponents(); //remove light and camera
+	if(!scene_info || scene_info.constructor === String)
+		throw(&quot;SceneTree configure requires object&quot;);
+
+	this._root.removeAllComponents(); //remove light, camera, skybox
 
 	//this._components = [];
 	//this.camera = this.light = null; //legacy
@@ -316,7 +345,7 @@ SceneTree.prototype.configure = function(scene_info)
 		this.uid = scene_info.uid;
 
 	if(scene_info.object_type != &quot;SceneTree&quot;)
-		console.warn(&quot;Warning: object set to scene doesnt look like a propper one.&quot;);
+		console.warn(&quot;Warning: object set to scene doesnt look like a propper one.&quot;, scene_info);
 
 	if(scene_info.local_repository)
 		this.local_repository = scene_info.local_repository;
@@ -325,19 +354,17 @@ SceneTree.prototype.configure = function(scene_info)
 	if(scene_info.extra)
 		this.extra = scene_info.extra;
 
+	//this clears all the nodes
 	if(scene_info.root)
-		this.root.configure( scene_info.root );
+	{
+		this._spatial_container.clear(); // is this necessary?
+		this._root.configure( scene_info.root );
+	}
 
+	/*
 	//LEGACY
 	if(scene_info.nodes)
 		this.root.configure( { children: scene_info.nodes } );
-
-	//parse materials
-	/*
-	if(scene_info.materials)
-		for(var i in scene_info.materials)
-			this.materials[ i ] = new Material( scene_info.materials[i] );
-	*/
 
 	//LEGACY
 	if(scene_info.components)
@@ -368,12 +395,6 @@ SceneTree.prototype.configure = function(scene_info)
 			this._root.light = null;
 		}
 	}
-
-	//TODO
-	/*
-	if( scene_info.local_resources )
-	{
-	}
 	*/
 
 	if( scene_info.global_scripts )
@@ -391,11 +412,11 @@ SceneTree.prototype.configure = function(scene_info)
 	if(scene_info.animation)
 		this.animation = new LS.Animation( scene_info.animation );
 
-	if(scene_info.components)
-		this.configureComponents( scene_info );
+	//if(scene_info.components)
+	//	this.configureComponents( scene_info );
 
-	//if(scene_info.animations)
-	//	this._root.animations = scene_info.animations;
+	if(scene_info.editor)
+		this._editor = scene_info.editor;
 
 	/**
 	 * Fired after the scene has been configured
@@ -403,6 +424,11 @@ SceneTree.prototype.configure = function(scene_info)
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
 	LEvent.trigger(this,&quot;configure&quot;,scene_info);
+	/**
+	 * Fired when something changes in the scene
+	 * @event change
+	 * @param {Object} scene_info contains all the info to do the configuration
+	 */
 	LEvent.trigger(this,&quot;change&quot;);
 }
 
@@ -439,20 +465,10 @@ SceneTree.prototype.serialize = function()
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
 
-	this.serializeComponents( o );
+	if( this._editor )
+		o.editor = this._editor;
 
-	//add shared materials
-	/*
-	if(this.materials)
-	{
-		o.materials = {};
-		for(var i in this.materials)
-			o.materials[ i ] = this.materials[i].serialize();
-	}
-	*/
-
-	//serialize scene components
-	//this.serializeComponents(o);
+	//this.serializeComponents( o );
 
 	/**
 	 * Fired after the scene has been serialized to an object
@@ -464,8 +480,87 @@ SceneTree.prototype.serialize = function()
 	return o;
 }
 
+
 /**
-* Loads a scene from a relative url pointing to a JSON description
+* Assigns a scene from a JSON description (or WBIN,ZIP)
+*
+* @method setFromJSON
+* @param {String} data JSON object containing the scene
+* @param {Function}[on_complete=null] the callback to call when the loading is complete
+* @param {Function}[on_error=null] the callback to call if there is a  loading error
+* @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
+* @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
+*/
+
+SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded )
+{
+	if(!data)
+		return;
+
+	var that = this;
+
+	if(data.constructor === String)
+	{
+		try
+		{
+			data = JSON.parse( data );
+		}
+		catch (err)
+		{
+			console.log(&quot;Error: &quot; + err );
+			return;
+		}
+	}
+
+	var scripts = LS.SceneTree.getScriptsList( data, true );
+
+	//check JSON for special scripts
+	if ( scripts.length )
+		this.loadScripts( scripts, function(){ inner_success(response); }, on_error );
+	else
+		inner_success( data );
+
+
+	function inner_success( response )
+	{
+		if(on_complete)
+			on_complete(that);
+
+		that.init();
+		that.configure(response);
+		that.loadResources( inner_all_loaded );
+		/**
+		 * Fired when the scene has been loaded but before the resources
+		 * @event load
+		 */
+		LEvent.trigger(that,&quot;load&quot;);
+
+		if(!LS.ResourcesManager.isLoading())
+			inner_all_loaded();
+	}
+
+	function inner_all_loaded()
+	{
+		if(on_resources_loaded)
+			on_resources_loaded(that);
+		/**
+		 * Fired after all resources have been loaded
+		 * @event loadCompleted
+		 */
+		LEvent.trigger( that, &quot;loadCompleted&quot;);
+	}
+
+	function inner_error(err)
+	{
+		console.warn(&quot;Error in scene: &quot; + url + &quot; -&gt; &quot; + err);
+		if(on_error)
+			on_error(err);
+	}
+}
+
+
+/**
+* Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
 * Warning: this url is not passed through the LS.ResourcesManager so the url is absolute
 *
 * @method load
@@ -523,7 +618,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	function inner_json_loaded( response )
 	{
-		var scripts = LS.SceneTree.getScriptsList( response );
+		var scripts = LS.SceneTree.getScriptsList( response, true );
 
 		//check JSON for special scripts
 		if ( scripts.length )
@@ -569,8 +664,27 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 	}
 }
 
+
+/**
+* Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)
+* It uses the resources folder as the root folder (in comparison with the regular load function)
+*
+* @method loadFromResources
+* @param {String} url where the JSON object containing the scene is stored
+* @param {Function}[on_complete=null] the callback to call when the loading is complete
+* @param {Function}[on_error=null] the callback to call if there is a  loading error
+* @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
+* @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
+*/
+SceneTree.prototype.loadFromResources = function( url, on_complete, on_error, on_progress, on_resources_loaded )
+{
+	url = LS.ResourcesManager.getFullURL( url );
+	this.load( url, on_complete, on_error, on_progress, on_resources_loaded );
+}
+
+
 //returns a list of all the scripts that must be loaded, in order and with the full path
-SceneTree.getScriptsList = function( root )
+SceneTree.getScriptsList = function( root, allow_local )
 {
 	var scripts = [];
 	if ( root.external_scripts &amp;&amp; root.external_scripts.length )
@@ -582,7 +696,13 @@ SceneTree.getScriptsList = function( root )
 			var script_fullpath = root.global_scripts[i];
 			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != &quot;js&quot; )
 				continue;
+
 			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
+
+			var res = LS.ResourcesManager.getResource( script_fullpath );
+			if(res &amp;&amp; allow_local)
+				script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+
 			scripts.push( script_url );
 		}
 	}
@@ -592,7 +712,51 @@ SceneTree.getScriptsList = function( root )
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 {
 	scripts = scripts || LS.SceneTree.getScriptsList( this );
-	LS.Network.requestScript( scripts, on_complete, on_error );
+
+	if(!scripts.length)
+	{
+		if(on_complete)
+			on_complete();
+		return;
+	}
+
+	if( LS._block_scripts )
+	{
+		console.error(&quot;Safety: LS.block_scripts enabled, cannot request script&quot;);
+		return;
+	}
+
+	//All this is to allow the use of scripts that are in memory (they came packed inside a WBin with the scene)
+	var final_scripts = [];
+	var revokable = [];
+
+	for(var i in scripts)
+	{
+		var script_fullpath = scripts[i];
+		var res = LS.ResourcesManager.getResource( script_fullpath );
+		if(!res)
+		{
+			final_scripts.push( script_fullpath );
+			continue;
+		}
+
+		var blob = new Blob([res.data]);
+		var objectURL = URL.createObjectURL( blob );
+		final_scripts.push( objectURL );
+		revokable.push( objectURL );
+	}
+
+	LS.Network.requestScript( final_scripts, inner_complete, on_error );
+
+	function inner_complete()
+	{
+		//revoke urls created
+		for(var i in revokable)
+			URL.revokeObjectURL( revokable[i] );
+
+		if(on_complete)
+			on_complete();
+	}
 }
 
 //used to ensure that components use the right class when the class comes from a global script
@@ -740,8 +904,13 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 	//store nodes linearly
 	this._nodes.push(node);
 
-	//LEvent.trigger(node,&quot;onAddedToScene&quot;, this);
 	node.processActionInComponents(&quot;onAddedToScene&quot;,this); //send to components
+	for(var i = 0; i &lt; node._components.length; ++i)
+		if(node._components[i].uid)
+			this._components_by_uid[ node._components[i].uid ] = node._components[i];
+		else
+			console.warn(&quot;component without uid?&quot;, node._components[i].uid );
+
 	/**
 	 * Fired when a new node is added to this scene
 	 *
@@ -766,6 +935,8 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 
 	//node.processActionInComponents(&quot;onRemovedFromNode&quot;,node);
 	node.processActionInComponents(&quot;onRemovedFromScene&quot;,this); //send to components
+	for(var i = 0; i &lt; node._components.length; ++i)
+		delete this._components_by_uid[ node._components[i].uid ];
 
 	/**
 	 * Fired after a node has been removed
@@ -778,9 +949,51 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 	return true;
 }
 
-
-SceneTree.prototype.getNodes = function()
+/**
+* all nodes are stored in an array, this function recomputes the array so they are in the right order in case one has changed order
+*
+* @method recomputeNodesArray
+*/
+SceneTree.prototype.recomputeNodesArray = function()
 {
+	var nodes = this._nodes;
+	var pos = 0;
+	inner( this._root );
+
+	function inner(node)
+	{
+		nodes[pos] = node;
+		pos+=1;
+		if(!node._children || !node._children.length)
+			return;
+		for(var i = 0; i &lt; node._children.length; ++i)
+			inner( node._children[i] );
+	}
+}
+
+//WIP
+SceneTree.prototype.attachSceneElement = function( element )
+{
+	this._spatial_container.add( element );
+}
+
+SceneTree.prototype.detachSceneElement = function( element )
+{
+	this._spatial_container.remove( element );
+}
+
+
+/**
+* Returns the array containing all the nodes in the scene
+*
+* @method getNodes
+* @param {bool} recompute [optional] in case you want to rearrange the nodes
+* @return {Array} array containing every SceneNode in the scene
+*/
+SceneTree.prototype.getNodes = function( recompute )
+{
+	if(recompute)
+		this.recomputeNodesArray();
 	return this._nodes;
 }
 
@@ -1025,11 +1238,6 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 {
 	resources = resources || {};
 
-	//scene resources
-	for(var i in this.textures)
-		if(this.textures[i])
-			resources[ this.textures[i] ] = GL.Texture;
-
 	//resources that must be preloaded (because they will be used in the future)
 	if(this.preloaded_resources)
 		for(var i in this.preloaded_resources)
@@ -1208,6 +1416,7 @@ SceneTree.prototype.render = function(options)
 /**
 * This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
 * Mostly rendering stuff but also some collision info.
+* TO DO: refactor this so it doesnt redo the same task in every frame, only if changes are made
 * @method collectData
 */
 SceneTree.prototype.collectData = function()
@@ -1220,71 +1429,54 @@ SceneTree.prototype.collectData = function()
 	var cameras = this._cameras;
 	var colliders = this._colliders;
 
+	//empty containers
 	instances.length = 0;
 	lights.length = 0;
 	cameras.length = 0;
 	colliders.length = 0;
+
+	//TODO: move some of the node events to scene events
 
 	//collect render instances, lights and cameras
 	for(var i = 0, l = nodes.length; i &lt; l; ++i)
 	{
 		var node = nodes[i];
 
-		if(node.flags.visible == false) //skip invisibles
+		//skip stuff inside invisible nodes
+		if(node.flags.visible == false) 
 			continue;
 
-		//trigger event 
-		LEvent.trigger(node, &quot;computeVisibility&quot;); //, {camera: camera} options: options }
-
-		//compute global matrix
+		//compute global matrix: shouldnt it be already computed?
 		if(node.transform)
 			node.transform.updateGlobalMatrix();
 
-		//special node deformers (done here because they are shared for every node)
-			//this should be moved to Renderer but not a clean way to do it
-			var node_query = new ShaderQuery();
-			LEvent.trigger( node, &quot;computingShaderQuery&quot;, node_query );
-
-			var node_uniforms = {};
-			LEvent.trigger( node, &quot;computingShaderUniforms&quot;, node_uniforms );
-
-		//store info
-		node._query = node_query;
-		//node._uniforms = node_uniforms; //???
 		if(!node._instances)
 			node._instances = [];
 		else
 			node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
-		LEvent.trigger(node,&quot;collectRenderInstances&quot;, node._instances );
-		LEvent.trigger(node,&quot;collectPhysicInstances&quot;, colliders );
-		//LEvent.trigger(node,&quot;collectLights&quot;, lights );
-		//LEvent.trigger(node,&quot;collectCameras&quot;, cameras );
+		LEvent.trigger( node,&quot;collectRenderInstances&quot;, node._instances );
+		LEvent.trigger( node,&quot;collectPhysicInstances&quot;, colliders );
 
 		instances.push.apply(instances, node._instances); //push inside
 	}
 
 	//we also collect from the scene itself 
-	LEvent.trigger(this, &quot;collectRenderInstances&quot;, instances );
-	LEvent.trigger(this, &quot;collectPhysicInstances&quot;, colliders );
-	LEvent.trigger(this, &quot;collectLights&quot;, lights );
-	LEvent.trigger(this, &quot;collectCameras&quot;, cameras );
+	LEvent.trigger( this, &quot;collectRenderInstances&quot;, instances );
+	LEvent.trigger( this, &quot;collectPhysicInstances&quot;, colliders );
+	LEvent.trigger( this, &quot;collectLights&quot;, lights );
+	LEvent.trigger( this, &quot;collectCameras&quot;, cameras );
 
-	//for each camera
-	/*
-	for(var i = 0, l = cameras.length; i &lt; l; ++i)
-	{
-		var camera = cameras[i];
-	}
-	*/
-	
+	//before processing (in case somebody wants to add some data to the containers)
+	LEvent.trigger( this, &quot;collectData&quot; );
+
 	//for each render instance collected
 	for(var i = 0, l = instances.length; i &lt; l; ++i)
 	{
 		var instance = instances[i];
 		//compute the axis aligned bounding box
-		if(!(instance.flags &amp; RI_IGNORE_FRUSTUM))
+		if(instance.use_bounding) //no test if render_settings?
 			instance.updateAABB();
 	}
 
@@ -1300,6 +1492,7 @@ SceneTree.prototype.collectData = function()
 }
 
 //instead of recollect everything, we can reuse the info from previous frame, but objects need to be updated
+//WIP: NOT USED YET
 SceneTree.prototype.updateCollectedData = function()
 {
 	var nodes = this._nodes;
@@ -1324,6 +1517,9 @@ SceneTree.prototype.updateCollectedData = function()
 			instance.updateAABB();
 	}
 
+	//before processing (in case somebody wants to add some data to the containers)
+	LEvent.trigger( this, &quot;updateCollectData&quot; );
+
 	//lights
 	for(var i = 0, l = lights.length; i &lt; l; ++i)
 	{
@@ -1340,6 +1536,7 @@ SceneTree.prototype.updateCollectedData = function()
 		var collider = colliders[i];
 		collider.updateAABB();
 	}
+
 }
 
 SceneTree.prototype.update = function(dt)
@@ -1363,7 +1560,7 @@ SceneTree.prototype.update = function(dt)
 	 * @param {number} dt
 	 */
 	LEvent.trigger(this,&quot;update&quot;, dt);
-	this.triggerInNodes(&quot;update&quot;,dt, true);
+	//this.triggerInNodes(&quot;update&quot;,dt, true); //REMOVED
 
 	/**
 	 * Fired after updating the scene
@@ -1375,6 +1572,7 @@ SceneTree.prototype.update = function(dt)
 
 /**
 * triggers an event to all nodes in the scene
+* this is slow if the scene has too many nodes, thats why we use bindings
 *
 * @method triggerInNodes
 * @param {String} event_type event type name
@@ -1418,12 +1616,15 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 /**
 * Marks that this scene must be rendered again
 *
-* @method refresh
+* @method requestFrame
 */
-SceneTree.prototype.refresh = function()
+SceneTree.prototype.requestFrame = function()
 {
 	this._must_redraw = true;
+	LEvent.trigger( this, &quot;requestFrame&quot; );
 }
+
+SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
 
 /**
 * returns current scene time (remember that scene time remains freezed if the scene is not running)
@@ -1508,7 +1709,7 @@ SceneTree.prototype.findNodeComponents = function( type )
 		return;
 
 	var result = [];
-	var nodes = LS.GlobalScene._nodes;
+	var nodes = this._nodes;
 	for(var i = 0; i &lt; nodes.length; ++i)
 	{
 		var node = nodes[i];
@@ -1547,14 +1748,31 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	pack.category = &quot;SceneTree&quot;;
 
 	return pack;
-},
+}
 
+//WIP: this is in case we have static nodes in the scene
 SceneTree.prototype.updateStaticObjects = function()
 {
 	var old = LS.allow_static;
 	LS.allow_static = false;
 	this.collectData();
 	LS.allow_static = old;
+}
+
+/**
+* Creates and returns an scene animation track
+*
+* @method createAnimation
+* @return {LS.Animation} the animation track
+*/
+SceneTree.prototype.createAnimation = function()
+{
+	if(this.animation)
+		return this.animation;
+	this.animation = new LS.Animation();
+	this.animation.name = LS.Animation.DEFAULT_SCENE_NAME;
+	this.animation.createTake( &quot;default&quot;, LS.Animation.DEFAULT_DURATION );
+	return this.animation;
 }
 
 LS.SceneTree = SceneTree;
