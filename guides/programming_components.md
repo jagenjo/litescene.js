@@ -68,17 +68,17 @@ This default methods will save any public variable of the component (the ones th
 Keep in mind that sometimes you want to do some computations when the component state is retrieved or when the component state is assigned, so define your methods if that is the case.
 
 ```javascript
-RotateComponent.prototype.serialize = function()
+MyComponent.prototype.serialize = function()
 {
 	return {
-	  speed: this.speed
+	  myvar: this.myvar
 	 };
 }
 
-RotateComponent.prototype.configure = function(o)
+MyComponent.prototype.configure = function(o)
 {
-	if(o.speed !== undefined) //we can control if the parameter exist
-		this.speed = o.speed;
+	if(o.myvar !== undefined) //we can control if the parameter exist
+		this.myvar = o.myvar;
 }
 ```
 
@@ -90,13 +90,13 @@ To let the editor know which special events and actions can perform a component,
 
 ```javascript
 //returns which events can trigger this component
-PlayAnimation.prototype.getEvents = function()
+MyComponent.prototype.getEvents = function()
 {
 	return { "start_animation": "event", "end_animation": "event" };
 }
 
 //returns which actions can be triggered in this component
-PlayAnimation.prototype.getEventActions = function()
+MyComponent.prototype.getEventActions = function()
 {
 	return { "play": "function","pause": "function","stop": "function" };
 }
