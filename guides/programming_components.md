@@ -67,6 +67,41 @@ This default methods will save any public variable of the component (the ones th
 
 Keep in mind that sometimes you want to do some computations when the component state is retrieved or when the component state is assigned, so define your methods if that is the case.
 
+```javascript
+RotateComponent.prototype.serialize = function()
+{
+	return {
+	  speed: this.speed
+	 };
+}
+
+RotateComponent.prototype.configure = function(o)
+{
+	if(o.speed !== undefined) //we can control if the parameter exist
+		this.speed = o.speed;
+}
+```
+
+## Special Events and Actions
+
+Some components could trigger events (p.e. the user has clicked the node) or could be connected to actions (it must play an animation).
+
+To let the editor know which special events and actions can perform a component, you must specify it:
+
+```javascript
+//returns which events can trigger this component
+PlayAnimation.prototype.getEvents = function()
+{
+	return { "start_animation": "event", "end_animation": "event" };
+}
+
+//returns which actions can be triggered in this component
+PlayAnimation.prototype.getEventActions = function()
+{
+	return { "play": "function","pause": "function","stop": "function" };
+}
+```
+
 ## Testing your component in the editor
 
 The problem with our component is that is stored in a javascript file that our editor doesnt load, so there are different ways to force the editor to load new files.
