@@ -122,7 +122,7 @@ SceneInclude.prototype.updateBindings = function()
 //collect data
 SceneInclude.prototype.onCollectData = function()
 {
-	if(!this.enabled || !this._scene_path)
+	if(!this.enabled || !this._scene_path || !this._scene_is_ready)
 		return;
 
 	var scene = this._root.scene;
@@ -149,6 +149,17 @@ SceneInclude.prototype.onEvent = function(e,p)
 		return;
 
 	LEvent.trigger( this._scene, e, p );
+}
+
+SceneInclude.prototype.load = function()
+{
+	this.reloadScene();
+}
+
+SceneInclude.prototype.unload = function()
+{
+	this._scene_is_ready = false;
+	this._scene.clear();
 }
 
 
@@ -200,6 +211,18 @@ SceneInclude.prototype.setPropertyValueFromPath = function( path, value, offset 
 	if(!custom)
 		return null;
 	custom.setPropertyValueFromPath( path, value, offset + 1 );
+}
+
+//returns which events can trigger this component
+SceneInclude.prototype.getEvents = function()
+{
+	return { "loaded": "event", "unloaded": "event" };
+}
+
+//returns which actions can be triggered in this component
+SceneInclude.prototype.getEventActions = function()
+{
+	return { "load": "function", "unload": "function" };
 }
 
 LS.registerComponent( SceneInclude );

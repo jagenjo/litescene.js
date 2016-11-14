@@ -676,6 +676,18 @@ var LS = {
 		return String.fromCharCode.apply(null,data);
 	},
 
+	/**
+	* clears the global scene and the resources manager
+	*
+	* @method reset
+	*/
+	reset: function()
+	{
+		LS.GlobalScene.clear();
+		LS.ResourcesManager.reset();
+		LEvent.trigger( LS, "reset" );
+	},
+
 	stringToValue: function( v )
 	{
 		var value = v;

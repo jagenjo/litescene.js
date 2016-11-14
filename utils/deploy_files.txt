@@ -37,6 +37,7 @@
 
 ../src/render/renderSettings.js
 ../src/render/renderState.js
+../src/render/renderCall.js
 ../src/render/renderInstance.js
 ../src/render/renderFrameContext.js
 ../src/render/renderQueue.js

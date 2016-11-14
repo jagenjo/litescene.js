@@ -32,6 +32,7 @@ function RenderInstance( node, component )
 	this.node = node;
 	this.component = component;
 	this.priority = 10; //only used if the RenderQueue is in PRIORITY MODE, instances are rendered from higher to lower priority
+	this.sort_mode = RenderInstance.NO_SORT;
 
 	//transformation
 	this.matrix = mat4.create();
@@ -62,6 +63,10 @@ function RenderInstance( node, component )
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
 }
+
+RenderInstance.NO_SORT = 0;
+RenderInstance.SORT_NEAR_FIRST = 1;
+RenderInstance.SORT_FAR_FIRST = 2;
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)

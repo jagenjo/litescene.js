@@ -1440,6 +1440,18 @@ var LS = {
 		return String.fromCharCode.apply(null,data);
 	},
 
+	/**
+	* clears the global scene and the resources manager
+	*
+	* @method reset
+	*/
+	reset: function()
+	{
+		LS.GlobalScene.clear();
+		LS.ResourcesManager.reset();
+		LEvent.trigger( LS, "reset" );
+	},
+
 	stringToValue: function( v )
 	{
 		var value = v;
@@ -2531,6 +2543,8 @@ var ResourcesManager = {
 		this.resources = {};
 		this.meshes = {};
 		this.textures = {};
+		this.materials = {};
+		this.materials_by_uid = {};
 	},
 
 	/**
@@ -3268,7 +3282,7 @@ var ResourcesManager = {
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
-		if(this.resources[ filename ] == resource)
+		if( this.resources[ filename ] === resource )
 			return; //already registered
 
 		if(resource.is_preview && this.resources[ filename ] )
@@ -13670,7 +13684,7 @@ RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;
 
 LS.RenderSettings = RenderSettings;
 /**
-* RenderState sets how a RenderInstance should be rendered by the GPU
+* RenderState sets the flags for the GPU associated with a rendering action (blending, masking, depth test, etc)
 * It is stored in the material (although defined usually from ShaderCode) so the material can use it.
 *
 * @class RenderState
@@ -13678,27 +13692,149 @@ LS.RenderSettings = RenderSettings;
 * @constructor
 */
 
+/* gpu flags
+
+0: front_face: GL.CCW
+1: cull_face: 1
+2: cull_face_mode: GL.BACK
+
+//depth buffer
+4: depth_test: 1
+5: depth_mask: 1 //write in depth buffer
+6: depth_func: GL.LESS
+7: depth_range0: 0
+8: depth_range1: 1
+
+//blend function
+9: blend: 0;
+10: blendFunc0: GL.SRC_ALPHA
+11: blendFunc1: GL.ONE_MINUS_SRC_ALPHA
+
+//color mask
+12:	colorMask0: 1
+13:	colorMask1: 1
+14:	colorMask2: 1
+15:	colorMask3: 1
+
+//stencil buffer
+16: stencil_test: 0
+17:	stencil_func: 1
+18:	stencil_ref: 1
+19:	stencil_mask: 0xFF
+
+*/
+
 function RenderState( o )
 {
+	this._data = new Uint32Array(20);
 	this.init();
 
 	if(o)
 		this.configure(o);
 }
 
+Object.defineProperty( RenderState.prototype, "front_face", {
+	set: function(v) { this._data[0] = v; },
+	get: function() { return this._data[0];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "cull_face", {
+	set: function(v) { this._data[1] = v ? 1 : 0; },
+	get: function() { return this._data[1] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "cull_face_mode", {
+	set: function(v) { this._data[2] = v; },
+	get: function() { return this._data[2];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_test", {
+	set: function(v) { this._data[4] = v ? 1 : 0; },
+	get: function() { return this._data[4] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_mask", {
+	set: function(v) { this._data[5] = v ? 1 : 0; },
+	get: function() { return this._data[5] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_func", {
+	set: function(v) { this._data[6] = v; },
+	get: function() { return this._data[6];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_range", {
+	set: function(v) { 
+		if(!v || v.length != 2)
+			return;
+		this._data[7] = v[0];
+		this._data[8] = v[1];
+	},
+	get: function() { return this._data.subarray(7,9);	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blend", {
+	set: function(v) { this._data[9] = v ? 1 : 0; },
+	get: function() { return this._data[9] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blendFunc0", {
+	set: function(v) { this._data[10] = v; },
+	get: function() { return this._data[10];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blendFunc1", {
+	set: function(v) { this._data[11] = v; },
+	get: function() { return this._data[11];	},
+	enumerable: true
+});
+
 Object.defineProperty( RenderState.prototype, "blendFunc", {
 	set: function(v)
 	{
 		if(!v || v.length != 2)
 			return;
-		this.blendFunc0 = v[0];
-		this.blendFunc1 = v[1];
+		this._data[10] = v[0];
+		this._data[11] = v[1];
 	},
 	get: function()
 	{
-		return [this.blendFunc0,this.blendFunc1];
+		return this._data.subarray(10,12);
 	},
 	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask0", {
+	set: function(v) { this._data[12] = v ? 1 : 0; },
+	get: function() { return this._data[12] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask1", {
+	set: function(v) { this._data[13] = v ? 1 : 0; },
+	get: function() { return this._data[13] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask2", {
+	set: function(v) { this._data[14] = v ? 1 : 0; },
+	get: function() { return this._data[14] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask3", {
+	set: function(v) { this._data[15] = v ? 1 : 0; },
+	get: function() { return this._data[15] !== 0;	},
+	enumerable: true
 });
 
 Object.defineProperty( RenderState.prototype, "colorMask", {
@@ -13706,16 +13842,40 @@ Object.defineProperty( RenderState.prototype, "colorMask", {
 	{
 		if(!v || v.length != 4)
 			return;
-		this.colorMask0 = v[0];
-		this.colorMask1 = v[1];
-		this.colorMask2 = v[2];
-		this.colorMask3 = v[3];
+		this._data[12] = v[0];
+		this._data[13] = v[1];
+		this._data[14] = v[2];
+		this._data[15] = v[3];
 	},
 	get: function()
 	{
-		return [this.blendFunc0,this.blendFunc1];
+		return this._data.subarray(12,16);
 	},
 	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_test", {
+	set: function(v) { this._data[16] = v ? 1 : 0; },
+	get: function() { return this._data[16] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func", {
+	set: function(v) { this._data[17] = v; },
+	get: function() { return this._data[17]; },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_ref", {
+	set: function(v) { this._data[18] = v; },
+	get: function() { return this._data[18]; },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_mask", {
+	set: function(v) { this._data[19] = v; },
+	get: function() { return this._data[19]; },
+	enumerable: true
 });
 
 RenderState.default_state = {
@@ -13885,8 +14045,53 @@ RenderState.prototype.configure = function(o)
 	LS.cloneObject(o,this);
 }
 
+RenderState.prototype.copyFrom = function( rs )
+{
+	this._data.set( rs._data );
+}
+
 
 LS.RenderState = RenderState;
+//WIP: this is the lowest GPU rendering object, which encapsulates all about a render call
+//by encapsulating every render action into an object we can have materials that produce several render passes in different moments
+//of the rendering process
+function RenderCall()
+{
+	this.shader = null;
+	this.uniforms_containers = [];
+	this.vertex_buffers = null;
+	this.index_buffer = null;
+	this.offset_start = -1;
+	this.offset_range = -1;
+	this.primitive = -1;
+
+	this.renderState = null;
+}
+
+RenderCall.prototype.draw = function()
+{
+	this.renderState.enable();
+
+	this.shader.uniforms( this.uniforms).drawBuffers( this.vertex_buffers,
+	  this.index_buffer,
+	  this.primitive, this.offset_start, this.offset_range );
+}
+
+//Pool
+RenderCall.pool = [];
+
+RenderCall.get = function()
+{
+	if( RenderCall.pool.length > 0 )
+		return RenderCall.pool.pop();
+	return new RenderCall();
+}
+
+RenderCall.prototype.release = function()
+{
+	RenderCall.pool.push(this);
+}
+
 /**
 * RenderInstance contains info of one object to be rendered on the scene.
 * It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)
@@ -13921,6 +14126,7 @@ function RenderInstance( node, component )
 	this.node = node;
 	this.component = component;
 	this.priority = 10; //only used if the RenderQueue is in PRIORITY MODE, instances are rendered from higher to lower priority
+	this.sort_mode = RenderInstance.NO_SORT;
 
 	//transformation
 	this.matrix = mat4.create();
@@ -13951,6 +14157,10 @@ function RenderInstance( node, component )
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
 	this._final_query = new LS.ShaderQuery();
 }
+
+RenderInstance.NO_SORT = 0;
+RenderInstance.SORT_NEAR_FIRST = 1;
+RenderInstance.SORT_FAR_FIRST = 2;
 
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
@@ -25930,7 +26140,7 @@ SceneInclude.prototype.updateBindings = function()
 //collect data
 SceneInclude.prototype.onCollectData = function()
 {
-	if(!this.enabled || !this._scene_path)
+	if(!this.enabled || !this._scene_path || !this._scene_is_ready)
 		return;
 
 	var scene = this._root.scene;
@@ -25957,6 +26167,17 @@ SceneInclude.prototype.onEvent = function(e,p)
 		return;
 
 	LEvent.trigger( this._scene, e, p );
+}
+
+SceneInclude.prototype.load = function()
+{
+	this.reloadScene();
+}
+
+SceneInclude.prototype.unload = function()
+{
+	this._scene_is_ready = false;
+	this._scene.clear();
 }
 
 
@@ -26008,6 +26229,18 @@ SceneInclude.prototype.setPropertyValueFromPath = function( path, value, offset 
 	if(!custom)
 		return null;
 	custom.setPropertyValueFromPath( path, value, offset + 1 );
+}
+
+//returns which events can trigger this component
+SceneInclude.prototype.getEvents = function()
+{
+	return { "loaded": "event", "unloaded": "event" };
+}
+
+//returns which actions can be triggered in this component
+SceneInclude.prototype.getEventActions = function()
+{
+	return { "load": "function", "unload": "function" };
 }
 
 LS.registerComponent( SceneInclude );
@@ -37846,7 +38079,7 @@ function SceneNode( name )
 	this.flags = {
 		visible: true,
 		is_static: false,
-		selectable: true,
+		selectable: true
 	};
 
 	this.init(false,true);

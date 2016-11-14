@@ -42,7 +42,7 @@ function SceneNode( name )
 	this.flags = {
 		visible: true,
 		is_static: false,
-		selectable: true,
+		selectable: true
 	};
 
 	this.init(false,true);

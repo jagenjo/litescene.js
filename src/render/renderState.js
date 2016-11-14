@@ -1,5 +1,5 @@
 /**
-* RenderState sets how a RenderInstance should be rendered by the GPU
+* RenderState sets the flags for the GPU associated with a rendering action (blending, masking, depth test, etc)
 * It is stored in the material (although defined usually from ShaderCode) so the material can use it.
 *
 * @class RenderState
@@ -7,27 +7,149 @@
 * @constructor
 */
 
+/* gpu flags
+
+0: front_face: GL.CCW
+1: cull_face: 1
+2: cull_face_mode: GL.BACK
+
+//depth buffer
+4: depth_test: 1
+5: depth_mask: 1 //write in depth buffer
+6: depth_func: GL.LESS
+7: depth_range0: 0
+8: depth_range1: 1
+
+//blend function
+9: blend: 0;
+10: blendFunc0: GL.SRC_ALPHA
+11: blendFunc1: GL.ONE_MINUS_SRC_ALPHA
+
+//color mask
+12:	colorMask0: 1
+13:	colorMask1: 1
+14:	colorMask2: 1
+15:	colorMask3: 1
+
+//stencil buffer
+16: stencil_test: 0
+17:	stencil_func: 1
+18:	stencil_ref: 1
+19:	stencil_mask: 0xFF
+
+*/
+
 function RenderState( o )
 {
+	this._data = new Uint32Array(20);
 	this.init();
 
 	if(o)
 		this.configure(o);
 }
 
+Object.defineProperty( RenderState.prototype, "front_face", {
+	set: function(v) { this._data[0] = v; },
+	get: function() { return this._data[0];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "cull_face", {
+	set: function(v) { this._data[1] = v ? 1 : 0; },
+	get: function() { return this._data[1] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "cull_face_mode", {
+	set: function(v) { this._data[2] = v; },
+	get: function() { return this._data[2];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_test", {
+	set: function(v) { this._data[4] = v ? 1 : 0; },
+	get: function() { return this._data[4] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_mask", {
+	set: function(v) { this._data[5] = v ? 1 : 0; },
+	get: function() { return this._data[5] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_func", {
+	set: function(v) { this._data[6] = v; },
+	get: function() { return this._data[6];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "depth_range", {
+	set: function(v) { 
+		if(!v || v.length != 2)
+			return;
+		this._data[7] = v[0];
+		this._data[8] = v[1];
+	},
+	get: function() { return this._data.subarray(7,9);	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blend", {
+	set: function(v) { this._data[9] = v ? 1 : 0; },
+	get: function() { return this._data[9] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blendFunc0", {
+	set: function(v) { this._data[10] = v; },
+	get: function() { return this._data[10];	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "blendFunc1", {
+	set: function(v) { this._data[11] = v; },
+	get: function() { return this._data[11];	},
+	enumerable: true
+});
+
 Object.defineProperty( RenderState.prototype, "blendFunc", {
 	set: function(v)
 	{
 		if(!v || v.length != 2)
 			return;
-		this.blendFunc0 = v[0];
-		this.blendFunc1 = v[1];
+		this._data[10] = v[0];
+		this._data[11] = v[1];
 	},
 	get: function()
 	{
-		return [this.blendFunc0,this.blendFunc1];
+		return this._data.subarray(10,12);
 	},
 	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask0", {
+	set: function(v) { this._data[12] = v ? 1 : 0; },
+	get: function() { return this._data[12] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask1", {
+	set: function(v) { this._data[13] = v ? 1 : 0; },
+	get: function() { return this._data[13] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask2", {
+	set: function(v) { this._data[14] = v ? 1 : 0; },
+	get: function() { return this._data[14] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "colorMask3", {
+	set: function(v) { this._data[15] = v ? 1 : 0; },
+	get: function() { return this._data[15] !== 0;	},
+	enumerable: true
 });
 
 Object.defineProperty( RenderState.prototype, "colorMask", {
@@ -35,16 +157,40 @@ Object.defineProperty( RenderState.prototype, "colorMask", {
 	{
 		if(!v || v.length != 4)
 			return;
-		this.colorMask0 = v[0];
-		this.colorMask1 = v[1];
-		this.colorMask2 = v[2];
-		this.colorMask3 = v[3];
+		this._data[12] = v[0];
+		this._data[13] = v[1];
+		this._data[14] = v[2];
+		this._data[15] = v[3];
 	},
 	get: function()
 	{
-		return [this.blendFunc0,this.blendFunc1];
+		return this._data.subarray(12,16);
 	},
 	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_test", {
+	set: function(v) { this._data[16] = v ? 1 : 0; },
+	get: function() { return this._data[16] !== 0;	},
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func", {
+	set: function(v) { this._data[17] = v; },
+	get: function() { return this._data[17]; },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_ref", {
+	set: function(v) { this._data[18] = v; },
+	get: function() { return this._data[18]; },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_mask", {
+	set: function(v) { this._data[19] = v; },
+	get: function() { return this._data[19]; },
+	enumerable: true
 });
 
 RenderState.default_state = {
@@ -212,6 +358,11 @@ RenderState.prototype.toJSON = RenderState.prototype.serialize;
 RenderState.prototype.configure = function(o)
 {
 	LS.cloneObject(o,this);
+}
+
+RenderState.prototype.copyFrom = function( rs )
+{
+	this._data.set( rs._data );
 }
 
 

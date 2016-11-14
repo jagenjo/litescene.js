@@ -70,6 +70,8 @@ var ResourcesManager = {
 		this.resources = {};
 		this.meshes = {};
 		this.textures = {};
+		this.materials = {};
+		this.materials_by_uid = {};
 	},
 
 	/**
@@ -807,7 +809,7 @@ var ResourcesManager = {
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
-		if(this.resources[ filename ] == resource)
+		if( this.resources[ filename ] === resource )
 			return; //already registered
 
 		if(resource.is_preview && this.resources[ filename ] )
