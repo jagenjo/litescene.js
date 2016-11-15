@@ -6,6 +6,12 @@ Shaders are stored in the ```LS.ShaderCode``` class and used by some classes, ma
 
 Because shaders are usually defined by several parts (vertex shader, fragment shader, definition of external variables) they are written in a text file where every part is defined by the backlash character and the name of the part, like  ```\default.vs```, this blocks are called subfiles.
 
+## GLSL ##
+
+Remember that shaders in WebGL are made using the GLSL programming language, not javascript. The shaders code will be sent to the GPU to be compiled to low level assembly code so it can be executed very fast. Also keep in mind that WebGL is based in OpenGL ES 2.0, it means some GLSL features may be missing.
+
+If you want a reference about GLSL [check this website](http://www.shaderific.com/glsl/).
+
 ## Javascript ##
 
 When creating a shader you may want to call some javascript functions to prepare the properties of the material containing the shader, for this purpose you can write a part in the file that contain that JS code, separated from the GLSL code of the shaders.
