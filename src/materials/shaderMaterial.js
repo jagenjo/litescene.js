@@ -374,14 +374,10 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 }
 
 //called from LS.Renderer when rendering an instance
-ShaderMaterial.prototype.renderInstance = function( instance, render_settings, lights )
+ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 {
 	if(!this.shader)
 		return false;
-
-	var lights = null;
-	if(this._light_mode !== Material.NO_LIGHTS)
-		lights = LS.Renderer.getNearLights( instance );
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
@@ -391,14 +387,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
-
-	//compute flags
-	var block_flags = instance.computeShaderBlockFlags();
-
-	//extract shader compiled
-	var shader = shader_code.getShader( null, block_flags );
-	if(!shader)
-		return false;
 
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
@@ -416,19 +404,73 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
 
+	//compute flags
+	var block_flags = instance.computeShaderBlockFlags();
+
 	//global stuff
 	this.render_state.enable();
+	LS.Renderer.bindSamplers(  this._samplers );
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
-	//assign
-	LS.Renderer.bindSamplers(  this._samplers );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] );
+	//add flags related to lights
+	var lights = null;
+	if(this._light_mode !== Material.NO_LIGHTS)
+		lights = LS.Renderer.getNearLights( instance );
 
-	//render
-	instance.render( shader );
-	renderer._rendercalls += 1;
+	if(!lights)
+	{
+		//extract shader compiled
+		var shader = shader_code.getShader( null, block_flags );
+		if(!shader)
+			return false;
+
+		//assign
+		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	
+		return true;
+	}
+
+	var prev_shader = null;
+	for(var i = 0; i < lights.length; ++i)
+	{
+		var light = lights[i];
+		block_flags = light.applyShaderBlockFlags( block_flags );
+
+		//extract shader compiled
+		var shader = shader_code.getShader( null, block_flags );
+		if(!shader)
+			continue;
+
+		//assign
+		if(prev_shader != shader)
+			shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light._uniforms, this._uniforms, instance.uniforms ] );
+		else
+			shader.uniforms( light._uniforms );
+		prev_shader = shader;
+
+		if(i == 1)
+		{
+			gl.depthMask( false );
+			gl.depthFunc( gl.EQUAL );
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	}
+
+	//optimize this
+	gl.disable( gl.BLEND );
+	gl.depthMask( true );
+	gl.depthFunc( gl.LESS );
 
 	return true;
 }

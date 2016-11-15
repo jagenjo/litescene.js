@@ -36,6 +36,7 @@ ShaderCode.PRAGMA = 2;
 //pargma types
 ShaderCode.INCLUDE = 1;
 ShaderCode.SHADERBLOCK = 2;
+ShaderCode.SNIPPET = 3;
 
 Object.defineProperty( ShaderCode.prototype, "code", {
 	enumerable: true,
@@ -61,6 +62,7 @@ ShaderCode.prototype.processCode = function()
 	this._functions = {};
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
+	this._has_error = false;
 
 	var subfiles = GL.processFileAtlas( this._code );
 	this._subfiles = subfiles;
@@ -83,6 +85,7 @@ ShaderCode.prototype.processCode = function()
 			continue;
 		}
 
+		//used to declare uniforms without using javascript
 		if(subfile_name == "uniforms")
 		{
 			var lines = subfile_data.split("/n");
@@ -115,10 +118,10 @@ ShaderCode.prototype.processCode = function()
 				code_part = this._code_parts[name] = {};
 
 			//parse data (extract pragmas and stuff)
-			var code_info = ShaderCode.parseGLSLCode( subfile_data );
-			for(var j in code_info)
+			var glslcode = new GLSLCode( subfile_data );
+			for(var j in glslcode.blocks)
 			{
-				var pragma_info = code_info[j];
+				var pragma_info = glslcode.blocks[j];
 				if(!pragma_info || pragma_info.type != ShaderCode.PRAGMA)
 					continue;
 				//assign a flag position in case this block is enabled
@@ -127,7 +130,7 @@ ShaderCode.prototype.processCode = function()
 				this._shaderblock_flags_num += 1;
 			}
 
-			code_part[ extension ] = code_info;
+			code_part[ extension ] = glslcode;
 		}
 	}
 
@@ -190,6 +193,9 @@ ShaderCode.prototype.getDataToStore = function()
 //compile the shader, cache and return
 ShaderCode.prototype.getShader = function( render_mode, block_flags )
 {
+	if( this._has_error )
+		return null;
+
 	render_mode = render_mode || "default";
 	block_flags = block_flags || 0;
 
@@ -214,16 +220,19 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = this.getCodeFromSubfile( code.vs, GL.VERTEX_SHADER, block_flags );
+		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = this.getCodeFromSubfile( code.fs, GL.FRAGMENT_SHADER, block_flags );
+	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
+	{
+		this._has_error = true;
 		return null;
+	}
 
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );
@@ -240,6 +249,9 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 
 ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 {
+	if( this._has_error )
+		return null;
+
 	if(!LS.catch_exceptions)
 		return new GL.Shader( vs_code, fs_code );
 	else
@@ -250,8 +262,20 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		}
 		catch(err)
 		{
+			this._has_error = true;
 			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
-			LS.dispatchCodeError(err);
+			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
+			var line = error_info.line_number;
+			var lines = this._code.split("\n");
+			var code_line = -1;
+			if(error_info.line_code)
+			{
+				var error_line_code = error_info.line_code.trim();
+				for(var i = 0; i < lines.length; ++i)
+					lines[i] = lines[i].trim();
+				code_line = lines.indexOf( error_line_code ); //bug: what if this line is twice in the code?...
+			}
+			LS.dispatchCodeError( err, code_line, this, "shader" );
 		}
 	}
 	return null;
@@ -274,195 +298,6 @@ ShaderCode.prototype.validatePublicUniforms = function( shader )
 	}
 }
 
-//this function resolves all pragmas (includes, shaderblocks, etc) and returns the final code
-ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_flags )
-{
-	if( !subfile.is_dynamic )
-		return subfile.code;
-
-	var code = "";
-	var blocks = subfile.blocks;
-
-	for(var i = 0; i < blocks.length; ++i)
-	{
-		var block = blocks[i];
-		if( block.type === ShaderCode.CODE ) //regular code
-		{
-			code += block.code;
-			continue;
-		}
-
-		//pragmas
-		if(block.include) //bring code from other files
-		{
-			var filename = block.include;
-			var ext = LS.ResourcesManager.getExtension( filename );
-			if(ext)
-			{
-				var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
-				if(!extra_shadercode)
-				{
-					LS.ResourcesManager.load( filename ); //force load
-					return null;
-				}
-				if(!block.include_subfile)
-					code += "\n" + extra_shadercode._subfiles[""] + "\n";
-				else
-				{
-					var extra = extra_shadercode._subfiles[ block.include_subfile ];
-					if(extra === undefined)
-						return null;
-					code += "\n" + extra + "\n";
-				}
-			}
-			else
-			{
-				var snippet_code = LS.ShadersManager.getSnippet( filename );
-				if( !snippet_code )
-					return null; //snippet not found
-				code += "\n" + snippet_code.code + "\n";
-			}
-		}
-		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
-		{
-			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
-			if(!shader_block)
-			{
-				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
-				return null;
-			}
-
-			var block_code = shader_block.getCode( shader_type, block_flags );
-			code += "\n" + block_code + "\n";
-		}
-	}
-
-	return code;
-}
-
-//given a code with some pragmas, it separates them
-ShaderCode.parseGLSLCode = function( code )
-{
-	//remove comments
-	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
-
-	var blocks = [];
-	var current_block = [];
-	var pragmas = {};
-	var uniforms = {};
-	var includes = {};
-	var shader_blocks = {};
-	var is_dynamic = false; //means this shader has no variations using pragmas or macros
-
-	var lines = code.split("\n");
-
-	/* 
-	//clean (this helps in case a line contains two instructions, like "uniform float a; uniform float b;"
-	var clean_lines = [];
-	for(var i = 0; i < lines.length; i++)
-	{
-		var line = lines[i].trim();
-		if(!line)
-			continue;
-		var pos = line.lastIndexOf(";");
-		if(pos == -1 || pos == lines.length - 1)
-			clean_lines.push(line);
-		else
-		{
-			var sublines = line.split(";");
-			for(var j = 0; j < sublines.length; ++j)
-			{
-				if(sublines[j])
-					clean_lines.push( sublines[j] + ";" );
-			}
-		}
-	}
-	lines = clean_lines;
-	*/
-
-	//parse
-	for(var i = 0; i < lines.length; i++)
-	{
-		var line = lines[i].trim();
-		if(!line.length)
-			continue;//empty line
-
-		if(line[0] != "#")
-		{
-			var words = line.split(" ");
-			if( words[0] == "uniform" ) //store which uniforms we found in the code (not used)
-			{
-				var uniform_name = words[2].split(";");
-				uniforms[ uniform_name[0] ] = words[1];
-			}
-			current_block.push(line);
-			continue;
-		}
-
-		var t = line.split(" ");
-		if(t[0] == "#pragma")
-		{
-			//merge lines and add previous block
-			blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); 
-
-			is_dynamic = true;
-			pragmas[ t[2] ] = true;
-			var action = t[1];
-			current_block.length = 0;
-			var pragma_info = { type: ShaderCode.PRAGMA, line: line, action: action, param: t[2] };
-			if( action == "include")
-			{
-				if(!t[2])
-				{
-					console.error("shader include without path");
-					continue;
-				}
-
-				pragma_info.action_type = ShaderCode.INCLUDE;
-				//resolve include
-				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				var fullname = include.split(":");
-				var filename = fullname[0];
-				var subfile = fullname[1];
-				pragma_info.include = filename;
-				pragma_info.include_subfile = subfile;
-				includes[ pragma_info.include ] = true;
-			}
-			else if( action == "shaderblock" )
-			{
-				if(!t[2])
-				{
-					console.error("#pragma shaderblock without name");
-					continue;
-				}
-				pragma_info.action_type = ShaderCode.SHADERBLOCK;
-				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				pragma_info.shader_block = shader_block_name;
-				shader_blocks[ pragma_info.shader_block ] = true;
-				//pragma_info.shader_block_flag = this._shaderblock_flags_num;
-				//this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
-				//this._shaderblock_flags_num += 1;
-			}
-
-			blocks.push( pragma_info ); //add pragma block
-		}
-		else
-			current_block.push( line ); //add line to current block lines
-	}
-
-	if(current_block.length)
-		blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); //merge lines and add as block
-
-	return {
-		is_dynamic: is_dynamic,
-		code: code,
-		blocks: blocks,
-		pragmas: pragmas,
-		uniforms: uniforms,
-		includes: includes,
-		shader_blocks: shader_blocks
-	};
-}
 
 //makes this resource available 
 ShaderCode.prototype.register = function()
@@ -511,7 +346,7 @@ LS.registerResourceClass( ShaderCode );
 
 // now some shadercode examples that could be helpful
 
-//Example code for a shader
+//Example code for a shader (used in editor) **************************************************
 ShaderCode.examples = {};
 
 ShaderCode.examples.fx = "\n\
@@ -580,6 +415,7 @@ varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 //globals\n\
+uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
 uniform float u_time;\n\
 uniform vec3 u_background_color;\n\

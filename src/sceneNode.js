@@ -37,7 +37,6 @@ function SceneNode( name )
 	this._children = null;
 	this._in_tree = null;
 
-
 	//flags
 	this.flags = {
 		visible: true,

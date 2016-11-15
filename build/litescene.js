@@ -4760,18 +4760,27 @@ function ShaderBlock( name )
 
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
 {
-	this.checkDependencies( enabled_code );
-	this.checkDependencies( disabled_code );
-	this.code_map.set( shader_type, { enabled: enabled_code || "", disabled: disabled_code || ""} );
+	enabled_code  = enabled_code || "";
+	disabled_code  = disabled_code || "";
+
+	//this.checkDependencies( enabled_code );
+	//this.checkDependencies( disabled_code );
+
+	var info = { 
+		enabled: new LS.GLSLCode( enabled_code ),
+		disabled: new LS.GLSLCode( disabled_code )
+	};
+	this.code_map.set( shader_type, info );
 }
 
-ShaderBlock.prototype.getCode = function( shader_type, block_flags )
+ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
 {
 	block_flags = block_flags || 0;
 	var code = this.code_map.get( shader_type );
 	if(!code)
 		return null;
-	return (block_flags & this.flag_mask) ? code.enabled : code.disabled;
+	var glslcode = (block_flags & this.flag_mask) ? code.enabled : code.disabled;
+	return glslcode.getFinalCode( shader_type, block_flags );
 }
 
 ShaderBlock.prototype.register = function()
@@ -4787,6 +4796,246 @@ ShaderBlock.prototype.checkDependencies = function( code )
 
 LS.ShaderBlock = ShaderBlock;
 
+
+//used for parsing GLSL code and precompute info so it can compile faster
+function GLSLCode( code )
+{
+	this.code = code;
+
+	this.blocks = [];
+	this.pragmas = {};
+	this.uniforms = {};
+	this.includes = {};
+	this.snippets = {};
+	this.shader_blocks = {};
+	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
+	if(code)
+		this.parse();
+}
+
+LS.GLSLCode = GLSLCode;
+
+//block types
+GLSLCode.CODE = 1;
+GLSLCode.PRAGMA = 2;
+
+//pargma types
+GLSLCode.INCLUDE = 1;
+GLSLCode.SHADERBLOCK = 2;
+GLSLCode.SNIPPET = 3;
+
+//given a code with some pragmas, it separates them
+GLSLCode.prototype.parse = function()
+{
+	//remove comments
+	var code = this.code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
+
+	this.blocks = [];
+	this.pragmas = {};
+	this.uniforms = {};
+	this.includes = {};
+	this.snippets = {};
+	this.shader_blocks = {};
+	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
+
+	var current_block = [];
+	var lines = code.split("\n");
+
+	//parse
+	for(var i = 0; i < lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line.length)
+			continue;//empty line
+
+		if(line[0] != "#")
+		{
+			var words = line.split(" ");
+			if( words[0] == "uniform" ) //store which uniforms we found in the code (not used)
+			{
+				var uniform_name = words[2].split(";");
+				this.uniforms[ uniform_name[0] ] = words[1];
+			}
+			current_block.push(line);
+			continue;
+		}
+
+		var t = line.split(" ");
+		if(t[0] == "#pragma")
+		{
+			//merge lines and add previous block
+			var current_block_code = current_block.join("\n");
+			if(current_block_code.trim()) //in case is empty this code block
+				this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); 
+
+			this.is_dynamic = true;
+			this.pragmas[ t[2] ] = true;
+			var action = t[1];
+			current_block.length = 0;
+			var pragma_info = { type: GLSLCode.PRAGMA, line: line, action: action, param: t[2] };
+			if( action == "include")
+			{
+				if(!t[2])
+				{
+					console.error("shader include without path");
+					continue;
+				}
+
+				pragma_info.action_type = GLSLCode.INCLUDE;
+				//resolve include
+				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				var fullname = include.split(":");
+				var filename = fullname[0];
+				var subfile = fullname[1];
+				pragma_info.include = filename;
+				pragma_info.include_subfile = subfile;
+				this.includes[ pragma_info.include ] = true;
+			}
+			else if( action == "shaderblock" )
+			{
+				if(!t[2])
+				{
+					console.error("#pragma shaderblock without name");
+					continue;
+				}
+				pragma_info.action_type = GLSLCode.SHADERBLOCK;
+				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.shader_block = shader_block_name;
+				this.shader_blocks[ pragma_info.shader_block ] = true;
+			}
+			else if( action == "snippet" )
+			{
+				if(!t[2])
+				{
+					console.error("#pragma snippet without name");
+					continue;
+				}
+				pragma_info.action_type = GLSLCode.SNIPPET;
+				var snippet_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.snippet = snippet_name;
+				this.snippets[ snippet_name ] = true;
+			}
+
+			this.blocks.push( pragma_info ); //add pragma block
+		}
+		else
+			current_block.push( line ); //add line to current block lines
+	}
+
+	if(current_block.length)
+	{
+		var current_block_code = current_block.join("\n");
+		if(current_block_code.trim()) //in case is empty this code block
+			this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); //merge lines and add as block
+	}
+
+	//done
+	return true;
+}
+
+GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
+{
+	if( !this.is_dynamic )
+		return this.code;
+
+	var code = "";
+	var blocks = this.blocks;
+
+	for(var i = 0; i < blocks.length; ++i)
+	{
+		var block = blocks[i];
+		if( block.type === GLSLCode.CODE ) //regular code
+		{
+			code += block.code;
+			continue;
+		}
+
+		//pragmas
+		if(block.include) //bring code from other files
+		{
+			var filename = block.include;
+			var ext = LS.ResourcesManager.getExtension( filename );
+			if(ext)
+			{
+				var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
+				if(!extra_shadercode)
+				{
+					LS.ResourcesManager.load( filename ); //force load
+					return null;
+				}
+				if(!block.include_subfile)
+					code += "\n" + extra_shadercode._subfiles[""] + "\n";
+				else
+				{
+					var extra = extra_shadercode._subfiles[ block.include_subfile ];
+					if(extra === undefined)
+						return null;
+					code += "\n" + extra + "\n";
+				}
+			}
+			else
+			{
+				var snippet_code = LS.ShadersManager.getSnippet( filename );
+				if( !snippet_code )
+					return null; //snippet not found
+				code += "\n" + snippet_code.code + "\n";
+			}
+		}
+		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
+		{
+			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			if(!shader_block)
+			{
+				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
+				return null;
+			}
+
+			var block_code = shader_block.getFinalCode( shader_type, block_flags );
+			if( block_code )
+				code += "\n" + block_code + "\n";
+		}
+		else if( block.snippet ) //injects code from snippets
+		{
+			var snippet = LS.ShadersManager.getSnippet( block.snippet );
+			if(!snippet)
+			{
+				console.error("ShaderCode uses unknown Snippet: ", block.snippet);
+				return null;
+			}
+
+			code += "\n" + snippet.code + "\n";
+		}
+	}
+
+	return code;
+}
+
+
+//not used
+GLSLCode.breakLines = function(lines)
+{
+	//clean (this helps in case a line contains two instructions, like "uniform float a; uniform float b;"
+	var clean_lines = [];
+	for(var i = 0; i < lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line)
+			continue;
+		var pos = line.lastIndexOf(";");
+		if(pos == -1 || pos == lines.length - 1)
+			clean_lines.push(line);
+		else
+		{
+			var sublines = line.split(";");
+			for(var j = 0; j < sublines.length; ++j)
+			{
+				if(sublines[j])
+					clean_lines.push( sublines[j] + ";" );
+			}
+		}
+	}
+	return clean_lines;
+}
 
 
 
@@ -6995,14 +7244,10 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 }
 
 //called from LS.Renderer when rendering an instance
-ShaderMaterial.prototype.renderInstance = function( instance, render_settings, lights )
+ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 {
 	if(!this.shader)
 		return false;
-
-	var lights = null;
-	if(this._light_mode !== Material.NO_LIGHTS)
-		lights = LS.Renderer.getNearLights( instance );
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
@@ -7012,14 +7257,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
-
-	//compute flags
-	var block_flags = instance.computeShaderBlockFlags();
-
-	//extract shader compiled
-	var shader = shader_code.getShader( null, block_flags );
-	if(!shader)
-		return false;
 
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
@@ -7037,19 +7274,73 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
 
+	//compute flags
+	var block_flags = instance.computeShaderBlockFlags();
+
 	//global stuff
 	this.render_state.enable();
+	LS.Renderer.bindSamplers(  this._samplers );
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
-	//assign
-	LS.Renderer.bindSamplers(  this._samplers );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] );
+	//add flags related to lights
+	var lights = null;
+	if(this._light_mode !== Material.NO_LIGHTS)
+		lights = LS.Renderer.getNearLights( instance );
 
-	//render
-	instance.render( shader );
-	renderer._rendercalls += 1;
+	if(!lights)
+	{
+		//extract shader compiled
+		var shader = shader_code.getShader( null, block_flags );
+		if(!shader)
+			return false;
+
+		//assign
+		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	
+		return true;
+	}
+
+	var prev_shader = null;
+	for(var i = 0; i < lights.length; ++i)
+	{
+		var light = lights[i];
+		block_flags = light.applyShaderBlockFlags( block_flags );
+
+		//extract shader compiled
+		var shader = shader_code.getShader( null, block_flags );
+		if(!shader)
+			continue;
+
+		//assign
+		if(prev_shader != shader)
+			shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light._uniforms, this._uniforms, instance.uniforms ] );
+		else
+			shader.uniforms( light._uniforms );
+		prev_shader = shader;
+
+		if(i == 1)
+		{
+			gl.depthMask( false );
+			gl.depthFunc( gl.EQUAL );
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	}
+
+	//optimize this
+	gl.disable( gl.BLEND );
+	gl.depthMask( true );
+	gl.depthFunc( gl.LESS );
 
 	return true;
 }
@@ -10695,6 +10986,7 @@ ShaderCode.PRAGMA = 2;
 //pargma types
 ShaderCode.INCLUDE = 1;
 ShaderCode.SHADERBLOCK = 2;
+ShaderCode.SNIPPET = 3;
 
 Object.defineProperty( ShaderCode.prototype, "code", {
 	enumerable: true,
@@ -10720,6 +11012,7 @@ ShaderCode.prototype.processCode = function()
 	this._functions = {};
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
+	this._has_error = false;
 
 	var subfiles = GL.processFileAtlas( this._code );
 	this._subfiles = subfiles;
@@ -10742,6 +11035,7 @@ ShaderCode.prototype.processCode = function()
 			continue;
 		}
 
+		//used to declare uniforms without using javascript
 		if(subfile_name == "uniforms")
 		{
 			var lines = subfile_data.split("/n");
@@ -10774,10 +11068,10 @@ ShaderCode.prototype.processCode = function()
 				code_part = this._code_parts[name] = {};
 
 			//parse data (extract pragmas and stuff)
-			var code_info = ShaderCode.parseGLSLCode( subfile_data );
-			for(var j in code_info)
+			var glslcode = new GLSLCode( subfile_data );
+			for(var j in glslcode.blocks)
 			{
-				var pragma_info = code_info[j];
+				var pragma_info = glslcode.blocks[j];
 				if(!pragma_info || pragma_info.type != ShaderCode.PRAGMA)
 					continue;
 				//assign a flag position in case this block is enabled
@@ -10786,7 +11080,7 @@ ShaderCode.prototype.processCode = function()
 				this._shaderblock_flags_num += 1;
 			}
 
-			code_part[ extension ] = code_info;
+			code_part[ extension ] = glslcode;
 		}
 	}
 
@@ -10849,6 +11143,9 @@ ShaderCode.prototype.getDataToStore = function()
 //compile the shader, cache and return
 ShaderCode.prototype.getShader = function( render_mode, block_flags )
 {
+	if( this._has_error )
+		return null;
+
 	render_mode = render_mode || "default";
 	block_flags = block_flags || 0;
 
@@ -10873,16 +11170,19 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = this.getCodeFromSubfile( code.vs, GL.VERTEX_SHADER, block_flags );
+		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = this.getCodeFromSubfile( code.fs, GL.FRAGMENT_SHADER, block_flags );
+	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
+	{
+		this._has_error = true;
 		return null;
+	}
 
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );
@@ -10899,6 +11199,9 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 
 ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 {
+	if( this._has_error )
+		return null;
+
 	if(!LS.catch_exceptions)
 		return new GL.Shader( vs_code, fs_code );
 	else
@@ -10909,8 +11212,20 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		}
 		catch(err)
 		{
+			this._has_error = true;
 			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
-			LS.dispatchCodeError(err);
+			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
+			var line = error_info.line_number;
+			var lines = this._code.split("\n");
+			var code_line = -1;
+			if(error_info.line_code)
+			{
+				var error_line_code = error_info.line_code.trim();
+				for(var i = 0; i < lines.length; ++i)
+					lines[i] = lines[i].trim();
+				code_line = lines.indexOf( error_line_code ); //bug: what if this line is twice in the code?...
+			}
+			LS.dispatchCodeError( err, code_line, this, "shader" );
 		}
 	}
 	return null;
@@ -10933,195 +11248,6 @@ ShaderCode.prototype.validatePublicUniforms = function( shader )
 	}
 }
 
-//this function resolves all pragmas (includes, shaderblocks, etc) and returns the final code
-ShaderCode.prototype.getCodeFromSubfile = function( subfile, shader_type, block_flags )
-{
-	if( !subfile.is_dynamic )
-		return subfile.code;
-
-	var code = "";
-	var blocks = subfile.blocks;
-
-	for(var i = 0; i < blocks.length; ++i)
-	{
-		var block = blocks[i];
-		if( block.type === ShaderCode.CODE ) //regular code
-		{
-			code += block.code;
-			continue;
-		}
-
-		//pragmas
-		if(block.include) //bring code from other files
-		{
-			var filename = block.include;
-			var ext = LS.ResourcesManager.getExtension( filename );
-			if(ext)
-			{
-				var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
-				if(!extra_shadercode)
-				{
-					LS.ResourcesManager.load( filename ); //force load
-					return null;
-				}
-				if(!block.include_subfile)
-					code += "\n" + extra_shadercode._subfiles[""] + "\n";
-				else
-				{
-					var extra = extra_shadercode._subfiles[ block.include_subfile ];
-					if(extra === undefined)
-						return null;
-					code += "\n" + extra + "\n";
-				}
-			}
-			else
-			{
-				var snippet_code = LS.ShadersManager.getSnippet( filename );
-				if( !snippet_code )
-					return null; //snippet not found
-				code += "\n" + snippet_code.code + "\n";
-			}
-		}
-		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
-		{
-			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
-			if(!shader_block)
-			{
-				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
-				return null;
-			}
-
-			var block_code = shader_block.getCode( shader_type, block_flags );
-			code += "\n" + block_code + "\n";
-		}
-	}
-
-	return code;
-}
-
-//given a code with some pragmas, it separates them
-ShaderCode.parseGLSLCode = function( code )
-{
-	//remove comments
-	code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
-
-	var blocks = [];
-	var current_block = [];
-	var pragmas = {};
-	var uniforms = {};
-	var includes = {};
-	var shader_blocks = {};
-	var is_dynamic = false; //means this shader has no variations using pragmas or macros
-
-	var lines = code.split("\n");
-
-	/* 
-	//clean (this helps in case a line contains two instructions, like "uniform float a; uniform float b;"
-	var clean_lines = [];
-	for(var i = 0; i < lines.length; i++)
-	{
-		var line = lines[i].trim();
-		if(!line)
-			continue;
-		var pos = line.lastIndexOf(";");
-		if(pos == -1 || pos == lines.length - 1)
-			clean_lines.push(line);
-		else
-		{
-			var sublines = line.split(";");
-			for(var j = 0; j < sublines.length; ++j)
-			{
-				if(sublines[j])
-					clean_lines.push( sublines[j] + ";" );
-			}
-		}
-	}
-	lines = clean_lines;
-	*/
-
-	//parse
-	for(var i = 0; i < lines.length; i++)
-	{
-		var line = lines[i].trim();
-		if(!line.length)
-			continue;//empty line
-
-		if(line[0] != "#")
-		{
-			var words = line.split(" ");
-			if( words[0] == "uniform" ) //store which uniforms we found in the code (not used)
-			{
-				var uniform_name = words[2].split(";");
-				uniforms[ uniform_name[0] ] = words[1];
-			}
-			current_block.push(line);
-			continue;
-		}
-
-		var t = line.split(" ");
-		if(t[0] == "#pragma")
-		{
-			//merge lines and add previous block
-			blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); 
-
-			is_dynamic = true;
-			pragmas[ t[2] ] = true;
-			var action = t[1];
-			current_block.length = 0;
-			var pragma_info = { type: ShaderCode.PRAGMA, line: line, action: action, param: t[2] };
-			if( action == "include")
-			{
-				if(!t[2])
-				{
-					console.error("shader include without path");
-					continue;
-				}
-
-				pragma_info.action_type = ShaderCode.INCLUDE;
-				//resolve include
-				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				var fullname = include.split(":");
-				var filename = fullname[0];
-				var subfile = fullname[1];
-				pragma_info.include = filename;
-				pragma_info.include_subfile = subfile;
-				includes[ pragma_info.include ] = true;
-			}
-			else if( action == "shaderblock" )
-			{
-				if(!t[2])
-				{
-					console.error("#pragma shaderblock without name");
-					continue;
-				}
-				pragma_info.action_type = ShaderCode.SHADERBLOCK;
-				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				pragma_info.shader_block = shader_block_name;
-				shader_blocks[ pragma_info.shader_block ] = true;
-				//pragma_info.shader_block_flag = this._shaderblock_flags_num;
-				//this._shaderblock_flags[ shader_block_name ] = pragma_info.shader_block_flag;
-				//this._shaderblock_flags_num += 1;
-			}
-
-			blocks.push( pragma_info ); //add pragma block
-		}
-		else
-			current_block.push( line ); //add line to current block lines
-	}
-
-	if(current_block.length)
-		blocks.push( { type: ShaderCode.CODE, code: current_block.join("\n") } ); //merge lines and add as block
-
-	return {
-		is_dynamic: is_dynamic,
-		code: code,
-		blocks: blocks,
-		pragmas: pragmas,
-		uniforms: uniforms,
-		includes: includes,
-		shader_blocks: shader_blocks
-	};
-}
 
 //makes this resource available 
 ShaderCode.prototype.register = function()
@@ -11170,7 +11296,7 @@ LS.registerResourceClass( ShaderCode );
 
 // now some shadercode examples that could be helpful
 
-//Example code for a shader
+//Example code for a shader (used in editor) **************************************************
 ShaderCode.examples = {};
 
 ShaderCode.examples.fx = "\n\
@@ -11239,6 +11365,7 @@ varying vec3 v_pos;\n\
 varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 //globals\n\
+uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
 uniform float u_time;\n\
 uniform vec3 u_background_color;\n\
@@ -21991,7 +22118,7 @@ function Light(o)
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;
-	this.spot_cone = true;
+	this._spot_cone = true;
 
 	this.projective_texture = null;
 
@@ -22024,7 +22151,7 @@ function Light(o)
 	this.cast_shadows = false;
 	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 0; //use automatic shadowmap size
-	this.type = Light.OMNI;
+	this._type = Light.OMNI;
 	this.frustum_size = 50; //ortho
 
 	this.extra_light_shader_code = null;
@@ -22039,6 +22166,7 @@ function Light(o)
 	this._query = new LS.ShaderQuery();
 	this._samplers = [];
 	this._uniforms = {
+		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, ...
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
@@ -22062,6 +22190,15 @@ Light["@projective_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@extra_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@color"] = { type: LS.TYPES.COLOR };
 
+Object.defineProperty( Light.prototype, 'type', {
+	get: function() { return this._type; },
+	set: function(v) { 
+		this._uniforms.u_light_info[0] = v;
+		this._type = v;
+	},
+	enumerable: true
+});
+
 Object.defineProperty( Light.prototype, 'position', {
 	get: function() { return this._position; },
 	set: function(v) { this._position.set(v); },
@@ -22083,6 +22220,15 @@ Object.defineProperty( Light.prototype, 'up', {
 Object.defineProperty( Light.prototype, 'color', {
 	get: function() { return this._color; },
 	set: function(v) { this._color.set(v); },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, 'spot_cone', {
+	get: function() { return this._spot_cone; },
+	set: function(v) { 
+		this._uniforms.u_light_info[1] = v;
+		this._spot_cone = v;
+	},
 	enumerable: true
 });
 
@@ -22188,8 +22334,8 @@ Light.prototype.updateLightCamera = function()
 		this._light_camera = new LS.Components.Camera();
 
 	var camera = this._light_camera;
-	camera.eye = this.getPosition(Light._temp_position);
-	camera.center = this.getTarget(Light._temp_target);
+	camera.eye = this.getPosition( Light._temp_position );
+	camera.center = this.getTarget( Light._temp_target );
 
 	var up = this.getUp(Light._temp_up);
 	var front = this.getFront(Light._temp_front);
@@ -22411,7 +22557,7 @@ Light.prototype.prepare = function( render_settings )
 	else //omni
 		query.macros.USE_OMNI_LIGHT = "";
 
-	if(this.spot_cone)
+	if(this._spot_cone)
 		query.macros.USE_SPOT_CONE = "";
 	if(this.linear_attenuation)
 		query.macros.USE_LINEAR_ATTENUATION = "";
@@ -22785,8 +22931,66 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 	return true;
 }
 
+Light.prototype.applyShaderBlockFlags = function( flags )
+{
+	if(this.enabled)
+		flags |= Light.shader_block.flag_mask;
+	return flags;
+}
+
 LS.registerComponent(Light);
 LS.Light = Light;
+
+LS.ShadersManager.registerSnippet("surface","\n\
+	//used to store surface shading properties\n\
+	struct SurfaceOutput {\n\
+		vec3 Albedo;\n\
+		vec3 Normal; //separated in case there is a normal map\n\
+		vec3 Emission;\n\
+		vec3 Ambient;\n\
+		float Specular;\n\
+		float Gloss;\n\
+		float Alpha;\n\
+		float Reflectivity;\n\
+		vec4 Extra; //for special purposes\n\
+	};\n\
+	\n\
+");
+
+LS.ShadersManager.registerSnippet("light_structs","\n\
+	uniform lowp vec4 u_light_info;\n\
+	uniform vec3 u_light_position;\n\
+	uniform vec4 u_light_params; //type, \n\
+	uniform vec3 u_light_front;\n\
+	uniform vec3 u_light_color;\n\
+	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
+	uniform vec2 u_light_att; //start,end \n\
+	//used to store light contribution\n\
+	struct FinalLight {\n\
+		vec3 Color;\n\
+		vec3 Ambient;\n\
+		float Diffuse; //NdotL\n\
+		float Specular; //RdotL\n\
+		vec3 Emission;\n\
+		vec3 Reflection;\n\
+		float Attenuation;\n\
+		float Shadow; //1.0 means fully lit\n\
+	};\n\
+	\n\
+	FinalLight getLight()\n\
+	{\n\
+		FinalLight LIGHT;\n\
+		LIGHT.Color = u_light_color;\n\
+		LIGHT.Ambient = vec3(0.0);\n\
+		LIGHT.Diffuse = 1.0;\n\
+		LIGHT.Specular = 0.0;\n\
+		LIGHT.Reflection = vec3(0.0);\n\
+		LIGHT.Attenuation = 0.0;\n\
+		LIGHT.Shadow = 1.0;\n\
+		return LIGHT;\n\
+	}\n\
+");
+
 
 //Light ShaderBlocks
 /*
@@ -22796,103 +23000,114 @@ LS.Light = Light;
 	Light Shadowing (Hard, Soft)
 */
 
-Light._enabled_shaderblock = "\n\
-	uniform vec3 u_light_position;\n\
-	uniform vec4 u_light_params; //type, \n\
-	uniform vec3 u_light_front;\n\
-	uniform vec3 u_light_color;\n\
-	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
-	uniform vec2 u_light_att; //start,end \n\
+Light._enabled_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
+	#pragma snippet \"spotFalloff\"\n\
 	\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
 		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)\n\
 		vec3 E = (u_camera_eye - v_pos);\n\
 		float cam_dist = length(E);\n\
-		\n\
-		#ifdef USE_ORTHOGRAPHIC_CAMERA\n\
-			E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes\n\
-		#else\n\
-			E /= cam_dist;\n\
-		#endif\n\
+		E /= cam_dist;\n\
 		\n\
 		vec3 L = (u_light_position - v_pos);\n\
 		float light_distance = length(L);\n\
 		L /= light_distance;\n\
 		\n\
-		#ifdef USE_DIRECTIONAL_LIGHT\n\
+		if( u_light_info.x == 3.0 )\n\
 			L = -u_light_front;\n\
-		#endif\n\
 		\n\
 		vec3 R = reflect(E,N);\n\
 		\n\
 		float NdotL = 1.0;\n\
-		#ifdef USE_DIFFUSE_LIGHT\n\
-			NdotL = dot(N,L);\n\
-		#endif\n\
+		NdotL = dot(N,L);\n\
 		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);\n\
 		LIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );\n\
 		\n\
 		LIGHT.Attenuation = 1.0;\n\
-		#ifdef USE_LINEAR_ATTENUATION\n\
-			LIGHT.Attenuation = 100.0 / light_distance;\n\
-		#endif\n\
 		\n\
-		#ifdef USE_RANGE_ATTENUATION\n\
-			#ifndef USE_DIRECTIONAL_LIGHT\n\
-				if(light_distance >= u_light_att.y)\n\
-					LIGHT.Attenuation = 0.0;\n\
-				else if(light_distance >= u_light_att.x)\n\
-					LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
-			#endif\n\
-		#endif\n\
-		\n\
-		#ifdef USE_SPOT_LIGHT\n\
-			#ifdef USE_SPOT_CONE\n\
-				LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );\n\
-			#endif\n\
-		#endif\n\
+		if( u_light_info.x == 2.0 && u_light_info.y == 1.0 )\n\
+			LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );\n\
 		\n\
 		NdotL = max( 0.0, NdotL );\n\
 		LIGHT.Diffuse = abs(NdotL);\n\
 		\n\
-		#ifdef USE_IGNORE_LIGHTS\n\
-			LIGHT.Color = vec3(1.0);\n\
-			LIGHT.Ambient = vec3(0.0);\n\
-			LIGHT.Diffuse = 1.0;\n\
-			LIGHT.Specular = 0.0;\n\
-		#endif\n\
 		//FINAL LIGHT FORMULA ************************* \n\
 		\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
 		\n\
 		vec3 final_color = o.Albedo * total_light;\n\
 		\n\
-		#ifdef FIRST_PASS\n\
-			final_color += o.Emission;\n\
-		#endif\n\
-		\n\
-		#ifndef USE_SPECULAR_ONTOP\n\
-			final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
-		#endif\n\
+		final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
 		\n\
 		return max( final_color, vec3(0.0) );\n\
 	}\n\
 ";
 
-Light._disabled_shaderblock = "\n\
+/*
+//attenuation
+	#ifdef USE_LINEAR_ATTENUATION\n\
+		LIGHT.Attenuation = 100.0 / light_distance;\n\
+	#endif\n\
+	\n\
+	#ifdef USE_RANGE_ATTENUATION\n\
+		#ifndef USE_DIRECTIONAL_LIGHT\n\
+			if(light_distance >= u_light_att.y)\n\
+				LIGHT.Attenuation = 0.0;\n\
+			else if(light_distance >= u_light_att.x)\n\
+				LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
+		#endif\n\
+	#endif\n\
+
+//no lights
+	#ifdef USE_IGNORE_LIGHTS\n\
+		LIGHT.Color = vec3(1.0);\n\
+		LIGHT.Ambient = vec3(0.0);\n\
+		LIGHT.Diffuse = 1.0;\n\
+		LIGHT.Specular = 0.0;\n\
+	#endif\n\
+
+//first pass
+	#ifdef FIRST_PASS\n\
+		final_color += o.Emission;\n\
+	#endif\n\
+
+*/
+
+Light._disabled_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
 	{\n\
-		return vec3(1.0);\n\
+		return vec3(o.Albedo);\n\
 	}\n\
 ";
 
-
 var light_block = new LS.ShaderBlock("light");
-light_block.addCode( GL.VERTEX_SHADER, Light._enabled_shaderblock, Light._disabled_shaderblock );
+light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
 Light.shader_block = light_block;
 
+/*
+Light._nolight_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	{\n\
+		return vec3(0.0);\n\
+	}\n\
+";
+
+var nolight_block = new LS.ShaderBlock("nolight");
+nolight_block.addCode( GL.FRAGMENT_SHADER, Light._nolight_shaderblock_code, Light._disabled_shaderblock_code );
+nolight_block.register();
+Light.nolight_shader_block = nolight_block;
+*/
 
 //TODO
 
@@ -26345,14 +26560,14 @@ AnnotationComponent.prototype.serialize = function()
 	return o;
 }
 
-AnnotationComponent.prototype.onAddedToScene = function(node)
+AnnotationComponent.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse,this);
 }
 
-AnnotationComponent.prototype.onRemovedFromScene = function(node)
+AnnotationComponent.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse,this);
 }
 
 AnnotationComponent.prototype.onMouse = function(type, e)
@@ -38073,7 +38288,6 @@ function SceneNode( name )
 	this._parentNode = null;
 	this._children = null;
 	this._in_tree = null;
-
 
 	//flags
 	this.flags = {

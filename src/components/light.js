@@ -76,7 +76,7 @@ function Light(o)
 	this.att_start = 0;
 	this.att_end = 1000;
 	this.offset = 0;
-	this.spot_cone = true;
+	this._spot_cone = true;
 
 	this.projective_texture = null;
 
@@ -109,7 +109,7 @@ function Light(o)
 	this.cast_shadows = false;
 	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 0; //use automatic shadowmap size
-	this.type = Light.OMNI;
+	this._type = Light.OMNI;
 	this.frustum_size = 50; //ortho
 
 	this.extra_light_shader_code = null;
@@ -124,6 +124,7 @@ function Light(o)
 	this._query = new LS.ShaderQuery();
 	this._samplers = [];
 	this._uniforms = {
+		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, ...
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
@@ -147,6 +148,15 @@ Light["@projective_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@extra_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@color"] = { type: LS.TYPES.COLOR };
 
+Object.defineProperty( Light.prototype, 'type', {
+	get: function() { return this._type; },
+	set: function(v) { 
+		this._uniforms.u_light_info[0] = v;
+		this._type = v;
+	},
+	enumerable: true
+});
+
 Object.defineProperty( Light.prototype, 'position', {
 	get: function() { return this._position; },
 	set: function(v) { this._position.set(v); },
@@ -168,6 +178,15 @@ Object.defineProperty( Light.prototype, 'up', {
 Object.defineProperty( Light.prototype, 'color', {
 	get: function() { return this._color; },
 	set: function(v) { this._color.set(v); },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, 'spot_cone', {
+	get: function() { return this._spot_cone; },
+	set: function(v) { 
+		this._uniforms.u_light_info[1] = v;
+		this._spot_cone = v;
+	},
 	enumerable: true
 });
 
@@ -273,8 +292,8 @@ Light.prototype.updateLightCamera = function()
 		this._light_camera = new LS.Components.Camera();
 
 	var camera = this._light_camera;
-	camera.eye = this.getPosition(Light._temp_position);
-	camera.center = this.getTarget(Light._temp_target);
+	camera.eye = this.getPosition( Light._temp_position );
+	camera.center = this.getTarget( Light._temp_target );
 
 	var up = this.getUp(Light._temp_up);
 	var front = this.getFront(Light._temp_front);
@@ -496,7 +515,7 @@ Light.prototype.prepare = function( render_settings )
 	else //omni
 		query.macros.USE_OMNI_LIGHT = "";
 
-	if(this.spot_cone)
+	if(this._spot_cone)
 		query.macros.USE_SPOT_CONE = "";
 	if(this.linear_attenuation)
 		query.macros.USE_LINEAR_ATTENUATION = "";
@@ -870,8 +889,66 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 	return true;
 }
 
+Light.prototype.applyShaderBlockFlags = function( flags )
+{
+	if(this.enabled)
+		flags |= Light.shader_block.flag_mask;
+	return flags;
+}
+
 LS.registerComponent(Light);
 LS.Light = Light;
+
+LS.ShadersManager.registerSnippet("surface","\n\
+	//used to store surface shading properties\n\
+	struct SurfaceOutput {\n\
+		vec3 Albedo;\n\
+		vec3 Normal; //separated in case there is a normal map\n\
+		vec3 Emission;\n\
+		vec3 Ambient;\n\
+		float Specular;\n\
+		float Gloss;\n\
+		float Alpha;\n\
+		float Reflectivity;\n\
+		vec4 Extra; //for special purposes\n\
+	};\n\
+	\n\
+");
+
+LS.ShadersManager.registerSnippet("light_structs","\n\
+	uniform lowp vec4 u_light_info;\n\
+	uniform vec3 u_light_position;\n\
+	uniform vec4 u_light_params; //type, \n\
+	uniform vec3 u_light_front;\n\
+	uniform vec3 u_light_color;\n\
+	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
+	uniform vec2 u_light_att; //start,end \n\
+	//used to store light contribution\n\
+	struct FinalLight {\n\
+		vec3 Color;\n\
+		vec3 Ambient;\n\
+		float Diffuse; //NdotL\n\
+		float Specular; //RdotL\n\
+		vec3 Emission;\n\
+		vec3 Reflection;\n\
+		float Attenuation;\n\
+		float Shadow; //1.0 means fully lit\n\
+	};\n\
+	\n\
+	FinalLight getLight()\n\
+	{\n\
+		FinalLight LIGHT;\n\
+		LIGHT.Color = u_light_color;\n\
+		LIGHT.Ambient = vec3(0.0);\n\
+		LIGHT.Diffuse = 1.0;\n\
+		LIGHT.Specular = 0.0;\n\
+		LIGHT.Reflection = vec3(0.0);\n\
+		LIGHT.Attenuation = 0.0;\n\
+		LIGHT.Shadow = 1.0;\n\
+		return LIGHT;\n\
+	}\n\
+");
+
 
 //Light ShaderBlocks
 /*
@@ -881,100 +958,111 @@ LS.Light = Light;
 	Light Shadowing (Hard, Soft)
 */
 
-Light._enabled_shaderblock = "\n\
-	uniform vec3 u_light_position;\n\
-	uniform vec4 u_light_params; //type, \n\
-	uniform vec3 u_light_front;\n\
-	uniform vec3 u_light_color;\n\
-	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
-	uniform vec2 u_light_att; //start,end \n\
+Light._enabled_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
+	#pragma snippet \"spotFalloff\"\n\
 	\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
 		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)\n\
 		vec3 E = (u_camera_eye - v_pos);\n\
 		float cam_dist = length(E);\n\
-		\n\
-		#ifdef USE_ORTHOGRAPHIC_CAMERA\n\
-			E = mix( E / cam_dist, -u_camera_front, 0.9999); //HACK, if I use u_camera_front directly it crashes\n\
-		#else\n\
-			E /= cam_dist;\n\
-		#endif\n\
+		E /= cam_dist;\n\
 		\n\
 		vec3 L = (u_light_position - v_pos);\n\
 		float light_distance = length(L);\n\
 		L /= light_distance;\n\
 		\n\
-		#ifdef USE_DIRECTIONAL_LIGHT\n\
+		if( u_light_info.x == 3.0 )\n\
 			L = -u_light_front;\n\
-		#endif\n\
 		\n\
 		vec3 R = reflect(E,N);\n\
 		\n\
 		float NdotL = 1.0;\n\
-		#ifdef USE_DIFFUSE_LIGHT\n\
-			NdotL = dot(N,L);\n\
-		#endif\n\
+		NdotL = dot(N,L);\n\
 		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);\n\
 		LIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );\n\
 		\n\
 		LIGHT.Attenuation = 1.0;\n\
-		#ifdef USE_LINEAR_ATTENUATION\n\
-			LIGHT.Attenuation = 100.0 / light_distance;\n\
-		#endif\n\
 		\n\
-		#ifdef USE_RANGE_ATTENUATION\n\
-			#ifndef USE_DIRECTIONAL_LIGHT\n\
-				if(light_distance >= u_light_att.y)\n\
-					LIGHT.Attenuation = 0.0;\n\
-				else if(light_distance >= u_light_att.x)\n\
-					LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
-			#endif\n\
-		#endif\n\
-		\n\
-		#ifdef USE_SPOT_LIGHT\n\
-			#ifdef USE_SPOT_CONE\n\
-				LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );\n\
-			#endif\n\
-		#endif\n\
+		if( u_light_info.x == 2.0 && u_light_info.y == 1.0 )\n\
+			LIGHT.Attenuation *= spotFalloff( u_light_front, normalize( u_light_position - v_pos ), u_light_angle.z, u_light_angle.w );\n\
 		\n\
 		NdotL = max( 0.0, NdotL );\n\
 		LIGHT.Diffuse = abs(NdotL);\n\
 		\n\
-		#ifdef USE_IGNORE_LIGHTS\n\
-			LIGHT.Color = vec3(1.0);\n\
-			LIGHT.Ambient = vec3(0.0);\n\
-			LIGHT.Diffuse = 1.0;\n\
-			LIGHT.Specular = 0.0;\n\
-		#endif\n\
 		//FINAL LIGHT FORMULA ************************* \n\
 		\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
 		\n\
 		vec3 final_color = o.Albedo * total_light;\n\
 		\n\
-		#ifdef FIRST_PASS\n\
-			final_color += o.Emission;\n\
-		#endif\n\
-		\n\
-		#ifndef USE_SPECULAR_ONTOP\n\
-			final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
-		#endif\n\
+		final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
 		\n\
 		return max( final_color, vec3(0.0) );\n\
 	}\n\
 ";
 
-Light._disabled_shaderblock = "\n\
+/*
+//attenuation
+	#ifdef USE_LINEAR_ATTENUATION\n\
+		LIGHT.Attenuation = 100.0 / light_distance;\n\
+	#endif\n\
+	\n\
+	#ifdef USE_RANGE_ATTENUATION\n\
+		#ifndef USE_DIRECTIONAL_LIGHT\n\
+			if(light_distance >= u_light_att.y)\n\
+				LIGHT.Attenuation = 0.0;\n\
+			else if(light_distance >= u_light_att.x)\n\
+				LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
+		#endif\n\
+	#endif\n\
+
+//no lights
+	#ifdef USE_IGNORE_LIGHTS\n\
+		LIGHT.Color = vec3(1.0);\n\
+		LIGHT.Ambient = vec3(0.0);\n\
+		LIGHT.Diffuse = 1.0;\n\
+		LIGHT.Specular = 0.0;\n\
+	#endif\n\
+
+//first pass
+	#ifdef FIRST_PASS\n\
+		final_color += o.Emission;\n\
+	#endif\n\
+
+*/
+
+Light._disabled_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
 	{\n\
-		return vec3(1.0);\n\
+		return vec3(o.Albedo);\n\
 	}\n\
 ";
 
-
 var light_block = new LS.ShaderBlock("light");
-light_block.addCode( GL.VERTEX_SHADER, Light._enabled_shaderblock, Light._disabled_shaderblock );
+light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
 Light.shader_block = light_block;
 
+/*
+Light._nolight_shaderblock_code = "\n\
+	#pragma snippet \"input\"\n\
+	#pragma snippet \"surface\"\n\
+	#pragma snippet \"light_structs\"\n\
+	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
+	{\n\
+		return vec3(0.0);\n\
+	}\n\
+";
+
+var nolight_block = new LS.ShaderBlock("nolight");
+nolight_block.addCode( GL.FRAGMENT_SHADER, Light._nolight_shaderblock_code, Light._disabled_shaderblock_code );
+nolight_block.register();
+Light.nolight_shader_block = nolight_block;
+*/

@@ -99,14 +99,14 @@ AnnotationComponent.prototype.serialize = function()
 	return o;
 }
 
-AnnotationComponent.prototype.onAddedToScene = function(node)
+AnnotationComponent.prototype.onAddedToScene = function(scene)
 {
-	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse,this);
 }
 
-AnnotationComponent.prototype.onRemovedFromScene = function(node)
+AnnotationComponent.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.bind( scene,"mousedown",this.onMouse.bind(this),this);
+	LEvent.bind( scene,"mousedown",this.onMouse,this);
 }
 
 AnnotationComponent.prototype.onMouse = function(type, e)
