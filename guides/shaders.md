@@ -142,6 +142,20 @@ To do this first the shader must accept to have the shaderblock supported by usi
 	 applySkinning( vertex4, v_normal );  
 ```
 
+### pragma snippet
+
+You can include snippets of code that are stored in the snippets container, this is used internally to avoid creating the same code several times.
+
+```c++
+	#pragma snippet "lighting"
+```
+
+To create a snippet:
+
+
+```javascript
+	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
+```
 
 ## Shader Example ##
 
