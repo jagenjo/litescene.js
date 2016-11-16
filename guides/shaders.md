@@ -100,17 +100,21 @@ Here is one example that passes the matrix of a camera to the material:
 
 ```javascript
 this.createSampler("Texture","u_texture");
-this.createProperty("Camera", null, LS.TYPES.COMPONENT);
+//create a property Camera that we will use to pass some data about the scene to this shader
+this.createProperty("Camera", null, LS.TYPES.COMPONENT); 
 
 this.onPrepare = function( scene )
 {
-  if(!this.Camera)
+  if(!this.Camera) //the property Camera has not been assigned in the material
     return;
+  //read the this.Camera value (the string with the UID of the camera the user assigned to this material)
+  //and try to find the component with that UID (the camera object itself)
   var camera = scene.findComponentByUId( this.Camera );
-  if(!camera)
+  if(!camera) //no component with that uid
     return;
   if(!this._uniforms.u_textureprojection_matrix)
     this._uniforms.u_textureprojection_matrix = mat4.create();
+  //now we can use that info
   camera.getViewProjectionMatrix( this._uniforms.u_textureprojection_matrix );
 }
 ```
