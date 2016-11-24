@@ -94,9 +94,11 @@ SurfaceMaterial.prototype.computeCode = function()
 			case 'vec3': code += "vec3 "; break;
 			case 'color4':
 			case 'vec4': code += "vec4 "; break;
+			case 'sampler':
 			case 'texture': code += "sampler2D "; break;
 			case 'cubemap': code += "samplerCube "; break;
-			default: continue;
+			default: 
+				continue;
 		}
 		code += prop.name + ";";
 		uniforms_code += code;
@@ -164,6 +166,8 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		var prop = this.properties[i];
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
 		{
+			var texture = prop.value;
+			/*
 			if(!prop.value)
 				texture = ":black";
 			else
@@ -173,6 +177,7 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 				if(!texture)
 					texture = ":missing";
 			}
+			*/
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;

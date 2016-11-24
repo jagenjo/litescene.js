@@ -86,10 +86,12 @@ var Renderer = {
 		this._black_texture = new GL.Texture(1,1, { pixel_data: [0,0,0,255] });
 		this._gray_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
+		this._normal_texture = new GL.Texture(1,1, { pixel_data: [128,128,255,255] });
 		this._missing_texture = this._gray_texture;
 		LS.ResourcesManager.textures[":black"] = this._black_texture;
 		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
 		LS.ResourcesManager.textures[":white"] = this._white_texture;
+		LS.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
 
 		//draw helps rendering debug stuff
 		LS.Draw.init();
@@ -395,11 +397,22 @@ var Renderer = {
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
 		gl.enable(gl.SCISSOR_TEST);
 
-		//clear buffer 
+		//clear color buffer 
+		gl.colorMask( true, true, true, true );
 		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
 
-		gl.disable(gl.SCISSOR_TEST);
+		//clear depth buffer
+		gl.depthMask( true );
+
+		//to clear the stencil
+		gl.enable( gl.STENCIL_TEST );
+		gl.clearStencil( 0x0 );
+
+		//do the clearing
+		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) | gl.STENCIL_BUFFER_BIT );
+
+		gl.disable( gl.SCISSOR_TEST );
+		gl.disable( gl.STENCIL_TEST );
 	},
 
 	sortRenderQueues: function( camera, render_settings )
@@ -439,12 +452,21 @@ var Renderer = {
 		//LS.RenderState.reset(); 
 
 		gl.enable( gl.CULL_FACE );
+		gl.frontFace(gl.CCW);
+
+		gl.colorMask(true,true,true,true);
+
 		gl.enable( gl.DEPTH_TEST );
-		gl.disable( gl.BLEND );
 		gl.depthFunc( gl.LESS );
 		gl.depthMask(true);
-		gl.frontFace(gl.CCW);
+
+		gl.disable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+
+		gl.disable( gl.STENCIL_TEST );
+		gl.stencilMask( 0xFF );
+		gl.stencilOp( gl.KEEP, gl.KEEP, gl.KEEP );
+		gl.stencilFunc( gl.ALWAYS, 1, 0xFF );
 	},
 
 	/**
@@ -560,6 +582,8 @@ var Renderer = {
 					instance.onPostRender( render_settings );
 			}
 		}
+
+		this.resetGLState( render_settings );
 
 		LEvent.trigger( scene, "renderScreenSpace", render_settings);
 
@@ -922,6 +946,7 @@ var Renderer = {
 						case "black": tex = this._black_texture; break;
 						case "white": tex = this._white_texture; break;
 						case "gray": tex = this._gray_texture; break;
+						case "normal": tex = this._normal_texture; break;
 						default: tex = this._missing_texture;
 					}
 				}

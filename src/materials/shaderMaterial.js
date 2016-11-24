@@ -377,12 +377,12 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 {
 	if(!this.shader)
-		return false;
+		return true; //skip rendering
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		return false;
+		return true; //skip rendering
 
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
@@ -424,7 +424,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
 		if(!shader)
-			return false;
+			return true;
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );

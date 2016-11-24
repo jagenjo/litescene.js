@@ -15,6 +15,7 @@ function RenderFrameContext( o )
 	this.filter_texture = true; //magFilter
 	this.format = GL.RGBA;
 	this.use_depth_texture = false;
+	this.use_stencil_buffer = false;
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored
 
@@ -84,6 +85,7 @@ RenderFrameContext.prototype.configure = function(o)
 	this.filter_texture = !!o.filter_texture;
 	this.adjust_aspect = !!o.adjust_aspect;
 	this.use_depth_texture = !!o.use_depth_texture;
+	this.use_stencil_buffer = !!o.use_stencil_buffer;
 	this.num_extra_textures = o.num_extra_textures || 0;
 	this.name = o.name;
 	this.clone_after_unbind = !!o.clone_after_unbind;
@@ -99,6 +101,7 @@ RenderFrameContext.prototype.serialize = function()
 		format: this.format,
 		adjust_aspect: this.adjust_aspect,
 		use_depth_texture:  this.use_depth_texture,
+		use_stencil_buffer: this.use_stencil_buffer,
 		num_extra_textures:  this.num_extra_textures,
 		clone_after_unbind: this.clone_after_unbind,
 		name: this.name
@@ -160,8 +163,19 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	}
 
 	//for the depth
-	if( this.use_depth_texture && (!this._depth_texture || this._depth_texture.width != final_width || this._depth_texture.height != final_height) && gl.extensions["WEBGL_depth_texture"] )
-		this._depth_texture = new GL.Texture( final_width, final_height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
+	var depth_format = gl.DEPTH_COMPONENT;
+	var depth_type = gl.UNSIGNED_INT;
+
+	if(this.use_stencil_buffer && gl.extensions.WEBGL_depth_texture)
+	{
+		depth_format = gl.DEPTH_STENCIL;
+		depth_type = gl.extensions.WEBGL_depth_texture.UNSIGNED_INT_24_8_WEBGL;
+	}
+
+	if( this.use_depth_texture && 
+		(!this._depth_texture || this._depth_texture.width != final_width || this._depth_texture.height != final_height || this._depth_texture.format != depth_format || this._depth_texture.type != depth_type ) && 
+		gl.extensions["WEBGL_depth_texture"] )
+		this._depth_texture = new GL.Texture( final_width, final_height, { filter: gl.NEAREST, format: depth_format, type: depth_type });
 	else if( !this.use_depth_texture )
 		this._depth_texture = null;
 
@@ -180,6 +194,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	textures.length = 1 + total_extra;
 
 	//assign textures (this will enable the FBO but it will restore the old one after finishing)
+	this._fbo.stencil = this.use_stencil_buffer;
 	this._fbo.setTextures( textures, this._depth_texture );
 }
 

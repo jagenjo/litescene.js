@@ -6,7 +6,6 @@
 * @constructor
 * @param {Object} object to configure from
 */
-
 function Light(o)
 {
 	/**
@@ -913,9 +912,21 @@ LS.ShadersManager.registerSnippet("surface","\n\
 		vec4 Extra; //for special purposes\n\
 	};\n\
 	\n\
+	SurfaceOutput getSurfaceOutput()\n\
+	{\n\
+		SurfaceOutput o;\n\
+		o.Albedo = u_material_color.xyz;\n\
+		o.Alpha = u_material_color.a;\n\
+		o.Normal = normalize( v_normal );\n\
+		o.Specular = 0.5;\n\
+		o.Gloss = 10.0;\n\
+		return o;\n\
+	}\n\
 ");
 
 LS.ShadersManager.registerSnippet("light_structs","\n\
+	#ifndef SB_LIGHT_STRUCTS\n\
+	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
 	uniform vec3 u_light_position;\n\
 	uniform vec4 u_light_params; //type, \n\
@@ -947,13 +958,13 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		LIGHT.Shadow = 1.0;\n\
 		return LIGHT;\n\
 	}\n\
+	#endif\n\
 ");
 
 
 //Light ShaderBlocks
 /*
-	Light Equation (Point, Spot, Directional)
-	Light Modifiers (Cookies, Cell shading)
+	Light Modifiers (Cookies)
 	Light Attenuation (Linear, Exponential)
 	Light Shadowing (Hard, Soft)
 */
@@ -963,6 +974,7 @@ Light._enabled_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
+	#pragma shaderblock \"shadowmapping\"\n\
 	\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
@@ -993,6 +1005,10 @@ Light._enabled_shaderblock_code = "\n\
 		NdotL = max( 0.0, NdotL );\n\
 		LIGHT.Diffuse = abs(NdotL);\n\
 		\n\
+		\n\
+		#ifdef LIGHT_FUNC\n\
+			LIGHT_FUNC(LIGHT);\n\
+		#endif\n\
 		//FINAL LIGHT FORMULA ************************* \n\
 		\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
@@ -1066,3 +1082,86 @@ nolight_block.addCode( GL.FRAGMENT_SHADER, Light._nolight_shaderblock_code, Ligh
 nolight_block.register();
 Light.nolight_shader_block = nolight_block;
 */
+
+Light._shadowmap_cubemap_code = "\n\
+	#define SHADOWMAP_ACTIVE\n\
+	uniform samplerCube shadowmap;\n\
+	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	\n\
+	float VectorToDepthValue(vec3 Vec)\n\
+	{\n\
+		vec3 AbsVec = abs(Vec);\n\
+		float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));\n\
+		float n = u_shadow_params.z;\n\
+		float f = u_shadow_params.w;\n\
+		float NormZComp = (f+n) / (f-n) - (2.0*f*n)/(f-n)/LocalZcomp;\n\
+		return (NormZComp + 1.0) * 0.5;\n\
+	}\n\
+	\n\
+	float UnpackDepth32(vec4 depth)\n\
+	{\n\
+		const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
+		return dot(depth.xyzw , bitShifts);\n\
+	}\n\
+	\n\
+	float testShadow( vec3 offset )\n\
+	{\n\
+		float shadow = 0.0;\n\
+		float depth = 0.0;\n\
+		float bias = u_shadow_params.y;\n\
+		\n\
+		vec3 l_vector = (v_pos - u_light_position);\n\
+		float dist = length(l_vector);\n\
+		float pixel_z = VectorToDepthValue( l_vector );\n\
+		if(pixel_z >= 0.998) return 0.0; //fixes a little bit the far edge bug\n\
+		vec4 depth_color = textureCube( shadowmap, l_vector + offset * dist );\n\
+		float ShadowVec = UnpackDepth32( depth_color );\n\
+		if ( ShadowVec > pixel_z - bias )\n\
+			return 0.0; //no shadow\n\
+		return 1.0; //full shadow\n\
+	}\n\
+";
+
+Light._shadowmap_flat_enabled_code = "\n\
+	#ifndef SHADOWMAP_ACTIVE\n\
+		#define SHADOWMAP_ACTIVE\n\
+	#endif\n\
+	uniform sampler2D shadowmap;\n\
+	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	\n\
+	float UnpackDepth32(vec4 depth)\n\
+	{\n\
+		#ifdef USE_SHADOW_DEPTH_TEXTURE\n\
+			return depth.x;\n\
+		#else\n\
+			const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
+			return dot(depth.xyzw , bitShifts);\n\
+		#endif\n\
+	}\n\
+	\n\
+	float testShadow(vec3 offset)\n\
+	{\n\
+		float shadow = 0.0;\n\
+		float depth = 0.0;\n\
+		float bias = u_shadow_params.y;\n\
+		\n\
+		vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
+		//is inside light frustum\n\
+		if (clamp(sample, 0.0, 1.0) == sample) { \n\
+			float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );\n\
+			depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
+		}\n\
+		else \n\
+			return 0.0; //outside of shadowmap, no shadow\n\
+		\n\
+		if (depth > 0.0) {\n\
+			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 1.0 : 0.0;\n\
+		}\n\
+		return shadow;\n\
+	}\n\
+";
+
+var shadowmapping_block = new LS.ShaderBlock("testShadow");
+shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_flat_enabled_code, "" );
+shadowmapping_block.register();
+Light.shadowmapping_shader_block = shadowmapping_block;

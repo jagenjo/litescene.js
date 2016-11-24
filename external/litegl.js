@@ -29,6 +29,10 @@ GL.last_context_id = 0;
 //Define WEBGL ENUMS as statics (more to come in WebGL 2)
 //sometimes we need some gl enums before having the gl context, solution: define them globally because the specs says they are constant)
 
+GL.COLOR_BUFFER_BIT = 16384;
+GL.DEPTH_BUFFER_BIT = 256;
+GL.STENCIL_BUFFER_BIT = 1024;
+
 GL.TEXTURE_2D = 3553;
 GL.TEXTURE_CUBE_MAP = 34067;
 
@@ -62,7 +66,8 @@ GL.RGB = 6407;
 GL.RGBA = 6408;
 GL.LUMINANCE = 6409;
 GL.LUMINANCE_ALPHA = 6410;
-
+GL.DEPTH_STENCIL = 34041;
+GL.UNSIGNED_INT_24_8_WEBGL = 34042;
 
 GL.NEAREST = 9728;
 GL.LINEAR = 9729;
@@ -106,6 +111,14 @@ GL.GREATER = 516;
 GL.NOTEQUAL = 517;
 GL.GEQUAL = 518;
 GL.ALWAYS = 519;
+
+GL.KEEP = 7680;
+GL.REPLACE = 7681;
+GL.INCR = 7682;
+GL.DECR = 7683;
+GL.INCR_WRAP = 34055;
+GL.DECR_WRAP = 34056;
+GL.INVERT = 5386;
 
 GL.STREAM_DRAW = 35040;
 GL.STATIC_DRAW = 35044;
@@ -2565,7 +2578,7 @@ Mesh.prototype.computeWireframe = function() {
 
 
 /**
-* Multiplies every normal vy -1 and uploads it
+* Multiplies every normal by -1 and uploads it
 * @method flipNormals
 * @param {enum} stream_type default gl.STATIC_DRAW (other: gl.DYNAMIC_DRAW, gl.STREAM_DRAW)
 */
@@ -2580,8 +2593,8 @@ Mesh.prototype.flipNormals = function( stream_type  ) {
 	normals_buffer.upload( stream_type );
 
 	//reverse indices too
-	if(this.indexBuffers["triangles"])
-		this.computeIndices();
+	if( !this.indexBuffers["triangles"] )
+		this.computeIndices(); //create indices
 
 	var triangles_buffer = this.indexBuffers["triangles"];
 	var data = triangles_buffer.data;
@@ -2693,6 +2706,67 @@ Mesh.prototype.computeIndices = function() {
 	this.createIndexBuffer( "triangles", indices );
 }
 
+/**
+* Breaks the indices
+* @method explodeIndices
+*/
+Mesh.prototype.explodeIndices = function( buffer_name ) {
+
+	buffer_name = buffer_name || "triangles";
+
+	var indices_buffer = this.getIndexBuffer( buffer_name );
+	if(!indices_buffer)
+		return;
+
+	var indices = indices_buffer.data;
+
+	//cluster by distance
+	var new_vertices = new Float32Array(indices.length * 3);
+	var new_normals = null;
+	var new_coords = null;
+
+	var old_vertices_buffer = this.vertexBuffers["vertices"];
+	var old_vertices = old_vertices_buffer.data;
+
+	var old_normals_buffer = this.vertexBuffers["normals"];
+	var old_normals = null;
+	if(old_normals_buffer)
+	{
+		old_normals = old_normals_buffer.data;
+		new_normals = new Float32Array(indices.length * 3);
+	}
+
+	var old_coords_buffer = this.vertexBuffers["coords"];
+	var old_coords = null;
+	if( old_coords_buffer )
+	{
+		old_coords = old_coords_buffer.data;
+		new_coords = new Float32Array(indices.length * 2);
+	}
+
+	for(var i = 0, l = indices.length; i < l; ++i)
+	{
+		var index = indices[i];
+		new_vertices.set( old_vertices.subarray( index*3, index*3 + 3 ), i*3 );
+		if(old_normals)
+			new_normals.set( old_normals.subarray( index*3, index*3 + 3 ), i*3 );
+		if(old_coords)
+			new_coords.set( old_coords.subarray( index*2, index*2 + 2 ), i*2 );
+	}
+
+	//erase all
+	this.vertexBuffers = {}; 
+
+	//new buffers
+	this.createVertexBuffer( 'vertices', GL.Mesh.common_buffers["vertices"].attribute, 3, new_vertices );	
+	if(new_normals)
+		this.createVertexBuffer( 'normals', GL.Mesh.common_buffers["normals"].attribute, 3, new_normals );	
+	if(new_coords)
+		this.createVertexBuffer( 'coords', GL.Mesh.common_buffers["coords"].attribute, 2, new_coords );	
+
+	delete this.indexBuffers[ buffer_name ];
+}
+
 
 
 /**
@@ -2704,7 +2778,7 @@ Mesh.prototype.computeNormals = function( stream_type  ) {
 	var vertices = this.vertexBuffers["vertices"].data;
 	var num_vertices = vertices.length / 3;
 
-	//create because it is faster than filling it with zeros (till the .fill method is introduced)
+	//create because it is faster than filling it with zeros
 	var normals = new Float32Array( vertices.length );
 
 	var triangles = null;
@@ -2781,7 +2855,7 @@ Mesh.prototype.computeNormals = function( stream_type  ) {
 * Creates a new stream with the tangents
 * @method computeTangents
 */
-Mesh.prototype.computeTangents = function() {
+Mesh.prototype.computeTangents = function( ) {
 	var vertices = this.vertexBuffers["vertices"].data;
 	var normals = this.vertexBuffers["normals"].data;
 	var uvs = this.vertexBuffers["coords"].data;
@@ -2864,6 +2938,116 @@ Mesh.prototype.computeTangents = function() {
 
 	this.createVertexBuffer('tangents', Mesh.common_buffers["tangents"].attribute, 4, tangents );
 }
+
+/**
+* Creates texture coordinates using a triplanar aproximation
+* @method computeTextureCoordinates
+*/
+Mesh.prototype.computeTextureCoordinates = function( stream_type )
+{
+	var vertices_buffer = this.vertexBuffers["vertices"];
+	if(!vertices_buffer)
+		return;
+
+	this.explodeIndices( "triangles" );
+
+	var vertices = vertices_buffer.data;
+	var num_vertices = vertices.length / 3;
+
+	var uvs_buffer = this.vertexBuffers["coords"];
+	var uvs = uvs_buffer ? uvs_buffer.data : new Float32Array( num_vertices * 2 );
+
+	var triangles_buffer = this.indexBuffers["triangles"];
+	var triangles = null;
+	if( triangles_buffer )
+		triangles = triangles_buffer.data;
+
+	var plane_normal = vec3.create();
+	var side1 = vec3.create();
+	var side2 = vec3.create();
+
+	var bbox = this.getBoundingBox();
+	var bboxcenter = BBox.getCenter( bbox );
+	var bboxhs = vec3.create();
+	bboxhs.set( BBox.getHalfsize( bbox ) ); //careful, this is a reference
+	vec3.scale( bboxhs, bboxhs, 2 );
+
+	var num = triangles ? triangles.length : vertices.length/3;
+
+	for (var a = 0; a < num; a+=3)
+	{
+		if(triangles)
+		{
+			var i1 = triangles[a];
+			var i2 = triangles[a+1];
+			var i3 = triangles[a+2];
+
+			var v1 = vertices.subarray(i1*3,i1*3+3);
+			var v2 = vertices.subarray(i2*3,i2*3+3);
+			var v3 = vertices.subarray(i3*3,i3*3+3);
+
+			var uv1 = uvs.subarray(i1*2,i1*2+2);
+			var uv2 = uvs.subarray(i2*2,i2*2+2);
+			var uv3 = uvs.subarray(i3*2,i3*2+2);
+		}
+		else
+		{
+			var v1 = vertices.subarray((a)*3,(a)*3+3);
+			var v2 = vertices.subarray((a+1)*3,(a+1)*3+3);
+			var v3 = vertices.subarray((a+2)*3,(a+2)*3+3);
+
+			var uv1 = uvs.subarray((a)*2,(a)*2+2);
+			var uv2 = uvs.subarray((a+1)*2,(a+1)*2+2);
+			var uv3 = uvs.subarray((a+2)*2,(a+2)*2+2);
+		}
+
+		vec3.sub(side1, v1, v2 );
+		vec3.sub(side2, v1, v3 );
+		vec3.cross( plane_normal, side1, side2 );
+		//vec3.normalize( plane_normal, plane_normal ); //not necessary
+
+		plane_normal[0] = Math.abs( plane_normal[0] );
+		plane_normal[1] = Math.abs( plane_normal[1] );
+		plane_normal[2] = Math.abs( plane_normal[2] );
+
+		if( plane_normal[0] > plane_normal[1] && plane_normal[0] > plane_normal[2])
+		{
+			//X
+			uv1[0] = (v1[2] - bboxcenter[2]) / bboxhs[2];
+			uv1[1] = (v1[1] - bboxcenter[1]) / bboxhs[1];
+			uv2[0] = (v2[2] - bboxcenter[2]) / bboxhs[2];
+			uv2[1] = (v2[1] - bboxcenter[1]) / bboxhs[1];
+			uv3[0] = (v3[2] - bboxcenter[2]) / bboxhs[2];
+			uv3[1] = (v3[1] - bboxcenter[1]) / bboxhs[1];
+		}
+		else if ( plane_normal[1] > plane_normal[2])
+		{
+			//Y
+			uv1[0] = (v1[0] - bboxcenter[0]) / bboxhs[0];
+			uv1[1] = (v1[2] - bboxcenter[2]) / bboxhs[2];
+			uv2[0] = (v2[0] - bboxcenter[0]) / bboxhs[0];
+			uv2[1] = (v2[2] - bboxcenter[2]) / bboxhs[2];
+			uv3[0] = (v3[0] - bboxcenter[0]) / bboxhs[0];
+			uv3[1] = (v3[2] - bboxcenter[2]) / bboxhs[2];
+		}
+		else
+		{
+			//Z
+			uv1[0] = (v1[0] - bboxcenter[0]) / bboxhs[0];
+			uv1[1] = (v1[1] - bboxcenter[1]) / bboxhs[1];
+			uv2[0] = (v2[0] - bboxcenter[0]) / bboxhs[0];
+			uv2[1] = (v2[1] - bboxcenter[1]) / bboxhs[1];
+			uv3[0] = (v3[0] - bboxcenter[0]) / bboxhs[0];
+			uv3[1] = (v3[1] - bboxcenter[1]) / bboxhs[1];
+		}
+	}
+
+	if(uvs_buffer)
+		uvs_buffer.upload( stream_type );
+	else
+		this.createVertexBuffer('coords', Mesh.common_buffers["coords"].attribute, 2, uvs );
+}
+
 
 /**
 * Computes bounding information
@@ -3310,6 +3494,26 @@ Mesh.getScreenQuad = function(gl)
 	return gl.meshes[":screen_quad"] = mesh;
 }
 
+function linearizeArray( array, typed_array_class )
+{
+	if(array.constructor === typed_array_class)
+		return array;
+	if(array.constructor !== Array)
+	{
+		typed_array_class = typed_array_class || Float32Array;
+		return new typed_array_class(array);
+	}
+
+	typed_array_class = typed_array_class || Float32Array;
+	var components = array[0].length;
+	var size = array.length * components;
+	var buffer = new typed_array_class(size);
+
+	for (var i=0; i < array.length;++i)
+		for(var j=0; j < components; ++j)
+			buffer[i*components + j] = array[i][j];
+	return buffer;
+}
 
 /**
 * @class Mesh
@@ -3955,7 +4159,7 @@ global.Texture = GL.Texture = function Texture( width, height, options, gl ) {
 	this.width = width;
 	this.height = height;
 	this.texture_type = options.texture_type || gl.TEXTURE_2D; //or gl.TEXTURE_CUBE_MAP
-	this.format = options.format || Texture.DEFAULT_FORMAT; //gl.RGBA (if gl.DEPTH_COMPONENT remember format: gl.UNSIGNED_SHORT)
+	this.format = options.format || Texture.DEFAULT_FORMAT; //gl.RGBA (if gl.DEPTH_COMPONENT remember type: gl.UNSIGNED_SHORT)
 	this.type = options.type || Texture.DEFAULT_TYPE; //gl.UNSIGNED_BYTE, gl.UNSIGNED_SHORT, gl.FLOAT or gl.HALF_FLOAT_OES (or gl.HIGH_PRECISION_FORMAT which could be half or float)
 	this.magFilter = options.magFilter || options.filter || Texture.DEFAULT_MAG_FILTER;
 	this.minFilter = options.minFilter || options.filter || Texture.DEFAULT_MIN_FILTER;
@@ -4073,6 +4277,13 @@ Texture.prototype.getProperties = function()
 	};
 }
 
+
+Texture.prototype.hasSameSize = function(t)
+{
+	if(!t)
+		return false;
+	return t.width == this.width && t.height == this.height;
+}
 //textures cannot be stored in JSON
 Texture.prototype.toJSON = function()
 {
@@ -5564,6 +5775,7 @@ Texture.nextPOT = function( size )
 {
 	return Math.pow( 2, Math.ceil( Math.log(size) / Math.log(2) ) );
 }
+
 /** 
 * FBO for FrameBufferObjects, FBOs are used to store the render inside one or several textures 
 * Supports multibuffer and depthbuffer texture, useful for deferred rendering
@@ -5613,7 +5825,9 @@ GL.FBO = FBO;
 */
 FBO.prototype.setTextures = function( color_textures, depth_texture, skip_disable )
 {
-	if( depth_texture && (depth_texture.format !== gl.DEPTH_COMPONENT || depth_texture.type != gl.UNSIGNED_INT ) )
+	if( depth_texture && 
+		( (depth_texture.format !== gl.DEPTH_COMPONENT && depth_texture.format !== gl.DEPTH_STENCIL) || 
+		( depth_texture.type != gl.UNSIGNED_INT && depth_texture.type != GL.UNSIGNED_INT_24_8_WEBGL ) ) )
 		throw("FBO Depth texture must be of format: gl.DEPTH_COMPONENT and type: gl.UNSIGNED_INT");
 
 	//test if is already binded
@@ -5709,10 +5923,19 @@ FBO.prototype.update = function( skip_disable )
 	if(!ext && color_textures && color_textures.length > 1)
 		throw("Rendering to several textures not supported by your browser");
 
+	gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null );
+	gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, null );
+
 	//bind a buffer for the depth
 	if( depth_texture )
 	{
-		gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_texture.handler, 0);
+		if(this.stencil && depth_texture.format !== gl.DEPTH_STENCIL )
+			console.warn("Stencil cannot be enabled if there is a depth texture with a DEPTH_STENCIL format");
+
+		if( depth_texture.format == gl.DEPTH_STENCIL )
+			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.TEXTURE_2D, depth_texture.handler, 0);
+		else
+			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depth_texture.handler, 0);
 	}
 	else //create a renderbuffer to store depth
 	{
@@ -5720,8 +5943,16 @@ FBO.prototype.update = function( skip_disable )
 		renderbuffer.width = w;
 		renderbuffer.height = h;
 		gl.bindRenderbuffer( gl.RENDERBUFFER, renderbuffer );
-		gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h );
-		gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer );
+		if(this.stencil)
+		{
+			gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_STENCIL, w, h );
+			gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, renderbuffer );
+		}
+		else
+		{
+			gl.renderbufferStorage( gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, w, h );
+			gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, renderbuffer );
+		}
 	}
 
 	//bind buffers for the colors
@@ -5732,7 +5963,7 @@ FBO.prototype.update = function( skip_disable )
 		{
 			var t = color_textures[i];
 
-			gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t.handler, 0);
+			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, t.handler, 0 );
 			this.order.push( gl.COLOR_ATTACHMENT0 + i );
 		}
 	}
@@ -5741,8 +5972,8 @@ FBO.prototype.update = function( skip_disable )
 		var renderbuffer = this._renderbuffer = this._renderbuffer || gl.createRenderbuffer();
 		renderbuffer.width = w;
 		renderbuffer.height = h;
-		gl.bindRenderbuffer(gl.RENDERBUFFER, renderbuffer );
-		gl.renderbufferStorage(gl.RENDERBUFFER, gl.RGBA4, w, h);
+		gl.bindRenderbuffer( gl.RENDERBUFFER, renderbuffer );
+		gl.renderbufferStorage( gl.RENDERBUFFER, gl.RGBA4, w, h );
 		gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, renderbuffer );
 	}
 
@@ -5752,17 +5983,25 @@ FBO.prototype.update = function( skip_disable )
 		gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, null, 0);
 	this._num_binded_textures = num;
 
-	//add an stencil buffer (if this doesnt work remember there is also the DEPTH_STENCIL options...)
-	if(this.stencil)
+	this._stencil_enabled = this.stencil;
+
+	/* does not work, must be used with the depth_stencil
+	if(this.stencil && !depth_texture)
 	{
 		var stencil_buffer = this._stencil_buffer = this._stencil_buffer || gl.createRenderbuffer();
+		stencil_buffer.width = w;
+		stencil_buffer.height = h;
 		gl.bindRenderbuffer( gl.RENDERBUFFER, stencil_buffer );
 		gl.renderbufferStorage( gl.RENDERBUFFER, gl.STENCIL_INDEX8, w, h);
 		gl.framebufferRenderbuffer( gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, stencil_buffer );
 		this._stencil_enabled = true;
 	}
 	else
+	{
+		this._stencil_buffer = null;
 		this._stencil_enabled = false;
+	}
+	*/
 
 	//when using more than one texture you need to use the multidraw extension
 	if(color_textures && color_textures.length > 1)
@@ -6950,12 +7189,15 @@ GL.create = function(options) {
 
 	if(options.webgl2)
 	{
-		try { gl = canvas.getContext('webgl2', options); } catch (e) {}
-		try { gl = gl || canvas.getContext('experimental-webgl2', options); } catch (e) {}
+		try { gl = canvas.getContext('webgl2', options); gl.webgl_version = 2; } catch (e) {}
+		try { gl = gl || canvas.getContext('experimental-webgl2', options); gl.webgl_version = 2; } catch (e) {}
 	}
 	try { gl = gl || canvas.getContext('webgl', options); } catch (e) {}
 	try { gl = gl || canvas.getContext('experimental-webgl', options); } catch (e) {}
 	if (!gl) { throw 'WebGL not supported'; }
+
+	if(gl.webgl_version === undefined)
+		gl.webgl_version = 1;
 
 	global.gl = gl;
 	canvas.is_webgl = true;
@@ -7751,8 +7993,16 @@ GL.augmentEvent = function(e, root_element)
 			this.dragging = false;
 	}
 
-	e.deltax = e.mousex - this.last_pos[0];
-	e.deltay = e.mousey - this.last_pos[1];
+	if(e.movementX !== undefined) //pointer lock
+	{
+		e.deltax = e.movementX;
+		e.deltay = e.movementY;
+	}
+	else
+	{
+		e.deltax = e.mousex - this.last_pos[0];
+		e.deltay = e.mousey - this.last_pos[1];
+	}
 	this.last_pos[0] = e.mousex;
 	this.last_pos[1] = e.mousey;
 

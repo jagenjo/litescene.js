@@ -762,11 +762,12 @@ LS.ShaderQuery = ShaderQuery;
 function ShaderBlock( name )
 {
 	this.dependency_blocks = [];
-
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
 		throw("ShaderBlock must have a name");
+	if(name.indexOf(" ") != -1)
+		throw("ShaderBlock name cannot have spaces: " + name);
 	this.name = name;
 	this.code_map = new Map();
 }
@@ -810,7 +811,13 @@ ShaderBlock.prototype.checkDependencies = function( code )
 LS.ShaderBlock = ShaderBlock;
 
 
-//used for parsing GLSL code and precompute info so it can compile faster
+
+/**
+* Used for parsing GLSL code and precompute info (mostly preprocessor macros)
+* @class GLSLCode
+* @constructor
+* @param {String} code
+*/
 function GLSLCode( code )
 {
 	this.code = code;
@@ -1005,7 +1012,7 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 
 			var block_code = shader_block.getFinalCode( shader_type, block_flags );
 			if( block_code )
-				code += "\n" + block_code + "\n";
+				code += "\n#define BLOCK_"+ ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
 		}
 		else if( block.snippet ) //injects code from snippets
 		{
@@ -1022,7 +1029,6 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 
 	return code;
 }
-
 
 //not used
 GLSLCode.breakLines = function(lines)

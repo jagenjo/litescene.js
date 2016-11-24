@@ -23,6 +23,11 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 MorphDeformer.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
+
+	//disable
+	if( this._last_RI )
+		this.disableMorphingGPU( this._last_RI );
+	this._last_RI = null;
 }
 
 MorphDeformer.prototype.getResources = function(res)

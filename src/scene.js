@@ -368,7 +368,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	//check JSON for special scripts
 	if ( scripts.length )
-		this.loadScripts( scripts, function(){ inner_success(response); }, on_error );
+		this.loadScripts( scripts, function(){ inner_success( data ); }, on_error );
 	else
 		inner_success( data );
 

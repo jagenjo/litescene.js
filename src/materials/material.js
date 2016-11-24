@@ -17,24 +17,63 @@ function Material( o )
 	this.uid = LS.generateUId("MAT-");
 	this._must_update = true;
 
-	//materials have at least a basic color property and opacity
+	/**
+	* materials have at least a basic color property and opacity
+	* @property color
+	* @type {[[r,g,b]]}
+	* @default [1,1,1]
+	*/
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 
-	//render queue: which order should this be rendered
+	/**
+	* render queue: which order should this be rendered
+	* @property queue
+	* @type {Number}
+	* @default LS.RenderQueue.DEFAULT
+	*/
 	this._queue = LS.RenderQueue.DEFAULT;
 
-	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
-	//TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
+	/**
+	* render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
+	* TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
+	* @property render_state
+	* @type {LS.RenderState}
+	*/
 	this._render_state = new LS.RenderState();
+
+
 	this._light_mode = LS.Material.NO_LIGHTS;
 
-	//textures
+	/**
+	* matrix used to define texture tiling in the shader (passed as u_texture_matrix)
+	* @property uvs_matrix
+	* @type {mat3}
+	* @default [1,0,0, 0,1,0, 0,0,1]
+	*/
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
+
+	/**
+	* texture channels
+	* contains info about the samplers for every texture channel
+	* @property textures
+	* @type {Object}
+	*/
 	this.textures = {};
 
-	//shaders query
+	/**
+	* used internally by LS.StandardMaterial
+	* This will be gone in the future in order to use the new ShaderMaterial rendering system
+	* @property query
+	* @type {LS.ShaderQuery}
+	*/
 	this._query = new LS.ShaderQuery();
 
+	/**
+	* flags to control cast_shadows, receive_shadows or ignore_frustum
+	* @property flags
+	* @type {Object}
+	* @default { cast_shadows: true, receive_shadows: true, ignore_frutum: false }
+	*/
 	this.flags = {
 		cast_shadows: true,
 		receive_shadows: true,
@@ -49,6 +88,12 @@ function Material( o )
 		enumerable: true
 	});
 
+	/**
+	* The alpha component to control opacity
+	* @property opacity
+	* @type {Number}
+	* @default 1
+	*/
 	Object.defineProperty( this, 'opacity', {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },

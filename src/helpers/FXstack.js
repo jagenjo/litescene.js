@@ -643,7 +643,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 		else
 		{
 			shader.uniforms( uniforms );
-			this.temp_tex.copyTo( output_texture, shader );
+			color_texture.copyTo( output_texture, shader );
 		}
 	}
 }

@@ -4749,11 +4749,12 @@ LS.ShaderQuery = ShaderQuery;
 function ShaderBlock( name )
 {
 	this.dependency_blocks = [];
-
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
 		throw("ShaderBlock must have a name");
+	if(name.indexOf(" ") != -1)
+		throw("ShaderBlock name cannot have spaces: " + name);
 	this.name = name;
 	this.code_map = new Map();
 }
@@ -4797,7 +4798,13 @@ ShaderBlock.prototype.checkDependencies = function( code )
 LS.ShaderBlock = ShaderBlock;
 
 
-//used for parsing GLSL code and precompute info so it can compile faster
+
+/**
+* Used for parsing GLSL code and precompute info (mostly preprocessor macros)
+* @class GLSLCode
+* @constructor
+* @param {String} code
+*/
 function GLSLCode( code )
 {
 	this.code = code;
@@ -4992,7 +4999,7 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 
 			var block_code = shader_block.getFinalCode( shader_type, block_flags );
 			if( block_code )
-				code += "\n" + block_code + "\n";
+				code += "\n#define BLOCK_"+ ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
 		}
 		else if( block.snippet ) //injects code from snippets
 		{
@@ -5009,7 +5016,6 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 
 	return code;
 }
-
 
 //not used
 GLSLCode.breakLines = function(lines)
@@ -5181,24 +5187,63 @@ function Material( o )
 	this.uid = LS.generateUId("MAT-");
 	this._must_update = true;
 
-	//materials have at least a basic color property and opacity
+	/**
+	* materials have at least a basic color property and opacity
+	* @property color
+	* @type {[[r,g,b]]}
+	* @default [1,1,1]
+	*/
 	this._color = new Float32Array([1.0,1.0,1.0,1.0]);
 
-	//render queue: which order should this be rendered
+	/**
+	* render queue: which order should this be rendered
+	* @property queue
+	* @type {Number}
+	* @default LS.RenderQueue.DEFAULT
+	*/
 	this._queue = LS.RenderQueue.DEFAULT;
 
-	//render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
-	//TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
+	/**
+	* render state: which flags should be used (in StandardMaterial this is overwritten due to the multipass lighting)
+	* TODO: render states should be moved to render passes defined by the shadercode in the future to allow multipasses like cellshading outline render
+	* @property render_state
+	* @type {LS.RenderState}
+	*/
 	this._render_state = new LS.RenderState();
+
+
 	this._light_mode = LS.Material.NO_LIGHTS;
 
-	//textures
+	/**
+	* matrix used to define texture tiling in the shader (passed as u_texture_matrix)
+	* @property uvs_matrix
+	* @type {mat3}
+	* @default [1,0,0, 0,1,0, 0,0,1]
+	*/
 	this.uvs_matrix = new Float32Array([1,0,0, 0,1,0, 0,0,1]);
+
+	/**
+	* texture channels
+	* contains info about the samplers for every texture channel
+	* @property textures
+	* @type {Object}
+	*/
 	this.textures = {};
 
-	//shaders query
+	/**
+	* used internally by LS.StandardMaterial
+	* This will be gone in the future in order to use the new ShaderMaterial rendering system
+	* @property query
+	* @type {LS.ShaderQuery}
+	*/
 	this._query = new LS.ShaderQuery();
 
+	/**
+	* flags to control cast_shadows, receive_shadows or ignore_frustum
+	* @property flags
+	* @type {Object}
+	* @default { cast_shadows: true, receive_shadows: true, ignore_frutum: false }
+	*/
 	this.flags = {
 		cast_shadows: true,
 		receive_shadows: true,
@@ -5213,6 +5258,12 @@ function Material( o )
 		enumerable: true
 	});
 
+	/**
+	* The alpha component to control opacity
+	* @property opacity
+	* @type {Number}
+	* @default 1
+	*/
 	Object.defineProperty( this, 'opacity', {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },
@@ -6535,9 +6586,11 @@ SurfaceMaterial.prototype.computeCode = function()
 			case 'vec3': code += "vec3 "; break;
 			case 'color4':
 			case 'vec4': code += "vec4 "; break;
+			case 'sampler':
 			case 'texture': code += "sampler2D "; break;
 			case 'cubemap': code += "samplerCube "; break;
-			default: continue;
+			default: 
+				continue;
 		}
 		code += prop.name + ";";
 		uniforms_code += code;
@@ -6605,6 +6658,8 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		var prop = this.properties[i];
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
 		{
+			var texture = prop.value;
+			/*
 			if(!prop.value)
 				texture = ":black";
 			else
@@ -6614,6 +6669,7 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 				if(!texture)
 					texture = ":missing";
 			}
+			*/
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;
@@ -7247,12 +7303,12 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 {
 	if(!this.shader)
-		return false;
+		return true; //skip rendering
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		return false;
+		return true; //skip rendering
 
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
@@ -7294,7 +7350,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
 		if(!shader)
-			return false;
+			return true;
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
@@ -12424,6 +12480,81 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
 };
+// Texture Blur *****************************************
+function LGraphFXStack()
+{
+	this.addInput("Color","Texture");
+	this.addInput("Depth","Texture");
+	this.addInput("Intensity","number");
+	this.addOutput("Final","Texture");
+	this.properties = { intensity: 1, preserve_aspect: true };
+
+	this._fx_stack = new LS.FXStack();
+	this._fx_options = {};
+}
+
+LGraphFXStack.title = "FXStack";
+LGraphFXStack.desc = "Apply FXs to Texture";
+
+LGraphFXStack.prototype.onExecute = function()
+{
+	var tex = this.getInputData(0);
+	if(!tex)
+		return;
+
+	if(!this.isOutputConnected(0))
+		return; //saves work
+
+	var temp = this._final_texture;
+
+	if(!temp || temp.width != tex.width || temp.height != tex.height || temp.type != tex.type )
+	{
+		//we need two textures to do the blurring
+		this._final_texture = new GL.Texture( tex.width, tex.height, { type: tex.type, format: gl.RGBA, filter: gl.LINEAR });
+	}
+
+	var intensity = this.properties.intensity;
+	if( this.isInputConnected(2) )
+	{
+		intensity = this.getInputData(2);
+		this.properties.intensity = intensity;
+	}
+
+	//blur sometimes needs an aspect correction
+	var aspect = LiteGraph.camera_aspect;
+	if(!aspect && window.gl !== undefined)
+		aspect = gl.canvas.height / gl.canvas.width;
+	if(!aspect)
+		aspect = 1;
+	aspect = this.properties.preserve_aspect ? aspect : 1;
+
+	this._fx_stack.applyFX( tex, this._final_texture, this._fx_options );
+
+	this.setOutputData(0, this._final_texture);
+}
+
+LGraphFXStack.prototype.inspect = function( inspector )
+{
+	return this._fx_stack.inspect( inspector );
+}
+
+LGraphFXStack.prototype.getResources = function( resources )
+{
+	return this._fx_stack.getResources( resources );
+}
+
+LGraphFXStack.prototype.onSerialize = function( o )
+{
+	o.stack = this._fx_stack.serialize();
+}
+
+LGraphFXStack.prototype.onConfigure = function( o )
+{
+	if(o.stack)
+		this._fx_stack.configure( o.stack );
+}
+
+LiteGraph.registerNodeType("texture/fxstack", LGraphFXStack );
 function Path()
 {
 	this.points = [];
@@ -13285,7 +13416,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 		else
 		{
 			shader.uniforms( uniforms );
-			this.temp_tex.copyTo( output_texture, shader );
+			color_texture.copyTo( output_texture, shader );
 		}
 	}
 }
@@ -13845,15 +13976,19 @@ LS.RenderSettings = RenderSettings;
 
 //stencil buffer
 16: stencil_test: 0
-17:	stencil_func: 1
-18:	stencil_ref: 1
-19:	stencil_mask: 0xFF
+17:	stencil_mask: 0xFF,
+18:	stencil_func_func: GL.ALWAYS,
+19:	stencil_func_ref: 0,
+20:	stencil_func_mask: 0xFF,
+21:	stencil_op_sfail: GL.KEEP,
+22:	stencil_op_dpfail: GL.KEEP,
+23:	stencil_op_dppass: GL.KEEP
 
 */
 
 function RenderState( o )
 {
-	this._data = new Uint32Array(20);
+	this._data = new Uint32Array(24);
 	this.init();
 
 	if(o)
@@ -13981,28 +14116,87 @@ Object.defineProperty( RenderState.prototype, "colorMask", {
 	enumerable: false
 });
 
+/*
+16: stencil_test: 0
+17:	stencil_mask: 0xFF,
+18:	stencil_func_func: GL.ALWAYS,
+19:	stencil_func_ref: 0,
+20:	stencil_func_mask: 0xFF,
+21:	stencil_op_sfail: GL.KEEP,
+22:	stencil_op_dpfail: GL.KEEP,
+23:	stencil_op_dppass: GL.KEEP
+*/
+
 Object.defineProperty( RenderState.prototype, "stencil_test", {
 	set: function(v) { this._data[16] = v ? 1 : 0; },
 	get: function() { return this._data[16] !== 0;	},
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_func", {
+Object.defineProperty( RenderState.prototype, "stencil_mask", {
 	set: function(v) { this._data[17] = v; },
 	get: function() { return this._data[17]; },
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_ref", {
-	set: function(v) { this._data[18] = v; },
-	get: function() { return this._data[18]; },
+Object.defineProperty( RenderState.prototype, "stencil_func", {
+	set: function(v) {
+		if(!v || v.length != 3)
+			return;
+		this._data[18] = v[0];
+		this._data[19] = v[1];
+		this._data[20] = v[2];
+	},
+	get: function() { return this._data.subarray(18,21); },
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_mask", {
+Object.defineProperty( RenderState.prototype, "stencil_func_func", {
+	set: function(v) { this._data[18] = v; },
+	get: function() { return this._data[18]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func_ref", {
 	set: function(v) { this._data[19] = v; },
 	get: function() { return this._data[19]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func_mask", {
+	set: function(v) { this._data[20] = v; },
+	get: function() { return this._data[20]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op", {
+	set: function(v) {
+		if(!v || v.length != 3)
+			return;
+		this._data[21] = v[0];
+		this._data[22] = v[1];
+		this._data[23] = v[2];
+	},
+	get: function() { return this._data.subarray(21,24); },
 	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_sfail", {
+	set: function(v) { this._data[21] = v; },
+	get: function() { return this._data[21]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_dpfail", {
+	set: function(v) { this._data[22] = v; },
+	get: function() { return this._data[22]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_dppass", {
+	set: function(v) { this._data[23] = v; },
+	get: function() { return this._data[23]; },
+	enumerable: false
 });
 
 RenderState.default_state = {
@@ -14017,7 +14211,15 @@ RenderState.default_state = {
 	colorMask0: true,
 	colorMask1: true,
 	colorMask2: true,
-	colorMask3: true
+	colorMask3: true,
+	stencil_test: false,
+	stencil_mask: 0xFF,
+	stencil_func_func: GL.ALWAYS,
+	stencil_func_ref: 0,
+	stencil_func_mask: 0xFF,
+	stencil_op_sfail: GL.KEEP,
+	stencil_op_dpfail: GL.KEEP,
+	stencil_op_dppass: GL.KEEP
 };
 
 RenderState.last_state = null;
@@ -14049,9 +14251,13 @@ RenderState.prototype.init = function()
 
 	//stencil buffer
 	this.stencil_test = false;
-	this.stencil_func = 1;
-	this.stencil_ref = 1;
 	this.stencil_mask = 0xFF;
+	this.stencil_func_func = GL.ALWAYS;
+	this.stencil_func_ref = 0;
+	this.stencil_func_mask = 0xFF;
+	this.stencil_op_sfail = GL.KEEP;
+	this.stencil_op_dpfail = GL.KEEP;
+	this.stencil_op_dppass = GL.KEEP;
 }
 
 //helper, allows to set the blend mode from a string
@@ -14103,7 +14309,15 @@ RenderState.enable = function( state, prev )
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 		//stencil
-		//TODO
+		if(state.stencil_test)
+		{
+			gl.enable( gl.STENCIL_TEST );
+			gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+			gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
+			gl.stencilMask( state.stencil_mask );
+		}
+		else
+			gl.disable( gl.STENCIL_TEST );
 
 		this.last_state = state;
 		return;
@@ -14149,7 +14363,22 @@ RenderState.enable = function( state, prev )
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 	//stencil
-	//TODO
+	if(prev.stencil_test != state.stencil_test )
+	{
+		if(state.stencil_test)
+			gl.enable( gl.STENCIL_TEST);
+		else
+			gl.disable( gl.STENCIL_TEST );
+	}
+
+	if( state.stencil_func_func !== prev.stencil_func_func || state.stencil_func_ref !== prev.stencil_func_ref || state.stencil_func_mask !== prev.stencil_func_mask )
+		gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+
+	if(state.stencil_op_sfail !== prev.stencil_op_sfail || state.stencil_op_dpfail !== stencil_op_dpfail || state.stencil_op_dppass !== stencil_op_dppass )
+		gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
+
+	if(state.stencil_mask !== prev.stencil_mask)
+		gl.stencilMask( prev.stencil_mask );
 
 	//save state
 	this.last_state = state;
@@ -14591,6 +14820,7 @@ function RenderFrameContext( o )
 	this.filter_texture = true; //magFilter
 	this.format = GL.RGBA;
 	this.use_depth_texture = false;
+	this.use_stencil_buffer = false;
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored
 
@@ -14660,6 +14890,7 @@ RenderFrameContext.prototype.configure = function(o)
 	this.filter_texture = !!o.filter_texture;
 	this.adjust_aspect = !!o.adjust_aspect;
 	this.use_depth_texture = !!o.use_depth_texture;
+	this.use_stencil_buffer = !!o.use_stencil_buffer;
 	this.num_extra_textures = o.num_extra_textures || 0;
 	this.name = o.name;
 	this.clone_after_unbind = !!o.clone_after_unbind;
@@ -14675,6 +14906,7 @@ RenderFrameContext.prototype.serialize = function()
 		format: this.format,
 		adjust_aspect: this.adjust_aspect,
 		use_depth_texture:  this.use_depth_texture,
+		use_stencil_buffer: this.use_stencil_buffer,
 		num_extra_textures:  this.num_extra_textures,
 		clone_after_unbind: this.clone_after_unbind,
 		name: this.name
@@ -14736,8 +14968,19 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	}
 
 	//for the depth
-	if( this.use_depth_texture && (!this._depth_texture || this._depth_texture.width != final_width || this._depth_texture.height != final_height) && gl.extensions["WEBGL_depth_texture"] )
-		this._depth_texture = new GL.Texture( final_width, final_height, { filter: gl.NEAREST, format: gl.DEPTH_COMPONENT, type: gl.UNSIGNED_INT });
+	var depth_format = gl.DEPTH_COMPONENT;
+	var depth_type = gl.UNSIGNED_INT;
+
+	if(this.use_stencil_buffer && gl.extensions.WEBGL_depth_texture)
+	{
+		depth_format = gl.DEPTH_STENCIL;
+		depth_type = gl.extensions.WEBGL_depth_texture.UNSIGNED_INT_24_8_WEBGL;
+	}
+
+	if( this.use_depth_texture && 
+		(!this._depth_texture || this._depth_texture.width != final_width || this._depth_texture.height != final_height || this._depth_texture.format != depth_format || this._depth_texture.type != depth_type ) && 
+		gl.extensions["WEBGL_depth_texture"] )
+		this._depth_texture = new GL.Texture( final_width, final_height, { filter: gl.NEAREST, format: depth_format, type: depth_type });
 	else if( !this.use_depth_texture )
 		this._depth_texture = null;
 
@@ -14756,6 +14999,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	textures.length = 1 + total_extra;
 
 	//assign textures (this will enable the FBO but it will restore the old one after finishing)
+	this._fbo.stencil = this.use_stencil_buffer;
 	this._fbo.setTextures( textures, this._depth_texture );
 }
 
@@ -15058,10 +15302,12 @@ var Renderer = {
 		this._black_texture = new GL.Texture(1,1, { pixel_data: [0,0,0,255] });
 		this._gray_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
+		this._normal_texture = new GL.Texture(1,1, { pixel_data: [128,128,255,255] });
 		this._missing_texture = this._gray_texture;
 		LS.ResourcesManager.textures[":black"] = this._black_texture;
 		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
 		LS.ResourcesManager.textures[":white"] = this._white_texture;
+		LS.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
 
 		//draw helps rendering debug stuff
 		LS.Draw.init();
@@ -15367,11 +15613,22 @@ var Renderer = {
 		gl.scissor( gl.viewport_data[0], gl.viewport_data[1], gl.viewport_data[2], gl.viewport_data[3] );
 		gl.enable(gl.SCISSOR_TEST);
 
-		//clear buffer 
+		//clear color buffer 
+		gl.colorMask( true, true, true, true );
 		gl.clearColor( camera.background_color[0], camera.background_color[1], camera.background_color[2], camera.background_color[3] );
-		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) );
 
-		gl.disable(gl.SCISSOR_TEST);
+		//clear depth buffer
+		gl.depthMask( true );
+
+		//to clear the stencil
+		gl.enable( gl.STENCIL_TEST );
+		gl.clearStencil( 0x0 );
+
+		//do the clearing
+		gl.clear( ( camera.clear_color ? gl.COLOR_BUFFER_BIT : 0) | (camera.clear_depth ? gl.DEPTH_BUFFER_BIT : 0) | gl.STENCIL_BUFFER_BIT );
+
+		gl.disable( gl.SCISSOR_TEST );
+		gl.disable( gl.STENCIL_TEST );
 	},
 
 	sortRenderQueues: function( camera, render_settings )
@@ -15411,12 +15668,21 @@ var Renderer = {
 		//LS.RenderState.reset(); 
 
 		gl.enable( gl.CULL_FACE );
+		gl.frontFace(gl.CCW);
+
+		gl.colorMask(true,true,true,true);
+
 		gl.enable( gl.DEPTH_TEST );
-		gl.disable( gl.BLEND );
 		gl.depthFunc( gl.LESS );
 		gl.depthMask(true);
-		gl.frontFace(gl.CCW);
+
+		gl.disable( gl.BLEND );
 		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+
+		gl.disable( gl.STENCIL_TEST );
+		gl.stencilMask( 0xFF );
+		gl.stencilOp( gl.KEEP, gl.KEEP, gl.KEEP );
+		gl.stencilFunc( gl.ALWAYS, 1, 0xFF );
 	},
 
 	/**
@@ -15532,6 +15798,8 @@ var Renderer = {
 					instance.onPostRender( render_settings );
 			}
 		}
+
+		this.resetGLState( render_settings );
 
 		LEvent.trigger( scene, "renderScreenSpace", render_settings);
 
@@ -15894,6 +16162,7 @@ var Renderer = {
 						case "black": tex = this._black_texture; break;
 						case "white": tex = this._white_texture; break;
 						case "gray": tex = this._gray_texture; break;
+						case "normal": tex = this._normal_texture; break;
 						default: tex = this._missing_texture;
 					}
 				}
@@ -22048,7 +22317,6 @@ LS.registerComponent( FrameFX );
 * @constructor
 * @param {Object} object to configure from
 */
-
 function Light(o)
 {
 	/**
@@ -22955,9 +23223,21 @@ LS.ShadersManager.registerSnippet("surface","\n\
 		vec4 Extra; //for special purposes\n\
 	};\n\
 	\n\
+	SurfaceOutput getSurfaceOutput()\n\
+	{\n\
+		SurfaceOutput o;\n\
+		o.Albedo = u_material_color.xyz;\n\
+		o.Alpha = u_material_color.a;\n\
+		o.Normal = normalize( v_normal );\n\
+		o.Specular = 0.5;\n\
+		o.Gloss = 10.0;\n\
+		return o;\n\
+	}\n\
 ");
 
 LS.ShadersManager.registerSnippet("light_structs","\n\
+	#ifndef SB_LIGHT_STRUCTS\n\
+	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
 	uniform vec3 u_light_position;\n\
 	uniform vec4 u_light_params; //type, \n\
@@ -22989,13 +23269,13 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		LIGHT.Shadow = 1.0;\n\
 		return LIGHT;\n\
 	}\n\
+	#endif\n\
 ");
 
 
 //Light ShaderBlocks
 /*
-	Light Equation (Point, Spot, Directional)
-	Light Modifiers (Cookies, Cell shading)
+	Light Modifiers (Cookies)
 	Light Attenuation (Linear, Exponential)
 	Light Shadowing (Hard, Soft)
 */
@@ -23005,6 +23285,7 @@ Light._enabled_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
+	#pragma shaderblock \"shadowmapping\"\n\
 	\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
@@ -23035,6 +23316,10 @@ Light._enabled_shaderblock_code = "\n\
 		NdotL = max( 0.0, NdotL );\n\
 		LIGHT.Diffuse = abs(NdotL);\n\
 		\n\
+		\n\
+		#ifdef LIGHT_FUNC\n\
+			LIGHT_FUNC(LIGHT);\n\
+		#endif\n\
 		//FINAL LIGHT FORMULA ************************* \n\
 		\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
@@ -23109,6 +23394,88 @@ nolight_block.register();
 Light.nolight_shader_block = nolight_block;
 */
 
+Light._shadowmap_cubemap_code = "\n\
+	#define SHADOWMAP_ACTIVE\n\
+	uniform samplerCube shadowmap;\n\
+	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	\n\
+	float VectorToDepthValue(vec3 Vec)\n\
+	{\n\
+		vec3 AbsVec = abs(Vec);\n\
+		float LocalZcomp = max(AbsVec.x, max(AbsVec.y, AbsVec.z));\n\
+		float n = u_shadow_params.z;\n\
+		float f = u_shadow_params.w;\n\
+		float NormZComp = (f+n) / (f-n) - (2.0*f*n)/(f-n)/LocalZcomp;\n\
+		return (NormZComp + 1.0) * 0.5;\n\
+	}\n\
+	\n\
+	float UnpackDepth32(vec4 depth)\n\
+	{\n\
+		const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
+		return dot(depth.xyzw , bitShifts);\n\
+	}\n\
+	\n\
+	float testShadow( vec3 offset )\n\
+	{\n\
+		float shadow = 0.0;\n\
+		float depth = 0.0;\n\
+		float bias = u_shadow_params.y;\n\
+		\n\
+		vec3 l_vector = (v_pos - u_light_position);\n\
+		float dist = length(l_vector);\n\
+		float pixel_z = VectorToDepthValue( l_vector );\n\
+		if(pixel_z >= 0.998) return 0.0; //fixes a little bit the far edge bug\n\
+		vec4 depth_color = textureCube( shadowmap, l_vector + offset * dist );\n\
+		float ShadowVec = UnpackDepth32( depth_color );\n\
+		if ( ShadowVec > pixel_z - bias )\n\
+			return 0.0; //no shadow\n\
+		return 1.0; //full shadow\n\
+	}\n\
+";
+
+Light._shadowmap_flat_enabled_code = "\n\
+	#ifndef SHADOWMAP_ACTIVE\n\
+		#define SHADOWMAP_ACTIVE\n\
+	#endif\n\
+	uniform sampler2D shadowmap;\n\
+	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
+	\n\
+	float UnpackDepth32(vec4 depth)\n\
+	{\n\
+		#ifdef USE_SHADOW_DEPTH_TEXTURE\n\
+			return depth.x;\n\
+		#else\n\
+			const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
+			return dot(depth.xyzw , bitShifts);\n\
+		#endif\n\
+	}\n\
+	\n\
+	float testShadow(vec3 offset)\n\
+	{\n\
+		float shadow = 0.0;\n\
+		float depth = 0.0;\n\
+		float bias = u_shadow_params.y;\n\
+		\n\
+		vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
+		//is inside light frustum\n\
+		if (clamp(sample, 0.0, 1.0) == sample) { \n\
+			float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );\n\
+			depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
+		}\n\
+		else \n\
+			return 0.0; //outside of shadowmap, no shadow\n\
+		\n\
+		if (depth > 0.0) {\n\
+			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 1.0 : 0.0;\n\
+		}\n\
+		return shadow;\n\
+	}\n\
+";
+
+var shadowmapping_block = new LS.ShaderBlock("testShadow");
+shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_flat_enabled_code, "" );
+shadowmapping_block.register();
+Light.shadowmapping_shader_block = shadowmapping_block;
 //TODO
 
 /**
@@ -24306,6 +24673,11 @@ MorphDeformer.prototype.onAddedToNode = function(node)
 MorphDeformer.prototype.onRemovedFromNode = function(node)
 {
 	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
+
+	//disable
+	if( this._last_RI )
+		this.disableMorphingGPU( this._last_RI );
+	this._last_RI = null;
 }
 
 MorphDeformer.prototype.getResources = function(res)
@@ -28026,12 +28398,7 @@ FXGraphComponent.prototype.serialize = function()
 
 FXGraphComponent.prototype.getResources = function(res)
 {
-	var nodes = this._graph.findNodesByType("texture/texture");
-	for(var i in nodes)
-	{
-		if(nodes[i].properties.name)
-			res[nodes[i].properties.name] = Texture;
-	}
+	this._graph.sendEventToAllNodes("getResources",res);
 	return res;
 }
 
@@ -36987,7 +37354,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	//check JSON for special scripts
 	if ( scripts.length )
-		this.loadScripts( scripts, function(){ inner_success(response); }, on_error );
+		this.loadScripts( scripts, function(){ inner_success( data ); }, on_error );
 	else
 		inner_success( data );
 

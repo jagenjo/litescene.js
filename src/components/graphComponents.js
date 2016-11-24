@@ -335,12 +335,7 @@ FXGraphComponent.prototype.serialize = function()
 
 FXGraphComponent.prototype.getResources = function(res)
 {
-	var nodes = this._graph.findNodesByType("texture/texture");
-	for(var i in nodes)
-	{
-		if(nodes[i].properties.name)
-			res[nodes[i].properties.name] = Texture;
-	}
+	this._graph.sendEventToAllNodes("getResources",res);
 	return res;
 }
 

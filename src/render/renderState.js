@@ -33,15 +33,19 @@
 
 //stencil buffer
 16: stencil_test: 0
-17:	stencil_func: 1
-18:	stencil_ref: 1
-19:	stencil_mask: 0xFF
+17:	stencil_mask: 0xFF,
+18:	stencil_func_func: GL.ALWAYS,
+19:	stencil_func_ref: 0,
+20:	stencil_func_mask: 0xFF,
+21:	stencil_op_sfail: GL.KEEP,
+22:	stencil_op_dpfail: GL.KEEP,
+23:	stencil_op_dppass: GL.KEEP
 
 */
 
 function RenderState( o )
 {
-	this._data = new Uint32Array(20);
+	this._data = new Uint32Array(24);
 	this.init();
 
 	if(o)
@@ -169,28 +173,87 @@ Object.defineProperty( RenderState.prototype, "colorMask", {
 	enumerable: false
 });
 
+/*
+16: stencil_test: 0
+17:	stencil_mask: 0xFF,
+18:	stencil_func_func: GL.ALWAYS,
+19:	stencil_func_ref: 0,
+20:	stencil_func_mask: 0xFF,
+21:	stencil_op_sfail: GL.KEEP,
+22:	stencil_op_dpfail: GL.KEEP,
+23:	stencil_op_dppass: GL.KEEP
+*/
+
 Object.defineProperty( RenderState.prototype, "stencil_test", {
 	set: function(v) { this._data[16] = v ? 1 : 0; },
 	get: function() { return this._data[16] !== 0;	},
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_func", {
+Object.defineProperty( RenderState.prototype, "stencil_mask", {
 	set: function(v) { this._data[17] = v; },
 	get: function() { return this._data[17]; },
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_ref", {
-	set: function(v) { this._data[18] = v; },
-	get: function() { return this._data[18]; },
+Object.defineProperty( RenderState.prototype, "stencil_func", {
+	set: function(v) {
+		if(!v || v.length != 3)
+			return;
+		this._data[18] = v[0];
+		this._data[19] = v[1];
+		this._data[20] = v[2];
+	},
+	get: function() { return this._data.subarray(18,21); },
 	enumerable: true
 });
 
-Object.defineProperty( RenderState.prototype, "stencil_mask", {
+Object.defineProperty( RenderState.prototype, "stencil_func_func", {
+	set: function(v) { this._data[18] = v; },
+	get: function() { return this._data[18]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func_ref", {
 	set: function(v) { this._data[19] = v; },
 	get: function() { return this._data[19]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_func_mask", {
+	set: function(v) { this._data[20] = v; },
+	get: function() { return this._data[20]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op", {
+	set: function(v) {
+		if(!v || v.length != 3)
+			return;
+		this._data[21] = v[0];
+		this._data[22] = v[1];
+		this._data[23] = v[2];
+	},
+	get: function() { return this._data.subarray(21,24); },
 	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_sfail", {
+	set: function(v) { this._data[21] = v; },
+	get: function() { return this._data[21]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_dpfail", {
+	set: function(v) { this._data[22] = v; },
+	get: function() { return this._data[22]; },
+	enumerable: false
+});
+
+Object.defineProperty( RenderState.prototype, "stencil_op_dppass", {
+	set: function(v) { this._data[23] = v; },
+	get: function() { return this._data[23]; },
+	enumerable: false
 });
 
 RenderState.default_state = {
@@ -205,7 +268,15 @@ RenderState.default_state = {
 	colorMask0: true,
 	colorMask1: true,
 	colorMask2: true,
-	colorMask3: true
+	colorMask3: true,
+	stencil_test: false,
+	stencil_mask: 0xFF,
+	stencil_func_func: GL.ALWAYS,
+	stencil_func_ref: 0,
+	stencil_func_mask: 0xFF,
+	stencil_op_sfail: GL.KEEP,
+	stencil_op_dpfail: GL.KEEP,
+	stencil_op_dppass: GL.KEEP
 };
 
 RenderState.last_state = null;
@@ -237,9 +308,13 @@ RenderState.prototype.init = function()
 
 	//stencil buffer
 	this.stencil_test = false;
-	this.stencil_func = 1;
-	this.stencil_ref = 1;
 	this.stencil_mask = 0xFF;
+	this.stencil_func_func = GL.ALWAYS;
+	this.stencil_func_ref = 0;
+	this.stencil_func_mask = 0xFF;
+	this.stencil_op_sfail = GL.KEEP;
+	this.stencil_op_dpfail = GL.KEEP;
+	this.stencil_op_dppass = GL.KEEP;
 }
 
 //helper, allows to set the blend mode from a string
@@ -291,7 +366,15 @@ RenderState.enable = function( state, prev )
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 		//stencil
-		//TODO
+		if(state.stencil_test)
+		{
+			gl.enable( gl.STENCIL_TEST );
+			gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+			gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
+			gl.stencilMask( state.stencil_mask );
+		}
+		else
+			gl.disable( gl.STENCIL_TEST );
 
 		this.last_state = state;
 		return;
@@ -337,7 +420,22 @@ RenderState.enable = function( state, prev )
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 	//stencil
-	//TODO
+	if(prev.stencil_test != state.stencil_test )
+	{
+		if(state.stencil_test)
+			gl.enable( gl.STENCIL_TEST);
+		else
+			gl.disable( gl.STENCIL_TEST );
+	}
+
+	if( state.stencil_func_func !== prev.stencil_func_func || state.stencil_func_ref !== prev.stencil_func_ref || state.stencil_func_mask !== prev.stencil_func_mask )
+		gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+
+	if(state.stencil_op_sfail !== prev.stencil_op_sfail || state.stencil_op_dpfail !== stencil_op_dpfail || state.stencil_op_dppass !== stencil_op_dppass )
+		gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
+
+	if(state.stencil_mask !== prev.stencil_mask)
+		gl.stencilMask( prev.stencil_mask );
 
 	//save state
 	this.last_state = state;
