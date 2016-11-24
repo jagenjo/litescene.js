@@ -70,11 +70,12 @@ To stablish the rendering order you must use the ```this.queue``` property.
 This property is a number associated to a render queue in the system. There are queues for GEOMETRY and TRANSPARENT by default. The bigger the number the later it will be rendered.
 
 You can type your own value or use one of the enumerated options:
-```LS.RenderQueue.DEFAULT```: means no render queue specified, the system will try to guess it.
-```LS.RenderQueue.BACKGROUND```: for object that are in the background like skyboxes (value 5)
-```LS.RenderQueue.GEOMETRY```: for regular non-transparent geometry (value 10)
-```LS.RenderQueue.TRANSPARENT```: for semitransparent objects (blend activated) (value 15)
-```LS.RenderQueue.OVERLAY```: for render calls in the screen space. (value 20)
+
+- ```LS.RenderQueue.DEFAULT```: means no render queue specified, the system will try to guess it.
+- ```LS.RenderQueue.BACKGROUND```: for object that are in the background like skyboxes (value 5)
+- ```LS.RenderQueue.GEOMETRY```: for regular non-transparent geometry (value 10)
+- ```LS.RenderQueue.TRANSPARENT```: for semitransparent objects (blend activated) (value 15)
+- ```LS.RenderQueue.OVERLAY```: for render calls in the screen space. (value 20)
 
 You can also add or substract to the queue number to reorder inside the same queue:
 
@@ -90,6 +91,19 @@ One example setting the alpha and the rendering order:
 	this.queue = LS.RenderQueue.TRANSPARENT;
 ```
 
+## Flags ##
+
+Besides the render states and the render queue there are also some generic properties that materials could switch to control the behaviour during the rendering process. Flags are stored in ```this.flags```. Here is a list of them:
+
+- ```cast_shadows```: tells if this material should be rendered in the shadowmaps.
+- ```receive_shadows```: tells if this material should read from the shadowmaps.
+- ```ignore_frustum```: must be set to ```true``` if you shader is applying any deformation per vertex (invalidating the precomputed bounding box of the mesh. If your mesh disappears suddenly when moving the camera, this is a signal that the frustum culling is not working so set it to true.
+
+```javascript
+\js
+	this.flags.cast_shadows = false;
+```
+
 ## onPrepare ##
 
 Sometimes we want our material to perform some actions before rendering (like extracting information from the scene and send it to the shader).
@@ -100,17 +114,21 @@ Here is one example that passes the matrix of a camera to the material:
 
 ```javascript
 this.createSampler("Texture","u_texture");
-this.createProperty("Camera", null, LS.TYPES.COMPONENT);
+//create a property Camera that we will use to pass some data about the scene to this shader
+this.createProperty("Camera", null, LS.TYPES.COMPONENT); 
 
 this.onPrepare = function( scene )
 {
-  if(!this.Camera)
+  if(!this.Camera) //the property Camera has not been assigned in the material
     return;
+  //read the this.Camera value (the string with the UID of the camera the user assigned to this material)
+  //and try to find the component with that UID (the camera object itself)
   var camera = scene.findComponentByUId( this.Camera );
-  if(!camera)
+  if(!camera) //no component with that uid
     return;
   if(!this._uniforms.u_textureprojection_matrix)
     this._uniforms.u_textureprojection_matrix = mat4.create();
+  //now we can use that info
   camera.getViewProjectionMatrix( this._uniforms.u_textureprojection_matrix );
 }
 ```
