@@ -109,6 +109,8 @@ ShaderCode.prototype.processCode = function()
 		}
 
 		var name = LS.ResourcesManager.removeExtension( subfile_name );
+		if(name == "default")
+			name = "color"; //LEGACY fix
 		var extension = LS.ResourcesManager.getExtension( subfile_name );
 
 		if(extension == "vs" || extension == "fs")
@@ -196,7 +198,7 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	if( this._has_error )
 		return null;
 
-	render_mode = render_mode || "default";
+	render_mode = render_mode || "color";
 	block_flags = block_flags || 0;
 
 	//search for a compiled version of the shader (by render_mode and block_flags)
@@ -369,7 +371,7 @@ ShaderCode.examples.color = "\n\
 this.createUniform(\"Number\",\"u_number\",\"number\");\n\
 this.createSampler(\"Texture\",\"u_texture\");\n\
 \n\
-\\default.vs\n\
+\\color.vs\n\
 \n\
 precision mediump float;\n\
 attribute vec3 a_vertex;\n\
@@ -407,7 +409,7 @@ void main() {\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \n\
-\\default.fs\n\
+\\color.fs\n\
 \n\
 precision mediump float;\n\
 //varyings\n\

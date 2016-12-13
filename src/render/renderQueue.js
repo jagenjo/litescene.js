@@ -35,7 +35,8 @@ RenderQueue.DEFAULT = 0;
 RenderQueue.BACKGROUND = 5;
 RenderQueue.GEOMETRY = 10;
 RenderQueue.TRANSPARENT = 15;
-RenderQueue.OVERLAY = 20;
+RenderQueue.READBACK_COLOR = 20;
+RenderQueue.OVERLAY = 25;
 
 RenderQueue.NO_SORT = 0;
 RenderQueue.SORT_NEAR_TO_FAR = 1;

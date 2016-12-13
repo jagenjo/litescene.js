@@ -58,6 +58,8 @@ Object.defineProperty( RenderState.prototype, "front_face", {
 	enumerable: true
 });
 
+RenderState["@front_face"] = { widget: "combo", values: { CW: GL.CW, CCW: GL.CCW } };
+
 Object.defineProperty( RenderState.prototype, "cull_face", {
 	set: function(v) { this._data[1] = v ? 1 : 0; },
 	get: function() { return this._data[1] !== 0;	},
@@ -69,6 +71,8 @@ Object.defineProperty( RenderState.prototype, "cull_face_mode", {
 	get: function() { return this._data[2];	},
 	enumerable: true
 });
+
+RenderState["@cull_face_mode"] = { widget: "combo", values: { FRONT: GL.FRONT, BACK: GL.BACK, FRONT_AND_BACK: GL.FRONT_AND_BACK } };
 
 Object.defineProperty( RenderState.prototype, "depth_test", {
 	set: function(v) { this._data[4] = v ? 1 : 0; },
@@ -87,6 +91,8 @@ Object.defineProperty( RenderState.prototype, "depth_func", {
 	get: function() { return this._data[6];	},
 	enumerable: true
 });
+
+RenderState["@depth_func"] = { widget: "combo", values: { LESS: GL.LESS, LEQUAL: GL.LEQUAL, EQUAL: GL.EQUAL, NOTEQUAL: GL.NOTEQUAL, GREATER: GL.GREATER, GEQUAL: GL.GEQUAL, ALWAYS: GL.ALWAYS, NEVER: GL.NEVER } };
 
 Object.defineProperty( RenderState.prototype, "depth_range", {
 	set: function(v) { 
@@ -111,11 +117,15 @@ Object.defineProperty( RenderState.prototype, "blendFunc0", {
 	enumerable: true
 });
 
+RenderState["@blendFunc0"] = { widget: "combo", values: { ZERO: GL.ZERO, ONE: GL.ONE, SRC_COLOR: GL.SRC_COLOR, ONE_MINUS_SRC_COLOR: GL.ONE_MINUS_SRC_COLOR, DST_COLOR: GL.DST_COLOR, ONE_MINUS_DST_COLOR: GL.ONE_MINUS_DST_COLOR, SRC_ALPHA: GL.SRC_ALPHA, ONE_MINUS_SRC_ALPHA: GL.ONE_MINUS_SRC_ALPHA, DST_ALPHA: GL.DST_ALPHA, ONE_MINUS_DST_ALPHA: GL.ONE_MINUS_DST_ALPHA, CONSTANT_COLOR: GL.CONSTANT_COLOR, ONE_MINUS_CONSTANT_COLOR: GL.ONE_MINUS_CONSTANT_COLOR, CONSTANT_ALPHA: GL.CONSTANT_ALPHA, ONE_MINUS_CONSTANT_ALPHA: GL.ONE_MINUS_CONSTANT_ALPHA, SRC_ALPHA_SATURATE: GL.SRC_ALPHA_SATURATE } };
+
 Object.defineProperty( RenderState.prototype, "blendFunc1", {
 	set: function(v) { this._data[11] = v; },
 	get: function() { return this._data[11];	},
 	enumerable: true
 });
+
+RenderState["@blendFunc1"] = { widget: "combo", values: { ZERO: GL.ZERO, ONE: GL.ONE, SRC_COLOR: GL.SRC_COLOR, ONE_MINUS_SRC_COLOR: GL.ONE_MINUS_SRC_COLOR, DST_COLOR: GL.DST_COLOR, ONE_MINUS_DST_COLOR: GL.ONE_MINUS_DST_COLOR, SRC_ALPHA: GL.SRC_ALPHA, ONE_MINUS_SRC_ALPHA: GL.ONE_MINUS_SRC_ALPHA, DST_ALPHA: GL.DST_ALPHA, ONE_MINUS_DST_ALPHA: GL.ONE_MINUS_DST_ALPHA, CONSTANT_COLOR: GL.CONSTANT_COLOR, ONE_MINUS_CONSTANT_COLOR: GL.ONE_MINUS_CONSTANT_COLOR, CONSTANT_ALPHA: GL.CONSTANT_ALPHA, ONE_MINUS_CONSTANT_ALPHA: GL.ONE_MINUS_CONSTANT_ALPHA, SRC_ALPHA_SATURATE: GL.SRC_ALPHA_SATURATE } };
 
 Object.defineProperty( RenderState.prototype, "blendFunc", {
 	set: function(v)
@@ -196,6 +206,8 @@ Object.defineProperty( RenderState.prototype, "stencil_mask", {
 	enumerable: true
 });
 
+RenderState["@stencil_mask"] = { widget: "number", min: 0, max: 256, step: 1, precision: 0 };
+
 Object.defineProperty( RenderState.prototype, "stencil_func", {
 	set: function(v) {
 		if(!v || v.length != 3)
@@ -205,26 +217,32 @@ Object.defineProperty( RenderState.prototype, "stencil_func", {
 		this._data[20] = v[2];
 	},
 	get: function() { return this._data.subarray(18,21); },
-	enumerable: true
+	enumerable: false
 });
 
 Object.defineProperty( RenderState.prototype, "stencil_func_func", {
 	set: function(v) { this._data[18] = v; },
 	get: function() { return this._data[18]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_func_func"] = { widget: "combo", values: { LESS: GL.LESS, LEQUAL: GL.LEQUAL, EQUAL: GL.EQUAL, NOTEQUAL: GL.NOTEQUAL, GREATER: GL.GREATER, GEQUAL: GL.GEQUAL, ALWAYS: GL.ALWAYS, NEVER: GL.NEVER } };
 
 Object.defineProperty( RenderState.prototype, "stencil_func_ref", {
 	set: function(v) { this._data[19] = v; },
 	get: function() { return this._data[19]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_func_ref"] = { widget: "number", min: 0, max: 256, step: 1, precision: 0 };
 
 Object.defineProperty( RenderState.prototype, "stencil_func_mask", {
 	set: function(v) { this._data[20] = v; },
 	get: function() { return this._data[20]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_func_mask"] = { widget: "number", min: 0, max: 256, step: 1, precision: 0 };
 
 Object.defineProperty( RenderState.prototype, "stencil_op", {
 	set: function(v) {
@@ -235,26 +253,32 @@ Object.defineProperty( RenderState.prototype, "stencil_op", {
 		this._data[23] = v[2];
 	},
 	get: function() { return this._data.subarray(21,24); },
-	enumerable: true
+	enumerable: false
 });
 
 Object.defineProperty( RenderState.prototype, "stencil_op_sfail", {
 	set: function(v) { this._data[21] = v; },
 	get: function() { return this._data[21]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_op_sfail"] = { widget: "combo", values: { KEEP: GL.KEEP, ZERO: GL.ZERO, REPLACE: GL.REPLACE, INCR: GL.INCR, INCR_WRAP: GL.INCR_WRAP, DECR: GL.DECR_WRAP, INVERT: GL.INVERT } };
 
 Object.defineProperty( RenderState.prototype, "stencil_op_dpfail", {
 	set: function(v) { this._data[22] = v; },
 	get: function() { return this._data[22]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_op_dpfail"] = { widget: "combo", values: { KEEP: GL.KEEP, ZERO: GL.ZERO, REPLACE: GL.REPLACE, INCR: GL.INCR, INCR_WRAP: GL.INCR_WRAP, DECR: GL.DECR_WRAP, INVERT: GL.INVERT } };
 
 Object.defineProperty( RenderState.prototype, "stencil_op_dppass", {
 	set: function(v) { this._data[23] = v; },
 	get: function() { return this._data[23]; },
-	enumerable: false
+	enumerable: true
 });
+
+RenderState["@stencil_op_dppass"] = { widget: "combo", values: { KEEP: GL.KEEP, ZERO: GL.ZERO, REPLACE: GL.REPLACE, INCR: GL.INCR, INCR_WRAP: GL.INCR_WRAP, DECR: GL.DECR_WRAP, INVERT: GL.INVERT } };
 
 RenderState.default_state = {
 	front_face: GL.CCW,

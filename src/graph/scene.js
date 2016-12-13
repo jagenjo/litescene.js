@@ -500,12 +500,59 @@ if(typeof(LiteGraph) != "undefined")
 		if(!compo)
 			return;
 		if(compo[action_name])
-			compo[action_name]( ); //params will be mostly MouseEvent, so for now I wont pass it
+			compo[action_name](); //params will be mostly MouseEvent, so for now I wont pass it
+	}
+
+	//used by the LGraphSetValue node
+	LGraphComponent.prototype.onSetValue = function( property_name, value ) { 
+		var compo = this.getComponent();
+		if(!compo)
+			return;
+
+		var current = compo[ property_name ];
+		var final_value;
+
+		if( current == null)
+		{
+			if(value && value.constructor === String)
+				final_value = value;
+		}
+		else
+		{
+			switch( current.constructor )
+			{
+				case Number: final_value = Number( value ); break;
+				case Boolean: final_value = (value == "true" || value == "1"); break;
+				case String: final_value = String( value ); break;
+				case Array:
+				case Float32Array: 
+					if( value != null )
+					{
+						if( value.constructor === String )
+							final_value = JSON.parse("["+value+"]");
+						else if( value.constructor === Number )
+							final_value = [value];
+						else
+							final_value = value;
+					}
+					else
+						final_value = value;
+					break;
+			}
+		}
+
+		if(final_value === undefined)
+			return;
+
+		if(compo.setPropertyValue)
+			compo.setPropertyValue( property_name, final_value );
+		else
+			compo[ property_name ] = final_value;
 	}
 
 	LGraphComponent.prototype.onGetInputs = function()
 	{ 
-		var inputs = [];
+		var inputs = [["Node",0],null];
 
 		this.getComponentProperties("input", inputs);
 

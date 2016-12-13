@@ -111,6 +111,10 @@ function Light(o)
 	this._type = Light.OMNI;
 	this.frustum_size = 50; //ortho
 
+	//used to force the computation of the light matrix for the shader (otherwise only if projective texture or shadows are enabled)
+	this.force_light_matrix = false; 
+	this._light_matrix = mat4.create();
+
 	this.extra_light_shader_code = null;
 	this.extra_texture = null;
 
@@ -119,22 +123,25 @@ function Light(o)
 	this._right = vec3.clone( Light.RIGHT_VECTOR );
 	this._top = vec3.clone( Light.UP_VECTOR );
 
-	//for caching purposes
+	//for StandardMaterial
 	this._query = new LS.ShaderQuery();
 	this._samplers = [];
+
+	//light uniforms
 	this._uniforms = {
-		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, ...
+		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, etc
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
 		u_light_color: vec3.create(),
 		u_light_att: this._attenuation_info,
 		u_light_offset: this.offset,
+		u_light_matrix: this._light_matrix,
 		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
 		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT,
-		u_light_matrix: this._light_matrix
 	};
 
+	//configure
 	if(o) 
 	{
 		this.configure(o);
@@ -294,12 +301,11 @@ Light.prototype.updateLightCamera = function()
 	camera.eye = this.getPosition( Light._temp_position );
 	camera.center = this.getTarget( Light._temp_target );
 
-	var up = this.getUp(Light._temp_up);
-	var front = this.getFront(Light._temp_front);
+	var up = this.getUp( Light._temp_up );
+	var front = this.getFront( Light._temp_front );
 	if( Math.abs( vec3.dot(front,up) ) > 0.999 ) 
 		vec3.set(up,0,0,1);
 	camera.up = up;
-
 	camera.type = this.type == Light.DIRECTIONAL ? LS.Components.Camera.ORTHOGRAPHIC : LS.Components.Camera.PERSPECTIVE;
 
 	var closest_far = this.computeShadowmapFar();
@@ -310,7 +316,8 @@ Light.prototype.updateLightCamera = function()
 	camera.fov = (this.angle_end || 45); //fov is in degrees
 
 	camera.updateMatrices();
-	this._light_matrix = camera._viewprojection_matrix;
+
+	this._light_matrix.set( camera._viewprojection_matrix );
 
 	/* ALIGN TEXEL OF SHADOWMAP IN DIRECTIONAL
 	if(this.type == Light.DIRECTIONAL && this.cast_shadows && this.enabled)
@@ -495,7 +502,7 @@ Light.prototype.prepare = function( render_settings )
 	query.clear(); //delete all properties (I dont like to generate garbage)
 
 	//projective texture needs the light matrix to compute projection
-	if(this.projective_texture || this.cast_shadows)
+	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
 
 	if( (!render_settings.shadows_enabled || !this.cast_shadows) && this._shadowmap)
@@ -890,8 +897,20 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 
 Light.prototype.applyShaderBlockFlags = function( flags )
 {
-	if(this.enabled)
-		flags |= Light.shader_block.flag_mask;
+	if(!this.enabled)
+		return flags;
+
+	flags |= Light.shader_block.flag_mask;
+
+	if(this.cast_shadows)
+	{
+		if(this.type == Light.OMNI)
+		{
+			//flags |= Light.shadowmapping_cube_shader_block.flag_mask;
+		}
+		else
+			flags |= Light.shadowmapping_2d_shader_block.flag_mask;
+	}
 	return flags;
 }
 
@@ -929,11 +948,11 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
 	uniform vec3 u_light_position;\n\
-	uniform vec4 u_light_params; //type, \n\
 	uniform vec3 u_light_front;\n\
 	uniform vec3 u_light_color;\n\
 	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
 	uniform vec2 u_light_att; //start,end \n\
+	uniform mat4 u_light_matrix; //to light space\n\
 	//used to store light contribution\n\
 	struct FinalLight {\n\
 		vec3 Color;\n\
@@ -969,12 +988,16 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	Light Shadowing (Hard, Soft)
 */
 
-Light._enabled_shaderblock_code = "\n\
+Light._enabled_vs_shaderblock_code = "\n\
+	#pragma shaderblock \"testShadow\"\n\
+";
+
+Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"input\"\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
-	#pragma shaderblock \"shadowmapping\"\n\
+	#pragma shaderblock \"testShadow\"\n\
 	\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
@@ -1005,6 +1028,10 @@ Light._enabled_shaderblock_code = "\n\
 		NdotL = max( 0.0, NdotL );\n\
 		LIGHT.Diffuse = abs(NdotL);\n\
 		\n\
+		LIGHT.Shadow = 1.0;\n\
+		#ifdef TESTSHADOW\n\
+			LIGHT.Shadow = testShadow();\n\
+		#endif\n\
 		\n\
 		#ifdef LIGHT_FUNC\n\
 			LIGHT_FUNC(LIGHT);\n\
@@ -1062,7 +1089,8 @@ Light._disabled_shaderblock_code = "\n\
 ";
 
 var light_block = new LS.ShaderBlock("light");
-light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_shaderblock_code, Light._disabled_shaderblock_code );
+light_block.addCode( GL.VERTEX_SHADER, Light._enabled_vs_shaderblock_code, null );
+light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
 Light.shader_block = light_block;
 
@@ -1122,11 +1150,16 @@ Light._shadowmap_cubemap_code = "\n\
 	}\n\
 ";
 
-Light._shadowmap_flat_enabled_code = "\n\
-	#ifndef SHADOWMAP_ACTIVE\n\
-		#define SHADOWMAP_ACTIVE\n\
+Light._shadowmap_vertex_enabled_code ="\n\
+	varying vec4 v_light_coord;\n\
+";
+
+Light._shadowmap_2d_enabled_code = "\n\
+	#ifndef TESTSHADOW\n\
+		#define TESTSHADOW\n\
 	#endif\n\
 	uniform sampler2D shadowmap;\n\
+	varying vec4 v_light_coord;\n\
 	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
 	\n\
 	float UnpackDepth32(vec4 depth)\n\
@@ -1139,8 +1172,9 @@ Light._shadowmap_flat_enabled_code = "\n\
 		#endif\n\
 	}\n\
 	\n\
-	float testShadow(vec3 offset)\n\
+	float testShadow()\n\
 	{\n\
+		vec3 offset;\n\
 		float shadow = 0.0;\n\
 		float depth = 0.0;\n\
 		float bias = u_shadow_params.y;\n\
@@ -1162,6 +1196,8 @@ Light._shadowmap_flat_enabled_code = "\n\
 ";
 
 var shadowmapping_block = new LS.ShaderBlock("testShadow");
-shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_flat_enabled_code, "" );
+shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, "" );
+shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_block.register();
-Light.shadowmapping_shader_block = shadowmapping_block;
+Light.shadowmapping_2d_shader_block = shadowmapping_block;
+

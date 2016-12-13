@@ -1208,7 +1208,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data, options ) {
 	
 	if(!global.JSZip)
-		throw("JSZip not found. To use ZIPs you must have the JSZip.js library installed.");
+		throw("JSZip not found. To use ZIPs you must have the JSZip.js library included in the website.");
 
 	var zip = new JSZip();
 	zip.loadAsync( data ).then(function(zip){

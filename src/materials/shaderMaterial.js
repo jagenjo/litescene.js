@@ -70,17 +70,35 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 	if(!name || !uniform)
 		throw("parameter missing in createUniform");
 
+	//
 	type = type || "Number";
-	value = value || 0;
-
 	if( type.constructor !== String )
 		throw("type must be string");
 
+	//cast to typed-array
+	value = value || 0;
 	if(value && value.length)
 		value = new Float32Array( value );//cast them always
+	else
+	{
+		//create a value, otherwise is null
+		switch (type)
+		{
+			case "vec2": value = vec2.create(); break;
+			case "color":
+			case "vec3": value = vec3.create(); break;
+			case "color4":
+			case "vec4": value = vec4.create(); break;
+			case "mat3": value = mat3.create(); break;
+			case "mat4": value = mat4.create(); break;
+			default:
+		}
+	}
 
+	//define info
 	var prop = { name: name, uniform: uniform, value: value, type: type, is_texture: 0 };
 
+	//mark as texture (because this need to go to the textures container so they are binded)
 	if(type.toLowerCase() == "texture" || type == "sampler2D" || type == "samplerCube" || type == "sampler")
 		prop.is_texture = (type == "samplerCube") ? 2 : 1;
 
@@ -106,13 +124,16 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 * @param {String} name the property name as it should be shown
 * @param {String} uniform the uniform name in the shader
 * @param {Object} options an object containing all the possible options (used mostly for widgets)
+* @param {String} value default value (texture name)
 */
-ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options  )
+ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options, value  )
 {
 	if(!name || !uniform)
 		throw("parameter missing in createSampler");
 
-	var sampler = {};
+	var sampler = {
+		texture: value
+	};
 
 	var prop = { name: name, uniform: uniform, value: sampler, type: "sampler", is_texture: 1, sampler_slot: -1 };
 
@@ -374,7 +395,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 }
 
 //called from LS.Renderer when rendering an instance
-ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
+ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
 {
 	if(!this.shader)
 		return true; //skip rendering
@@ -422,9 +443,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 	if(!lights)
 	{
 		//extract shader compiled
-		var shader = shader_code.getShader( null, block_flags );
+		var shader = shader_code.getShader( pass.name, block_flags );
 		if(!shader)
-			return true;
+			return false;
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
@@ -475,9 +496,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings )
 	return true;
 }
 
-ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings )
+ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings, pass )
 {
-	return this.renderInstance( instance, render_settings );
+	return this.renderInstance( instance, render_settings, pass );
 }
 
 /**

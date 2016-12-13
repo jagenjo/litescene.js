@@ -7,7 +7,7 @@
 function Transform( o )
 {
 	//packed data (helpful for animation stuff)
-	this._data = new Float32Array( 3 + 4 + 3 ); //pos, rot, scale
+	this._data = new Float32Array( 3 + 4 + 3 ); //pos, rot, scale, also known as trans10
 
 	this._position = this._data.subarray(0,3);
 
@@ -56,7 +56,9 @@ Transform.FRONT = vec3.fromValues(0,0,-1);
 
 Transform["@position"] = { type: "position"};
 Transform["@rotation"] = { type: "quat"};
+Transform["@data"] = { type: "trans10" };
 
+//what is this used for??
 Transform.properties = {
 	position:"vec3",
 	scaling:"vec3",

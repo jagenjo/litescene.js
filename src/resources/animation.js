@@ -288,12 +288,17 @@ Take.prototype.createTrack = function( data )
 * @param {number} current_time the time of the anim to sample
 * @param {number} last_time this is used for events, we need to know where you were before
 * @param {boolean} ignore_interpolation in case you want to sample the nearest one
-* @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
+* @param {SceneNode} weight [Optional] allows to blend animations with current value (default is 1)
+* @param {Number} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight )
 {
 	scene = scene || LS.GlobalScene;
+	if(weight === 0)
+		return;
+
+	weight = weight || 1;
 
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
@@ -334,6 +339,14 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 		{
 			//read from the animation track the value
 			var sample = track.getSample( current_time, !ignore_interpolation );
+
+			//to blend between animations...
+			if(weight !== 1)
+			{
+				var current_value = scene.getPropertyValueFromPath( track._property_path, sample, root_node, 0 );
+				sample = LS.Animation.interpolateLinear( sample, current_value, weight, null, track.type, track.value_size, track );
+			}
+
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
 				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
@@ -1163,6 +1176,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 	if(this.interpolation === LS.LINEAR)
 	{
+		/*
 		if(this.value_size === 0 && LS.Interpolators[ this.type ] )
 		{
 			var func = LS.Interpolators[ this.type ];
@@ -1170,9 +1184,14 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 			this._last_value = r;
 			return r;
 		}
+		*/
 
 		if(this.value_size == 1)
 			return a[1] * t + b[1] * (1-t);
+
+		return LS.Animation.interpolateLinear( a[1], b[1], t, null, this.type, this.value_size, this );
+
+		/*
 
 		result = result || this._result;
 
@@ -1200,6 +1219,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		}
 
 		return result;
+		*/
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
@@ -1226,14 +1246,20 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 			result = this._result = new Float32Array( this.value_size );
 
 		result = result || this._result;
-		result = Animation.EvaluateHermiteSplineVector(a[1],b[1], pre_a[1], post_b[1], 1 - t, result );
+		result = Animation.EvaluateHermiteSplineVector( a[1], b[1], pre_a[1], post_b[1], 1 - t, result );
 
 		if(this.type == "quat")
-			quat.normalize(result, result);
+		{
+			quat.slerp( result, a[1], b[1], t ); //force quats without bezier interpolation
+			quat.normalize( result, result );
+		}
 		else if(this.type == "trans10")
 		{
-			var rot = result.subarray(3,7);
-			quat.normalize(rot, rot);
+			var rotR = result.subarray(3,7);
+			var rotA = a_value.subarray(3,7);
+			var rotB = b_value.subarray(3,7);
+			quat.slerp( rotR, rotB, rotA, t );
+			quat.normalize( rotR, rotR );
 		}
 
 		return result;
@@ -1268,6 +1294,14 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 	if(this.interpolation === LS.LINEAR)
 	{
+		if(this.value_size == 1) //simple case
+			return a[1] * t + b[1] * (1-t);
+
+		var a_data = a.subarray(1, this.value_size+1 );
+		var b_data = b.subarray(1, this.value_size+1 );
+		return LS.Animation.interpolateLinear( a_data, b_data, t, null, this.type, this.value_size, this );
+
+		/*
 		if(this.value_size == 1)
 			return a[1] * t + b[1] * (1-t);
 		else if( LS.Interpolators[ this.type ] )
@@ -1304,6 +1338,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		}
 
 		return result;
+		*/
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
@@ -1323,14 +1358,23 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 			result = this._result = new Float32Array( this.value_size );
 
 		result = result || this._result;
-		result = Animation.EvaluateHermiteSplineVector( a.subarray(1,offset), b.subarray(1,offset), pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
+		var a_value = a.subarray(1,offset);
+		var b_value = b.subarray(1,offset);
+
+		result = Animation.EvaluateHermiteSplineVector( a_value, b_value, pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
 
 		if(this.type == "quat")
+		{
+			quat.slerp( result, a_value, b_value, t );
 			quat.normalize(result, result);
+		}
 		else if(this.type == "trans10")
 		{
-			var rot = result.subarray(3,7);
-			quat.normalize(rot, rot);
+			var rotR = result.subarray(3,7);
+			var rotA = a_value.subarray(3,7);
+			var rotB = b_value.subarray(3,7);
+			quat.slerp( rotR, rotB, rotA, t );
+			quat.normalize( rotR, rotR );
 		}
 
 		return result;
@@ -1338,7 +1382,6 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 	return null;
 }
-
 
 Track.prototype.getPropertyInfo = function( scene )
 {
@@ -1369,23 +1412,45 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 
 Animation.Track = Track;
 
-/*
-vec3f EvaluateHermiteSpline(const vec3f& p0, const vec3f& p1, const vec3f& t0, const vec3f& t1, float s)
+Animation.interpolateLinear = function( a, b, t, result, type, value_size, track )
 {
-	float s2 = s * s;
-	float s3 = s2 * s;
-	float h1 =  2*s3 - 3*s2 + 1;          // calculate basis function 1
-	float h2 = -2*s3 + 3*s2;              // calculate basis function 2
-	float h3 =   s3 - 2*s2 + s;         // calculate basis function 3
-	float h4 =   s3 -  s2;              // calculate basis function 4
-	vec3f p = h1*p0+                    // multiply and sum all funtions
-						 h2*p1 +                    // together to build the interpolated
-						 h3*t0 +                    // point along the curve.
-						 h4*t1;
-	return p;
-}
-*/
+	if(value_size == 1)
+		return a * t + b * (1-t);
 
+	if( LS.Interpolators[ type ] )
+	{
+		var func = LS.Interpolators[ type ];
+		var r = func( a, b, t, track._last_v );
+		track._last_v = r;
+		return r;
+	}
+
+	result = result || track._result;
+
+	if(!result || result.length != value_size)
+		result = track._result = new Float32Array( value_size );
+
+	switch( type )
+	{
+		case "quat": 
+			quat.slerp( result, b, a, t );
+			quat.normalize( result, result );
+			break;
+		case "trans10": 
+			for(var i = 0; i < 10; i++) //this.value_size should be 10
+				result[i] = a[i] * t + b[i] * (1-t);
+			var rotA = a.subarray(3,7);
+			var rotB = b.subarray(3,7);
+			var rotR = result.subarray(3,7);
+			quat.slerp( rotR, rotB, rotA, t );
+			quat.normalize( rotR, rotR );
+			break;
+		default:
+			for(var i = 0; i < this.value_size; i++)
+				result[i] = a[i] * t + b[i] * (1-t);
+	}
+	return result;
+}
 
 Animation.EvaluateHermiteSpline = function( p0, p1, pre_p0, post_p1, s )
 {
@@ -1423,10 +1488,9 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 	return result;
 }
 
-
 LS.registerResourceClass( Animation );
 
-
+//extra interpolators ***********************************
 LS.Interpolators = {};
 
 LS.Interpolators["texture"] = function( a, b, t, last )

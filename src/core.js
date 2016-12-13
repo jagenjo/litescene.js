@@ -382,7 +382,7 @@ var LS = {
 			{
 				if(v.constructor !== Object && !target && !v.toJSON )
 				{
-					console.warn("Cannot clone system classes");
+					console.warn("Cannot clone internal classes:", LS.getObjectClassName( v )," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'");
 					continue;
 				}
 
@@ -392,7 +392,7 @@ var LS = {
 					o[i] = LS.cloneObject( v, null, true );
 				else {
 					if(v.constructor !== Object && LS.Classes[ LS.getObjectClassName(v) ])
-						console.warn("Cannot clone internal classes: " + LS.getObjectClassName(v) );
+						console.warn("Cannot clone internal classes:", LS.getObjectClassName(v)," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'" );
 
 					if(LS.catch_exceptions)
 					{

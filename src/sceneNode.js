@@ -493,6 +493,108 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
+SceneNode.prototype.getPropertyValue = function( locator )
+{
+	var path = locator.split("/");
+	return this.getPropertyValueFromPath(path);
+}
+
+SceneNode.prototype.getPropertyValueFromPath = function( path )
+{
+	var target = this;
+	var varname = path[0];
+
+	if(path.length == 0)
+		return null
+    else if(path.length == 1) //compo or //var
+	{
+		if(path[0][0] == "@")
+			return this.getComponentByUId( path[0] );
+		else if (path[0] == "material")
+			return this.getMaterial();
+		var target = this.getComponent( path[0] );
+		if(target)
+			return target;
+
+		switch(path[0])
+		{
+			case "matrix":
+			case "x":
+			case "y": 
+			case "z": 
+			case "position":
+			case "rotX":
+			case "rotY":
+			case "rotZ":
+				target = this.transform;
+				varname = path[0];
+				break;
+			default: 
+				target = this;
+				varname = path[0];
+			break;
+		}
+	}
+    else if(path.length > 1) //compo/var
+	{
+		if(path[0][0] == "@")
+		{
+			varname = path[1];
+			target = this.getComponentByUId( path[0] );
+		}
+		else if (path[0] == "material")
+		{
+			target = this.getMaterial();
+			varname = path[1];
+		}
+		else if (path[0] == "flags")
+		{
+			target = this.flags;
+			varname = path[1];
+		}
+		else
+		{
+			target = this.getComponent( path[0] );
+			varname = path[1];
+		}
+
+		if(!target)
+			return null;
+	}
+	else //¿?
+	{
+	}
+
+	var v = undefined;
+
+	if( target.getPropertyValueFromPath && target != this )
+	{
+		var r = target.getPropertyValueFromPath( path.slice(1) );
+		if(r)
+			return r;
+	}
+
+	//to know the value of a property of the given target
+	if( target.getPropertyValue )
+		v = target.getPropertyValue( varname );
+
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if (v === undefined && path.length > 2 && target[ varname ] && target[ varname ].getPropertyValueFromPath )
+	{
+		var r = target[ varname ].getPropertyValueFromPath( path.slice(2) );
+		if(r)
+		{
+			r.node = this;
+			return r;
+		}
+	}
+
+	if(v === undefined && target[ varname ] === undefined )
+		return null;
+	return v !== undefined ? v : target[ varname ];
+}
+
 SceneNode.prototype.setPropertyValue = function( locator, value )
 {
 	var path = locator.split("/");

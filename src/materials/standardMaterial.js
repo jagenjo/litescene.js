@@ -371,6 +371,8 @@ StandardMaterial.prototype.setProperty = function(name, value)
 	//regular
 	switch(name)
 	{
+		//objects
+		case "render_state":
 		//numbers
 		case "specular_factor":
 		case "specular_gloss":

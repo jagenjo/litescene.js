@@ -29,6 +29,7 @@
 ../src/resources/shaderCode.js
 
 ../src/graph/scene.js
+../src/graph/logic.js
 ../src/graph/fx.js
 
 ../src/helpers/path.js

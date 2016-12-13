@@ -127,7 +127,17 @@ var Renderer = {
 		this.createRenderQueue( LS.RenderQueue.BACKGROUND, LS.RenderQueue.NO_SORT );
 		this.createRenderQueue( LS.RenderQueue.GEOMETRY, LS.RenderQueue.SORT_NEAR_TO_FAR );
 		this.createRenderQueue( LS.RenderQueue.TRANSPARENT, LS.RenderQueue.SORT_FAR_TO_NEAR );
+
+		//very special queue that must change the renderframecontext before start rendering anything
+		this.createRenderQueue( LS.RenderQueue.READBACK_COLOR, LS.RenderQueue.SORT_FAR_TO_NEAR, {
+			onStart: function( render_settings, pass ){
+				if( LS.RenderFrameContext.current && pass.name === "color" )
+					LS.RenderFrameContext.current.cloneBuffers();
+			}
+		});
+
 		this.createRenderQueue( LS.RenderQueue.OVERLAY, LS.RenderQueue.NO_SORT );
+
 	},
 
 	reset: function()
@@ -289,10 +299,10 @@ var Renderer = {
 		//get all the data
 		if(scene) //in case we use another scene
 			this.processVisibleData(scene, render_settings);
-		scene = scene || this._current_scene;
+		this._current_scene = scene = scene || this._current_scene; //ugly, I know
 
 		//set as active camera and set viewport
-		this.enableCamera( camera, render_settings, render_settings.skip_viewport ); 
+		this.enableCamera( camera, render_settings, render_settings.skip_viewport, scene ); 
 
 		//compute the rendering order
 		this.sortRenderQueues( camera, render_settings );
@@ -332,9 +342,9 @@ var Renderer = {
 	* @param {Camera} camera
 	* @param {RenderSettings} render_settings
 	*/
-	enableCamera: function(camera, render_settings, skip_viewport)
+	enableCamera: function(camera, render_settings, skip_viewport, scene )
 	{
-		var scene = this._current_scene;
+		scene = scene || this._current_scene || LS.GlobalScene;
 
 		LEvent.trigger( camera, "beforeEnabled", render_settings );
 		LEvent.trigger( scene, "beforeCameraEnabled", camera );
@@ -559,9 +569,15 @@ var Renderer = {
 		for(var j = 0; j < this._queues.length; ++j)
 		{
 			var queue = this._queues[j];
-			if(!queue)
+			if(!queue || !queue.instances.length) //empty
 				continue;
-			var render_instances = this._queues[j].instances;
+
+			//used to change RenderFrameContext stuff (cloning textures for refraction, etc)
+			if(queue.onStart)
+				if( queue.onStart( render_settings, pass ) === false )
+					continue;
+
+			var render_instances = queue.instances;
 
 			//for each render instance
 			for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -575,12 +591,15 @@ var Renderer = {
 				this._rendered_instances += 1;
 
 				//choose the appropiate render pass
-				render_instance_func.call( this, instance, render_settings ); //by default calls renderColorInstance but it could call renderShadowPassInstance
+				render_instance_func.call( this, instance, render_settings, pass ); //by default calls renderColorInstance but it could call renderShadowPassInstance
 
 				//some instances do a post render action
 				if(instance.onPostRender)
 					instance.onPostRender( render_settings );
 			}
+
+			if(queue.onFinish)
+				queue.onFinish( render_settings, pass );
 		}
 
 		this.resetGLState( render_settings );
@@ -590,8 +609,8 @@ var Renderer = {
 		//restore state
 		this.resetGLState( render_settings );
 
-		LEvent.trigger( scene, "afterRenderInstances", render_settings);
-		//scene.triggerInNodes("afterRenderInstances", render_settings);
+		LEvent.trigger( scene, "afterRenderInstances", render_settings );
+		LEvent.trigger( this, "afterRenderInstances", render_settings );
 
 		//and finally again
 		this.resetGLState( render_settings );
@@ -643,29 +662,29 @@ var Renderer = {
 	},
 
 	//this function is in charge of rendering the regular color pass (used also for reflections)
-	renderColorPassInstance: function( instance, render_settings )
+	renderColorPassInstance: function( instance, render_settings, pass )
 	{
 		//render instance
 		var renderered = false;
 		if( instance.material && instance.material.renderInstance )
-			renderered = instance.material.renderInstance( instance, render_settings );
+			renderered = instance.material.renderInstance( instance, render_settings, pass );
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardColorMultiPassLightingInstance( instance, render_settings );
+			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
-	renderShadowPassInstance: function( instance, render_settings )
+	renderShadowPassInstance: function( instance, render_settings, pass )
 	{
 		//render instance
 		var renderered = false;
 		if( instance.material && instance.material.renderShadowInstance )
-			renderered = instance.material.renderShadowInstance( instance, render_settings );
+			renderered = instance.material.renderShadowInstance( instance, render_settings, pass );
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardShadowPassInstance( instance, render_settings);
+			this.renderStandardShadowPassInstance( instance, render_settings, pass);
 	},
 
 
@@ -1453,9 +1472,11 @@ var Renderer = {
 	*
 	* @method addRenderQueue
 	* @param {RenderQueue} name name of the render pass as in render_passes
+	* @param {Number} sorting which algorithm use to sort ( LS.RenderQueue.NO_SORT, LS.RenderQueue.SORT_NEAR_TO_FAR, LS.RenderQueue.SORT_FAR_TO_NEAR )
+	* @param {Object} options extra stuff to add to the queue ( like callbacks onStart, onFinish )
 	* @return {Number} index of the render queue
 	*/
-	createRenderQueue: function( index, sorting )
+	createRenderQueue: function( index, sorting, options )
 	{
 		if(index === undefined)
 			throw("RenderQueue must have index");
@@ -1463,6 +1484,10 @@ var Renderer = {
 		if( this._queues[ index ] )
 			console.warn("There is already a RenderQueue in slot ",index );
 		this._queues[ index ] = queue;
+
+		if(options)
+			for(var i in options)
+				queue[i] = options[i];
 	}
 };
 

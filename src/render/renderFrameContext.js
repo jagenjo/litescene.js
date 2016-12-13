@@ -26,6 +26,9 @@ function RenderFrameContext( o )
 	this._color_texture = null;
 	this._depth_texture = null;
 	this._textures = []; //all color textures
+	this._cloned_textures = null;
+
+	this._version = 1;
 
 	if(o)
 		this.configure(o);
@@ -196,6 +199,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	//assign textures (this will enable the FBO but it will restore the old one after finishing)
 	this._fbo.stencil = this.use_stencil_buffer;
 	this._fbo.setTextures( textures, this._depth_texture );
+	this._version += 1;
 }
 
 /**
@@ -211,8 +215,15 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	//create FBO and textures (pass width and height of current viewport)
 	this.prepare( viewport[2], viewport[3] );
 
+	if(!this._fbo)
+		throw("No FBO created in RenderFrameContext");
+
 	//enable FBO
-	this.enableFBO();
+	RenderFrameContext.enableFBO( this._fbo, this.adjust_aspect );
+
+	if(LS.RenderFrameContext.current)
+		RenderFrameContext.stack.push( LS.RenderFrameContext.current );
+	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
 	if(this._depth_texture && camera)
@@ -222,6 +233,47 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	}
 }
 
+//we cannot read and write in the same buffer, so we need to clone the textures
+RenderFrameContext.prototype.cloneBuffers = function()
+{
+	//we do not call this._fbo.unbind because it will set the previous FBO
+	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+
+	///for color
+	if( this._textures.length )
+	{
+		if(!this._cloned_textures)
+			this._cloned_textures = [];
+		var textures = this._textures;
+		this._cloned_textures.length = textures.length;
+		for(var i = 0; i < textures.length; ++i)
+		{
+			var texture = textures[i];
+			var cloned_texture = this._cloned_textures[i];
+			if( !cloned_texture || cloned_texture.hasSameSize( texture[i] ) || !cloned_texture.hasSameProperties( texture ) )
+				cloned_texture = this._cloned_textures[i] = new GL.Texture( texture.width, texture.height, texture.getProperties() );
+
+			texture.copyTo( cloned_texture );
+			if(i == 0)
+				LS.ResourcesManager.textures[":color_buffer" ] = cloned_texture;
+		}
+	}
+
+	//for depth
+	if( this._depth_texture )
+	{
+		var depth = this._depth_texture;
+		if(!this._cloned_depth_texture || this._cloned_depth_texture.width != depth.width || this._cloned_depth_texture.height != depth.height || !this._cloned_depth_texture.hasSameProperties( depth ) )
+			this._cloned_depth_texture = new GL.Texture( depth.width, depth.height, depth.getProperties() );
+
+		depth.copyTo( this._cloned_depth_texture );
+		LS.ResourcesManager.textures[":depth_buffer" ] = this._cloned_depth_texture;
+	}
+
+	//rebind FBO
+	gl.bindFramebuffer( gl.FRAMEBUFFER, this._fbo.handler );
+}
+
 /**
 * Called to stop rendering to this context
 *
@@ -229,7 +281,48 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 */
 RenderFrameContext.prototype.disable = function()
 {
-	this.disableFBO();
+	//sets some global parameters for aspect and current RFC
+	RenderFrameContext.disableFBO( this._fbo );
+
+	//if we need to store the textures in the ResourcesManager
+	if(this.name)
+	{
+		var textures = this._textures;
+		for(var i = 0; i < textures.length; ++i)
+		{
+			var name = this.name + (i > 0 ? i : "");
+			textures[i].filename = name;
+
+			//only clone main color if requested
+			if( this.clone_after_unbind && i === 0 )
+			{
+				if( !this._cloned_texture || 
+					this._cloned_texture.width !== textures[i].width || 
+					this._cloned_texture.height !== textures[i].height ||
+					this._cloned_texture.type !== textures[i].type )
+					this._cloned_texture = textures[i].clone();
+				else
+					textures[i].copyTo( this._cloned_texture );
+
+				LS.ResourcesManager.textures[ name ] = this._cloned_texture;
+			}
+			else
+				LS.ResourcesManager.textures[ name ] = textures[i];
+		}
+
+		if(this._depth_texture)
+		{
+			var name = this.name + "_depth";
+			this._depth_texture.filename = name;
+			LS.ResourcesManager.textures[ name ] = this._depth_texture;
+			//LS.ResourcesManager.textures[ ":depth" ] = this._depth_texture;
+		}
+	}
+
+	if( RenderFrameContext.stack.length )
+		LS.RenderFrameContext.current = RenderFrameContext.stack.pop();
+	else
+		LS.RenderFrameContext.current = null;
 }
 
 /**
@@ -255,75 +348,29 @@ RenderFrameContext.prototype.getDepthTexture = function()
 	return this._depth_texture || null;
 }
 
-//helper in case you want have a Color and Depth texture
-RenderFrameContext.prototype.enableFBO = function()
+//enables the FBO and sets every texture with a flag so it cannot be used during the rendering process
+RenderFrameContext.enableFBO = function( fbo, adjust_aspect )
 {
-	if(!this._fbo)
-		throw("No FBO created in RenderFrameContext");
-
-	this._fbo.bind( true ); //changes viewport to full FBO size (saves old)
-
-	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._in_current_fbo = true;
-	if(this._depth_texture) //in some cases you can read from the same buffer that is binded (if no writing is enabled)
-		this._depth_texture._in_current_fbo = true;
+	fbo.bind( true ); //changes viewport to full FBO size (saves old)
 
 	LS.Renderer._full_viewport.set( gl.viewport_data );
-	this._old_aspect = LS.Renderer.global_aspect;
-	if(this.adjust_aspect)
-		LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (this._color_texture.width / this._color_texture.height);
-	if(LS.RenderFrameContext.current)
-		RenderFrameContext.stack.push( LS.RenderFrameContext.current );
-	LS.RenderFrameContext.current = this;
-}
-
-RenderFrameContext.prototype.disableFBO = function()
-{
-	this._fbo.unbind(); //restores viewport to old saved one
-	LS.Renderer._full_viewport.set( this._fbo._old_viewport );
-	LS.Renderer.global_aspect = this._old_aspect;
-
-	for(var i = 0; i < this._textures.length; ++i)
-		this._textures[i]._in_current_fbo = false;
-	if(this._depth_texture)
-		this._depth_texture._in_current_fbo = false;
-
-	if(this.name)
+	if( adjust_aspect )
 	{
-		for(var i = 0; i < this._textures.length; ++i)
-		{
-			var name = this.name + (i > 0 ? i : "");
-			this._textures[i].filename = name;
-
-			if(this.clone_after_unbind && i === 0)
-			{
-				if( !this._cloned_texture || 
-					this._cloned_texture.width !== this._textures[i].width || 
-					this._cloned_texture.height !== this._textures[i].height ||
-					this._cloned_texture.type !== this._textures[i].type )
-					this._cloned_texture = this._textures[i].clone();
-				else
-					this._textures[i].copyTo( this._cloned_texture );
-
-				LS.ResourcesManager.textures[ name ] = this._cloned_texture;
-			}
-			else
-				LS.ResourcesManager.textures[ name ] = this._textures[i];
-		}
-		if(this._depth_texture)
-		{
-			var name = this.name + "_depth";
-			this._depth_texture.filename = name;
-			LS.ResourcesManager.textures[ name ] = this._depth_texture;
-			//LS.ResourcesManager.textures[ ":depth" ] = this._depth_texture;
-		}
+		fbo._old_aspect = LS.Renderer.global_aspect;
+		LS.Renderer.global_aspect = (gl.canvas.width / gl.canvas.height) / (fbo.color_textures[0].width / fbo.color_textures[0].height);
 	}
-
-	if( RenderFrameContext.stack.length )
-		LS.RenderFrameContext.current = RenderFrameContext.stack.pop();
 	else
-		LS.RenderFrameContext.current = null;
+		delete fbo._old_aspect;
 }
+
+RenderFrameContext.disableFBO = function( fbo )
+{
+	fbo.unbind(); //restores viewport to old saved one
+	LS.Renderer._full_viewport.set( fbo._old_viewport );
+	if( fbo._old_aspect )
+		LS.Renderer.global_aspect = fbo._old_aspect;
+}
+
 
 /**
 * Render the context of the context to the viewport (allows to apply FXAA)

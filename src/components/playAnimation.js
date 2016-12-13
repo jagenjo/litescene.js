@@ -9,15 +9,24 @@
 function PlayAnimation(o)
 {
 	this.enabled = true;
-	this.animation = "";
-	this.take = "default";
+	this._animation = "";
+	this._take = "default";
 	this.root_node = "@";
 	this.playback_speed = 1.0;
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
 	this.current_time = 0;
-	this._last_time = 0;
+	this.blend_time = 0;
 	this.range = null;
+
+	this._last_time = 0;
+
+	this._use_blend_animation = false;
+	this._blend_animation = null;
+	this._blend_take = null;
+	this._blend_current_time = 0;
+	this._blend_remaining_time = 0;
+	this._blend_updated_frame = -1; //used to avoid reseting time when animation and track are changed continuously
 
 	this.disabled_tracks = {};
 
@@ -35,6 +44,61 @@ PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGP
 PlayAnimation["@animation"] = { widget: "animation" };
 PlayAnimation["@root_node"] = { type: "node" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
+PlayAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
+PlayAnimation["@blend_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
+
+Object.defineProperty( PlayAnimation.prototype, "animation", {
+	set: function(v){
+		if(v == this._animation)
+			return;
+		this._blend_animation = this._animation;
+		this._animation = v;
+		if(this.blend_time)
+		{
+			if(!this._root || !this._root.scene)
+				return;
+
+			this._use_blend_animation = true;
+			if( this._root.scene.frame != this._blend_updated_frame )
+			{
+				this._blend_current_time = this.current_time;
+				this._blend_remaining_time = this.blend_time;
+				this._blend_updated_frame = this._root.scene.frame;
+			}
+		}
+	},
+	get: function()
+	{
+		return this._animation;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( PlayAnimation.prototype, "take", {
+	set: function(v){
+		if(v == this._take)
+			return;
+		this._blend_take = this._take;
+		this._take = v;
+		if(this.blend_time)
+		{
+			if(!this._root || !this._root.scene)
+				return;
+			this._use_blend_animation = true;
+			if( this._root.scene.frame != this._blend_updated_frame )
+			{
+				this._blend_current_time = this.current_time;
+				this._blend_remaining_time = this.blend_time;
+				this._blend_updated_frame = this._root.scene.frame;
+			}
+		}
+	},
+	get: function()
+	{
+		return this._take;
+	},
+	enumerable: true
+});
 
 PlayAnimation.prototype.configure = function(o)
 {
@@ -48,15 +112,17 @@ PlayAnimation.prototype.configure = function(o)
 	if(o.mode !== undefined) 
 		this.mode = o.mode;
 	if(o.animation)
-		this.animation = o.animation;
+		this._animation = o.animation;
 	if(o.take)
-		this.take = o.take;
+		this._take = o.take;
 	if(o.playback_speed != null)
 		this.playback_speed = parseFloat( o.playback_speed );
 	if(o.root_node !== undefined)
 		this.root_node = o.root_node;
 	if(o.playing !== undefined)
 		this.playing = o.playing;
+	if(o.blend_time !== undefined)
+		this.blend_time = o.blend_time;
 }
 
 
@@ -74,11 +140,13 @@ PlayAnimation.prototype.onRemovedFromScene = function(scene)
 }
 
 
-PlayAnimation.prototype.getAnimation = function()
+PlayAnimation.prototype.getAnimation = function( name )
 {
-	if(!this.animation || this.animation[0] == "@") 
+	name = name === undefined ? this.animation : name;
+
+	if(!name || name[0] == "@") 
 		return this._root.scene.animation;
-	var anim = LS.ResourcesManager.getResource( this.animation );
+	var anim = LS.ResourcesManager.getResource( name );
 	if( anim && anim.constructor === LS.Animation )
 		return anim;
 	return null;
@@ -95,6 +163,14 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	if( this.mode != PlayAnimation.PAUSED )
 		this.current_time += dt * this.playback_speed;
 
+	this.onUpdateAnimation( dt );
+
+	if( this._use_blend_animation )
+		this.onUpdateBlendAnimation( dt );
+}
+
+PlayAnimation.prototype.onUpdateAnimation = function(dt)
+{
 	var animation = this.getAnimation();
 	if(!animation) 
 		return;
@@ -145,7 +221,7 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 	else if(time < start_time)
 		time = start_time;
 
-	this.applyAnimation( time, this._last_time );
+	this.applyAnimation( take, time, this._last_time );
 
 	this._last_time = time; //TODO, add support for pingpong events in tracks
 	//take.actionPerSample( this.current_time, this._processSample.bind( this ), { disabled_tracks: this.disabled_tracks } );
@@ -155,6 +231,67 @@ PlayAnimation.prototype.onUpdate = function(e, dt)
 		scene.requestFrame();
 }
 
+PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
+{
+	var animation = this.getAnimation( this._blend_animation || this._animation || "" );
+	if(!animation) 
+		return;
+
+	var take = animation.takes[ this._blend_take || this._take || "default" ];
+	if(!take) 
+		return;
+
+	this._blend_current_time += dt;
+	this._blend_remaining_time -= dt;
+
+	if( this._blend_remaining_time <= 0 )
+		this._use_blend_animation = false; //next frame it will stop
+
+	var time = this._blend_current_time * this.playback_speed;
+
+	var start_time = 0;
+	var duration = take.duration;
+	var end_time = duration;
+
+	if(this.range)
+	{
+		start_time = this.range[0];
+		end_time = this.range[1];
+		duration = end_time - start_time;
+	}
+
+	if(time > end_time)
+	{
+		switch( this.mode )
+		{
+			case PlayAnimation.ONCE: 
+				time = end_time; 
+				this._use_blend_animation = false;
+				break;
+			case PlayAnimation.PINGPONG:
+				if( ((time / duration)|0) % 2 == 0 ) //TEST THIS
+					time = this._blend_current_time % duration; 
+				else
+					time = duration - (this._blend_current_time % duration);
+				break;
+			case PlayAnimation.PINGPONG:
+				time = end_time; 
+				break;
+			case PlayAnimation.LOOP: 
+			default: 
+				time = ((this._blend_current_time - start_time) % duration) + start_time;
+				break;
+		}
+	}
+	else if(time < start_time)
+		time = start_time;
+
+	this.applyAnimation( take, time, null, this._blend_remaining_time / this.blend_time );
+
+	var scene = this._root.scene;
+	if(scene)
+		scene.requestFrame();
+}
 
 PlayAnimation.prototype.play = function()
 {
@@ -166,7 +303,7 @@ PlayAnimation.prototype.play = function()
 	this._last_time = this.current_time;
 	LEvent.trigger( this, "start_animation" );
 
-	//this.applyAnimation( this.current_time );
+	//this.applyAnimation( take, this.current_time );
 }
 
 PlayAnimation.prototype.pause = function()
@@ -182,7 +319,7 @@ PlayAnimation.prototype.stop = function()
 	if(this.range)
 		this.current_time = this.range[0];
 	this._last_time = this.current_time;
-	//this.applyAnimation( this.current_time );
+	//this.applyAnimation( take, this.current_time );
 }
 
 PlayAnimation.prototype.playRange = function( start, end )
@@ -193,18 +330,10 @@ PlayAnimation.prototype.playRange = function( start, end )
 	this.range = [ start, end ];
 }
 
-PlayAnimation.prototype.applyAnimation = function( time, last_time )
+PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight )
 {
 	if( last_time === undefined )
 		last_time = time;
-
-	var animation = this.getAnimation();
-	if(!animation) 
-		return;
-
-	var take = animation.takes[ this.take ];
-	if(!take) 
-		return;
 
 	var root_node = null;
 	if(this.root_node && this._root.scene)
@@ -214,7 +343,7 @@ PlayAnimation.prototype.applyAnimation = function( time, last_time )
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node, this._root.scene );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight );
 }
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
