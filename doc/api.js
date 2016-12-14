@@ -35,6 +35,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.DebugRender",
         "LS.Draw",
         "LS.Formats",
+        "LS.GLSLCode",
         "LS.GUI",
         "LS.Input",
         "LS.InteractiveController",

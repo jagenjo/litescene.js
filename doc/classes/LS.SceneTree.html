@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -295,6 +296,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_getPropertyValue">getPropertyValue</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_getResources">getResources</a>
 
                             </li>
@@ -467,7 +472,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1180"><code>..&#x2F;src&#x2F;scene.js:1180</code></a>
+        <a href="../files/.._src_scene.js.html#l1222"><code>..&#x2F;src&#x2F;scene.js:1222</code></a>
         </p>
 
 
@@ -547,7 +552,7 @@ and trigger a &quot;clear&quot; LEvent</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1268"><code>..&#x2F;src&#x2F;scene.js:1268</code></a>
+        <a href="../files/.._src_scene.js.html#l1310"><code>..&#x2F;src&#x2F;scene.js:1310</code></a>
         </p>
 
 
@@ -639,7 +644,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1614"><code>..&#x2F;src&#x2F;scene.js:1614</code></a>
+        <a href="../files/.._src_scene.js.html#l1656"><code>..&#x2F;src&#x2F;scene.js:1656</code></a>
         </p>
 
 
@@ -886,7 +891,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1543"><code>..&#x2F;src&#x2F;scene.js:1543</code></a>
+        <a href="../files/.._src_scene.js.html#l1585"><code>..&#x2F;src&#x2F;scene.js:1585</code></a>
         </p>
 
 
@@ -949,7 +954,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1234"><code>..&#x2F;src&#x2F;scene.js:1234</code></a>
+        <a href="../files/.._src_scene.js.html#l1276"><code>..&#x2F;src&#x2F;scene.js:1276</code></a>
         </p>
 
 
@@ -1006,7 +1011,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1439"><code>..&#x2F;src&#x2F;scene.js:1439</code></a>
+        <a href="../files/.._src_scene.js.html#l1481"><code>..&#x2F;src&#x2F;scene.js:1481</code></a>
         </p>
 
 
@@ -1204,7 +1209,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1524"><code>..&#x2F;src&#x2F;scene.js:1524</code></a>
+        <a href="../files/.._src_scene.js.html#l1566"><code>..&#x2F;src&#x2F;scene.js:1566</code></a>
         </p>
 
 
@@ -1710,6 +1715,101 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
 
 </div>
+<div id="method_getPropertyValue" class="method item">
+    <h3 class="name"><code>getPropertyValue</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>locator</code>
+                </li>
+                <li class="arg">
+                        <code>value</code>
+                </li>
+                <li class="arg">
+                        <code>root</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Component</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l1031"><code>..&#x2F;src&#x2F;scene.js:1031</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Assigns a value to the property of a component in a node based on the locator of that property
+Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">locator</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>locator of the property</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">value</code>
+                        <span class="type"></span>
+
+
+                    <div class="param-description">
+                        <p>the value to assign</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">root</code>
+                        <span class="type">SceneNode</span>
+
+
+                    <div class="param-description">
+                        <p>[Optional] if you want to limit the locator to search inside a node</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Component</span>:
+                    <p>the target where the action was performed</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_getResources" class="method item">
     <h3 class="name"><code>getResources</code></h3>
 
@@ -1731,7 +1831,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1082"><code>..&#x2F;src&#x2F;scene.js:1082</code></a>
+        <a href="../files/.._src_scene.js.html#l1124"><code>..&#x2F;src&#x2F;scene.js:1124</code></a>
         </p>
 
 
@@ -1783,7 +1883,7 @@ includes the nodes, components and preloads</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1481"><code>..&#x2F;src&#x2F;scene.js:1481</code></a>
+        <a href="../files/.._src_scene.js.html#l1523"><code>..&#x2F;src&#x2F;scene.js:1523</code></a>
         </p>
 
 
@@ -2103,7 +2203,7 @@ It uses the resources folder as the root folder (in comparison with the regular 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1139"><code>..&#x2F;src&#x2F;scene.js:1139</code></a>
+        <a href="../files/.._src_scene.js.html#l1181"><code>..&#x2F;src&#x2F;scene.js:1181</code></a>
         </p>
 
 
@@ -2190,7 +2290,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1191"><code>..&#x2F;src&#x2F;scene.js:1191</code></a>
+        <a href="../files/.._src_scene.js.html#l1233"><code>..&#x2F;src&#x2F;scene.js:1233</code></a>
         </p>
 
 
@@ -2238,7 +2338,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1258"><code>..&#x2F;src&#x2F;scene.js:1258</code></a>
+        <a href="../files/.._src_scene.js.html#l1300"><code>..&#x2F;src&#x2F;scene.js:1300</code></a>
         </p>
 
 
@@ -2269,7 +2369,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1468"><code>..&#x2F;src&#x2F;scene.js:1468</code></a>
+        <a href="../files/.._src_scene.js.html#l1510"><code>..&#x2F;src&#x2F;scene.js:1510</code></a>
         </p>
 
 
@@ -2474,7 +2574,7 @@ It calls the serialize method in every node</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1032"><code>..&#x2F;src&#x2F;scene.js:1032</code></a>
+        <a href="../files/.._src_scene.js.html#l1074"><code>..&#x2F;src&#x2F;scene.js:1074</code></a>
         </p>
 
 
@@ -2572,7 +2672,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1048"><code>..&#x2F;src&#x2F;scene.js:1048</code></a>
+        <a href="../files/.._src_scene.js.html#l1090"><code>..&#x2F;src&#x2F;scene.js:1090</code></a>
         </p>
 
 
@@ -2669,7 +2769,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1203"><code>..&#x2F;src&#x2F;scene.js:1203</code></a>
+        <a href="../files/.._src_scene.js.html#l1245"><code>..&#x2F;src&#x2F;scene.js:1245</code></a>
         </p>
 
 
@@ -2726,7 +2826,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1576"><code>..&#x2F;src&#x2F;scene.js:1576</code></a>
+        <a href="../files/.._src_scene.js.html#l1618"><code>..&#x2F;src&#x2F;scene.js:1618</code></a>
         </p>
 
 
@@ -2792,7 +2892,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1425"><code>..&#x2F;src&#x2F;scene.js:1425</code></a>
+        <a href="../files/.._src_scene.js.html#l1467"><code>..&#x2F;src&#x2F;scene.js:1467</code></a>
         </p>
 
 
@@ -2855,7 +2955,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1417"><code>..&#x2F;src&#x2F;scene.js:1417</code></a>
+                            <a href="../files/.._src_scene.js.html#l1459"><code>..&#x2F;src&#x2F;scene.js:1459</code></a>
                             </p>
                     
                     
@@ -2905,7 +3005,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1396"><code>..&#x2F;src&#x2F;scene.js:1396</code></a>
+                            <a href="../files/.._src_scene.js.html#l1438"><code>..&#x2F;src&#x2F;scene.js:1438</code></a>
                             </p>
                     
                     
@@ -3055,7 +3155,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1246"><code>..&#x2F;src&#x2F;scene.js:1246</code></a>
+                            <a href="../files/.._src_scene.js.html#l1288"><code>..&#x2F;src&#x2F;scene.js:1288</code></a>
                             </p>
                     
                     
@@ -3096,7 +3196,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1216"><code>..&#x2F;src&#x2F;scene.js:1216</code></a>
+                            <a href="../files/.._src_scene.js.html#l1258"><code>..&#x2F;src&#x2F;scene.js:1258</code></a>
                             </p>
                     
                     
@@ -3361,7 +3461,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1224"><code>..&#x2F;src&#x2F;scene.js:1224</code></a>
+                            <a href="../files/.._src_scene.js.html#l1266"><code>..&#x2F;src&#x2F;scene.js:1266</code></a>
                             </p>
                     
                     
@@ -3402,7 +3502,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1408"><code>..&#x2F;src&#x2F;scene.js:1408</code></a>
+                            <a href="../files/.._src_scene.js.html#l1450"><code>..&#x2F;src&#x2F;scene.js:1450</code></a>
                             </p>
                     
                     

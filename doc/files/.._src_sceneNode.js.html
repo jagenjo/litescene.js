@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -185,12 +186,11 @@ function SceneNode( name )
 	this._children = null;
 	this._in_tree = null;
 
-
 	//flags
 	this.flags = {
 		visible: true,
 		is_static: false,
-		selectable: true,
+		selectable: true
 	};
 
 	this.init(false,true);
@@ -479,12 +479,24 @@ SceneNode.prototype.getLocator = function( property_name )
 	return this.uid + &quot;/&quot; + property_name;
 }
 
+/**
+* Returns and object with info about a property given a locator
+* @method getPropertyInfo
+* @param {string} locator
+* @return {Object} object with { node, target, name, value and type }
+**/
 SceneNode.prototype.getPropertyInfo = function( locator )
 {
 	var path = locator.split(&quot;/&quot;);
 	return this.getPropertyInfoFromPath(path);
 }
 
+/**
+* Returns and object with info about a property given a locator in path format
+* @method getPropertyInfoFromPath
+* @param {Array} path a locator in path format (split by /)
+* @return {Object} object with { node, target, name, value and type }
+**/
 SceneNode.prototype.getPropertyInfoFromPath = function( path )
 {
 	var target = this;
@@ -642,13 +654,139 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
+/**
+* Returns the value of a property given a locator in string format
+* @method getPropertyValue
+* @param {String} locaator
+* @return {*} the value of that property
+**/
+SceneNode.prototype.getPropertyValue = function( locator )
+{
+	var path = locator.split(&quot;/&quot;);
+	return this.getPropertyValueFromPath(path);
+}
+
+/**
+* Returns the value of a property given a locator in path format
+* @method getPropertyValueFromPath
+* @param {Array} locator in path format (array)
+* @return {*} the value of that property
+**/
+SceneNode.prototype.getPropertyValueFromPath = function( path )
+{
+	var target = this;
+	var varname = path[0];
+
+	if(path.length == 0)
+		return null
+    else if(path.length == 1) //compo or //var
+	{
+		if(path[0][0] == &quot;@&quot;)
+			return this.getComponentByUId( path[0] );
+		else if (path[0] == &quot;material&quot;)
+			return this.getMaterial();
+		var target = this.getComponent( path[0] );
+		if(target)
+			return target;
+
+		switch(path[0])
+		{
+			case &quot;matrix&quot;:
+			case &quot;x&quot;:
+			case &quot;y&quot;: 
+			case &quot;z&quot;: 
+			case &quot;position&quot;:
+			case &quot;rotX&quot;:
+			case &quot;rotY&quot;:
+			case &quot;rotZ&quot;:
+				target = this.transform;
+				varname = path[0];
+				break;
+			default: 
+				target = this;
+				varname = path[0];
+			break;
+		}
+	}
+    else if(path.length &gt; 1) //compo/var
+	{
+		if(path[0][0] == &quot;@&quot;)
+		{
+			varname = path[1];
+			target = this.getComponentByUId( path[0] );
+		}
+		else if (path[0] == &quot;material&quot;)
+		{
+			target = this.getMaterial();
+			varname = path[1];
+		}
+		else if (path[0] == &quot;flags&quot;)
+		{
+			target = this.flags;
+			varname = path[1];
+		}
+		else
+		{
+			target = this.getComponent( path[0] );
+			varname = path[1];
+		}
+
+		if(!target)
+			return null;
+	}
+	else //�?
+	{
+	}
+
+	var v = undefined;
+
+	if( target.getPropertyValueFromPath &amp;&amp; target != this )
+	{
+		var r = target.getPropertyValueFromPath( path.slice(1) );
+		if(r)
+			return r;
+	}
+
+	//to know the value of a property of the given target
+	if( target.getPropertyValue )
+		v = target.getPropertyValue( varname );
+
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if (v === undefined &amp;&amp; path.length &gt; 2 &amp;&amp; target[ varname ] &amp;&amp; target[ varname ].getPropertyValueFromPath )
+	{
+		var r = target[ varname ].getPropertyValueFromPath( path.slice(2) );
+		if(r)
+		{
+			r.node = this;
+			return r;
+		}
+	}
+
+	if(v === undefined &amp;&amp; target[ varname ] === undefined )
+		return null;
+	return v !== undefined ? v : target[ varname ];
+}
+
+/**
+* assigns a value to a property given the locator for that property
+* @method setPropertyValue
+* @param {String} locator
+* @param {*} value
+**/
 SceneNode.prototype.setPropertyValue = function( locator, value )
 {
 	var path = locator.split(&quot;/&quot;);
 	return this.setPropertyValueFromPath(path, value, 0);
 }
 
-//given a locator in path mode (array) and a value, it searches for the corresponding value and applies it
+/**
+* given a locator in path mode (array) and a value, it searches for the corresponding value and applies it
+* @method setPropertyValueFromPath
+* @param {Array} path
+* @param {*} value
+* @param {Number} [optional] offset used to skip the firsst positions in the array
+**/
 SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
 	offset = offset || 0;
@@ -733,6 +871,13 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 	return target;
 }
 
+/**
+* Returns all the resources used by this node and its components (you can include the resources from the children too)
+* @method getResources
+* @param {Object} res object where to store the resources used (in &quot;res_name&quot;:LS.TYPE format)
+* @param {Boolean} include_children if you want to add also the resources used by the children nodes
+* @return {Object} the same object passed is returned 
+**/
 SceneNode.prototype.getResources = function( res, include_children )
 {
 	//resources in components
@@ -794,25 +939,17 @@ SceneNode.prototype.getCamera = function() {
 	return this.camera;
 }
 
-SceneNode.prototype.getLODMesh = function() {
-	var mesh = this.lod_mesh;
-	if(!mesh &amp;&amp; this.meshrenderer)
-		mesh = this.meshrenderer.lod_mesh;
-	if(!mesh) return null;
-	if(mesh.constructor === String)
-		return ResourcesManager.meshes[mesh];
-	return mesh;
-}
-
+/**
+* Simple way to assign a mesh to a node, it created a MeshRenderer component or reuses and existing one and assigns the mesh
+* @method setMesh
+* @param {string} mesh_name the name of the mesh (path to the file)
+* @param {Number} submesh_id if you want to assign a submesh
+**/
 SceneNode.prototype.setMesh = function(mesh_name, submesh_id)
 {
-	if(this.meshrenderer)
-	{
-		if(typeof(mesh_name) == &quot;string&quot;)
-			this.meshrenderer.configure({ mesh: mesh_name, submesh_id: submesh_id });
-		else
-			this.meshrenderer.mesh = mesh_name;
-	}
+	var component = this.getComponent( LS.Components.MeshRenderer );
+	if(component)
+		component.configure({ mesh: mesh_name, submesh_id: submesh_id });
 	else
 		this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
 }
@@ -869,8 +1006,11 @@ SceneNode.prototype.getMaterial = function()
 	return this.material;
 }
 
-//Apply prefab info (skipping the root components) to node
-//It is called from prefab.applyToNodes when a prefab is loaded in memory
+/**
+* Apply prefab info (skipping the root components) to node, so all children will be removed and components lost and overwritten
+* It is called from prefab.applyToNodes when a prefab is loaded in memory
+* @method reloadFromPrefab
+**/
 SceneNode.prototype.reloadFromPrefab = function()
 {
 	if(!this.prefab)
@@ -910,6 +1050,12 @@ SceneNode.prototype.setLayer = function(num, value)
 		this.layers |= f;
 }
 
+/**
+* checks if this node is in the given layer
+* @method isInLayer
+* @param {number} num layer number
+* @return {boolean} true if belongs to this layer
+*/
 SceneNode.prototype.isInLayer = function(num)
 {
 	return (this.layers &amp; (1&lt;&lt;num)) !== 0;

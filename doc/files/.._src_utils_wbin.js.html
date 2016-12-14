@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -570,29 +571,34 @@ WBin.stringToTypedArray = function(str, fixed_length)
 	return r;
 }
 
-//I could use DataView but I prefeer my own version
-WBin.readUint16 = function(buffer, pos)
+WBin.readUint16 = function( buffer, pos )
 {
+	var dv = new DataView( buffer.buffer, buffer.byteOffset );
+	return dv.getUint16( pos, true );
+	/* this may be slow but helps removing Endian problems
 	var f = new Uint16Array(1);
 	var view = new Uint8Array(f.buffer);
 	view.set( buffer.subarray(pos,pos+2) );
 	return f[0];
+	*/
 }
 
 WBin.readUint32 = function(buffer, pos)
 {
+	var dv = new DataView( buffer.buffer, buffer.byteOffset);
+	return dv.getUint32( pos, true );
+	/*
 	var f = new Uint32Array(1);
 	var view = new Uint8Array(f.buffer);
 	view.set( buffer.subarray(pos,pos+4) );
 	return f[0];
+	*/
 }
 
 WBin.readFloat32 = function(buffer, pos)
 {
-	var f = new Float32Array(1);
-	var view = new Uint8Array(f.buffer);
-	view.set( buffer.subarray(pos,pos+4) );
-	return f[0];
+	var dv = new DataView( buffer.buffer, buffer.byteOffset );
+	return dv.getFloat32( pos, true );
 }
 
 /* CANNOT BE DONE, XMLHTTPREQUEST DO NOT ALLOW TO READ PROGRESSIVE BINARY DATA (yet)

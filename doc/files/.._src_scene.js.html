@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -516,7 +517,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	//check JSON for special scripts
 	if ( scripts.length )
-		this.loadScripts( scripts, function(){ inner_success(response); }, on_error );
+		this.loadScripts( scripts, function(){ inner_success( data ); }, on_error );
 	else
 		inner_success( data );
 
@@ -1176,6 +1177,48 @@ SceneTree.prototype.getPropertyInfoFromPath = function( path )
 }
 
 
+/**
+* Assigns a value to the property of a component in a node based on the locator of that property
+* Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quot;
+*
+* @method getPropertyValue
+* @param {String} locator locator of the property
+* @param {*} value the value to assign
+* @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
+* @return {Component} the target where the action was performed
+*/
+SceneTree.prototype.getPropertyValue = function( locator, root_node )
+{
+	var path = property_uid.split(&quot;/&quot;);
+
+	if(path[0].substr(0,5) == &quot;@MAT-&quot;)
+	{
+		var material = LS.RM.materials_by_uid[ path[0] ];
+		if(!material)
+			return null;
+		return material.getPropertyValueFromPath( path.slice(1) );
+	}
+
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+	return node.getPropertyValueFromPath( path.slice(1) );
+}
+
+SceneTree.prototype.getPropertyValueFromPath = function( path )
+{
+	if(path[0].substr(0,5) == &quot;@MAT-&quot;)
+	{
+		var material = LS.RM.materials_by_uid[ path[0] ];
+		if(!material)
+			return null;
+		return material.getPropertyValueFromPath( path.slice(1) );
+	}
+	var node = this.getNode( path[0] );
+	if(!node)
+		return null;
+	return node.getPropertyValueFromPath( path.slice(1) );
+}
 
 /**
 * Assigns a value to the property of a component in a node based on the locator of that property

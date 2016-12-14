@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -218,6 +219,8 @@ var ResourcesManager = {
 		this.resources = {};
 		this.meshes = {};
 		this.textures = {};
+		this.materials = {};
+		this.materials_by_uid = {};
 	},
 
 	/**
@@ -955,7 +958,7 @@ var ResourcesManager = {
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
-		if(this.resources[ filename ] == resource)
+		if( this.resources[ filename ] === resource )
 			return; //already registered
 
 		if(resource.is_preview &amp;&amp; this.resources[ filename ] )
@@ -1354,7 +1357,7 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 LS.ResourcesManager.registerResourcePreProcessor(&quot;zip&quot;, function( filename, data, options ) {
 	
 	if(!global.JSZip)
-		throw(&quot;JSZip not found. To use ZIPs you must have the JSZip.js library installed.&quot;);
+		throw(&quot;JSZip not found. To use ZIPs you must have the JSZip.js library included in the website.&quot;);
 
 	var zip = new JSZip();
 	zip.loadAsync( data ).then(function(zip){

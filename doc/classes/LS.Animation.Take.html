@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -238,6 +239,9 @@
                         <code>ignore_interpolation</code>
                 </li>
                 <li class="arg">
+                        <code>weight</code>
+                </li>
+                <li class="arg">
                         <code>root</code>
                 </li>
             </ul><span class="paren">)</span>
@@ -307,8 +311,19 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
                 </li>
                 <li class="param">
-                        <code class="param-name">root</code>
+                        <code class="param-name">weight</code>
                         <span class="type">SceneNode</span>
+
+
+                    <div class="param-description">
+                        <p>[Optional] allows to blend animations with current value (default is 1)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">root</code>
+                        <span class="type">Number</span>
 
 
                     <div class="param-description">

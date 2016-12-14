@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -530,7 +531,7 @@ var LS = {
 			{
 				if(v.constructor !== Object &amp;&amp; !target &amp;&amp; !v.toJSON )
 				{
-					console.warn(&quot;Cannot clone system classes&quot;);
+					console.warn(&quot;Cannot clone internal classes:&quot;, LS.getObjectClassName( v ),&quot; When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.&#x27;&quot;);
 					continue;
 				}
 
@@ -540,7 +541,7 @@ var LS = {
 					o[i] = LS.cloneObject( v, null, true );
 				else {
 					if(v.constructor !== Object &amp;&amp; LS.Classes[ LS.getObjectClassName(v) ])
-						console.warn(&quot;Cannot clone internal classes: &quot; + LS.getObjectClassName(v) );
+						console.warn(&quot;Cannot clone internal classes:&quot;, LS.getObjectClassName(v),&quot; When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.&#x27;&quot; );
 
 					if(LS.catch_exceptions)
 					{
@@ -822,6 +823,18 @@ var LS = {
 		if(data.constructor === ArrayBuffer)
 			data = new Uint8Array(data);
 		return String.fromCharCode.apply(null,data);
+	},
+
+	/**
+	* clears the global scene and the resources manager
+	*
+	* @method reset
+	*/
+	reset: function()
+	{
+		LS.GlobalScene.clear();
+		LS.ResourcesManager.reset();
+		LEvent.trigger( LS, &quot;reset&quot; );
 	},
 
 	stringToValue: function( v )

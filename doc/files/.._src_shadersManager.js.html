@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -910,29 +911,39 @@ LS.ShaderQuery = ShaderQuery;
 function ShaderBlock( name )
 {
 	this.dependency_blocks = [];
-
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
 		throw(&quot;ShaderBlock must have a name&quot;);
+	if(name.indexOf(&quot; &quot;) != -1)
+		throw(&quot;ShaderBlock name cannot have spaces: &quot; + name);
 	this.name = name;
 	this.code_map = new Map();
 }
 
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
 {
-	this.checkDependencies( enabled_code );
-	this.checkDependencies( disabled_code );
-	this.code_map.set( shader_type, { enabled: enabled_code || &quot;&quot;, disabled: disabled_code || &quot;&quot;} );
+	enabled_code  = enabled_code || &quot;&quot;;
+	disabled_code  = disabled_code || &quot;&quot;;
+
+	//this.checkDependencies( enabled_code );
+	//this.checkDependencies( disabled_code );
+
+	var info = { 
+		enabled: new LS.GLSLCode( enabled_code ),
+		disabled: new LS.GLSLCode( disabled_code )
+	};
+	this.code_map.set( shader_type, info );
 }
 
-ShaderBlock.prototype.getCode = function( shader_type, block_flags )
+ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
 {
 	block_flags = block_flags || 0;
 	var code = this.code_map.get( shader_type );
 	if(!code)
 		return null;
-	return (block_flags &amp; this.flag_mask) ? code.enabled : code.disabled;
+	var glslcode = (block_flags &amp; this.flag_mask) ? code.enabled : code.disabled;
+	return glslcode.getFinalCode( shader_type, block_flags );
 }
 
 ShaderBlock.prototype.register = function()
@@ -948,6 +959,251 @@ ShaderBlock.prototype.checkDependencies = function( code )
 
 LS.ShaderBlock = ShaderBlock;
 
+
+
+/**
+* Used for parsing GLSL code and precompute info (mostly preprocessor macros)
+* @class GLSLCode
+* @constructor
+* @param {String} code
+*/
+function GLSLCode( code )
+{
+	this.code = code;
+
+	this.blocks = [];
+	this.pragmas = {};
+	this.uniforms = {};
+	this.includes = {};
+	this.snippets = {};
+	this.shader_blocks = {};
+	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
+	if(code)
+		this.parse();
+}
+
+LS.GLSLCode = GLSLCode;
+
+//block types
+GLSLCode.CODE = 1;
+GLSLCode.PRAGMA = 2;
+
+//pargma types
+GLSLCode.INCLUDE = 1;
+GLSLCode.SHADERBLOCK = 2;
+GLSLCode.SNIPPET = 3;
+
+//given a code with some pragmas, it separates them
+GLSLCode.prototype.parse = function()
+{
+	//remove comments
+	var code = this.code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, &#x27;&#x27;);
+
+	this.blocks = [];
+	this.pragmas = {};
+	this.uniforms = {};
+	this.includes = {};
+	this.snippets = {};
+	this.shader_blocks = {};
+	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
+
+	var current_block = [];
+	var lines = code.split(&quot;\n&quot;);
+
+	//parse
+	for(var i = 0; i &lt; lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line.length)
+			continue;//empty line
+
+		if(line[0] != &quot;#&quot;)
+		{
+			var words = line.split(&quot; &quot;);
+			if( words[0] == &quot;uniform&quot; ) //store which uniforms we found in the code (not used)
+			{
+				var uniform_name = words[2].split(&quot;;&quot;);
+				this.uniforms[ uniform_name[0] ] = words[1];
+			}
+			current_block.push(line);
+			continue;
+		}
+
+		var t = line.split(&quot; &quot;);
+		if(t[0] == &quot;#pragma&quot;)
+		{
+			//merge lines and add previous block
+			var current_block_code = current_block.join(&quot;\n&quot;);
+			if(current_block_code.trim()) //in case is empty this code block
+				this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); 
+
+			this.is_dynamic = true;
+			this.pragmas[ t[2] ] = true;
+			var action = t[1];
+			current_block.length = 0;
+			var pragma_info = { type: GLSLCode.PRAGMA, line: line, action: action, param: t[2] };
+			if( action == &quot;include&quot;)
+			{
+				if(!t[2])
+				{
+					console.error(&quot;shader include without path&quot;);
+					continue;
+				}
+
+				pragma_info.action_type = GLSLCode.INCLUDE;
+				//resolve include
+				var include = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				var fullname = include.split(&quot;:&quot;);
+				var filename = fullname[0];
+				var subfile = fullname[1];
+				pragma_info.include = filename;
+				pragma_info.include_subfile = subfile;
+				this.includes[ pragma_info.include ] = true;
+			}
+			else if( action == &quot;shaderblock&quot; )
+			{
+				if(!t[2])
+				{
+					console.error(&quot;#pragma shaderblock without name&quot;);
+					continue;
+				}
+				pragma_info.action_type = GLSLCode.SHADERBLOCK;
+				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.shader_block = shader_block_name;
+				this.shader_blocks[ pragma_info.shader_block ] = true;
+			}
+			else if( action == &quot;snippet&quot; )
+			{
+				if(!t[2])
+				{
+					console.error(&quot;#pragma snippet without name&quot;);
+					continue;
+				}
+				pragma_info.action_type = GLSLCode.SNIPPET;
+				var snippet_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+				pragma_info.snippet = snippet_name;
+				this.snippets[ snippet_name ] = true;
+			}
+
+			this.blocks.push( pragma_info ); //add pragma block
+		}
+		else
+			current_block.push( line ); //add line to current block lines
+	}
+
+	if(current_block.length)
+	{
+		var current_block_code = current_block.join(&quot;\n&quot;);
+		if(current_block_code.trim()) //in case is empty this code block
+			this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); //merge lines and add as block
+	}
+
+	//done
+	return true;
+}
+
+GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
+{
+	if( !this.is_dynamic )
+		return this.code;
+
+	var code = &quot;&quot;;
+	var blocks = this.blocks;
+
+	for(var i = 0; i &lt; blocks.length; ++i)
+	{
+		var block = blocks[i];
+		if( block.type === GLSLCode.CODE ) //regular code
+		{
+			code += block.code;
+			continue;
+		}
+
+		//pragmas
+		if(block.include) //bring code from other files
+		{
+			var filename = block.include;
+			var ext = LS.ResourcesManager.getExtension( filename );
+			if(ext)
+			{
+				var extra_shadercode = LS.ResourcesManager.getResource( filename, LS.ShaderCode );
+				if(!extra_shadercode)
+				{
+					LS.ResourcesManager.load( filename ); //force load
+					return null;
+				}
+				if(!block.include_subfile)
+					code += &quot;\n&quot; + extra_shadercode._subfiles[&quot;&quot;] + &quot;\n&quot;;
+				else
+				{
+					var extra = extra_shadercode._subfiles[ block.include_subfile ];
+					if(extra === undefined)
+						return null;
+					code += &quot;\n&quot; + extra + &quot;\n&quot;;
+				}
+			}
+			else
+			{
+				var snippet_code = LS.ShadersManager.getSnippet( filename );
+				if( !snippet_code )
+					return null; //snippet not found
+				code += &quot;\n&quot; + snippet_code.code + &quot;\n&quot;;
+			}
+		}
+		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
+		{
+			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			if(!shader_block)
+			{
+				console.error(&quot;ShaderCode uses unknown ShaderBlock: &quot;, block.shader_block);
+				return null;
+			}
+
+			var block_code = shader_block.getFinalCode( shader_type, block_flags );
+			if( block_code )
+				code += &quot;\n#define BLOCK_&quot;+ ( shader_block.name.toUpperCase() ) +&quot;\n&quot; + block_code + &quot;\n&quot;;
+		}
+		else if( block.snippet ) //injects code from snippets
+		{
+			var snippet = LS.ShadersManager.getSnippet( block.snippet );
+			if(!snippet)
+			{
+				console.error(&quot;ShaderCode uses unknown Snippet: &quot;, block.snippet);
+				return null;
+			}
+
+			code += &quot;\n&quot; + snippet.code + &quot;\n&quot;;
+		}
+	}
+
+	return code;
+}
+
+//not used
+GLSLCode.breakLines = function(lines)
+{
+	//clean (this helps in case a line contains two instructions, like &quot;uniform float a; uniform float b;&quot;
+	var clean_lines = [];
+	for(var i = 0; i &lt; lines.length; i++)
+	{
+		var line = lines[i].trim();
+		if(!line)
+			continue;
+		var pos = line.lastIndexOf(&quot;;&quot;);
+		if(pos == -1 || pos == lines.length - 1)
+			clean_lines.push(line);
+		else
+		{
+			var sublines = line.split(&quot;;&quot;);
+			for(var j = 0; j &lt; sublines.length; ++j)
+			{
+				if(sublines[j])
+					clean_lines.push( sublines[j] + &quot;;&quot; );
+			}
+		}
+	}
+	return clean_lines;
+}
 
 
     </pre>

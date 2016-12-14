@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -218,17 +219,35 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 	if(!name || !uniform)
 		throw(&quot;parameter missing in createUniform&quot;);
 
+	//
 	type = type || &quot;Number&quot;;
-	value = value || 0;
-
 	if( type.constructor !== String )
 		throw(&quot;type must be string&quot;);
 
+	//cast to typed-array
+	value = value || 0;
 	if(value &amp;&amp; value.length)
 		value = new Float32Array( value );//cast them always
+	else
+	{
+		//create a value, otherwise is null
+		switch (type)
+		{
+			case &quot;vec2&quot;: value = vec2.create(); break;
+			case &quot;color&quot;:
+			case &quot;vec3&quot;: value = vec3.create(); break;
+			case &quot;color4&quot;:
+			case &quot;vec4&quot;: value = vec4.create(); break;
+			case &quot;mat3&quot;: value = mat3.create(); break;
+			case &quot;mat4&quot;: value = mat4.create(); break;
+			default:
+		}
+	}
 
+	//define info
 	var prop = { name: name, uniform: uniform, value: value, type: type, is_texture: 0 };
 
+	//mark as texture (because this need to go to the textures container so they are binded)
 	if(type.toLowerCase() == &quot;texture&quot; || type == &quot;sampler2D&quot; || type == &quot;samplerCube&quot; || type == &quot;sampler&quot;)
 		prop.is_texture = (type == &quot;samplerCube&quot;) ? 2 : 1;
 
@@ -254,13 +273,16 @@ ShaderMaterial.prototype.createUniform = function( name, uniform, type, value, o
 * @param {String} name the property name as it should be shown
 * @param {String} uniform the uniform name in the shader
 * @param {Object} options an object containing all the possible options (used mostly for widgets)
+* @param {String} value default value (texture name)
 */
-ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options  )
+ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_options, value  )
 {
 	if(!name || !uniform)
 		throw(&quot;parameter missing in createSampler&quot;);
 
-	var sampler = {};
+	var sampler = {
+		texture: value
+	};
 
 	var prop = { name: name, uniform: uniform, value: sampler, type: &quot;sampler&quot;, is_texture: 1, sampler_slot: -1 };
 
@@ -522,31 +544,19 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 }
 
 //called from LS.Renderer when rendering an instance
-ShaderMaterial.prototype.renderInstance = function( instance, render_settings, lights )
+ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
 {
 	if(!this.shader)
-		return false;
-
-	var lights = null;
-	if(this._light_mode !== Material.NO_LIGHTS)
-		lights = LS.Renderer.getNearLights( instance );
+		return true; //skip rendering
 
 	//get shader code
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
-		return false;
+		return true; //skip rendering
 
 	//this is in case the shader has been modified in the editor...
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
-
-	//compute flags
-	var block_flags = instance.computeShaderBlockFlags();
-
-	//extract shader compiled
-	var shader = shader_code.getShader( null, block_flags );
-	if(!shader)
-		return false;
 
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
@@ -564,26 +574,80 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, l
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
 
+	//compute flags
+	var block_flags = instance.computeShaderBlockFlags();
+
 	//global stuff
 	this.render_state.enable();
+	LS.Renderer.bindSamplers(  this._samplers );
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
-	//assign
-	LS.Renderer.bindSamplers(  this._samplers );
-	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] );
+	//add flags related to lights
+	var lights = null;
+	if(this._light_mode !== Material.NO_LIGHTS)
+		lights = LS.Renderer.getNearLights( instance );
 
-	//render
-	instance.render( shader );
-	renderer._rendercalls += 1;
+	if(!lights)
+	{
+		//extract shader compiled
+		var shader = shader_code.getShader( pass.name, block_flags );
+		if(!shader)
+			return false;
+
+		//assign
+		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	
+		return true;
+	}
+
+	var prev_shader = null;
+	for(var i = 0; i &lt; lights.length; ++i)
+	{
+		var light = lights[i];
+		block_flags = light.applyShaderBlockFlags( block_flags );
+
+		//extract shader compiled
+		var shader = shader_code.getShader( null, block_flags );
+		if(!shader)
+			continue;
+
+		//assign
+		if(prev_shader != shader)
+			shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light._uniforms, this._uniforms, instance.uniforms ] );
+		else
+			shader.uniforms( light._uniforms );
+		prev_shader = shader;
+
+		if(i == 1)
+		{
+			gl.depthMask( false );
+			gl.depthFunc( gl.EQUAL );
+			gl.enable( gl.BLEND );
+			gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
+		}
+
+		//render
+		instance.render( shader );
+		renderer._rendercalls += 1;
+	}
+
+	//optimize this
+	gl.disable( gl.BLEND );
+	gl.depthMask( true );
+	gl.depthFunc( gl.LESS );
 
 	return true;
 }
 
-ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings )
+ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings, pass )
 {
-	return this.renderInstance( instance, render_settings );
+	return this.renderInstance( instance, render_settings, pass );
 }
 
 /**

@@ -72,6 +72,7 @@
                                 <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -242,9 +243,11 @@ SurfaceMaterial.prototype.computeCode = function()
 			case &#x27;vec3&#x27;: code += &quot;vec3 &quot;; break;
 			case &#x27;color4&#x27;:
 			case &#x27;vec4&#x27;: code += &quot;vec4 &quot;; break;
+			case &#x27;sampler&#x27;:
 			case &#x27;texture&#x27;: code += &quot;sampler2D &quot;; break;
 			case &#x27;cubemap&#x27;: code += &quot;samplerCube &quot;; break;
-			default: continue;
+			default: 
+				continue;
 		}
 		code += prop.name + &quot;;&quot;;
 		uniforms_code += code;
@@ -312,6 +315,8 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		var prop = this.properties[i];
 		if(prop.type == &quot;texture&quot; || prop.type == &quot;cubemap&quot; || prop.type == &quot;sampler&quot;)
 		{
+			var texture = prop.value;
+			/*
 			if(!prop.value)
 				texture = &quot;:black&quot;;
 			else
@@ -321,6 +326,7 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 				if(!texture)
 					texture = &quot;:missing&quot;;
 			}
+			*/
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;
