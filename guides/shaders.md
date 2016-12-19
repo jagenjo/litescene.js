@@ -183,17 +183,19 @@ To create a snippet:
 
 ## Shader Example ##
 
-Here is a full example of a regular shader:
+Here is a complete shader that support lights and shadowmaps using the built-in shaderblock system so you do not have to worry about it.
 
 ```c++
 
 \js
-  
-this.createUniform("Scale","u_tex_scale","number",1);
-this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} );
-this.render_state.cull_face = false;
+//define exported uniforms from the shader (name, uniform, widget)
+this.createUniform("Number","u_number","number");
+this.createSampler("Texture","u_texture");
+this.createSampler("Spec. Texture","u_specular_texture");
+this.createSampler("Normal Texture","u_normal_texture");
+this._light_mode = 1;
 
-\default.vs
+\color.vs
 
 precision mediump float;
 attribute vec3 a_vertex;
@@ -216,6 +218,8 @@ uniform float u_time;
 uniform vec4 u_viewport;
 uniform float u_point_size;
 
+#pragma shaderblock "light"
+
 //camera
 uniform vec3 u_camera_eye;
 void main() {
@@ -226,45 +230,61 @@ void main() {
 	
 	//vertex
 	v_pos = (u_model * vertex4).xyz;
+  
+	//v_light_coord = u_light_matrix * vec4(v_pos,1.0);
+  applyLight(v_pos);
+  
 	//normal
-	v_normal = (u_normal_model * vec4(v_normal,1.0)).xyz;
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);
 }
 
-\default.fs
+\color.fs
 
 precision mediump float;
+
 //varyings
 varying vec3 v_pos;
 varying vec3 v_normal;
 varying vec2 v_uvs;
+
 //globals
+uniform vec3 u_camera_eye;
 uniform vec4 u_clipping_plane;
 uniform float u_time;
 uniform vec3 u_background_color;
 uniform vec3 u_ambient_light;
+uniform vec4 u_material_color;
+uniform float u_number;
 
-uniform mat4 u_view;
 uniform sampler2D u_texture;
-uniform float u_tex_scale;
-uniform vec3 u_camera_eye;
+uniform sampler2D u_specular_texture;
+uniform sampler2D u_normal_texture;
 
-//material
-uniform vec4 u_material_color; //color and alpha
+#pragma shaderblock "light"
+
+#pragma snippet "perturbNormal"
 
 void main() {
-
-  vec3 N = normalize(v_normal);
-  vec3 E = normalize(u_camera_eye - v_pos);
-  N = reflect(N,E);
-  vec3 view_normal = (u_view * vec4(N,0.0)).xyz;
+  Input IN = getInput();
+  SurfaceOutput o = getSurfaceOutput();
+  vec4 surface_color = texture2D( u_texture, IN.uv ) * u_material_color;
+  o.Albedo = surface_color.xyz;
+  vec4 spec = texture2D( u_specular_texture, IN.uv );
+	o.Specular = spec.x;  
+	o.Gloss = spec.y * 10.0;  
+	vec4 normal_pixel = texture2D( u_normal_texture, IN.uv );
+  o.Normal = perturbNormal( IN.worldNormal, IN.worldPos, v_uvs, normal_pixel.xyz );
+	  
+  vec4 final_color = vec4(0.0);
+  FinalLight LIGHT = getLight();
+  LIGHT.Ambient = u_ambient_light;
+  final_color.xyz = computeLight( o, IN, LIGHT );
+  final_color.a = surface_color.a;
   
-  vec2 coord = view_normal.xy;
-
-  vec3 matcap_color = texture2D( u_texture, coord * 0.48 * u_tex_scale + vec2(0.5) ).xyz;
-  
-	gl_FragColor = vec4( matcap_color * u_material_color.xyz, 1.0);
-
+	gl_FragColor = final_color;
 }
+
+
 
 ```
