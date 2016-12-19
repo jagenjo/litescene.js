@@ -231,8 +231,7 @@ void main() {
 	//vertex
 	v_pos = (u_model * vertex4).xyz;
   
-	//v_light_coord = u_light_matrix * vec4(v_pos,1.0);
-  applyLight(v_pos);
+	applyLight(v_pos);
   
 	//normal
 	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;
