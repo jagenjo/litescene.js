@@ -1,7 +1,7 @@
 if(typeof(LiteGraph) != "undefined")
 {
 	//special kind of node
-	function LGraphSetValue()
+	global.LGraphSetValue = function LGraphSetValue()
 	{
 		this.properties = { property_name: "", value: "", type: "String" };
 		this.addInput("on_set", LiteGraph.ACTION );
@@ -37,8 +37,6 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphSetValue.desc = "sets a value to a node";
 
 	LiteGraph.registerNodeType("logic/setValue", LGraphSetValue );
-
-
 }
 
 

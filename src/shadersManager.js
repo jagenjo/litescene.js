@@ -772,7 +772,7 @@ function ShaderBlock( name )
 	this.code_map = new Map();
 }
 
-ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
+ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || "";
 	disabled_code  = disabled_code || "";
@@ -782,7 +782,8 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 
 	var info = { 
 		enabled: new LS.GLSLCode( enabled_code ),
-		disabled: new LS.GLSLCode( disabled_code )
+		disabled: new LS.GLSLCode( disabled_code ),
+		macros: macros
 	};
 	this.code_map.set( shader_type, info );
 }
@@ -794,7 +795,16 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
 	if(!code)
 		return null;
 	var glslcode = (block_flags & this.flag_mask) ? code.enabled : code.disabled;
-	return glslcode.getFinalCode( shader_type, block_flags );
+	var finalcode = glslcode.getFinalCode( shader_type, block_flags );
+
+	if( code.macros )
+	{
+		var macros_code = "";
+		for(var i in code.macros)
+			macros_code += "#define " + i + code.macros[i] + "\n";
+		finalcode = macros + finalcode;
+	}
+	return finalcode;
 }
 
 ShaderBlock.prototype.register = function()
@@ -827,7 +837,7 @@ function GLSLCode( code )
 	this.uniforms = {};
 	this.includes = {};
 	this.snippets = {};
-	this.shader_blocks = {};
+	this.shader_blocks = {}; //warning: this not always contain which shaderblocks are in use, because they could be dynamic using pragma define
 	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
 	if(code)
 		this.parse();
@@ -911,6 +921,17 @@ GLSLCode.prototype.parse = function()
 				pragma_info.include_subfile = subfile;
 				this.includes[ pragma_info.include ] = true;
 			}
+			else if( action == "define" )
+			{
+				var param1 = t[2];
+				var param2 = t[3];
+				if(!param1 || !param2)
+				{
+					console.error("#pragma define missing parameters");
+					continue;
+				}
+				pragma_info.define = [ param1, param2.substr(1, param2.length - 2) ];
+			}
 			else if( action == "shaderblock" )
 			{
 				if(!t[2])
@@ -919,9 +940,22 @@ GLSLCode.prototype.parse = function()
 					continue;
 				}
 				pragma_info.action_type = GLSLCode.SHADERBLOCK;
-				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				pragma_info.shader_block = shader_block_name;
-				this.shader_blocks[ pragma_info.shader_block ] = true;
+
+				var param = t[2];
+				if(param[0] == '"') //one means "shaderblock_name", two means shaderblock_var
+				{
+					pragma_info.shader_block = [1, param.substr(1, param.length - 2)]; //safer than JSON.parse
+					this.shader_blocks[ pragma_info.shader_block[1] ] = true;
+				}
+				else
+				{
+					pragma_info.shader_block = [2, param];
+					if(t[3]) //thirth parameter for default
+					{
+						pragma_info.shader_block.push( t[3].substr(1, t[3].length - 2) );
+						this.shader_blocks[ pragma_info.shader_block[2] ] = true;
+					}
+				}
 			}
 			else if( action == "snippet" )
 			{
@@ -953,12 +987,13 @@ GLSLCode.prototype.parse = function()
 	return true;
 }
 
-GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
+GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	if( !this.is_dynamic )
 		return this.code;
 
 	var code = "";
+	context = context || {};
 	var blocks = this.blocks;
 
 	for(var i = 0; i < blocks.length; ++i)
@@ -1001,16 +1036,33 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 				code += "\n" + snippet_code.code + "\n";
 			}
 		}
+		else if( block.define ) //defines a context variable
+		{
+			context[ block.define[0] ] = block.define[1];
+		}
 		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
 		{
-			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			var shader_block_name = block.shader_block[1];
+			if( block.shader_block[0] == 2 )
+			{
+				//dynamic shaderblock name
+				if( context[ shader_block_name ] )
+					shader_block_name = context[ shader_block_name ];
+				else
+				{
+					console.error("ShaderBlock: no context var found: " + shader_block_name );
+					return null;
+				}
+			}
+			
+			var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
 			if(!shader_block)
 			{
 				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
 				return null;
 			}
 
-			var block_code = shader_block.getFinalCode( shader_type, block_flags );
+			var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
 			if( block_code )
 				code += "\n#define BLOCK_"+ ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
 		}

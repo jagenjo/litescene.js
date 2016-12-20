@@ -27,6 +27,13 @@ function Animation(o)
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
 
+/**
+* Create a new take inside this animation (a take contains all the tracks)
+* @method createTake
+* @param {String} name the name
+* @param {Number} duration
+* @return {LS.Animation.Take} the take
+*/
 Animation.prototype.createTake = function( name, duration )
 {
 	if(!name)
@@ -41,17 +48,34 @@ Animation.prototype.createTake = function( name, duration )
 	return take;
 }
 
+/**
+* adds an existing take
+* @method addTake
+* @param {LS.Animation.Take} name the name
+*/
 Animation.prototype.addTake = function(take)
 {
 	this.takes[ take.name ] = take;
 	return take;
 }
 
+/**
+* returns the take with a given name
+* @method getTake
+* @param {String} name
+* @return {LS.Animation.Take} the take
+*/
 Animation.prototype.getTake = function( name )
 {
 	return this.takes[ name ];
 }
 
+/**
+* renames a take name
+* @method renameTake
+* @param {String} old_name
+* @param {String} new_name
+*/
 Animation.prototype.renameTake = function( old_name, new_name )
 {
 	var take = this.takes[ old_name ];
@@ -63,6 +87,11 @@ Animation.prototype.renameTake = function( old_name, new_name )
 	LEvent.trigger( this, "take_renamed", [old_name, new_name] );
 }
 
+/**
+* removes a take
+* @method removeTake
+* @param {String} name
+*/
 Animation.prototype.removeTake = function( name )
 {
 	var take = this.takes[ name ];
@@ -72,6 +101,11 @@ Animation.prototype.removeTake = function( name )
 	LEvent.trigger( this, "take_removed", name );
 }
 
+/**
+* returns the number of takes
+* @method getNumTakes
+* @return {Number} the number of takes
+*/
 Animation.prototype.getNumTakes = function()
 {
 	var num = 0;
@@ -79,7 +113,6 @@ Animation.prototype.getNumTakes = function()
 		num++;
 	return num;
 }
-
 
 Animation.prototype.addTrackToTake = function(takename, track)
 {
@@ -200,6 +233,12 @@ Animation.prototype.convertIDstoNames = function( use_basename, root )
 	return num;
 }
 
+/**
+* changes the packing mode of the tracks inside all takes
+* @method setTracksPacking
+* @param {boolean} pack if true the tracks will be packed (used a typed array)
+* @return {Number} te number of modifyed tracks
+*/
 Animation.prototype.setTracksPacking = function(v)
 {
 	var num = 0;
@@ -211,7 +250,11 @@ Animation.prototype.setTracksPacking = function(v)
 	return num;
 }
 
-
+/**
+* optimize all the tracks in all the takes, so they take less space and are faster to compute (when possible)
+* @method optimizeTracks
+* @return {Number} the number of takes
+*/
 Animation.prototype.optimizeTracks = function()
 {
 	var num = 0;
@@ -266,6 +309,12 @@ Take.prototype.serialize = Take.prototype.toJSON = function()
 	return LS.cloneObject(this, null, true);
 }
 
+/**
+* creates a new track from a given data
+* @method createTrack
+* @param {Object} data in serialized format
+* @return {LS.Animation.Track} the track
+*/
 Take.prototype.createTrack = function( data )
 {
 	if(!data)
@@ -452,7 +501,10 @@ Take.prototype.setTracksPacking = function(v)
 	return num;
 }
 
-//optimize animations
+/**
+* Optimizes the tracks by changing the Matrix tracks to Trans10 tracks which are way faster and use less space
+* @method optimizeTracks
+*/
 Take.prototype.optimizeTracks = function()
 {
 	var num = 0;
@@ -461,40 +513,13 @@ Take.prototype.optimizeTracks = function()
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if( track.value_size != 16 )
-			continue;
-
-		//convert locator
-		var path = track.property.split("/");
-		if( path[ path.length - 1 ] != "matrix")
-			continue;
-		path[ path.length - 1 ] = "Transform/data";
-		track.property = path.join("/");
-		track.type = "trans10";
-		track.value_size = 10;
-
-		//convert samples
-		if(!track.packed_data)
-		{
-			console.warn("convertMatricesToData only works with packed data");
-			continue;
-		}
-
-		var data = track.data;
-		var num_samples = data.length / 17;
-		for(var k = 0; k < num_samples; ++k)
-		{
-			var sample = data.subarray(k*17+1,(k*17)+17);
-			var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-			data[k*11] = data[k*17]; //timestamp
-			data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
-		}
-		track.data = new Float32Array( data.subarray(0,num_samples*11) );
-		num += 1;
+		if( track.convertToTrans10() )
+			num += 1;
 	}
 	return num;
 }
 
+//assigns the same translation to all nodes?
 Take.prototype.matchTranslation = function( root )
 {
 	var num = 0;
@@ -535,6 +560,10 @@ Take.prototype.matchTranslation = function( root )
 	return num;
 }
 
+/**
+* If this is a transform track it removes translation and scale leaving only rotations
+* @method onlyRotations
+*/
 Take.prototype.onlyRotations = function()
 {
 	var num = 0;
@@ -557,17 +586,14 @@ Take.prototype.onlyRotations = function()
 		else if (last_path == "data")
 			path[ path.length - 1 ] = "rotation";
 
+		//convert samples
+		if(!track.packed_data)
+			track.packData();
+
 		track.property = path.join("/");
 		var old_type = track.type;
 		track.type = "quat";
 		track.value_size = 4;
-
-		//convert samples
-		if(!track.packed_data)
-		{
-			console.warn("convertMatricesToData only works with packed data");
-			continue;
-		}
 
 		var data = track.data;
 		var num_samples = data.length / (old_size+1);
@@ -598,6 +624,45 @@ Take.prototype.onlyRotations = function()
 	return num;
 }
 
+/**
+* removes scaling in transform tracks
+* @method removeScaling
+*/
+Take.prototype.removeScaling = function()
+{
+	var num = 0;
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		var modified = false;
+
+		if(track.type == "matrix")
+		{
+			track.convertToTrans10();
+			modified = true;
+		}
+
+		if( track.type != "trans10" )
+		{
+			if(modified)
+				num += 1;
+			continue;
+		}
+
+		var num_keyframes = track.getNumberOfKeyframes();
+
+		for( var j = 0; j < num_keyframes; ++j )
+		{
+			var k = track.getKeyframe(j);
+			k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
+		}
+
+		num += 1;
+	}
+	return num;
+}
+
 
 Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
@@ -613,6 +678,21 @@ Take.prototype.setInterpolationToAllTracks = function( interpolation )
 
 	return num;
 }
+
+Take.prototype.trimTracks = function( start, end )
+{
+	var num = 0;
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		num += track.trim( start, end );
+	}
+
+	this.duration = end - start;
+
+	return num;
+}
+
 
 Animation.Take = Take;
 
@@ -752,8 +832,14 @@ Track.prototype.clear = function()
 	this.packed_data = false;
 }
 
-//used to change every track so instead of using UIDs for properties it uses node names
-//this is used when you want to apply the same animation to different nodes in the scene
+/**
+* used to change every track so instead of using UIDs for properties it uses node names
+* this is used when you want to apply the same animation to different nodes in the scene
+* @method getIDasName
+* @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
+* @param {LS.SceneNode} root
+* @return {String} the result name
+*/
 Track.prototype.getIDasName = function( use_basename, root )
 {
 	if( !this._property_path || !this._property_path.length )
@@ -795,6 +881,14 @@ Track.prototype.convertIDtoName = function( use_basename, root )
 	return true;
 }
 
+/**
+* Adds a new keyframe to this track
+* @method addKeyframe
+* @param {Number} time time stamp in seconds
+* @param {*} value anything you want to store
+* @param {Boolean} skip_replace if you want to replace existing keyframes at same time stamp or add it next to that
+* @return {Number} index of keyframe
+*/
 Track.prototype.addKeyframe = function( time, value, skip_replace )
 {
 	if(this.value_size > 1)
@@ -821,6 +915,12 @@ Track.prototype.addKeyframe = function( time, value, skip_replace )
 	return this.data.length - 1;
 }
 
+/**
+* returns a keyframe given an index
+* @method getKeyframe
+* @param {Number} index
+* @return {Array} the keyframe in [time,data] format
+*/
 Track.prototype.getKeyframe = function( index )
 {
 	if(index < 0 || index >= this.data.length)
@@ -841,6 +941,12 @@ Track.prototype.getKeyframe = function( index )
 	return this.data[ index ];
 }
 
+/**
+* returns the first keyframe that matches this time
+* @method getKeyframeByTime
+* @param {Number} time
+* @return {Array} keyframe in [time,value]
+*/
 Track.prototype.getKeyframeByTime = function( time )
 {
 	var index = this.findTimeIndex( time );
@@ -849,7 +955,13 @@ Track.prototype.getKeyframeByTime = function( time )
 	return this.getKeyframe( index );
 }
 
-
+/**
+* changes a keyframe time and rearranges it
+* @method moveKeyframe
+* @param {Number} index
+* @param {Number} new_time
+* @return {Number} new index
+*/
 Track.prototype.moveKeyframe = function(index, new_time)
 {
 	if(this.packed_data)
@@ -900,6 +1012,11 @@ Track.prototype.sortKeyframes = function()
 	this.data.sort( function(a,b){ return a[0] - b[0];  });
 }
 
+/**
+* removes one keyframe
+* @method removeKeyframe
+* @param {Number} index
+*/
 Track.prototype.removeKeyframe = function(index)
 {
 	if(this.packed_data)
@@ -952,7 +1069,10 @@ Track.prototype.isInterpolable = function()
 	return false;
 }
 
-//better for reading
+/**
+* takes all the keyframes and stores them inside a typed-array so they are faster to store in server or work with
+* @method packData
+*/
 Track.prototype.packData = function()
 {
 	if(!this.data || this.data.length == 0)
@@ -981,7 +1101,10 @@ Track.prototype.packData = function()
 	this.packed_data = true;
 }
 
-//better for writing
+/**
+* takes all the keyframes and unpacks them so they are in a simple array, easier to work with
+* @method unpackData
+*/
 Track.prototype.unpackData = function()
 {
 	if(!this.data || this.data.length == 0)
@@ -1001,8 +1124,12 @@ Track.prototype.unpackData = function()
 	this.packed_data = false;
 }
 
-//Dichotimic search
-//returns nearest index of keyframe with time equal or less to specified time
+/**
+* returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)
+* @method findTimeIndex
+* @param {number} time
+* @return {number} index
+*/
 Track.prototype.findTimeIndex = function(time)
 {
 	var data = this.data;
@@ -1409,6 +1536,68 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 	return samples;
 }
 
+/**
+* removes keyframes that are before or after the time range
+* @method trim
+* @param {number} start time
+* @param {number} end time
+*/
+Track.prototype.trim = function( start, end )
+{
+	if(this.packed_data)
+		this.unpackData();
+
+	var size = this.data.length;
+
+	var result = [];
+	for(var i = 0; i < this.data.length; ++i)
+	{
+		var d = this.data[i];
+		if(d[0] < start || d[0] > end)
+			continue;
+		d[0] -= start;
+		result.push(d);
+	}
+	this.data = result;
+
+	//changes has been made?
+	if(this.data.length != size)
+		return 1;
+	return 0;
+}
+
+Track.prototype.convertToTrans10 = function()
+{
+	if( this.value_size != 16 )
+		return false;
+
+	//convert samples
+	if(!this.packed_data)
+		this.packData();
+
+	//convert locator
+	var path = this.property.split("/");
+	if( path[ path.length - 1 ] != "matrix")
+		return false;
+
+	path[ path.length - 1 ] = "Transform/data";
+	this.property = path.join("/");
+	this.type = "trans10";
+	this.value_size = 10;
+
+	var data = this.data;
+	var num_samples = data.length / 17;
+	for(var k = 0; k < num_samples; ++k)
+	{
+		var sample = data.subarray(k*17+1,(k*17)+17);
+		var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		data[k*11] = data[k*17]; //timestamp
+		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+	}
+	this.data = new Float32Array( data.subarray(0,num_samples*11) );
+
+	return true;
+}
 
 Animation.Track = Track;
 

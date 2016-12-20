@@ -1723,6 +1723,7 @@ LS.PAUSED = 2;
 
 //helpful consts
 LS.ZEROS = vec3.create();
+LS.ZEROS4 = vec4.create();
 LS.ONES = vec3.fromValues(1,1,1);
 LS.TOP = vec3.fromValues(0,1,0);
 LS.BOTTOM = vec3.fromValues(0,-1,0);
@@ -4764,7 +4765,7 @@ function ShaderBlock( name )
 	this.code_map = new Map();
 }
 
-ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code )
+ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || "";
 	disabled_code  = disabled_code || "";
@@ -4774,7 +4775,8 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 
 	var info = { 
 		enabled: new LS.GLSLCode( enabled_code ),
-		disabled: new LS.GLSLCode( disabled_code )
+		disabled: new LS.GLSLCode( disabled_code ),
+		macros: macros
 	};
 	this.code_map.set( shader_type, info );
 }
@@ -4786,7 +4788,16 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
 	if(!code)
 		return null;
 	var glslcode = (block_flags & this.flag_mask) ? code.enabled : code.disabled;
-	return glslcode.getFinalCode( shader_type, block_flags );
+	var finalcode = glslcode.getFinalCode( shader_type, block_flags );
+
+	if( code.macros )
+	{
+		var macros_code = "";
+		for(var i in code.macros)
+			macros_code += "#define " + i + code.macros[i] + "\n";
+		finalcode = macros + finalcode;
+	}
+	return finalcode;
 }
 
 ShaderBlock.prototype.register = function()
@@ -4819,7 +4830,7 @@ function GLSLCode( code )
 	this.uniforms = {};
 	this.includes = {};
 	this.snippets = {};
-	this.shader_blocks = {};
+	this.shader_blocks = {}; //warning: this not always contain which shaderblocks are in use, because they could be dynamic using pragma define
 	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
 	if(code)
 		this.parse();
@@ -4903,6 +4914,17 @@ GLSLCode.prototype.parse = function()
 				pragma_info.include_subfile = subfile;
 				this.includes[ pragma_info.include ] = true;
 			}
+			else if( action == "define" )
+			{
+				var param1 = t[2];
+				var param2 = t[3];
+				if(!param1 || !param2)
+				{
+					console.error("#pragma define missing parameters");
+					continue;
+				}
+				pragma_info.define = [ param1, param2.substr(1, param2.length - 2) ];
+			}
 			else if( action == "shaderblock" )
 			{
 				if(!t[2])
@@ -4911,9 +4933,22 @@ GLSLCode.prototype.parse = function()
 					continue;
 				}
 				pragma_info.action_type = GLSLCode.SHADERBLOCK;
-				var shader_block_name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
-				pragma_info.shader_block = shader_block_name;
-				this.shader_blocks[ pragma_info.shader_block ] = true;
+
+				var param = t[2];
+				if(param[0] == '"') //one means "shaderblock_name", two means shaderblock_var
+				{
+					pragma_info.shader_block = [1, param.substr(1, param.length - 2)]; //safer than JSON.parse
+					this.shader_blocks[ pragma_info.shader_block[1] ] = true;
+				}
+				else
+				{
+					pragma_info.shader_block = [2, param];
+					if(t[3]) //thirth parameter for default
+					{
+						pragma_info.shader_block.push( t[3].substr(1, t[3].length - 2) );
+						this.shader_blocks[ pragma_info.shader_block[2] ] = true;
+					}
+				}
 			}
 			else if( action == "snippet" )
 			{
@@ -4945,12 +4980,13 @@ GLSLCode.prototype.parse = function()
 	return true;
 }
 
-GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
+GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	if( !this.is_dynamic )
 		return this.code;
 
 	var code = "";
+	context = context || {};
 	var blocks = this.blocks;
 
 	for(var i = 0; i < blocks.length; ++i)
@@ -4993,16 +5029,33 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags )
 				code += "\n" + snippet_code.code + "\n";
 			}
 		}
+		else if( block.define ) //defines a context variable
+		{
+			context[ block.define[0] ] = block.define[1];
+		}
 		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
 		{
-			var shader_block = LS.ShadersManager.getShaderBlock( block.shader_block );
+			var shader_block_name = block.shader_block[1];
+			if( block.shader_block[0] == 2 )
+			{
+				//dynamic shaderblock name
+				if( context[ shader_block_name ] )
+					shader_block_name = context[ shader_block_name ];
+				else
+				{
+					console.error("ShaderBlock: no context var found: " + shader_block_name );
+					return null;
+				}
+			}
+			
+			var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
 			if(!shader_block)
 			{
 				console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
 				return null;
 			}
 
-			var block_code = shader_block.getFinalCode( shader_type, block_flags );
+			var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
 			if( block_code )
 				code += "\n#define BLOCK_"+ ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
 		}
@@ -7363,14 +7416,15 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	//global stuff
 	this.render_state.enable();
-	LS.Renderer.bindSamplers(  this._samplers );
+	LS.Renderer.bindSamplers( this._samplers );
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
 	//add flags related to lights
 	var lights = null;
-	if(this._light_mode !== Material.NO_LIGHTS)
+
+	if( pass.id == COLOR_PASS && this._light_mode !== Material.NO_LIGHTS )
 		lights = LS.Renderer.getNearLights( instance );
 
 	if(!lights)
@@ -7394,12 +7448,15 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	for(var i = 0; i < lights.length; ++i)
 	{
 		var light = lights[i];
-		block_flags = light.applyShaderBlockFlags( block_flags );
+		block_flags = light.applyShaderBlockFlags( block_flags, pass, render_settings );
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
 		if(!shader)
 			continue;
+
+		//light texture like shadowmap and cookie
+		LS.Renderer.bindSamplers( light._samplers );
 
 		//assign
 		if(prev_shader != shader)
@@ -7410,6 +7467,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		if(i == 1)
 		{
+			shader.uniforms({ u_ambient_light: LS.ZEROS});
 			gl.depthMask( false );
 			gl.depthFunc( gl.EQUAL );
 			gl.enable( gl.BLEND );
@@ -9019,6 +9077,13 @@ function Animation(o)
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
 
+/**
+* Create a new take inside this animation (a take contains all the tracks)
+* @method createTake
+* @param {String} name the name
+* @param {Number} duration
+* @return {LS.Animation.Take} the take
+*/
 Animation.prototype.createTake = function( name, duration )
 {
 	if(!name)
@@ -9033,17 +9098,34 @@ Animation.prototype.createTake = function( name, duration )
 	return take;
 }
 
+/**
+* adds an existing take
+* @method addTake
+* @param {LS.Animation.Take} name the name
+*/
 Animation.prototype.addTake = function(take)
 {
 	this.takes[ take.name ] = take;
 	return take;
 }
 
+/**
+* returns the take with a given name
+* @method getTake
+* @param {String} name
+* @return {LS.Animation.Take} the take
+*/
 Animation.prototype.getTake = function( name )
 {
 	return this.takes[ name ];
 }
 
+/**
+* renames a take name
+* @method renameTake
+* @param {String} old_name
+* @param {String} new_name
+*/
 Animation.prototype.renameTake = function( old_name, new_name )
 {
 	var take = this.takes[ old_name ];
@@ -9055,6 +9137,11 @@ Animation.prototype.renameTake = function( old_name, new_name )
 	LEvent.trigger( this, "take_renamed", [old_name, new_name] );
 }
 
+/**
+* removes a take
+* @method removeTake
+* @param {String} name
+*/
 Animation.prototype.removeTake = function( name )
 {
 	var take = this.takes[ name ];
@@ -9064,6 +9151,11 @@ Animation.prototype.removeTake = function( name )
 	LEvent.trigger( this, "take_removed", name );
 }
 
+/**
+* returns the number of takes
+* @method getNumTakes
+* @return {Number} the number of takes
+*/
 Animation.prototype.getNumTakes = function()
 {
 	var num = 0;
@@ -9071,7 +9163,6 @@ Animation.prototype.getNumTakes = function()
 		num++;
 	return num;
 }
-
 
 Animation.prototype.addTrackToTake = function(takename, track)
 {
@@ -9192,6 +9283,12 @@ Animation.prototype.convertIDstoNames = function( use_basename, root )
 	return num;
 }
 
+/**
+* changes the packing mode of the tracks inside all takes
+* @method setTracksPacking
+* @param {boolean} pack if true the tracks will be packed (used a typed array)
+* @return {Number} te number of modifyed tracks
+*/
 Animation.prototype.setTracksPacking = function(v)
 {
 	var num = 0;
@@ -9203,7 +9300,11 @@ Animation.prototype.setTracksPacking = function(v)
 	return num;
 }
 
-
+/**
+* optimize all the tracks in all the takes, so they take less space and are faster to compute (when possible)
+* @method optimizeTracks
+* @return {Number} the number of takes
+*/
 Animation.prototype.optimizeTracks = function()
 {
 	var num = 0;
@@ -9258,6 +9359,12 @@ Take.prototype.serialize = Take.prototype.toJSON = function()
 	return LS.cloneObject(this, null, true);
 }
 
+/**
+* creates a new track from a given data
+* @method createTrack
+* @param {Object} data in serialized format
+* @return {LS.Animation.Track} the track
+*/
 Take.prototype.createTrack = function( data )
 {
 	if(!data)
@@ -9444,7 +9551,10 @@ Take.prototype.setTracksPacking = function(v)
 	return num;
 }
 
-//optimize animations
+/**
+* Optimizes the tracks by changing the Matrix tracks to Trans10 tracks which are way faster and use less space
+* @method optimizeTracks
+*/
 Take.prototype.optimizeTracks = function()
 {
 	var num = 0;
@@ -9453,40 +9563,13 @@ Take.prototype.optimizeTracks = function()
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if( track.value_size != 16 )
-			continue;
-
-		//convert locator
-		var path = track.property.split("/");
-		if( path[ path.length - 1 ] != "matrix")
-			continue;
-		path[ path.length - 1 ] = "Transform/data";
-		track.property = path.join("/");
-		track.type = "trans10";
-		track.value_size = 10;
-
-		//convert samples
-		if(!track.packed_data)
-		{
-			console.warn("convertMatricesToData only works with packed data");
-			continue;
-		}
-
-		var data = track.data;
-		var num_samples = data.length / 17;
-		for(var k = 0; k < num_samples; ++k)
-		{
-			var sample = data.subarray(k*17+1,(k*17)+17);
-			var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-			data[k*11] = data[k*17]; //timestamp
-			data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
-		}
-		track.data = new Float32Array( data.subarray(0,num_samples*11) );
-		num += 1;
+		if( track.convertToTrans10() )
+			num += 1;
 	}
 	return num;
 }
 
+//assigns the same translation to all nodes?
 Take.prototype.matchTranslation = function( root )
 {
 	var num = 0;
@@ -9527,6 +9610,10 @@ Take.prototype.matchTranslation = function( root )
 	return num;
 }
 
+/**
+* If this is a transform track it removes translation and scale leaving only rotations
+* @method onlyRotations
+*/
 Take.prototype.onlyRotations = function()
 {
 	var num = 0;
@@ -9549,17 +9636,14 @@ Take.prototype.onlyRotations = function()
 		else if (last_path == "data")
 			path[ path.length - 1 ] = "rotation";
 
+		//convert samples
+		if(!track.packed_data)
+			track.packData();
+
 		track.property = path.join("/");
 		var old_type = track.type;
 		track.type = "quat";
 		track.value_size = 4;
-
-		//convert samples
-		if(!track.packed_data)
-		{
-			console.warn("convertMatricesToData only works with packed data");
-			continue;
-		}
 
 		var data = track.data;
 		var num_samples = data.length / (old_size+1);
@@ -9590,6 +9674,45 @@ Take.prototype.onlyRotations = function()
 	return num;
 }
 
+/**
+* removes scaling in transform tracks
+* @method removeScaling
+*/
+Take.prototype.removeScaling = function()
+{
+	var num = 0;
+
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		var modified = false;
+
+		if(track.type == "matrix")
+		{
+			track.convertToTrans10();
+			modified = true;
+		}
+
+		if( track.type != "trans10" )
+		{
+			if(modified)
+				num += 1;
+			continue;
+		}
+
+		var num_keyframes = track.getNumberOfKeyframes();
+
+		for( var j = 0; j < num_keyframes; ++j )
+		{
+			var k = track.getKeyframe(j);
+			k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
+		}
+
+		num += 1;
+	}
+	return num;
+}
+
 
 Take.prototype.setInterpolationToAllTracks = function( interpolation )
 {
@@ -9605,6 +9728,21 @@ Take.prototype.setInterpolationToAllTracks = function( interpolation )
 
 	return num;
 }
+
+Take.prototype.trimTracks = function( start, end )
+{
+	var num = 0;
+	for(var i = 0; i < this.tracks.length; ++i)
+	{
+		var track = this.tracks[i];
+		num += track.trim( start, end );
+	}
+
+	this.duration = end - start;
+
+	return num;
+}
+
 
 Animation.Take = Take;
 
@@ -9744,8 +9882,14 @@ Track.prototype.clear = function()
 	this.packed_data = false;
 }
 
-//used to change every track so instead of using UIDs for properties it uses node names
-//this is used when you want to apply the same animation to different nodes in the scene
+/**
+* used to change every track so instead of using UIDs for properties it uses node names
+* this is used when you want to apply the same animation to different nodes in the scene
+* @method getIDasName
+* @param {boolean} use_basename if you want to just use the node name, othewise it uses the fullname (name with path)
+* @param {LS.SceneNode} root
+* @return {String} the result name
+*/
 Track.prototype.getIDasName = function( use_basename, root )
 {
 	if( !this._property_path || !this._property_path.length )
@@ -9787,6 +9931,14 @@ Track.prototype.convertIDtoName = function( use_basename, root )
 	return true;
 }
 
+/**
+* Adds a new keyframe to this track
+* @method addKeyframe
+* @param {Number} time time stamp in seconds
+* @param {*} value anything you want to store
+* @param {Boolean} skip_replace if you want to replace existing keyframes at same time stamp or add it next to that
+* @return {Number} index of keyframe
+*/
 Track.prototype.addKeyframe = function( time, value, skip_replace )
 {
 	if(this.value_size > 1)
@@ -9813,6 +9965,12 @@ Track.prototype.addKeyframe = function( time, value, skip_replace )
 	return this.data.length - 1;
 }
 
+/**
+* returns a keyframe given an index
+* @method getKeyframe
+* @param {Number} index
+* @return {Array} the keyframe in [time,data] format
+*/
 Track.prototype.getKeyframe = function( index )
 {
 	if(index < 0 || index >= this.data.length)
@@ -9833,6 +9991,12 @@ Track.prototype.getKeyframe = function( index )
 	return this.data[ index ];
 }
 
+/**
+* returns the first keyframe that matches this time
+* @method getKeyframeByTime
+* @param {Number} time
+* @return {Array} keyframe in [time,value]
+*/
 Track.prototype.getKeyframeByTime = function( time )
 {
 	var index = this.findTimeIndex( time );
@@ -9841,7 +10005,13 @@ Track.prototype.getKeyframeByTime = function( time )
 	return this.getKeyframe( index );
 }
 
-
+/**
+* changes a keyframe time and rearranges it
+* @method moveKeyframe
+* @param {Number} index
+* @param {Number} new_time
+* @return {Number} new index
+*/
 Track.prototype.moveKeyframe = function(index, new_time)
 {
 	if(this.packed_data)
@@ -9892,6 +10062,11 @@ Track.prototype.sortKeyframes = function()
 	this.data.sort( function(a,b){ return a[0] - b[0];  });
 }
 
+/**
+* removes one keyframe
+* @method removeKeyframe
+* @param {Number} index
+*/
 Track.prototype.removeKeyframe = function(index)
 {
 	if(this.packed_data)
@@ -9944,7 +10119,10 @@ Track.prototype.isInterpolable = function()
 	return false;
 }
 
-//better for reading
+/**
+* takes all the keyframes and stores them inside a typed-array so they are faster to store in server or work with
+* @method packData
+*/
 Track.prototype.packData = function()
 {
 	if(!this.data || this.data.length == 0)
@@ -9973,7 +10151,10 @@ Track.prototype.packData = function()
 	this.packed_data = true;
 }
 
-//better for writing
+/**
+* takes all the keyframes and unpacks them so they are in a simple array, easier to work with
+* @method unpackData
+*/
 Track.prototype.unpackData = function()
 {
 	if(!this.data || this.data.length == 0)
@@ -9993,8 +10174,12 @@ Track.prototype.unpackData = function()
 	this.packed_data = false;
 }
 
-//Dichotimic search
-//returns nearest index of keyframe with time equal or less to specified time
+/**
+* returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)
+* @method findTimeIndex
+* @param {number} time
+* @return {number} index
+*/
 Track.prototype.findTimeIndex = function(time)
 {
 	var data = this.data;
@@ -10401,6 +10586,68 @@ Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 	return samples;
 }
 
+/**
+* removes keyframes that are before or after the time range
+* @method trim
+* @param {number} start time
+* @param {number} end time
+*/
+Track.prototype.trim = function( start, end )
+{
+	if(this.packed_data)
+		this.unpackData();
+
+	var size = this.data.length;
+
+	var result = [];
+	for(var i = 0; i < this.data.length; ++i)
+	{
+		var d = this.data[i];
+		if(d[0] < start || d[0] > end)
+			continue;
+		d[0] -= start;
+		result.push(d);
+	}
+	this.data = result;
+
+	//changes has been made?
+	if(this.data.length != size)
+		return 1;
+	return 0;
+}
+
+Track.prototype.convertToTrans10 = function()
+{
+	if( this.value_size != 16 )
+		return false;
+
+	//convert samples
+	if(!this.packed_data)
+		this.packData();
+
+	//convert locator
+	var path = this.property.split("/");
+	if( path[ path.length - 1 ] != "matrix")
+		return false;
+
+	path[ path.length - 1 ] = "Transform/data";
+	this.property = path.join("/");
+	this.type = "trans10";
+	this.value_size = 10;
+
+	var data = this.data;
+	var num_samples = data.length / 17;
+	for(var k = 0; k < num_samples; ++k)
+	{
+		var sample = data.subarray(k*17+1,(k*17)+17);
+		var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		data[k*11] = data[k*17]; //timestamp
+		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
+	}
+	this.data = new Float32Array( data.subarray(0,num_samples*11) );
+
+	return true;
+}
 
 Animation.Track = Track;
 
@@ -12624,7 +12871,7 @@ if(typeof(LiteGraph) != "undefined")
 if(typeof(LiteGraph) != "undefined")
 {
 	//special kind of node
-	function LGraphSetValue()
+	global.LGraphSetValue = function LGraphSetValue()
 	{
 		this.properties = { property_name: "", value: "", type: "String" };
 		this.addInput("on_set", LiteGraph.ACTION );
@@ -12660,8 +12907,6 @@ if(typeof(LiteGraph) != "undefined")
 	LGraphSetValue.desc = "sets a value to a node";
 
 	LiteGraph.registerNodeType("logic/setValue", LGraphSetValue );
-
-
 }
 
 
@@ -22735,7 +22980,7 @@ function Light(o)
 		u_light_offset: this.offset,
 		u_light_matrix: this._light_matrix,
 		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
-		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT,
+		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT
 	};
 
 	//configure
@@ -23492,26 +23737,29 @@ Light.prototype.applyTransformMatrix = function( matrix, center, property_name )
 	return true;
 }
 
-Light.prototype.applyShaderBlockFlags = function( flags )
+Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 {
 	if(!this.enabled)
 		return flags;
 
 	flags |= Light.shader_block.flag_mask;
 
-	if(this.cast_shadows)
+	if( this.cast_shadows && render_settings.shadows_enabled )
 	{
 		if(this.type == Light.OMNI)
 		{
 			//flags |= Light.shadowmapping_cube_shader_block.flag_mask;
 		}
 		else
+		{
+			//take into account if using depth texture or color texture
 			flags |= Light.shadowmapping_2d_shader_block.flag_mask;
+		}
 	}
 	return flags;
 }
 
-LS.registerComponent(Light);
+LS.registerComponent( Light );
 LS.Light = Light;
 
 LS.ShadersManager.registerSnippet("surface","\n\
@@ -23536,6 +23784,7 @@ LS.ShadersManager.registerSnippet("surface","\n\
 		o.Normal = normalize( v_normal );\n\
 		o.Specular = 0.5;\n\
 		o.Gloss = 10.0;\n\
+		o.Ambient = vec3(1.0);\n\
 		return o;\n\
 	}\n\
 ");
@@ -23585,7 +23834,7 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	Light Shadowing (Hard, Soft)
 */
 
-Light._enabled_vs_shaderblock_code = "\n\
+Light._vs_shaderblock_code = "\n\
 	#pragma shaderblock \"testShadow\"\n\
 ";
 
@@ -23627,7 +23876,9 @@ Light._enabled_fs_shaderblock_code = "\n\
 		\n\
 		LIGHT.Shadow = 1.0;\n\
 		#ifdef TESTSHADOW\n\
-			LIGHT.Shadow = testShadow();\n\
+			#ifndef IGNORE_SHADOWS\n\
+				LIGHT.Shadow = testShadow();\n\
+			#endif\n\
 		#endif\n\
 		\n\
 		#ifdef LIGHT_FUNC\n\
@@ -23686,7 +23937,7 @@ Light._disabled_shaderblock_code = "\n\
 ";
 
 var light_block = new LS.ShaderBlock("light");
-light_block.addCode( GL.VERTEX_SHADER, Light._enabled_vs_shaderblock_code, null );
+light_block.addCode( GL.VERTEX_SHADER, Light._vs_shaderblock_code, Light._vs_shaderblock_code );
 light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
 Light.shader_block = light_block;
@@ -23738,7 +23989,8 @@ Light._shadowmap_cubemap_code = "\n\
 		vec3 l_vector = (v_pos - u_light_position);\n\
 		float dist = length(l_vector);\n\
 		float pixel_z = VectorToDepthValue( l_vector );\n\
-		if(pixel_z >= 0.998) return 0.0; //fixes a little bit the far edge bug\n\
+		if(pixel_z >= 0.998)\n\
+			return 0.0; //fixes a little bit the far edge bug\n\
 		vec4 depth_color = textureCube( shadowmap, l_vector + offset * dist );\n\
 		float ShadowVec = UnpackDepth32( depth_color );\n\
 		if ( ShadowVec > pixel_z - bias )\n\
@@ -23748,8 +24000,15 @@ Light._shadowmap_cubemap_code = "\n\
 ";
 
 Light._shadowmap_vertex_enabled_code ="\n\
+	#pragma snippet \"light_structs\"\n\
 	varying vec4 v_light_coord;\n\
+	void applyLight(vec3 pos) { v_light_coord = u_light_matrix * vec4(pos,1.0); }\n\
 ";
+
+Light._shadowmap_vertex_disabled_code ="\n\
+	void applyLight(vec3 pos) {}\n\
+";
+
 
 Light._shadowmap_2d_enabled_code = "\n\
 	#ifndef TESTSHADOW\n\
@@ -23761,11 +24020,11 @@ Light._shadowmap_2d_enabled_code = "\n\
 	\n\
 	float UnpackDepth32(vec4 depth)\n\
 	{\n\
-		#ifdef USE_SHADOW_DEPTH_TEXTURE\n\
-			return depth.x;\n\
-		#else\n\
+		#ifdef USE_COLOR_DEPTH_TEXTURE\n\
 			const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
 			return dot(depth.xyzw , bitShifts);\n\
+		#else\n\
+			return depth.x;\n\
 		#endif\n\
 	}\n\
 	\n\
@@ -23778,26 +24037,27 @@ Light._shadowmap_2d_enabled_code = "\n\
 		\n\
 		vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
 		//is inside light frustum\n\
-		if (clamp(sample, 0.0, 1.0) == sample) { \n\
-			float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );\n\
-			depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
-		}\n\
-		else \n\
+		if (clamp(sample, 0.0, 1.0) != sample) \n\
 			return 0.0; //outside of shadowmap, no shadow\n\
-		\n\
-		if (depth > 0.0) {\n\
-			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 1.0 : 0.0;\n\
-		}\n\
+		float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );\n\
+		depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
+		if (depth > 0.0) \n\
+			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 0.0 : 1.0;\n\
 		return shadow;\n\
 	}\n\
 ";
 
 var shadowmapping_block = new LS.ShaderBlock("testShadow");
-shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, "" );
+shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
 shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_block.register();
 Light.shadowmapping_2d_shader_block = shadowmapping_block;
 
+var shadowmapping_color_block = new LS.ShaderBlock("testShadowColor");
+shadowmapping_color_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
+shadowmapping_color_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "", { USE_COLOR_DEPTH_TEXTURE: "" } );
+shadowmapping_color_block.register();
+Light.shadowmapping_2d_color_shader_block = shadowmapping_color_block;
 
 //TODO
 

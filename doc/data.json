@@ -710,7 +710,7 @@
             },
             "tag": "module",
             "file": "../src/shadersManager.js",
-            "line": 815,
+            "line": 825,
             "description": "LS is the global scope for the global functions and containers of LiteScene"
         }
     },
@@ -1499,7 +1499,7 @@
             "module": "LS",
             "namespace": "LS.Animation",
             "file": "../src/resources/animation.js",
-            "line": 229,
+            "line": 272,
             "description": "Represents a set of animations",
             "is_constructor": 1
         },
@@ -1514,7 +1514,7 @@
             "module": "LS",
             "namespace": "LS",
             "file": "../src/resources/animation.js",
-            "line": 620,
+            "line": 700,
             "description": "Represents one track with data over time about one property\nData could be stored in two forms, or an array containing arrays of [time,data] (unpacked data) or in a single typed array (packed data), depends on the attribute typed_mode",
             "is_constructor": 1
         },
@@ -1943,7 +1943,7 @@
             "module": "LS",
             "namespace": "LS",
             "file": "../src/shadersManager.js",
-            "line": 815,
+            "line": 825,
             "description": "Used for parsing GLSL code and precompute info (mostly preprocessor macros)",
             "is_constructor": 1,
             "params": [
@@ -5105,7 +5105,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 504,
+            "line": 509,
             "description": "Collects all the resources needed by this material (textures)",
             "itemtype": "method",
             "name": "getResources",
@@ -5125,7 +5125,7 @@
         },
         {
             "file": "../src/materials/shaderMaterial.js",
-            "line": 573,
+            "line": 578,
             "description": "Takes an input texture and applies the ShaderMaterial, the result is shown on the viewport or stored in the output_texture\nThe ShaderCode must contain a \"fx\" method.\nSimilar to the method BlitTexture in Unity",
             "itemtype": "method",
             "name": "applyToTexture",
@@ -6782,7 +6782,171 @@
         },
         {
             "file": "../src/resources/animation.js",
-            "line": 283,
+            "line": 30,
+            "description": "Create a new take inside this animation (a take contains all the tracks)",
+            "itemtype": "method",
+            "name": "createTake",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "the name",
+                    "type": "String"
+                },
+                {
+                    "name": "duration",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "the take",
+                "type": "LS.Animation.Take"
+            },
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 51,
+            "description": "adds an existing take",
+            "itemtype": "method",
+            "name": "addTake",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "the name",
+                    "type": "LS.Animation.Take"
+                }
+            ],
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 62,
+            "description": "returns the take with a given name",
+            "itemtype": "method",
+            "name": "getTake",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "the take",
+                "type": "LS.Animation.Take"
+            },
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 73,
+            "description": "renames a take name",
+            "itemtype": "method",
+            "name": "renameTake",
+            "params": [
+                {
+                    "name": "old_name",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "new_name",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 90,
+            "description": "removes a take",
+            "itemtype": "method",
+            "name": "removeTake",
+            "params": [
+                {
+                    "name": "name",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 104,
+            "description": "returns the number of takes",
+            "itemtype": "method",
+            "name": "getNumTakes",
+            "return": {
+                "description": "the number of takes",
+                "type": "Number"
+            },
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 236,
+            "description": "changes the packing mode of the tracks inside all takes",
+            "itemtype": "method",
+            "name": "setTracksPacking",
+            "params": [
+                {
+                    "name": "pack",
+                    "description": "if true the tracks will be packed (used a typed array)",
+                    "type": "Boolean"
+                }
+            ],
+            "return": {
+                "description": "te number of modifyed tracks",
+                "type": "Number"
+            },
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 253,
+            "description": "optimize all the tracks in all the takes, so they take less space and are faster to compute (when possible)",
+            "itemtype": "method",
+            "name": "optimizeTracks",
+            "return": {
+                "description": "the number of takes",
+                "type": "Number"
+            },
+            "class": "LS.Animation",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 312,
+            "description": "creates a new track from a given data",
+            "itemtype": "method",
+            "name": "createTrack",
+            "params": [
+                {
+                    "name": "data",
+                    "description": "in serialized format",
+                    "type": "Object"
+                }
+            ],
+            "return": {
+                "description": "the track",
+                "type": "LS.Animation.Track"
+            },
+            "class": "LS.Animation.Take",
+            "namespace": "LS.Animation"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 332,
             "description": "For every track, gets the interpolated value between keyframes and applies the value to the property associated with the track locator\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "applyTracks",
@@ -6819,6 +6983,228 @@
             },
             "class": "LS.Animation.Take",
             "namespace": "LS.Animation"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 504,
+            "description": "Optimizes the tracks by changing the Matrix tracks to Trans10 tracks which are way faster and use less space",
+            "itemtype": "method",
+            "name": "optimizeTracks",
+            "class": "LS.Animation.Take",
+            "namespace": "LS.Animation"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 563,
+            "description": "If this is a transform track it removes translation and scale leaving only rotations",
+            "itemtype": "method",
+            "name": "onlyRotations",
+            "class": "LS.Animation.Take",
+            "namespace": "LS.Animation"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 627,
+            "description": "removes scaling in transform tracks",
+            "itemtype": "method",
+            "name": "removeScaling",
+            "class": "LS.Animation.Take",
+            "namespace": "LS.Animation"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 835,
+            "description": "used to change every track so instead of using UIDs for properties it uses node names\nthis is used when you want to apply the same animation to different nodes in the scene",
+            "itemtype": "method",
+            "name": "getIDasName",
+            "params": [
+                {
+                    "name": "use_basename",
+                    "description": "if you want to just use the node name, othewise it uses the fullname (name with path)",
+                    "type": "Boolean"
+                },
+                {
+                    "name": "root",
+                    "description": "",
+                    "type": "LS.SceneNode"
+                }
+            ],
+            "return": {
+                "description": "the result name",
+                "type": "String"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 884,
+            "description": "Adds a new keyframe to this track",
+            "itemtype": "method",
+            "name": "addKeyframe",
+            "params": [
+                {
+                    "name": "time",
+                    "description": "time stamp in seconds",
+                    "type": "Number"
+                },
+                {
+                    "name": "value",
+                    "description": "anything you want to store",
+                    "type": "*"
+                },
+                {
+                    "name": "skip_replace",
+                    "description": "if you want to replace existing keyframes at same time stamp or add it next to that",
+                    "type": "Boolean"
+                }
+            ],
+            "return": {
+                "description": "index of keyframe",
+                "type": "Number"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 918,
+            "description": "returns a keyframe given an index",
+            "itemtype": "method",
+            "name": "getKeyframe",
+            "params": [
+                {
+                    "name": "index",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "the keyframe in [time,data] format",
+                "type": "Array"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 944,
+            "description": "returns the first keyframe that matches this time",
+            "itemtype": "method",
+            "name": "getKeyframeByTime",
+            "params": [
+                {
+                    "name": "time",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "keyframe in [time,value]",
+                "type": "Array"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 958,
+            "description": "changes a keyframe time and rearranges it",
+            "itemtype": "method",
+            "name": "moveKeyframe",
+            "params": [
+                {
+                    "name": "index",
+                    "description": "",
+                    "type": "Number"
+                },
+                {
+                    "name": "new_time",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "new index",
+                "type": "Number"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 1015,
+            "description": "removes one keyframe",
+            "itemtype": "method",
+            "name": "removeKeyframe",
+            "params": [
+                {
+                    "name": "index",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 1072,
+            "description": "takes all the keyframes and stores them inside a typed-array so they are faster to store in server or work with",
+            "itemtype": "method",
+            "name": "packData",
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 1104,
+            "description": "takes all the keyframes and unpacks them so they are in a simple array, easier to work with",
+            "itemtype": "method",
+            "name": "unpackData",
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 1127,
+            "description": "returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)",
+            "itemtype": "method",
+            "name": "findTimeIndex",
+            "params": [
+                {
+                    "name": "time",
+                    "description": "",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "index",
+                "type": "Number"
+            },
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/animation.js",
+            "line": 1539,
+            "description": "removes keyframes that are before or after the time range",
+            "itemtype": "method",
+            "name": "trim",
+            "params": [
+                {
+                    "name": "start",
+                    "description": "time",
+                    "type": "Number"
+                },
+                {
+                    "name": "end",
+                    "description": "time",
+                    "type": "Number"
+                }
+            ],
+            "class": "LS.Animation.Track",
+            "namespace": "LS"
         },
         {
             "file": "../src/resources/pack.js",

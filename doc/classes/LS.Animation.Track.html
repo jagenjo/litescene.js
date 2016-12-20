@@ -148,7 +148,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_animation.js.html#l620"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:620</code></a>
+            Defined in: <a href="../files/.._src_resources_animation.js.html#l700"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:700</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -179,7 +179,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l620"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:620</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l700"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:700</code></a>
         </p>
 
 
@@ -200,17 +200,698 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <ul class="api-class-tabs">
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
+            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
     </ul>
 
     <div>
         <div id="index" class="api-class-tabpanel index">
             <h2 class="off-left">Item Index</h2>
 
+                <div class="index-section methods">
+                    <h3>Methods</h3>
+
+                    <ul class="index-list methods">
+                            <li class="index-item method">
+                                <a href="#method_addKeyframe">addKeyframe</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_findTimeIndex">findTimeIndex</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getIDasName">getIDasName</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getKeyframe">getKeyframe</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getKeyframeByTime">getKeyframeByTime</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_moveKeyframe">moveKeyframe</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_packData">packData</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_removeKeyframe">removeKeyframe</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_trim">trim</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_unpackData">unpackData</a>
+
+                            </li>
+                    </ul>
+                </div>
 
 
 
         </div>
 
+            <div id="methods" class="api-class-tabpanel">
+                <h2 class="off-left">Methods</h2>
+
+<div id="method_addKeyframe" class="method item">
+    <h3 class="name"><code>addKeyframe</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>time</code>
+                </li>
+                <li class="arg">
+                        <code>value</code>
+                </li>
+                <li class="arg">
+                        <code>skip_replace</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l884"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:884</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Adds a new keyframe to this track</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>time stamp in seconds</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">value</code>
+                        <span class="type"></span>
+
+
+                    <div class="param-description">
+                        <p>anything you want to store</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">skip_replace</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>if you want to replace existing keyframes at same time stamp or add it next to that</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>index of keyframe</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_findTimeIndex" class="method item">
+    <h3 class="name"><code>findTimeIndex</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>time</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1127"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1127</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>index</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getIDasName" class="method item">
+    <h3 class="name"><code>getIDasName</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>use_basename</code>
+                </li>
+                <li class="arg">
+                        <code>root</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">String</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l835"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:835</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>used to change every track so instead of using UIDs for properties it uses node names
+this is used when you want to apply the same animation to different nodes in the scene</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">use_basename</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>if you want to just use the node name, othewise it uses the fullname (name with path)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">root</code>
+                        <span class="type"><a href="../classes/LS.SceneNode.html" class="crosslink">LS.SceneNode</a></span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">String</span>:
+                    <p>the result name</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getKeyframe" class="method item">
+    <h3 class="name"><code>getKeyframe</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l918"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:918</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns a keyframe given an index</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Array</span>:
+                    <p>the keyframe in [time,data] format</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getKeyframeByTime" class="method item">
+    <h3 class="name"><code>getKeyframeByTime</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>time</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l944"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:944</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the first keyframe that matches this time</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Array</span>:
+                    <p>keyframe in [time,value]</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_moveKeyframe" class="method item">
+    <h3 class="name"><code>moveKeyframe</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+                <li class="arg">
+                        <code>new_time</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l958"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:958</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>changes a keyframe time and rearranges it</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">new_time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>new index</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_packData" class="method item">
+    <h3 class="name"><code>packData</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1072"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1072</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>takes all the keyframes and stores them inside a typed-array so they are faster to store in server or work with</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_removeKeyframe" class="method item">
+    <h3 class="name"><code>removeKeyframe</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>index</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1015"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1015</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>removes one keyframe</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">index</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_trim" class="method item">
+    <h3 class="name"><code>trim</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>start</code>
+                </li>
+                <li class="arg">
+                        <code>end</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1539"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1539</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>removes keyframes that are before or after the time range</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">start</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>time</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">end</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>time</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_unpackData" class="method item">
+    <h3 class="name"><code>unpackData</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1104"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1104</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>takes all the keyframes and unpacks them so they are in a simple array, easier to work with</p>
+
+    </div>
+
+
+
+
+</div>
+            </div>
 
 
 

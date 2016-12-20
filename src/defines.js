@@ -32,6 +32,7 @@ LS.PAUSED = 2;
 
 //helpful consts
 LS.ZEROS = vec3.create();
+LS.ZEROS4 = vec4.create();
 LS.ONES = vec3.fromValues(1,1,1);
 LS.TOP = vec3.fromValues(0,1,0);
 LS.BOTTOM = vec3.fromValues(0,-1,0);

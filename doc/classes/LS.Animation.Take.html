@@ -148,7 +148,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_animation.js.html#l229"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:229</code></a>
+            Defined in: <a href="../files/.._src_resources_animation.js.html#l272"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:272</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -178,7 +178,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l229"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:229</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l272"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:272</code></a>
         </p>
 
 
@@ -212,6 +212,22 @@
                     <ul class="index-list methods">
                             <li class="index-item method">
                                 <a href="#method_applyTracks">applyTracks</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_createTrack">createTrack</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_onlyRotations">onlyRotations</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_optimizeTracks">optimizeTracks</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_removeScaling">removeScaling</a>
 
                             </li>
                     </ul>
@@ -260,7 +276,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l283"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:283</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l332"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:332</code></a>
         </p>
 
 
@@ -344,6 +360,165 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
             </div>
         </div>
+
+
+</div>
+<div id="method_createTrack" class="method item">
+    <h3 class="name"><code>createTrack</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>data</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type"><a href="../classes/LS.Animation.Track.html" class="crosslink">LS.Animation.Track</a></span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l312"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:312</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>creates a new track from a given data</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">data</code>
+                        <span class="type">Object</span>
+
+
+                    <div class="param-description">
+                        <p>in serialized format</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type"><a href="../classes/LS.Animation.Track.html" class="crosslink">LS.Animation.Track</a></span>:
+                    <p>the track</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_onlyRotations" class="method item">
+    <h3 class="name"><code>onlyRotations</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l563"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:563</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>If this is a transform track it removes translation and scale leaving only rotations</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_optimizeTracks" class="method item">
+    <h3 class="name"><code>optimizeTracks</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l504"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:504</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Optimizes the tracks by changing the Matrix tracks to Trans10 tracks which are way faster and use less space</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_removeScaling" class="method item">
+    <h3 class="name"><code>removeScaling</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l627"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:627</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>removes scaling in transform tracks</p>
+
+    </div>
+
+
 
 
 </div>
