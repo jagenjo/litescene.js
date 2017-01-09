@@ -181,6 +181,77 @@ To create a snippet:
 	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
 ```
 
+## Structs
+
+If you plan to use the default lighting system from your shaders you need to use the next structs:
+
+
+The next struct defines the info per vertex:
+```c++
+struct Input {
+	vec3 vertex;
+	vec3 normal;
+	vec2 uv;
+	vec2 uv1;
+	vec4 color;
+
+	vec3 camPos;
+	vec3 viewDir;
+	vec3 worldPos;
+	vec3 worldNormal;
+	vec4 screenPos;
+};
+```
+
+The next struct defines properties of the object surface:
+
+```c++
+struct SurfaceOutput {
+	vec3 Albedo; //base color
+	vec3 Normal; //separated in case there is a normal map
+	vec3 Emission; //extra light
+	vec3 Ambient; //amount of ambient light reflected
+	float Specular; //specular factor
+	float Gloss; //specular gloss
+	float Alpha; //alpha
+	float Reflectivity; //amount of reflection
+	vec4 Extra; //for special purposes
+};
+```
+
+When calling getSurfaceOutput it will be filled with this values:
+
+```c++
+SurfaceOutput getSurfaceOutput()
+{
+	SurfaceOutput o;
+	o.Albedo = u_material_color.xyz;
+	o.Alpha = u_material_color.a;
+	o.Normal = normalize( v_normal );
+	o.Specular = 0.5;
+	o.Gloss = 10.0;
+	o.Ambient = vec3(1.0);
+	return o;
+}
+```
+
+And the next struct defines properties of the light:
+
+```c++
+struct FinalLight {
+	vec3 Color;
+	vec3 Ambient;
+	float Diffuse; //NdotL
+	float Specular; //RdotL
+	vec3 Emission;
+	vec3 Reflection;
+	float Attenuation;
+	float Shadow; //1.0 means fully lit
+};
+```
+
+
+
 ## Shader Example ##
 
 Here is a complete shader with normalmap and specular map that support multiple lights and shadowmaps using the built-in shaderblock system so you do not have to worry about it.
