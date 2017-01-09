@@ -181,6 +181,20 @@ To create a snippet:
 	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
 ```
 
+### pragma include
+
+You can also create a file containing a block of code and include it using the include pragma. First create a ShaderCode file with GLSL extension and add all your snippets using the subfiles syntax:
+
+```c++
+    //any code... 
+```
+
+Then from your shader you can include it like this:
+
+```c++
+	#pragma include "folder/myfile.glsl"
+```
+
 ## Shader Example ##
 
 Here is a complete shader with normalmap and specular map that support multiple lights and shadowmaps using the built-in shaderblock system so you do not have to worry about it.
