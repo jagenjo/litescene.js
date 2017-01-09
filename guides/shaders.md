@@ -183,8 +183,11 @@ To create a snippet:
 
 ## Structs
 
-If you plan to use the default lighting system from your shaders you need to use the next structs:
+If you plan to use the default lighting system from your shaders you need to use several structs to map vertex data, surface data and light data. You will have access by including the "light" shaderblock:
 
+```c++
+	#pragma shaderblock "light"
+```
 
 The next struct defines the info per vertex:
 ```c++
@@ -203,6 +206,13 @@ struct Input {
 };
 ```
 
+And to fill it you must call:
+
+```c++
+	Input IN = getInput();
+```
+
+
 The next struct defines properties of the object surface:
 
 ```c++
@@ -218,6 +228,13 @@ struct SurfaceOutput {
 	vec4 Extra; //for special purposes
 };
 ```
+
+And to get a prefilled version you must call:
+
+```c++
+	SurfaceOutput o = getSurfaceOutput();
+```
+
 
 When calling getSurfaceOutput it will be filled with this values:
 
@@ -250,6 +267,13 @@ struct FinalLight {
 };
 ```
 
+And to apply the final lighting:
+
+```c++
+	FinalLight LIGHT = getLight();
+	LIGHT.Ambient = u_ambient_light;
+	final_color.xyz = computeLight( o, IN, LIGHT );
+```
 
 
 ## Shader Example ##
