@@ -168,7 +168,7 @@ To do this first the shader must accept to have the shaderblock supported by usi
 
 ### pragma snippet
 
-You can include snippets of code that are stored in the snippets container, this is used internally to avoid creating the same code several times.
+You can include snippets of code that are stored in the snippets container of the ```LS.ShadersManager```, this is used internally to avoid creating the same code several times or to update code from scripts.
 
 ```c++
 	#pragma snippet "lighting"
@@ -179,20 +179,6 @@ To create a snippet:
 
 ```javascript
 	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
-```
-
-### pragma include
-
-You can also create a file containing a block of code and include it using the include pragma. First create a ShaderCode file with GLSL extension and add all your snippets using the subfiles syntax:
-
-```c++
-    //any code... 
-```
-
-Then from your shader you can include it like this:
-
-```c++
-	#pragma include "folder/myfile.glsl"
 ```
 
 ## Shader Example ##
