@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -171,11 +173,6 @@ function RenderInstance( node, component )
 
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
-
-	//used in case the object has a secondary mesh
-	this.lod_mesh = null;
-	this.lod_vertex_buffers = {};
-	this.lod_index_buffer = null;
 
 	//where does it come from
 	this.node = node;
@@ -298,50 +295,6 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.use_bounding = false;
 }
 
-//assigns a secondary mesh in case the object is too small on the screen
-RenderInstance.prototype.setLODMesh = function(lod_mesh)
-{
-	if(!lod_mesh)
-	{
-		this.lod_mesh = null;
-		this.lod_vertex_buffers = null;
-		this.lod_index_buffer = null;
-		return;
-	}
-
-	if(lod_mesh != this.lod_mesh)
-	{
-		this.lod_mesh = lod_mesh;
-		this.lod_vertex_buffers = {};
-	}
-	//this.vertex_buffers = mesh.vertexBuffers;
-	for(var i in lod_mesh.vertexBuffers)
-		this.lod_vertex_buffers[i] = lod_mesh.vertexBuffers[i];
-
-	switch(this.primitive)
-	{
-		case gl.TRIANGLES: 
-			this.lod_index_buffer = lod_mesh.indexBuffers[&quot;triangles&quot;]; //works for indexed and non-indexed
-			break;
-		case gl.LINES: 
-			/*
-			if(!mesh.indexBuffers[&quot;lines&quot;])
-				mesh.computeWireframe();
-			*/
-			this.lod_index_buffer = lod_mesh.indexBuffers[&quot;lines&quot;];
-			break;
-		case 10:  //wireframe
-			if(!lod_mesh.indexBuffers[&quot;wireframe&quot;])
-				lod_mesh.computeWireframe();
-			this.lod_index_buffer = lod_mesh.indexBuffers[&quot;wireframe&quot;];
-			break;
-		case gl.POINTS: 
-		default:
-			this.lod_index_buffer = null;
-			break;
-	}
-}
-
 RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
@@ -412,17 +365,51 @@ RenderInstance.prototype.update = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
-	if(this.lod_mesh)
+	//in case no normals found but they are required
+	if(shader.attributes[&quot;a_normal&quot;] &amp;&amp; !this.vertex_buffers[&quot;normals&quot;])
 	{
-		//very bad LOD function...
-		var f = this.oobb[12] / Math.max(0.1, this._dist);
-		if( f &lt; 0.1 )
-		{
-			shader.drawBuffers( this.lod_vertex_buffers,
-			  this.lod_index_buffer,
-			  this.primitive);
-			return;
-		}
+		this.mesh.computeNormals();		
+		this.vertex_buffers[&quot;normals&quot;] = this.mesh.vertexBuffers[&quot;normals&quot;];
+	}
+
+	//in case no coords found but they are required
+	if(shader.attributes[&quot;a_coord&quot;] &amp;&amp; !this.vertex_buffers[&quot;coords&quot;])
+	{
+		this.mesh.computeTextureCoordinates();		
+		this.vertex_buffers[&quot;coords&quot;] = this.mesh.vertexBuffers[&quot;coords&quot;];
+	}
+
+	//in case no tangents found but they are required
+	if(shader.attributes[&quot;a_tangent&quot;] &amp;&amp; !this.vertex_buffers[&quot;tangents&quot;])
+	{
+		this.mesh.computeTangents();		
+		this.vertex_buffers[&quot;tangents&quot;] = this.mesh.vertexBuffers[&quot;tangents&quot;];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes[&quot;a_coord1&quot;] &amp;&amp; !this.vertex_buffers[&quot;coords1&quot;])
+	{
+		this.mesh.createVertexBuffer(&quot;coords1&quot;,2, vertex_buffers[&quot;coords&quot;].data );
+		this.vertex_buffers[&quot;coords1&quot;] = this.mesh.vertexBuffers[&quot;coords1&quot;];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes[&quot;a_extra&quot;] &amp;&amp; !this.vertex_buffers[&quot;extra&quot;])
+	{
+		this.mesh.createVertexBuffer(&quot;a_extra&quot;, 1 );
+		this.vertex_buffers[&quot;extra&quot;] = this.mesh.vertexBuffers[&quot;extra&quot;];
+	}
+
+	if(shader.attributes[&quot;a_extra2&quot;] &amp;&amp; !this.vertex_buffers[&quot;extra2&quot;])
+	{
+		this.mesh.createVertexBuffer(&quot;a_extra2&quot;, 2 );
+		this.vertex_buffers[&quot;extra2&quot;] = this.mesh.vertexBuffers[&quot;extra2&quot;];
+	}
+
+	if(shader.attributes[&quot;a_extra3&quot;] &amp;&amp; !this.vertex_buffers[&quot;extra3&quot;])
+	{
+		this.mesh.createVertexBuffer(&quot;a_extra3&quot;, 3 );
+		this.vertex_buffers[&quot;extra3&quot;] = this.mesh.vertexBuffers[&quot;extra3&quot;];
 	}
 
 	shader.drawBuffers( this.vertex_buffers,

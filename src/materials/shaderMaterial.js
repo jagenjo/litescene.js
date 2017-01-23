@@ -341,6 +341,9 @@ ShaderMaterial.prototype.processShaderCode = function()
 	//restore old values
 	this.assignOldProperties( old_properties );
 
+	//set stuff
+	//TODO
+
 	this._shader_version = shader_code._version;
 }
 
@@ -409,11 +412,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
 
+	//some globals
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
 	var scene = LS.Renderer._current_scene;
-
-	//compute matrices
 	var model = instance.matrix;
 
 	//node matrix info
@@ -446,7 +448,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//extract shader compiled
 		var shader = shader_code.getShader( pass.name, block_flags );
 		if(!shader)
+		{
+			//var shader = shader_code.getShader( "surface", block_flags );
 			return false;
+		}
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );

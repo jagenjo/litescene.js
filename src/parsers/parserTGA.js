@@ -14,7 +14,10 @@ var parserTGA = {
 		var TGAcompare = data.subarray(0,12);
 		for(var i = 0; i < TGAcompare.length; i++)
 			if(TGAheader[i] != TGAcompare[i])
+			{
+				console.error("TGA header is not valid");
 				return null; //not a TGA
+			}
 
 		var header = data.subarray(12,18);
 

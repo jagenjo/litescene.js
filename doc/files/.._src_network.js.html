@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -151,6 +153,8 @@ var Network = {
 
 	default_dataType: &quot;arraybuffer&quot;,
 
+	withCredentials: false, //for CORS urls: not sure which one is the best for every case so I leave it configurable
+
 	/**
 	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
 	*
@@ -189,7 +193,7 @@ var Network = {
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
         xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, request.url, true);
-		xhr.withCredentials = true;
+		xhr.withCredentials = this.withCredentials; //if true doesnt work
         if(dataType)
             xhr.responseType = dataType;
         if (request.mimeType)
@@ -349,6 +353,8 @@ var Network = {
 			script.type = &#x27;text/javascript&#x27;;
 			script.src = url[i];
 			script.async = false;
+			//if( script.src.substr(0,5) == &quot;blob:&quot;) //local scripts could contain utf-8
+				script.charset = &quot;UTF-8&quot;;
 			script.onload = function(e) { 
 				total--;
 				if(total)

@@ -508,11 +508,12 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		LEvent.trigger(that,"loadCompleted");
 	}
 
-	function inner_error(err)
+	function inner_error(e)
 	{
-		console.warn("Error loading scene: " + url + " -> " + err);
+		var err_code = (e && e.target) ? e.target.status : 0;
+		console.warn("Error loading scene: " + url + " -> " + err_code);
 		if(on_error)
-			on_error(url);
+			on_error(url, err_code, e);
 	}
 }
 
@@ -552,8 +553,16 @@ SceneTree.getScriptsList = function( root, allow_local )
 			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
 
 			var res = LS.ResourcesManager.getResource( script_fullpath );
-			if(res && allow_local)
-				script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			if(res)
+			{
+				/*
+				if( res.from_prefab )
+					script_url = LS.ResourcesManager.cleanFullpath( "@" + script_fullpath );
+				else 
+				*/
+					if( allow_local )
+					script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			}
 
 			scripts.push( script_url );
 		}
@@ -563,7 +572,7 @@ SceneTree.getScriptsList = function( root, allow_local )
 
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 {
-	scripts = scripts || LS.SceneTree.getScriptsList( this );
+	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
 	if(!scripts.length)
 	{
@@ -592,7 +601,7 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 			continue;
 		}
 
-		var blob = new Blob([res.data]);
+		var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
 		var objectURL = URL.createObjectURL( blob );
 		final_scripts.push( objectURL );
 		revokable.push( objectURL );
@@ -1444,7 +1453,8 @@ SceneTree.prototype.update = function(dt)
 	LEvent.trigger(this,"beforeUpdate", this);
 
 	this._global_time = getTime() * 0.001;
-	this._time = this._global_time - this._start_time;
+	//this._time = this._global_time - this._start_time;
+	this._time += dt;
 	this._last_dt = dt;
 
 	/**

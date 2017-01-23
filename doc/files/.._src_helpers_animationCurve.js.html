@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.Components.SpatialContainer</title>
+    <title>../src/helpers/animationCurve.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -143,47 +145,92 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.Components.SpatialContainer Class</h1>
-<div class="box meta">
+<h1 class="file-heading">File: ../src/helpers/animationCurve.js</h1>
 
+<div class="file">
+    <pre class="code prettyprint linenums">
+function AnimationCurve(o)
+{
+	this.samples = [];
 
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_helpers_spatialContainer.js.html#l3"><code>..&#x2F;src&#x2F;helpers&#x2F;spatialContainer.js:3</code></a>
-        </div>
+	if(o)
+		this.configure(o);
+}
 
-            Module: <a href="../modules/LS.html">LS</a>
+AnimationCurve.prototype.configure = function(o)
+{
+	this.samples = o.samples;
+}
 
-</div>
+AnimationCurve.prototype.serialize = function()
+{
+	return {
+		samples: this.samples
+	};
+}
 
+/**
+* Samples a curve and returns the resulting value 
+*
+* @namespace LS
+* @method getCurveValueAt
+* @param {Array} values 
+* @param {number} minx min x value
+* @param {number} maxx max x value
+* @param {number} defaulty default y value
+* @param {number} x the position in the curve to sample
+* @return {number}
+*/
+AnimationCurve.prototype.getCurveValueAt = function( minx, maxx, defaulty, x )
+{
+	if(x &lt; minx || x &gt; maxx)
+		return defaulty;
 
-<div class="box intro">
-    <p>This class allows to store data spatially so it can be retrieved by proximity or by camera frustum view.
-It can store objects associated with a bounding box.
-It is used by the renderer to store all the RenderInstances, Lights and Colliders
-IT IS A WORK IN PROGRESS SO FOR NOW IT DO NOT STORES THE INFO SPATIALLY, IT JUST EXPOSES AN INTERFACE</p>
+	var values = this.samples;
 
-</div>
+	var last = [ minx, defaulty ];
+	var f = 0;
+	for(var i = 0; i &lt; values.length; i += 1)
+	{
+		var v = values[i];
+		if(x == v[0]) return v[1];
+		if(x &lt; v[0])
+		{
+			f = (x - last[0]) / (v[0] - last[0]);
+			return last[1] * (1-f) + v[1] * f;
+		}
+		last = v;
+	}
 
+	v = [ maxx, defaulty ];
+	f = (x - last[0]) / (v[0] - last[0]);
+	return last[1] * (1-f) + v[1] * f;
+}
 
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
+/**
+* Resamples a full curve in values (useful to upload to GPU array)
+*
+* @namespace LS
+* @method resampleCurve
+* @param {Array} values 
+* @param {number} minx min x value
+* @param {number} maxx max x value
+* @param {number} defaulty default y value
+* @param {number} numsamples
+* @return {Array}
+*/
 
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-
-
-
-        </div>
-
-
-
-
-    </div>
+AnimationCurve.prototype.resampleCurve = function(minx,maxx,defaulty, samples)
+{
+	var values = this.samples;
+	var result = [];
+	result.length = samples;
+	var delta = (maxx - minx) / samples;
+	for(var i = 0; i &lt; samples; i++)
+		result[i] = LS.getCurveValueAt(values,minx,maxx,defaulty, minx + delta * i);
+	return result;
+}
+    </pre>
 </div>
                     </div>
                 </div>

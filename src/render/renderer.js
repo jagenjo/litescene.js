@@ -189,6 +189,9 @@ var Renderer = {
 		if(!render_settings.ignore_reset)
 			LS.RenderFrameContext.reset();
 
+		if(gl.canvas.canvas2DtoWebGL_enabled)
+			gl.resetTransform(); //reset 
+
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
 		{
@@ -1191,6 +1194,7 @@ var Renderer = {
 			//node & mesh constant information
 			var query = instance.query;
 
+			/* deprecated
 			var buffers = instance.vertex_buffers;
 			if(!("normals" in buffers))
 				query.macros.NO_NORMALS = "";
@@ -1202,6 +1206,7 @@ var Renderer = {
 				query.macros.USE_COLOR_STREAM = "";
 			if(("tangents" in buffers))
 				query.macros.USE_TANGENT_STREAM = "";
+			*/
 
 			instance._camera_visibility = 0|0;
 		}
@@ -1340,9 +1345,10 @@ var Renderer = {
 	* @param {Material} material
 	* @param {number} size image size
 	* @param {Object} options could be environment_texture, to_viewport
+	* @param {HTMLCanvas} canvas [optional] the output canvas where to store the preview
 	* @return {Image} the preview image (in canvas format) or null if it was rendered to the viewport
 	*/
-	renderMaterialPreview: function( material, size, options )
+	renderMaterialPreview: function( material, size, options, canvas )
 	{
 		options = options || {};
 
@@ -1410,7 +1416,7 @@ var Renderer = {
 			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
 		});
 
-		var canvas = tex.toCanvas(null, true);
+		var canvas = tex.toCanvas( canvas, true );
 		return canvas;
 	},
 

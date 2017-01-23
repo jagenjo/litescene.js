@@ -23,11 +23,6 @@ function RenderInstance( node, component )
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
 
-	//used in case the object has a secondary mesh
-	this.lod_mesh = null;
-	this.lod_vertex_buffers = {};
-	this.lod_index_buffer = null;
-
 	//where does it come from
 	this.node = node;
 	this.component = component;
@@ -149,50 +144,6 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.use_bounding = false;
 }
 
-//assigns a secondary mesh in case the object is too small on the screen
-RenderInstance.prototype.setLODMesh = function(lod_mesh)
-{
-	if(!lod_mesh)
-	{
-		this.lod_mesh = null;
-		this.lod_vertex_buffers = null;
-		this.lod_index_buffer = null;
-		return;
-	}
-
-	if(lod_mesh != this.lod_mesh)
-	{
-		this.lod_mesh = lod_mesh;
-		this.lod_vertex_buffers = {};
-	}
-	//this.vertex_buffers = mesh.vertexBuffers;
-	for(var i in lod_mesh.vertexBuffers)
-		this.lod_vertex_buffers[i] = lod_mesh.vertexBuffers[i];
-
-	switch(this.primitive)
-	{
-		case gl.TRIANGLES: 
-			this.lod_index_buffer = lod_mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
-			break;
-		case gl.LINES: 
-			/*
-			if(!mesh.indexBuffers["lines"])
-				mesh.computeWireframe();
-			*/
-			this.lod_index_buffer = lod_mesh.indexBuffers["lines"];
-			break;
-		case 10:  //wireframe
-			if(!lod_mesh.indexBuffers["wireframe"])
-				lod_mesh.computeWireframe();
-			this.lod_index_buffer = lod_mesh.indexBuffers["wireframe"];
-			break;
-		case gl.POINTS: 
-		default:
-			this.lod_index_buffer = null;
-			break;
-	}
-}
-
 RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
@@ -263,17 +214,51 @@ RenderInstance.prototype.update = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
-	if(this.lod_mesh)
+	//in case no normals found but they are required
+	if(shader.attributes["a_normal"] && !this.vertex_buffers["normals"])
 	{
-		//very bad LOD function...
-		var f = this.oobb[12] / Math.max(0.1, this._dist);
-		if( f < 0.1 )
-		{
-			shader.drawBuffers( this.lod_vertex_buffers,
-			  this.lod_index_buffer,
-			  this.primitive);
-			return;
-		}
+		this.mesh.computeNormals();		
+		this.vertex_buffers["normals"] = this.mesh.vertexBuffers["normals"];
+	}
+
+	//in case no coords found but they are required
+	if(shader.attributes["a_coord"] && !this.vertex_buffers["coords"])
+	{
+		this.mesh.computeTextureCoordinates();		
+		this.vertex_buffers["coords"] = this.mesh.vertexBuffers["coords"];
+	}
+
+	//in case no tangents found but they are required
+	if(shader.attributes["a_tangent"] && !this.vertex_buffers["tangents"])
+	{
+		this.mesh.computeTangents();		
+		this.vertex_buffers["tangents"] = this.mesh.vertexBuffers["tangents"];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes["a_coord1"] && !this.vertex_buffers["coords1"])
+	{
+		this.mesh.createVertexBuffer("coords1",2, vertex_buffers["coords"].data );
+		this.vertex_buffers["coords1"] = this.mesh.vertexBuffers["coords1"];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes["a_extra"] && !this.vertex_buffers["extra"])
+	{
+		this.mesh.createVertexBuffer("a_extra", 1 );
+		this.vertex_buffers["extra"] = this.mesh.vertexBuffers["extra"];
+	}
+
+	if(shader.attributes["a_extra2"] && !this.vertex_buffers["extra2"])
+	{
+		this.mesh.createVertexBuffer("a_extra2", 2 );
+		this.vertex_buffers["extra2"] = this.mesh.vertexBuffers["extra2"];
+	}
+
+	if(shader.attributes["a_extra3"] && !this.vertex_buffers["extra3"])
+	{
+		this.mesh.createVertexBuffer("a_extra3", 3 );
+		this.vertex_buffers["extra3"] = this.mesh.vertexBuffers["extra3"];
 	}
 
 	shader.drawBuffers( this.vertex_buffers,

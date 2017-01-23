@@ -36,6 +36,11 @@ GL.STENCIL_BUFFER_BIT = 1024;
 GL.TEXTURE_2D = 3553;
 GL.TEXTURE_CUBE_MAP = 34067;
 
+GL.TEXTURE_MAG_FILTER = 10240;
+GL.TEXTURE_MIN_FILTER = 10241;
+GL.TEXTURE_WRAP_S = 10242;
+GL.TEXTURE_WRAP_T = 10243;
+
 GL.BYTE = 5120;
 GL.UNSIGNED_BYTE = 5121;
 GL.SHORT = 5122;
@@ -2035,6 +2040,17 @@ GL.Buffer.prototype.clone = function(share)
 }
 
 /**
+* Deletes the content from the GPU and destroys the handler
+* @method delete
+*/
+GL.Buffer.prototype.delete = function()
+{
+	var gl = this.gl;
+	gl.deleteBuffer( this.buffer );
+	this.buffer = null;
+}
+
+/**
 * Base class for meshes, it wraps several buffers and some global info like the bounding box
 * @class Mesh
 * @param {Object} vertexBuffers object with all the vertex streams
@@ -2251,10 +2267,14 @@ Mesh.prototype.createVertexBuffer = function(name, attribute, buffer_spacing, bu
 * Removes a vertex buffer from the mesh
 * @method removeVertexBuffer
 * @param {String} name "vertices","normals"...
+* @param {Boolean} free if you want to remove the data from the GPU
 */
-Mesh.prototype.removeVertexBuffer = function(name) {
+Mesh.prototype.removeVertexBuffer = function(name, free) {
 	var buffer = this.vertexBuffers[name];
-	if(!buffer) return;
+	if(!buffer)
+		return;
+	if(free)
+		buffer.delete();
 	delete this.vertexBuffers[name];
 }
 
@@ -2321,6 +2341,22 @@ Mesh.prototype.getIndexBuffer = function(name)
 }
 
 /**
+* Removes an index buffer from the mesh
+* @method removeIndexBuffer
+* @param {String} name "vertices","normals"...
+* @param {Boolean} free if you want to remove the data from the GPU
+*/
+Mesh.prototype.removeIndexBuffer = function(name, free) {
+	var buffer = this.indexBuffers[name];
+	if(!buffer)
+		return;
+	if(free)
+		buffer.delete();
+	delete this.indexBuffers[name];
+}
+
+
+/**
 * Uploads data inside buffers to VRAM.
 * @method upload
 * @param {number} buffer_type gl.STATIC_DRAW, gl.DYNAMIC_DRAW, gl.STREAM_DRAW
@@ -2348,19 +2384,19 @@ Mesh.prototype.deleteBuffers = function()
 	for(var i in this.vertexBuffers)
 	{
 		var buffer = this.vertexBuffers[i];
-		this.gl.deleteBuffer( buffer.buffer );
+		buffer.delete();
 	}
 	this.vertexBuffers = {};
 
 	for(var i in this.indexBuffers)
 	{
 		var buffer = this.indexBuffers[i];
-		this.gl.deleteBuffer( buffer.buffer );
+		buffer.delete();
 	}
-	this.indexBuffers[i] = {};
+	this.indexBuffers = {};
 }
 
-
+Mesh.prototype.delete = Mesh.prototype.deleteBuffers;
 
 Mesh.prototype.bindBuffers = function( shader )
 {
@@ -5133,10 +5169,22 @@ Texture.fromImage = function(image, options) {
 	gl.texParameteri(texture.texture_type, gl.TEXTURE_WRAP_S, texture.wrapS );
 	gl.texParameteri(texture.texture_type, gl.TEXTURE_WRAP_T, texture.wrapT );
 
-	if (GL.isPowerOfTwo(texture.width) && GL.isPowerOfTwo(texture.height) && options.minFilter && options.minFilter != gl.NEAREST && options.minFilter != gl.LINEAR) {
-		texture.bind();
-		gl.generateMipmap(texture.texture_type);
-		texture.has_mipmaps = true;
+	if (GL.isPowerOfTwo(texture.width) && GL.isPowerOfTwo(texture.height) )
+	{
+		if( options.minFilter && options.minFilter != gl.NEAREST && options.minFilter != gl.LINEAR)
+		{
+			texture.bind();
+			gl.generateMipmap(texture.texture_type);
+			texture.has_mipmaps = true;
+		}
+	}
+	else
+	{
+		//no mipmaps supported
+		gl.texParameteri(texture.texture_type, gl.TEXTURE_MIN_FILTER, GL.LINEAR );
+		gl.texParameteri(texture.texture_type, gl.TEXTURE_WRAP_S, GL.CLAMP_TO_EDGE );
+		gl.texParameteri(texture.texture_type, gl.TEXTURE_WRAP_T, GL.CLAMP_TO_EDGE );
+		texture.has_mipmaps = false;
 	}
 	gl.bindTexture(texture.texture_type, null); //disable
 	texture.data = image;
@@ -6156,6 +6204,11 @@ FBO.prototype.switchTo = function( next_fbo )
 		next_fbo.depth_texture._in_current_fbo = true;
 }
 
+FBO.prototype.delete = function()
+{
+	gl.deleteFramebuffer( this.handler );
+	this.handler = null;
+}
 
 
 
@@ -8808,22 +8861,28 @@ global.geo = {
 	* @param {vec3} result collision position
 	* @return {boolean} returns if the ray collides the box
 	*/
-	testRayBox: function(start, direction, minB, maxB, result, max_dist)
+	testRayBox: (function() { 
+	
+		var quadrant = new Float32Array(3);
+		var candidatePlane = new Float32Array(3);
+		var maxT = new Float32Array(3);
+	
+	return function(start, direction, minB, maxB, result, max_dist)
 	{
 		//#define NUMDIM	3
 		//#define RIGHT		0
 		//#define LEFT		1
 		//#define MIDDLE	2
 
-		result = result || vec3.create();
 		max_dist = max_dist || Number.MAX_VALUE;
 
 		var inside = true;
-		var quadrant = new Float32Array(3);
 		var i = 0|0;
 		var whichPlane;
-		var maxT = new Float32Array(3);
-		var candidatePlane = new Float32Array(3);
+		
+		quadrant.fill(0);
+		maxT.fill(0);
+		candidatePlane.fill(0);
 
 		/* Find candidate planes; this loop can be avoided if
 		rays cast all from the eye(assume perpsective view) */
@@ -8842,7 +8901,8 @@ global.geo = {
 
 		/* Ray origin inside bounding box */
 		if(inside)	{
-			vec3.copy(result, start);
+			if(result)
+				vec3.copy(result, start);
 			return true;
 		}
 
@@ -8866,14 +8926,18 @@ global.geo = {
 
 		for (i = 0; i < 3; ++i)
 			if (whichPlane != i) {
-				result[i] = start[i] + maxT[whichPlane] * direction[i];
-				if (result[i] < minB[i] || result[i] > maxB[i])
+				var res = start[i] + maxT[whichPlane] * direction[i];
+				if (res < minB[i] || res > maxB[i])
 					return false;
+				if(result)
+					result[i] = res;
 			} else {
-				result[i] = candidatePlane[i];
+				if(result)
+					result[i] = candidatePlane[i];
 			}
 		return true;				/* ray hits box */
-	},	
+	}
+	})(),	
 
 	/**
 	* test a ray bounding-box collision, it uses the  BBox class and allows to use non-axis aligned bbox
@@ -8882,26 +8946,30 @@ global.geo = {
 	* @param {vec3} direction ray direction
 	* @param {BBox} box in BBox format
 	* @param {mat4} model transformation of the BBox
-	* @param {vec3} result collision position
+	* @param {vec3} result collision position in world space unless in_local is true
 	* @return {boolean} returns if the ray collides the box
 	*/
-	testRayBBox: function(start, direction, box, model, result, max_dist)
+	testRayBBox: (function(){ 
+	var inv = mat4.create();	
+	var end = vec3.create();
+	var start2 = vec3.create();
+	return function(start, direction, box, model, result, max_dist, in_local )
 	{
 		if(model)
 		{
-			var inv = mat4.invert( mat4.create(), model );
-			var end = vec3.add( vec3.create(), start, direction );
-			start = vec3.transformMat4(vec3.create(), start, inv);
-			vec3.transformMat4(end, end, inv);
-			vec3.sub(end, end, start);
+			mat4.invert( inv, model );
+			vec3.add( end, start, direction );
+			start = vec3.transformMat4( start2, start, inv);
+			vec3.transformMat4( end, end, inv );
+			vec3.sub( end, end, start );
 			direction = vec3.normalize(end, end);
 		}
 		var r = this.testRayBox(start, direction, box.subarray(6,9), box.subarray(9,12), result, max_dist );
-		if(model)
+		if(!in_local && model && result)
 			vec3.transformMat4(result, result, model);
 		return r;
-	},
-
+	}
+	})(),
 
 	/**
 	* test if a 3d point is inside a BBox

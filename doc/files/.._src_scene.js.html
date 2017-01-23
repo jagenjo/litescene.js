@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -657,11 +659,12 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		LEvent.trigger(that,&quot;loadCompleted&quot;);
 	}
 
-	function inner_error(err)
+	function inner_error(e)
 	{
-		console.warn(&quot;Error loading scene: &quot; + url + &quot; -&gt; &quot; + err);
+		var err_code = (e &amp;&amp; e.target) ? e.target.status : 0;
+		console.warn(&quot;Error loading scene: &quot; + url + &quot; -&gt; &quot; + err_code);
 		if(on_error)
-			on_error(url);
+			on_error(url, err_code, e);
 	}
 }
 
@@ -701,8 +704,16 @@ SceneTree.getScriptsList = function( root, allow_local )
 			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
 
 			var res = LS.ResourcesManager.getResource( script_fullpath );
-			if(res &amp;&amp; allow_local)
-				script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			if(res)
+			{
+				/*
+				if( res.from_prefab )
+					script_url = LS.ResourcesManager.cleanFullpath( &quot;@&quot; + script_fullpath );
+				else 
+				*/
+					if( allow_local )
+					script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			}
 
 			scripts.push( script_url );
 		}
@@ -712,7 +723,7 @@ SceneTree.getScriptsList = function( root, allow_local )
 
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 {
-	scripts = scripts || LS.SceneTree.getScriptsList( this );
+	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
 	if(!scripts.length)
 	{
@@ -741,7 +752,7 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 			continue;
 		}
 
-		var blob = new Blob([res.data]);
+		var blob = new Blob([res.data],{encoding:&quot;UTF-8&quot;, type: &#x27;text/plain;charset=UTF-8&#x27;});
 		var objectURL = URL.createObjectURL( blob );
 		final_scripts.push( objectURL );
 		revokable.push( objectURL );
@@ -1593,7 +1604,8 @@ SceneTree.prototype.update = function(dt)
 	LEvent.trigger(this,&quot;beforeUpdate&quot;, this);
 
 	this._global_time = getTime() * 0.001;
-	this._time = this._global_time - this._start_time;
+	//this._time = this._global_time - this._start_time;
+	this._time += dt;
 	this._last_dt = dt;
 
 	/**

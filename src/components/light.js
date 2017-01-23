@@ -99,6 +99,9 @@ function Light(o)
 	*/
 	this.intensity = 1;
 
+	this._type = Light.OMNI;
+	this.frustum_size = 50; //ortho
+
 	/**
 	* If the light cast shadows
 	* @property cast_shadows
@@ -108,8 +111,7 @@ function Light(o)
 	this.cast_shadows = false;
 	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 0; //use automatic shadowmap size
-	this._type = Light.OMNI;
-	this.frustum_size = 50; //ortho
+	this.shadow_type = "hard"; //0 hard shadows
 
 	//used to force the computation of the light matrix for the shader (otherwise only if projective texture or shadows are enabled)
 	this.force_light_matrix = false; 
@@ -208,6 +210,9 @@ Light.DIRECTIONAL = 3;
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
 Light.shadowmap_depth_texture = true;
+Light.shadow_shaderblocks = [];
+Light.shadow_shaderblocks_by_name = [];
+
 
 Light.coding_help = "\
 LightInfo LIGHT -> light info before applying equation\n\
@@ -512,6 +517,12 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	this.updateVectors();
+
+	if( this.cast_shadows )
+	{
+		this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.shadow_type ];
+		//this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.hard_shadows ? "hard" : "soft" ];
+	}
 
 	//PREPARE SHADER QUERY
 	if(this.type == Light.DIRECTIONAL)
@@ -911,10 +922,19 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 		else
 		{
 			//take into account if using depth texture or color texture
-			flags |= Light.shadowmapping_2d_shader_block.flag_mask;
+			var shadow_block = this._shadow_shaderblock_info ? this._shadow_shaderblock_info.shaderblock : null;
+			if(shadow_block)
+				flags |= shadow_block.flag_mask;
 		}
 	}
 	return flags;
+}
+
+Light.registerShadowType = function( name, shaderblock )
+{
+	var info = { id: this.shadow_shaderblocks.length, name: name, shaderblock: shaderblock };
+	this.shadow_shaderblocks.push( info );
+	this.shadow_shaderblocks_by_name[ name ] = info;
 }
 
 LS.registerComponent( Light );
@@ -1001,7 +1021,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
-	#pragma shaderblock \"testShadow\"\n\
+	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
 	\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
@@ -1210,6 +1230,14 @@ shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_c
 shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_block.register();
 Light.shadowmapping_2d_shader_block = shadowmapping_block;
+Light.registerShadowType( "hard", shadowmapping_block );
+
+var shadowmappingsoft_block = new LS.ShaderBlock("testShadowSoft");
+shadowmappingsoft_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
+shadowmappingsoft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
+shadowmappingsoft_block.register();
+Light.shadowmappingsoft_2d_shader_block = shadowmappingsoft_block;
+Light.registerShadowType( "soft", shadowmappingsoft_block );
 
 var shadowmapping_color_block = new LS.ShaderBlock("testShadowColor");
 shadowmapping_color_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );

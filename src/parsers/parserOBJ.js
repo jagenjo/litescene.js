@@ -424,12 +424,15 @@ var parserMTL = {
 					break;
 				case "map_Kd":
 					current_material.textures["color"] = this.clearPath( tokens[1] );
+					current_material.color = [1,1,1];
 					break;
 				case "map_Ka":
 					current_material.textures["ambient"] = this.clearPath( tokens[1] );
+					current_material.ambient = [1,1,1];
 					break;
 				case "map_Ks":
 					current_material.textures["specular"] = this.clearPath( tokens[1] );
+					current_material.specular_factor = 1;
 					break;
 				case "bump":
 				case "map_bump":
@@ -455,6 +458,10 @@ var parserMTL = {
 		for(var i in materials)
 		{
 			var material_info = materials[i];
+
+			//hack, ambient must be 1,1,1
+			material_info.ambient = [1,1,1];
+
 			var material = new LS.StandardMaterial(material_info);
 			LS.RM.registerResource( material_info.filename, material );
 		}

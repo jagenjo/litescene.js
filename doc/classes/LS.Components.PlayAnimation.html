@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -222,18 +224,627 @@
     <ul class="api-class-tabs">
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
+            <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
+            <li class="api-class-tab properties"><a href="#properties">Properties</a></li>
     </ul>
 
     <div>
         <div id="index" class="api-class-tabpanel index">
             <h2 class="off-left">Item Index</h2>
 
+                <div class="index-section methods">
+                    <h3>Methods</h3>
 
+                    <ul class="index-list methods">
+                            <li class="index-item method">
+                                <a href="#method_applyAnimation">applyAnimation</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getAnimation">getAnimation</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getDuration">getDuration</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getTake">getTake</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_pause">pause</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_pause">pause</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_play">play</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_playRange">playRange</a>
+
+                            </li>
+                    </ul>
+                </div>
+
+                <div class="index-section properties">
+                    <h3>Properties</h3>
+
+                    <ul class="index-list properties">
+                            <li class="index-item property">
+                                <a href="#property_animation">animation</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_mode">mode</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_root_node">root_node</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_take">take</a>
+
+                            </li>
+                    </ul>
+                </div>
 
 
         </div>
 
+            <div id="methods" class="api-class-tabpanel">
+                <h2 class="off-left">Methods</h2>
 
+<div id="method_applyAnimation" class="method item">
+    <h3 class="name"><code>applyAnimation</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>take</code>
+                </li>
+                <li class="arg">
+                        <code>time</code>
+                </li>
+                <li class="arg">
+                        <code>last_time</code>
+                </li>
+                <li class="arg">
+                        <code>weight</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l413"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:413</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>applys the animation to the scene nodes</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">take</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the take</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the time where to sample the tracks</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">last_time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the last time that was applied, (used to trigger events)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">weight</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the weight of this animation (used for blending animation), if ommited 1 is used</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_getAnimation" class="method item">
+    <h3 class="name"><code>getAnimation</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type"><a href="../classes/LS.Animation.html" class="crosslink">LS.Animation</a></span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l308"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:308</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the current animation or an animation with a given name</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the name of the animation, if omited then uses the animation set in the component</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type"><a href="../classes/LS.Animation.html" class="crosslink">LS.Animation</a></span>:
+                    <p>the animation container</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getDuration" class="method item">
+    <h3 class="name"><code>getDuration</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l344"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:344</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Gets the duration of the current take in the current animation</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the duration of the take, or -1 if the take was not found or the animation is not loaded</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getTake" class="method item">
+    <h3 class="name"><code>getTake</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>take_name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l326"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:326</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the current animation or an animation with a given name</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">take_name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] if not specified then it uses the current take</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the duration of the take, or -1 if the take was not found or the animation is not loaded</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_pause" class="method item">
+    <h3 class="name"><code>pause</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l375"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:375</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Pauses the animation</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_pause" class="method item">
+    <h3 class="name"><code>pause</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l384"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:384</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Stops the animation and sets the time to zero</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_play" class="method item">
+    <h3 class="name"><code>play</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l357"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:357</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Resets the time to zero and starts playing the current take of the animation
+It also triggers a &quot;start_animation&quot; event</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_playRange" class="method item">
+    <h3 class="name"><code>playRange</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>start</code>
+                </li>
+                <li class="arg">
+                        <code>end</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l399"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:399</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Starts playing the animation but only using a range of it</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">start</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>start time</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">end</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>end time</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+            </div>
+
+            <div id="properties" class="api-class-tabpanel">
+                <h2 class="off-left">Properties</h2>
+
+<div id="property_animation" class="property item">
+    <h3 class="name"><code>animation</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l66"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:66</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>the name of the LS.Animation resource where the takes and tracks are stored</p>
+
+    </div>
+
+
+
+</div>
+<div id="property_mode" class="property item">
+    <h3 class="name"><code>mode</code></h3>
+    <span class="type">Number</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l24"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:24</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>how to play the animation, options are:
+PlayAnimation.LOOP
+PlayAnimation.PINGPONG
+PlayAnimation.ONCE
+PlayAnimation.PAUSED</p>
+
+    </div>
+
+
+
+</div>
+<div id="property_root_node" class="property item">
+    <h3 class="name"><code>root_node</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l16"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:16</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>the root node locator where to apply the animation, is none is specified it is applied using the scene root node
+if a &quot;@&quot; is set, then only to this node and its children</p>
+
+    </div>
+
+
+
+</div>
+<div id="property_take" class="property item">
+    <h3 class="name"><code>take</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_playAnimation.js.html#l97"><code>..&#x2F;src&#x2F;components&#x2F;playAnimation.js:97</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>the name of the LS.Animation.Take to play from the LS.Animation
+A take representes a set of tracks</p>
+
+    </div>
+
+
+
+</div>
+            </div>
 
 
     </div>

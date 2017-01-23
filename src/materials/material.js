@@ -701,11 +701,11 @@ Material.prototype.updatePreview = function(size, options)
 		options.environment = LS.GlobalScene.info.textures.environment;
 
 	size = size || 256;
-	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
+	var preview = LS.Renderer.renderMaterialPreview( this, size, options, this._preview );
 	if(!preview)
 		return;
 
-	this.preview = preview;
+	this._preview = preview;
 	if(preview.toDataURL)
 		this._preview_url = preview.toDataURL("image/png");
 }

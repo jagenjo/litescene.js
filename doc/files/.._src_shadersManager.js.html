@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -166,7 +168,7 @@ var ShadersManager = {
 	default_xml_url: &quot;data/shaders.xml&quot;,
 
 	snippets: {},//to save source snippets
-	shader_blocks: {},//to save shader block
+	shader_blocks: new Map(),//to save shader block
 	compiled_programs: {}, //shaders already compiled and ready to use
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
@@ -703,21 +705,22 @@ var ShadersManager = {
 	{
 		var block_id = -1;
 
-		if( this.shader_blocks[id] )
+		if( this.shader_blocks.get(id) )
 		{
 			console.warn(&quot;There is already a ShaderBlock with that name, replacing it: &quot;, id);
-			block_id = this.shader_blocks[id].flag_id;
+			block_id = this.shader_blocks.get(id).flag_id;
 		}
 		else
 			block_id = this.num_shaderblocks++;
 		shader_block.flag_id = block_id;
 		shader_block.flag_mask = 1&lt;&lt;block_id;
-		this.shader_blocks[id] = shader_block;
+		this.shader_blocks.set( block_id, shader_block );
+		this.shader_blocks.set( id, shader_block );
 	},
 
-	getShaderBlock: function(id, shader_block)
+	getShaderBlock: function( id )
 	{
-		return this.shader_blocks[id];
+		return this.shader_blocks.get(id);
 	},
 
 	//this is global code for default shaders
@@ -910,7 +913,7 @@ LS.ShaderQuery = ShaderQuery;
 // it will be inserted in the material in the line of the pragma
 function ShaderBlock( name )
 {
-	this.dependency_blocks = [];
+	this.dependency_blocks = []; //blocks referenced by this block
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
@@ -919,8 +922,15 @@ function ShaderBlock( name )
 		throw(&quot;ShaderBlock name cannot have spaces: &quot; + name);
 	this.name = name;
 	this.code_map = new Map();
+	this.enabled_defines = null;
 }
 
+ShaderBlock.prototype.setEnabledDefines = function( defines )
+{
+	this.enabled_defines = defines;
+}
+
+//shader_type: vertex or fragment shader
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || &quot;&quot;;
@@ -937,14 +947,14 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	this.code_map.set( shader_type, info );
 }
 
-ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
+ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	block_flags = block_flags || 0;
 	var code = this.code_map.get( shader_type );
 	if(!code)
 		return null;
 	var glslcode = (block_flags &amp; this.flag_mask) ? code.enabled : code.disabled;
-	var finalcode = glslcode.getFinalCode( shader_type, block_flags );
+	var finalcode = glslcode.getFinalCode( shader_type, block_flags, context );
 
 	if( code.macros )
 	{
@@ -1192,12 +1202,15 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
 		{
 			var shader_block_name = block.shader_block[1];
-			if( block.shader_block[0] == 2 )
+			if( block.shader_block[0] == 2 ) //is dynamic shaderblock name
 			{
 				//dynamic shaderblock name
-				if( context[ shader_block_name ] )
+				if( context[ shader_block_name ] ) //search for the name in the context
 					shader_block_name = context[ shader_block_name ];
-				else
+				else 
+					shader_block_name = block.shader_block[2]; //if not found use the default
+
+				if(!shader_block_name)
 				{
 					console.error(&quot;ShaderBlock: no context var found: &quot; + shader_block_name );
 					return null;

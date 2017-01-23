@@ -215,6 +215,22 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	if(!code)
 		return null;
 
+	var context = {}; //used to store metaprogramming defined vars in the shader
+
+	//compute context defines
+	for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+	{
+		if( !(block_flags & 1<<i) ) //is flag enabled
+			continue;
+		var shader_block = LS.ShadersManager.shader_blocks.get(i);
+		if(!shader_block)
+			continue; //???
+		if(!shader_block.enabled_defines)
+			continue;
+		for(var j in shader_block.enabled_defines)
+			context[ j ] = shader_block.enabled_defines[j];
+	}
+
 	//vertex shader code
 	var vs_code = null;
 	if(render_mode == "fx")
@@ -222,12 +238,13 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags );
+		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags );
+
+	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
@@ -340,6 +357,97 @@ ShaderCode.removeComments = function( code )
 {
 	// /^\s*[\r\n]/gm
 	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
+}
+
+//parses ShaderLab (unity) syntax
+ShaderCode.parseShaderLab = function( code )
+{
+	var root = {};
+	var current = root;
+	var current_token = [];
+	var stack = [];
+	var mode = 0;
+	var current_code = "";
+
+	var lines = ShaderCode.removeComments( code ).split("\n");
+	for(var i = 0; i < lines.length; ++i)
+	{
+		var line = lines[i].trim();
+		var words = line.match(/[^\s"]+|"([^"]*)"/gi);
+		if(!words)
+			continue;
+
+		if(mode != 0)
+		{
+			var w = words[0].trim();
+			if(w == "ENDGLSL" || w == "ENDCG" )
+			{
+				mode = 0;
+				current.codetype = mode;
+				current.code = current_code;
+				current_code = "";
+			}
+			else
+			{
+				current_code += line + "\n";
+			}
+			continue;
+		}
+
+		for(var j = 0; j < words.length; ++j)
+		{
+			var w = words[j];
+
+			if(w == "{")
+			{
+				var node = {
+					name: current_token[0], 
+					params: current_token.slice(1).join(" "),
+					content: {}
+				};
+				current[ node.name ] = node;
+				current_token = [];
+				stack.push( current );
+				current = node.content;
+			}
+			else if(w == "}")
+			{
+				if(stack.length == 0)
+				{
+					console.error("error parsing ShaderLab code, the number of { do not matches the }");
+					return null;
+				}
+				if(current_token.length)
+				{
+					current[ current_token[0] ] = current_token.join(" ");
+					current_token = [];
+				}
+				current = stack.pop();
+			}
+			else if(w == "{}")
+			{
+				var node = {
+					name: current_token[0], 
+					params: current_token.slice(1).join(" "),
+					content: {}
+				};
+				current[ node.name ] = node;
+				current_token = [];
+			}
+			else if(w == "GLSLPROGRAM" || w == "CGPROGRAM" )
+			{
+				if( w == "GLSLPROGRAM" )
+					mode = 1;
+				else
+					mode = 2;
+				current_code = "";
+			}
+			else 
+				current_token.push(w);
+		}
+	}
+
+	return root;
 }
 
 

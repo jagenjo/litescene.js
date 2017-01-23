@@ -555,6 +555,26 @@ MorphDeformer.prototype.getPropertiesInfo = function()
 	return properties;
 }
 
+MorphDeformer.prototype.optimizeMorphTargets = function()
+{
+	for(var i = 0; i < this.morph_targets.length; ++i)
+	{
+		var morph = this.morph_targets[i];
+		var mesh = LS.ResourcesManager.meshes[ morph.mesh ];
+		if(!mesh)
+			continue;
+		
+		//remove data not used 
+		mesh.removeVertexBuffer("coords", true);
+		mesh.removeIndexBuffer("triangles", true);
+		mesh.removeIndexBuffer("wireframe", true);
+
+		LS.ResourcesManager.resourceModified( mesh );
+	}
+
+	console.log("Morph targets optimized");
+}
+
 
 LS.registerComponent( MorphDeformer );
 LS.MorphDeformer = MorphDeformer;

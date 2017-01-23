@@ -1584,6 +1584,7 @@ Track.prototype.convertToTrans10 = function()
 	this.property = path.join("/");
 	this.type = "trans10";
 	this.value_size = 10;
+	var temp = new Float32Array(10);
 
 	var data = this.data;
 	var num_samples = data.length / 17;

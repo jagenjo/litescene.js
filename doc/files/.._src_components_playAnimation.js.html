@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -158,10 +160,26 @@
 function PlayAnimation(o)
 {
 	this.enabled = true;
+
 	this._animation = &quot;&quot;;
 	this._take = &quot;default&quot;;
+
+	/**
+	* the root node locator where to apply the animation, is none is specified it is applied using the scene root node
+	* if a &quot;@&quot; is set, then only to this node and its children
+	* @property root_node {String}
+	*/
 	this.root_node = &quot;@&quot;;
 	this.playback_speed = 1.0;
+
+	/**
+	* how to play the animation, options are:
+    *   PlayAnimation.LOOP
+	*	PlayAnimation.PINGPONG
+	*	PlayAnimation.ONCE
+	*	PlayAnimation.PAUSED
+	* @property mode {Number}
+	*/
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
 	this.current_time = 0;
@@ -196,6 +214,10 @@ PlayAnimation[&quot;@mode&quot;] = { type:&quot;enum&quot;, values: PlayAnimatio
 PlayAnimation[&quot;@current_time&quot;] = { type: LS.TYPES.NUMBER, min: 0, units:&quot;s&quot; };
 PlayAnimation[&quot;@blend_time&quot;] = { type: LS.TYPES.NUMBER, min: 0, units:&quot;s&quot; };
 
+/**
+* the name of the LS.Animation resource where the takes and tracks are stored
+* @property animation {String}
+*/
 Object.defineProperty( PlayAnimation.prototype, &quot;animation&quot;, {
 	set: function(v){
 		if(v == this._animation)
@@ -223,6 +245,11 @@ Object.defineProperty( PlayAnimation.prototype, &quot;animation&quot;, {
 	enumerable: true
 });
 
+/**
+* the name of the LS.Animation.Take to play from the LS.Animation
+* A take representes a set of tracks
+* @property take {String}
+*/
 Object.defineProperty( PlayAnimation.prototype, &quot;take&quot;, {
 	set: function(v){
 		if(v == this._take)
@@ -286,19 +313,6 @@ PlayAnimation.prototype.onAddedToScene = function(scene)
 PlayAnimation.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind( scene, &quot;update&quot;, this.onUpdate, this);
-}
-
-
-PlayAnimation.prototype.getAnimation = function( name )
-{
-	name = name === undefined ? this.animation : name;
-
-	if(!name || name[0] == &quot;@&quot;) 
-		return this._root.scene.animation;
-	var anim = LS.ResourcesManager.getResource( name );
-	if( anim &amp;&amp; anim.constructor === LS.Animation )
-		return anim;
-	return null;
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
@@ -442,6 +456,60 @@ PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
 		scene.requestFrame();
 }
 
+/**
+* returns the current animation or an animation with a given name
+* @method getAnimation
+* @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
+* @return {LS.Animation} the animation container
+*/
+PlayAnimation.prototype.getAnimation = function( name )
+{
+	name = name === undefined ? this.animation : name;
+
+	if(!name || name[0] == &quot;@&quot;) 
+		return this._root.scene.animation;
+	var anim = LS.ResourcesManager.getResource( name );
+	if( anim &amp;&amp; anim.constructor === LS.Animation )
+		return anim;
+	return null;
+}
+
+/**
+* returns the current animation or an animation with a given name
+* @method getTake
+* @param {String} take_name [optional] if not specified then it uses the current take
+* @return {Number} the duration of the take, or -1 if the take was not found or the animation is not loaded
+*/
+PlayAnimation.prototype.getTake = function( take_name )
+{
+	var animation = this.getAnimation();
+	if(!animation) 
+		return null;
+	take_name = take_name || this.take;
+	var take = animation.takes[ take_name ];
+	if(take) 
+		return take;
+	return null;
+}
+
+/**
+* Gets the duration of the current take in the current animation
+* @method getDuration
+* @return {Number} the duration of the take, or -1 if the take was not found or the animation is not loaded
+*/
+PlayAnimation.prototype.getDuration = function()
+{
+	var take = this.getTake();
+	if(take) 
+		return take.duration;
+	return -1;
+}
+
+/**
+* Resets the time to zero and starts playing the current take of the animation
+* It also triggers a &quot;start_animation&quot; event
+* @method play
+*/
 PlayAnimation.prototype.play = function()
 {
 	this.playing = true;
@@ -455,11 +523,19 @@ PlayAnimation.prototype.play = function()
 	//this.applyAnimation( take, this.current_time );
 }
 
+/**
+* Pauses the animation
+* @method pause
+*/
 PlayAnimation.prototype.pause = function()
 {
 	this.playing = false;
 }
 
+/**
+* Stops the animation and sets the time to zero
+* @method pause
+*/
 PlayAnimation.prototype.stop = function()
 {
 	this.playing = false;
@@ -471,6 +547,12 @@ PlayAnimation.prototype.stop = function()
 	//this.applyAnimation( take, this.current_time );
 }
 
+/**
+* Starts playing the animation but only using a range of it
+* @method playRange
+* @param {Number} start start time
+* @param {Number} end end time
+*/
 PlayAnimation.prototype.playRange = function( start, end )
 {
 	this.playing = true;
@@ -479,6 +561,14 @@ PlayAnimation.prototype.playRange = function( start, end )
 	this.range = [ start, end ];
 }
 
+/**
+* applys the animation to the scene nodes
+* @method applyAnimation
+* @param {String} take the name of the take
+* @param {Number} time the time where to sample the tracks
+* @param {Number} last_time [optional] the last time that was applied, (used to trigger events)
+* @param {Number} weight [optional] the weight of this animation (used for blending animation), if ommited 1 is used
+*/
 PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight )
 {
 	if( last_time === undefined )

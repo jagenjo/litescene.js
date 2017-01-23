@@ -2,6 +2,8 @@ var Network = {
 
 	default_dataType: "arraybuffer",
 
+	withCredentials: false, //for CORS urls: not sure which one is the best for every case so I leave it configurable
+
 	/**
 	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
 	*
@@ -40,7 +42,7 @@ var Network = {
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
         xhr.open(request.data ? 'POST' : 'GET', request.url, true);
-		xhr.withCredentials = true;
+		xhr.withCredentials = this.withCredentials; //if true doesnt work
         if(dataType)
             xhr.responseType = dataType;
         if (request.mimeType)
@@ -200,6 +202,8 @@ var Network = {
 			script.type = 'text/javascript';
 			script.src = url[i];
 			script.async = false;
+			//if( script.src.substr(0,5) == "blob:") //local scripts could contain utf-8
+				script.charset = "UTF-8";
 			script.onload = function(e) { 
 				total--;
 				if(total)

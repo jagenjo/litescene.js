@@ -1757,6 +1757,8 @@ var Network = {
 
 	default_dataType: "arraybuffer",
 
+	withCredentials: false, //for CORS urls: not sure which one is the best for every case so I leave it configurable
+
 	/**
 	* A front-end for XMLHttpRequest so it is simpler and more cross-platform
 	*
@@ -1795,7 +1797,7 @@ var Network = {
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
         xhr.open(request.data ? 'POST' : 'GET', request.url, true);
-		xhr.withCredentials = true;
+		xhr.withCredentials = this.withCredentials; //if true doesnt work
         if(dataType)
             xhr.responseType = dataType;
         if (request.mimeType)
@@ -1955,6 +1957,8 @@ var Network = {
 			script.type = 'text/javascript';
 			script.src = url[i];
 			script.async = false;
+			//if( script.src.substr(0,5) == "blob:") //local scripts could contain utf-8
+				script.charset = "UTF-8";
 			script.onload = function(e) { 
 				total--;
 				if(total)
@@ -4010,7 +4014,7 @@ var ShadersManager = {
 	default_xml_url: "data/shaders.xml",
 
 	snippets: {},//to save source snippets
-	shader_blocks: {},//to save shader block
+	shader_blocks: new Map(),//to save shader block
 	compiled_programs: {}, //shaders already compiled and ready to use
 	compiled_shaders: {}, //every vertex and fragment shader compiled
 
@@ -4547,21 +4551,22 @@ var ShadersManager = {
 	{
 		var block_id = -1;
 
-		if( this.shader_blocks[id] )
+		if( this.shader_blocks.get(id) )
 		{
 			console.warn("There is already a ShaderBlock with that name, replacing it: ", id);
-			block_id = this.shader_blocks[id].flag_id;
+			block_id = this.shader_blocks.get(id).flag_id;
 		}
 		else
 			block_id = this.num_shaderblocks++;
 		shader_block.flag_id = block_id;
 		shader_block.flag_mask = 1<<block_id;
-		this.shader_blocks[id] = shader_block;
+		this.shader_blocks.set( block_id, shader_block );
+		this.shader_blocks.set( id, shader_block );
 	},
 
-	getShaderBlock: function(id, shader_block)
+	getShaderBlock: function( id )
 	{
-		return this.shader_blocks[id];
+		return this.shader_blocks.get(id);
 	},
 
 	//this is global code for default shaders
@@ -4754,7 +4759,7 @@ LS.ShaderQuery = ShaderQuery;
 // it will be inserted in the material in the line of the pragma
 function ShaderBlock( name )
 {
-	this.dependency_blocks = [];
+	this.dependency_blocks = []; //blocks referenced by this block
 	this.flag_id = -1;
 	this.flag_mask = 0;
 	if(!name)
@@ -4763,8 +4768,15 @@ function ShaderBlock( name )
 		throw("ShaderBlock name cannot have spaces: " + name);
 	this.name = name;
 	this.code_map = new Map();
+	this.enabled_defines = null;
 }
 
+ShaderBlock.prototype.setEnabledDefines = function( defines )
+{
+	this.enabled_defines = defines;
+}
+
+//shader_type: vertex or fragment shader
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || "";
@@ -4781,14 +4793,14 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	this.code_map.set( shader_type, info );
 }
 
-ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags )
+ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	block_flags = block_flags || 0;
 	var code = this.code_map.get( shader_type );
 	if(!code)
 		return null;
 	var glslcode = (block_flags & this.flag_mask) ? code.enabled : code.disabled;
-	var finalcode = glslcode.getFinalCode( shader_type, block_flags );
+	var finalcode = glslcode.getFinalCode( shader_type, block_flags, context );
 
 	if( code.macros )
 	{
@@ -5036,12 +5048,15 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 		else if( block.shader_block ) //injects code from ShaderCodes taking into account certain rules
 		{
 			var shader_block_name = block.shader_block[1];
-			if( block.shader_block[0] == 2 )
+			if( block.shader_block[0] == 2 ) //is dynamic shaderblock name
 			{
 				//dynamic shaderblock name
-				if( context[ shader_block_name ] )
+				if( context[ shader_block_name ] ) //search for the name in the context
 					shader_block_name = context[ shader_block_name ];
-				else
+				else 
+					shader_block_name = block.shader_block[2]; //if not found use the default
+
+				if(!shader_block_name)
 				{
 					console.error("ShaderBlock: no context var found: " + shader_block_name );
 					return null;
@@ -5929,11 +5944,11 @@ Material.prototype.updatePreview = function(size, options)
 		options.environment = LS.GlobalScene.info.textures.environment;
 
 	size = size || 256;
-	var preview = LS.Renderer.renderMaterialPreview( this, size, options );
+	var preview = LS.Renderer.renderMaterialPreview( this, size, options, this._preview );
 	if(!preview)
 		return;
 
-	this.preview = preview;
+	this._preview = preview;
 	if(preview.toDataURL)
 		this._preview_url = preview.toDataURL("image/png");
 }
@@ -7327,6 +7342,9 @@ ShaderMaterial.prototype.processShaderCode = function()
 	//restore old values
 	this.assignOldProperties( old_properties );
 
+	//set stuff
+	//TODO
+
 	this._shader_version = shader_code._version;
 }
 
@@ -7395,11 +7413,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( shader_code._version !== this._shader_version )
 		this.processShaderCode();
 
+	//some globals
 	var renderer = LS.Renderer;
 	var camera = LS.Renderer._current_camera;
 	var scene = LS.Renderer._current_scene;
-
-	//compute matrices
 	var model = instance.matrix;
 
 	//node matrix info
@@ -7432,7 +7449,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//extract shader compiled
 		var shader = shader_code.getShader( pass.name, block_flags );
 		if(!shader)
+		{
+			//var shader = shader_code.getShader( "surface", block_flags );
 			return false;
+		}
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
@@ -10634,6 +10654,7 @@ Track.prototype.convertToTrans10 = function()
 	this.property = path.join("/");
 	this.type = "trans10";
 	this.value_size = 10;
+	var temp = new Float32Array(10);
 
 	var data = this.data;
 	var num_samples = data.length / 17;
@@ -11560,6 +11581,22 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	if(!code)
 		return null;
 
+	var context = {}; //used to store metaprogramming defined vars in the shader
+
+	//compute context defines
+	for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+	{
+		if( !(block_flags & 1<<i) ) //is flag enabled
+			continue;
+		var shader_block = LS.ShadersManager.shader_blocks.get(i);
+		if(!shader_block)
+			continue; //???
+		if(!shader_block.enabled_defines)
+			continue;
+		for(var j in shader_block.enabled_defines)
+			context[ j ] = shader_block.enabled_defines[j];
+	}
+
 	//vertex shader code
 	var vs_code = null;
 	if(render_mode == "fx")
@@ -11567,12 +11604,13 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	else if( !code.vs )
 		return null;
 	else
-		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags );
+		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
-	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags );
+
+	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
 
 	//no code or code includes something missing
 	if(!vs_code || !fs_code) 
@@ -11685,6 +11723,97 @@ ShaderCode.removeComments = function( code )
 {
 	// /^\s*[\r\n]/gm
 	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
+}
+
+//parses ShaderLab (unity) syntax
+ShaderCode.parseShaderLab = function( code )
+{
+	var root = {};
+	var current = root;
+	var current_token = [];
+	var stack = [];
+	var mode = 0;
+	var current_code = "";
+
+	var lines = ShaderCode.removeComments( code ).split("\n");
+	for(var i = 0; i < lines.length; ++i)
+	{
+		var line = lines[i].trim();
+		var words = line.match(/[^\s"]+|"([^"]*)"/gi);
+		if(!words)
+			continue;
+
+		if(mode != 0)
+		{
+			var w = words[0].trim();
+			if(w == "ENDGLSL" || w == "ENDCG" )
+			{
+				mode = 0;
+				current.codetype = mode;
+				current.code = current_code;
+				current_code = "";
+			}
+			else
+			{
+				current_code += line + "\n";
+			}
+			continue;
+		}
+
+		for(var j = 0; j < words.length; ++j)
+		{
+			var w = words[j];
+
+			if(w == "{")
+			{
+				var node = {
+					name: current_token[0], 
+					params: current_token.slice(1).join(" "),
+					content: {}
+				};
+				current[ node.name ] = node;
+				current_token = [];
+				stack.push( current );
+				current = node.content;
+			}
+			else if(w == "}")
+			{
+				if(stack.length == 0)
+				{
+					console.error("error parsing ShaderLab code, the number of { do not matches the }");
+					return null;
+				}
+				if(current_token.length)
+				{
+					current[ current_token[0] ] = current_token.join(" ");
+					current_token = [];
+				}
+				current = stack.pop();
+			}
+			else if(w == "{}")
+			{
+				var node = {
+					name: current_token[0], 
+					params: current_token.slice(1).join(" "),
+					content: {}
+				};
+				current[ node.name ] = node;
+				current_token = [];
+			}
+			else if(w == "GLSLPROGRAM" || w == "CGPROGRAM" )
+			{
+				if( w == "GLSLPROGRAM" )
+					mode = 1;
+				else
+					mode = 2;
+				current_code = "";
+			}
+			else 
+				current_token.push(w);
+		}
+	}
+
+	return root;
 }
 
 
@@ -14929,11 +15058,6 @@ function RenderInstance( node, component )
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
 
-	//used in case the object has a secondary mesh
-	this.lod_mesh = null;
-	this.lod_vertex_buffers = {};
-	this.lod_index_buffer = null;
-
 	//where does it come from
 	this.node = node;
 	this.component = component;
@@ -15055,50 +15179,6 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.use_bounding = false;
 }
 
-//assigns a secondary mesh in case the object is too small on the screen
-RenderInstance.prototype.setLODMesh = function(lod_mesh)
-{
-	if(!lod_mesh)
-	{
-		this.lod_mesh = null;
-		this.lod_vertex_buffers = null;
-		this.lod_index_buffer = null;
-		return;
-	}
-
-	if(lod_mesh != this.lod_mesh)
-	{
-		this.lod_mesh = lod_mesh;
-		this.lod_vertex_buffers = {};
-	}
-	//this.vertex_buffers = mesh.vertexBuffers;
-	for(var i in lod_mesh.vertexBuffers)
-		this.lod_vertex_buffers[i] = lod_mesh.vertexBuffers[i];
-
-	switch(this.primitive)
-	{
-		case gl.TRIANGLES: 
-			this.lod_index_buffer = lod_mesh.indexBuffers["triangles"]; //works for indexed and non-indexed
-			break;
-		case gl.LINES: 
-			/*
-			if(!mesh.indexBuffers["lines"])
-				mesh.computeWireframe();
-			*/
-			this.lod_index_buffer = lod_mesh.indexBuffers["lines"];
-			break;
-		case 10:  //wireframe
-			if(!lod_mesh.indexBuffers["wireframe"])
-				lod_mesh.computeWireframe();
-			this.lod_index_buffer = lod_mesh.indexBuffers["wireframe"];
-			break;
-		case gl.POINTS: 
-		default:
-			this.lod_index_buffer = null;
-			break;
-	}
-}
-
 RenderInstance.prototype.setRange = function(start, offset)
 {
 	this.range[0] = start;
@@ -15169,17 +15249,51 @@ RenderInstance.prototype.update = function()
 */
 RenderInstance.prototype.render = function(shader)
 {
-	if(this.lod_mesh)
+	//in case no normals found but they are required
+	if(shader.attributes["a_normal"] && !this.vertex_buffers["normals"])
 	{
-		//very bad LOD function...
-		var f = this.oobb[12] / Math.max(0.1, this._dist);
-		if( f < 0.1 )
-		{
-			shader.drawBuffers( this.lod_vertex_buffers,
-			  this.lod_index_buffer,
-			  this.primitive);
-			return;
-		}
+		this.mesh.computeNormals();		
+		this.vertex_buffers["normals"] = this.mesh.vertexBuffers["normals"];
+	}
+
+	//in case no coords found but they are required
+	if(shader.attributes["a_coord"] && !this.vertex_buffers["coords"])
+	{
+		this.mesh.computeTextureCoordinates();		
+		this.vertex_buffers["coords"] = this.mesh.vertexBuffers["coords"];
+	}
+
+	//in case no tangents found but they are required
+	if(shader.attributes["a_tangent"] && !this.vertex_buffers["tangents"])
+	{
+		this.mesh.computeTangents();		
+		this.vertex_buffers["tangents"] = this.mesh.vertexBuffers["tangents"];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes["a_coord1"] && !this.vertex_buffers["coords1"])
+	{
+		this.mesh.createVertexBuffer("coords1",2, vertex_buffers["coords"].data );
+		this.vertex_buffers["coords1"] = this.mesh.vertexBuffers["coords1"];
+	}
+
+	//in case no secondary coords found but they are required
+	if(shader.attributes["a_extra"] && !this.vertex_buffers["extra"])
+	{
+		this.mesh.createVertexBuffer("a_extra", 1 );
+		this.vertex_buffers["extra"] = this.mesh.vertexBuffers["extra"];
+	}
+
+	if(shader.attributes["a_extra2"] && !this.vertex_buffers["extra2"])
+	{
+		this.mesh.createVertexBuffer("a_extra2", 2 );
+		this.vertex_buffers["extra2"] = this.mesh.vertexBuffers["extra2"];
+	}
+
+	if(shader.attributes["a_extra3"] && !this.vertex_buffers["extra3"])
+	{
+		this.mesh.createVertexBuffer("a_extra3", 3 );
+		this.vertex_buffers["extra3"] = this.mesh.vertexBuffers["extra3"];
 	}
 
 	shader.drawBuffers( this.vertex_buffers,
@@ -15908,6 +16022,9 @@ var Renderer = {
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
 			LS.RenderFrameContext.reset();
+
+		if(gl.canvas.canvas2DtoWebGL_enabled)
+			gl.resetTransform(); //reset 
 
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
@@ -16911,6 +17028,7 @@ var Renderer = {
 			//node & mesh constant information
 			var query = instance.query;
 
+			/* deprecated
 			var buffers = instance.vertex_buffers;
 			if(!("normals" in buffers))
 				query.macros.NO_NORMALS = "";
@@ -16922,6 +17040,7 @@ var Renderer = {
 				query.macros.USE_COLOR_STREAM = "";
 			if(("tangents" in buffers))
 				query.macros.USE_TANGENT_STREAM = "";
+			*/
 
 			instance._camera_visibility = 0|0;
 		}
@@ -17060,9 +17179,10 @@ var Renderer = {
 	* @param {Material} material
 	* @param {number} size image size
 	* @param {Object} options could be environment_texture, to_viewport
+	* @param {HTMLCanvas} canvas [optional] the output canvas where to store the preview
 	* @return {Image} the preview image (in canvas format) or null if it was rendered to the viewport
 	*/
-	renderMaterialPreview: function( material, size, options )
+	renderMaterialPreview: function( material, size, options, canvas )
 	{
 		options = options || {};
 
@@ -17130,7 +17250,7 @@ var Renderer = {
 			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
 		});
 
-		var canvas = tex.toCanvas(null, true);
+		var canvas = tex.toCanvas( canvas, true );
 		return canvas;
 	},
 
@@ -22941,6 +23061,9 @@ function Light(o)
 	*/
 	this.intensity = 1;
 
+	this._type = Light.OMNI;
+	this.frustum_size = 50; //ortho
+
 	/**
 	* If the light cast shadows
 	* @property cast_shadows
@@ -22950,8 +23073,7 @@ function Light(o)
 	this.cast_shadows = false;
 	this.shadow_bias = 0.05;
 	this.shadowmap_resolution = 0; //use automatic shadowmap size
-	this._type = Light.OMNI;
-	this.frustum_size = 50; //ortho
+	this.shadow_type = "hard"; //0 hard shadows
 
 	//used to force the computation of the light matrix for the shader (otherwise only if projective texture or shadows are enabled)
 	this.force_light_matrix = false; 
@@ -23050,6 +23172,9 @@ Light.DIRECTIONAL = 3;
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
 Light.shadowmap_depth_texture = true;
+Light.shadow_shaderblocks = [];
+Light.shadow_shaderblocks_by_name = [];
+
 
 Light.coding_help = "\
 LightInfo LIGHT -> light info before applying equation\n\
@@ -23354,6 +23479,12 @@ Light.prototype.prepare = function( render_settings )
 	}
 
 	this.updateVectors();
+
+	if( this.cast_shadows )
+	{
+		this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.shadow_type ];
+		//this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.hard_shadows ? "hard" : "soft" ];
+	}
 
 	//PREPARE SHADER QUERY
 	if(this.type == Light.DIRECTIONAL)
@@ -23753,10 +23884,19 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 		else
 		{
 			//take into account if using depth texture or color texture
-			flags |= Light.shadowmapping_2d_shader_block.flag_mask;
+			var shadow_block = this._shadow_shaderblock_info ? this._shadow_shaderblock_info.shaderblock : null;
+			if(shadow_block)
+				flags |= shadow_block.flag_mask;
 		}
 	}
 	return flags;
+}
+
+Light.registerShadowType = function( name, shaderblock )
+{
+	var info = { id: this.shadow_shaderblocks.length, name: name, shaderblock: shaderblock };
+	this.shadow_shaderblocks.push( info );
+	this.shadow_shaderblocks_by_name[ name ] = info;
 }
 
 LS.registerComponent( Light );
@@ -23843,7 +23983,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
-	#pragma shaderblock \"testShadow\"\n\
+	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
 	\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, inout FinalLight LIGHT)\n\
 	{\n\
@@ -24052,6 +24192,14 @@ shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_c
 shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
 shadowmapping_block.register();
 Light.shadowmapping_2d_shader_block = shadowmapping_block;
+Light.registerShadowType( "hard", shadowmapping_block );
+
+var shadowmappingsoft_block = new LS.ShaderBlock("testShadowSoft");
+shadowmappingsoft_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
+shadowmappingsoft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
+shadowmappingsoft_block.register();
+Light.shadowmappingsoft_2d_shader_block = shadowmappingsoft_block;
+Light.registerShadowType( "soft", shadowmappingsoft_block );
 
 var shadowmapping_color_block = new LS.ShaderBlock("testShadowColor");
 shadowmapping_color_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
@@ -24606,15 +24754,17 @@ MeshRenderer.prototype.updateRIs = function()
 	}
 
 	//used for raycasting
+	/*
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
 			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
-		RI.setLODMesh( RI.collision_mesh );
+		//RI.setLODMesh( RI.collision_mesh );
 	}
 	else
+	*/
 		RI.collision_mesh = mesh;
 
 	if(this.primitive == gl.POINTS)
@@ -24694,15 +24844,17 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		RI.setRange(0,-1);
 
 	//used for raycasting
+	/*
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
 			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
-		RI.setLODMesh( RI.collision_mesh );
+		//RI.setLODMesh( RI.collision_mesh );
 	}
 	else
+	*/
 		RI.collision_mesh = mesh;
 
 	if(this.primitive == gl.POINTS)
@@ -25786,6 +25938,26 @@ MorphDeformer.prototype.getPropertiesInfo = function()
 	}
 
 	return properties;
+}
+
+MorphDeformer.prototype.optimizeMorphTargets = function()
+{
+	for(var i = 0; i < this.morph_targets.length; ++i)
+	{
+		var morph = this.morph_targets[i];
+		var mesh = LS.ResourcesManager.meshes[ morph.mesh ];
+		if(!mesh)
+			continue;
+		
+		//remove data not used 
+		mesh.removeVertexBuffer("coords", true);
+		mesh.removeIndexBuffer("triangles", true);
+		mesh.removeIndexBuffer("wireframe", true);
+
+		LS.ResourcesManager.resourceModified( mesh );
+	}
+
+	console.log("Morph targets optimized");
 }
 
 
@@ -30682,10 +30854,26 @@ LS.registerComponent( LineCloud );
 function PlayAnimation(o)
 {
 	this.enabled = true;
+
 	this._animation = "";
 	this._take = "default";
+
+	/**
+	* the root node locator where to apply the animation, is none is specified it is applied using the scene root node
+	* if a "@" is set, then only to this node and its children
+	* @property root_node {String}
+	*/
 	this.root_node = "@";
 	this.playback_speed = 1.0;
+
+	/**
+	* how to play the animation, options are:
+    *   PlayAnimation.LOOP
+	*	PlayAnimation.PINGPONG
+	*	PlayAnimation.ONCE
+	*	PlayAnimation.PAUSED
+	* @property mode {Number}
+	*/
 	this.mode = PlayAnimation.LOOP;
 	this.playing = true;
 	this.current_time = 0;
@@ -30720,6 +30908,10 @@ PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 PlayAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
 PlayAnimation["@blend_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
 
+/**
+* the name of the LS.Animation resource where the takes and tracks are stored
+* @property animation {String}
+*/
 Object.defineProperty( PlayAnimation.prototype, "animation", {
 	set: function(v){
 		if(v == this._animation)
@@ -30747,6 +30939,11 @@ Object.defineProperty( PlayAnimation.prototype, "animation", {
 	enumerable: true
 });
 
+/**
+* the name of the LS.Animation.Take to play from the LS.Animation
+* A take representes a set of tracks
+* @property take {String}
+*/
 Object.defineProperty( PlayAnimation.prototype, "take", {
 	set: function(v){
 		if(v == this._take)
@@ -30810,19 +31007,6 @@ PlayAnimation.prototype.onAddedToScene = function(scene)
 PlayAnimation.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind( scene, "update", this.onUpdate, this);
-}
-
-
-PlayAnimation.prototype.getAnimation = function( name )
-{
-	name = name === undefined ? this.animation : name;
-
-	if(!name || name[0] == "@") 
-		return this._root.scene.animation;
-	var anim = LS.ResourcesManager.getResource( name );
-	if( anim && anim.constructor === LS.Animation )
-		return anim;
-	return null;
 }
 
 PlayAnimation.prototype.onUpdate = function(e, dt)
@@ -30966,6 +31150,60 @@ PlayAnimation.prototype.onUpdateBlendAnimation = function( dt )
 		scene.requestFrame();
 }
 
+/**
+* returns the current animation or an animation with a given name
+* @method getAnimation
+* @param {String} name [optional] the name of the animation, if omited then uses the animation set in the component
+* @return {LS.Animation} the animation container
+*/
+PlayAnimation.prototype.getAnimation = function( name )
+{
+	name = name === undefined ? this.animation : name;
+
+	if(!name || name[0] == "@") 
+		return this._root.scene.animation;
+	var anim = LS.ResourcesManager.getResource( name );
+	if( anim && anim.constructor === LS.Animation )
+		return anim;
+	return null;
+}
+
+/**
+* returns the current animation or an animation with a given name
+* @method getTake
+* @param {String} take_name [optional] if not specified then it uses the current take
+* @return {Number} the duration of the take, or -1 if the take was not found or the animation is not loaded
+*/
+PlayAnimation.prototype.getTake = function( take_name )
+{
+	var animation = this.getAnimation();
+	if(!animation) 
+		return null;
+	take_name = take_name || this.take;
+	var take = animation.takes[ take_name ];
+	if(take) 
+		return take;
+	return null;
+}
+
+/**
+* Gets the duration of the current take in the current animation
+* @method getDuration
+* @return {Number} the duration of the take, or -1 if the take was not found or the animation is not loaded
+*/
+PlayAnimation.prototype.getDuration = function()
+{
+	var take = this.getTake();
+	if(take) 
+		return take.duration;
+	return -1;
+}
+
+/**
+* Resets the time to zero and starts playing the current take of the animation
+* It also triggers a "start_animation" event
+* @method play
+*/
 PlayAnimation.prototype.play = function()
 {
 	this.playing = true;
@@ -30979,11 +31217,19 @@ PlayAnimation.prototype.play = function()
 	//this.applyAnimation( take, this.current_time );
 }
 
+/**
+* Pauses the animation
+* @method pause
+*/
 PlayAnimation.prototype.pause = function()
 {
 	this.playing = false;
 }
 
+/**
+* Stops the animation and sets the time to zero
+* @method pause
+*/
 PlayAnimation.prototype.stop = function()
 {
 	this.playing = false;
@@ -30995,6 +31241,12 @@ PlayAnimation.prototype.stop = function()
 	//this.applyAnimation( take, this.current_time );
 }
 
+/**
+* Starts playing the animation but only using a range of it
+* @method playRange
+* @param {Number} start start time
+* @param {Number} end end time
+*/
 PlayAnimation.prototype.playRange = function( start, end )
 {
 	this.playing = true;
@@ -31003,6 +31255,14 @@ PlayAnimation.prototype.playRange = function( start, end )
 	this.range = [ start, end ];
 }
 
+/**
+* applys the animation to the scene nodes
+* @method applyAnimation
+* @param {String} take the name of the take
+* @param {Number} time the time where to sample the tracks
+* @param {Number} last_time [optional] the last time that was applied, (used to trigger events)
+* @param {Number} weight [optional] the weight of this animation (used for blending animation), if ommited 1 is used
+*/
 PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight )
 {
 	if( last_time === undefined )
@@ -32468,12 +32728,14 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		var RI = RIs[i];
 
 		RI.setMesh(mesh);
+		/*
 		if(this.lod_mesh)
 		{
 			var lod_mesh = this.getLODMesh();
 			if(lod_mesh)
 				RI.setLODMesh( lod_mesh );
 		}
+		*/
 		RI.setMaterial( material );
 		instances[ start_array_pos + i ] = RI;
 	}
@@ -33756,6 +34018,7 @@ var parserBVH = {
 		var frame_time = -1;
 		var duration = -1;
 		var current_frame = 0;
+		var timestamps = [];
 
 		var translator = {
 			"Xposition":"x","Yposition":"y","Zposition":"z","Xrotation":"xrotation","Yrotation":"yrotation","Zrotation":"zrotation"
@@ -33774,7 +34037,7 @@ var parserBVH = {
 			if(line == "")
 				continue;
 
-			var tokens = line.split(" ");
+			var tokens = line.split(/[\s]+/); //splits by spaces and tabs
 			var cmd = tokens[0];
 
 			if(!mode)
@@ -33791,7 +34054,7 @@ var parserBVH = {
 				switch(cmd)
 				{
 					case "ROOT":
-						root = node = { name: tokens[1] };
+						root = node = { name: tokens[1], node_type: "JOINT" };
 						break;
 					case "JOINT":
 						parent = node;
@@ -33802,7 +34065,14 @@ var parserBVH = {
 						parent.children.push(node);
 						break;
 					case "End":
-						ignore = true;
+						//ignore = true;
+						parent = node;
+						stack.push(parent);
+						node = { name: parent.name + "_end", node_type: "JOINT" };
+						if(!parent.children)
+							parent.children = [];
+						parent.children.push(node);
+
 						break;
 					case "{":
 						break;
@@ -33820,10 +34090,18 @@ var parserBVH = {
 					case "CHANNELS":
 						for(var j = 2; j < tokens.length; ++j)
 						{
-							var property = tokens[j];
+							var property = tokens[j].toLowerCase();
 							if(translator[property])
 								property = translator[property];
-							channels.push( { name: tokens[j], property: node.name + "/" + property, type: "number", value_size: 1, data: [], packed_data: true } );
+							//channels.push( { name: tokens[j], property: node.name + "/" + property, type: "number", value_size: 1, data: [], packed_data: true } );
+							var channel_data = { node: node, property: property, data: [] };
+							channels.push( channel_data );
+							if(!node._channels)
+								node._channels = {};
+							if(!node._channels_order)
+								node._channels_order = [];
+							node._channels[ property ] = channel_data;
+							node._channels_order.push( property );
 						}
 						break;
 					case "OFFSET":
@@ -33850,10 +34128,12 @@ var parserBVH = {
 			else if(mode == MODE_MOTION_DATA)
 			{
 				var current_time = current_frame * frame_time;
+				timestamps.push( current_time );
 				for(var j = 0; j < channels.length; ++j)
 				{
 					var channel = channels[j];
-					channel.data.push( current_time, parseFloat( tokens[j] ) );
+					//channel.data.push( current_time, parseFloat( tokens[j] ) );
+					channel.data.push( parseFloat( tokens[j] ) );
 				}
 
 				++current_frame;
@@ -33866,20 +34146,100 @@ var parserBVH = {
 			return r.map(parseFloat);
 		}
 
-		var tracks = channels;
+		//process data
+		var tracks = [];
+		this.processMotion( root, tracks, timestamps );
+
+		var scene = { root: root, object_type: "SceneNode", resources: {} };
+
 		for(var i = 0; i < tracks.length; ++i)
 		{
 			var track = tracks[i];
 			track.duration = duration;
 		}
-		var animation = { name: "#animation", object_type: "Animation", takes: { "default": { name: "default", tracks: tracks } } };
+		var animation = { name: "#animation", object_type: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
 		root.animations = animation.name;
-		var resources = {};
-		resources[ animation["name"] ] = animation;
-		var scene = { root: root, object_type: "SceneNode", resources: resources };
+		scene.resources[ animation["name"] ] = animation;
 
 		console.log(scene);
 		return scene;
+	},
+
+	processMotion: function( node, tracks, timestamps )
+	{
+		var channels = node._channels;
+		if(channels)
+		{
+			var track_position = null;
+			var track_rotation = null;
+
+			var XAXIS = vec3.fromValues(1,0,0);
+			var YAXIS = vec3.fromValues(0,1,0);
+			var ZAXIS = vec3.fromValues(0,0,1);
+
+			if(channels.xposition || channels.yposition || channels.zposition )
+				track_position = { name: node.name + "/Transform/position", property: node.name + "/Transform/position", type: "vec3", value_size: 3, data: [], packed_data: true };
+			if(channels.xrotation || channels.yrotation || channels.zrotation )
+				track_rotation = { name: node.name + "/Transform/rotation", property: node.name + "/Transform/rotation", type: "quat", value_size: 4, data: [], packed_data: true };
+
+
+			for(var j = 0; j < timestamps.length; ++j)
+			{
+				var time = timestamps[j];
+				var pos = vec3.create();
+				var R = quat.create();
+				var ROT = quat.create();
+
+				for(var i = 0; i < node._channels_order.length; ++i)
+				{
+					var property = node._channels_order[i];
+
+					switch( property )
+					{
+						case "xposition":
+							pos[0] = channels.xposition.data[j] + node.transform.position[0];
+							break;
+						case "yposition":
+							pos[1] = channels.yposition.data[j] + node.transform.position[1];
+							break;
+						case "zposition":
+							pos[2] = channels.zposition.data[j] + node.transform.position[2];
+							break;
+						case "xrotation":
+							quat.setAxisAngle( ROT, XAXIS, channels.xrotation.data[j] * DEG2RAD );
+							//quat.mul( R, ROT, R );
+							quat.mul( R, R, ROT );
+							break;
+						case "yrotation":
+							quat.setAxisAngle( ROT, YAXIS, channels.yrotation.data[j] * DEG2RAD );
+							//quat.mul( R, ROT, R );
+							quat.mul( R, R, ROT );
+							break;
+						case "zrotation":
+							quat.setAxisAngle( ROT, ZAXIS, channels.zrotation.data[j] * DEG2RAD );
+							//quat.mul( R, ROT, R );
+							quat.mul( R, R, ROT );
+							break;
+					};
+				} //per channel
+
+				if(track_position)
+					track_position.data.push( time, pos[0], pos[1], pos[2] );
+				if(track_rotation)
+					track_rotation.data.push( time, R[0], R[1], R[2], R[3] );
+			}//per timestamp
+
+			if(track_position)
+				tracks.push( track_position );
+			if(track_rotation)
+				tracks.push( track_rotation );
+		} //if channels
+
+		if(node.children)
+		{
+			for(var i = 0; i < node.children.length; ++i)
+				this.processMotion( node.children[i], tracks, timestamps );
+		}
 	}
 };
 
@@ -37322,12 +37682,15 @@ var parserMTL = {
 					break;
 				case "map_Kd":
 					current_material.textures["color"] = this.clearPath( tokens[1] );
+					current_material.color = [1,1,1];
 					break;
 				case "map_Ka":
 					current_material.textures["ambient"] = this.clearPath( tokens[1] );
+					current_material.ambient = [1,1,1];
 					break;
 				case "map_Ks":
 					current_material.textures["specular"] = this.clearPath( tokens[1] );
+					current_material.specular_factor = 1;
 					break;
 				case "bump":
 				case "map_bump":
@@ -37353,6 +37716,10 @@ var parserMTL = {
 		for(var i in materials)
 		{
 			var material_info = materials[i];
+
+			//hack, ambient must be 1,1,1
+			material_info.ambient = [1,1,1];
+
 			var material = new LS.StandardMaterial(material_info);
 			LS.RM.registerResource( material_info.filename, material );
 		}
@@ -37482,7 +37849,10 @@ var parserTGA = {
 		var TGAcompare = data.subarray(0,12);
 		for(var i = 0; i < TGAcompare.length; i++)
 			if(TGAheader[i] != TGAcompare[i])
+			{
+				console.error("TGA header is not valid");
 				return null; //not a TGA
+			}
 
 		var header = data.subarray(12,18);
 
@@ -38234,11 +38604,12 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		LEvent.trigger(that,"loadCompleted");
 	}
 
-	function inner_error(err)
+	function inner_error(e)
 	{
-		console.warn("Error loading scene: " + url + " -> " + err);
+		var err_code = (e && e.target) ? e.target.status : 0;
+		console.warn("Error loading scene: " + url + " -> " + err_code);
 		if(on_error)
-			on_error(url);
+			on_error(url, err_code, e);
 	}
 }
 
@@ -38278,8 +38649,16 @@ SceneTree.getScriptsList = function( root, allow_local )
 			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
 
 			var res = LS.ResourcesManager.getResource( script_fullpath );
-			if(res && allow_local)
-				script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			if(res)
+			{
+				/*
+				if( res.from_prefab )
+					script_url = LS.ResourcesManager.cleanFullpath( "@" + script_fullpath );
+				else 
+				*/
+					if( allow_local )
+					script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+			}
 
 			scripts.push( script_url );
 		}
@@ -38289,7 +38668,7 @@ SceneTree.getScriptsList = function( root, allow_local )
 
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 {
-	scripts = scripts || LS.SceneTree.getScriptsList( this );
+	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
 	if(!scripts.length)
 	{
@@ -38318,7 +38697,7 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 			continue;
 		}
 
-		var blob = new Blob([res.data]);
+		var blob = new Blob([res.data],{encoding:"UTF-8", type: 'text/plain;charset=UTF-8'});
 		var objectURL = URL.createObjectURL( blob );
 		final_scripts.push( objectURL );
 		revokable.push( objectURL );
@@ -39170,7 +39549,8 @@ SceneTree.prototype.update = function(dt)
 	LEvent.trigger(this,"beforeUpdate", this);
 
 	this._global_time = getTime() * 0.001;
-	this._time = this._global_time - this._start_time;
+	//this._time = this._global_time - this._start_time;
+	this._time += dt;
 	this._last_dt = dt;
 
 	/**
@@ -40076,6 +40456,8 @@ SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 		switch ( path[offset] )
 		{
 			case "matrix": target = this.transform; break;
+			case "position":
+			case "rotation":
 			case "x":
 			case "y":
 			case "z":

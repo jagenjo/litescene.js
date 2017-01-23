@@ -339,15 +339,17 @@ MeshRenderer.prototype.updateRIs = function()
 	}
 
 	//used for raycasting
+	/*
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
 			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
-		RI.setLODMesh( RI.collision_mesh );
+		//RI.setLODMesh( RI.collision_mesh );
 	}
 	else
+	*/
 		RI.collision_mesh = mesh;
 
 	if(this.primitive == gl.POINTS)
@@ -427,15 +429,17 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 		RI.setRange(0,-1);
 
 	//used for raycasting
+	/*
 	if(this.lod_mesh)
 	{
 		if( this.lod_mesh.constructor === String )
 			RI.collision_mesh = LS.ResourcesManager.resources[ this.lod_mesh ];
 		else
 			RI.collision_mesh = this.lod_mesh;
-		RI.setLODMesh( RI.collision_mesh );
+		//RI.setLODMesh( RI.collision_mesh );
 	}
 	else
+	*/
 		RI.collision_mesh = mesh;
 
 	if(this.primitive == gl.POINTS)

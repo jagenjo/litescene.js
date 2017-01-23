@@ -111,12 +111,14 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		var RI = RIs[i];
 
 		RI.setMesh(mesh);
+		/*
 		if(this.lod_mesh)
 		{
 			var lod_mesh = this.getLODMesh();
 			if(lod_mesh)
 				RI.setLODMesh( lod_mesh );
 		}
+		*/
 		RI.setMaterial( material );
 		instances[ start_array_pos + i ] = RI;
 	}

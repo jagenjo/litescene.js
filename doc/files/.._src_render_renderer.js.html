@@ -63,7 +63,6 @@
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
-                                <li><a href="../classes/LS.Components.SpatialContainer.html">LS.Components.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
@@ -73,6 +72,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -102,7 +102,9 @@
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
                             </ul>
@@ -337,6 +339,9 @@ var Renderer = {
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
 			LS.RenderFrameContext.reset();
+
+		if(gl.canvas.canvas2DtoWebGL_enabled)
+			gl.resetTransform(); //reset 
 
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
@@ -1340,6 +1345,7 @@ var Renderer = {
 			//node &amp; mesh constant information
 			var query = instance.query;
 
+			/* deprecated
 			var buffers = instance.vertex_buffers;
 			if(!(&quot;normals&quot; in buffers))
 				query.macros.NO_NORMALS = &quot;&quot;;
@@ -1351,6 +1357,7 @@ var Renderer = {
 				query.macros.USE_COLOR_STREAM = &quot;&quot;;
 			if((&quot;tangents&quot; in buffers))
 				query.macros.USE_TANGENT_STREAM = &quot;&quot;;
+			*/
 
 			instance._camera_visibility = 0|0;
 		}
@@ -1489,9 +1496,10 @@ var Renderer = {
 	* @param {Material} material
 	* @param {number} size image size
 	* @param {Object} options could be environment_texture, to_viewport
+	* @param {HTMLCanvas} canvas [optional] the output canvas where to store the preview
 	* @return {Image} the preview image (in canvas format) or null if it was rendered to the viewport
 	*/
-	renderMaterialPreview: function( material, size, options )
+	renderMaterialPreview: function( material, size, options, canvas )
 	{
 		options = options || {};
 
@@ -1559,7 +1567,7 @@ var Renderer = {
 			LS.Renderer.renderFrame( scene.root.camera, render_settings, scene );
 		});
 
-		var canvas = tex.toCanvas(null, true);
+		var canvas = tex.toCanvas( canvas, true );
 		return canvas;
 	},
 
