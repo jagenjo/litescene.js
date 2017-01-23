@@ -3537,7 +3537,7 @@
             "line": 384,
             "description": "Stops the animation and sets the time to zero",
             "itemtype": "method",
-            "name": "pause",
+            "name": "stop",
             "class": "LS.Components.PlayAnimation",
             "namespace": "LS.Components"
         },

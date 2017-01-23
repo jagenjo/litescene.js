@@ -31228,7 +31228,7 @@ PlayAnimation.prototype.pause = function()
 
 /**
 * Stops the animation and sets the time to zero
-* @method pause
+* @method stop
 */
 PlayAnimation.prototype.stop = function()
 {
