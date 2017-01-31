@@ -284,6 +284,7 @@ Here is a complete shader with normalmap and specular map that support multiple 
 
 
 
+
 \js
 //define exported uniforms from the shader (name, uniform, widget)
 this.createUniform("Number","u_number","number");
@@ -316,6 +317,8 @@ uniform vec4 u_viewport;
 uniform float u_point_size;
 
 #pragma shaderblock "light"
+#pragma shaderblock "morphing"
+#pragma shaderblock "skinning"
 
 //camera
 uniform vec3 u_camera_eye;
@@ -324,11 +327,14 @@ void main() {
 	vec4 vertex4 = vec4(a_vertex,1.0);
 	v_normal = a_normal;
 	v_uvs = a_coord;
+  
+  //deforms
+  applyMorphing( vertex4, v_normal );
+  applySkinning( vertex4, v_normal );
 	
 	//vertex
 	v_pos = (u_model * vertex4).xyz;
   
-	//v_light_coord = u_light_matrix * vec4(v_pos,1.0);
   applyLight(v_pos);
   
 	//normal
@@ -379,6 +385,8 @@ void main() {
   
 	gl_FragColor = final_color;
 }
+
+
 
 
 
