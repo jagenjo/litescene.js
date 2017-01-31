@@ -282,9 +282,12 @@ Here is a complete shader with normalmap and specular map that support multiple 
 
 ```c++
 
+
+
 \js
 //define exported uniforms from the shader (name, uniform, widget)
-this.createSampler("Color Texture","u_texture");
+this.createUniform("Number","u_number","number");
+this.createSampler("Texture","u_texture");
 this.createSampler("Spec. Texture","u_specular_texture");
 this.createSampler("Normal Texture","u_normal_texture");
 this._light_mode = 1;
@@ -324,9 +327,9 @@ void main() {
 	
 	//vertex
 	v_pos = (u_model * vertex4).xyz;
-
-	//light calculations per vertex
-	applyLight(v_pos);
+  
+	//v_light_coord = u_light_matrix * vec4(v_pos,1.0);
+  applyLight(v_pos);
   
 	//normal
 	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;
@@ -347,8 +350,8 @@ uniform vec3 u_camera_eye;
 uniform vec4 u_clipping_plane;
 uniform float u_time;
 uniform vec3 u_background_color;
-uniform vec3 u_ambient_light;
 uniform vec4 u_material_color;
+uniform float u_number;
 
 uniform sampler2D u_texture;
 uniform sampler2D u_specular_texture;
@@ -359,29 +362,24 @@ uniform sampler2D u_normal_texture;
 #pragma snippet "perturbNormal"
 
 void main() {
-	//get the structs with surface info
-	Input IN = getInput();
-	SurfaceOutput o = getSurfaceOutput();
-	
-	//fill the surface info
-	vec4 surface_color = texture2D( u_texture, IN.uv ) * u_material_color;
-	o.Albedo = surface_color.xyz;
-	vec4 spec = texture2D( u_specular_texture, IN.uv );
+  Input IN = getInput();
+  SurfaceOutput o = getSurfaceOutput();
+  vec4 surface_color = texture2D( u_texture, IN.uv ) * u_material_color;
+  o.Albedo = surface_color.xyz;
+  vec4 spec = texture2D( u_specular_texture, IN.uv );
 	o.Specular = spec.x;  
 	o.Gloss = spec.y * 10.0;  
-	
-	//compute the normal from normalmap in tangent space
 	vec4 normal_pixel = texture2D( u_normal_texture, IN.uv );
-	o.Normal = perturbNormal( IN.worldNormal, IN.worldPos, v_uvs, normal_pixel.xyz );
+  o.Normal = perturbNormal( IN.worldNormal, IN.worldPos, v_uvs, normal_pixel.xyz );
+	  
+  vec4 final_color = vec4(0.0);
+  Light LIGHT = getLight();
+  final_color.xyz = computeLight( o, IN, LIGHT );
+  final_color.a = surface_color.a;
   
-  	//do the final color calculations
-	vec4 final_color = vec4(0.0);
-	FinalLight LIGHT = getLight();
-	LIGHT.Ambient = u_ambient_light;
-	final_color.xyz = computeLight( o, IN, LIGHT );
-	final_color.a = surface_color.a;
 	gl_FragColor = final_color;
 }
+
 
 
 
