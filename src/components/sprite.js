@@ -157,4 +157,10 @@ Sprite.prototype.getResources = function( res )
 	return res;
 }
 
+Sprite.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if( this.texture == old_name )
+		this.texture = new_name;
+}
+
 LS.registerComponent( Sprite );

@@ -759,7 +759,7 @@ var Renderer = {
 				material.onModifyQuery( query );
 
 			//resolve the shader
-			var shader = ShadersManager.resolve( query );
+			var shader = LS.ShadersManager.resolve( query );
 
 			//assign uniforms
 			shader.uniformsArray( [ scene._uniforms, camera._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ] );

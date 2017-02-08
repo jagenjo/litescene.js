@@ -102,7 +102,9 @@ var LS = {
 			//Helper: checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
 				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
-				console.warn("%c Component could have a bug, check events: " + name , "font-size: 2em");
+				console.warn("%c Component "+name+" could have a bug, check events: " + name , "font-size: 2em");
+			if( component.prototype.getResources && !component.prototype.onResourceRenamed )
+				console.warn("%c Component "+name+" could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.", "font-size: 1.2em");
 
 			//add stuff to the class
 			if(!component.actions)

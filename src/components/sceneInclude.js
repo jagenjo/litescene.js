@@ -172,7 +172,7 @@ SceneInclude.prototype.reloadScene = function()
 	{
 		console.log("SceneInclude: scene loaded");
 		this._scene_is_ready = true;
-		if(this._root.scene._state == LS.RUNNING )
+		if(this._root.scene._state == LS.PLAYING )
 			this._scene.start();
 	}
 }

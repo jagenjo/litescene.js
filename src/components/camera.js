@@ -138,12 +138,13 @@ Texture.cubemap_camera_parameters = [
 ];
 */
 
-
+/*
 Camera.prototype.getResources = function (res)
 {
 	//nothing to do, cameras dont use assets, althoug they could generate them
 	return res;
 }
+*/
 
 
 /**

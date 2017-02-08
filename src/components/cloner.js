@@ -64,6 +64,15 @@ Cloner.prototype.getResources = function(res)
 	return res;
 }
 
+Cloner.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if( this.mesh == old_name )
+		this.mesh = new_name;
+
+	if( this.lod_mesh == old_name )
+		this.lod_mesh = new_name;
+}
+
 Cloner.generateTransformKey = function(count, hsize, offset)
 {
 	var key = new Float32Array(9);

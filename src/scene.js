@@ -69,6 +69,16 @@ Object.defineProperty( SceneTree.prototype, "time", {
 	}
 });
 
+Object.defineProperty( SceneTree.prototype, "state", {
+	enumerable: true,
+	get: function() {
+		return this._state;
+	},
+	set: function(v) {
+		throw("Cannot set state directly, use start, finish, pause, unpause");
+	}
+});
+
 Object.defineProperty( SceneTree.prototype, "globalTime", {
 	enumerable: true,
 	get: function() {
@@ -1259,10 +1269,10 @@ SceneTree.prototype.removePreloadResource = function( fullpath )
 */
 SceneTree.prototype.start = function()
 {
-	if(this._state == LS.RUNNING)
+	if(this._state == LS.PLAYING)
 		return;
 
-	this._state = LS.RUNNING;
+	this._state = LS.PLAYING;
 	this._start_time = getTime() * 0.001;
 	/**
 	 * Fired when the nodes need to be initialized
@@ -1281,6 +1291,51 @@ SceneTree.prototype.start = function()
 	LEvent.trigger(this,"start",this);
 	this.triggerInNodes("start");
 }
+
+/**
+* pauses the scene (triggers an "pause" event)
+*
+* @method pause
+*/
+SceneTree.prototype.pause = function()
+{
+	if( this._state != LS.PLAYING )
+		return;
+
+	this._state = LS.PAUSED;
+	/**
+	 * Fired when the scene pauses (mostly in the editor)
+	 *
+	 * @event pause
+	 * @param {LS.SceneTree} scene
+	 */
+	LEvent.trigger(this,"pause",this);
+	this.triggerInNodes("pause");
+	this.purgeResidualEvents();
+}
+
+/**
+* unpauses the scene (triggers an "unpause" event)
+*
+* @method unpause
+*/
+SceneTree.prototype.unpause = function()
+{
+	if(this._state != LS.PAUSED)
+		return;
+
+	this._state = LS.PLAYING;
+	/**
+	 * Fired when the scene unpauses (mostly in the editor)
+	 *
+	 * @event unpause
+	 * @param {LS.SceneTree} scene
+	 */
+	LEvent.trigger(this,"unpause",this);
+	this.triggerInNodes("unpause");
+	this.purgeResidualEvents();
+}
+
 
 /**
 * stop the scene (triggers an "finish" event)
@@ -1531,7 +1586,7 @@ SceneTree.prototype.requestFrame = function()
 SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
 
 /**
-* returns current scene time (remember that scene time remains freezed if the scene is not running)
+* returns current scene time (remember that scene time remains freezed if the scene is not playing)
 *
 * @method getTime
 * @return {Number} scene time in seconds

@@ -772,13 +772,20 @@ SceneNode.prototype.getTransform = function() {
 
 //Helpers
 
-SceneNode.prototype.getMesh = function() {
+SceneNode.prototype.getMesh = function( use_lod_mesh ) {
 	var mesh = this.mesh;
-	if(!mesh && this.meshrenderer)
-		mesh = this.meshrenderer.mesh;
-	if(!mesh) return null;
+	var mesh_renderer = this.getComponent( LS.Components.MeshRenderer );
+	if(!mesh && mesh_renderer)
+	{
+		if(use_lod_mesh)
+			mesh = mesh_renderer.lod_mesh;
+		if(!mesh)
+			mesh = mesh_renderer.mesh;
+	}
+	if(!mesh)
+		return null;
 	if(mesh.constructor === String)
-		return ResourcesManager.meshes[mesh];
+		return LS.ResourcesManager.meshes[mesh];
 	return mesh;
 }
 

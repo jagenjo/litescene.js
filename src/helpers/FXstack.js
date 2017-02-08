@@ -406,6 +406,27 @@ FXStack.prototype.getResources = function(res)
 	return res;
 }
 
+FXStack.prototype.onResourceRenamed = function(old_name, new_name, resource)
+{
+	var fxs = this.fx;
+	for(var i = 0; i < fxs.length; i++)
+	{
+		var fx = fxs[i];
+		var fx_info = FXStack.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+		if(!fx_info.uniforms)
+			continue;
+		for(var j in fx_info.uniforms)
+		{
+			var uniform = fx_info.uniforms[j];
+			if(uniform.type == "sampler2D" && fx[j] == old_name )
+				fx[j] = new_name;
+		}
+	}
+}
+
+
 //attach a new FX to the FX Stack
 FXStack.prototype.addFX = function( name )
 {

@@ -44,9 +44,20 @@ FrameFX.prototype.serialize = function()
 	};
 }
 
-FrameFX.prototype.getResources = function(res)
+FrameFX.prototype.getResources = function( res )
 {
-	return this.fx.getResources(res);
+	this.fx.getResources(res);
+	if(this.shader_material)
+		res[ this.shader_material ] = true;
+	return res;
+}
+
+FrameFX.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if( this.shader_material == old_name )
+		this.shader_material = new_name;
+	else
+		this.fx.onResourceRenamed( old_name, new_name, resource );
 }
 
 FrameFX.prototype.addFX = function( name )

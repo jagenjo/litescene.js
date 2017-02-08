@@ -202,7 +202,10 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 SurfaceMaterial.prototype.configure = function(o) { 
 	if(o.flags !== undefined && o.flags.constructor === Number)
 		delete o["flags"]; //LEGACY
-	LS.cloneObject( o, this );
+	Material.prototype.configure.call( this, o ); //it will call setProperty
+	//LS.cloneObject( o, this );
+	if(o.properties)
+		this.properties = LS.cloneObject( o.properties );
 	this.computeCode();
 }
 
@@ -302,7 +305,11 @@ SurfaceMaterial.prototype.setProperty = function(name, value)
 		return true;
 	}
 
-	return false;
+	if( this[name] !== undefined)
+		this[name] = value;
+	else
+		return false;
+	return true;
 }
 
 /*

@@ -49,10 +49,22 @@ CameraFX.prototype.serialize = function()
 	};
 }
 
-CameraFX.prototype.getResources = function(res)
+CameraFX.prototype.getResources = function( res )
 {
-	return this.fx.getResources(res);
+	this.fx.getResources(res);
+	if(this.shader_material)
+		res[ this.shader_material ] = true;
+	return res;
 }
+
+CameraFX.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if( this.shader_material == old_name )
+		this.shader_material = new_name;
+	else
+		this.fx.onResourceRenamed( old_name, new_name, resource );
+}
+
 
 CameraFX.prototype.addFX = function( name )
 {

@@ -95,26 +95,7 @@ Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
 Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
 
 
-Script.coding_help = "\n\
-For a complete guide check: <a href='https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md' target='blank'>Scripting Guide</a>\n\
-Global vars:\n\
- + node : represent the node where this component is attached.\n\
- + component : represent the component.\n\
- + this : represents the script context\n\
-\n\
-Some of the common API functions:\n\
- + onStart: when the Scene starts\n\
- + onUpdate: when updating\n\
- + onClicked : if this node is clicked (requires InteractiveController in root)\n\
- + onRender : before rendering the node\n\
- + onRenderGUI : to render something in the GUI using canvas2D\n\
- + onCollectRenderInstances: when collecting instances\n\
- + onAfterRender : after rendering the node\n\
- + onPrefabReady: when the prefab has been loaded\n\
- + onFinish : when the scene finished (mostly used for editor stuff)\n\
-\n\
-Remember, all basic vars attached to this will be exported as global.\n\
-";
+Script.coding_help = "For a complete guide check: <a href='https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md' target='blank'>Scripting Guide</a>";
 
 Script.active_scripts = {};
 
@@ -233,7 +214,7 @@ Script.prototype.processCode = function( skip_events )
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.RUNNING && this._script._context.start )
+			if( this._root.scene._state === LS.PLAYING && this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -596,6 +577,13 @@ Script.prototype.getResources = function(res)
 		ctx.onGetResources( res );
 }
 
+Script.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.onResourceRenamed )
+		ctx.onResourceRenamed( old_name, new_name, resource );
+}
+
 LS.registerComponent( Script );
 LS.Script = Script;
 
@@ -755,7 +743,7 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.RUNNING && this._script._context.start )
+			if( this._root.scene._state === LS.PLAYING && this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -803,6 +791,12 @@ ScriptFromFile.prototype.getResources = function(res)
 	ctx.getResources( res );
 }
 
+ScriptFromFile.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.filename == old_name)
+		this.filename = new_name;
+}
+
 ScriptFromFile.prototype.getCodeResource = function()
 {
 	return LS.ResourcesManager.getResource( this.filename );
@@ -828,17 +822,16 @@ ScriptFromFile.prototype.setCode = function( code, skip_events )
 
 ScriptFromFile.updateComponents = function( script, skip_events )
 {
-	if( !script || !script._root )
+	if( !script )
 		return;
 
-	var filename = script.filename;
-	var scene = script._root.scene || LS.GlobalScene;
+	var fullpath = script.fullpath || script.filename;
+	var scene = LS.GlobalScene;
 	var components = scene.findNodeComponents( LS.ScriptFromFile );
 	for(var i = 0; i < components.length; ++i)
 	{
 		var compo = components[i];
-		var filename = script.fullpath || script.filename;
-		if( compo.filename == filename )
+		if( compo.filename == fullpath )
 			compo.processCode(skip_events);
 	}
 }

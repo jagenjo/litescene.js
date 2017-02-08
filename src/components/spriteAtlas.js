@@ -193,6 +193,12 @@ SpriteAtlas.prototype.getResources = function( res )
 	return res;
 }
 
+SpriteAtlas.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if( this.texture == old_name )
+		this.texture = new_name;
+}
+
 LS.registerComponent( SpriteAtlas );
 
 SpriteAtlas.Area = function SpriteAtlasArea()

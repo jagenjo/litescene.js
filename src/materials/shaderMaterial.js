@@ -19,6 +19,8 @@ function ShaderMaterial( o )
 	this._properties = [];
 	this._properties_by_name = {};
 
+	this._passes = {};
+
 	if(o) 
 		this.configure(o);
 }
@@ -205,6 +207,15 @@ ShaderMaterial.prototype.createProperty = function( name, value, type, options )
 	});
 }
 
+ShaderMaterial.prototype.addPass = function( name, vertex_shader, fragment_shader, macros )
+{
+	this._passes[ name ] = {
+		vertex: vertex_shader,
+		fragment: fragment_shader,
+		macros: macros
+	};
+}
+
 //called when preparing materials before rendering the scene
 ShaderMaterial.prototype.prepare = function( scene )
 {
@@ -285,6 +296,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 	{
 		this._properties.length = 0;
 		this._properties_by_name = {};
+		this._passes = {};
 		this._samplers.length = 0;
 		return false;
 	}
@@ -297,6 +309,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 	var old_properties = this._properties_by_name;
 	this._properties.length = 0;
 	this._properties_by_name = {};
+	this._passes = {};
 	this._samplers.length = 0;
 
 	//reset material properties
@@ -477,6 +490,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//light texture like shadowmap and cookie
 		LS.Renderer.bindSamplers( light._samplers );
 
+		light._uniforms.u_light_info[2] = i;
+		light._uniforms.u_light_info[3] = lights.length;
+
 		//assign
 		if(prev_shader != shader)
 			shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light._uniforms, this._uniforms, instance.uniforms ] );
@@ -486,7 +502,6 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		if(i == 1)
 		{
-			shader.uniforms({ u_ambient_light: LS.ZEROS});
 			gl.depthMask( false );
 			gl.depthFunc( gl.EQUAL );
 			gl.enable( gl.BLEND );

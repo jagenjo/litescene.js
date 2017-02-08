@@ -25,7 +25,7 @@ var GUI = {
 			return this._root;
 		}
 
-		if(LS.GlobalScene._state != LS.RUNNING)
+		if(LS.GlobalScene._state != LS.PLAYING)
 			console.warn("GUI element created before the scene is playing. Only create the GUI elements from onStart or after, otherwise the GUI elements will be lost.");
 
 		var gui = document.createElement("div");

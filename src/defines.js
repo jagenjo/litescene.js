@@ -27,8 +27,10 @@ LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
 
 //used to know the state of the application
 LS.STOPPED = 0;
-LS.RUNNING = 1;
+LS.PLAYING = 1; 
 LS.PAUSED = 2;
+
+LS.RUNNING = 1; //LEGACY
 
 //helpful consts
 LS.ZEROS = vec3.create();
