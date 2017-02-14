@@ -84,17 +84,17 @@ The ShaderMaterial finds the Shader, passes the uniforms, and calls the render m
 
 This is the most straight forward shader, but it has some limitations. Because the shader assumes a fixed set of parameters, when rendering this instance it wont be affected by the surroundings.
 
-This means that it wont have shadows or be affected by the scene lights, or get any modifiers applied to it (like Skinning or Morphing). But it is the one that has the best performance.
+This means that it won't have shadows or be affected by the scene lights or get any modifiers applied to it (like Skinning or Morphing)  unless the shader specifies it.
 
-But the performance will be very good.
+But it is the one that has the best performance.
 
 #### StandardMaterial rendering ####
 
-Sometimes we dont want to take care of the Shader, we just want to specify some properties and let the render pipeline decide which is the best shader to apply.
+Sometimes we don't want to take care of the shader, we just want to specify some properties and let the render pipeline decide which is the best shader to apply.
 
 In those situations the system has to be aware of the different modifiers to apply to the shader based in all the actors in the scene, like:
 1. lights: because lights could have different type, or have shadowmaps, or projector textures, or special shaders.
-1. nodes: because nodes can have deformers applied to them
+1. nodes: because nodes can have deformers applied to them (skinning, morph targets)
 1. scene: because maybe there is a clipping plane
 1. renderer: because maybe the renderer is using an special pipeline
 
