@@ -63,6 +63,8 @@ Here is a list of the steps performed by the render pipeline when calling the re
 
 Most of the rendering calls are performed from the **renderColorPassInstance** so check the chapter about that function to understand better how a single RenderInstance is rendered.
 
+Careful, if you want to issue any special rendering pass during the render of a frame, *you must never call LS.Renderer.render from an event dispatched by the rendering*, this will create a recursive loop. You can bind to ```"beforeRenderMainPass"``` event and call functions like ```renderFrame``` to render the view from one camera, or do it manually calling ```enableCamera``` and ```renderInstances```.
+
 ### Collecting the data ###
 
 The scene contains many cameras, lights, render instances and other items that could affect the final frame, so we need to have all the data stored in the propper containers.
