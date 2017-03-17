@@ -94,13 +94,13 @@ All this functions receive the system event by parameter.
 
 ```javascript
 
-this.onKeyDown = function(e)
+this.onKeyDown = function(event)
 {
-	if(e.keyCode == 39)
+	if(event.keyCode == 39)
 		console.log("Right");
 }
 
-this.onMouseDown = function(type, event)
+this.onMouseDown = function(event)
 {
 	if( event.which == GL.LEFT_MOUSE_BUTTON )
 		console.log("Left mouse button pressed!");
