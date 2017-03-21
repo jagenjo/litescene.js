@@ -73,6 +73,12 @@ Also, when using WebGLStudio, there is also the option to specify widget propert
 this.createProperty("myvar", 0, {type: "number", widget:"slider", min:0, max:100, step:1});
 ```
 
+Or to create even Arrays that can be edited through the editor:
+
+```javascript
+this.createProperty( "myarray", [], "array" );
+```
+
 ### Events ###
 
 To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the Renderer, the ResourcesManager, etc).
