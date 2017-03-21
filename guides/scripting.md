@@ -62,7 +62,11 @@ Sometimes may be helpful to specify the type of the var to the system, this way 
 In that case the user can use:
 
 ```javascript
+//to create the var
 this.createProperty("myvar", [1,1,1], LS.TYPES.VEC3 );
+
+//to access  it
+this.myvar = [10,10,10];
 ```
 
 Specifying types is important when the types are not basic types, and if you are using WebGLStudio the system will create appropiate widgets to interact with them.
