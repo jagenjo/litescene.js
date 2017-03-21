@@ -80,7 +80,8 @@ this.createProperty("myvar", 0, {type: "number", widget:"slider", min:0, max:100
 Or to create even Arrays that can be edited through the editor:
 
 ```javascript
-this.createProperty( "myarray", [], "array" );
+//in this case is an array of textures but you can ignore the type if is an array of anything
+this.createProperty( "myarray", [], { type: "array", data_type: LS.TYPES.TEXTURE });
 ```
 
 ### Events ###
