@@ -95,12 +95,6 @@ this.bind( scene, "update", myfunction );
 
 Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
 
-### Input ###
-
-You can bind events for actions performed by the user (like mousedown, keydown, etc) or read the input system directly (using the LS.Input object).
-
-Check the [Input guide](input.md) to see more information abour reading the input.
-
 ### API exported methods ###
 
 However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
@@ -129,6 +123,12 @@ Here is a list of the automatically binded events:
 - **onGetResources**: called when the script needs to collect resources. This function receives an object that needs to be filled with the fullpath : type of the resources it uses so they can be automatically loaded when the scene is loaded.
 
 Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the onRemovedFromScene so no lose binds are left.
+
+### Input ###
+
+You can bind events for actions performed by the user (like mousedown, keydown, etc) or read the input system directly (using the LS.Input object).
+
+Check the [Input guide](input.md) to see more information abour reading the input.
 
 ### Serialization ###
 
