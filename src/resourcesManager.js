@@ -49,6 +49,7 @@ var ResourcesManager = {
 
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
 	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
+	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -204,6 +205,25 @@ var ResourcesManager = {
 		if(pos == -1)
 			return name;
 		return name.substr(0,pos);
+	},
+
+	/**
+	* Returns the url protocol (http, https) or empty string if no protocol was found
+	*
+	* @method getProtocol
+	* @param {String} url
+	* @return {String} protocol
+	*/
+	getProtocol: function( url )
+	{
+		if(!url)
+			return "";
+
+		var pos = url.substr(0,10).indexOf(":");
+		var protocol = "";
+		if(pos != -1)
+			protocol = url.substr(0,pos);
+		return protocol;
 	},
 
 	/**
@@ -571,7 +591,8 @@ var ResourcesManager = {
 
 		if(!this.allow_base_files && url.indexOf("/") == -1)
 		{
-			console.warn("Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: ", url );
+			if(!this._parsing_local_file) //to avoid showing this warning when parsing scenes with local resources
+				console.warn("Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: ", url );
 			return; //this is not a valid file to load
 		}
 
@@ -600,7 +621,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedEnd, true );
+				LS.ResourcesManager.processResource( url, response, options, LS.ResourcesManager._resourceLoadedEnd, true );
 			},
 			error: function(err) { 	
 				LS.ResourcesManager._resourceLoadedError(url,err);
@@ -615,6 +636,9 @@ var ResourcesManager = {
 					LEvent.trigger( LS.ResourcesManager, "loading_resources_progress", 1.0 - (LS.ResourcesManager.num_resources_being_loaded - partial_load) / LS.ResourcesManager._total_resources_to_load );
 			}
 		};
+
+		//force no cache by request
+		settings.nocache = nocache || this.force_nocache_extensions[ extension ];
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
@@ -648,6 +672,11 @@ var ResourcesManager = {
 
 		var resource = null;
 		var extension = this.getExtension( url );
+		//get all the info about this file format
+		var format_info = null;
+		
+		if(extension)
+			format_info = LS.Formats.supported[ extension ];
 
 		//callback to embede a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
@@ -657,6 +686,18 @@ var ResourcesManager = {
 				return;
 			}
 
+			//convert format
+			if( format_info && format_info.convert_to && extension != format_info.convert_to )
+			{
+				url += "." + format_info.convert_to;
+				resource.filename += "." + format_info.convert_to;
+				if( resource.fullpath )
+					resource.fullpath += "." + format_info.convert_to;
+				if(options.filename)
+					options.filename += "." + format_info.convert_to;
+			}
+
+			//apply last changes
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource in case we want to save it
@@ -671,8 +712,6 @@ var ResourcesManager = {
 		if(!extension)
 			return this.processDataResource( url, data, options, process_final );
 
-		//get all the info about this file format
-		var format_info = LS.Formats.supported[ extension ];
 
 		// PRE-PROCESSING Stage (transform raw data in a resource) 
 		// *******************************************************
@@ -699,7 +738,7 @@ var ResourcesManager = {
 			switch( format_info.type )
 			{
 				case "scene":
-					resource = LS.ResourcesManager.processTextScene( url, data, options, process_final );
+					resource = LS.ResourcesManager.processScene( url, data, options, process_final );
 					break;
 				case "mesh":
 					resource = LS.ResourcesManager.processTextMesh( url, data, options, process_final );
@@ -765,6 +804,8 @@ var ResourcesManager = {
 			resource.filename = options.filename;
 		if(!options.is_local)
 			resource.fullpath = fullpath;
+		else
+			fullpath = resource.fullpath = resource.filename;
 		if(options.from_prefab)
 			resource.from_prefab = options.from_prefab;
 		if(options.from_pack)
@@ -1417,17 +1458,20 @@ LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 	return mesh;
 }
 
-//Transform scene data in a SceneNode
-LS.ResourcesManager.processTextScene = function( filename, data, options ) {
+//this is called when loading a scene from a format that is not the regular serialize of our engine (like from ASE, G3DJ, BVH,...)
+//converts scene data in a SceneNode
+LS.ResourcesManager.processScene = function( filename, data, options ) {
 	//options = options || {};
 
 	var scene_data = LS.Formats.parse( filename, data, options );
 
 	if(scene_data == null)
 	{
-		console.error("Error parsing mesh: " + filename);
+		console.error("Error parsing scene: " + filename);
 		return null;
 	}
+
+	LS.ResourcesManager._parsing_local_file = true;
 
 	//resources (meshes, textures...)
 	for(var i in scene_data.meshes)
@@ -1452,8 +1496,15 @@ LS.ResourcesManager.processTextScene = function( filename, data, options ) {
 	var node = new LS.SceneNode();
 	node.configure( scene_data.root );
 
-	//if(options.insert)
-	//	LS.GlobalScene.root.addChild( node );
+	//make it a pack or prefab
+	if(options && options.filename)
+	{
+		var ext = LS.RM.getExtension( options.filename );
+		if(ext != "json")
+			options.filename += ".json";
+	}
+
+	LS.ResourcesManager._parsing_local_file = false;
 
 	return node;
 }

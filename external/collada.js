@@ -1255,11 +1255,10 @@ global.Collada = {
 			//var vcount = null;
 			//var xmlvcount = xmlpolygons.querySelector("vcount");
 			//var vcount = this.readContentAsUInt32( xmlvcount );
-			var xmlpolylist = xmlmesh.querySelector("polylist");
-			if(xmlpolylist)
-				mesh = this.readPolylist( xmlpolylist, sources );
+			var xmlpolylist_array = xmlmesh.querySelectorAll("polylist");
+			if( xmlpolylist_array && xmlpolylist_array.length )
+				mesh = this.readPolylistArray( xmlpolylist_array, sources );
 		}
-
 
 		if(!mesh)
 		{
@@ -1450,7 +1449,28 @@ global.Collada = {
 		return mesh;
 	},
 
-	readPolylist: function( xml_shape_root, sources )
+	readPolylistArray: function( xml_polylist_array, sources )
+	{
+		var meshes = [];
+
+		for(var i = 0; i < xml_polylist_array.length; ++i)
+		{
+			var xml_polylist = xml_polylist_array[i];
+			var mesh = this.readPolylist( xml_polylist, sources );
+			if(mesh)
+				meshes.push( mesh );
+		}
+
+		//one or none
+		if( meshes.length < 2)
+			return meshes[0];
+
+		//merge meshes
+		var mesh = this.mergeMeshes( meshes );
+		return mesh;
+	},
+
+	readPolylist: function( xml_polylist, sources )
 	{
 		var use_indices = false;
 
@@ -1464,21 +1484,21 @@ global.Collada = {
 		var group_name = "";
 		var material_name = "";
 
-		material_name = xml_shape_root.getAttribute("material");
-		buffers = this.readShapeInputs( xml_shape_root, sources );
+		material_name = xml_polylist.getAttribute("material") || "";
+		buffers = this.readShapeInputs( xml_polylist, sources );
 
-		var xmlvcount = xml_shape_root.querySelector("vcount");
+		var xmlvcount = xml_polylist.querySelector("vcount");
 		var vcount = this.readContentAsUInt32( xmlvcount );
 
-		var xmlp = xml_shape_root.querySelector("p");
+		var xmlp = xml_polylist.querySelector("p");
 		var data = this.readContentAsUInt32( xmlp );
+		var pos = 0;
 
 		var num_values_per_vertex = 1;
 		var buffers_length = buffers.length;
 		for(var b = 0; b < buffers_length; ++b)
 			num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
 
-		var pos = 0;
 		for(var i = 0, l = vcount.length; i < l; ++i)
 		{
 			var num_vertices = vcount[i];
@@ -1543,12 +1563,13 @@ global.Collada = {
 
 		var mesh = {
 			vertices: new Float32Array( buffers[0][1] ),
-			info: {},
+			info: {
+				material: material_name
+			},
 			_remap: new Uint32Array( vertex_remap )
 		};
 
 		this.transformMeshInfo( mesh, buffers, indicesArray );
-
 		return mesh;
 	},
 
@@ -1581,6 +1602,7 @@ global.Collada = {
 			"normal":"normals",
 			"texcoord":"coords"
 		};
+
 		for(var i = 1; i < buffers.length; ++i)
 		{
 			var name = buffers[i][0].toLowerCase();
@@ -2144,6 +2166,8 @@ global.Collada = {
 
 			var pos = 0;
 			var remap = mesh._remap;
+			if(!remap)
+				throw("no remap info found in mesh");
 			var max_bone = 0; //max bone affected
 
 			for(var i = 0, l = vcount.length; i < l; ++i)
@@ -2493,6 +2517,166 @@ global.Collada = {
 
 		}
 		return matrix;
+	},
+
+	mergeMeshes: function( meshes, options )
+	{
+		options = options || {};
+
+		var vertex_buffers = {};
+		var index_buffers = {};
+		var offsets = {}; //tells how many positions indices must be offseted
+		var vertex_offsets = [];
+		var current_vertex_offset = 0;
+		var groups = [];
+
+		var index_buffer_names = {
+			triangles: true,
+			wireframe: true
+		};
+
+		var remap = null;
+		var remap_offset = 0;
+
+		//vertex buffers
+		//compute size
+		for(var i = 0; i < meshes.length; ++i)
+		{
+			var mesh = meshes[i];
+			var offset = current_vertex_offset;
+			vertex_offsets.push( offset );
+			var length = mesh.vertices.length / 3;
+			current_vertex_offset += length;
+
+			for(var j in mesh)
+			{
+				var buffer = mesh[j];
+
+				if( j == "info" || j == "_remap" )
+					continue;
+
+				if( index_buffer_names[j] )
+				{
+					if(!index_buffers[j])
+						index_buffers[j] = buffer.length;
+					else
+						index_buffers[j] += buffer.length;
+				}
+				else
+				{
+					if(!vertex_buffers[j])
+						vertex_buffers[j] = buffer.length;
+					else
+						vertex_buffers[j] += buffer.length;
+				}
+			}
+
+			//groups
+			var group = {
+				name: "mesh_" + ( mesh.info.material || i ),
+				start: offset,
+				length: length,
+				material: ( mesh.info.material || "" )
+			};
+
+			groups.push( group );
+		}
+
+		//allocate
+		for(var j in vertex_buffers)
+		{
+			var datatype = options[j];
+			if(datatype === null)
+			{
+				delete vertex_buffers[j];
+				continue;
+			}
+
+			if(!datatype)
+				datatype = Float32Array;
+
+			vertex_buffers[j] = new datatype( vertex_buffers[j] );
+			offsets[j] = 0;
+		}
+
+		for(var j in index_buffers)
+		{
+			index_buffers[j] = new Uint32Array( index_buffers[j] );
+			offsets[j] = 0;
+		}
+
+		//store
+		for(var i = 0; i < meshes.length; ++i)
+		{
+			var mesh = meshes[i];
+			var offset = 0;
+
+			var buffer = mesh.vertices;
+			if(!buffer)
+				return console.error("mesh without vertices");
+			var length = buffer.length / 3;
+			
+			for(var j in mesh)
+			{
+				var buffer = mesh[j];
+				if( j == "info")
+					continue;
+
+				if(j == "_remap")
+				{
+					if(remap_offset)
+						apply_offset( buffer, 0, buffer.length, remap_offset );
+
+					if(!remap)
+					{
+						remap = new Uint32Array( buffer.length );
+						remap.set( buffer );
+					}
+					else
+					{
+						var new_remap = new Uint32Array( remap.length + buffer.length );
+						new_remap.set( remap );
+						new_remap.set( buffer, remap.length );
+						remap = new_remap;
+					}
+					remap_offset += length;
+				}
+
+				//INDEX BUFFER
+				if( index_buffer_names[j] )
+				{
+					index_buffers[j].set( buffer, offsets[j] );
+					apply_offset( index_buffers[j], offsets[j], buffer.length, vertex_offsets[i] );
+					offsets[j] += buffer.length;
+					continue;
+				}
+
+				//VERTEX BUFFER
+				if(!vertex_buffers[j])
+					continue;
+
+				vertex_buffers[j].set( buffer, offsets[j] );
+				offsets[j] += buffer.length;
+			}
+		}
+
+		function apply_offset( array, start, length, offset )
+		{
+			var l = start + length;
+			for(var i = start; i < l; ++i)
+				array[i] += offset;
+		}
+
+		var extra = { info: { groups: groups } };
+		var final_mesh = { info: { groups: groups } };
+		for(var i in vertex_buffers)
+			final_mesh[i] = vertex_buffers[i];
+		for(var i in index_buffers)
+			final_mesh[i] = index_buffers[i];
+
+		if( remap )
+			final_mesh._remap = remap;
+		return final_mesh;
 	}
 };
 

@@ -1,6 +1,8 @@
 function MorphDeformer(o)
 {
 	this.enabled = true;
+	this.mode = MorphDeformer.AUTOMATIC;
+
 	this.morph_targets = [];
 
 	if(MorphDeformer.max_supported_vertex_attribs === undefined)
@@ -12,8 +14,14 @@ function MorphDeformer(o)
 		this.configure(o);
 }
 
+MorphDeformer.AUTOMATIC = 0;
+MorphDeformer.CPU = 1;
+MorphDeformer.STREAMS = 2;
+MorphDeformer.TEXTURES = 3;
+
 MorphDeformer.icon = "mini-icon-teapot.png";
 MorphDeformer.force_GPU  = true; //used to avoid to recompile the shader when all morphs are 0
+MorphDeformer["@mode"] = { type:"enum", values: {"automatic": MorphDeformer.AUTOMATIC, "CPU": MorphDeformer.CPU, "streams": MorphDeformer.STREAMS, "textures": MorphDeformer.TEXTURES }};
 
 MorphDeformer.prototype.onAddedToNode = function(node)
 {
@@ -51,7 +59,6 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if(!render_instances.length || MorphDeformer.max_supported_vertex_attribs < 16)
 		return;
 
-
 	var morph_RI = this.enabled ? render_instances[ render_instances.length - 1] : null;
 	
 	if( morph_RI != this._last_RI && this._last_RI )
@@ -66,18 +73,30 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 	//grab the RI created previously and modified
 	//this.applyMorphTargets( last_RI );
 
-	if( this._morph_texture_supported === undefined )
-		this._morph_texture_supported = (gl.extensions["OES_texture_float"] !== undefined && gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS ) > 1);
+	if(this.mode === MorphDeformer.AUTOMATIC )
+	{
+		if( this._morph_texture_supported === undefined )
+			this._morph_texture_supported = (gl.extensions["OES_texture_float"] !== undefined && gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS ) > 1);
 
-	if( this._valid_morphs.length == 0 && !MorphDeformer.force_GPU )
-		return;
+		if( this._valid_morphs.length == 0 && !MorphDeformer.force_GPU )
+			return;
 
-	if( this._valid_morphs.length <= 4 ) //use GPU
-		this.applyMorphTargetsByGPU( morph_RI, this._valid_morphs );
-	else if( this._morph_texture_supported ) //use GPU with textures
-		this.applyMorphUsingTextures( morph_RI, this._valid_morphs );
+		if( this._valid_morphs.length <= 4 ) //use GPU
+			this.applyMorphTargetsByGPU( morph_RI, this._valid_morphs );
+		else if( this._morph_texture_supported ) //use GPU with textures
+			this.applyMorphUsingTextures( morph_RI, this._valid_morphs );
+		else
+			this.applyMorphBySoftware( morph_RI, this._valid_morphs );
+	}
 	else
-		this.applyMorphBySoftware( morph_RI, this._valid_morphs );
+	{
+		switch( this.mode )
+		{
+			case MorphDeformer.STREAMS: this.applyMorphTargetsByGPU( morph_RI, this._valid_morphs ); break;
+			case MorphDeformer.TEXTURES: this.applyMorphUsingTextures( morph_RI, this._valid_morphs ); break;
+			default: this.applyMorphBySoftware( morph_RI, this._valid_morphs ); break;
+		}
+	}
 }
 
 //gather morph targets data
@@ -161,12 +180,20 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	var weights = this._stream_weights;
 	if(!weights)
 		weights = this._stream_weights = new Float32Array( 4 );
+	else if( !weights.fill ) //is an Array?
+	{
+		for(var i = 0; i < weights.length; ++i)
+			weights[i] = 0;
+	}
 	else
 		weights.fill(0); //fill first because morphs_weights could have zero length
 	weights.set( morphs_weights );
 	RI.uniforms["u_morph_weights"] = weights;
 
-	RI.shader_blocks[1] = { block: LS.MorphDeformer.morphing_block, uniforms: { u_morph_weights: weights } };
+	//SHADER BLOCK
+	RI.addShaderBlock( MorphDeformer.shader_block );
+	RI.addShaderBlock( LS.MorphDeformer.morphing_streams_block, { u_morph_weights: weights } );
+	RI.removeShaderBlock( LS.MorphDeformer.morphing_texture_block );
 }
 
 MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
@@ -294,7 +321,14 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	delete RI.query.macros["USE_MORPHING_STREAMS"];
 	RI.query.macros["USE_MORPHING_TEXTURE"] = "";
 
-	RI.shader_blocks[1] = { block: LS.MorphDeformer.morphing_texture_block, uniforms: { u_morph_vertices_texture: LS.Renderer.MORPHS_TEXTURE_SLOT, u_morph_normals_texture: LS.Renderer.MORPHS_TEXTURE2_SLOT, u_morph_texture_size: this._texture_size } };
+	//SHADER BLOCK
+	RI.addShaderBlock( MorphDeformer.shader_block );
+	RI.addShaderBlock( LS.MorphDeformer.morphing_texture_block, { 
+				u_morph_vertices_texture: LS.Renderer.MORPHS_TEXTURE_SLOT, 
+				u_morph_normals_texture: LS.Renderer.MORPHS_TEXTURE2_SLOT, 
+				u_morph_texture_size: this._texture_size 
+			});
+	RI.removeShaderBlock( LS.MorphDeformer.morphing_streams_block );
 }
 
 
@@ -318,7 +352,9 @@ MorphDeformer.prototype.disableMorphingGPU = function( RI )
 		delete RI.uniforms["u_morph_normals_texture"];
 	}
 
-	RI.shader_blocks[1] = null;
+	RI.removeShaderBlock( MorphDeformer.shader_block );
+	RI.removeShaderBlock( LS.MorphDeformer.morphing_streams_block );
+	RI.removeShaderBlock( LS.MorphDeformer.morphing_texture_block );
 }
 
 MorphDeformer.prototype.applyMorphBySoftware = function( RI, valid_morphs )
@@ -579,71 +615,88 @@ MorphDeformer.prototype.optimizeMorphTargets = function()
 LS.registerComponent( MorphDeformer );
 LS.MorphDeformer = MorphDeformer;
 
-
+//SHADER BLOCKS ******************************************
 
 MorphDeformer.morph_streams_enabled_shader_code = "\n\
 	\n\
-	#ifdef USE_MORPHING_TEXTURE\n\
-		attribute float a_morphing_ids;\n\
-		\n\
-		uniform sampler2D u_morph_vertices_texture;\n\
-		uniform sampler2D u_morph_normals_texture;\n\
-		uniform vec4 u_morph_texture_size;\n\
-	#else\n\
-		//max vertex attribs are 16 usually, so 10 are available after using 6 for V,N,UV,UV2,BW,BI\n\
-		attribute vec3 a_vertex_morph0;\n\
-		attribute vec3 a_normal_morph0;\n\
-		attribute vec3 a_vertex_morph1;\n\
-		attribute vec3 a_normal_morph1;\n\
-		attribute vec3 a_vertex_morph2;\n\
-		attribute vec3 a_normal_morph2;\n\
-		attribute vec3 a_vertex_morph3;\n\
-		attribute vec3 a_normal_morph3;\n\
-	#endif\n\
+	//max vertex attribs are 16 usually, so 10 are available after using 6 for V,N,UV,UV2,BW,BI\n\
+	attribute vec3 a_vertex_morph0;\n\
+	attribute vec3 a_normal_morph0;\n\
+	attribute vec3 a_vertex_morph1;\n\
+	attribute vec3 a_normal_morph1;\n\
+	attribute vec3 a_vertex_morph2;\n\
+	attribute vec3 a_normal_morph2;\n\
+	attribute vec3 a_vertex_morph3;\n\
+	attribute vec3 a_normal_morph3;\n\
 	\n\
 	uniform vec4 u_morph_weights;\n\
 	\n\
 	void applyMorphing( inout vec4 position, inout vec3 normal )\n\
 	{\n\
-		#ifdef USE_MORPHING_TEXTURE\n\
-			vec2 coord;\n\
-			coord.x = ( mod( a_morphing_ids, u_morph_texture_size.x ) + 0.5 ) / u_morph_texture_size.x;\n\
-			coord.y = 1.0 - ( floor( a_morphing_ids / u_morph_texture_size.x ) + 0.5 ) / u_morph_texture_size.y;\n\
-			position.xyz += texture2D( u_morph_vertices_texture, coord ).xyz;\n\
-			normal.xyz += texture2D( u_morph_normals_texture, coord ).xyz;\n\
-		#else\n\
-			vec3 original_vertex = position.xyz;\n\
-			vec3 original_normal = normal.xyz;\n\
-			\n\
-			if(u_morph_weights[0] != 0.0)\n\
-			{\n\
-				position.xyz += (a_vertex_morph0 - original_vertex) * u_morph_weights[0]; normal.xyz += (a_normal_morph0 - original_normal) * u_morph_weights[0];\n\
-			}\n\
-			if(u_morph_weights[1] != 0.0)\n\
-			{\n\
-				position.xyz += (a_vertex_morph1 - original_vertex) * u_morph_weights[1]; normal.xyz += (a_normal_morph1 - original_normal) * u_morph_weights[1];\n\
-			}\n\
-			if(u_morph_weights[2] != 0.0)\n\
-			{\n\
-				position.xyz += (a_vertex_morph2 - original_vertex) * u_morph_weights[2]; normal.xyz += (a_normal_morph2 - original_normal) * u_morph_weights[2];\n\
-			}\n\
-			if(u_morph_weights[3] != 0.0)\n\
-			{\n\
-				position.xyz += (a_vertex_morph3 - original_vertex) * u_morph_weights[3]; normal.xyz += (a_normal_morph3 - original_normal) * u_morph_weights[3];\n\
-			}\n\
-		#endif\n\
+		vec3 original_vertex = position.xyz;\n\
+		vec3 original_normal = normal.xyz;\n\
+		\n\
+		if(u_morph_weights[0] != 0.0)\n\
+		{\n\
+			position.xyz += (a_vertex_morph0 - original_vertex) * u_morph_weights[0]; normal.xyz += (a_normal_morph0 - original_normal) * u_morph_weights[0];\n\
+		}\n\
+		if(u_morph_weights[1] != 0.0)\n\
+		{\n\
+			position.xyz += (a_vertex_morph1 - original_vertex) * u_morph_weights[1]; normal.xyz += (a_normal_morph1 - original_normal) * u_morph_weights[1];\n\
+		}\n\
+		if(u_morph_weights[2] != 0.0)\n\
+		{\n\
+			position.xyz += (a_vertex_morph2 - original_vertex) * u_morph_weights[2]; normal.xyz += (a_normal_morph2 - original_normal) * u_morph_weights[2];\n\
+		}\n\
+		if(u_morph_weights[3] != 0.0)\n\
+		{\n\
+			position.xyz += (a_vertex_morph3 - original_vertex) * u_morph_weights[3]; normal.xyz += (a_normal_morph3 - original_normal) * u_morph_weights[3];\n\
+		}\n\
 	}\n\
 ";
 
-MorphDeformer.morph_streams_disabled_shader_code = "\nvoid applyMorphing( inout vec4 position, inout vec3 normal ) {}\n";
+MorphDeformer.morph_texture_enabled_shader_code = "\n\
+	\n\
+	attribute float a_morphing_ids;\n\
+	\n\
+	uniform sampler2D u_morph_vertices_texture;\n\
+	uniform sampler2D u_morph_normals_texture;\n\
+	uniform vec4 u_morph_texture_size;\n\
+	\n\
+	uniform vec4 u_morph_weights;\n\
+	\n\
+	void applyMorphing( inout vec4 position, inout vec3 normal )\n\
+	{\n\
+		vec2 coord;\n\
+		coord.x = ( mod( a_morphing_ids, u_morph_texture_size.x ) + 0.5 ) / u_morph_texture_size.x;\n\
+		coord.y = 1.0 - ( floor( a_morphing_ids / u_morph_texture_size.x ) + 0.5 ) / u_morph_texture_size.y;\n\
+		position.xyz += texture2D( u_morph_vertices_texture, coord ).xyz;\n\
+		normal.xyz += texture2D( u_morph_normals_texture, coord ).xyz;\n\
+	}\n\
+";
+
+MorphDeformer.morph_enabled_shader_code = "\n\
+	\n\
+	#pragma shaderblock morphing_mode\n\
+";
+
+
+MorphDeformer.morph_disabled_shader_code = "\nvoid applyMorphing( inout vec4 position, inout vec3 normal ) {}\n";
 
 // ShaderBlocks used to inject to shader in runtime
 var morphing_block = new LS.ShaderBlock("morphing");
-morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_streams_enabled_shader_code, MorphDeformer.morph_streams_disabled_shader_code );
+morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_block.register();
-MorphDeformer.morphing_block = morphing_block;
+MorphDeformer.shader_block = morphing_block;
+
+var morphing_streams_block = new LS.ShaderBlock("morphing_streams");
+morphing_streams_block.defineContextMacros( { "morphing_mode": "morphing_streams"} );
+morphing_streams_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_streams_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
+morphing_streams_block.register();
+MorphDeformer.morphing_streams_block = morphing_streams_block;
 
 var morphing_texture_block = new LS.ShaderBlock("morphing_texture");
-morphing_texture_block.addCode( GL.VERTEX_SHADER, "\n#define USE_MORPHING_TEXTURE\n" + MorphDeformer.morph_streams_enabled_shader_code, MorphDeformer.morph_streams_disabled_shader_code );
+morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture"} );
+morphing_texture_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_texture_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_texture_block.register();
 MorphDeformer.morphing_texture_block = morphing_texture_block;

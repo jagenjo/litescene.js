@@ -61,6 +61,7 @@
 ../src/components/skinnedMeshRenderer.js
 ../src/components/morphDeformer.js
 ../src/components/skinDeformer.js
+../src/components/svgRenderer.js
 ../src/components/skybox.js
 ../src/components/background.js
 ../src/components/collider.js

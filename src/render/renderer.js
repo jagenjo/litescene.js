@@ -67,6 +67,9 @@ var Renderer = {
 
 	_reflection_probes: [],
 
+	//safety
+	_is_rendering_frame: false,
+
 	//fixed texture slots for global textures
 	SHADOWMAP_TEXTURE_SLOT: 6,
 	ENVIRONMENT_TEXTURE_SLOT: 5,
@@ -144,6 +147,13 @@ var Renderer = {
 	{
 	},
 
+
+	//used to clear the state
+	resetState: function()
+	{
+		this._is_rendering_frame = false;
+	},
+
 	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
 	setFullViewport: function(x,y,w,h)
 	{
@@ -167,8 +177,17 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		if(!LS.ShadersManager.ready)
+		if( !LS.ShadersManager.ready )
 			return; //not ready
+
+		if( this._is_rendering_frame )
+		{
+			console.error("Last frame didn't finish and a new one was issued. Remember that you cannot call LS.Renderer.render from an event dispatched during the render, this would cause a recursive loop. Call LS.Renderer.reset() to clear from an error.");
+			//this._is_rendering_frame = false; //for safety, we setting to false 
+			return;
+		}
+
+		this._is_rendering_frame = true;
 
 		render_settings = render_settings || this.default_render_settings;
 		this._current_render_settings = render_settings;
@@ -258,6 +277,7 @@ var Renderer = {
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, "afterRender", render_settings );
+		this._is_rendering_frame = false;
 	},
 
 	/**
@@ -648,7 +668,7 @@ var Renderer = {
 		{
 			var light = lights[j];
 			//same layer?
-			if( (light._root.layers & instance.layers) == 0 || (light._root.layers & this._current_camera.layers) == 0)
+			if( (light.layers & instance.layers) == 0 || (light.layers & this._current_camera.layers) == 0)
 				continue;
 			var light_intensity = light.computeLightIntensity();
 			//light intensity too low?
@@ -886,7 +906,7 @@ var Renderer = {
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
-		var pick_color = LS.Picking.getNextPickingColor( node );
+		var pick_color = LS.Picking.getNextPickingColor( instance.picking_node || node );
 
 		var query = new LS.ShaderQuery("flat");
 		query.add( scene._query );

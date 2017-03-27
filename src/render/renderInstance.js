@@ -47,6 +47,9 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 	this.shader_blocks = [];
+
+	this.picking_node = null; //for picking
+
 	//this.deformers = []; //TODO
 
 	//TO DO: instancing
@@ -84,6 +87,22 @@ RenderInstance.prototype.computeNormalMatrix = function()
 	var m = mat4.invert(this.normal_matrix, this.matrix);
 	if(m)
 		mat4.transpose(this.normal_matrix, m);
+}
+
+/**
+* applies a transformation to the current matrix
+*
+* @method applyTransform
+* @param {mat4} matrix
+* @param {mat4} normal_matrix [optional]
+*/
+RenderInstance.prototype.applyTransform = function( matrix, normal_matrix )
+{
+	mat4.mul( this.matrix, this.matrix, matrix );
+	if( normal_matrix )
+		mat4.mul( this.normal_matrix, this.normal_matrix, normal_matrix );
+	else
+		this.computeNormalMatrix();
 }
 
 //set the material and apply material flags to render instance
@@ -224,8 +243,8 @@ RenderInstance.prototype.render = function(shader)
 	//in case no coords found but they are required
 	if(shader.attributes["a_coord"] && !this.vertex_buffers["coords"])
 	{
-		this.mesh.computeTextureCoordinates();		
-		this.vertex_buffers["coords"] = this.mesh.vertexBuffers["coords"];
+		//this.mesh.computeTextureCoordinates();		
+		//this.vertex_buffers["coords"] = this.mesh.vertexBuffers["coords"];
 	}
 
 	//in case no tangents found but they are required
@@ -264,6 +283,37 @@ RenderInstance.prototype.render = function(shader)
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
 	  this.primitive, this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.addShaderBlock = function( block, uniforms )
+{
+	for(var i = 0; i < this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block == block )
+		{
+			if(uniforms !== undefined)
+				this.shader_blocks[i].uniforms = uniforms;
+			return i;
+		}
+	}
+	this.shader_blocks.push( { block: block, uniforms: uniforms } );
+	return this.shader_blocks.length - 1;
+}
+
+RenderInstance.prototype.removeShaderBlock = function( block )
+{
+	for(var i = 0; i < this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block !== block )
+			continue;
+
+		this.shader_blocks.splice(i,1);
+		break;
+	}
 }
 
 //checks the shader blocks attached to this instance and resolves the flags

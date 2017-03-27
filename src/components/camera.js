@@ -1,7 +1,7 @@
 // ******* CAMERA **************************
 
 /**
-* Camera that contains the info about a camera
+* Camera contains the info about a camera (matrices, near far planes, clear color, etc)
 * @class Camera
 * @namespace LS.Components
 * @constructor
@@ -733,7 +733,9 @@ Camera.prototype.getLocalVector = function(v, dest)
 Camera.prototype.getEye = function( out )
 {
 	out = out || vec3.create();
-	out.set( this._eye );
+	out[0] = this._eye[0];
+	out[1] = this._eye[1];
+	out[2] = this._eye[2];
 	if( this._root && this._root.transform )
 		return this._root.transform.getGlobalPosition( out );
 	return out;
@@ -752,7 +754,9 @@ Camera.prototype.getCenter = function( out )
 
 	if( this._root && this._root.transform )
 		return mat4.multiplyVec3( out, this._root.transform.getGlobalMatrixRef(), this._center );
-	out.set( this._center );
+	out[0] = this._center[0];
+	out[1] = this._center[1];
+	out[2] = this._center[2];
 	return out;
 }
 
@@ -785,7 +789,9 @@ Camera.prototype.getFront = function( out )
 Camera.prototype.getUp = function( out )
 {
 	out = out || vec3.create();
-	out.set( this._up );
+	out[0] = this._up[0];
+	out[1] = this._up[1];
+	out[2] = this._up[2];
 
 	if(this._root && this._root.transform)
 	{
@@ -1161,7 +1167,7 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {start:vec3, dir:vec3}
+* @return {Object} {start:vec3, dir:vec3} or null is values are undefined or NaN
 */
 Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 {
@@ -1173,6 +1179,8 @@ Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 		this.updateMatrices();
 	var eye = this.getEye();
 	var pos = vec3.unproject(vec3.create(), [x,y,1], this._viewprojection_matrix, viewport );
+	if(!pos)
+		return null;
 
 	if(this.type == Camera.ORTHOGRAPHIC)
 		eye = vec3.unproject(eye, [x,y,0], this._viewprojection_matrix, viewport );

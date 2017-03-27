@@ -11,6 +11,7 @@ function Script(o)
 {
 	this.enabled = true;
 	this.code = this.constructor.templates["component"];
+	this._blocked_functions = new Set(); //used to block functions that has errors
 
 	this._script = new LScript();
 
@@ -171,6 +172,7 @@ Script.prototype.getCode = function()
 Script.prototype.setCode = function( code, skip_events )
 {
 	this.code = code;
+	this._blocked_functions.clear();
 	this.processCode( skip_events );
 }
 
@@ -181,6 +183,7 @@ Script.prototype.setCode = function( code, skip_events )
 */
 Script.prototype.processCode = function( skip_events )
 {
+	this._blocked_functions.clear();
 	this._script.code = this.code;
 	if(!this._root || LS.Script.block_execution )
 		return true;
@@ -439,6 +442,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 {
 	if(!this.enabled)
 		return;
+
 	var event_info = LS.Script.API_events_to_function[ event_type ];
 	if(!event_info)
 		return; //????
@@ -447,7 +451,12 @@ Script.prototype.onScriptEvent = function(event_type, params)
 		this._breakpoint_on_call = false;
 		{{debugger}} //stops the execution if the console is open
 	}
-	return this._script.callMethod( event_info.name, params );
+
+	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+		return;
+
+	var r = this._script.callMethod( event_info.name, params, undefined, this );
+	return r;
 }
 
 Script.prototype.onAddedToNode = function( node )
@@ -518,6 +527,13 @@ Script.prototype.getComponentTitle = function()
 	return this.name; //name is a getter that reads the name from the code comment
 }
 
+Script.prototype.toInfoString = function()
+{
+	if(!this._root)
+		return LS.getObjectClassName( this );
+	return LS.getObjectClassName( this ) + " in node " + this._root.name;
+}
+
 
 //TODO stuff ***************************************
 /*
@@ -554,6 +570,7 @@ Script.prototype.onError = function(e)
 
 	e.script = this;
 	e.node = this._root;
+	this._blocked_functions.add( e.method_name );
 
 	LEvent.trigger( this, "code_error",e);
 	LEvent.trigger( scene, "code_error",e);
@@ -595,6 +612,7 @@ function ScriptFromFile(o)
 	this._filename = "";
 
 	this._script = new LScript();
+	this._blocked_functions = new Set(); //used to block functions that has errors
 
 	this._script.extra_methods = {
 		getComponent: (function() { return this; }).bind(this),

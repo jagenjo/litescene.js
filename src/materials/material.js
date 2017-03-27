@@ -185,7 +185,6 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-Material.texture_channels = []; //base material doesnt support any texture
 
 // RENDERING METHODS
 Material.prototype.fillShaderQuery = function(scene)
@@ -199,7 +198,7 @@ Material.prototype.fillShaderQuery = function(scene)
 		var sampler = this.getTextureSampler(i);
 		if(!sampler)
 			continue;
-		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "0";
+		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "transformed";
 
 		var texture = Material.getTextureFromSampler( sampler );
 		if(!texture) //loading or non-existant
@@ -473,8 +472,7 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 */
 Material.prototype.getTextureChannels = function()
 {
-	if(this.constructor.texture_channels)
-		return this.constructor.texture_channels;
+	//console.warn("this function should never be called, it should be overwritten");
 	return [];
 }
 

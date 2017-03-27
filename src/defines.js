@@ -61,5 +61,6 @@ LS.TYPES = {
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
 	COMPONENT: "component",
-	MATERIAL: "material"
+	MATERIAL: "material",
+	ARRAY: "array"
 };

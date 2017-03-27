@@ -23,6 +23,9 @@ function SceneInclude( o )
 		this.configure(o);
 }
 
+SceneInclude.max_recursive_level = 32;
+SceneInclude.recursive_level = 0;
+
 Object.defineProperty( SceneInclude.prototype, "scene_path", {
 	set: function(v){ 
 		if(this._scene_path == v)
@@ -86,14 +89,18 @@ SceneInclude.prototype.onRemovedFromScene = function(scene)
 //we need special functions for this events because they need function calls, not events
 SceneInclude.prototype.onStart = function()
 {
-	if(	this._scene_is_ready )
+	SceneInclude.recursive_level += 1;
+	if(	this._scene_is_ready && SceneInclude.recursive_level < SceneInclude.max_recursive_level )
 		this._scene.start();
+	SceneInclude.recursive_level -= 1;
 }
 
-SceneInclude.prototype.onUpdate = function()
+SceneInclude.prototype.onUpdate = function(e, dt)
 {
-	if(this.send_events)
-		this._scene.update();
+	SceneInclude.recursive_level += 1;
+	if(this.send_events && SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		this._scene.update(dt);
+	SceneInclude.recursive_level -= 1;
 }
 
 
@@ -128,18 +135,41 @@ SceneInclude.prototype.onCollectData = function()
 	var scene = this._root.scene;
 	var inner_scene = this._scene;
 
-	inner_scene.collectData();
+	SceneInclude.recursive_level += 1;
+	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		inner_scene.collectData();
+	SceneInclude.recursive_level -= 1;
+
+	var mat = null;
+	
+	if( this._root.transform )
+	{
+		mat = this._root.transform.getGlobalMatrix();
+	}
+	
 
 	//merge all the data
 	if( this.include_instances )
 	{
 		scene._instances.push.apply( scene._instances, inner_scene._instances);
 		scene._colliders.push.apply( scene._colliders, inner_scene._colliders);
+
+		if(mat)
+			for(var i = 0; i < inner_scene._instances.length; ++i)
+			{
+				var ri = inner_scene._instances[i];
+				ri.applyTransform( mat );	
+			}
 	}
 	if( this.include_lights )
+	{
+		//cannot apply transform here, we will be modifying the inner lights state
 		scene._lights.push.apply( scene._lights, inner_scene._lights);
+	}
 	if( this.include_cameras )
+	{
 		scene._cameras.push.apply( scene._cameras, inner_scene._cameras);
+	}
 }
 
 //propagate events
@@ -148,7 +178,10 @@ SceneInclude.prototype.onEvent = function(e,p)
 	if(!this.enabled || !this.send_events || !this._scene_path)
 		return;
 
-	LEvent.trigger( this._scene, e, p );
+	SceneInclude.recursive_level += 1;
+	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		LEvent.trigger( this._scene, e, p );
+	SceneInclude.recursive_level -= 1;
 }
 
 SceneInclude.prototype.load = function()
@@ -166,7 +199,11 @@ SceneInclude.prototype.unload = function()
 SceneInclude.prototype.reloadScene = function()
 {
 	this._scene_is_ready = false;
-	this._scene.loadFromResources( this._scene_path, inner.bind(this) );
+
+	SceneInclude.recursive_level += 1;
+	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		this._scene.loadFromResources( this._scene_path, inner.bind(this) );
+	SceneInclude.recursive_level -= 1;
 
 	function inner()
 	{
@@ -223,6 +260,19 @@ SceneInclude.prototype.getEvents = function()
 SceneInclude.prototype.getEventActions = function()
 {
 	return { "load": "function", "unload": "function" };
+}
+
+SceneInclude.prototype.getResources = function(res)
+{
+	if(this._scene_path)
+		res[ this._scene_path ] = LS.SceneTree;
+	return res;
+}
+
+SceneInclude.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if(old_name == this._scene_path)
+		this._scene_path = new_name;
 }
 
 LS.registerComponent( SceneInclude );

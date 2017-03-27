@@ -71,7 +71,17 @@ var parserOBJ = {
 		var lines = text.split("\n");
 		var length = lines.length;
 		for (var lineIndex = 0;  lineIndex < length; ++lineIndex) {
-			line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
+
+			var line = lines[lineIndex];
+			line = line.replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
+
+			if(line[ line.length - 1 ] == "\\") //breakline
+			{
+				lineIndex += 1;
+				var next_line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
+				line = (line.substr(0,line.length - 1) + next_line).replace(/[ \t]+/g, " ").replace(/\s\s*$/, "");
+			}
+			
 
 			if (line[0] == "#")
 				continue;
@@ -93,18 +103,7 @@ var parserOBJ = {
 			{
 				x = parseFloat(tokens[1]);
 				y = parseFloat(tokens[2]);
-				if( code != VT_CODE )
-				{
-					if(tokens[3] == '\\') //super weird case, OBJ allows to break lines with slashes...
-					{
-						//HACK! only works if the var is the thirth position...
-						++lineIndex;
-						line = lines[lineIndex].replace(/[ \t]+/g, " ").replace(/\s\s*$/, ""); //better than trim
-						z = parseFloat(line);
-					}
-					else
-						z = parseFloat(tokens[3]);
-				}
+				z = parseFloat(tokens[3]);
 			}
 
 			if (code == V_CODE) {

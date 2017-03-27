@@ -20,6 +20,7 @@ function ShaderMaterial( o )
 	this._properties_by_name = {};
 
 	this._passes = {};
+	this._light_mode = 0;
 
 	if(o) 
 		this.configure(o);
@@ -55,6 +56,16 @@ Object.defineProperty( ShaderMaterial.prototype, "properties", {
 			var p = this._properties[i];
 			this._properties_by_name[ p.name ] = p;
 		}
+	}
+});
+
+Object.defineProperty( ShaderMaterial.prototype, "enableLights", {
+	enumerable: true,
+	get: function() {
+		return this._light_mode != 0;
+	},
+	set: function(v) {
+		this._light_mode = v ? 1 : 0;
 	}
 });
 
@@ -456,7 +467,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( pass.id == COLOR_PASS && this._light_mode !== Material.NO_LIGHTS )
 		lights = LS.Renderer.getNearLights( instance );
 
-	if(!lights)
+	var ignore_lights = render_settings.lights_disabled;
+
+	if( !lights || lights.length == 0 || ignore_lights )
 	{
 		//extract shader compiled
 		var shader = shader_code.getShader( pass.name, block_flags );
@@ -468,6 +481,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 		//assign
 		shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, light ? light._uniforms : null, this._uniforms, instance.uniforms ] );
+
+		if( ignore_lights )
+			shader.setUniform("u_ambient_light", LS.ONES );
 
 		//render
 		instance.render( shader );
@@ -524,6 +540,20 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 ShaderMaterial.prototype.renderShadowInstance = function( instance, render_settings, pass )
 {
 	return this.renderInstance( instance, render_settings, pass );
+}
+
+ShaderMaterial.prototype.getTextureChannels = function()
+{
+	var channels = [];
+
+	for(var i in this._properties)
+	{
+		var p = this._properties[i];
+		if(p.is_texture)
+			channels.push( p.name );
+	}
+
+	return channels;
 }
 
 /**

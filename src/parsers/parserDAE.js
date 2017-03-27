@@ -34,10 +34,6 @@ var parserDAE = {
 		if( scene.metadata && scene.metadata.up_axis == "Z_UP" )
 			scene.root.model = mat4.rotateX( mat4.create(), mat4.create(), -90 * 0.0174532925 );
 
-		//skip renaming ids (this is done to ensure no collision with names coming from other files)
-		if(options.skip_renaming)
-			return scene;
-
 		//rename meshes, nodes, etc
 		var renamed = {};
 		var basename = clean_filename.substr(0, clean_filename.indexOf("."));
@@ -60,17 +56,18 @@ var parserDAE = {
 		}
 
 		//change local collada ids to valid uids 
-		replace_uids( scene.root );
+		inner_replace_names( scene.root );
 
-		function replace_uids( node )
+		function inner_replace_names( node )
 		{
 			//change uid
-			if(node.id)
+			if(node.id && !options.skip_renaming )
 			{
 				node.uid = "@" + basename + "::" + node.id;
 				renamed[ node.id ] = node.uid;
 			}
 			
+			//in case the node has some kind of type
 			if(node.type)
 			{
 				node.node_type = node.type;
@@ -89,7 +86,7 @@ var parserDAE = {
 
 			if(node.children)
 				for(var i in node.children)
-					replace_uids( node.children[i] );
+					inner_replace_names( node.children[i] );
 		}
 
 		//replace skinning joint ids
@@ -125,16 +122,24 @@ var parserDAE = {
 
 	processMesh: function( mesh, renamed )
 	{
-		//check that UVS have 2 components (MAX export 3 components for UVs)
-		if(mesh.coords && mesh.coords.length == mesh.vertices.length)
+		if(!mesh.vertices)
+			return; //mesh without vertices?!
+
+		var num_vertices = mesh.vertices.length / 3;
+		var num_coords = mesh.coords ? mesh.coords.length / 2 : 0;
+
+		if(num_coords && num_coords != num_vertices )
 		{
-			var num_vertices = mesh.vertices.length / 3;
 			var old_coords = mesh.coords;
 			var new_coords = new Float32Array( num_vertices * 2 );
-			for(var i = 0; i < num_vertices; ++i )
+
+			if(num_coords > num_vertices) //check that UVS have 2 components (MAX export 3 components for UVs)
 			{
-				new_coords[i*2] = old_coords[i*3];
-				new_coords[i*2+1] = old_coords[i*3+1];
+				for(var i = 0; i < num_vertices; ++i )
+				{
+					new_coords[i*2] = old_coords[i*3];
+					new_coords[i*2+1] = old_coords[i*3+1];
+				}
 			}
 			mesh.coords = new_coords;
 		}
@@ -170,6 +175,7 @@ var parserDAE = {
 
 				if( !renamed[nodename] )
 					continue;
+
 				nodename = renamed[ nodename ];
 				track.property = nodename + extra;
 			}
@@ -254,7 +260,6 @@ var parserDAE = {
 						continue;
 					take.tracks.splice(pos,1);
 				}
-
 			}
 
 		}//takes

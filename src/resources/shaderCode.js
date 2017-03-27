@@ -19,7 +19,7 @@ function ShaderCode( code )
 	this._compiled_shaders = {};
 
 	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
-	this._shaderblock_flags = {};
+	this._shaderblock_flags = {}; //used to store which shaderblock represent to every flag bit
 
 	this._version = 0;
 
@@ -62,6 +62,7 @@ ShaderCode.prototype.processCode = function()
 	this._functions = {};
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
+	this._shaderblock_vars = null;
 	this._has_error = false;
 
 	var subfiles = GL.processFileAtlas( this._code );
@@ -145,7 +146,7 @@ ShaderCode.prototype.processCode = function()
 	if(init_code)
 	{
 		//clean code
-		init_code = LS.ShaderCode.removeComments(init_code);
+		init_code = LS.ShaderCode.removeComments( init_code );
 
 		if(init_code) //still some code? (we test it because if there is a single line of code the behaviour changes)
 		{
@@ -225,10 +226,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		var shader_block = LS.ShadersManager.shader_blocks.get(i);
 		if(!shader_block)
 			continue; //???
-		if(!shader_block.enabled_defines)
-			continue;
-		for(var j in shader_block.enabled_defines)
-			context[ j ] = shader_block.enabled_defines[j];
+		if(shader_block.context_macros)
+		{
+			for(var j in shader_block.context_macros)
+				context[ j ] = shader_block.context_macros[j];
+		}
 	}
 
 	//vertex shader code
@@ -237,13 +239,14 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		vs_code = GL.Shader.SCREEN_VERTEX_SHADER;
 	else if( !code.vs )
 		return null;
-	else
+	else //vs is a GLSLCode 
 		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
 
+	//fs is a GLSLCode 
 	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
 
 	//no code or code includes something missing

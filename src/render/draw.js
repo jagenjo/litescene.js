@@ -636,7 +636,7 @@ var Draw = {
 		return this.renderCircle(radius, segments, in_z, true);
 	},
 
-	createSphereMesh: function(radius, segments, use_global )
+	createWireSphereMesh: function(radius, segments, use_global )
 	{
 		var axis = [0,1,0];
 		segments = segments || 100;
@@ -678,9 +678,26 @@ var Draw = {
 	*/
 	renderWireSphere: function(radius, segments)
 	{
-		var mesh = this.createSphereMesh( radius, segments, true );
+		var mesh = this.createWireSphereMesh( radius, segments, true );
 		return this.renderMesh( mesh, gl.LINES, undefined, undefined, 0, this._global_mesh_last_size );
 	},
+
+	/**
+	* Renders an sphere
+	* @method renderSolidSphere
+	* @param {number} radius
+	*/
+	renderSolidSphere: function(radius)
+	{
+		var mesh = this._sphere_mesh;
+		if(!this._sphere_mesh)
+			mesh = this._sphere_mesh = GL.Mesh.sphere({ size: 1 });
+		this.push();
+		this.scale( radius,radius,radius );
+		this.renderMesh( mesh, gl.TRIANGLES );
+		this.pop();
+	},
+
 
 	createWireBoxMesh: function( sizex, sizey, sizez, use_global )
 	{

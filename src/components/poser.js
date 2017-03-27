@@ -24,7 +24,6 @@ Poser.prototype.configure = function(o)
 {
 }
 
-
 Poser.icon = "mini-icon-clock.png";
 
 Poser.prototype.onAddedToScene = function( scene )
@@ -32,7 +31,7 @@ Poser.prototype.onAddedToScene = function( scene )
 	LEvent.bind(scene,"update",this.onUpdate, this);
 }
 
-Poser.prototype.onRemoveFromScene = function(scene)
+Poser.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbind(scene,"update",this.onUpdate, this);
 }
@@ -97,4 +96,4 @@ Poser.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
 }
 
-//LS.registerComponent( Poser );
+LS.registerComponent( Poser );

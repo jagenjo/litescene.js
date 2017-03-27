@@ -27,7 +27,8 @@ function StandardMaterial(o)
 	this.backlight_factor = 0;
 
 	this._specular_data = vec2.fromValues( 0.1, 10.0 );
-	this.specular_ontop = false;
+	this.specular_on_top = false;
+	this.specular_on_alpha = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
 	this.reflection_additive = false;
@@ -126,7 +127,6 @@ StandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
 StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 StandardMaterial.EXTRA_TEXTURE = "extra";
 
-StandardMaterial.texture_channels = [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
 StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture"];
 
 StandardMaterial.coding_help = "\
@@ -252,7 +252,7 @@ StandardMaterial.prototype.fillShaderQuery = function( scene )
 	if(this.emissive_material) //dont know whats this
 		query.macros.USE_EMISSIVE_MATERIAL = "";
 	
-	if(this.specular_ontop)
+	if(this.specular_on_top)
 		query.macros.USE_SPECULAR_ONTOP = "";
 	if(this.specular_on_alpha)
 		query.macros.USE_SPECULAR_ON_ALPHA = "";
@@ -293,14 +293,14 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	uniforms.u_material_color = this._color;
 
 	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	if(this.use_scene_ambient && scene.info && !this.textures["ambient"])
-		uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
-	else
-		uniforms.u_ambient_color = this.ambient;
+	//if(this.use_scene_ambient && scene.info && !this.textures["ambient"])
+	//	uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
+	//else
+	uniforms.u_ambient_color = this.ambient;
 
 	uniforms.u_emissive_color = this.emissive || vec4.create();
 	uniforms.u_specular = this._specular_data;
-	uniforms.u_reflection_info = [ (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel ];
+	uniforms.u_reflection_info = vec2.fromValues( (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel );
 	uniforms.u_backlight_factor = this.backlight_factor;
 	uniforms.u_normalmap_factor = this.normalmap_factor;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
@@ -357,6 +357,11 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 	this._samplers = samplers;
 }
 
+StandardMaterial.prototype.getTextureChannels = function()
+{
+	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
+}
+
 /**
 * assign a value to a property in a safe way
 * @method setProperty
@@ -390,7 +395,8 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		//strings
 		case "shader_name":
 		//bools
-		case "specular_ontop":
+		case "specular_on_top":
+		case "specular_on_alpha":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
@@ -459,7 +465,7 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
-		specular_ontop: LS.TYPES.BOOLEAN,
+		specular_on_top: LS.TYPES.BOOLEAN,
 		normalmap_tangent: LS.TYPES.BOOLEAN,
 		reflection_specular: LS.TYPES.BOOLEAN,
 		use_scene_ambient: LS.TYPES.BOOLEAN,
@@ -479,6 +485,7 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		return info;
 
 	var varname = path[0];
+	var type;
 
 	switch(varname)
 	{
@@ -502,7 +509,8 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 			type = LS.TYPES.VEC3; break;
 		case "detail_scale":
 			type = LS.TYPES.VEC2; break;
-		case "specular_ontop":
+		case "specular_on_top":
+		case "specular_on_alpha":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":

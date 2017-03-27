@@ -123,6 +123,7 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 	if(this._root.transform)
 		this._root.transform.getGlobalMatrix( RI.matrix );
+	RI.layers = this._root.layers;
 	RI.setMatrix( RI.matrix ); //force normal
 	//mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
 	mat4.getTranslation( RI.center, RI.matrix );

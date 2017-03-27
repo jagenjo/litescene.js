@@ -3,13 +3,14 @@ function Cloner(o)
 {
 	this.enabled = true;
 
+	this.mode = Cloner.GRID_MODE;
+
 	this.createProperty( "count", vec3.fromValues(10,1,1) );
 	this.createProperty( "size", vec3.fromValues(100,100,100) );
 
 	this.mesh = null;
 	this.lod_mesh = null;
 	this.material = null;
-	this.mode = Cloner.GRID_MODE;
 
 	if(o)
 		this.configure(o);
@@ -21,13 +22,14 @@ function Cloner(o)
 Cloner.GRID_MODE = 1;
 Cloner.RADIAL_MODE = 2;
 Cloner.MESH_MODE = 3;
+Cloner.CHILDREN_MODE = 4;
 
 Cloner.icon = "mini-icon-cloner.png";
 
 //vars
 Cloner["@mesh"] = { type: "mesh" };
 Cloner["@lod_mesh"] = { type: "mesh" };
-Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, "Mesh": Cloner.MESH_MODE } };
+Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE } };
 Cloner["@count"] = { type:"vec3", min:1, step:1 };
 
 Cloner.prototype.onAddedToScene = function(scene)
@@ -144,7 +146,11 @@ Cloner.prototype.updateRenderInstancesArray = function()
 	{
 		total = 0; //TODO
 	}
-
+	else if(this.mode === Cloner.CHILDREN_MODE)
+	{
+		if(this._root && this._root._children)
+			total = this._root._children.length;
+	}
 
 	if(!total) 
 	{
@@ -209,6 +215,7 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 			mat4.translate( RI.matrix, global, tmp );
 			mat4.multiplyVec3( RI.center, RI.matrix, zero );
 			++i;
+			RI.picking_node = null;
 		}
 	}
 	else if(this.mode == Cloner.RADIAL_MODE)
@@ -228,6 +235,26 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 			mat4.translate( RI.matrix, RI.matrix, tmp );
 			mat4.rotateY( RI.matrix,RI.matrix, offset * i );
 			mat4.multiplyVec3( RI.center, RI.matrix, zero );
+			RI.picking_node = null;
+		}
+	}
+	else if(this.mode == Cloner.CHILDREN_MODE)
+	{
+		if(!this._root || !this._root._children)
+			return;
+
+		for(var i = 0, l = RIs.length; i < l; ++i)
+		{
+			var RI = RIs[i];
+			if(!RI)
+				return;
+			var childnode = this._root._children[i];
+			if(!childnode)
+				continue;
+			if( childnode.transform )
+				childnode.transform.getGlobalMatrix( global );
+			RI.setMatrix( global );
+			RI.picking_node = childnode;
 		}
 	}
 }

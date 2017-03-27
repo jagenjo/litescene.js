@@ -47,6 +47,8 @@ var Network = {
             xhr.responseType = dataType;
         if (request.mimeType)
             xhr.overrideMimeType( request.mimeType );
+		if(request.nocache)
+			xhr.setRequestHeader('Cache-Control', 'no-cache');
         xhr.onload = function(load)
 		{
 			var response = this.response;
@@ -112,8 +114,23 @@ var Network = {
 			LEvent.trigger(this,"fail", err);
 		}
 
+		if( request.uploadProgress )
+		{
+			xhr.upload.addEventListener("progress", function(e){
+				var progress = 0;
+				if (e.lengthComputable)
+					progress = e.loaded / e.total;
+				request.uploadProgress( e, progress );
+			}, false);
+		}
+
 		if( request.progress )
-			xhr.addEventListener( "progress", request.progress );
+			xhr.addEventListener( "progress", function(e){
+				var progress = 0;
+				if (e.lengthComputable)
+					progress = e.loaded / e.total;
+				request.progress( e, progress );
+			});
 
         xhr.send(request.data);
 

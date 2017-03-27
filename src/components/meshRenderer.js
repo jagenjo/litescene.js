@@ -42,13 +42,13 @@ function MeshRenderer(o)
 	* @property point_size {number}
 	* @default -1;
 	*/
-	this.point_size = 0.1;
+	this._point_size = 0.1;
 	/**
 	* When rendering points tells if you want to use for every point the texture coordinates of the vertex or the point texture coordinates
 	* @property textured_points {boolean}
 	* @default false;
 	*/
-	this.textured_points = false;
+	this._textured_points = false;
 
 	this._must_update_static = true; //used in static meshes
 	this._transform_version = -1;
@@ -114,6 +114,25 @@ Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 	enumerable: true
 });
 
+Object.defineProperty( MeshRenderer.prototype, 'submesh_id', {
+	get: function() { return this._submesh_id; },
+	set: function(v) { this._submesh_id = v; },
+	enumerable: true
+});
+
+Object.defineProperty( MeshRenderer.prototype, 'point_size', {
+	get: function() { return this._point_size; },
+	set: function(v) { this._point_size = v; },
+	enumerable: true
+});
+
+Object.defineProperty( MeshRenderer.prototype, 'textured_points', {
+	get: function() { return this._textured_points; },
+	set: function(v) { this._textured_points = v; },
+	enumerable: true
+});
+
+
 MeshRenderer.icon = "mini-icon-teapot.png";
 
 //vars
@@ -169,11 +188,14 @@ MeshRenderer.prototype.onRemovedFromNode = function( node )
 */
 MeshRenderer.prototype.configure = function(o)
 {
+	if(o.uid)
+		this.uid = o.uid;
 	if(o.enabled !== undefined)
 		this.enabled = o.enabled;
 	this.mesh = o.mesh;
 	this.lod_mesh = o.lod_mesh;
-	this.submesh_id = o.submesh_id;
+	if(o.submesh_id !== undefined)
+		this.submesh_id = o.submesh_id;
 	this.primitive = o.primitive; //gl.TRIANGLES
 	this.material = o.material;
 	this.use_submaterials = !!o.use_submaterials;
@@ -182,8 +204,8 @@ MeshRenderer.prototype.configure = function(o)
 	if(o.point_size !== undefined) //legacy
 		this.point_size = o.point_size;
 	this.textured_points = !!o.textured_points;
-	if(o.material)
-		this.material = typeof(o.material) == "string" ? o.material : new LS.Material(o.material);
+	if(o.material && o.material.constructor === String)
+		this.material = o.material;
 }
 
 /**
@@ -195,23 +217,26 @@ MeshRenderer.prototype.serialize = function()
 {
 	var o = { 
 		enabled: this.enabled,
+		uid: this.uid,
 		mesh: this.mesh,
 		lod_mesh: this.lod_mesh
 	};
 
-	if(this.material)
-		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+	if(this.material && this.material.constructor === String )
+		o.material = this.material;
 
 	if(this.primitive != -1)
 		o.primitive = this.primitive;
-	if(this.submesh_id)
+	if(this.submesh_id != -1)
 		o.submesh_id = this.submesh_id;
-	if(this.use_submaterials)
-		o.use_submaterials = this.use_submaterials;
-	o.submaterials = this.submaterials;
 	o.point_size = this.point_size;
 	o.textured_points = this.textured_points;
 	o.material = this.material;
+
+	if(this.use_submaterials)
+		o.use_submaterials = this.use_submaterials;
+	o.submaterials = this.submaterials;
+
 	return o;
 }
 
@@ -397,6 +422,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	var RI = this._RI;
 	var is_static = this._root.flags && this._root.flags.is_static;
 	var transform = this._root.transform;
+	RI.layers = this._root.layers;
 
 	//optimize
 	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )

@@ -1365,7 +1365,6 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		if(this.value_size === 1)
 			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
 
-
 		result = result || this._result;
 
 		//multiple data
@@ -1383,8 +1382,8 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		else if(this.type == "trans10")
 		{
 			var rotR = result.subarray(3,7);
-			var rotA = a_value.subarray(3,7);
-			var rotB = b_value.subarray(3,7);
+			var rotA = a[1].subarray(3,7);
+			var rotB = b[1].subarray(3,7);
 			quat.slerp( rotR, rotB, rotA, t );
 			quat.normalize( rotR, rotR );
 		}

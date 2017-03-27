@@ -46,6 +46,9 @@ LS.Formats = {
 	{
 		options = options || {};
 		var info = this.getFileFormatInfo( filename );
+		if(!info) //unsupported extension
+			return null;
+
 		if(options.extension)
 			info.extension = options.extension; //force a format
 		else
@@ -181,18 +184,6 @@ LS.Formats.addSupportedFormat( "json,js,txt,html,css,csv", { dataType: "text" } 
 LS.Formats.addSupportedFormat( "glsl", { dataType: "text", resource: "ShaderCode", "resourceClass": LS.ShaderCode  } );
 LS.Formats.addSupportedFormat( "zip", { dataType: "arraybuffer" } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
-
-/*
-	image_extensions: ["png","jpg"], //for images
-	nonative_image_extensions: ["tga","dds"], //for images that need parsing
-	mesh_extensions: ["obj", "bin","ase","gr2","json","jsmesh"], //for meshes
-	scene_extensions: ["dae"], //for scenes
-	generic_extensions: ["xml","js","json"], //unknown data container
-	xml_extensions: ["xml","dae"], //for sure is XML
-	json_extensions: ["js","json"], //for sure is JSON
-	binary_extensions: ["bin","tga","dds"], //for sure is binary and needs to be read as a byte array
-*/
-
 
 
 //parsers usually need this

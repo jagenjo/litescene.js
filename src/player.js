@@ -18,10 +18,11 @@
 
 	Optional callbacks to attach
 	============================
-	- onPreDraw: executed before drawing a frame
-	- onDraw: executed after drawing a frame
+	- onPreDraw: executed before drawing a frame (in play mode)
+	- onDraw: executed after drawing a frame (in play mode)
 	- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
 	- onUpdate(dt): executed after updating the scene (delta_time as parameter)
+	- onDrawLoading: executed when loading
 	- onMouse(e): when a mouse event is triggered
 	- onKey(e): when a key event is triggered
 * @namespace LS
@@ -317,24 +318,29 @@ Player.prototype.stop = function()
 
 Player.prototype._ondraw = function()
 {
-	if(this.state != LS.Player.PLAYING)
-		return;
-
-	if(this.onPreDraw)
-		this.onPreDraw();
-
 	var scene = this.scene;
 
-	if(scene._must_redraw || this.force_redraw )
+	if(this.state == LS.Player.PLAYING)
 	{
-		scene.render( scene.info ? scene.info.render_settings : this.render_settings );
+		if(this.onPreDraw)
+			this.onPreDraw();
+
+		if(scene._must_redraw || this.force_redraw )
+		{
+			scene.render( scene.info ? scene.info.render_settings : this.render_settings );
+		}
+
+		if(this.onDraw)
+			this.onDraw();
 	}
 
-	if(this.onDraw)
-		this.onDraw();
-
 	if(this.loading && this.loading.visible )
+	{
 		this.renderLoadingBar( this.loading );
+		LEvent.trigger( this.scene, "render_loading" );
+		if(this.onDrawLoading)
+			this.onDrawLoading();
+	}
 }
 
 Player.prototype._onupdate = function(dt)
@@ -362,7 +368,7 @@ Player.prototype._onmouse = function(e)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	LEvent.trigger( this.scene, e.eventType || e.type, e );
+	LEvent.trigger( this.scene, e.eventType || e.type, e, true );
 
 	//hardcoded event handlers in the player
 	if(this.onMouse)

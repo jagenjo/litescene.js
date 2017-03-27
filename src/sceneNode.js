@@ -1080,6 +1080,20 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 {
 	extra_info = extra_info || {};
 
+	if(!mesh_id)
+		return;
+
+	if( mesh_id.constructor !== String )
+	{
+		extra_info = mesh_id;
+		mesh_id = extra_info.mesh;
+		if(!mesh_id)
+		{
+			console.warn("Mesh info without mesh id");
+			return null;
+		}
+	}
+
 	var mesh = LS.ResourcesManager.meshes[ mesh_id ];
 
 	if(!mesh)
@@ -1094,6 +1108,8 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 		mesh_render_config.submesh_id = extra_info.submesh_id;
 	if(extra_info.morph_targets !== undefined)
 		mesh_render_config.morph_targets = extra_info.morph_targets;
+	if(extra_info.material !== undefined)
+		mesh_render_config.material = extra_info.material;
 
 	var compo = new LS.Components.MeshRenderer( mesh_render_config );
 
@@ -1215,14 +1231,17 @@ SceneNode.prototype._onChildRemoved = function( node, recompute_transform, remov
 	if(this.transform)
 	{
 		//unlink transform
-		if(recompute_transform)
+		if(node.transform)
 		{
-			var m = node.transform.getGlobalMatrix();
-			node.transform._parent = null;
-			node.transform.fromMatrix(m);
+			if(recompute_transform)
+			{
+				var m = node.transform.getGlobalMatrix();
+				node.transform._parent = null;
+				node.transform.fromMatrix(m);
+			}
+			else
+				node.transform._parent = null;
 		}
-		else
-			node.transform._parent = null;
 	}
 
 	if( remove_components )

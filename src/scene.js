@@ -348,13 +348,14 @@ SceneTree.prototype.serialize = function()
 *
 * @method setFromJSON
 * @param {String} data JSON object containing the scene
-* @param {Function}[on_complete=null] the callback to call when the loading is complete
+* @param {Function}[on_complete=null] the callback to call when the scene is ready
 * @param {Function}[on_error=null] the callback to call if there is a  loading error
 * @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
 * @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
+* @param {Function}[on_scripts_loaded=null] the callback to call when the loading is complete but before assigning the scene
 */
 
-SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded )
+SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded, on_scripts_loaded )
 {
 	if(!data)
 		return;
@@ -385,8 +386,8 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	function inner_success( response )
 	{
-		if(on_complete)
-			on_complete(that);
+		if(on_scripts_loaded)
+			on_scripts_loaded(that,response);
 
 		that.init();
 		that.configure(response);
@@ -399,6 +400,9 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
+
+		if(on_complete)
+			on_complete(that);
 	}
 
 	function inner_all_loaded()
@@ -725,6 +729,25 @@ SceneTree.prototype.getActiveCameras = function( force )
 	if(force)
 		LEvent.trigger(this, "collectCameras", this._cameras );
 	return this._cameras;
+}
+
+/**
+* Returns an array with all the cameras in the scene (even if they are disabled)
+*
+* @method getAllCameras
+* @return {Array} cameras
+*/
+SceneTree.prototype.getAllCameras = function()
+{
+	var cameras = [];
+	for(var i = 0; i < this._nodes.length; ++i)
+	{
+		var node = this._nodes[i];
+		var node_cameras = node.getComponents( LS.Components.Camera );
+		if(node_cameras && node_cameras.length)
+			cameras = cameras.concat( node_cameras );
+	}
+	return cameras;
 }
 
 SceneTree.prototype.getLight = function()

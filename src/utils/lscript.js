@@ -113,7 +113,7 @@ LScript.prototype.hasMethod = function(name)
 }
 
 //argv must be an array with parameters, unless skip_expand is true
-LScript.prototype.callMethod = function(name, argv, expand_parameters)
+LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_object )
 {
 	if(!this._context || !this._context[name]) 
 		return;
@@ -134,7 +134,10 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	catch(err)
 	{
 		var error_line = LScript.computeLineFromError(err);
-		console.error("Error in function\n" + err);
+		var parent_info = ""; 
+		if (parent_object && parent_object.toInfoString )
+			parent_info = " from " + parent_object.toInfoString();
+		console.error("Error from function " + name + parent_info + ": ", err.toString());
 		if( console.groupCollapsed )
 		{
 			console.groupCollapsed("Error line: " + error_line + " Watch code");
@@ -144,7 +147,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		else
 			console.error("Error line: " + error_line);
 		if(this.onerror)
-			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code});
+			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code, method_name: name });
 		//throw new Error( err.stack ); //TEST THIS
 	}
 }

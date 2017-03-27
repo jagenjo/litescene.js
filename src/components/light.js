@@ -1,7 +1,7 @@
 //***** LIGHT ***************************
 
 /**
-* Light that contains the info about the camera
+* Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)
 * @class Light
 * @constructor
 * @param {Object} object to configure from
@@ -37,6 +37,15 @@ function Light(o)
 	* @default true
 	*/
 	this.enabled = true;
+
+	/**
+	* Layers mask, this layers define which objects are iluminated by this light
+	* @property layers
+	* @type {Number}
+	* @default true
+	*/
+	this.layers = 0xFF;
+
 
 	/**
 	* Near distance
@@ -117,7 +126,6 @@ function Light(o)
 	this.force_light_matrix = false; 
 	this._light_matrix = mat4.create();
 
-	this.extra_light_shader_code = null;
 	this.extra_texture = null;
 
 	//vectors in world space
@@ -138,9 +146,10 @@ function Light(o)
 		u_light_color: vec3.create(),
 		u_light_att: this._attenuation_info,
 		u_light_offset: this.offset,
-		u_light_matrix: this._light_matrix,
-		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
-		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT
+		u_light_extra: vec4.create(),
+		u_light_matrix: this._light_matrix
+//		u_shadow_params: vec4.fromValues( 1, this.shadow_bias, 1, 100 ),
+//		shadowmap: LS.Renderer.SHADOWMAP_TEXTURE_SLOT
 	};
 
 	//configure
@@ -174,6 +183,14 @@ Object.defineProperty( Light.prototype, 'position', {
 Object.defineProperty( Light.prototype, 'target', {
 	get: function() { return this._target; },
 	set: function(v) { this._target.set(v);  },
+	enumerable: true
+});
+
+Object.defineProperty( Light.prototype, 'extra', {
+	get: function() { return this._uniforms.u_light_extra; },
+	set: function(v) { 
+		if(v)
+			this._uniforms.u_light_extra.set(v);  },
 	enumerable: true
 });
 
@@ -212,49 +229,6 @@ Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 Light.shadowmap_depth_texture = true;
 Light.shadow_shaderblocks = [];
 Light.shadow_shaderblocks_by_name = [];
-
-
-Light.coding_help = "\
-LightInfo LIGHT -> light info before applying equation\n\
-Input IN -> info about the mesh\n\
-SurfaceOutput o -> info about the surface properties of this pixel\n\
-\n\
-struct LightInfo {\n\
-	vec3 Color;\n\
-	vec3 Ambient;\n\
-	float Diffuse; //NdotL\n\
-	float Specular; //RdotL\n\
-	vec3 Emission;\n\
-	vec3 Reflection;\n\
-	float Attenuation;\n\
-	float Shadow; //1.0 means fully lit\n\
-};\n\
-\n\
-struct Input {\n\
-	vec4 color;\n\
-	vec3 vertex;\n\
-	vec3 normal;\n\
-	vec2 uv;\n\
-	vec2 uv1;\n\
-	\n\
-	vec3 camPos;\n\
-	vec3 viewDir;\n\
-	vec3 worldPos;\n\
-	vec3 worldNormal;\n\
-	vec4 screenPos;\n\
-};\n\
-\n\
-struct SurfaceOutput {\n\
-	vec3 Albedo;\n\
-	vec3 Normal;\n\
-	vec3 Ambient;\n\
-	vec3 Emission;\n\
-	float Specular;\n\
-	float Gloss;\n\
-	float Alpha;\n\
-	float Reflectivity;\n\
-};\n\
-";
 
 Light.prototype.onAddedToNode = function(node)
 {
@@ -481,16 +455,12 @@ Light.prototype.onResourceRenamed = function (old_name, new_name, resource)
 //Layer stuff
 Light.prototype.checkLayersVisibility = function( layers )
 {
-	if(!this._root)
-		return false;
-	return (this._root.layers & layers) !== 0;
+	return (this.layers & layers) !== 0;
 }
 
 Light.prototype.isInLayer = function(num)
 {
-	if(!this._root)
-		return false;
-	return (this._root.layers & (1<<num)) !== 0;
+	return (this.layers & (1<<num)) !== 0;
 }
 
 /**
@@ -581,21 +551,6 @@ Light.prototype.prepare = function( render_settings )
 	this._attenuation_info[1] = this.att_end;
 	uniforms.u_light_offset = this.offset;
 
-	//extra code
-	if(this.extra_light_shader_code)
-	{
-		var code = null;
-		if(this._last_extra_light_shader_code != this.extra_light_shader_code)
-		{
-			code = LS.Material.processShaderCode( this.extra_light_shader_code );
-			this._last_processed_extra_light_shader_code = code;
-		}
-		else
-			code = this._last_processed_extra_light_shader_code;
-	}
-	else
-		this._last_processed_extra_light_shader_code = null;
-
 	//generate shadowmaps
 	var must_update_shadowmap = render_settings.update_shadowmaps && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
 
@@ -671,7 +626,9 @@ Light.prototype.prepare = function( render_settings )
 	if(use_shadows)
 	{
 		var closest_far = this.computeShadowmapFar();
-		uniforms.u_shadow_params = [ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ];
+		if(!uniforms.u_shadow_params)
+			uniforms.u_shadow_params = vec4.create();
+		uniforms.u_shadow_params.set([ 1.0 / this._shadowmap.width, this.shadow_bias, this.near, closest_far ]);
 		//uniforms.shadowmap = this._shadowmap.bind(10); //fixed slot
 		uniforms.shadowmap = LS.Renderer.SHADOWMAP_TEXTURE_SLOT;
 		uniforms.u_light_matrix = this._light_matrix;
@@ -720,11 +677,6 @@ Light.prototype.getQuery = function(instance, render_settings)
 	}
 	else
 		delete query.macros["USE_SHADOW_MAP"];
-
-	if(this._last_processed_extra_light_shader_code && (!this.extra_texture || LS.ResourcesManager.getTexture(this.extra_texture)) )
-		query.macros["USE_EXTRA_LIGHT_SHADER_CODE"] = this._last_processed_extra_light_shader_code;
-	else
-		delete query.macros["USE_EXTRA_LIGHT_SHADER_CODE"];
 
 	return query;
 }
@@ -963,6 +915,8 @@ LS.ShadersManager.registerSnippet("surface","\n\
 		o.Specular = 0.5;\n\
 		o.Gloss = 10.0;\n\
 		o.Ambient = vec3(1.0);\n\
+		o.Emission = vec3(0.0);\n\
+		o.Reflectivity = 0.0;\n\
 		return o;\n\
 	}\n\
 ");
@@ -976,6 +930,8 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	uniform vec3 u_light_color;\n\
 	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
 	uniform vec2 u_light_att; //start,end \n\
+	uniform float u_light_offset; //ndotl offset\n\
+	uniform vec4 u_light_extra; //user data\n\
 	uniform mat4 u_light_matrix; //to light space\n\
 	uniform vec3 u_ambient_light;\n\
 	struct Light {\n\
@@ -986,6 +942,8 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		vec3 Front;\n\
 		vec4 ConeInfo; //for spotlights\n\
 		vec2 Attenuation; //start and end\n\
+		float Offset; //phong_offset\n\
+		vec4 Extra; //users can use this\n\
 		mat4 Matrix; //converts to light space\n\
 	};\n\
 	//Returns the info about the light\n\
@@ -1002,6 +960,8 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		LIGHT.Front = u_light_front;\n\
 		LIGHT.ConeInfo = u_light_angle; //for spotlights\n\
 		LIGHT.Attenuation = u_light_att; //start and end\n\
+		LIGHT.Offset = u_light_offset;\n\
+		LIGHT.Extra = u_light_extra;\n\
 		LIGHT.Matrix = u_light_matrix; //converts to light space\n\
 		return LIGHT;\n\
 	}\n\
@@ -1074,7 +1034,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 		if( LIGHT.Info.x == 2.0 && LIGHT.Info.y == 1.0 )\n\
 			FINALLIGHT.Attenuation *= spotFalloff( LIGHT.Front, normalize( LIGHT.Position - v_pos ), LIGHT.ConeInfo.z, LIGHT.ConeInfo.w );\n\
 		\n\
-		NdotL = max( 0.0, NdotL );\n\
+		NdotL = max( 0.0, NdotL + LIGHT.Offset );\n\
 		FINALLIGHT.Diffuse = abs(NdotL);\n\
 		\n\
 		FINALLIGHT.Shadow = 1.0;\n\
@@ -1242,7 +1202,7 @@ Light._shadowmap_2d_enabled_code = "\n\
 	\n\
 	float testShadow()\n\
 	{\n\
-		vec3 offset;\n\
+		vec3 offset = vec3(0.0);\n\
 		float shadow = 0.0;\n\
 		float depth = 0.0;\n\
 		float bias = u_shadow_params.y;\n\
