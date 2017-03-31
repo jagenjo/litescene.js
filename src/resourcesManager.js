@@ -415,8 +415,8 @@ var ResourcesManager = {
 	{
 		if(!resource)
 			return null;
-		if(resource.object_type)
-			return resource.object_type;
+		if(resource.object_class)
+			return resource.object_class;
 		if(resource.constructor.resource_type)
 			return resource.constructor.resource_type;
 		return LS.getObjectClassName( resource );
@@ -708,7 +708,7 @@ var ResourcesManager = {
 		//this.resources_being_loaded[url] = [];
 		this.resources_being_processed[url] = true;
 
-		//no extension, then or it is a JSON, or an object with object_type or a WBin
+		//no extension, then or it is a JSON, or an object with object_class or a WBin
 		if(!extension)
 			return this.processDataResource( url, data, options, process_final );
 
@@ -860,9 +860,9 @@ var ResourcesManager = {
 		//resource.fullpath = filename; //fullpath only if they are in the server
 
 		//Compute resource type
-		if(!resource.object_type)
-			resource.object_type = LS.getObjectClassName( resource );
-		var type = resource.object_type;
+		if(!resource.object_class)
+			resource.object_class = LS.getObjectClassName( resource );
+		var type = resource.object_class;
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
 
@@ -1212,11 +1212,23 @@ LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, dat
 LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {
 	var resource = data;
 	if( data.constructor === String )
-		data = JSON.parse( data );
-
-	if( data.object_type && !data.is_data )
 	{
-		var ctor = LS.Classes[ data.object_type ] || window[ data.object_type ];
+		try
+		{
+			data = JSON.parse( data );
+		}
+		catch (err)
+		{
+			console.error("invalid JSON");
+			return null;
+		}
+	}
+
+	var class_name = data.object_class || data.object_type; //object_type for LEGACY
+
+	if( class_name && !data.is_data )
+	{
+		var ctor = LS.Classes[ class_name ] || window[ class_name ];
 		if(ctor)
 		{
 			if(ctor.prototype.configure)
@@ -1229,7 +1241,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 		}
 		else
 		{
-			console.error( "JSON object_type class not found: " + data.object_type );
+			console.error( "JSON object_class class not found: " + data.object_class );
 			return null;
 		}
 	}
@@ -1286,7 +1298,7 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 	}
 
 	//JS OBJECT?
-	var class_name = data.object_type;
+	var class_name = data.object_class;
 	if(class_name && LS.Classes[class_name] )
 	{
 		var ctor = LS.Classes[class_name];
@@ -1514,7 +1526,7 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 
 LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mesh ) {
 
-	mesh.object_type = "Mesh"; //useful
+	mesh.object_class = "Mesh"; //useful
 	if(mesh.metadata)
 	{
 		mesh.metadata = {};

@@ -94,8 +94,10 @@
 ../src/components/poser.js
 ../src/components/spline.js
 ../src/components/threeJS.js
-
 ../src/components/interactiveController.js
+
+../src/scene.js
+../src/sceneNode.js
 
 ../src/formats.js
 ../src/parsers/parserASE.js
@@ -108,9 +110,6 @@
 ../src/parsers/parserSTL.js
 ../src/parsers/parserTGA.js
 ../src/parsers/parserOtherFormats.js
-
-../src/scene.js
-../src/sceneNode.js
 
 ../src/player.js
 

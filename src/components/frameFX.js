@@ -34,6 +34,7 @@ FrameFX.prototype.configure = function(o)
 FrameFX.prototype.serialize = function()
 {
 	return { 
+		object_class: "FrameFX",
 		enabled: this.enabled,
 		uid: this.uid,
 		frame: this.frame.serialize(),

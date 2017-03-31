@@ -288,7 +288,7 @@ global.Collada = {
 
 		//Create a scene tree
 		var scene = { 
-			object_type:"SceneTree", 
+			object_class:"SceneTree", 
 			light: null,
 			materials: {},
 			meshes: {},
@@ -829,7 +829,7 @@ global.Collada = {
 			}
 		}
 
-		material.object_type = "Material";
+		material.object_class = "Material";
 		return material;
 	},
 
@@ -1310,7 +1310,7 @@ global.Collada = {
 
 		//extra info
 		mesh.filename = id;
-		mesh.object_type = "Mesh";
+		mesh.object_class = "Mesh";
 
 		this._geometries_found[ id ] = mesh;
 		return mesh;
@@ -1795,7 +1795,7 @@ global.Collada = {
 		var xmlanimation_childs = xmlanimations.childNodes;
 
 		var animations = {
-			object_type: "Animation",
+			object_class: "Animation",
 			takes: {}
 		};
 

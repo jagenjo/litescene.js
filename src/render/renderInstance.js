@@ -18,7 +18,7 @@ function RenderInstance( node, component )
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
-	this.primitive = gl.TRIANGLES;
+	this.primitive = GL.TRIANGLES;
 
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
@@ -46,6 +46,8 @@ function RenderInstance( node, component )
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
+
+	this.shader_block_flags = 0;
 	this.shader_blocks = [];
 
 	this.picking_node = null; //for picking
@@ -287,6 +289,9 @@ RenderInstance.prototype.render = function(shader)
 
 RenderInstance.prototype.addShaderBlock = function( block, uniforms )
 {
+	if( block.flag_mask & this.shader_block_flags && uniforms === undefined )
+		return;
+
 	for(var i = 0; i < this.shader_blocks.length; ++i)
 	{
 		if(!this.shader_blocks[i])
@@ -299,11 +304,15 @@ RenderInstance.prototype.addShaderBlock = function( block, uniforms )
 		}
 	}
 	this.shader_blocks.push( { block: block, uniforms: uniforms } );
+	this.shader_block_flags |= block.flag_mask;
 	return this.shader_blocks.length - 1;
 }
 
 RenderInstance.prototype.removeShaderBlock = function( block )
 {
+	if( ! (block.flag_mask & this.shader_block_flags) )
+		return;
+
 	for(var i = 0; i < this.shader_blocks.length; ++i)
 	{
 		if(!this.shader_blocks[i])
@@ -312,6 +321,7 @@ RenderInstance.prototype.removeShaderBlock = function( block )
 			continue;
 
 		this.shader_blocks.splice(i,1);
+		this.shader_block_flags &= ~block.flag_mask;
 		break;
 	}
 }
@@ -319,6 +329,9 @@ RenderInstance.prototype.removeShaderBlock = function( block )
 //checks the shader blocks attached to this instance and resolves the flags
 RenderInstance.prototype.computeShaderBlockFlags = function()
 {
+	return this.shader_block_flags;
+
+	/*
 	var r = 0;
 	for(var i = 0; i < this.shader_blocks.length; ++i)
 	{
@@ -329,6 +342,7 @@ RenderInstance.prototype.computeShaderBlockFlags = function()
 		r |= block.flag_mask;
 	}
 	return r;
+	*/
 }
 
 /*

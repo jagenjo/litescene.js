@@ -216,6 +216,7 @@ MeshRenderer.prototype.configure = function(o)
 MeshRenderer.prototype.serialize = function()
 {
 	var o = { 
+		object_class: "MeshRenderer",
 		enabled: this.enabled,
 		uid: this.uid,
 		mesh: this.mesh,

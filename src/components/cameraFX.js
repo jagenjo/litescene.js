@@ -41,6 +41,7 @@ CameraFX.prototype.configure = function(o)
 CameraFX.prototype.serialize = function()
 {
 	return { 
+		object_class: "CameraFX",
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,
 		frame: this.frame.serialize(),

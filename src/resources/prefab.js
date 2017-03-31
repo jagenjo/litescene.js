@@ -162,7 +162,7 @@ Prefab.createPrefab = function( filename, node_data, resource_names_list )
 	resource_names_list = resource_names_list || [];
 
 	//LS.clearUIds( node_data ); //remove uids of nodes and components
-	node_data.object_type = "SceneNode";
+	node_data.object_class = "SceneNode";
 
 	var prefab = new LS.Prefab();
 	var ext = LS.ResourcesManager.getExtension(filename);

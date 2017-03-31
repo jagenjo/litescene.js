@@ -15,7 +15,7 @@ function SkinnedMeshRenderer(o)
 	//this.factor = 1;
 
 	//check how many floats can we put in a uniform
-	if(!SkinnedMeshRenderer.num_supported_uniforms)
+	if(!SkinnedMeshRenderer.num_supported_uniforms && global.gl )
 	{
 		SkinnedMeshRenderer.num_supported_uniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
 		SkinnedMeshRenderer.num_supported_textures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
@@ -108,6 +108,7 @@ SkinnedMeshRenderer.prototype.configure = function(o)
 SkinnedMeshRenderer.prototype.serialize = function()
 {
 	var o = { 
+		object_class: "SkinnedMeshRenderer",
 		enabled: this.enabled,
 		apply_skinning: this.apply_skinning,
 		cpu_skinning: this.cpu_skinning,

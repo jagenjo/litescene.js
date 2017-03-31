@@ -12,12 +12,15 @@ function SceneInclude( o )
 	this._scene_path = null;
 	this._scene_is_ready = false;
 
-	this._scene = new LS.SceneTree();
-	this._scene.root.removeAllComponents();
-	LEvent.bind( this._scene, "requestFrame", function(){ 
-		if(this._root.scene)
-			this._root.scene.requestFrame();
-	}, this );
+	if( LS.SceneTree ) //this is because in some cases (debug mode) this component will be registered before the SceneTree exists
+	{
+		this._scene = new LS.SceneTree();
+		this._scene.root.removeAllComponents();
+		LEvent.bind( this._scene, "requestFrame", function(){ 
+			if(this._root.scene)
+				this._root.scene.requestFrame();
+		}, this );
+	}
 
 	if(o)
 		this.configure(o);

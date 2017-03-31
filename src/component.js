@@ -81,6 +81,8 @@ Component.prototype.serialize = function()
 	var o = LS.cloneObject(this);
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
+	if(!o.object_class)
+		o.object_class = LS.getObjectClassName( this );
 	return o;
 }
 

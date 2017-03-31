@@ -39,7 +39,9 @@ function PointCloud(o)
 	}
 	*/
 
-	this.createMesh();
+	if(global.gl)
+		this.createMesh();
+
 }
 PointCloud.icon = "mini-icon-points.png";
 PointCloud["@texture"] = { widget: "texture" };
@@ -295,6 +297,8 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 PointCloud.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this);
+	o.object_class = "PointCloud";
+
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
 	if(this.serialize_points)

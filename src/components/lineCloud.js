@@ -20,7 +20,8 @@ function LineCloud(o)
 
 	this._last_id = 0;
 
-	this.createMesh();
+	if(global.gl)
+		this.createMesh();
 
 	/*
 	for(var i = 0; i < 2;i++)

@@ -1103,8 +1103,13 @@ GLSLCode.pragma_methods["shaderblock"] = {
 		}
 
 		var block_code = shader_block.getFinalCode( shader_type, block_flags, context );
-		if( block_code )
-			return "\n#define BLOCK_"+ ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
+		if( !block_code )
+			return null;
+
+		//add the define BLOCK_name only if enabled
+		if( shader_block.flag_mask & block_flags )
+			return "\n#define BLOCK_" + ( shader_block.name.toUpperCase() ) +"\n" + block_code + "\n";
+		return block_code + "\n";
 	}
 };
 

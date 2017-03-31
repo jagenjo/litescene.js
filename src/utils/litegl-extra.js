@@ -97,7 +97,7 @@ GL.Mesh.prototype.toBinary = function()
 
 	//clean data
 	var o = {
-		object_type: "Mesh",
+		object_class: "Mesh",
 		info: this.info,
 		groups: this.groups
 	};

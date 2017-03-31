@@ -113,7 +113,7 @@ var parserDAE = {
 		for(var i in scene.resources)
 		{
 			var res = scene.resources[i];
-			if(res.object_type == "Animation")
+			if(res.object_class == "Animation")
 				this.processAnimation( res, renamed );
 		}
 
@@ -281,7 +281,7 @@ var parserDAE = {
 
 	processMaterial: function(material)
 	{
-		material.object_type = "StandardMaterial";
+		material.object_class = "StandardMaterial";
 
 		if(material.transparency)
 		{

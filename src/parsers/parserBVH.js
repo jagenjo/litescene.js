@@ -156,14 +156,14 @@ var parserBVH = {
 		var tracks = [];
 		this.processMotion( root, tracks, timestamps );
 
-		var scene = { root: root, object_type: "SceneNode", resources: {} };
+		var scene = { root: root, object_class: "SceneNode", resources: {} };
 
 		for(var i = 0; i < tracks.length; ++i)
 		{
 			var track = tracks[i];
 			track.duration = duration;
 		}
-		var animation = { name: "#animation", object_type: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
+		var animation = { name: "#animation", object_class: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
 		root.animations = animation.name;
 		scene.resources[ animation["name"] ] = animation;
 

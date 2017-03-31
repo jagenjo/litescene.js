@@ -114,6 +114,14 @@ var LS = {
 			LS.extendClass( component, LS.Component );
 			Component.addExtraMethods( component );
 
+			if( LS.debug )
+			{
+				var c = new component();
+				var r = c.serialize();
+				if(!r.object_class)
+					console.warn("%c Component "+name+" could have a bug, serialize() method has object_class missing.", "font-size: 1.2em");
+			}
+
 			//event
 			LEvent.trigger(LS, "component_registered", component ); 
 		}

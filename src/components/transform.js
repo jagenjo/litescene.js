@@ -329,6 +329,7 @@ Transform.prototype.configure = function(o)
 Transform.prototype.serialize = function()
 {
 	return {
+		object_class: "Transform",
 		uid: this.uid,
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],

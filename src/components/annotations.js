@@ -81,6 +81,7 @@ AnnotationComponent.prototype.getObjectCenter = function()
 AnnotationComponent.prototype.serialize = function()
 {
 	var o = {
+		object_class: "AnnotationComponent",
 		text: this.text,
 		notes: [],
 		start_position: this.start_position

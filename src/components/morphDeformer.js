@@ -5,10 +5,13 @@ function MorphDeformer(o)
 
 	this.morph_targets = [];
 
-	if(MorphDeformer.max_supported_vertex_attribs === undefined)
-		MorphDeformer.max_supported_vertex_attribs = gl.getParameter( gl.MAX_VERTEX_ATTRIBS );
-	if(MorphDeformer.max_supported_morph_targets === undefined)
-		MorphDeformer.max_supported_morph_targets = (gl.getParameter( gl.MAX_VERTEX_ATTRIBS ) - 6) / 2;
+	if(global.gl)
+	{
+		if(MorphDeformer.max_supported_vertex_attribs === undefined)
+			MorphDeformer.max_supported_vertex_attribs = gl.getParameter( gl.MAX_VERTEX_ATTRIBS );
+		if(MorphDeformer.max_supported_morph_targets === undefined)
+			MorphDeformer.max_supported_morph_targets = (gl.getParameter( gl.MAX_VERTEX_ATTRIBS ) - 6) / 2;
+	}
 
 	if(o)
 		this.configure(o);

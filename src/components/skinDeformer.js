@@ -20,7 +20,7 @@ function SkinDeformer( o )
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
-	if(!SkinDeformer._initialized)
+	if(!SkinDeformer._initialized && global.gl )
 	{
 		SkinDeformer.num_supported_uniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
 		SkinDeformer.num_supported_textures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
@@ -449,7 +449,7 @@ SkinDeformer.skinning_shader_code = "\n\
 	}\n\
 ";
 
-SkinDeformer.skinning_enabled_shader_code = "\n#pragma shaderblock skinning_mode\n";
+SkinDeformer.skinning_enabled_shader_code = "\n#pragma shaderblock skinning_mode\n#define USING_SKINNING\n";
 SkinDeformer.skinning_disabled_shader_code = "\nvoid applySkinning( inout vec4 position, inout vec3 normal) {}\n";
 
 // ShaderBlocks used to inject to shader in runtime

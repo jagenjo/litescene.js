@@ -81,6 +81,7 @@ GraphComponent.prototype.configure = function(o)
 GraphComponent.prototype.serialize = function()
 {
 	return { 
+		object_class: "GraphComponent",
 		uid: this.uid,
 		enabled: this.enabled, 
 		force_redraw: this.force_redraw , 
@@ -266,7 +267,7 @@ function FXGraphComponent(o)
 		this._graph_frame_node.connect(0, this._graph_viewport_node );
 	}
 
-	if(FXGraphComponent.high_precision_format == null)
+	if(FXGraphComponent.high_precision_format == null && global.gl)
 	{
 		if(gl.half_float_ext)
 			FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
@@ -337,6 +338,7 @@ FXGraphComponent.prototype.configure = function(o)
 FXGraphComponent.prototype.serialize = function()
 {
 	return {
+		object_class: "FXGraphComponent",
 		uid: this.uid,
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,

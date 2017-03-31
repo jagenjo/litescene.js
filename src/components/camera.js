@@ -1239,6 +1239,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		object_class: "Camera",
 		uid: this.uid,
 		layers: this.layers,
 		enabled: this.enabled,

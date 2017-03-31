@@ -7,10 +7,13 @@ function ThreeJS( o )
 
 	this._code = ThreeJS.default_code;
 
-	if( typeof(THREE) == "undefined")
-		this.loadLibrary( function() { this.setupContext(); } );
-	else
-		this.setupContext();
+	if(global.gl)
+	{
+		if( typeof(THREE) == "undefined")
+			this.loadLibrary( function() { this.setupContext(); } );
+		else
+			this.setupContext();
+	}
 
 	this._script = new LScript();
 	//maybe add function to retrieve texture

@@ -96,7 +96,13 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		if(comp.hasOwnProperty("_uid") && !obj.uid)
 			obj.uid = comp.uid;
 
-		o.components.push([LS.getObjectClassName(comp), obj]);
+		var object_class = LS.getObjectClassName(comp);
+		if(LS.debug && object_class != obj.object_class )
+			console.warn("Component serialize without object_class:",object_class);
+		if(!obj.object_class)
+			obj.object_class = object_class; //enforce
+		
+		o.components.push([ object_class, obj ]);
 	}
 
 	if(this._missing_components && this._missing_components.length)

@@ -150,6 +150,7 @@ Script.prototype.configure = function(o)
 Script.prototype.serialize = function()
 {
 	return {
+		object_class: "Script",
 		uid: this.uid,
 		enabled: this.enabled,
 		code: this.code,
@@ -789,6 +790,7 @@ ScriptFromFile.prototype.configure = function(o)
 ScriptFromFile.prototype.serialize = function()
 {
 	return {
+		object_class: "ScriptFromFile",
 		uid: this.uid,
 		enabled: this.enabled,
 		filename: this.filename,

@@ -88,7 +88,8 @@ function ParticleEmissor(o)
 	this._min_particle_size = 0.001;
 	this._last_id = 0;
 
-	this.createMesh();
+	if(global.gl)
+		this.createMesh();
 
 	
 	/* demo particles

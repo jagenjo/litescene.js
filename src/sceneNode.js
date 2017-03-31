@@ -1148,7 +1148,9 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 */
 SceneNode.prototype.serialize = function( ignore_prefab )
 {
-	var o = {};
+	var o = {
+		object_class: "SceneNode"
+	};
 
 	if(this._name) 
 		o.name = this._name;
