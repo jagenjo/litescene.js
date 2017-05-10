@@ -2,43 +2,57 @@
 
 In this guide we will explain different ways to read the user input
 
-## Event driven Input
+## Input Events ##
 
-The Event driven input is mean to capture events that happend when the user interacts with the application, like keys pressed, mouse movements, buttons being pressed, etc.
+The Event driven input is meant to capture events that happend when the user interacts with the application, like keys pressed, mouse movements, buttons being pressed, etc.
 
-When using the Script component we can read the input using the auto-event handlers like:
-- ```onMouseDown``` mouse button pressed
-- ```onMouseMove``` mouse moved
-- ```onMouseUp``` mouse button released
-- ```onKeyDown``` keyboard key pressed
-- ```onKeyUp``` keyboard key released
-- ```onButtonDown``` gamepad button down
-- ```onButtonUp``` gamepad button up
+If you are using a Script component you can catch the events easily using the auto-binded callbacks like:
 
-```js
-//if this code is inside a script component
-this.onMouseDown = function(e)
+- ```onMouseDown```: when a mouse button is pressed
+- ```onMouseUp```: when a mouse button is released
+- ```onMouseMove```: when the mouse moves
+- ```onMouseWheel```: when the mouse wheel rotates
+- ```onKeyDown```: when a key is released
+- ```onKeyUp```: when a key is pressed
+- ```onGamepadConnected```: when a gamepad is connected
+- ```onGamepadDisconnected```: when a gamepad is disconnected
+- ```onButtonDown```: when a gamepad button is pressed
+- ```onButtonUp```: when a gamepad button is released
+
+All this functions receive the system event by parameter.
+
+```javascript
+
+this.onKeyDown = function(event)
 {
-   console.log(e.mousex);
+	if(event.keyCode == 39)
+		console.log("Right");
+}
+
+this.onMouseDown = function(event)
+{
+	if( event.which == GL.LEFT_MOUSE_BUTTON )
+		console.log("Left mouse button pressed!");
 }
 ```
 
-Or if the component is made by ours we can bind the events for "mousedown","mousemove","mouseup","keyup","keydown", etc.
+Sometimes we are coding our own component for the Components pool. In that case we have to bind the events manually:
 
-```js
+```javascript
+
 this.onAddedToScene = function(scene)
 {
-  this.bind("mousedown", this.myMouseHandler );
+	LEvent.bind( scene, "mousedown", this.myMouseCallback, this );
 }
 
 this.onRemovedFromScene = function(scene)
 {
-  this.unbind("mousedown", this.myMouseHandler );
+	LEvent.unbind( scene, "mousedown", this.myMouseCallback, this );
 }
 
-this.myMouseHandler = function( type, e )
+this.myMouseCallback = function(type, event)
 {
-	//process event here
+	console.log("mouse button clicked:", event.button );
 }
 ```
 
@@ -114,57 +128,7 @@ if( LS.Input.isGamepadButtonPressed(0,"A") ) //returns if the "A" button of the 
   ...
 ```
 
-## Using events ##
 
-You can catch the events easily from the scripts using the events provided for that purpose:
-
-- ```onMouseDown```: when a mouse button is pressed
-- ```onMouseUp```: when a mouse button is unpressed
-- ```onMouseMove```: when the mouse moves
-- ```onMouseWheel```: when the mouse wheel rotates
-- ```onKeyDown```: when a key is unpressed
-- ```onKeyUp```: when a key is pressed
-- ```onGamepadConnected```: when a gamepad is connected
-- ```onGamepadDisconnected```: when a gamepad is disconnected
-- ```onButtonDown```: when a gamepad button is pressed
-- ```onButtonUp```: when a gamepad button is unpressed
-
-All this functions receive the system event by parameter.
-
-```javascript
-
-this.onKeyDown = function(event)
-{
-	if(event.keyCode == 39)
-		console.log("Right");
-}
-
-this.onMouseDown = function(event)
-{
-	if( event.which == GL.LEFT_MOUSE_BUTTON )
-		console.log("Left mouse button pressed!");
-}
-```
-
-or if we are using a component:
-
-```javascript
-
-this.onAddedToScene = function(scene)
-{
-	LEvent.bind( scene, "mousedown", this.myMouseCallback, this );
-}
-
-this.onRemovedFromScene = function(scene)
-{
-	LEvent.unbind( scene, "mousedown", this.myMouseCallback, this );
-}
-
-this.myMouseCallback = function(type, event)
-{
-	console.log("mouse button clicked:", event.button );
-}
-```
 
 
 ## Example ##
