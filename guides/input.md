@@ -35,6 +35,11 @@ this.onRemovedFromScene = function(scene)
 {
   this.unbind("mousedown", this.myMouseHandler );
 }
+
+this.myMouseHandler = function( type, e )
+{
+	//process event here
+}
 ```
 
 ## Reading the current Input state
