@@ -1,17 +1,52 @@
 # Input #
 
-When using the Script component we can read the input using the auto-event handlers like ```onMouseDown```, ```onMouseMove```, ```onMouseUp```, ```onKeyDown```, ```onKeyUp```, ```onButtonDown```, ```onButtonUp```.
+In this guide we will explain different ways to read the user input
+
+## Event driven Input
+
+The Event driven input is mean to capture events that happend when the user interacts with the application, like keys pressed, mouse movements, buttons being pressed, etc.
+
+When using the Script component we can read the input using the auto-event handlers like:
+- ```onMouseDown``` mouse button pressed
+- ```onMouseMove``` mouse moved
+- ```onMouseUp``` mouse button released
+- ```onKeyDown``` keyboard key pressed
+- ```onKeyUp``` keyboard key released
+- ```onButtonDown``` gamepad button down
+- ```onButtonUp``` gamepad button up
+
+```js
+//if this code is inside a script component
+this.onMouseDown = function(e)
+{
+   console.log(e.mousex);
+}
+```
 
 Or if the component is made by ours we can bind the events for "mousedown","mousemove","mouseup","keyup","keydown", etc.
 
-But sometimes you want to read the user raw input like the mouse coordinates, keyboard keys pressed or the gamepad axis.
+```js
+this.onAddedToScene = function(scene)
+{
+  this.bind("mousedown", this.myMouseHandler );
+}
+
+this.onRemovedFromScene = function(scene)
+{
+  this.unbind("mousedown", this.myMouseHandler );
+}
+```
+
+## Reading the current Input state
+
+Sometimes you want to read the user raw input like the mouse coordinates, if a keyboard key is pressed or the gamepad axis.
 
 In these situations you can use the ```LS.Input``` class to see the input state of:
 - ```LS.Input.Mouse``` to read the mouse state
 - ```LS.Input.Keyboard```to read the keyboard state
 - ```LS.Input.Gamepads``` to read the gamepads state
 
-## Mouse Input ##
+### Mouse Input
 
 When reading the mouse input you can access the ```LS.Input.Mouse```.
 
@@ -35,12 +70,11 @@ if( LS.Input.Mouse.left_button )
 	//...
 ```
 
-
-## Touch events ##
+### Touch events 
 
 By default LiteScene converts every touch event in a mouse event, this disables using multitouch gestures but we will work on this in the future.
 
-## Keyboard ##
+### Keyboard 
 
 To read the keyboard state you can use the ```LS.Input.Keyboard``` where you have all the keys state:
 
@@ -50,7 +84,7 @@ To read the keyboard state you can use the ```LS.Input.Keyboard``` where you hav
 or you can use the keycode:
 ```LS.Input.Keyboard[32]``` will tell you if the RETURN key is pressed.
 
-## Gamepads ##
+### Gamepads 
 
 To read the gamepads state you use a similar approach:
 
