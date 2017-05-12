@@ -75,6 +75,7 @@ Also, when using WebGLStudio, there is also the option to specify widget propert
 
 ```javascript
 this.createProperty("myvar", 0, {type: "number", widget:"slider", min:0, max:100, step:1});
+this.createProperty("myvar2", "yes", {type: "string", widget:"combo", values:["yes","no","maybe"]});
 ```
 
 Or to create even Arrays that can be edited through the editor:
