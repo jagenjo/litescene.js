@@ -94,7 +94,7 @@ var parserCGArtMesh = {
 				var mat_id = m.faces[i+4];
 				if(current_mat_id < mat_id)
 				{
-					trace("New mat: " + mat_id );
+					console.log("New mat: " + mat_id );
 					current_mat_id = mat_id;
 					if(group != null)
 					{
@@ -136,7 +136,7 @@ var parserCGArtMesh = {
 			}
 			else 
 			{
-				trace("Warning: unsupported primitive type: " + m.faces[i]);
+				console.log("Warning: unsupported primitive type: " + m.faces[i]);
 				i += 1;
 			}
 		}
@@ -162,8 +162,8 @@ var parserCGArtMesh = {
 		if(groups.length > 1)
 			mesh.info.groups = groups;
 
-		trace("Num vertex: " + vertices.length / 3);
-		trace(mesh.info.groups);
+		console.log("Num vertex: " + vertices.length / 3);
+		console.log(mesh.info.groups);
 
 		return mesh;
 	}
@@ -182,7 +182,7 @@ var parserGR2 = {
 	parse: function(data, options)
 	{
 		data = data.replace(/\'/g,'\"');
-		trace(data);
+		console.log(data);
 		data = JSON.parse("["+data+"]");
 		window.foo = data;
 		data = data[0];

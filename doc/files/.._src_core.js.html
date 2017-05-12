@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -150,8 +151,6 @@
 <div class="file">
     <pre class="code prettyprint linenums">
 //Global Scope
-var trace = window.console ? console.log.bind(console) : function() {};
-
 //better array conversion to string for serializing
 var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
 typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
@@ -253,7 +252,9 @@ var LS = {
 			//Helper: checks for errors
 			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
 				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
-				console.warn(&quot;%c Component could have a bug, check events: &quot; + name , &quot;font-size: 2em&quot;);
+				console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, check events: &quot; + name , &quot;font-size: 2em&quot;);
+			if( component.prototype.getResources &amp;&amp; !component.prototype.onResourceRenamed )
+				console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.&quot;, &quot;font-size: 1.2em&quot;);
 
 			//add stuff to the class
 			if(!component.actions)
@@ -262,6 +263,14 @@ var LS = {
 			//add default methods
 			LS.extendClass( component, LS.Component );
 			Component.addExtraMethods( component );
+
+			if( LS.debug )
+			{
+				var c = new component();
+				var r = c.serialize();
+				if(!r.object_class)
+					console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, serialize() method has object_class missing.&quot;, &quot;font-size: 1.2em&quot;);
+			}
 
 			//event
 			LEvent.trigger(LS, &quot;component_registered&quot;, component ); 
@@ -726,7 +735,7 @@ var LS = {
 	},
 
 	//TODO: merge this with the locator stuff
-	setObjectProperty: function(obj, name, value)
+	setObjectProperty: function( obj, name, value )
 	{
 		if(obj.setProperty)
 			return obj.setProperty(name, value);
@@ -734,30 +743,6 @@ var LS = {
 		if(obj.onPropertyChanged)
 			obj.onPropertyChanged( name, value );
 	},
-
-	//solution from http://stackoverflow.com/questions/979975/how-to-get-the-value-from-the-url-parameter
-	queryString: function () {
-	  // This function is anonymous, is executed immediately and 
-	  // the return value is assigned to QueryString!
-	  var query_string = {};
-	  var query = window.location.search.substring(1);
-	  var vars = query.split(&quot;&amp;&quot;);
-	  for (var i=0;i&lt;vars.length;i++) {
-		var pair = vars[i].split(&quot;=&quot;);
-			// If first entry with this name
-		if (typeof query_string[pair[0]] === &quot;undefined&quot;) {
-		  query_string[pair[0]] = decodeURIComponent(pair[1]);
-			// If second entry with this name
-		} else if (typeof query_string[pair[0]] === &quot;string&quot;) {
-		  var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
-		  query_string[pair[0]] = arr;
-			// If third or later entry with this name
-		} else {
-		  query_string[pair[0]].push(decodeURIComponent(pair[1]));
-		}
-	  } 
-		return query_string;
-	}(),
 
 	/**
 	* Contains all the registered material classes
@@ -891,7 +876,31 @@ var LS = {
 			case &quot;mat4&quot;: return value.length === 16;
 		}
 		return true;
-	}
+	},
+
+	//solution from http://stackoverflow.com/questions/979975/how-to-get-the-value-from-the-url-parameter
+	queryString: function () {
+	  // This function is anonymous, is executed immediately and 
+	  // the return value is assigned to QueryString!
+	  var query_string = {};
+	  var query = window.location.search.substring(1);
+	  var vars = query.split(&quot;&amp;&quot;);
+	  for (var i=0;i&lt;vars.length;i++) {
+		var pair = vars[i].split(&quot;=&quot;);
+			// If first entry with this name
+		if (typeof query_string[pair[0]] === &quot;undefined&quot;) {
+		  query_string[pair[0]] = decodeURIComponent(pair[1]);
+			// If second entry with this name
+		} else if (typeof query_string[pair[0]] === &quot;string&quot;) {
+		  var arr = [ query_string[pair[0]],decodeURIComponent(pair[1]) ];
+		  query_string[pair[0]] = arr;
+			// If third or later entry with this name
+		} else {
+		  query_string[pair[0]].push(decodeURIComponent(pair[1]));
+		}
+	  } 
+		return query_string;
+	}()
 }
 
 //ensures no exception is catched by the system (useful for developers)
@@ -1069,7 +1078,7 @@ if(global.GL)
 
 
 global.LSQ = LSQ;
-global.trace = trace;
+
 
     </pre>
 </div>

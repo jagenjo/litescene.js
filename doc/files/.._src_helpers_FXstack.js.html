@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -556,6 +557,27 @@ FXStack.prototype.getResources = function(res)
 	}
 	return res;
 }
+
+FXStack.prototype.onResourceRenamed = function(old_name, new_name, resource)
+{
+	var fxs = this.fx;
+	for(var i = 0; i &lt; fxs.length; i++)
+	{
+		var fx = fxs[i];
+		var fx_info = FXStack.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+		if(!fx_info.uniforms)
+			continue;
+		for(var j in fx_info.uniforms)
+		{
+			var uniform = fx_info.uniforms[j];
+			if(uniform.type == &quot;sampler2D&quot; &amp;&amp; fx[j] == old_name )
+				fx[j] = new_name;
+		}
+	}
+}
+
 
 //attach a new FX to the FX Stack
 FXStack.prototype.addFX = function( name )

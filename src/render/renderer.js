@@ -570,6 +570,9 @@ var Renderer = {
 				if( instance.onPreRender( render_settings ) === false)
 					continue;
 
+			if(!instance.material) //somethinig went wrong
+				continue;
+
 			if(instance.material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
 
@@ -702,12 +705,25 @@ var Renderer = {
 	{
 		//render instance
 		var renderered = false;
-		if( instance.material && instance.material.renderShadowInstance )
-			renderered = instance.material.renderShadowInstance( instance, render_settings, pass );
+		if( instance.material && instance.material.renderInstance )
+			renderered = instance.material.renderInstance( instance, render_settings, pass );
 
 		//render using default system (slower but it works)
 		if(!renderered)
 			this.renderStandardShadowPassInstance( instance, render_settings, pass);
+	},
+
+	//this function is in charge of rendering an instance in the shadowmap
+	renderPickingPassInstance: function( instance, render_settings, pass )
+	{
+		//render instance
+		var renderered = false;
+		if( instance.material && instance.material.renderPickingInstance )
+			renderered = instance.material.renderPickingInstance( instance, render_settings, pass );
+
+		//render using default system (slower but it works)
+		if(!renderered)
+			this.renderStandardPickingPassInstance( instance, render_settings, pass);
 	},
 
 
@@ -894,7 +910,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
-	renderPickingPassInstance: function( instance, render_settings )
+	renderStandardPickingPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
 		var camera = this._current_camera;
@@ -1111,17 +1127,20 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} cameras in case you dont want to use the scene cameras
 	*/
-	processVisibleData: function( scene, render_settings, cameras )
+	processVisibleData: function( scene, render_settings, cameras, instances, skip_collect_data )
 	{
 		//options = options || {};
 		//options.scene = scene;
 
 		//update info about scene (collecting it all or reusing the one collected in the frame before)
-		if( this._frame % this._collect_frequency == 0)
-			scene.collectData();
-		else
-			scene.updateCollectedData();
-		LEvent.trigger( scene, "afterCollectData", scene );
+		if(!skip_collect_data)
+		{
+			if( this._frame % this._collect_frequency == 0)
+				scene.collectData();
+			else
+				scene.updateCollectedData();
+			LEvent.trigger( scene, "afterCollectData", scene );
+		}
 
 		cameras = cameras || scene._cameras;
 
@@ -1144,7 +1163,7 @@ var Renderer = {
 
 		var materials = {}; //I dont want repeated materials here
 
-		var instances = scene._instances;
+		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
 		var camera_eye = camera.getEye();
 
@@ -1281,7 +1300,7 @@ var Renderer = {
 	* @param {Texture} texture
 	* @param {RenderSettings} render_settings
 	*/
-	renderInstancesToRT: function( cam, texture, render_settings )
+	renderInstancesToRT: function( cam, texture, render_settings, instances )
 	{
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
@@ -1307,7 +1326,7 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			*/
 			//render scene
-			LS.Renderer.renderInstances( render_settings );
+			LS.Renderer.renderInstances( render_settings, instances );
 		}
 	},
 
@@ -1323,7 +1342,7 @@ var Renderer = {
 	* @param {number} far
 	* @return {Texture} the resulting texture
 	*/
-	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color )
+	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color, instances )
 	{
 		size = size || 256;
 		near = near || 1;
@@ -1351,7 +1370,7 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			camera.configure({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up });
 			LS.Renderer.enableCamera( camera, render_settings, true );
-			LS.Renderer.renderInstances( render_settings );
+			LS.Renderer.renderInstances( render_settings, instances );
 		});
 
 		this._current_target = null;

@@ -5,6 +5,7 @@ function SurfaceMaterial( o )
 	this.shader_name = "surface";
 
 	this.blend_mode = LS.Blend.NORMAL;
+	this._light_mode = 1;
 
 	this.flags = {
 		alpha_test: false,
@@ -19,8 +20,7 @@ function SurfaceMaterial( o )
 		ignore_frustum: false
 	};
 
-	this.vs_code = "";
-	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
+	this._code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
 	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
 	o.Normal = IN.worldNormal;\n\
 	o.Emission = vec3(0.0);\n\
@@ -31,6 +31,8 @@ function SurfaceMaterial( o )
 
 	this._uniforms = {};
 	this._samplers = [];
+
+	this._mustUpdate = false;
 
 	this.properties = []; //array of configurable properties
 	if(o) 
@@ -43,40 +45,27 @@ SurfaceMaterial.prototype.applyFlagsToRenderState = StandardMaterial.prototype.a
 SurfaceMaterial.prototype.prepare = StandardMaterial.prototype.prepare;
 
 SurfaceMaterial.icon = "mini-icon-material.png";
-SurfaceMaterial.coding_help = "\
-struct Input {\n\
-	vec4 color;\n\
-	vec3 vertex;\n\
-	vec3 normal;\n\
-	vec2 uv;\n\
-	vec2 uv1;\n\
-	\n\
-	vec3 camPos;\n\
-	vec3 viewDir;\n\
-	vec3 worldPos;\n\
-	vec3 worldNormal;\n\
-	vec4 screenPos;\n\
-};\n\
-\n\
-struct SurfaceOutput {\n\
-	vec3 Albedo;\n\
-	vec3 Normal;\n\
-	vec3 Emission;\n\
-	float Specular;\n\
-	float Gloss;\n\
-	float Alpha;\n\
-	float Reflectivity;\n\
-};\n\
-";
 
 SurfaceMaterial.prototype.onCodeChange = function()
 {
-	this.computeCode();
+	this._mustUpdate = true;
+	//this.computeCode();
 }
+
+Object.defineProperty( SurfaceMaterial.prototype, "code", {
+	enumerable: true,
+	get: function() {
+		return this._code;
+	},
+	set: function(v) {
+		this._code = String(v);
+		this._mustUpdate = true;
+	}
+});
 
 SurfaceMaterial.prototype.getCode = function()
 {
-	return this.code;
+	return this._code;
 }
 
 SurfaceMaterial.prototype.computeCode = function()
@@ -100,60 +89,33 @@ SurfaceMaterial.prototype.computeCode = function()
 			default: 
 				continue;
 		}
-		code += prop.name + ";";
+		code += prop.name + ";\n";
 		uniforms_code += code;
 	}
 
-	var lines = this.code.split("\n");
+	/*
+	var lines = this._code.split("\n");
 	for(var i = 0, l = lines.length; i < l; ++i )
 		lines[i] = lines[i].split("//")[0]; //remove comments
+	*/
 
-	this.surf_code = uniforms_code + lines.join("");
+	this.surf_code = uniforms_code + "\n" + this._code;
+	var code = LS.SurfaceMaterial.code_template;
+	var final_code = code.replace("{{FS_CODE}}", this.surf_code );
+	if(!this._shadercode)
+		this._shadercode = new LS.ShaderCode();
+	this._shadercode.code = final_code;
+	this._mustUpdate = false;
 }
 
-// RENDERING METHODS
-SurfaceMaterial.prototype.onModifyQuery = function( query )
+SurfaceMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
+
+SurfaceMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	if(this._ps_uniforms_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_UNIFORMS)
-			query.macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
-		else
-			query.macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
-	}
-
-	if(this._ps_functions_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_FUNCTIONS)
-			query.macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
-		else
-			query.macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
-	}
-
-	if(this._ps_code)
-	{
-		if(query.macros.USE_PIXEL_SHADER_CODE)
-			query.macros.USE_PIXEL_SHADER_CODE += this._ps_code;
-		else
-			query.macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
-	}
-
-	query.macros.USE_SURFACE_SHADER = this.surf_code;
+	if(!this._shadercode || this._mustUpdate )
+		this.computeCode();
+	return this._shadercode;
 }
-
-SurfaceMaterial.prototype.fillShaderQuery = function(scene)
-{
-	var query = this._query;
-	query.clear();
-	if( this.textures["environment"] )
-	{
-		var sampler = this.textures["environment"];
-		var tex = LS.getTexture( sampler.texture );
-		if(tex)
-			query.macros[ "USE_ENVIRONMENT_" + (tex.type == gl.TEXTURE_2D ? "TEXTURE" : "CUBEMAP") ] = sampler.uvs;
-	}
-}
-
 
 SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 {
@@ -187,16 +149,6 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 	}
 
 	this._uniforms.u_material_color = this._color;
-
-	/*
-	if(this.textures["environment"])
-	{
-		var sampler = this.textures["environment"];
-		var texture = LS.getTexture( sampler.texture );
-		if(texture)
-			samplers[ "environment" + (texture.texture_type == gl.TEXTURE_2D ? "_texture" : "_cubemap") ] = sampler;
-	}
-	*/
 }
 
 SurfaceMaterial.prototype.configure = function(o) { 
@@ -439,3 +391,89 @@ SurfaceMaterial.prototype.getResources = function (res)
 
 LS.registerMaterialClass( SurfaceMaterial );
 LS.SurfaceMaterial = SurfaceMaterial;
+
+SurfaceMaterial.code_template = "\n\
+\n\
+\n\
+\\color.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+uniform mat4 u_model;\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+  \n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  applyLight(v_pos);\n\
+  \n\
+	//normal\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\n\
+\\color.fs\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform float u_time;\n\
+uniform vec3 u_background_color;\n\
+uniform vec4 u_material_color;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+\n\
+#pragma snippet \"perturbNormal\"\n\
+\n\
+{{FS_CODE}}\n\
+\n\
+void main() {\n\
+  Input IN = getInput();\n\
+  SurfaceOutput o = getSurfaceOutput();\n\
+  surf(IN,o);\n\
+  vec4 final_color = vec4(0.0);\n\
+  Light LIGHT = getLight();\n\
+  final_color.xyz = computeLight( o, IN, LIGHT );\n\
+  final_color.a = o.Alpha;\n\
+  gl_FragColor = final_color;\n\
+}\n\
+";

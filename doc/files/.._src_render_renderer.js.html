@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -218,6 +219,9 @@ var Renderer = {
 
 	_reflection_probes: [],
 
+	//safety
+	_is_rendering_frame: false,
+
 	//fixed texture slots for global textures
 	SHADOWMAP_TEXTURE_SLOT: 6,
 	ENVIRONMENT_TEXTURE_SLOT: 5,
@@ -295,6 +299,13 @@ var Renderer = {
 	{
 	},
 
+
+	//used to clear the state
+	resetState: function()
+	{
+		this._is_rendering_frame = false;
+	},
+
 	//used to store which is the current full viewport available (could be different from the canvas in case is a FBO or the camera has a partial viewport)
 	setFullViewport: function(x,y,w,h)
 	{
@@ -318,8 +329,17 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		if(!LS.ShadersManager.ready)
+		if( !LS.ShadersManager.ready )
 			return; //not ready
+
+		if( this._is_rendering_frame )
+		{
+			console.error(&quot;Last frame didn&#x27;t finish and a new one was issued. Remember that you cannot call LS.Renderer.render from an event dispatched during the render, this would cause a recursive loop. Call LS.Renderer.reset() to clear from an error.&quot;);
+			//this._is_rendering_frame = false; //for safety, we setting to false 
+			return;
+		}
+
+		this._is_rendering_frame = true;
 
 		render_settings = render_settings || this.default_render_settings;
 		this._current_render_settings = render_settings;
@@ -409,6 +429,7 @@ var Renderer = {
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger(scene, &quot;afterRender&quot;, render_settings );
+		this._is_rendering_frame = false;
 	},
 
 	/**
@@ -701,6 +722,9 @@ var Renderer = {
 				if( instance.onPreRender( render_settings ) === false)
 					continue;
 
+			if(!instance.material) //somethinig went wrong
+				continue;
+
 			if(instance.material.opacity &lt;= 0) //TODO: remove this, do it somewhere else
 				continue;
 
@@ -799,7 +823,7 @@ var Renderer = {
 		{
 			var light = lights[j];
 			//same layer?
-			if( (light._root.layers &amp; instance.layers) == 0 || (light._root.layers &amp; this._current_camera.layers) == 0)
+			if( (light.layers &amp; instance.layers) == 0 || (light.layers &amp; this._current_camera.layers) == 0)
 				continue;
 			var light_intensity = light.computeLightIntensity();
 			//light intensity too low?
@@ -833,12 +857,25 @@ var Renderer = {
 	{
 		//render instance
 		var renderered = false;
-		if( instance.material &amp;&amp; instance.material.renderShadowInstance )
-			renderered = instance.material.renderShadowInstance( instance, render_settings, pass );
+		if( instance.material &amp;&amp; instance.material.renderInstance )
+			renderered = instance.material.renderInstance( instance, render_settings, pass );
 
 		//render using default system (slower but it works)
 		if(!renderered)
 			this.renderStandardShadowPassInstance( instance, render_settings, pass);
+	},
+
+	//this function is in charge of rendering an instance in the shadowmap
+	renderPickingPassInstance: function( instance, render_settings, pass )
+	{
+		//render instance
+		var renderered = false;
+		if( instance.material &amp;&amp; instance.material.renderPickingInstance )
+			renderered = instance.material.renderPickingInstance( instance, render_settings, pass );
+
+		//render using default system (slower but it works)
+		if(!renderered)
+			this.renderStandardPickingPassInstance( instance, render_settings, pass);
 	},
 
 
@@ -910,7 +947,7 @@ var Renderer = {
 				material.onModifyQuery( query );
 
 			//resolve the shader
-			var shader = ShadersManager.resolve( query );
+			var shader = LS.ShadersManager.resolve( query );
 
 			//assign uniforms
 			shader.uniformsArray( [ scene._uniforms, camera._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ] );
@@ -1025,7 +1062,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
-	renderPickingPassInstance: function( instance, render_settings )
+	renderStandardPickingPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
 		var camera = this._current_camera;
@@ -1037,7 +1074,7 @@ var Renderer = {
 		renderer_uniforms.u_model = model; 
 		renderer_uniforms.u_normal_model = instance.normal_matrix; 
 
-		var pick_color = LS.Picking.getNextPickingColor( node );
+		var pick_color = LS.Picking.getNextPickingColor( instance.picking_node || node );
 
 		var query = new LS.ShaderQuery(&quot;flat&quot;);
 		query.add( scene._query );
@@ -1242,17 +1279,20 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} cameras in case you dont want to use the scene cameras
 	*/
-	processVisibleData: function( scene, render_settings, cameras )
+	processVisibleData: function( scene, render_settings, cameras, instances, skip_collect_data )
 	{
 		//options = options || {};
 		//options.scene = scene;
 
 		//update info about scene (collecting it all or reusing the one collected in the frame before)
-		if( this._frame % this._collect_frequency == 0)
-			scene.collectData();
-		else
-			scene.updateCollectedData();
-		LEvent.trigger( scene, &quot;afterCollectData&quot;, scene );
+		if(!skip_collect_data)
+		{
+			if( this._frame % this._collect_frequency == 0)
+				scene.collectData();
+			else
+				scene.updateCollectedData();
+			LEvent.trigger( scene, &quot;afterCollectData&quot;, scene );
+		}
 
 		cameras = cameras || scene._cameras;
 
@@ -1275,7 +1315,7 @@ var Renderer = {
 
 		var materials = {}; //I dont want repeated materials here
 
-		var instances = scene._instances;
+		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
 		var camera_eye = camera.getEye();
 
@@ -1412,7 +1452,7 @@ var Renderer = {
 	* @param {Texture} texture
 	* @param {RenderSettings} render_settings
 	*/
-	renderInstancesToRT: function( cam, texture, render_settings )
+	renderInstancesToRT: function( cam, texture, render_settings, instances )
 	{
 		render_settings = render_settings || this.default_render_settings;
 		this._current_target = texture;
@@ -1438,7 +1478,7 @@ var Renderer = {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			*/
 			//render scene
-			LS.Renderer.renderInstances( render_settings );
+			LS.Renderer.renderInstances( render_settings, instances );
 		}
 	},
 
@@ -1454,7 +1494,7 @@ var Renderer = {
 	* @param {number} far
 	* @return {Texture} the resulting texture
 	*/
-	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color )
+	renderToCubemap: function( position, size, texture, render_settings, near, far, background_color, instances )
 	{
 		size = size || 256;
 		near = near || 1;
@@ -1482,7 +1522,7 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			camera.configure({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up });
 			LS.Renderer.enableCamera( camera, render_settings, true );
-			LS.Renderer.renderInstances( render_settings );
+			LS.Renderer.renderInstances( render_settings, instances );
 		});
 
 		this._current_target = null;

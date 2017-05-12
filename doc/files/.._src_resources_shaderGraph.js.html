@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.DebugRender</title>
+    <title>../src/resources/shaderGraph.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -146,78 +146,205 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.DebugRender Class</h1>
-<div class="box meta">
+<h1 class="file-heading">File: ../src/resources/shaderGraph.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+
+/**
+* ShaderGraph is a resource containing a graph that generates the code associated to a shader
+* It is used to define special ways to render scene objects, having full control of the rendering algorithm
+* 
+* @class ShaderGraph
+* @constructor
+*/
+
+function ShaderGraph( o )
+{
+	this._graph = new LiteGraph.Graph();
+
+	this._global_uniforms = {};
+	this._compiled_shaders = {};
+
+	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
+	this._shaderblock_flags = {};
+
+	this._version = 0;
+
+	if(o)
+		this.configure(o);
+}
+
+ShaderGraph.help_url = &quot;https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md&quot;;
+
+ShaderGraph.prototype.getDataToStore = function()
+{
+	return this.serialize();
+}
+
+//compile the shader, cache and return
+ShaderGraph.prototype.getShader = function( render_mode, block_flags )
+{
+	if( this._has_error )
+		return null;
+
+	render_mode = render_mode || &quot;color&quot;;
+	block_flags = block_flags || 0;
+
+	//search for a compiled version of the shader (by render_mode and block_flags)
+	var shaders_map = this._compiled_shaders[ render_mode ];
+	if(shaders_map)
+	{
+		var shader = shaders_map.get( block_flags );
+		if(shader)
+			return shader;
+	}
+
+	//search for the code
+	var code = this._code_parts[ render_mode ];
+	if(!code)
+		return null;
+
+	var context = {}; //used to store metaprogramming defined vars in the shader
+
+	//compute context defines
+	for(var i = 0; i &lt; LS.ShadersManager.num_shaderblocks; ++i)
+	{
+		if( !(block_flags &amp; 1&lt;&lt;i) ) //is flag enabled
+			continue;
+		var shader_block = LS.ShadersManager.shader_blocks.get(i);
+		if(!shader_block)
+			continue; //???
+		if(!shader_block.enabled_defines)
+			continue;
+		for(var j in shader_block.enabled_defines)
+			context[ j ] = shader_block.enabled_defines[j];
+	}
+
+	//vertex shader code
+	var vs_code = null;
+	if(render_mode == &quot;fx&quot;)
+		vs_code = GL.Shader.SCREEN_VERTEX_SHADER;
+	else if( !code.vs )
+		return null;
+	else
+		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
+
+	//fragment shader code
+	if( !code.fs )
+		return;
+
+	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
+
+	//no code or code includes something missing
+	if(!vs_code || !fs_code) 
+	{
+		this._has_error = true;
+		return null;
+	}
+
+	//compile the shader and return it
+	var shader = this.compileShader( vs_code, fs_code );
+	if(!shader)
+		return null;
+
+	//cache as render_mode,flags
+	if( !this._compiled_shaders[ render_mode ] )
+		this._compiled_shaders[ render_mode ] = new Map();
+	this._compiled_shaders[ render_mode ].set( block_flags, shader );
+
+	return shader;
+}
+
+ShaderGraph.prototype.compileShader = function( vs_code, fs_code )
+{
+	if( this._has_error )
+		return null;
+
+	if(!LS.catch_exceptions)
+		return new GL.Shader( vs_code, fs_code );
+	else
+	{
+		try
+		{
+			return new GL.Shader( vs_code, fs_code );
+		}
+		catch(err)
+		{
+			this._has_error = true;
+			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
+			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
+			var line = error_info.line_number;
+			var lines = this._code.split(&quot;\n&quot;);
+			var code_line = -1;
+			if(error_info.line_code)
+			{
+				var error_line_code = error_info.line_code.trim();
+				for(var i = 0; i &lt; lines.length; ++i)
+					lines[i] = lines[i].trim();
+				code_line = lines.indexOf( error_line_code ); //bug: what if this line is twice in the code?...
+			}
+			LS.dispatchCodeError( err, code_line, this, &quot;shader&quot; );
+		}
+	}
+	return null;
+}
+
+ShaderGraph.prototype.validatePublicUniforms = function( shader )
+{
+	if(!shader)
+		throw(&quot;ShaderGraph: Shader cannot be null&quot;);
+
+	for( var i in this._global_uniforms )
+	{
+		var property_info = this._global_uniforms[i];
+		var uniform_info = shader.uniformInfo[ property_info.uniform ];
+		if(!uniform_info)
+		{
+			info.disabled = true;
+			continue;
+		}
+	}
+}
 
 
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_render_debug.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;debug.js:1</code></a>
-        </div>
+//makes this resource available 
+ShaderGraph.prototype.register = function()
+{
+	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
+}
 
-            Module: <a href="../modules/LS.html">LS</a>
+//searches for materials using this ShaderGraph and forces them to be updated (update the properties)
+ShaderGraph.prototype.applyToMaterials = function( scene )
+{
+	scene = scene || LS.GlobalScene;
+	var filename = this.fullpath || this.filename;
 
-</div>
+	//materials in the resources
+	for(var i in LS.ResourcesManager.resources)
+	{
+		var res = LS.ResourcesManager.resources[i];
+		if( res.constructor !== LS.ShaderMaterial || res._shader != filename )
+			continue;
 
+		res.processShaderCode();
+	}
 
-<div class="box intro">
-    <p>Used to render debug information like skeletons, a grid, etc
-I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor</p>
+	//embeded materials
+	var nodes = scene.getNodes();
+	for(var i = 0; i &lt; nodes.length; ++i)
+	{
+		var node = nodes[i];
+		if(node.material &amp;&amp; node.material.constructor === LS.ShaderMaterial &amp;&amp; node.material._shader == filename )
+			node.material.processShaderCode();
+	}
+}
 
-</div>
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-<div id="method_LS.DebugRender" class="method item">
-    <h3 class="name"><code>LS.DebugRender</code></h3>
-
-        <span class="paren">()</span>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_render_debug.js.html#l1"><code>..&#x2F;src&#x2F;render&#x2F;debug.js:1</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
+LS.ShaderGraph = ShaderGraph;
+LS.registerResourceClass( ShaderGraph );
 
 
-
-
-</div>
-    </div>
-
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-
-
-
-        </div>
-
-
-
-
-    </div>
+    </pre>
 </div>
                     </div>
                 </div>

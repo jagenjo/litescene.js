@@ -340,6 +340,25 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 });
 
 /**
+* The frustum size when working in pure ORTHOGRAPHIC 
+* @property orthographic {vec4} left,right,bottom,top (near and far are in the near,far properties)
+* @default 50
+*/
+
+Object.defineProperty( Camera.prototype, "orthographic", {
+	get: function() {
+		return this._ortho;
+	},
+	set: function(v) {
+		if(	!v || v.length < 4)
+			return;
+		this._ortho.set(v);
+		this._must_update_projection_matrix = true;
+	},
+	enumerable: true
+});
+
+/**
 * The viewport in normalized coordinates (left,bottom, width, height)
 * @property viewport {vec4}
 */
@@ -407,6 +426,50 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 	},
 	enumerable: true
 });
+
+/**
+* @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
+*/
+Object.defineProperty( Camera.prototype, "frame", {
+	get: function() {
+		throw("frame cannot be assigned manually, enable render_to_texture");
+	},
+	set: function(v) {
+		return this._frame;
+	},
+	enumerable: false
+});
+
+/**
+* @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
+*/
+Object.defineProperty( Camera.prototype, "frame_color_texture", {
+	get: function() {
+		throw("frame_color_texture cannot be assigned manually, enable render_to_texture");
+	},
+	set: function(v) {
+		if(!this._frame)
+			return null;
+		return this._frame.getColorTexture();
+	},
+	enumerable: false
+});
+
+/**
+* @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
+*/
+Object.defineProperty( Camera.prototype, "frame_depth_texture", {
+	get: function() {
+		throw("frame_depth_texture cannot be assigned manually, enable render_to_texture");
+	},
+	set: function(v) {
+		if(!this._frame)
+			return null;
+		return this._frame.getDepthTexture();
+	},
+	enumerable: false
+});
+
 
 /**
 * @property mustUpdate {Boolean}
@@ -877,7 +940,7 @@ Camera.prototype.setPerspective = function( fov, aspect, near, far )
 * @param {number} near
 * @param {number} far
 */
-Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
+Camera.prototype.setOrthographic = function( left, right, bottom,top, near, far )
 {
 	this._near = near;
 	this._far = far;
@@ -983,6 +1046,29 @@ Camera.prototype.orbitDistanceFactor = function(f, center)
 	vec3.add(this._eye, center, front);
 	this._must_update_view_matrix = true;
 }
+
+/**
+* Pans the camera (move acording to view)
+* @method panning
+* @param {number} x
+* @param {number} y
+*/
+Camera.prototype.panning = (function(x,y) { 
+	var tmp_top = vec3.create();
+	var tmp_right = vec3.create();
+	var tmp = vec3.create();
+
+	return function( x,y, factor )
+	{
+		factor = factor || 1;
+		this.getLocalVector( LS.TOP, tmp_top );
+		this.getLocalVector( LS.RIGHT, tmp_right );
+		vec3.scaleAndAdd( tmp, LS.ZEROS, tmp_top, y * factor );
+		vec3.scaleAndAdd( tmp, tmp, tmp_right, x * factor );
+		this.move( tmp );
+	};
+})();
+
 
 /**
 * changes the distance between eye and center ( it could move the center or the eye, depending on the parameters )
@@ -1226,6 +1312,7 @@ Camera.prototype.configure = function(o)
 	if(o.final_aspect !== undefined) this._final_aspect = o.final_aspect;
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
+	if(o.orthographic !== undefined) this._ortho.set( o.orthographic );
 
 	if(o.background_color !== undefined) this._background_color.set( o.background_color );
 
@@ -1251,6 +1338,7 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
+		orthographic: vec4.toArray(this._ortho),
 		background_color: vec4.toArray(this._background_color),
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),

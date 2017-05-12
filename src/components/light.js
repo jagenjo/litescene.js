@@ -159,6 +159,9 @@ function Light(o)
 		if(o.shadowmap_resolution !== undefined)
 			this.shadowmap_resolution = parseInt(o.shadowmap_resolution); //LEGACY: REMOVE
 	}
+
+	if(global.gl && !gl.extensions.WEBGL_depth_texture)
+		Light.use_shadowmap_depth_texture = false;
 }
 
 Light["@projective_texture"] = { type: LS.TYPES.TEXTURE };
@@ -226,7 +229,7 @@ Light.DIRECTIONAL = 3;
 
 Light.DEFAULT_DIRECTIONAL_FRUSTUM_SIZE = 50;
 
-Light.shadowmap_depth_texture = true;
+Light.use_shadowmap_depth_texture = true;
 Light.shadow_shaderblocks = [];
 Light.shadow_shaderblocks_by_name = [];
 
@@ -758,8 +761,9 @@ Light.prototype.generateShadowmap = function (render_settings)
 	{
 		var type = gl.UNSIGNED_BYTE;
 		var format = gl.RGBA;
+
 		//not all webgl implementations support depth textures
-		if( LS.Light.shadowmap_depth_texture && gl.extensions.WEBGL_depth_texture && this.type != LS.Light.OMNI )
+		if( LS.Light.use_shadowmap_depth_texture && gl.extensions.WEBGL_depth_texture && this.type != LS.Light.OMNI )
 		{
 			format = gl.DEPTH_COMPONENT;
 			type = gl.UNSIGNED_INT;
@@ -865,6 +869,7 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 
 	flags |= Light.shader_block.flag_mask;
 
+	//disabled now
 	if( this.cast_shadows && render_settings.shadows_enabled )
 	{
 		if(this.type == Light.OMNI)
@@ -878,6 +883,9 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 			if(shadow_block)
 				flags |= shadow_block.flag_mask;
 		}
+
+		if(this._shadowmap && this._shadowmap.format == gl.RGBA )
+			flags |= LS.Light.shadowmapping_depth_in_color_block.flag_mask;
 	}
 	return flags;
 }
@@ -891,6 +899,8 @@ Light.registerShadowType = function( name, shaderblock )
 
 LS.registerComponent( Light );
 LS.Light = Light;
+
+// LIGHT GLSL STRUCTS AND FUNCTIONS *****************************************
 
 LS.ShadersManager.registerSnippet("surface","\n\
 	//used to store surface shading properties\n\
@@ -998,7 +1008,9 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"spotFalloff\"\n\
 	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
 	\n\
-	vec3 applyLight(in SurfaceOutput o, in FinalLight LIGHT)\n\
+	//Light is separated in two functions, computeLight (how much light receives the object) and applyLight (compute resulting final color)\n\
+	// FINAL LIGHT EQUATION, takes all the info from FinalLight and computes the final color \n\
+	vec3 applyLight( in SurfaceOutput o, in FinalLight LIGHT )\n\
 	{\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
 		vec3 final_color = o.Albedo * total_light;\n\
@@ -1006,10 +1018,14 @@ Light._enabled_fs_shaderblock_code = "\n\
 		return max( final_color, vec3(0.0) );\n\
 	}\n\
 	\n\
+	// HERE we fill FinalLight structure with all the info (colors,NdotL,diffuse,specular,etc) \n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT, out FinalLight FINALLIGHT)\n\
 	{\n\
+		// INIT\n\
 		FINALLIGHT.Color = LIGHT.Color;\n\
 		FINALLIGHT.Ambient = LIGHT.Ambient;\n\
+		\n\
+		// COMPUTE VECTORS\n\
 		vec3 N = o.Normal; //use the final normal (should be the same as IN.worldNormal)\n\
 		vec3 E = (u_camera_eye - v_pos);\n\
 		float cam_dist = length(E);\n\
@@ -1024,30 +1040,30 @@ Light._enabled_fs_shaderblock_code = "\n\
 		\n\
 		vec3 R = reflect(E,N);\n\
 		\n\
+		// PHONG FORMULA\n\
 		float NdotL = 1.0;\n\
 		NdotL = dot(N,L);\n\
 		float EdotN = dot(E,N); //clamp(dot(E,N),0.0,1.0);\n\
+		NdotL = max( 0.0, NdotL + LIGHT.Offset );\n\
+		FINALLIGHT.Diffuse = abs(NdotL);\n\
 		FINALLIGHT.Specular = o.Specular * pow( clamp(dot(R,-L),0.001,1.0), o.Gloss );\n\
 		\n\
+		// ATTENUATION\n\
 		FINALLIGHT.Attenuation = 1.0;\n\
 		\n\
 		if( LIGHT.Info.x == 2.0 && LIGHT.Info.y == 1.0 )\n\
 			FINALLIGHT.Attenuation *= spotFalloff( LIGHT.Front, normalize( LIGHT.Position - v_pos ), LIGHT.ConeInfo.z, LIGHT.ConeInfo.w );\n\
 		\n\
-		NdotL = max( 0.0, NdotL + LIGHT.Offset );\n\
-		FINALLIGHT.Diffuse = abs(NdotL);\n\
-		\n\
+		// SHADOWS\n\
 		FINALLIGHT.Shadow = 1.0;\n\
-		#ifdef TESTSHADOW\n\
-			#ifndef IGNORE_SHADOWS\n\
-				FINALLIGHT.Shadow = testShadow();\n\
-			#endif\n\
+		#ifdef BLOCK_TESTSHADOW\n\
+			FINALLIGHT.Shadow = testShadow();\n\
 		#endif\n\
 		\n\
-		#ifdef LIGHT_FUNC\n\
-			LIGHT_FUNC(LIGHT);\n\
+		// LIGHT MODIFIERS\n\
+		#ifdef LIGHT_MODIFIER\n\
 		#endif\n\
-		//FINAL LIGHT FORMULA ************************* \n\
+		// FINAL LIGHT FORMULA ************************* \n\
 		return applyLight(o,FINALLIGHT);\n\
 	}\n\
 	\n\
@@ -1086,7 +1102,6 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#ifdef FIRST_PASS\n\
 		final_color += o.Emission;\n\
 	#endif\n\
-
 */
 
 Light._disabled_shaderblock_code = "\n\
@@ -1114,23 +1129,7 @@ light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Lig
 light_block.register();
 Light.shader_block = light_block;
 
-/*
-Light._nolight_shaderblock_code = "\n\
-	#pragma snippet \"input\"\n\
-	#pragma snippet \"surface\"\n\
-	#pragma snippet \"light_structs\"\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in FinalLight LIGHT)\n\
-	{\n\
-		return vec3(0.0);\n\
-	}\n\
-";
-
-var nolight_block = new LS.ShaderBlock("nolight");
-nolight_block.addCode( GL.FRAGMENT_SHADER, Light._nolight_shaderblock_code, Light._disabled_shaderblock_code );
-nolight_block.register();
-Light.nolight_shader_block = nolight_block;
-*/
-
+//OMNI LIGHT SHADOWMAP *****************************************
 Light._shadowmap_cubemap_code = "\n\
 	#define SHADOWMAP_ACTIVE\n\
 	uniform samplerCube shadowmap;\n\
@@ -1181,8 +1180,8 @@ Light._shadowmap_vertex_disabled_code ="\n\
 	void applyLight(vec3 pos) {}\n\
 ";
 
-
-Light._shadowmap_2d_enabled_code = "\n\
+// DIRECTIONAL AND SPOTLIGHT SHADOWMAP *****************************************
+Light._shadowmap_2d_enabled_fragment_code = "\n\
 	#ifndef TESTSHADOW\n\
 		#define TESTSHADOW\n\
 	#endif\n\
@@ -1190,9 +1189,9 @@ Light._shadowmap_2d_enabled_code = "\n\
 	varying vec4 v_light_coord;\n\
 	uniform vec4 u_shadow_params; // (1.0/(texture_size), bias, near, far)\n\
 	\n\
-	float UnpackDepth32(vec4 depth)\n\
+	float UnpackDepth(vec4 depth)\n\
 	{\n\
-		#ifdef USE_COLOR_DEPTH_TEXTURE\n\
+		#ifdef BLOCK_DEPTH_IN_COLOR\n\
 			const vec4 bitShifts = vec4( 1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1);\n\
 			return dot(depth.xyzw , bitShifts);\n\
 		#else\n\
@@ -1211,7 +1210,7 @@ Light._shadowmap_2d_enabled_code = "\n\
 		//is inside light frustum\n\
 		if (clamp(sample, 0.0, 1.0) != sample) \n\
 			return 0.0; //outside of shadowmap, no shadow\n\
-		float sampleDepth = UnpackDepth32( texture2D(shadowmap, sample) );\n\
+		float sampleDepth = UnpackDepth( texture2D(shadowmap, sample) );\n\
 		depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
 		if (depth > 0.0) \n\
 			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 0.0 : 1.0;\n\
@@ -1219,22 +1218,31 @@ Light._shadowmap_2d_enabled_code = "\n\
 	}\n\
 ";
 
+Light._shadowmap_2d_disabled_code = "\nfloat testShadow() { return 1.0; }\n";
+
+var shadowmapping_depth_in_color_block = new LS.ShaderBlock("depth_in_color");
+shadowmapping_depth_in_color_block.register();
+Light.shadowmapping_depth_in_color_block = shadowmapping_depth_in_color_block;
+
 var shadowmapping_block = new LS.ShaderBlock("testShadow");
-shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
-shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
+shadowmapping_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code);
+shadowmapping_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_fragment_code, Light._shadowmap_2d_disabled_code );
+//shadowmapping_block.defineContextMacros({"SHADOWBLOCK":"testShadow"});
 shadowmapping_block.register();
 Light.shadowmapping_2d_shader_block = shadowmapping_block;
 Light.registerShadowType( "hard", shadowmapping_block );
 
-var shadowmappingsoft_block = new LS.ShaderBlock("testShadowSoft");
-shadowmappingsoft_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
-shadowmappingsoft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
-shadowmappingsoft_block.register();
-Light.shadowmappingsoft_2d_shader_block = shadowmappingsoft_block;
-Light.registerShadowType( "soft", shadowmappingsoft_block );
+var shadowmapping_2D_hard_shader_block = new LS.ShaderBlock("testShadow2D_hard");
+shadowmapping_2D_hard_shader_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
+shadowmapping_2D_hard_shader_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
+shadowmapping_2D_hard_shader_block.register();
+Light.shadowmapping_2D_hard_shader_block = shadowmapping_2D_hard_shader_block;
+//Light.registerShadowType( "hard", shadowmapping_hard_2d_shader_block );
 
-var shadowmapping_color_block = new LS.ShaderBlock("testShadowColor");
-shadowmapping_color_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
-shadowmapping_color_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "", { USE_COLOR_DEPTH_TEXTURE: "" } );
-shadowmapping_color_block.register();
-Light.shadowmapping_2d_color_shader_block = shadowmapping_color_block;
+var shadowmapping_2D_soft_block = new LS.ShaderBlock("testShadow2D_soft");
+shadowmapping_2D_soft_block.addCode( GL.VERTEX_SHADER, Light._shadowmap_vertex_enabled_code, Light._shadowmap_vertex_disabled_code );
+shadowmapping_2D_soft_block.addCode( GL.FRAGMENT_SHADER, Light._shadowmap_2d_enabled_code, "" );
+shadowmapping_2D_soft_block.register();
+Light.shadowmapping_2D_soft_block = shadowmapping_2D_soft_block;
+//Light.registerShadowType( "soft", shadowmappingsoft_block );
+

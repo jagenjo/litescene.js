@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -161,7 +162,8 @@
 function Script(o)
 {
 	this.enabled = true;
-	this.code = this.constructor.templates[&quot;component&quot;];
+	this.code = this.constructor.templates[&quot;script&quot;];
+	this._blocked_functions = new Set(); //used to block functions that has errors
 
 	this._script = new LScript();
 
@@ -190,7 +192,7 @@ Script.catch_important_exceptions = true; //catch exception during parsing, othe
 
 Script.icon = &quot;mini-icon-script.png&quot;;
 Script.templates = {
-	&quot;component&quot;:&quot;//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}&quot;
+	&quot;script&quot;:&quot;//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}&quot;
 };
 
 Script[&quot;@code&quot;] = {type:&#x27;script&#x27;};
@@ -246,26 +248,7 @@ Script.defineAPIFunction( &quot;onButtonUp&quot;, Script.BIND_TO_SCENE, &quot;bu
 Script.defineAPIFunction( &quot;onDestroy&quot;, Script.BIND_TO_NODE, &quot;destroy&quot; );
 
 
-Script.coding_help = &quot;\n\
-For a complete guide check: &lt;a href=&#x27;https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md&#x27; target=&#x27;blank&#x27;&gt;Scripting Guide&lt;/a&gt;\n\
-Global vars:\n\
- + node : represent the node where this component is attached.\n\
- + component : represent the component.\n\
- + this : represents the script context\n\
-\n\
-Some of the common API functions:\n\
- + onStart: when the Scene starts\n\
- + onUpdate: when updating\n\
- + onClicked : if this node is clicked (requires InteractiveController in root)\n\
- + onRender : before rendering the node\n\
- + onRenderGUI : to render something in the GUI using canvas2D\n\
- + onCollectRenderInstances: when collecting instances\n\
- + onAfterRender : after rendering the node\n\
- + onPrefabReady: when the prefab has been loaded\n\
- + onFinish : when the scene finished (mostly used for editor stuff)\n\
-\n\
-Remember, all basic vars attached to this will be exported as global.\n\
-&quot;;
+Script.coding_help = &quot;For a complete guide check: &lt;a href=&#x27;https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md&#x27; target=&#x27;blank&#x27;&gt;Scripting Guide&lt;/a&gt;&quot;;
 
 Script.active_scripts = {};
 
@@ -319,6 +302,7 @@ Script.prototype.configure = function(o)
 Script.prototype.serialize = function()
 {
 	return {
+		object_class: &quot;Script&quot;,
 		uid: this.uid,
 		enabled: this.enabled,
 		code: this.code,
@@ -341,6 +325,7 @@ Script.prototype.getCode = function()
 Script.prototype.setCode = function( code, skip_events )
 {
 	this.code = code;
+	this._blocked_functions.clear();
 	this.processCode( skip_events );
 }
 
@@ -351,6 +336,7 @@ Script.prototype.setCode = function( code, skip_events )
 */
 Script.prototype.processCode = function( skip_events )
 {
+	this._blocked_functions.clear();
 	this._script.code = this.code;
 	if(!this._root || LS.Script.block_execution )
 		return true;
@@ -384,7 +370,7 @@ Script.prototype.processCode = function( skip_events )
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.RUNNING &amp;&amp; this._script._context.start )
+			if( this._root.scene._state === LS.PLAYING &amp;&amp; this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -609,6 +595,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 {
 	if(!this.enabled)
 		return;
+
 	var event_info = LS.Script.API_events_to_function[ event_type ];
 	if(!event_info)
 		return; //????
@@ -617,7 +604,12 @@ Script.prototype.onScriptEvent = function(event_type, params)
 		this._breakpoint_on_call = false;
 		{{debugger}} //stops the execution if the console is open
 	}
-	return this._script.callMethod( event_info.name, params );
+
+	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+		return;
+
+	var r = this._script.callMethod( event_info.name, params, undefined, this );
+	return r;
 }
 
 Script.prototype.onAddedToNode = function( node )
@@ -688,6 +680,13 @@ Script.prototype.getComponentTitle = function()
 	return this.name; //name is a getter that reads the name from the code comment
 }
 
+Script.prototype.toInfoString = function()
+{
+	if(!this._root)
+		return LS.getObjectClassName( this );
+	return LS.getObjectClassName( this ) + &quot; in node &quot; + this._root.name;
+}
+
 
 //TODO stuff ***************************************
 /*
@@ -724,6 +723,7 @@ Script.prototype.onError = function(e)
 
 	e.script = this;
 	e.node = this._root;
+	this._blocked_functions.add( e.method_name );
 
 	LEvent.trigger( this, &quot;code_error&quot;,e);
 	LEvent.trigger( scene, &quot;code_error&quot;,e);
@@ -747,6 +747,13 @@ Script.prototype.getResources = function(res)
 		ctx.onGetResources( res );
 }
 
+Script.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	var ctx = this.getContext();
+	if(ctx &amp;&amp; ctx.onResourceRenamed )
+		ctx.onResourceRenamed( old_name, new_name, resource );
+}
+
 LS.registerComponent( Script );
 LS.Script = Script;
 
@@ -758,6 +765,7 @@ function ScriptFromFile(o)
 	this._filename = &quot;&quot;;
 
 	this._script = new LScript();
+	this._blocked_functions = new Set(); //used to block functions that has errors
 
 	this._script.extra_methods = {
 		getComponent: (function() { return this; }).bind(this),
@@ -906,7 +914,7 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 			if( this._script._context.onBind )
 				this._script._context.onBind( this._root.scene );
 
-			if( this._root.scene._state === LS.RUNNING &amp;&amp; this._script._context.start )
+			if( this._root.scene._state === LS.PLAYING &amp;&amp; this._script._context.start )
 				this._script._context.start();
 		}
 
@@ -934,6 +942,7 @@ ScriptFromFile.prototype.configure = function(o)
 ScriptFromFile.prototype.serialize = function()
 {
 	return {
+		object_class: &quot;ScriptFromFile&quot;,
 		uid: this.uid,
 		enabled: this.enabled,
 		filename: this.filename,
@@ -952,6 +961,12 @@ ScriptFromFile.prototype.getResources = function(res)
 	if(!ctx || !ctx.getResources )
 		return;
 	ctx.getResources( res );
+}
+
+ScriptFromFile.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.filename == old_name)
+		this.filename = new_name;
 }
 
 ScriptFromFile.prototype.getCodeResource = function()
@@ -979,17 +994,16 @@ ScriptFromFile.prototype.setCode = function( code, skip_events )
 
 ScriptFromFile.updateComponents = function( script, skip_events )
 {
-	if( !script || !script._root )
+	if( !script )
 		return;
 
-	var filename = script.filename;
-	var scene = script._root.scene || LS.GlobalScene;
+	var fullpath = script.fullpath || script.filename;
+	var scene = LS.GlobalScene;
 	var components = scene.findNodeComponents( LS.ScriptFromFile );
 	for(var i = 0; i &lt; components.length; ++i)
 	{
 		var compo = components[i];
-		var filename = script.fullpath || script.filename;
-		if( compo.filename == filename )
+		if( compo.filename == fullpath )
 			compo.processCode(skip_events);
 	}
 }

@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -159,10 +160,10 @@
 * @class SkinDeformer
 * @constructor
 */
-function SkinDeformer(o)
+function SkinDeformer( o )
 {
 	this.enabled = true;
-	this.search_bones_in_parent = false;
+	this.search_bones_in_parent = true;
 	this.skeleton_root_node = null;
 	this.cpu_skinning = false;
 	this.ignore_transform = true;
@@ -171,7 +172,7 @@ function SkinDeformer(o)
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
-	if(!SkinDeformer._initialized)
+	if(!SkinDeformer._initialized &amp;&amp; global.gl )
 	{
 		SkinDeformer.num_supported_uniforms = gl.getParameter( gl.MAX_VERTEX_UNIFORM_VECTORS );
 		SkinDeformer.num_supported_textures = gl.getParameter( gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS );
@@ -195,7 +196,7 @@ SkinDeformer.gpu_skinning_supported = true;
 SkinDeformer.icon = &quot;mini-icon-stickman.png&quot;;
 SkinDeformer.apply_to_normals_by_software = false;
 
-SkinDeformer[&quot;@skeleton_root_node&quot;] = { type: &quot;node&quot; };
+SkinDeformer[&quot;@skeleton_root_node&quot;] = { type: LS.TYPES.SCENENODE };
 
 SkinDeformer.prototype.onAddedToNode = function(node)
 {
@@ -318,6 +319,11 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		//retrieve all the bones
 		var bones = this.getBoneMatrices( mesh );
 		var bones_size = bones.length * 12;
+		if(!bones.length)
+		{
+			console.warn(&quot;SkinDeformer.prototype.applySkinning: Bones not found&quot;);
+			return;
+		}
 
 		var u_bones = this._u_bones;
 		if(!u_bones || u_bones.length != bones_size)
@@ -339,7 +345,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 				RI.query.macros[&quot;MAX_BONES&quot;] = bones.length.toString();
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 
-			RI.shader_blocks[0] = { block: LS.SkinDeformer.skinning_block, uniforms: { u_bones: u_bones } };
+			RI.addShaderBlock( LS.SkinDeformer.skinning_uniforms_block, { u_bones: u_bones } );
 		}
 		else if( SkinDeformer.num_supported_textures &gt; 0 ) //upload the bones as a float texture (slower)
 		{
@@ -358,9 +364,13 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			RI.uniforms[&quot;u_bones&quot;] = LS.Renderer.BONES_TEXTURE_SLOT;
 			RI.query.macros[&quot;USE_SKINNING_TEXTURE&quot;] = &quot;&quot;;
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
+
+			RI.addShaderBlock( LS.SkinDeformer.skinning_texture_block, { u_bones: LS.Renderer.BONES_TEXTURE_SLOT } );
 		}
 		else
 			console.error(&quot;impossible to get here&quot;);
+
+		RI.addShaderBlock( LS.SkinDeformer.skinning_block );
 	}
 	else //cpu skinning (mega slow)
 	{
@@ -417,7 +427,9 @@ SkinDeformer.prototype.disableSkinning = function( RI )
 		delete RI.samplers[&quot;u_bones&quot;];
 	}
 
-	RI.shader_blocks[0] = null;
+	RI.removeShaderBlock( LS.SkinDeformer.skinning_block );
+	RI.removeShaderBlock( LS.SkinDeformer.skinning_uniforms_block );
+	RI.removeShaderBlock( LS.SkinDeformer.skinning_texture_block );
 }
 
 SkinDeformer.prototype.getMesh = function()
@@ -536,7 +548,7 @@ SkinDeformer.prototype.getBones = function()
 LS.registerComponent( SkinDeformer );
 LS.SkinDeformer = SkinDeformer;
 
-SkinDeformer.skinning_enabled_shader_code = &quot;\n\
+SkinDeformer.skinning_shader_code = &quot;\n\
 	//Skinning ******************* \n\
 	#ifndef MAX_BONES\n\
 		#define MAX_BONES 64\n\
@@ -589,6 +601,7 @@ SkinDeformer.skinning_enabled_shader_code = &quot;\n\
 	}\n\
 &quot;;
 
+SkinDeformer.skinning_enabled_shader_code = &quot;\n#pragma shaderblock skinning_mode\n#define USING_SKINNING\n&quot;;
 SkinDeformer.skinning_disabled_shader_code = &quot;\nvoid applySkinning( inout vec4 position, inout vec3 normal) {}\n&quot;;
 
 // ShaderBlocks used to inject to shader in runtime
@@ -597,8 +610,15 @@ skinning_block.addCode( GL.VERTEX_SHADER, SkinDeformer.skinning_enabled_shader_c
 skinning_block.register();
 SkinDeformer.skinning_block = skinning_block;
 
+var skinning_uniforms_block = new LS.ShaderBlock(&quot;skinning_uniforms&quot;);
+skinning_uniforms_block.defineContextMacros( { &quot;skinning_mode&quot;: &quot;skinning_uniforms&quot;} );
+skinning_uniforms_block.addCode( GL.VERTEX_SHADER, SkinDeformer.skinning_shader_code, SkinDeformer.skinning_disabled_shader_code );
+skinning_uniforms_block.register();
+SkinDeformer.skinning_uniforms_block = skinning_uniforms_block;
+
 var skinning_texture_block = new LS.ShaderBlock(&quot;skinning_texture&quot;);
-skinning_texture_block.addCode( GL.VERTEX_SHADER, &quot;\n#define USE_SKINNING_TEXTURE\n&quot; + SkinDeformer.skinning_enabled_shader_code, SkinDeformer.skinning_disabled_shader_code );
+skinning_texture_block.defineContextMacros( { &quot;skinning_mode&quot;: &quot;skinning_texture&quot;} );
+skinning_texture_block.addCode( GL.VERTEX_SHADER, &quot;\n#define USE_SKINNING_TEXTURE\n&quot; + SkinDeformer.skinning_shader_code, SkinDeformer.skinning_disabled_shader_code );
 skinning_texture_block.register();
 SkinDeformer.skinning_texture_block = skinning_texture_block;
     </pre>

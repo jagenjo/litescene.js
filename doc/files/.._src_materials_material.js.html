@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -336,7 +337,6 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { &quot;normal&quot;:Material.COORDS_UV0, &quot;displacement&quot;:Material.COORDS_UV0, &quot;environment&quot;: Material.COORDS_POLAR_REFLECTED, &quot;irradiance&quot; : Material.COORDS_POLAR };
 
 Material.available_shaders = [&quot;default&quot;,&quot;global&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;,&quot;cell_outline&quot;];
-Material.texture_channels = []; //base material doesnt support any texture
 
 // RENDERING METHODS
 Material.prototype.fillShaderQuery = function(scene)
@@ -350,7 +350,7 @@ Material.prototype.fillShaderQuery = function(scene)
 		var sampler = this.getTextureSampler(i);
 		if(!sampler)
 			continue;
-		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || &quot;0&quot;;
+		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || &quot;transformed&quot;;
 
 		var texture = Material.getTextureFromSampler( sampler );
 		if(!texture) //loading or non-existant
@@ -415,6 +415,8 @@ Material.prototype.configure = function(o)
 {
 	for(var i in o)
 	{
+		if(typeof (o[i]) === &quot;function&quot;)
+			continue;
 		if(!this.setProperty( i, o[i] ) &amp;&amp; LS.debug)
 			console.warn(&quot;Material property not assigned: &quot; + i );
 	}
@@ -535,8 +537,9 @@ Material.prototype.setProperty = function( name, value )
 			break;
 		//bools
 		//strings
-		//	this[name] = value; 
-		//	break;
+		case &quot;uid&quot;:
+			this[name] = value; 
+			break;
 		//vectors
 		case &quot;uvs_matrix&quot;:
 		case &quot;color&quot;: 
@@ -563,6 +566,13 @@ Material.prototype.setProperty = function( name, value )
 		case &quot;transparency&quot;: //special cases
 			this.opacity = 1 - value;
 			break;
+		case &quot;render_state&quot;:
+			this._render_state.configure( value );
+			break;
+		//ignore
+		case &quot;material_class&quot;:
+		case &quot;object_type&quot;:
+			return true;
 		default:
 			return false;
 	}
@@ -624,8 +634,7 @@ Material.prototype.getPropertyInfoFromPath = function( path )
 */
 Material.prototype.getTextureChannels = function()
 {
-	if(this.constructor.texture_channels)
-		return this.constructor.texture_channels;
+	//console.warn(&quot;this function should never be called, it should be overwritten&quot;);
 	return [];
 }
 

@@ -93,6 +93,9 @@ function Player(options)
 	this.gl.onkeydown = key_event_callback;
 	this.gl.onkeyup = key_event_callback;
 
+	var touch_event_callback = LS.Player.prototype._ontouch.bind(this);
+	this.gl.ontouch = touch_event_callback;
+
 	var gamepad_event_callback = LS.Player.prototype._ongamepad.bind(this);
 	this.gl.ongamepadconnected = gamepad_event_callback;
 	this.gl.ongamepaddisconnected = gamepad_event_callback;
@@ -102,6 +105,7 @@ function Player(options)
 	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+	gl.captureTouch(true);
 	gl.captureGamepads(true);
 
 	LS.Input.init();
@@ -373,6 +377,21 @@ Player.prototype._onmouse = function(e)
 	//hardcoded event handlers in the player
 	if(this.onMouse)
 		this.onMouse(e);
+}
+
+//input
+Player.prototype._ontouch = function(e)
+{
+	//console.log(e);
+	if(this.state != LS.Player.PLAYING)
+		return;
+
+	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === false )
+		return false;
+
+	//hardcoded event handlers in the player
+	if(this.onTouch)
+		this.onTouch(e);
 }
 
 Player.prototype._onkey = function(e)

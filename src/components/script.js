@@ -10,7 +10,7 @@
 function Script(o)
 {
 	this.enabled = true;
-	this.code = this.constructor.templates["component"];
+	this.code = this.constructor.templates["script"];
 	this._blocked_functions = new Set(); //used to block functions that has errors
 
 	this._script = new LScript();
@@ -40,7 +40,7 @@ Script.catch_important_exceptions = true; //catch exception during parsing, othe
 
 Script.icon = "mini-icon-script.png";
 Script.templates = {
-	"component":"//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}"
+	"script":"//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}"
 };
 
 Script["@code"] = {type:'script'};

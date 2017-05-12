@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -195,6 +196,8 @@ function SceneTree()
 	LEvent.bind( this, &quot;treeItemAdded&quot;, this.onNodeAdded, this );
 	LEvent.bind( this, &quot;treeItemRemoved&quot;, this.onNodeRemoved, this );
 
+	this._shaderblock_info = null;
+
 	this.init();
 }
 
@@ -217,6 +220,16 @@ Object.defineProperty( SceneTree.prototype, &quot;time&quot;, {
 	},
 	set: function(v) {
 		throw(&quot;Cannot set time directly&quot;);
+	}
+});
+
+Object.defineProperty( SceneTree.prototype, &quot;state&quot;, {
+	enumerable: true,
+	get: function() {
+		return this._state;
+	},
+	set: function(v) {
+		throw(&quot;Cannot set state directly, use start, finish, pause, unpause&quot;);
 	}
 });
 
@@ -347,7 +360,7 @@ SceneTree.prototype.configure = function( scene_info )
 	if(scene_info.uid)
 		this.uid = scene_info.uid;
 
-	if(scene_info.object_type != &quot;SceneTree&quot;)
+	if((scene_info.object_class || scene_info.object_type) != &quot;SceneTree&quot;) //legacy
 		console.warn(&quot;Warning: object set to scene doesnt look like a propper one.&quot;, scene_info);
 
 	if(scene_info.local_repository)
@@ -449,7 +462,7 @@ SceneTree.prototype.serialize = function()
 	var o = {};
 
 	o.uid = this.uid;
-	o.object_type = LS.getObjectClassName(this);
+	o.object_class = LS.getObjectClassName(this);
 
 	//legacy
 	o.local_repository = this.local_repository;
@@ -489,13 +502,14 @@ SceneTree.prototype.serialize = function()
 *
 * @method setFromJSON
 * @param {String} data JSON object containing the scene
-* @param {Function}[on_complete=null] the callback to call when the loading is complete
+* @param {Function}[on_complete=null] the callback to call when the scene is ready
 * @param {Function}[on_error=null] the callback to call if there is a  loading error
 * @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
 * @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
+* @param {Function}[on_scripts_loaded=null] the callback to call when the loading is complete but before assigning the scene
 */
 
-SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded )
+SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded, on_scripts_loaded )
 {
 	if(!data)
 		return;
@@ -519,15 +533,15 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	//check JSON for special scripts
 	if ( scripts.length )
-		this.loadScripts( scripts, function(){ inner_success( data ); }, on_error );
+		this.loadScripts( scripts, function(){ inner_success( data ); }, inner_error );
 	else
 		inner_success( data );
 
 
 	function inner_success( response )
 	{
-		if(on_complete)
-			on_complete(that);
+		if(on_scripts_loaded)
+			on_scripts_loaded(that,response);
 
 		that.init();
 		that.configure(response);
@@ -540,6 +554,9 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 		if(!LS.ResourcesManager.isLoading())
 			inner_all_loaded();
+
+		if(on_complete)
+			on_complete(that);
 	}
 
 	function inner_all_loaded()
@@ -553,9 +570,9 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 		LEvent.trigger( that, &quot;loadCompleted&quot;);
 	}
 
-	function inner_error(err)
+	function inner_error(err,script_url)
 	{
-		console.warn(&quot;Error in scene: &quot; + url + &quot; -&gt; &quot; + err);
+		console.error(&quot;Error loading script: &quot; + script_url);
 		if(on_error)
 			on_error(err);
 	}
@@ -585,6 +602,17 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		url += (url.indexOf(&quot;?&quot;) == -1 ? &quot;?&quot; : &quot;&amp;&quot;) + nocache;
 
 	var extension = LS.ResourcesManager.getExtension( url );
+
+	//very special case from the editor, trying to load from a URL that comes from a player.html
+	if(extension == &quot;html&quot; &amp;&amp; LS.ResourcesManager.getFilename(url) == &quot;player.html&quot; )
+	{
+		var index = url.indexOf(&quot;url=&quot;);
+		var index2 = url.indexOf(&quot;&amp;&quot;,index);
+		url = decodeURIComponent( url.substr(index + 4, index2 - index - 4) );
+		extension = LS.ResourcesManager.getExtension( url );
+		if(nocache)
+			url += (url.indexOf(&quot;?&quot;) == -1 ? &quot;?&quot; : &quot;&amp;&quot;) + nocache;
+	}
 
 	LS.Network.request({
 		url: url,
@@ -868,6 +896,25 @@ SceneTree.prototype.getActiveCameras = function( force )
 	return this._cameras;
 }
 
+/**
+* Returns an array with all the cameras in the scene (even if they are disabled)
+*
+* @method getAllCameras
+* @return {Array} cameras
+*/
+SceneTree.prototype.getAllCameras = function()
+{
+	var cameras = [];
+	for(var i = 0; i &lt; this._nodes.length; ++i)
+	{
+		var node = this._nodes[i];
+		var node_cameras = node.getComponents( LS.Components.Camera );
+		if(node_cameras &amp;&amp; node_cameras.length)
+			cameras = cameras.concat( node_cameras );
+	}
+	return cameras;
+}
+
 SceneTree.prototype.getLight = function()
 {
 	return this._root.light;
@@ -1020,7 +1067,7 @@ SceneTree.prototype.getNode = function( name )
 {
 	if(name == &quot;&quot;)
 		return this.root;
-	if(!name)
+	if(!name || name.constructor !== String)
 		return null;
 	if(name.charAt(0) == LS._uid_prefix)
 		return this._nodes_by_uid[ name ];
@@ -1410,10 +1457,10 @@ SceneTree.prototype.removePreloadResource = function( fullpath )
 */
 SceneTree.prototype.start = function()
 {
-	if(this._state == LS.RUNNING)
+	if(this._state == LS.PLAYING)
 		return;
 
-	this._state = LS.RUNNING;
+	this._state = LS.PLAYING;
 	this._start_time = getTime() * 0.001;
 	/**
 	 * Fired when the nodes need to be initialized
@@ -1432,6 +1479,51 @@ SceneTree.prototype.start = function()
 	LEvent.trigger(this,&quot;start&quot;,this);
 	this.triggerInNodes(&quot;start&quot;);
 }
+
+/**
+* pauses the scene (triggers an &quot;pause&quot; event)
+*
+* @method pause
+*/
+SceneTree.prototype.pause = function()
+{
+	if( this._state != LS.PLAYING )
+		return;
+
+	this._state = LS.PAUSED;
+	/**
+	 * Fired when the scene pauses (mostly in the editor)
+	 *
+	 * @event pause
+	 * @param {LS.SceneTree} scene
+	 */
+	LEvent.trigger(this,&quot;pause&quot;,this);
+	this.triggerInNodes(&quot;pause&quot;);
+	this.purgeResidualEvents();
+}
+
+/**
+* unpauses the scene (triggers an &quot;unpause&quot; event)
+*
+* @method unpause
+*/
+SceneTree.prototype.unpause = function()
+{
+	if(this._state != LS.PAUSED)
+		return;
+
+	this._state = LS.PLAYING;
+	/**
+	 * Fired when the scene unpauses (mostly in the editor)
+	 *
+	 * @event unpause
+	 * @param {LS.SceneTree} scene
+	 */
+	LEvent.trigger(this,&quot;unpause&quot;,this);
+	this.triggerInNodes(&quot;unpause&quot;);
+	this.purgeResidualEvents();
+}
+
 
 /**
 * stop the scene (triggers an &quot;finish&quot; event)
@@ -1682,7 +1774,7 @@ SceneTree.prototype.requestFrame = function()
 SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
 
 /**
-* returns current scene time (remember that scene time remains freezed if the scene is not running)
+* returns current scene time (remember that scene time remains freezed if the scene is not playing)
 *
 * @method getTime
 * @return {Number} scene time in seconds

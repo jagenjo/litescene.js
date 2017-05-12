@@ -50,6 +50,8 @@ var ShadersManager = {
 
 		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
+		if( gl.extensions.OES_standard_derivatives )
+			this.global_extra_code = "#define STANDARD_DERIVATIVES" + String.fromCharCode(10);
 
 		//compile some shaders
 		this.createDefaultShaders();
@@ -796,6 +798,8 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	this.code_map.set( shader_type, info );
 }
 
+//returns the full code of a shaderblock applying all includes, shaderblocks, etc
+//shadertype: GL.VERTEX_SHADER = 35633, GL.FRAGMENT_SHADER = 35632
 ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	block_flags = block_flags || 0;
@@ -871,7 +875,7 @@ GLSLCode.prototype.parse = function()
 	//remove comments
 	var code = this.code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
 
-	this.blocks = [];
+	this.fragments = [];
 	this.pragmas = {};
 	this.uniforms = {};
 	this.streams = {};
@@ -880,7 +884,7 @@ GLSLCode.prototype.parse = function()
 	this.shader_blocks = {};
 	this.is_dynamic = false; //means this shader has no variations using pragmas or macros
 
-	var current_block = [];
+	var current_fragment = [];
 	var lines = code.split("\n");
 
 	//parse
@@ -903,22 +907,22 @@ GLSLCode.prototype.parse = function()
 				var uniform_name = words[2].split(";");
 				this.attributes[ uniform_name[0] ] = words[1];
 			}
-			current_block.push(line);
+			current_fragment.push(line);
 			continue;
 		}
 
 		var t = line.split(" ");
 		if(t[0] == "#pragma")
 		{
-			//merge lines and add previous block
-			var current_block_code = current_block.join("\n");
-			if(current_block_code.trim()) //in case is empty this code block
-				this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); 
+			//merge lines and add previous fragment
+			var current_fragment_code = current_fragment.join("\n");
+			if(current_fragment_code.trim()) //in case is empty this code fragment
+				this.fragments.push( { type: GLSLCode.CODE, code: current_fragment_code } ); 
 
 			this.is_dynamic = true;
 			this.pragmas[ t[2] ] = true;
 			var action = t[1];
-			current_block.length = 0;
+			current_fragment.length = 0;
 			var pragma_info = { type: GLSLCode.PRAGMA, line: line, action: action, param: t[2] };
 
 			var method = LS.GLSLCode.pragma_methods[ action ];
@@ -929,17 +933,17 @@ GLSLCode.prototype.parse = function()
 			}
 			if( method.parse.call( this, pragma_info, t ) === false )
 				continue;
-			this.blocks.push( pragma_info ); //add pragma block
+			this.fragments.push( pragma_info ); //add pragma fragment
 		}
 		else
-			current_block.push( line ); //add line to current block lines
+			current_fragment.push( line ); //add line to current fragment lines
 	}
 
-	if(current_block.length)
+	if(current_fragment.length)
 	{
-		var current_block_code = current_block.join("\n");
-		if(current_block_code.trim()) //in case is empty this code block
-			this.blocks.push( { type: GLSLCode.CODE, code: current_block_code } ); //merge lines and add as block
+		var current_fragment_code = current_fragment.join("\n");
+		if(current_fragment_code.trim()) //in case is empty this code fragment
+			this.fragments.push( { type: GLSLCode.CODE, code: current_fragment_code } ); //merge lines and add as fragment
 	}
 
 	//done
@@ -953,22 +957,22 @@ GLSLCode.prototype.getFinalCode = function( shader_type, block_flags, context )
 
 	var code = "";
 	context = context || {};
-	var blocks = this.blocks;
+	var fragments = this.fragments;
 
-	for(var i = 0; i < blocks.length; ++i)
+	for(var i = 0; i < fragments.length; ++i)
 	{
-		var block = blocks[i];
-		if( block.type === GLSLCode.CODE ) //regular code
+		var fragment = fragments[i];
+		if( fragment.type === GLSLCode.CODE ) //regular code
 		{
-			code += block.code;
+			code += fragment.code;
 			continue;
 		}
 
-		var pragma_method = GLSLCode.pragma_methods[ block.action ];
+		var pragma_method = GLSLCode.pragma_methods[ fragment.action ];
 		if(!pragma_method || !pragma_method.getCode )
 			continue;
 
-		var r = pragma_method.getCode.call( this, shader_type, block, block_flags, context );
+		var r = pragma_method.getCode.call( this, shader_type, fragment, block_flags, context );
 		if( r )
 			code += r;
 	}
@@ -997,11 +1001,11 @@ GLSLCode.pragma_methods["include"] = {
 		pragma_info.include_subfile = subfile;
 		this.includes[ pragma_info.include ] = true;
 	},
-	getCode: function( shader_type, block, block_flags, context )
+	getCode: function( shader_type, fragment, block_flags, context )
 	{
 		var extra_code = "";
 
-		var filename = block.include;
+		var filename = fragment.include;
 		var ext = LS.ResourcesManager.getExtension( filename );
 		if(ext)
 		{
@@ -1011,11 +1015,11 @@ GLSLCode.pragma_methods["include"] = {
 				LS.ResourcesManager.load( filename ); //force load
 				return null;
 			}
-			if(!block.include_subfile)
+			if(!fragment.include_subfile)
 				extra_code = "\n" + extra_shadercode._subfiles[""] + "\n";
 			else
 			{
-				var extra = extra_shadercode._subfiles[ block.include_subfile ];
+				var extra = extra_shadercode._subfiles[ fragment.include_subfile ];
 				if(extra === undefined)
 					return null;
 				extra_code = "\n" + extra + "\n";
@@ -1045,9 +1049,9 @@ GLSLCode.pragma_methods["define"] = {
 		}
 		pragma_info.define = [ param1, param2.substr(1, param2.length - 2) ];
 	},
-	getCode: function( shader_type, block, block_flags, context )
+	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		context[ block.define[0] ] = block.define[1];
+		context[ fragment.define[0] ] = fragment.define[1];
 	}
 }
 
@@ -1077,16 +1081,16 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			}
 		}
 	},
-	getCode: function( shader_type, block, block_flags, context )
+	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		var shader_block_name = block.shader_block[1];
-		if( block.shader_block[0] == 2 ) //is dynamic shaderblock name
+		var shader_block_name = fragment.shader_block[1];
+		if( fragment.shader_block[0] == 2 ) //is dynamic shaderblock name
 		{
 			//dynamic shaderblock name
 			if( context[ shader_block_name ] ) //search for the name in the context
 				shader_block_name = context[ shader_block_name ];
 			else 
-				shader_block_name = block.shader_block[2]; //if not found use the default
+				shader_block_name = fragment.shader_block[2]; //if not found use the default
 
 			if(!shader_block_name)
 			{
@@ -1098,7 +1102,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
 		if(!shader_block)
 		{
-			console.error("ShaderCode uses unknown ShaderBlock: ", block.shader_block);
+			console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
 			return null;
 		}
 
@@ -1126,12 +1130,12 @@ GLSLCode.pragma_methods["snippet"] = {
 		pragma_info.snippet = snippet_name;
 		this.snippets[ snippet_name ] = true;
 	},
-	getCode: function( shader_type, block, block_flags, context )
+	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		var snippet = LS.ShadersManager.getSnippet( block.snippet );
+		var snippet = LS.ShadersManager.getSnippet( fragment.snippet );
 		if(!snippet)
 		{
-			console.error("ShaderCode uses unknown Snippet: ", block.snippet);
+			console.error("ShaderCode uses unknown Snippet: ", fragment.snippet);
 			return null;
 		}
 

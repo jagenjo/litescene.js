@@ -1,3 +1,6 @@
+if(typeof(LiteGraph) != "undefined")
+{
+
 // Texture Blur *****************************************
 function LGraphFXStack()
 {
@@ -73,3 +76,7 @@ LGraphFXStack.prototype.onConfigure = function( o )
 }
 
 LiteGraph.registerNodeType("texture/fxstack", LGraphFXStack );
+
+
+
+}

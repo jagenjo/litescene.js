@@ -1,6 +1,6 @@
 /**
 * The Project is the top-most object that contains the whole application, from the project we can load other scenes
-* Still a work in progress
+* WORK IN PROGRESS
 *
 * @class Project
 * @constructor
@@ -12,7 +12,7 @@ function Project(o)
 	
 	this.includes = []; //files to include before launching this project
 	this.settings = {};
-	this.scene = null;
+	this.scenes = [];
 
 	if(o)
 		this.configure(o);
@@ -28,7 +28,6 @@ Project.prototype.configure = function(o)
 
 }
 
-
 //stuff to add
 // start
 // time
@@ -41,6 +40,5 @@ Project.prototype.load = function(url, on_complete)
 		// after loaded -> configure scene
 		// on_complete
 }
-
 
 LS.extendClass( Project, ComponentContainer ); //container methods

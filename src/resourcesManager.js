@@ -1241,7 +1241,7 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 		}
 		else
 		{
-			console.error( "JSON object_class class not found: " + data.object_class );
+			console.error( "JSON object_class class not found: " + class_name );
 			return null;
 		}
 	}

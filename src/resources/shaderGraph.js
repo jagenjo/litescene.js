@@ -1,13 +1,13 @@
 
 /**
-* GraphCode is a resource containing a graph that generates the code associated to a shader
+* ShaderGraph is a resource containing a graph that generates the code associated to a shader
 * It is used to define special ways to render scene objects, having full control of the rendering algorithm
 * 
-* @class GraphCode
+* @class ShaderGraph
 * @constructor
 */
 
-function GraphCode( o )
+function ShaderGraph( o )
 {
 	this._graph = new LiteGraph.Graph();
 
@@ -23,15 +23,15 @@ function GraphCode( o )
 		this.configure(o);
 }
 
-GraphCode.help_url = "https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md";
+ShaderGraph.help_url = "https://github.com/jagenjo/litescene.js/blob/master/guides/shaders.md";
 
-GraphCode.prototype.getDataToStore = function()
+ShaderGraph.prototype.getDataToStore = function()
 {
 	return this.serialize();
 }
 
 //compile the shader, cache and return
-GraphCode.prototype.getShader = function( render_mode, block_flags )
+ShaderGraph.prototype.getShader = function( render_mode, block_flags )
 {
 	if( this._has_error )
 		return null;
@@ -104,7 +104,7 @@ GraphCode.prototype.getShader = function( render_mode, block_flags )
 	return shader;
 }
 
-GraphCode.prototype.compileShader = function( vs_code, fs_code )
+ShaderGraph.prototype.compileShader = function( vs_code, fs_code )
 {
 	if( this._has_error )
 		return null;
@@ -138,10 +138,10 @@ GraphCode.prototype.compileShader = function( vs_code, fs_code )
 	return null;
 }
 
-GraphCode.prototype.validatePublicUniforms = function( shader )
+ShaderGraph.prototype.validatePublicUniforms = function( shader )
 {
 	if(!shader)
-		throw("GraphCode: Shader cannot be null");
+		throw("ShaderGraph: Shader cannot be null");
 
 	for( var i in this._global_uniforms )
 	{
@@ -157,13 +157,13 @@ GraphCode.prototype.validatePublicUniforms = function( shader )
 
 
 //makes this resource available 
-GraphCode.prototype.register = function()
+ShaderGraph.prototype.register = function()
 {
 	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
 }
 
-//searches for materials using this ShaderCode and forces them to be updated (update the properties)
-GraphCode.prototype.applyToMaterials = function( scene )
+//searches for materials using this ShaderGraph and forces them to be updated (update the properties)
+ShaderGraph.prototype.applyToMaterials = function( scene )
 {
 	scene = scene || LS.GlobalScene;
 	var filename = this.fullpath || this.filename;
@@ -188,6 +188,6 @@ GraphCode.prototype.applyToMaterials = function( scene )
 	}
 }
 
-LS.GraphCode = GraphCode;
-LS.registerResourceClass( GraphCode );
+LS.ShaderGraph = ShaderGraph;
+LS.registerResourceClass( ShaderGraph );
 

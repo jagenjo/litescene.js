@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -214,6 +215,10 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
 
                     <ul class="index-list methods">
                             <li class="index-item method">
+                                <a href="#method_applyTransform">applyTransform</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_computeNormalMatrix">computeNormalMatrix</a>
 
                             </li>
@@ -255,6 +260,73 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
+<div id="method_applyTransform" class="method item">
+    <h3 class="name"><code>applyTransform</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>matrix</code>
+                </li>
+                <li class="arg">
+                        <code>normal_matrix</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_renderInstance.js.html#l94"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:94</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>applies a transformation to the current matrix</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">matrix</code>
+                        <span class="type">Mat4</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">normal_matrix</code>
+                        <span class="type">Mat4</span>
+
+
+                    <div class="param-description">
+                        <p>[optional]</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_computeNormalMatrix" class="method item">
     <h3 class="name"><code>computeNormalMatrix</code></h3>
 
@@ -270,7 +342,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l77"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:77</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l82"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:82</code></a>
         </p>
 
 
@@ -307,7 +379,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l153"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:153</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l174"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:174</code></a>
         </p>
 
 
@@ -361,7 +433,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l164"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:164</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l185"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:185</code></a>
         </p>
 
 
@@ -418,7 +490,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l175"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:175</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l196"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:196</code></a>
         </p>
 
 
@@ -481,7 +553,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l209"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:209</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l230"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:230</code></a>
         </p>
 
 
@@ -528,7 +600,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l197"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:197</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l218"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:218</code></a>
         </p>
 
 
@@ -559,7 +631,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l187"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:187</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l208"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:208</code></a>
         </p>
 
 
@@ -599,7 +671,7 @@ It shouldnt contain ids to resources (strings), instead if must contain the dire
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_renderInstance.js.html#l326"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:326</code></a>
+        <a href="../files/.._src_render_renderInstance.js.html#l391"><code>..&#x2F;src&#x2F;render&#x2F;renderInstance.js:391</code></a>
         </p>
 
 

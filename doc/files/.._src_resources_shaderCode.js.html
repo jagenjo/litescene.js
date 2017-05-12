@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -170,7 +171,7 @@ function ShaderCode( code )
 	this._compiled_shaders = {};
 
 	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
-	this._shaderblock_flags = {};
+	this._shaderblock_flags = {}; //used to store which shaderblock represent to every flag bit
 
 	this._version = 0;
 
@@ -202,6 +203,17 @@ Object.defineProperty( ShaderCode.prototype, &quot;code&quot;, {
 	}
 });
 
+Object.defineProperty( ShaderCode.prototype, &quot;version&quot;, {
+	enumerable: false,
+	get: function() {
+		return this._version;
+	},
+	set: function(v) {
+		console.error(&quot;version cannot be set manually&quot;);
+	}
+});
+
+
 //parse the code
 //store in a easy to use way
 ShaderCode.prototype.processCode = function()
@@ -213,6 +225,7 @@ ShaderCode.prototype.processCode = function()
 	this._functions = {};
 	this._shaderblock_flags_num = 0;
 	this._shaderblock_flags = {};
+	this._shaderblock_vars = null;
 	this._has_error = false;
 
 	var subfiles = GL.processFileAtlas( this._code );
@@ -296,7 +309,7 @@ ShaderCode.prototype.processCode = function()
 	if(init_code)
 	{
 		//clean code
-		init_code = LS.ShaderCode.removeComments(init_code);
+		init_code = LS.ShaderCode.removeComments( init_code );
 
 		if(init_code) //still some code? (we test it because if there is a single line of code the behaviour changes)
 		{
@@ -376,10 +389,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		var shader_block = LS.ShadersManager.shader_blocks.get(i);
 		if(!shader_block)
 			continue; //???
-		if(!shader_block.enabled_defines)
-			continue;
-		for(var j in shader_block.enabled_defines)
-			context[ j ] = shader_block.enabled_defines[j];
+		if(shader_block.context_macros)
+		{
+			for(var j in shader_block.context_macros)
+				context[ j ] = shader_block.context_macros[j];
+		}
 	}
 
 	//vertex shader code
@@ -388,13 +402,14 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		vs_code = GL.Shader.SCREEN_VERTEX_SHADER;
 	else if( !code.vs )
 		return null;
-	else
+	else //vs is a GLSLCode 
 		vs_code = code.vs.getFinalCode( GL.VERTEX_SHADER, block_flags, context );
 
 	//fragment shader code
 	if( !code.fs )
 		return;
 
+	//fs is a GLSLCode 
 	var fs_code = code.fs.getFinalCode( GL.FRAGMENT_SHADER, block_flags, context );
 
 	//no code or code includes something missing
@@ -404,10 +419,36 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		return null;
 	}
 
+	//globals
+	if( gl.extensions.OES_standard_derivatives )
+		fs_code = &quot;#define STANDARD_DERIVATIVES\n&quot; + fs_code;
+
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );
 	if(!shader)
 		return null;
+
+	//DEBUG
+	if(LS.debug)
+	{
+		var blocks = [];
+		for(var i = 0; i &lt; LS.ShadersManager.num_shaderblocks; ++i)
+		{
+			if( !(block_flags &amp; 1&lt;&lt;i) ) //is flag enabled
+				continue;
+			var shader_block = LS.ShadersManager.shader_blocks.get(i);
+			if(!shader_block)
+				continue; //???
+			blocks.push( shader_block );
+		}
+		shader._shadercode_info = {
+			vs: vs_code,
+			fs: fs_code,
+			context: context,
+			blocks: blocks,
+			flags: block_flags
+		}
+	}
 
 	//cache as render_mode,flags
 	if( !this._compiled_shaders[ render_mode ] )
@@ -601,101 +642,56 @@ ShaderCode.parseShaderLab = function( code )
 	return root;
 }
 
+ShaderCode.flat_code = &quot;\\color.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\color.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\picking.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\picking.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\shadow.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\shadow.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+&quot;;
 
 LS.ShaderCode = ShaderCode;
 LS.registerResourceClass( ShaderCode );
 
-// now some shadercode examples that could be helpful
-
-//Example code for a shader (used in editor) **************************************************
-ShaderCode.examples = {};
-
-ShaderCode.examples.fx = &quot;\n\
-\\fx.fs\n\
-	precision highp float;\n\
-	\n\
-	uniform float u_time;\n\
-	uniform vec4 u_viewport;\n\
-	uniform sampler2D u_texture;\n\
-	varying vec2 v_coord;\n\
-	void main() {\n\
-		gl_FragColor = texture2D( u_texture, v_coord );\n\
-	}\n\
-&quot;;
-
-ShaderCode.examples.color = &quot;\n\
-\n\
-\\js\n\
-//define exported uniforms from the shader (name, uniform, widget)\n\
-this.createUniform(\&quot;Number\&quot;,\&quot;u_number\&quot;,\&quot;number\&quot;);\n\
-this.createSampler(\&quot;Texture\&quot;,\&quot;u_texture\&quot;);\n\
-\n\
-\\color.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//matrices\n\
-uniform mat4 u_model;\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-	//normal\n\
-	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-}\n\
-\n\
-\\color.fs\n\
-\n\
-precision mediump float;\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-//globals\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec4 u_clipping_plane;\n\
-uniform float u_time;\n\
-uniform vec3 u_background_color;\n\
-uniform vec3 u_ambient_light;\n\
-\n\
-uniform float u_number;\n\
-uniform sampler2D u_texture;\n\
-\n\
-//material\n\
-uniform vec4 u_material_color; //color and alpha\n\
-void main() {\n\
-	vec3 N = normalize( v_normal );\n\
-	vec3 L = vec3( 0.577, 0.577, 0.577 );\n\
-	vec4 color = u_material_color;\n\
-	color.xyz *= max(0.0, dot(N,L) );\n\
-	gl_FragColor = color;\n\
-}\n\
-\n\
-&quot;;
     </pre>
 </div>
                     </div>

@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -159,7 +160,7 @@
 
 
 <div class="box intro">
-    <p>Light that contains the info about the camera</p>
+    <p>Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)</p>
 
 </div>
 
@@ -328,6 +329,10 @@
 
                             </li>
                             <li class="index-item property">
+                                <a href="#property_layers">layers</a>
+
+                            </li>
+                            <li class="index-item property">
                                 <a href="#property_near">near</a>
 
                             </li>
@@ -382,7 +387,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l886"><code>..&#x2F;src&#x2F;components&#x2F;light.js:886</code></a>
+        <a href="../files/.._src_components_light.js.html#l842"><code>..&#x2F;src&#x2F;components&#x2F;light.js:842</code></a>
         </p>
 
 
@@ -464,7 +469,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l758"><code>..&#x2F;src&#x2F;components&#x2F;light.js:758</code></a>
+        <a href="../files/.._src_components_light.js.html#l713"><code>..&#x2F;src&#x2F;components&#x2F;light.js:713</code></a>
         </p>
 
 
@@ -507,7 +512,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l769"><code>..&#x2F;src&#x2F;components&#x2F;light.js:769</code></a>
+        <a href="../files/.._src_components_light.js.html#l724"><code>..&#x2F;src&#x2F;components&#x2F;light.js:724</code></a>
         </p>
 
 
@@ -550,7 +555,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l732"><code>..&#x2F;src&#x2F;components&#x2F;light.js:732</code></a>
+        <a href="../files/.._src_components_light.js.html#l687"><code>..&#x2F;src&#x2F;components&#x2F;light.js:687</code></a>
         </p>
 
 
@@ -593,7 +598,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l785"><code>..&#x2F;src&#x2F;components&#x2F;light.js:785</code></a>
+        <a href="../files/.._src_components_light.js.html#l740"><code>..&#x2F;src&#x2F;components&#x2F;light.js:740</code></a>
         </p>
 
 
@@ -642,7 +647,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l442"><code>..&#x2F;src&#x2F;components&#x2F;light.js:442</code></a>
+        <a href="../files/.._src_components_light.js.html#l419"><code>..&#x2F;src&#x2F;components&#x2F;light.js:419</code></a>
         </p>
 
 
@@ -702,7 +707,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l340"><code>..&#x2F;src&#x2F;components&#x2F;light.js:340</code></a>
+        <a href="../files/.._src_components_light.js.html#l317"><code>..&#x2F;src&#x2F;components&#x2F;light.js:317</code></a>
         </p>
 
 
@@ -751,7 +756,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l393"><code>..&#x2F;src&#x2F;components&#x2F;light.js:393</code></a>
+        <a href="../files/.._src_components_light.js.html#l370"><code>..&#x2F;src&#x2F;components&#x2F;light.js:370</code></a>
         </p>
 
 
@@ -820,7 +825,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l687"><code>..&#x2F;src&#x2F;components&#x2F;light.js:687</code></a>
+        <a href="../files/.._src_components_light.js.html#l647"><code>..&#x2F;src&#x2F;components&#x2F;light.js:647</code></a>
         </p>
 
 
@@ -897,7 +902,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l409"><code>..&#x2F;src&#x2F;components&#x2F;light.js:409</code></a>
+        <a href="../files/.._src_components_light.js.html#l386"><code>..&#x2F;src&#x2F;components&#x2F;light.js:386</code></a>
         </p>
 
 
@@ -966,7 +971,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l863"><code>..&#x2F;src&#x2F;components&#x2F;light.js:863</code></a>
+        <a href="../files/.._src_components_light.js.html#l819"><code>..&#x2F;src&#x2F;components&#x2F;light.js:819</code></a>
         </p>
 
 
@@ -1043,7 +1048,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l426"><code>..&#x2F;src&#x2F;components&#x2F;light.js:426</code></a>
+        <a href="../files/.._src_components_light.js.html#l403"><code>..&#x2F;src&#x2F;components&#x2F;light.js:403</code></a>
         </p>
 
 
@@ -1106,7 +1111,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l496"><code>..&#x2F;src&#x2F;components&#x2F;light.js:496</code></a>
+        <a href="../files/.._src_components_light.js.html#l469"><code>..&#x2F;src&#x2F;components&#x2F;light.js:469</code></a>
         </p>
 
 
@@ -1154,7 +1159,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l352"><code>..&#x2F;src&#x2F;components&#x2F;light.js:352</code></a>
+        <a href="../files/.._src_components_light.js.html#l329"><code>..&#x2F;src&#x2F;components&#x2F;light.js:329</code></a>
         </p>
 
 
@@ -1186,7 +1191,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l56"><code>..&#x2F;src&#x2F;components&#x2F;light.js:56</code></a>
+        <a href="../files/.._src_components_light.js.html#l65"><code>..&#x2F;src&#x2F;components&#x2F;light.js:65</code></a>
         </p>
 
 
@@ -1212,7 +1217,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l63"><code>..&#x2F;src&#x2F;components&#x2F;light.js:63</code></a>
+        <a href="../files/.._src_components_light.js.html#l72"><code>..&#x2F;src&#x2F;components&#x2F;light.js:72</code></a>
         </p>
 
 
@@ -1238,7 +1243,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l105"><code>..&#x2F;src&#x2F;components&#x2F;light.js:105</code></a>
+        <a href="../files/.._src_components_light.js.html#l114"><code>..&#x2F;src&#x2F;components&#x2F;light.js:114</code></a>
         </p>
 
 
@@ -1264,7 +1269,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l87"><code>..&#x2F;src&#x2F;components&#x2F;light.js:87</code></a>
+        <a href="../files/.._src_components_light.js.html#l96"><code>..&#x2F;src&#x2F;components&#x2F;light.js:96</code></a>
         </p>
 
 
@@ -1316,7 +1321,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l48"><code>..&#x2F;src&#x2F;components&#x2F;light.js:48</code></a>
+        <a href="../files/.._src_components_light.js.html#l57"><code>..&#x2F;src&#x2F;components&#x2F;light.js:57</code></a>
         </p>
 
 
@@ -1342,7 +1347,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l94"><code>..&#x2F;src&#x2F;components&#x2F;light.js:94</code></a>
+        <a href="../files/.._src_components_light.js.html#l103"><code>..&#x2F;src&#x2F;components&#x2F;light.js:103</code></a>
         </p>
 
 
@@ -1357,6 +1362,32 @@
 
 
 </div>
+<div id="property_layers" class="property item">
+    <h3 class="name"><code>layers</code></h3>
+    <span class="type">Number</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_light.js.html#l41"><code>..&#x2F;src&#x2F;components&#x2F;light.js:41</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>Layers mask, this layers define which objects are iluminated by this light</p>
+
+    </div>
+
+        <p><strong>Default:</strong> true</p>
+
+
+</div>
 <div id="property_near" class="property item">
     <h3 class="name"><code>near</code></h3>
     <span class="type">Number</span>
@@ -1368,7 +1399,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_light.js.html#l41"><code>..&#x2F;src&#x2F;components&#x2F;light.js:41</code></a>
+        <a href="../files/.._src_components_light.js.html#l50"><code>..&#x2F;src&#x2F;components&#x2F;light.js:50</code></a>
         </p>
 
 

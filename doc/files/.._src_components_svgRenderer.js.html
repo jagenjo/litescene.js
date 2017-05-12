@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.GraphCode</title>
+    <title>../src/components/svgRenderer.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -145,78 +146,150 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.GraphCode Class</h1>
-<div class="box meta">
+<h1 class="file-heading">File: ../src/components/svgRenderer.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+//WORK IN PROGRESS
 
 
-        <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_graphCode.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;graphCode.js:2</code></a>
-        </div>
+/**
+* Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh
+* @class SVGRenderer
+* @namespace LS.Components
+* @constructor
+* @param {String} object to configure from
+*/
+function SVGRenderer(o)
+{
+	this.enabled = true;
+	this.svg = null;
 
-            Module: <a href="../modules/LS.html">LS</a>
+	if(o)
+		this.configure(o);
 
-</div>
+	this._RI = new LS.RenderInstance( null, this );
+
+	this._mesh = null;
+	this._svg_data = null;
+}
+
+SVGRenderer.icon = &quot;mini-icon-teapot.png&quot;;
+
+//vars
+SVGRenderer[&quot;@svg&quot;] = { type: &quot;resource&quot; };
+
+SVGRenderer.prototype.onAddedToScene = function( scene )
+{
+}
+
+SVGRenderer.prototype.onRemovedFromScene = function( scene )
+{
+}
+
+SVGRenderer.prototype.onAddedToNode = function( node )
+{
+	LEvent.bind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this );
+	this._RI.node = node;
+}
+
+SVGRenderer.prototype.onRemovedFromNode = function( node )
+{
+	LEvent.unbind( node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this );
+}
+
+SVGRenderer.prototype.getMesh = function()
+{
+	if(!this.svg)
+		return null;
+
+	var svg = LS.ResourcesManager.getResource( this.svg );
+	var mesh = null;
+
+	if(this._svg_data === svg )
+	{
+		mesh = this._mesh;
+	}
+
+	if(!mesh)
+		mesh = this._mesh = GL.Mesh.cube();
+	return mesh;
+}
+
+SVGRenderer.prototype.onCollectInstances = function(e, instances)
+{
+	if(!this._enabled)
+		return;
+
+	var mesh = this.getMesh();
+	if(!mesh)
+		return null;
+
+	var node = this._root;
+	if(!this._root)
+		return;
+
+	var RI = this._RI;
+	var is_static = this._root.flags &amp;&amp; this._root.flags.is_static;
+	var transform = this._root.transform;
+
+	RI.setMatrix( this._root.transform._global_matrix );
+	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+
+	//material (after flags because it modifies the flags)
+	var material = this._root.getMaterial();
+	RI.setMaterial( material );
+
+	//buffers from mesh and bounding
+	RI.setMesh( mesh, GL.TRIANGLES );
+	RI.setRange(0,-1);
+	RI.collision_mesh = mesh;
+	instances.push( RI );
+}
+
+/**
+* Configure from a serialized object
+* @method configure
+* @param {Object} object with the serialized info
+*/
+SVGRenderer.prototype.configure = function(o)
+{
+	if(o.enabled !== undefined)
+		this.enabled = o.enabled;
+	this.svg = o.svg;
+}
+
+/**
+* Serialize the object 
+* @method serialize
+* @return {Object} object with the serialized info
+*/
+SVGRenderer.prototype.serialize = function()
+{
+	var o = { 
+		enabled: this.enabled,
+		svg: this.svg
+	};
+	return o;
+}
+
+SVGRenderer.prototype.getResources = function(res)
+{
+	if(typeof(this.svg) == &quot;string&quot;)
+		res[this.svg] = LS.Resource;
+	return res;
+}
+
+SVGRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.svg == old_name)
+		this.svg = new_name;
+}
 
 
-<div class="box intro">
-    <p>GraphCode is a resource containing a graph that generates the code associated to a shader
-It is used to define special ways to render scene objects, having full control of the rendering algorithm</p>
+//LS.registerComponent( SVGRenderer );
 
-</div>
-
-    <div class="constructor">
-        <h2>Constructor</h2>
-<div id="method_LS.GraphCode" class="method item">
-    <h3 class="name"><code>LS.GraphCode</code></h3>
-
-        <span class="paren">()</span>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_resources_graphCode.js.html#l2"><code>..&#x2F;src&#x2F;resources&#x2F;graphCode.js:2</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        
-    </div>
-
-
-
-
-</div>
-    </div>
-
-<div id="classdocs" class="tabview">
-    <ul class="api-class-tabs">
-        <li class="api-class-tab index"><a href="#index">Index</a></li>
-
-    </ul>
-
-    <div>
-        <div id="index" class="api-class-tabpanel index">
-            <h2 class="off-left">Item Index</h2>
-
-
-
-
-        </div>
-
-
-
-
-    </div>
+    </pre>
 </div>
                     </div>
                 </div>

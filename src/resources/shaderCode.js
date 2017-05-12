@@ -51,6 +51,17 @@ Object.defineProperty( ShaderCode.prototype, "code", {
 	}
 });
 
+Object.defineProperty( ShaderCode.prototype, "version", {
+	enumerable: false,
+	get: function() {
+		return this._version;
+	},
+	set: function(v) {
+		console.error("version cannot be set manually");
+	}
+});
+
+
 //parse the code
 //store in a easy to use way
 ShaderCode.prototype.processCode = function()
@@ -256,10 +267,36 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		return null;
 	}
 
+	//globals
+	if( gl.extensions.OES_standard_derivatives )
+		fs_code = "#define STANDARD_DERIVATIVES\n" + fs_code;
+
 	//compile the shader and return it
 	var shader = this.compileShader( vs_code, fs_code );
 	if(!shader)
 		return null;
+
+	//DEBUG
+	if(LS.debug)
+	{
+		var blocks = [];
+		for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+		{
+			if( !(block_flags & 1<<i) ) //is flag enabled
+				continue;
+			var shader_block = LS.ShadersManager.shader_blocks.get(i);
+			if(!shader_block)
+				continue; //???
+			blocks.push( shader_block );
+		}
+		shader._shadercode_info = {
+			vs: vs_code,
+			fs: fs_code,
+			context: context,
+			blocks: blocks,
+			flags: block_flags
+		}
+	}
 
 	//cache as render_mode,flags
 	if( !this._compiled_shaders[ render_mode ] )
@@ -453,6 +490,52 @@ ShaderCode.parseShaderLab = function( code )
 	return root;
 }
 
+ShaderCode.flat_code = "\\color.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\color.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\picking.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\picking.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\shadow.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\shadow.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+";
 
 LS.ShaderCode = ShaderCode;
 LS.registerResourceClass( ShaderCode );

@@ -35,15 +35,21 @@ CompositePattern.prototype.getScene = function()
 
 CompositePattern.prototype.addChild = function(node, index, options)
 {
-	if(!node)
+	if( !node )
 		throw("cannot addChild of null");
+
+	if( node.constructor !== this.constructor )
+		throw("added child must be of the same type");
 
 	//be careful with weird recursions...
 	var aux = this;
 	while( aux._parentNode )
 	{
 		if(aux == node)
-			throw("addChild: Cannot insert a node as his own child");
+		{
+			console.error("addChild: Cannot insert a node as his own child");
+			return false;
+		}
 		aux = aux._parentNode;
 	}
 

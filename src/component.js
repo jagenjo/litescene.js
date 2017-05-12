@@ -310,7 +310,7 @@ Component.addExtraMethods = function( component )
 	});
 
 	Object.defineProperty( component.prototype, 'root', {
-		set: function( uid )
+		set: function(v)
 		{
 			throw("root cannot be set, call addComponent to the root");
 		},
@@ -319,6 +319,19 @@ Component.addExtraMethods = function( component )
 		},
 		enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
 	});
+
+	//same as root...
+	Object.defineProperty( component.prototype, 'parentNode', {
+		set: function()
+		{
+			throw("parentNode cannot be set, call addComponent to the parentNode");
+		},
+		get: function(){
+			return this._root;
+		},
+		enumerable: false //uid better not be enumerable (so it doesnt show in the editor)
+	});
+
 };
 
 

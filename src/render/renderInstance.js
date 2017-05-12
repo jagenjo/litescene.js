@@ -233,7 +233,7 @@ RenderInstance.prototype.update = function()
 * @method render
 * @param {Shader} shader
 */
-RenderInstance.prototype.render = function(shader)
+RenderInstance.prototype.render = function(shader, primitive)
 {
 	//in case no normals found but they are required
 	if(shader.attributes["a_normal"] && !this.vertex_buffers["normals"])
@@ -284,7 +284,8 @@ RenderInstance.prototype.render = function(shader)
 
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
-	  this.primitive, this.range[0], this.range[1] );
+	  primitive !== undefined ? primitive : this.primitive,
+	  this.range[0], this.range[1] );
 }
 
 RenderInstance.prototype.addShaderBlock = function( block, uniforms )

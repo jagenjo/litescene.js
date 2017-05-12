@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -306,6 +307,10 @@ It reuses local meshes when possible to avoid fragmenting the VRAM.</p>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_renderSolidSphere">renderSolidSphere</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_renderText">renderText</a>
 
                             </li>
@@ -484,7 +489,7 @@ It reuses local meshes when possible to avoid fragmenting the VRAM.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1152"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1152</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1169"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1169</code></a>
         </p>
 
 
@@ -558,7 +563,7 @@ It reuses local meshes when possible to avoid fragmenting the VRAM.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1209"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1209</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1226"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1226</code></a>
         </p>
 
 
@@ -691,7 +696,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1234"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1234</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1251"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1251</code></a>
         </p>
 
 
@@ -758,7 +763,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1127"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1127</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1158"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1158</code></a>
         </p>
 
 
@@ -766,7 +771,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     </div>
 
     <div class="description">
-        <p>pushes the transform matrix into the stack to save the state</p>
+        <p>takes the matrix from the top position of the stack to restore the last saved state</p>
 
     </div>
 
@@ -789,7 +794,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1141"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1141</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1144"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1144</code></a>
         </p>
 
 
@@ -797,7 +802,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     </div>
 
     <div class="description">
-        <p>takes the matrix from the top position of the stack to restore the last saved state</p>
+        <p>pushes the transform matrix into the stack to save the state</p>
 
     </div>
 
@@ -929,7 +934,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l842"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:842</code></a>
+        <a href="../files/.._src_render_draw.js.html#l859"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:859</code></a>
         </p>
 
 
@@ -1022,7 +1027,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l879"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:879</code></a>
+        <a href="../files/.._src_render_draw.js.html#l896"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:896</code></a>
         </p>
 
 
@@ -1109,7 +1114,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l806"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:806</code></a>
+        <a href="../files/.._src_render_draw.js.html#l823"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:823</code></a>
         </p>
 
 
@@ -1183,7 +1188,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l893"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:893</code></a>
+        <a href="../files/.._src_render_draw.js.html#l910"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:910</code></a>
         </p>
 
 
@@ -1376,7 +1381,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l959"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:959</code></a>
+        <a href="../files/.._src_render_draw.js.html#l976"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:976</code></a>
         </p>
 
 
@@ -1482,7 +1487,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l759"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:759</code></a>
+        <a href="../files/.._src_render_draw.js.html#l776"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:776</code></a>
         </p>
 
 
@@ -1922,7 +1927,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l726"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:726</code></a>
+        <a href="../files/.._src_render_draw.js.html#l743"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:743</code></a>
         </p>
 
 
@@ -2075,7 +2080,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l749"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:749</code></a>
+        <a href="../files/.._src_render_draw.js.html#l766"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:766</code></a>
         </p>
 
 
@@ -2093,6 +2098,59 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
             <ul class="params-list">
                 <li class="param">
                         <code class="param-name">size</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_renderSolidSphere" class="method item">
+    <h3 class="name"><code>renderSolidSphere</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>radius</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_render_draw.js.html#l685"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:685</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Renders an sphere</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">radius</code>
                         <span class="type">Number</span>
 
 
@@ -2128,7 +2186,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1017"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1017</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1034"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1034</code></a>
         </p>
 
 
@@ -2187,7 +2245,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l700"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:700</code></a>
+        <a href="../files/.._src_render_draw.js.html#l717"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:717</code></a>
         </p>
 
 
@@ -2260,7 +2318,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l739"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:739</code></a>
+        <a href="../files/.._src_render_draw.js.html#l756"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:756</code></a>
         </p>
 
 
@@ -2419,7 +2477,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1193"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1193</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1210"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1210</code></a>
         </p>
 
 
@@ -2510,7 +2568,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1161"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1161</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1178"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1178</code></a>
         </p>
 
 
@@ -2988,7 +3046,7 @@ Warning: it doesnt changes the camera in any way, only the transform matrix</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_render_draw.js.html#l1178"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1178</code></a>
+        <a href="../files/.._src_render_draw.js.html#l1195"><code>..&#x2F;src&#x2F;render&#x2F;draw.js:1195</code></a>
         </p>
 
 

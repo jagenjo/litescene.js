@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -197,6 +198,9 @@ LS.Formats = {
 	{
 		options = options || {};
 		var info = this.getFileFormatInfo( filename );
+		if(!info) //unsupported extension
+			return null;
+
 		if(options.extension)
 			info.extension = options.extension; //force a format
 		else
@@ -332,18 +336,6 @@ LS.Formats.addSupportedFormat( &quot;json,js,txt,html,css,csv&quot;, { dataType:
 LS.Formats.addSupportedFormat( &quot;glsl&quot;, { dataType: &quot;text&quot;, resource: &quot;ShaderCode&quot;, &quot;resourceClass&quot;: LS.ShaderCode  } );
 LS.Formats.addSupportedFormat( &quot;zip&quot;, { dataType: &quot;arraybuffer&quot; } );
 WBin.classes = LS.Classes; //WBin need to know which classes are accesible to be instantiated right from the WBin data info, in case the class is not a global class
-
-/*
-	image_extensions: [&quot;png&quot;,&quot;jpg&quot;], //for images
-	nonative_image_extensions: [&quot;tga&quot;,&quot;dds&quot;], //for images that need parsing
-	mesh_extensions: [&quot;obj&quot;, &quot;bin&quot;,&quot;ase&quot;,&quot;gr2&quot;,&quot;json&quot;,&quot;jsmesh&quot;], //for meshes
-	scene_extensions: [&quot;dae&quot;], //for scenes
-	generic_extensions: [&quot;xml&quot;,&quot;js&quot;,&quot;json&quot;], //unknown data container
-	xml_extensions: [&quot;xml&quot;,&quot;dae&quot;], //for sure is XML
-	json_extensions: [&quot;js&quot;,&quot;json&quot;], //for sure is JSON
-	binary_extensions: [&quot;bin&quot;,&quot;tga&quot;,&quot;dds&quot;], //for sure is binary and needs to be read as a byte array
-*/
-
 
 
 //parsers usually need this

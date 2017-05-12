@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -264,7 +265,7 @@ LScript.prototype.hasMethod = function(name)
 }
 
 //argv must be an array with parameters, unless skip_expand is true
-LScript.prototype.callMethod = function(name, argv, expand_parameters)
+LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_object )
 {
 	if(!this._context || !this._context[name]) 
 		return;
@@ -285,7 +286,10 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 	catch(err)
 	{
 		var error_line = LScript.computeLineFromError(err);
-		console.error(&quot;Error in function\n&quot; + err);
+		var parent_info = &quot;&quot;; 
+		if (parent_object &amp;&amp; parent_object.toInfoString )
+			parent_info = &quot; from &quot; + parent_object.toInfoString();
+		console.error(&quot;Error from function &quot; + name + parent_info + &quot;: &quot;, err.toString());
 		if( console.groupCollapsed )
 		{
 			console.groupCollapsed(&quot;Error line: &quot; + error_line + &quot; Watch code&quot;);
@@ -295,7 +299,7 @@ LScript.prototype.callMethod = function(name, argv, expand_parameters)
 		else
 			console.error(&quot;Error line: &quot; + error_line);
 		if(this.onerror)
-			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code});
+			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code, method_name: name });
 		//throw new Error( err.stack ); //TEST THIS
 	}
 }

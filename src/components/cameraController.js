@@ -35,6 +35,9 @@ CameraController.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene, "mousedown",this.onMouse,this);
 	LEvent.bind( scene, "mousemove",this.onMouse,this);
 	LEvent.bind( scene, "mousewheel",this.onMouse,this);
+	LEvent.bind( scene, "touchstart",this.onTouch,this);
+	LEvent.bind( scene, "touchmove",this.onTouch,this);
+	LEvent.bind( scene, "touchend",this.onTouch,this);
 	LEvent.bind( scene, "keydown",this.onKey,this);
 	LEvent.bind( scene, "keyup",this.onKey,this);
 	LEvent.bind( scene, "update",this.onUpdate,this);
@@ -229,6 +232,66 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(changed)
 		this._root.scene.requestFrame();
+}
+
+CameraController.prototype.onTouch = function( e, touch_event)
+{
+	if(!this._root || !this.enabled) 
+		return;
+	
+	var node = this._root;
+	var cam = node.camera;
+	if(!cam)
+		return;
+
+	var is_global_camera = node._is_root;
+
+	if(!touch_event)
+		touch_event = e;
+
+	//console.log( e );
+	//touch!
+	if( touch_event.type == "touchstart" )
+	{
+		if( touch_event.touches.length == 2)
+		{
+			var distx = touch_event.touches[0].clientX - touch_event.touches[1].clientX;
+			var disty = touch_event.touches[0].clientY - touch_event.touches[1].clientY;
+			this._touch_distance = Math.sqrt(distx*distx + disty*disty);
+			this._touch_center = [ (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5,
+									(touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5 ];
+			touch_event.preventDefault();
+			return false; //block
+		}
+	}
+	if( touch_event.type == "touchmove" )
+	{
+		if(touch_event.touches.length == 2)
+		{
+			var distx = touch_event.touches[0].clientX - touch_event.touches[1].clientX;
+			var disty = touch_event.touches[0].clientY - touch_event.touches[1].clientY;
+			var distance = Math.sqrt(distx*distx + disty*disty);
+			if(distance < 0.1)
+				distance = 0.1;
+			var delta_dist = this._touch_distance / distance;
+			this._touch_distance = distance;
+			//console.log( delta_dist );
+			cam.orbitDistanceFactor( delta_dist );
+			cam.updateMatrices();
+
+			var delta_x = (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5 - this._touch_center[0];
+			var delta_y = (touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5 - this._touch_center[1];
+			var panning_factor = cam.focalLength / gl.canvas.width;
+			cam.panning( -delta_x, delta_y, panning_factor );
+			this._touch_center[0] = (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5;
+			this._touch_center[1] = (touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5;
+
+			cam.updateMatrices();
+			this._root.scene.requestFrame();
+			touch_event.preventDefault();
+			return false; //block
+		}
+	}
 }
 
 CameraController.prototype.testOriginPlane = function(x,y, result)

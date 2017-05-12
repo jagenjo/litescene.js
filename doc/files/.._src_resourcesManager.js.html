@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -200,6 +201,7 @@ var ResourcesManager = {
 
 	virtual_file_systems: {}, //protocols associated to urls  &quot;VFS&quot;:&quot;../&quot;
 	skip_proxy_extensions: [&quot;mp3&quot;,&quot;wav&quot;,&quot;ogg&quot;], //this file formats should not be passed through the proxy
+	force_nocache_extensions: [&quot;js&quot;,&quot;glsl&quot;,&quot;json&quot;], //this file formats should be reloaded without using the cache
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -355,6 +357,25 @@ var ResourcesManager = {
 		if(pos == -1)
 			return name;
 		return name.substr(0,pos);
+	},
+
+	/**
+	* Returns the url protocol (http, https) or empty string if no protocol was found
+	*
+	* @method getProtocol
+	* @param {String} url
+	* @return {String} protocol
+	*/
+	getProtocol: function( url )
+	{
+		if(!url)
+			return &quot;&quot;;
+
+		var pos = url.substr(0,10).indexOf(&quot;:&quot;);
+		var protocol = &quot;&quot;;
+		if(pos != -1)
+			protocol = url.substr(0,pos);
+		return protocol;
 	},
 
 	/**
@@ -546,8 +567,8 @@ var ResourcesManager = {
 	{
 		if(!resource)
 			return null;
-		if(resource.object_type)
-			return resource.object_type;
+		if(resource.object_class)
+			return resource.object_class;
 		if(resource.constructor.resource_type)
 			return resource.constructor.resource_type;
 		return LS.getObjectClassName( resource );
@@ -722,7 +743,8 @@ var ResourcesManager = {
 
 		if(!this.allow_base_files &amp;&amp; url.indexOf(&quot;/&quot;) == -1)
 		{
-			console.warn(&quot;Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: &quot;, url );
+			if(!this._parsing_local_file) //to avoid showing this warning when parsing scenes with local resources
+				console.warn(&quot;Cannot load resource, filename has no folder and LS.ResourcesManager.allow_base_files is set to false: &quot;, url );
 			return; //this is not a valid file to load
 		}
 
@@ -751,7 +773,7 @@ var ResourcesManager = {
 		var settings = {
 			url: full_url,
 			success: function(response){
-				LS.ResourcesManager.processResource( url, response, options, ResourcesManager._resourceLoadedEnd, true );
+				LS.ResourcesManager.processResource( url, response, options, LS.ResourcesManager._resourceLoadedEnd, true );
 			},
 			error: function(err) { 	
 				LS.ResourcesManager._resourceLoadedError(url,err);
@@ -766,6 +788,9 @@ var ResourcesManager = {
 					LEvent.trigger( LS.ResourcesManager, &quot;loading_resources_progress&quot;, 1.0 - (LS.ResourcesManager.num_resources_being_loaded - partial_load) / LS.ResourcesManager._total_resources_to_load );
 			}
 		};
+
+		//force no cache by request
+		settings.nocache = nocache || this.force_nocache_extensions[ extension ];
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
@@ -799,6 +824,11 @@ var ResourcesManager = {
 
 		var resource = null;
 		var extension = this.getExtension( url );
+		//get all the info about this file format
+		var format_info = null;
+		
+		if(extension)
+			format_info = LS.Formats.supported[ extension ];
 
 		//callback to embede a parameter, ugly but I dont see a work around to create this
 		var process_final = function( url, resource, options ){
@@ -808,6 +838,18 @@ var ResourcesManager = {
 				return;
 			}
 
+			//convert format
+			if( format_info &amp;&amp; format_info.convert_to &amp;&amp; extension != format_info.convert_to )
+			{
+				url += &quot;.&quot; + format_info.convert_to;
+				resource.filename += &quot;.&quot; + format_info.convert_to;
+				if( resource.fullpath )
+					resource.fullpath += &quot;.&quot; + format_info.convert_to;
+				if(options.filename)
+					options.filename += &quot;.&quot; + format_info.convert_to;
+			}
+
+			//apply last changes
 			LS.ResourcesManager.processFinalResource( url, resource, options, on_complete, was_loaded );
 
 			//Keep original file inside the resource in case we want to save it
@@ -818,12 +860,10 @@ var ResourcesManager = {
 		//this.resources_being_loaded[url] = [];
 		this.resources_being_processed[url] = true;
 
-		//no extension, then or it is a JSON, or an object with object_type or a WBin
+		//no extension, then or it is a JSON, or an object with object_class or a WBin
 		if(!extension)
 			return this.processDataResource( url, data, options, process_final );
 
-		//get all the info about this file format
-		var format_info = LS.Formats.supported[ extension ];
 
 		// PRE-PROCESSING Stage (transform raw data in a resource) 
 		// *******************************************************
@@ -850,7 +890,7 @@ var ResourcesManager = {
 			switch( format_info.type )
 			{
 				case &quot;scene&quot;:
-					resource = LS.ResourcesManager.processTextScene( url, data, options, process_final );
+					resource = LS.ResourcesManager.processScene( url, data, options, process_final );
 					break;
 				case &quot;mesh&quot;:
 					resource = LS.ResourcesManager.processTextMesh( url, data, options, process_final );
@@ -916,6 +956,8 @@ var ResourcesManager = {
 			resource.filename = options.filename;
 		if(!options.is_local)
 			resource.fullpath = fullpath;
+		else
+			fullpath = resource.fullpath = resource.filename;
 		if(options.from_prefab)
 			resource.from_prefab = options.from_prefab;
 		if(options.from_pack)
@@ -970,9 +1012,9 @@ var ResourcesManager = {
 		//resource.fullpath = filename; //fullpath only if they are in the server
 
 		//Compute resource type
-		if(!resource.object_type)
-			resource.object_type = LS.getObjectClassName( resource );
-		var type = resource.object_type;
+		if(!resource.object_class)
+			resource.object_class = LS.getObjectClassName( resource );
+		var type = resource.object_class;
 		if(resource.constructor.resource_type)
 			type = resource.constructor.resource_type;
 
@@ -1322,11 +1364,23 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;wbin&quot;, function( fil
 LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(filename, data, options) {
 	var resource = data;
 	if( data.constructor === String )
-		data = JSON.parse( data );
-
-	if( data.object_type &amp;&amp; !data.is_data )
 	{
-		var ctor = LS.Classes[ data.object_type ] || window[ data.object_type ];
+		try
+		{
+			data = JSON.parse( data );
+		}
+		catch (err)
+		{
+			console.error(&quot;invalid JSON&quot;);
+			return null;
+		}
+	}
+
+	var class_name = data.object_class || data.object_type; //object_type for LEGACY
+
+	if( class_name &amp;&amp; !data.is_data )
+	{
+		var ctor = LS.Classes[ class_name ] || window[ class_name ];
 		if(ctor)
 		{
 			if(ctor.prototype.configure)
@@ -1339,7 +1393,7 @@ LS.ResourcesManager.registerResourcePreProcessor(&quot;json&quot;, function(file
 		}
 		else
 		{
-			console.error( &quot;JSON object_type class not found: &quot; + data.object_type );
+			console.error( &quot;JSON object_class class not found: &quot; + class_name );
 			return null;
 		}
 	}
@@ -1396,7 +1450,7 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 	}
 
 	//JS OBJECT?
-	var class_name = data.object_type;
+	var class_name = data.object_class;
 	if(class_name &amp;&amp; LS.Classes[class_name] )
 	{
 		var ctor = LS.Classes[class_name];
@@ -1568,17 +1622,20 @@ LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 	return mesh;
 }
 
-//Transform scene data in a SceneNode
-LS.ResourcesManager.processTextScene = function( filename, data, options ) {
+//this is called when loading a scene from a format that is not the regular serialize of our engine (like from ASE, G3DJ, BVH,...)
+//converts scene data in a SceneNode
+LS.ResourcesManager.processScene = function( filename, data, options ) {
 	//options = options || {};
 
 	var scene_data = LS.Formats.parse( filename, data, options );
 
 	if(scene_data == null)
 	{
-		console.error(&quot;Error parsing mesh: &quot; + filename);
+		console.error(&quot;Error parsing scene: &quot; + filename);
 		return null;
 	}
+
+	LS.ResourcesManager._parsing_local_file = true;
 
 	//resources (meshes, textures...)
 	for(var i in scene_data.meshes)
@@ -1603,8 +1660,15 @@ LS.ResourcesManager.processTextScene = function( filename, data, options ) {
 	var node = new LS.SceneNode();
 	node.configure( scene_data.root );
 
-	//if(options.insert)
-	//	LS.GlobalScene.root.addChild( node );
+	//make it a pack or prefab
+	if(options &amp;&amp; options.filename)
+	{
+		var ext = LS.RM.getExtension( options.filename );
+		if(ext != &quot;json&quot;)
+			options.filename += &quot;.json&quot;;
+	}
+
+	LS.ResourcesManager._parsing_local_file = false;
 
 	return node;
 }
@@ -1614,7 +1678,7 @@ LS.ResourcesManager.processTextScene = function( filename, data, options ) {
 
 LS.ResourcesManager.registerResourcePostProcessor(&quot;Mesh&quot;, function(filename, mesh ) {
 
-	mesh.object_type = &quot;Mesh&quot;; //useful
+	mesh.object_class = &quot;Mesh&quot;; //useful
 	if(mesh.metadata)
 	{
 		mesh.metadata = {};

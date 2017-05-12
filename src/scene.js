@@ -44,6 +44,8 @@ function SceneTree()
 	LEvent.bind( this, "treeItemAdded", this.onNodeAdded, this );
 	LEvent.bind( this, "treeItemRemoved", this.onNodeRemoved, this );
 
+	this._shaderblock_info = null;
+
 	this.init();
 }
 
@@ -379,7 +381,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 	//check JSON for special scripts
 	if ( scripts.length )
-		this.loadScripts( scripts, function(){ inner_success( data ); }, on_error );
+		this.loadScripts( scripts, function(){ inner_success( data ); }, inner_error );
 	else
 		inner_success( data );
 
@@ -416,9 +418,9 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 		LEvent.trigger( that, "loadCompleted");
 	}
 
-	function inner_error(err)
+	function inner_error(err,script_url)
 	{
-		console.warn("Error in scene: " + url + " -> " + err);
+		console.error("Error loading script: " + script_url);
 		if(on_error)
 			on_error(err);
 	}
@@ -913,7 +915,7 @@ SceneTree.prototype.getNode = function( name )
 {
 	if(name == "")
 		return this.root;
-	if(!name)
+	if(!name || name.constructor !== String)
 		return null;
 	if(name.charAt(0) == LS._uid_prefix)
 		return this._nodes_by_uid[ name ];

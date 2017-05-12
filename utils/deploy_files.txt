@@ -14,9 +14,9 @@
 ../src/utils/litegl-extra.js
 
 ../src/materials/material.js
+../src/materials/shaderMaterial.js
 ../src/materials/standardMaterial.js
 ../src/materials/surfaceMaterial.js
-../src/materials/shaderMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js
@@ -31,6 +31,7 @@
 ../src/graph/scene.js
 ../src/graph/logic.js
 ../src/graph/fx.js
+../src/graph/actions.js
 
 ../src/helpers/path.js
 ../src/helpers/FXstack.js
@@ -109,7 +110,6 @@
 ../src/parsers/parserOBJ.js
 ../src/parsers/parserSTL.js
 ../src/parsers/parserTGA.js
-../src/parsers/parserOtherFormats.js
 
 ../src/player.js
 

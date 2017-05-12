@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -159,7 +160,7 @@
 
 
 <div class="box intro">
-    <p>Camera that contains the info about a camera</p>
+    <p>Camera contains the info about a camera (matrices, near far planes, clear color, etc)</p>
 
 </div>
 
@@ -313,6 +314,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_panning">panning</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_project">project</a>
 
                             </li>
@@ -396,6 +401,18 @@
 
                             </li>
                             <li class="index-item property">
+                                <a href="#property_frame  contains the RenderFrameContext where the scene was stored">frame  contains the RenderFrameContext where the scene was stored</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_frame_color_texture  contains the color texture used by the RenderFrameContext">frame_color_texture  contains the color texture used by the RenderFrameContext</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_frame_depth_texture  contains the depth texture used by the RenderFrameContext">frame_depth_texture  contains the depth texture used by the RenderFrameContext</a>
+
+                            </li>
+                            <li class="index-item property">
                                 <a href="#property_frustum_size">frustum_size</a>
 
                             </li>
@@ -405,6 +422,10 @@
                             </li>
                             <li class="index-item property">
                                 <a href="#property_near">near</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_orthographic  left,right,bottom,top (near and far are in the near,far properties)">orthographic  left,right,bottom,top (near and far are in the near,far properties)</a>
 
                             </li>
                             <li class="index-item property">
@@ -460,7 +481,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l742"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:742</code></a>
+        <a href="../files/.._src_components_camera.js.html#l808"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:808</code></a>
         </p>
 
 
@@ -526,7 +547,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l724"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:724</code></a>
+        <a href="../files/.._src_components_camera.js.html#l788"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:788</code></a>
         </p>
 
 
@@ -594,7 +615,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l758"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:758</code></a>
+        <a href="../files/.._src_components_camera.js.html#l826"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:826</code></a>
         </p>
 
 
@@ -663,7 +684,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l683"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:683</code></a>
+        <a href="../files/.._src_components_camera.js.html#l747"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:747</code></a>
         </p>
 
 
@@ -743,7 +764,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l703"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:703</code></a>
+        <a href="../files/.._src_components_camera.js.html#l767"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:767</code></a>
         </p>
 
 
@@ -823,7 +844,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1127"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1127</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1220"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1220</code></a>
         </p>
 
 
@@ -902,7 +923,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l596"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:596</code></a>
+        <a href="../files/.._src_components_camera.js.html#l660"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:660</code></a>
         </p>
 
 
@@ -971,7 +992,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l653"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:653</code></a>
+        <a href="../files/.._src_components_camera.js.html#l717"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:717</code></a>
         </p>
 
 
@@ -1048,7 +1069,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l624"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:624</code></a>
+        <a href="../files/.._src_components_camera.js.html#l688"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:688</code></a>
         </p>
 
 
@@ -1123,7 +1144,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1156"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1156</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1249"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1249</code></a>
         </p>
 
 
@@ -1189,7 +1210,7 @@ The result of this function wont match the _eye property if the camera is a node
 
             <div class="returns-description">
                         <span class="type">Object</span>:
-                    <p>{start:vec3, dir:vec3}</p>
+                    <p>{start:vec3, dir:vec3} or null is values are undefined or NaN</p>
 
             </div>
         </div>
@@ -1220,7 +1241,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l814"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:814</code></a>
+        <a href="../files/.._src_components_camera.js.html#l884"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:884</code></a>
         </p>
 
 
@@ -1286,7 +1307,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l796"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:796</code></a>
+        <a href="../files/.._src_components_camera.js.html#l866"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:866</code></a>
         </p>
 
 
@@ -1352,7 +1373,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l778"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:778</code></a>
+        <a href="../files/.._src_components_camera.js.html#l846"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:846</code></a>
         </p>
 
 
@@ -1418,7 +1439,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l610"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:610</code></a>
+        <a href="../files/.._src_components_camera.js.html#l674"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:674</code></a>
         </p>
 
 
@@ -1487,7 +1508,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l638"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:638</code></a>
+        <a href="../files/.._src_components_camera.js.html#l702"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:702</code></a>
         </p>
 
 
@@ -1570,7 +1591,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1184"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1184</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1279"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1279</code></a>
         </p>
 
 
@@ -1657,7 +1678,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l497"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:497</code></a>
+        <a href="../files/.._src_components_camera.js.html#l561"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:561</code></a>
         </p>
 
 
@@ -1731,7 +1752,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l882"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:882</code></a>
+        <a href="../files/.._src_components_camera.js.html#l952"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:952</code></a>
         </p>
 
 
@@ -1790,7 +1811,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l938"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:938</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1008"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1008</code></a>
         </p>
 
 
@@ -1843,6 +1864,72 @@ If the camera is a node camera, then the node transform is modified (plus the ce
 
 
 </div>
+<div id="method_panning" class="method item">
+    <h3 class="name"><code>panning</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>x</code>
+                </li>
+                <li class="arg">
+                        <code>y</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l1050"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1050</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Pans the camera (move acording to view)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">x</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">y</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_project" class="method item">
     <h3 class="name"><code>project</code></h3>
 
@@ -1873,7 +1960,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1069"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1069</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1162"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1162</code></a>
         </p>
 
 
@@ -1968,7 +2055,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1105"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1105</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1198"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1198</code></a>
         </p>
 
 
@@ -2054,7 +2141,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l523"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:523</code></a>
+        <a href="../files/.._src_components_camera.js.html#l587"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:587</code></a>
         </p>
 
 
@@ -2114,7 +2201,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l901"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:901</code></a>
+        <a href="../files/.._src_components_camera.js.html#l971"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:971</code></a>
         </p>
 
 
@@ -2191,7 +2278,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l980"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:980</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1073"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1073</code></a>
         </p>
 
 
@@ -2270,7 +2357,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l863"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:863</code></a>
+        <a href="../files/.._src_components_camera.js.html#l933"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:933</code></a>
         </p>
 
 
@@ -2382,7 +2469,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l845"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:845</code></a>
+        <a href="../files/.._src_components_camera.js.html#l915"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:915</code></a>
         </p>
 
 
@@ -2478,7 +2565,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1052"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1052</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1145"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1145</code></a>
         </p>
 
 
@@ -2570,7 +2657,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1096"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1096</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1189"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1189</code></a>
         </p>
 
 
@@ -2653,7 +2740,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l585"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:585</code></a>
+        <a href="../files/.._src_components_camera.js.html#l649"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:649</code></a>
         </p>
 
 
@@ -2693,7 +2780,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l537"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:537</code></a>
+        <a href="../files/.._src_components_camera.js.html#l601"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:601</code></a>
         </p>
 
 
@@ -2730,7 +2817,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l668"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:668</code></a>
+        <a href="../files/.._src_components_camera.js.html#l732"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:732</code></a>
         </p>
 
 
@@ -2779,7 +2866,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l273"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:273</code></a>
+        <a href="../files/.._src_components_camera.js.html#l274"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:274</code></a>
         </p>
 
 
@@ -2805,7 +2892,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l381"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:381</code></a>
+        <a href="../files/.._src_components_camera.js.html#l401"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:401</code></a>
         </p>
 
 
@@ -2829,7 +2916,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l185"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:185</code></a>
+        <a href="../files/.._src_components_camera.js.html#l186"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:186</code></a>
         </p>
 
 
@@ -2855,7 +2942,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l169"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:169</code></a>
+        <a href="../files/.._src_components_camera.js.html#l170"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:170</code></a>
         </p>
 
 
@@ -2881,7 +2968,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l256"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:256</code></a>
+        <a href="../files/.._src_components_camera.js.html#l257"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:257</code></a>
         </p>
 
 
@@ -2907,7 +2994,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l201"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:201</code></a>
+        <a href="../files/.._src_components_camera.js.html#l202"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:202</code></a>
         </p>
 
 
@@ -2934,7 +3021,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l303"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:303</code></a>
+        <a href="../files/.._src_components_camera.js.html#l304"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:304</code></a>
         </p>
 
 
@@ -2949,6 +3036,78 @@ When focalLength is modified it will change the center so it matches the distanc
 
 
 </div>
+<div id="property_frame  contains the RenderFrameContext where the scene was stored" class="property item">
+    <h3 class="name"><code>frame  contains the RenderFrameContext where the scene was stored</code></h3>
+    <span class="type"><a href="../classes/LS.RenderFrameContext.html" class="crosslink">LS.RenderFrameContext</a></span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l430"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:430</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_frame_color_texture  contains the color texture used by the RenderFrameContext" class="property item">
+    <h3 class="name"><code>frame_color_texture  contains the color texture used by the RenderFrameContext</code></h3>
+    <span class="type">GL.Texture</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l443"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:443</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_frame_depth_texture  contains the depth texture used by the RenderFrameContext" class="property item">
+    <h3 class="name"><code>frame_depth_texture  contains the depth texture used by the RenderFrameContext</code></h3>
+    <span class="type">GL.Texture</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l458"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:458</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
 <div id="property_frustum_size" class="property item">
     <h3 class="name"><code>frustum_size</code></h3>
     <span class="type">Number</span>
@@ -2960,7 +3119,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l320"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:320</code></a>
+        <a href="../files/.._src_components_camera.js.html#l321"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:321</code></a>
         </p>
 
 
@@ -2986,7 +3145,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l410"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:410</code></a>
+        <a href="../files/.._src_components_camera.js.html#l474"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:474</code></a>
         </p>
 
 
@@ -3010,7 +3169,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l239"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:239</code></a>
+        <a href="../files/.._src_components_camera.js.html#l240"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:240</code></a>
         </p>
 
 
@@ -3025,6 +3184,32 @@ When focalLength is modified it will change the center so it matches the distanc
 
 
 </div>
+<div id="property_orthographic  left,right,bottom,top (near and far are in the near,far properties)" class="property item">
+    <h3 class="name"><code>orthographic  left,right,bottom,top (near and far are in the near,far properties)</code></h3>
+    <span class="type">Vec4</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l342"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:342</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>The frustum size when working in pure ORTHOGRAPHIC</p>
+
+    </div>
+
+        <p><strong>Default:</strong> 50</p>
+
+
+</div>
 <div id="property_type" class="property item">
     <h3 class="name"><code>type</code></h3>
     <span class="type">Vec3</span>
@@ -3036,7 +3221,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l149"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:149</code></a>
+        <a href="../files/.._src_components_camera.js.html#l150"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:150</code></a>
         </p>
 
 
@@ -3062,7 +3247,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l223"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:223</code></a>
+        <a href="../files/.._src_components_camera.js.html#l224"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:224</code></a>
         </p>
 
 
@@ -3088,7 +3273,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l341"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:341</code></a>
+        <a href="../files/.._src_components_camera.js.html#l361"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:361</code></a>
         </p>
 
 
@@ -3113,7 +3298,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l355"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:355</code></a>
+        <a href="../files/.._src_components_camera.js.html#l375"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:375</code></a>
         </p>
 
 
@@ -3137,7 +3322,7 @@ When focalLength is modified it will change the center so it matches the distanc
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l368"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:368</code></a>
+        <a href="../files/.._src_components_camera.js.html#l388"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:388</code></a>
         </p>
 
 

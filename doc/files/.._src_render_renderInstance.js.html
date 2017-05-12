@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -169,7 +170,7 @@ function RenderInstance( node, component )
 	this.index_buffer = null;
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
-	this.primitive = gl.TRIANGLES;
+	this.primitive = GL.TRIANGLES;
 
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
@@ -197,7 +198,12 @@ function RenderInstance( node, component )
 	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
+
+	this.shader_block_flags = 0;
 	this.shader_blocks = [];
+
+	this.picking_node = null; //for picking
+
 	//this.deformers = []; //TODO
 
 	//TO DO: instancing
@@ -235,6 +241,22 @@ RenderInstance.prototype.computeNormalMatrix = function()
 	var m = mat4.invert(this.normal_matrix, this.matrix);
 	if(m)
 		mat4.transpose(this.normal_matrix, m);
+}
+
+/**
+* applies a transformation to the current matrix
+*
+* @method applyTransform
+* @param {mat4} matrix
+* @param {mat4} normal_matrix [optional]
+*/
+RenderInstance.prototype.applyTransform = function( matrix, normal_matrix )
+{
+	mat4.mul( this.matrix, this.matrix, matrix );
+	if( normal_matrix )
+		mat4.mul( this.normal_matrix, this.normal_matrix, normal_matrix );
+	else
+		this.computeNormalMatrix();
 }
 
 //set the material and apply material flags to render instance
@@ -363,7 +385,7 @@ RenderInstance.prototype.update = function()
 * @method render
 * @param {Shader} shader
 */
-RenderInstance.prototype.render = function(shader)
+RenderInstance.prototype.render = function(shader, primitive)
 {
 	//in case no normals found but they are required
 	if(shader.attributes[&quot;a_normal&quot;] &amp;&amp; !this.vertex_buffers[&quot;normals&quot;])
@@ -375,8 +397,8 @@ RenderInstance.prototype.render = function(shader)
 	//in case no coords found but they are required
 	if(shader.attributes[&quot;a_coord&quot;] &amp;&amp; !this.vertex_buffers[&quot;coords&quot;])
 	{
-		this.mesh.computeTextureCoordinates();		
-		this.vertex_buffers[&quot;coords&quot;] = this.mesh.vertexBuffers[&quot;coords&quot;];
+		//this.mesh.computeTextureCoordinates();		
+		//this.vertex_buffers[&quot;coords&quot;] = this.mesh.vertexBuffers[&quot;coords&quot;];
 	}
 
 	//in case no tangents found but they are required
@@ -414,12 +436,55 @@ RenderInstance.prototype.render = function(shader)
 
 	shader.drawBuffers( this.vertex_buffers,
 	  this.index_buffer,
-	  this.primitive, this.range[0], this.range[1] );
+	  primitive !== undefined ? primitive : this.primitive,
+	  this.range[0], this.range[1] );
+}
+
+RenderInstance.prototype.addShaderBlock = function( block, uniforms )
+{
+	if( block.flag_mask &amp; this.shader_block_flags &amp;&amp; uniforms === undefined )
+		return;
+
+	for(var i = 0; i &lt; this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block == block )
+		{
+			if(uniforms !== undefined)
+				this.shader_blocks[i].uniforms = uniforms;
+			return i;
+		}
+	}
+	this.shader_blocks.push( { block: block, uniforms: uniforms } );
+	this.shader_block_flags |= block.flag_mask;
+	return this.shader_blocks.length - 1;
+}
+
+RenderInstance.prototype.removeShaderBlock = function( block )
+{
+	if( ! (block.flag_mask &amp; this.shader_block_flags) )
+		return;
+
+	for(var i = 0; i &lt; this.shader_blocks.length; ++i)
+	{
+		if(!this.shader_blocks[i])
+			continue;
+		if( this.shader_blocks[i].block !== block )
+			continue;
+
+		this.shader_blocks.splice(i,1);
+		this.shader_block_flags &amp;= ~block.flag_mask;
+		break;
+	}
 }
 
 //checks the shader blocks attached to this instance and resolves the flags
 RenderInstance.prototype.computeShaderBlockFlags = function()
 {
+	return this.shader_block_flags;
+
+	/*
 	var r = 0;
 	for(var i = 0; i &lt; this.shader_blocks.length; ++i)
 	{
@@ -430,6 +495,7 @@ RenderInstance.prototype.computeShaderBlockFlags = function()
 		r |= block.flag_mask;
 	}
 	return r;
+	*/
 }
 
 /*

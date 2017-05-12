@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -152,7 +153,7 @@
 // ******* CAMERA **************************
 
 /**
-* Camera that contains the info about a camera
+* Camera contains the info about a camera (matrices, near far planes, clear color, etc)
 * @class Camera
 * @namespace LS.Components
 * @constructor
@@ -289,12 +290,13 @@ Texture.cubemap_camera_parameters = [
 ];
 */
 
-
+/*
 Camera.prototype.getResources = function (res)
 {
 	//nothing to do, cameras dont use assets, althoug they could generate them
 	return res;
 }
+*/
 
 
 /**
@@ -490,6 +492,25 @@ Object.defineProperty( Camera.prototype, &quot;frustum_size&quot;, {
 });
 
 /**
+* The frustum size when working in pure ORTHOGRAPHIC 
+* @property orthographic {vec4} left,right,bottom,top (near and far are in the near,far properties)
+* @default 50
+*/
+
+Object.defineProperty( Camera.prototype, &quot;orthographic&quot;, {
+	get: function() {
+		return this._ortho;
+	},
+	set: function(v) {
+		if(	!v || v.length &lt; 4)
+			return;
+		this._ortho.set(v);
+		this._must_update_projection_matrix = true;
+	},
+	enumerable: true
+});
+
+/**
 * The viewport in normalized coordinates (left,bottom, width, height)
 * @property viewport {vec4}
 */
@@ -557,6 +578,50 @@ Object.defineProperty( Camera.prototype, &quot;render_to_texture&quot;, {
 	},
 	enumerable: true
 });
+
+/**
+* @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
+*/
+Object.defineProperty( Camera.prototype, &quot;frame&quot;, {
+	get: function() {
+		throw(&quot;frame cannot be assigned manually, enable render_to_texture&quot;);
+	},
+	set: function(v) {
+		return this._frame;
+	},
+	enumerable: false
+});
+
+/**
+* @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
+*/
+Object.defineProperty( Camera.prototype, &quot;frame_color_texture&quot;, {
+	get: function() {
+		throw(&quot;frame_color_texture cannot be assigned manually, enable render_to_texture&quot;);
+	},
+	set: function(v) {
+		if(!this._frame)
+			return null;
+		return this._frame.getColorTexture();
+	},
+	enumerable: false
+});
+
+/**
+* @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
+*/
+Object.defineProperty( Camera.prototype, &quot;frame_depth_texture&quot;, {
+	get: function() {
+		throw(&quot;frame_depth_texture cannot be assigned manually, enable render_to_texture&quot;);
+	},
+	set: function(v) {
+		if(!this._frame)
+			return null;
+		return this._frame.getDepthTexture();
+	},
+	enumerable: false
+});
+
 
 /**
 * @property mustUpdate {Boolean}
@@ -883,7 +948,9 @@ Camera.prototype.getLocalVector = function(v, dest)
 Camera.prototype.getEye = function( out )
 {
 	out = out || vec3.create();
-	out.set( this._eye );
+	out[0] = this._eye[0];
+	out[1] = this._eye[1];
+	out[2] = this._eye[2];
 	if( this._root &amp;&amp; this._root.transform )
 		return this._root.transform.getGlobalPosition( out );
 	return out;
@@ -902,7 +969,9 @@ Camera.prototype.getCenter = function( out )
 
 	if( this._root &amp;&amp; this._root.transform )
 		return mat4.multiplyVec3( out, this._root.transform.getGlobalMatrixRef(), this._center );
-	out.set( this._center );
+	out[0] = this._center[0];
+	out[1] = this._center[1];
+	out[2] = this._center[2];
 	return out;
 }
 
@@ -935,7 +1004,9 @@ Camera.prototype.getFront = function( out )
 Camera.prototype.getUp = function( out )
 {
 	out = out || vec3.create();
-	out.set( this._up );
+	out[0] = this._up[0];
+	out[1] = this._up[1];
+	out[2] = this._up[2];
 
 	if(this._root &amp;&amp; this._root.transform)
 	{
@@ -1021,7 +1092,7 @@ Camera.prototype.setPerspective = function( fov, aspect, near, far )
 * @param {number} near
 * @param {number} far
 */
-Camera.prototype.setOrthographic = function( left,right, bottom,top, near, far )
+Camera.prototype.setOrthographic = function( left, right, bottom,top, near, far )
 {
 	this._near = near;
 	this._far = far;
@@ -1127,6 +1198,29 @@ Camera.prototype.orbitDistanceFactor = function(f, center)
 	vec3.add(this._eye, center, front);
 	this._must_update_view_matrix = true;
 }
+
+/**
+* Pans the camera (move acording to view)
+* @method panning
+* @param {number} x
+* @param {number} y
+*/
+Camera.prototype.panning = (function(x,y) { 
+	var tmp_top = vec3.create();
+	var tmp_right = vec3.create();
+	var tmp = vec3.create();
+
+	return function( x,y, factor )
+	{
+		factor = factor || 1;
+		this.getLocalVector( LS.TOP, tmp_top );
+		this.getLocalVector( LS.RIGHT, tmp_right );
+		vec3.scaleAndAdd( tmp, LS.ZEROS, tmp_top, y * factor );
+		vec3.scaleAndAdd( tmp, tmp, tmp_right, x * factor );
+		this.move( tmp );
+	};
+})();
+
 
 /**
 * changes the distance between eye and center ( it could move the center or the eye, depending on the parameters )
@@ -1311,7 +1405,7 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {start:vec3, dir:vec3}
+* @return {Object} {start:vec3, dir:vec3} or null is values are undefined or NaN
 */
 Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 {
@@ -1323,6 +1417,8 @@ Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 		this.updateMatrices();
 	var eye = this.getEye();
 	var pos = vec3.unproject(vec3.create(), [x,y,1], this._viewprojection_matrix, viewport );
+	if(!pos)
+		return null;
 
 	if(this.type == Camera.ORTHOGRAPHIC)
 		eye = vec3.unproject(eye, [x,y,0], this._viewprojection_matrix, viewport );
@@ -1368,6 +1464,7 @@ Camera.prototype.configure = function(o)
 	if(o.final_aspect !== undefined) this._final_aspect = o.final_aspect;
 	if(o.frustum_size !== undefined) this._frustum_size = o.frustum_size;
 	if(o.viewport !== undefined) this._viewport.set( o.viewport );
+	if(o.orthographic !== undefined) this._ortho.set( o.orthographic );
 
 	if(o.background_color !== undefined) this._background_color.set( o.background_color );
 
@@ -1381,6 +1478,7 @@ Camera.prototype.configure = function(o)
 Camera.prototype.serialize = function()
 {
 	var o = {
+		object_class: &quot;Camera&quot;,
 		uid: this.uid,
 		layers: this.layers,
 		enabled: this.enabled,
@@ -1392,6 +1490,7 @@ Camera.prototype.serialize = function()
 		far: this._far,
 		fov: this._fov,
 		aspect: this._aspect,
+		orthographic: vec4.toArray(this._ortho),
 		background_color: vec4.toArray(this._background_color),
 		frustum_size: this._frustum_size,
 		viewport: toArray( this._viewport ),

@@ -206,6 +206,7 @@ if(typeof(LiteGraph) != "undefined")
 				continue;
 			switch( output.name )
 			{
+				case "SceneNode": this.setOutputData( i, node ); break;
 				case "Material": this.setOutputData( i, node.getMaterial() ); break;
 				case "Transform": this.setOutputData( i, node.transform ); break;
 				case "Mesh": this.setOutputData(i, node.getMesh()); break;
@@ -303,7 +304,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphSceneNode.prototype.onGetOutputs = function()
 	{
-		var result = [["Visible","boolean"],["Material","Material"],["on_clicked",LiteGraph.EVENT]];
+		var result = [["SceneNode","SceneNode"],["Visible","boolean"],["Material","Material"],["on_clicked",LiteGraph.EVENT]];
 		return this.getComponents(result);
 	}
 
@@ -944,6 +945,59 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("scene/global", LGraphGlobal );
 
+	global.LGraphSceneTime = function()
+	{
+		this.addOutput("Time","number");
+		this._scene = null;
+	}
+
+
+	LGraphSceneTime.title = "Time";
+	LGraphSceneTime.desc = "Time";
+
+	LGraphSceneTime.prototype.onExecute = function()
+	{
+		var scene = this.graph.getScene();
+		if(!scene)
+			return;
+
+		//read inputs
+		if(this.inputs)
+		for(var i = 0; i < this.inputs.length; ++i)
+		{
+			var input = this.inputs[i]; //??
+			var v = this.getInputData(i);
+			if(v === undefined)
+				continue;
+		}
+
+		//write outputs
+		if(this.outputs)
+		for(var i = 0; i < this.outputs.length; ++i)
+		{
+			var output = this.outputs[i];
+			if(!output.links || !output.links.length || output.type == LiteGraph.EVENT )
+				continue;
+			var result = null;
+			switch( output.name )
+			{
+				case "Time": result = scene.getTime(); break;
+				case "Elapsed": result = (scene._last_dt != null ? scene._last_dt : 0); break;
+				case "Frame": result = (scene._frame != null ? scene._frame : 0); break;
+				default:
+					continue;
+			}
+			this.setOutputData(i,result);
+		}
+	}
+
+	LGraphSceneTime.prototype.onGetOutputs = function()
+	{
+		return [["Elapsed","number"],["Time","number"]];
+	}
+
+	LiteGraph.registerNodeType("scene/time", LGraphSceneTime );
+
 	//************************************
 
 	global.LGraphLocatorProperty = function LGraphLocatorProperty()
@@ -1084,3 +1138,4 @@ if(typeof(LiteGraph) != "undefined")
 
 	LiteGraph.registerNodeType("scene/frame", LGraphFrame );
 };
+

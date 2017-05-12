@@ -278,8 +278,17 @@ LS.Classes["Animation"] = LS.Animation = Animation;
 */
 function Take(o)
 {
+	/** 
+	* @property name {String}
+	**/
 	this.name = null;
+	/** 
+	* @property tracks {Array}
+	**/
 	this.tracks = [];
+	/** 
+	* @property duration {Number} in seconds
+	**/
 	this.duration = LS.Animation.DEFAULT_DURATION;
 	
 	if(o)
@@ -708,15 +717,33 @@ Animation.Take = Take;
 
 function Track(o)
 {
+	/** 
+	* @property enabled {Boolean} if it must be applied
+	**/
 	this.enabled = true;
+	/** 
+	* @property name {String} title to show in the editor
+	**/
 	this.name = ""; //title
+	/** 
+	* @property type {String} if the data is number, vec2, color, etc
+	**/
 	this.type = null; //type of data (number, vec2, color, texture, etc)
+	/** 
+	* @property interpolation {Number} type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE
+	**/
 	this.interpolation = LS.NONE;
+	/** 
+	* @property looped {Boolean} if the last and the first keyframe should be connected
+	**/
 	this.looped = false; //interpolate last keyframe with first
 
 	//data
 	this.packed_data = false; //this means the data is stored in one continuous datatype, faster to load but not editable
 	this.value_size = 0; //how many numbers contains every sample of this property, 0 means basic type (string, boolean)
+	/** 
+	* @property data {*} contains all the keyframes, could be an array or a typed array
+	**/
 	this.data = null; //array or typed array where you have the time value followed by this.value_size bytes of data
 	this.data_table = null; //used to index data when storing it
 
@@ -739,7 +766,9 @@ function Track(o)
 
 Track.FRAMERATE = 30;
 
-//string identifying the property being animated in a locator form ( node/component_uid/property )
+/** 
+* @property property {String} the locator to the property this track should modify ( "node/component_uid/property" )
+**/
 Object.defineProperty( Track.prototype, 'property', {
 	set: function( property )
 	{
@@ -1509,6 +1538,13 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 	return null;
 }
 
+/**
+* returns information about the object being affected by this track based on its locator
+* the object contains a reference to the object, the property name, the type of the data
+* @method getPropertyInfo
+* @param {LS.SceneTree} scene [optional]
+* @return {Object} an object with the info { target, name, type, value }
+*/
 Track.prototype.getPropertyInfo = function( scene )
 {
 	scene = scene || LS.GlobalScene;
@@ -1516,6 +1552,14 @@ Track.prototype.getPropertyInfo = function( scene )
 	return scene.getPropertyInfo( this.property );
 }
 
+/**
+* returns an array containing N samples for this property over time using the interpolation of the track
+* @method getSampledData
+* @param {Number} start_time when to start sampling
+* @param {Number} end_time when to finish sampling
+* @param {Number} num_samples the number of samples
+* @return {Array} an array containing all the samples
+*/
 Track.prototype.getSampledData = function( start_time, end_time, num_samples )
 {
 	var delta = (end_time - start_time) / num_samples;
@@ -1565,6 +1609,8 @@ Track.prototype.trim = function( start, end )
 	return 0;
 }
 
+//if the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
+//this makes working with animations faster
 Track.prototype.convertToTrans10 = function()
 {
 	if( this.value_size != 16 )

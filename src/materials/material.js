@@ -263,6 +263,8 @@ Material.prototype.configure = function(o)
 {
 	for(var i in o)
 	{
+		if(typeof (o[i]) === "function")
+			continue;
 		if(!this.setProperty( i, o[i] ) && LS.debug)
 			console.warn("Material property not assigned: " + i );
 	}
@@ -383,8 +385,9 @@ Material.prototype.setProperty = function( name, value )
 			break;
 		//bools
 		//strings
-		//	this[name] = value; 
-		//	break;
+		case "uid":
+			this[name] = value; 
+			break;
 		//vectors
 		case "uvs_matrix":
 		case "color": 
@@ -411,6 +414,13 @@ Material.prototype.setProperty = function( name, value )
 		case "transparency": //special cases
 			this.opacity = 1 - value;
 			break;
+		case "render_state":
+			this._render_state.configure( value );
+			break;
+		//ignore
+		case "material_class":
+		case "object_type":
+			return true;
 		default:
 			return false;
 	}

@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -232,6 +233,7 @@ GraphComponent.prototype.configure = function(o)
 GraphComponent.prototype.serialize = function()
 {
 	return { 
+		object_class: &quot;GraphComponent&quot;,
 		uid: this.uid,
 		enabled: this.enabled, 
 		force_redraw: this.force_redraw , 
@@ -260,6 +262,8 @@ GraphComponent.prototype.onAddedToScene = function( scene )
 	this._graph._scene = scene;
 	LEvent.bind( scene , &quot;init&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;start&quot;, this.onSceneEvent, this );
+	LEvent.bind( scene , &quot;pause&quot;, this.onSceneEvent, this );
+	LEvent.bind( scene , &quot;unpause&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;finish&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;beforeRenderMainPass&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;update&quot;, this.onSceneEvent, this );
@@ -270,6 +274,8 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 	this._graph._scene = null;
 	LEvent.unbind( scene, &quot;init&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;start&quot;, this.onSceneEvent, this );
+	LEvent.unbind( scene, &quot;pause&quot;, this.onSceneEvent, this );
+	LEvent.unbind( scene, &quot;unpause&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;finish&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;beforeRenderMainPass&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;update&quot;, this.onSceneEvent, this );
@@ -287,12 +293,22 @@ GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
 
 	if(event_type == &quot;init&quot;)
 		this._graph.sendEventToAllNodes(&quot;onInit&quot;);
-	if(event_type == &quot;start&quot;)
+	else if(event_type == &quot;start&quot;)
 	{
 		this._graph.sendEventToAllNodes(&quot;onStart&quot;);
 		this._graph.status = LGraph.STATUS_RUNNING;
 	}
-	if(event_type == &quot;finish&quot;)
+	else if(event_type == &quot;pause&quot;)
+	{
+		this._graph.sendEventToAllNodes(&quot;onPause&quot;);
+		this._graph.status = LGraph.STATUS_RUNNING;
+	}
+	else if(event_type == &quot;unpause&quot;)
+	{
+		this._graph.sendEventToAllNodes(&quot;onUnpause&quot;);
+		this._graph.status = LGraph.STATUS_RUNNING;
+	}
+	else if(event_type == &quot;finish&quot;)
 	{
 		this._graph.sendEventToAllNodes(&quot;onStop&quot;);
 		this._graph.status = LGraph.STATUS_STOPPED;
@@ -403,7 +419,7 @@ function FXGraphComponent(o)
 		this._graph_frame_node.connect(0, this._graph_viewport_node );
 	}
 
-	if(FXGraphComponent.high_precision_format == null)
+	if(FXGraphComponent.high_precision_format == null &amp;&amp; global.gl)
 	{
 		if(gl.half_float_ext)
 			FXGraphComponent.high_precision_format = gl.HALF_FLOAT_OES;
@@ -474,6 +490,7 @@ FXGraphComponent.prototype.configure = function(o)
 FXGraphComponent.prototype.serialize = function()
 {
 	return {
+		object_class: &quot;FXGraphComponent&quot;,
 		uid: this.uid,
 		enabled: this.enabled,
 		use_antialiasing: this.use_antialiasing,

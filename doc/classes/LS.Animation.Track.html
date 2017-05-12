@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -150,7 +151,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_animation.js.html#l700"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:700</code></a>
+            Defined in: <a href="../files/.._src_resources_animation.js.html#l709"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:709</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -181,7 +182,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l700"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:700</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l709"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:709</code></a>
         </p>
 
 
@@ -203,6 +204,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
             <li class="api-class-tab methods"><a href="#methods">Methods</a></li>
+            <li class="api-class-tab properties"><a href="#properties">Properties</a></li>
     </ul>
 
     <div>
@@ -234,6 +236,14 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_getPropertyInfo">getPropertyInfo</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getSampledData">getSampledData</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_moveKeyframe">moveKeyframe</a>
 
                             </li>
@@ -256,6 +266,40 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
                     </ul>
                 </div>
 
+                <div class="index-section properties">
+                    <h3>Properties</h3>
+
+                    <ul class="index-list properties">
+                            <li class="index-item property">
+                                <a href="#property_data  contains all the keyframes, could be an array or a typed array">data  contains all the keyframes, could be an array or a typed array</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_enabled  if it must be applied">enabled  if it must be applied</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_interpolation  type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE">interpolation  type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_looped  if the last and the first keyframe should be connected">looped  if the last and the first keyframe should be connected</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_name  title to show in the editor">name  title to show in the editor</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_property  the locator to the property this track should modify ( &quot;node/component_uid/property&quot; )">property  the locator to the property this track should modify ( &quot;node/component_uid/property&quot; )</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_type  if the data is number, vec2, color, etc">type  if the data is number, vec2, color, etc</a>
+
+                            </li>
+                    </ul>
+                </div>
 
 
         </div>
@@ -293,7 +337,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l884"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:884</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l913"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:913</code></a>
         </p>
 
 
@@ -381,7 +425,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1127"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1127</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1156"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1156</code></a>
         </p>
 
 
@@ -449,7 +493,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l835"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:835</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l864"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:864</code></a>
         </p>
 
 
@@ -526,7 +570,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l918"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:918</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l947"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:947</code></a>
         </p>
 
 
@@ -591,7 +635,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l944"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:944</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l973"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:973</code></a>
         </p>
 
 
@@ -632,6 +676,167 @@ this is used when you want to apply the same animation to different nodes in the
 
 
 </div>
+<div id="method_getPropertyInfo" class="method item">
+    <h3 class="name"><code>getPropertyInfo</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>scene</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Object</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1541"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1541</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns information about the object being affected by this track based on its locator
+the object contains a reference to the object, the property name, the type of the data</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">scene</code>
+                        <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+
+
+                    <div class="param-description">
+                        <p>[optional]</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Object</span>:
+                    <p>an object with the info { target, name, type, value }</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getSampledData" class="method item">
+    <h3 class="name"><code>getSampledData</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>start_time</code>
+                </li>
+                <li class="arg">
+                        <code>end_time</code>
+                </li>
+                <li class="arg">
+                        <code>num_samples</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Array</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1555"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1555</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns an array containing N samples for this property over time using the interpolation of the track</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">start_time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>when to start sampling</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">end_time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>when to finish sampling</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">num_samples</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the number of samples</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Array</span>:
+                    <p>an array containing all the samples</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_moveKeyframe" class="method item">
     <h3 class="name"><code>moveKeyframe</code></h3>
 
@@ -659,7 +864,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l958"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:958</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l987"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:987</code></a>
         </p>
 
 
@@ -725,7 +930,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1072"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1072</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1101"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1101</code></a>
         </p>
 
 
@@ -762,7 +967,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1015"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1015</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1044"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1044</code></a>
         </p>
 
 
@@ -818,7 +1023,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1539"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1539</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1582"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1582</code></a>
         </p>
 
 
@@ -877,7 +1082,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1104"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1104</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1133"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1133</code></a>
         </p>
 
 
@@ -895,6 +1100,178 @@ this is used when you want to apply the same animation to different nodes in the
 </div>
             </div>
 
+            <div id="properties" class="api-class-tabpanel">
+                <h2 class="off-left">Properties</h2>
+
+<div id="property_data  contains all the keyframes, could be an array or a typed array" class="property item">
+    <h3 class="name"><code>data  contains all the keyframes, could be an array or a typed array</code></h3>
+    <span class="type"></span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l744"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:744</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_enabled  if it must be applied" class="property item">
+    <h3 class="name"><code>enabled  if it must be applied</code></h3>
+    <span class="type">Boolean</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l720"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:720</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_interpolation  type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE" class="property item">
+    <h3 class="name"><code>interpolation  type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE</code></h3>
+    <span class="type">Number</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l732"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:732</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_looped  if the last and the first keyframe should be connected" class="property item">
+    <h3 class="name"><code>looped  if the last and the first keyframe should be connected</code></h3>
+    <span class="type">Boolean</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l736"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:736</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_name  title to show in the editor" class="property item">
+    <h3 class="name"><code>name  title to show in the editor</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l724"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:724</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_property  the locator to the property this track should modify ( &quot;node/component_uid/property&quot; )" class="property item">
+    <h3 class="name"><code>property  the locator to the property this track should modify ( &quot;node/component_uid/property&quot; )</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l769"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:769</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+<div id="property_type  if the data is number, vec2, color, etc" class="property item">
+    <h3 class="name"><code>type  if the data is number, vec2, color, etc</code></h3>
+    <span class="type">String</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l728"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:728</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+
+
+</div>
+            </div>
 
 
     </div>

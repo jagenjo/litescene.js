@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -923,13 +924,20 @@ SceneNode.prototype.getTransform = function() {
 
 //Helpers
 
-SceneNode.prototype.getMesh = function() {
+SceneNode.prototype.getMesh = function( use_lod_mesh ) {
 	var mesh = this.mesh;
-	if(!mesh &amp;&amp; this.meshrenderer)
-		mesh = this.meshrenderer.mesh;
-	if(!mesh) return null;
+	var mesh_renderer = this.getComponent( LS.Components.MeshRenderer );
+	if(!mesh &amp;&amp; mesh_renderer)
+	{
+		if(use_lod_mesh)
+			mesh = mesh_renderer.lod_mesh;
+		if(!mesh)
+			mesh = mesh_renderer.mesh;
+	}
+	if(!mesh)
+		return null;
 	if(mesh.constructor === String)
-		return ResourcesManager.meshes[mesh];
+		return LS.ResourcesManager.meshes[mesh];
 	return mesh;
 }
 
@@ -1224,6 +1232,20 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 {
 	extra_info = extra_info || {};
 
+	if(!mesh_id)
+		return;
+
+	if( mesh_id.constructor !== String )
+	{
+		extra_info = mesh_id;
+		mesh_id = extra_info.mesh;
+		if(!mesh_id)
+		{
+			console.warn(&quot;Mesh info without mesh id&quot;);
+			return null;
+		}
+	}
+
 	var mesh = LS.ResourcesManager.meshes[ mesh_id ];
 
 	if(!mesh)
@@ -1238,6 +1260,8 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 		mesh_render_config.submesh_id = extra_info.submesh_id;
 	if(extra_info.morph_targets !== undefined)
 		mesh_render_config.morph_targets = extra_info.morph_targets;
+	if(extra_info.material !== undefined)
+		mesh_render_config.material = extra_info.material;
 
 	var compo = new LS.Components.MeshRenderer( mesh_render_config );
 
@@ -1276,7 +1300,9 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 */
 SceneNode.prototype.serialize = function( ignore_prefab )
 {
-	var o = {};
+	var o = {
+		object_class: &quot;SceneNode&quot;
+	};
 
 	if(this._name) 
 		o.name = this._name;
@@ -1359,14 +1385,17 @@ SceneNode.prototype._onChildRemoved = function( node, recompute_transform, remov
 	if(this.transform)
 	{
 		//unlink transform
-		if(recompute_transform)
+		if(node.transform)
 		{
-			var m = node.transform.getGlobalMatrix();
-			node.transform._parent = null;
-			node.transform.fromMatrix(m);
+			if(recompute_transform)
+			{
+				var m = node.transform.getGlobalMatrix();
+				node.transform._parent = null;
+				node.transform.fromMatrix(m);
+			}
+			else
+				node.transform._parent = null;
 		}
-		else
-			node.transform._parent = null;
 	}
 
 	if( remove_components )

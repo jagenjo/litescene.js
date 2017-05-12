@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -169,10 +170,11 @@
 
 	Optional callbacks to attach
 	============================
-	- onPreDraw: executed before drawing a frame
-	- onDraw: executed after drawing a frame
+	- onPreDraw: executed before drawing a frame (in play mode)
+	- onDraw: executed after drawing a frame (in play mode)
 	- onPreUpdate(dt): executed before updating the scene (delta_time as parameter)
 	- onUpdate(dt): executed after updating the scene (delta_time as parameter)
+	- onDrawLoading: executed when loading
 	- onMouse(e): when a mouse event is triggered
 	- onKey(e): when a key event is triggered
 * @namespace LS
@@ -243,6 +245,9 @@ function Player(options)
 	this.gl.onkeydown = key_event_callback;
 	this.gl.onkeyup = key_event_callback;
 
+	var touch_event_callback = LS.Player.prototype._ontouch.bind(this);
+	this.gl.ontouch = touch_event_callback;
+
 	var gamepad_event_callback = LS.Player.prototype._ongamepad.bind(this);
 	this.gl.ongamepadconnected = gamepad_event_callback;
 	this.gl.ongamepaddisconnected = gamepad_event_callback;
@@ -252,6 +257,7 @@ function Player(options)
 	//capture input
 	gl.captureMouse(true);
 	gl.captureKeys(true);
+	gl.captureTouch(true);
 	gl.captureGamepads(true);
 
 	LS.Input.init();
@@ -468,24 +474,29 @@ Player.prototype.stop = function()
 
 Player.prototype._ondraw = function()
 {
-	if(this.state != LS.Player.PLAYING)
-		return;
-
-	if(this.onPreDraw)
-		this.onPreDraw();
-
 	var scene = this.scene;
 
-	if(scene._must_redraw || this.force_redraw )
+	if(this.state == LS.Player.PLAYING)
 	{
-		scene.render( scene.info ? scene.info.render_settings : this.render_settings );
+		if(this.onPreDraw)
+			this.onPreDraw();
+
+		if(scene._must_redraw || this.force_redraw )
+		{
+			scene.render( scene.info ? scene.info.render_settings : this.render_settings );
+		}
+
+		if(this.onDraw)
+			this.onDraw();
 	}
 
-	if(this.onDraw)
-		this.onDraw();
-
 	if(this.loading &amp;&amp; this.loading.visible )
+	{
 		this.renderLoadingBar( this.loading );
+		LEvent.trigger( this.scene, &quot;render_loading&quot; );
+		if(this.onDrawLoading)
+			this.onDrawLoading();
+	}
 }
 
 Player.prototype._onupdate = function(dt)
@@ -513,11 +524,26 @@ Player.prototype._onmouse = function(e)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	LEvent.trigger( this.scene, e.eventType || e.type, e );
+	LEvent.trigger( this.scene, e.eventType || e.type, e, true );
 
 	//hardcoded event handlers in the player
 	if(this.onMouse)
 		this.onMouse(e);
+}
+
+//input
+Player.prototype._ontouch = function(e)
+{
+	//console.log(e);
+	if(this.state != LS.Player.PLAYING)
+		return;
+
+	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === false )
+		return false;
+
+	//hardcoded event handlers in the player
+	if(this.onTouch)
+		this.onTouch(e);
 }
 
 Player.prototype._onkey = function(e)

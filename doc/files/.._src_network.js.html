@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -152,6 +153,7 @@
 var Network = {
 
 	default_dataType: &quot;arraybuffer&quot;,
+	protocol: null,
 
 	withCredentials: false, //for CORS urls: not sure which one is the best for every case so I leave it configurable
 
@@ -167,6 +169,16 @@ var Network = {
 	{
 		if(typeof(request) === &quot;string&quot;)
 			throw(&quot;LS.Network.request expects object, not string. Use LS.Network.requestText or LS.Network.requestJSON&quot;);
+
+		//change protocol when working over https
+		var url = request.url;
+		if( this.protocol === null )
+			this.protocol = LS.ResourcesManager.getProtocol( location.href );
+		var protocol = LS.ResourcesManager.getProtocol( url );
+		if( this.protocol == &quot;https&quot; &amp;&amp; protocol &amp;&amp; protocol != &quot;https&quot; )
+			url = &quot;https&quot; + url.substr( url.indexOf(&quot;:&quot;) );
+
+		//update dataType
 		var dataType = request.dataType || this.default_dataType;
 		if(dataType == &quot;json&quot;) //parse it locally
 			dataType = &quot;text&quot;;
@@ -186,18 +198,22 @@ var Network = {
 					request.success.call(this);
 			};
 			img.onerror = request.error;
-			img.src = request.url;
+			img.src = url;
 			return img;
 		}
 
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, request.url, true);
+        xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, url, true);
 		xhr.withCredentials = this.withCredentials; //if true doesnt work
+		if(request.withCredentials !== undefined)
+			xhr.withCredentials = request.withCredentials;
         if(dataType)
             xhr.responseType = dataType;
         if (request.mimeType)
             xhr.overrideMimeType( request.mimeType );
+		if(request.nocache)
+			xhr.setRequestHeader(&#x27;Cache-Control&#x27;, &#x27;no-cache&#x27;);
         xhr.onload = function(load)
 		{
 			var response = this.response;
@@ -242,7 +258,7 @@ var Network = {
 				try
 				{
 					if(request.success)
-						request.success.call(this, response, request.url);
+						request.success.call(this, response, request.url );
 					LEvent.trigger(xhr,&quot;done&quot;,response);
 				}
 				catch (err)
@@ -253,7 +269,7 @@ var Network = {
 			else
 			{
 				if(request.success)
-					request.success.call(this, response, request.url);
+					request.success.call(this, response, request.url );
 				LEvent.trigger(xhr,&quot;done&quot;,response);
 			}
 		};
@@ -263,8 +279,23 @@ var Network = {
 			LEvent.trigger(this,&quot;fail&quot;, err);
 		}
 
+		if( request.uploadProgress )
+		{
+			xhr.upload.addEventListener(&quot;progress&quot;, function(e){
+				var progress = 0;
+				if (e.lengthComputable)
+					progress = e.loaded / e.total;
+				request.uploadProgress( e, progress );
+			}, false);
+		}
+
 		if( request.progress )
-			xhr.addEventListener( &quot;progress&quot;, request.progress );
+			xhr.addEventListener( &quot;progress&quot;, function(e){
+				var progress = 0;
+				if (e.lengthComputable)
+					progress = e.loaded / e.total;
+				request.progress( e, progress );
+			});
 
         xhr.send(request.data);
 

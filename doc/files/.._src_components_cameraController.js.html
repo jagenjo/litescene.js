@@ -64,6 +64,7 @@
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
                                 <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
                                 <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
@@ -72,7 +73,6 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
-                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -99,6 +99,7 @@
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
                                 <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
                                 <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
@@ -186,6 +187,9 @@ CameraController.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene, &quot;mousedown&quot;,this.onMouse,this);
 	LEvent.bind( scene, &quot;mousemove&quot;,this.onMouse,this);
 	LEvent.bind( scene, &quot;mousewheel&quot;,this.onMouse,this);
+	LEvent.bind( scene, &quot;touchstart&quot;,this.onTouch,this);
+	LEvent.bind( scene, &quot;touchmove&quot;,this.onTouch,this);
+	LEvent.bind( scene, &quot;touchend&quot;,this.onTouch,this);
 	LEvent.bind( scene, &quot;keydown&quot;,this.onKey,this);
 	LEvent.bind( scene, &quot;keyup&quot;,this.onKey,this);
 	LEvent.bind( scene, &quot;update&quot;,this.onUpdate,this);
@@ -380,6 +384,66 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	if(changed)
 		this._root.scene.requestFrame();
+}
+
+CameraController.prototype.onTouch = function( e, touch_event)
+{
+	if(!this._root || !this.enabled) 
+		return;
+	
+	var node = this._root;
+	var cam = node.camera;
+	if(!cam)
+		return;
+
+	var is_global_camera = node._is_root;
+
+	if(!touch_event)
+		touch_event = e;
+
+	//console.log( e );
+	//touch!
+	if( touch_event.type == &quot;touchstart&quot; )
+	{
+		if( touch_event.touches.length == 2)
+		{
+			var distx = touch_event.touches[0].clientX - touch_event.touches[1].clientX;
+			var disty = touch_event.touches[0].clientY - touch_event.touches[1].clientY;
+			this._touch_distance = Math.sqrt(distx*distx + disty*disty);
+			this._touch_center = [ (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5,
+									(touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5 ];
+			touch_event.preventDefault();
+			return false; //block
+		}
+	}
+	if( touch_event.type == &quot;touchmove&quot; )
+	{
+		if(touch_event.touches.length == 2)
+		{
+			var distx = touch_event.touches[0].clientX - touch_event.touches[1].clientX;
+			var disty = touch_event.touches[0].clientY - touch_event.touches[1].clientY;
+			var distance = Math.sqrt(distx*distx + disty*disty);
+			if(distance &lt; 0.1)
+				distance = 0.1;
+			var delta_dist = this._touch_distance / distance;
+			this._touch_distance = distance;
+			//console.log( delta_dist );
+			cam.orbitDistanceFactor( delta_dist );
+			cam.updateMatrices();
+
+			var delta_x = (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5 - this._touch_center[0];
+			var delta_y = (touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5 - this._touch_center[1];
+			var panning_factor = cam.focalLength / gl.canvas.width;
+			cam.panning( -delta_x, delta_y, panning_factor );
+			this._touch_center[0] = (touch_event.touches[0].clientX + touch_event.touches[1].clientX) * 0.5;
+			this._touch_center[1] = (touch_event.touches[0].clientY + touch_event.touches[1].clientY) * 0.5;
+
+			cam.updateMatrices();
+			this._root.scene.requestFrame();
+			touch_event.preventDefault();
+			return false; //block
+		}
+	}
 }
 
 CameraController.prototype.testOriginPlane = function(x,y, result)

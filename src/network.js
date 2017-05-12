@@ -1,6 +1,7 @@
 var Network = {
 
 	default_dataType: "arraybuffer",
+	protocol: null,
 
 	withCredentials: false, //for CORS urls: not sure which one is the best for every case so I leave it configurable
 
@@ -16,6 +17,16 @@ var Network = {
 	{
 		if(typeof(request) === "string")
 			throw("LS.Network.request expects object, not string. Use LS.Network.requestText or LS.Network.requestJSON");
+
+		//change protocol when working over https
+		var url = request.url;
+		if( this.protocol === null )
+			this.protocol = LS.ResourcesManager.getProtocol( location.href );
+		var protocol = LS.ResourcesManager.getProtocol( url );
+		if( this.protocol == "https" && protocol && protocol != "https" )
+			url = "https" + url.substr( url.indexOf(":") );
+
+		//update dataType
 		var dataType = request.dataType || this.default_dataType;
 		if(dataType == "json") //parse it locally
 			dataType = "text";
@@ -35,13 +46,13 @@ var Network = {
 					request.success.call(this);
 			};
 			img.onerror = request.error;
-			img.src = request.url;
+			img.src = url;
 			return img;
 		}
 
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? 'POST' : 'GET', request.url, true);
+        xhr.open(request.data ? 'POST' : 'GET', url, true);
 		xhr.withCredentials = this.withCredentials; //if true doesnt work
 		if(request.withCredentials !== undefined)
 			xhr.withCredentials = request.withCredentials;
@@ -95,7 +106,7 @@ var Network = {
 				try
 				{
 					if(request.success)
-						request.success.call(this, response, request.url);
+						request.success.call(this, response, request.url );
 					LEvent.trigger(xhr,"done",response);
 				}
 				catch (err)
@@ -106,7 +117,7 @@ var Network = {
 			else
 			{
 				if(request.success)
-					request.success.call(this, response, request.url);
+					request.success.call(this, response, request.url );
 				LEvent.trigger(xhr,"done",response);
 			}
 		};
