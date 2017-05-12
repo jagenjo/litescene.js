@@ -85,6 +85,12 @@ Or to create even Arrays that can be edited through the editor:
 this.createProperty( "myarray", [], { type: "array", data_type: LS.TYPES.TEXTURE });
 ```
 
+Or if you want to have a handy button in the component interface when using the editor:
+
+```javascript
+this.createAction( "Click me", this.myCallback );
+```
+
 ### Events ###
 
 To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the Renderer, the ResourcesManager, etc).
