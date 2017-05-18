@@ -65,6 +65,22 @@ Most of the rendering calls are performed from the **renderColorPassInstance** s
 
 Careful, if you want to issue any special rendering pass during the render of a frame, **you must never call LS.Renderer.render from an event dispatched by the rendering**, this will create a recursive loop. You can bind to ```"beforeRenderMainPass"``` event and call functions like ```renderFrame``` to render the view from one camera, or do it manually calling ```enableCamera``` and ```renderInstances```.
 
+### Render Events ###
+
+In case we want to bind some events during the render here is the order at which they are triggered and the name of the callback that you can define in a script to catch it:
+
+* "beforeRender" (script: onSceneRender ) Just after launching the ```LS.Renderer.render(...)```
+* "collectRenderInstances" (script: onCollectRenderInstances ) When collecting resources to show in the scene
+* "enableFrameContext" (script: onEnableFrameContext ) To enable to which LS.RenderFrameContext you want to do the render
+* "beforeCameraEnabled" In case we want to change any parameter of the camera when rendering
+* "beforeRenderInstances" (script: onRender ) before rendering every instance of the scene
+* "afterRenderInstances" (script: onAfterRender ) after rendering every instance of the scene
+* "showFrameContext" (script: onShowFrameContext ) when you want to show the context 
+* "afterRender" (script: onAfterSceneRender )
+* "renderHelpers" (script: onRenderHelpers )
+* "renderGUI" (script: onRenderGUI )
+
+
 ### Collecting the data ###
 
 The scene contains many cameras, lights, render instances and other items that could affect the final frame, so we need to have all the data stored in the propper containers.
