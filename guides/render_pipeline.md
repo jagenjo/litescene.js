@@ -76,10 +76,9 @@ In case we want to bind some events during the render here is the order at which
 * **"beforeRenderInstances"** (script: onRender ) before rendering every instance of the scene
 * **"afterRenderInstances"** (script: onAfterRender ) after rendering every instance of the scene
 * **"showFrameContext"** (script: onShowFrameContext ) when you want to show the context 
-* **"afterRender"** (script: onAfterSceneRender )
-* **"renderHelpers"** (script: onRenderHelpers )
-* **"renderGUI"** (script: onRenderGUI )
-
+* **"renderHelpers"** (script: onRenderHelpers ) to render helper objects (gizmos, grids, etc)
+* **"renderGUI"** (script: onRenderGUI ) to render 2D info in the immediate mode 
+* **"afterRender"** (script: onAfterSceneRender ) after all the content of the scene has been rendered.
 
 ### Collecting the data ###
 
