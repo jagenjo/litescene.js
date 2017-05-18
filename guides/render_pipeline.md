@@ -69,16 +69,16 @@ Careful, if you want to issue any special rendering pass during the render of a 
 
 In case we want to bind some events during the render here is the order at which they are triggered and the name of the callback that you can define in a script to catch it:
 
-* "beforeRender" (script: onSceneRender ) Just after launching the ```LS.Renderer.render(...)```
-* "collectRenderInstances" (script: onCollectRenderInstances ) When collecting resources to show in the scene
-* "enableFrameContext" (script: onEnableFrameContext ) To enable to which LS.RenderFrameContext you want to do the render
-* "beforeCameraEnabled" In case we want to change any parameter of the camera when rendering
-* "beforeRenderInstances" (script: onRender ) before rendering every instance of the scene
-* "afterRenderInstances" (script: onAfterRender ) after rendering every instance of the scene
-* "showFrameContext" (script: onShowFrameContext ) when you want to show the context 
-* "afterRender" (script: onAfterSceneRender )
-* "renderHelpers" (script: onRenderHelpers )
-* "renderGUI" (script: onRenderGUI )
+* **"beforeRender"** (script: onSceneRender ) Just after launching the ```LS.Renderer.render(...)```
+* **"collectRenderInstances"** (script: onCollectRenderInstances ) When collecting resources to show in the scene
+* **"enableFrameContext"** (script: onEnableFrameContext ) To enable to which LS.RenderFrameContext you want to do the render
+* **"beforeCameraEnabled"** In case we want to change any parameter of the camera when rendering
+* **"beforeRenderInstances"** (script: onRender ) before rendering every instance of the scene
+* **"afterRenderInstances"** (script: onAfterRender ) after rendering every instance of the scene
+* **"showFrameContext"** (script: onShowFrameContext ) when you want to show the context 
+* **"afterRender"** (script: onAfterSceneRender )
+* **"renderHelpers"** (script: onRenderHelpers )
+* **"renderGUI"** (script: onRenderGUI )
 
 
 ### Collecting the data ###
