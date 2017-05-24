@@ -44,6 +44,23 @@ function MyComponent( o )
 As you can see the component will receive an object as a parameter, this is in case we want the object to restore a previous state,
 when thats the case the object will contain all the serialized data. For now we just pass that object to the configure method.
 
+## Adding public variables
+
+Every property of the class is public and can be accessed. If you are working from the WebGLStudio editor then you will see that all properties are exposed in the component interface. To avoid that you should start all the properties with an underscore (```this._internal_data = 10;```) and only use regular names with variables that can be edited.
+
+When creating variables that are editable remember that only some basic types are supported. If the variable has a special type then the editor wont know how to create an interface.
+
+If you want a variable to have an specific editor you can specify it like this:
+
+```js
+MyComponent["@mydirection"] = { type: "enum", values: ["north","south","east","south"] };
+```
+
+Or if you want to have an specific widget:
+
+```js
+MyComponent["@age"] = { widget: "slider", min:1, max:90, step:1, precision:0 };
+```
 
 ## Registering the component
 
