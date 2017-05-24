@@ -31,7 +31,7 @@ LEvent.unbind( LS.GlobalScene, "update", my_update_callback, my_instance );
 As you can see we are passing not only the callback but also the instance as a parameter.
 This is important because this way we can unbind it without problem.
 
-Using tricks like the ```Function.bind()``` method would create a new callback every time so we wouldnt be able to unbind it from the system again.
+Warning: Using tricks like the ```Function.prototype.bind()``` method would create a new callback every time so we wouldnt be able to unbind it from the system again. Avoid to use it when passing callbacks to events.
 
 
 ## Execution Events
