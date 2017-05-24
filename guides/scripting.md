@@ -94,7 +94,7 @@ this.createAction( "Click me", this.myCallback );
 ### Events ###
 
 To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the Renderer, the ResourcesManager, etc).
-The number of events is too big to list here, check the different components documentation and the examples to see to which events you can bind to.
+For a better list of execution events check the [events guide](events.md) or if you want events from a component check the specific component documentation.
 To bind an event you can call the bind method:
 
 ```javascript
