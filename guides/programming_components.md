@@ -139,8 +139,7 @@ When we want to bind an action there are several ways but the most common one is
 ```
 
 Where the first parameter is the instance that will trigger the event, the second the name of the event, the thirth the callback and
-the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter
-but the problem with that approach is that you wont be able to unbind the event in the future.
+the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter but the problem with that approach is that you wont be able to unbind the event in the future (because the Function.bind returns a different function every time), so try to pass always the fourth parameter.
 
 If we want to unbind the event we could call unbind for every event or directly unbindAll to the specific instance:
 
@@ -148,8 +147,7 @@ If we want to unbind the event we could call unbind for every event or directly 
   LEvent.unbindAll( scene, this );
 ```
 
-When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node 
-has been removed) your component is no longer doing any action.**.
+When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node has been removed) your component is no longer doing any action.**.
 
 So when attaching events the best way to do it is using the **onAddedToScene** method in your component:
 
@@ -170,6 +168,8 @@ MyComponent.prototype.onRemovedFromScene = function( scene )
 ```
 
 If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
+
+If you want a list of events follow the (the LS Events list)[https://github.com/jagenjo/litescene.js/blob/master/guides/events.md]
 
 
 ## Example ##
