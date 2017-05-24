@@ -43,6 +43,7 @@ They are all triggered from the current scene (```LS.GlobalScene```):
   - *Main Loop*
     - *Rendering process*
       - "beforeRender"
+      - *data is collected from the scene*
       - "afterCollectData": collect all the render data (cameras, render instances, lights)
       - "prepareMaterials": in case you want to edit material properties
       - "renderShadows": to render shadowmaps
@@ -52,8 +53,11 @@ They are all triggered from the current scene (```LS.GlobalScene```):
       - "enableFrameContext" to enable the render output context
         - *For every camera*
         - "beforeRenderFrame"
+        - "enableFrameContext" (on the camera) to enable the render output context
+        - *Clear buffer*
         - "beforeRenderScene"
         - "beforeRenderInstances"
+        - *the scene instances are rendered*
         - "renderInstances"
         - "renderScreenSpace"
         - "afterRenderInstances"
