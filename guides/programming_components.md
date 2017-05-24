@@ -169,7 +169,7 @@ MyComponent.prototype.onRemovedFromScene = function( scene )
 
 If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
 
-If you want a list of events follow the (the LS Events list)[https://github.com/jagenjo/litescene.js/blob/master/guides/events.md]
+If you want a list of events follow the [the LS Events list](https://github.com/jagenjo/litescene.js/blob/master/guides/events.md)
 
 
 ## Example ##
