@@ -6,7 +6,7 @@ A component is a element that adds behaviour and visual representation to a node
 
 All the component classes are stored in ```LS.Components```.
 
-## Creating and attaching components ##
+## Instantiating and attaching components ##
 
 To create a component you just instatiate the class:
 
@@ -26,6 +26,10 @@ node.removeComponent( my_component );
 ```
 
 Check the documentation for more info.
+
+## Creating your own components class
+
+If you want to create new component classes check [the guide to programe new components](programming_components.md).
 
 ## Important Components ##
 
