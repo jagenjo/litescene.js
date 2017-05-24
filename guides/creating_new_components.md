@@ -110,5 +110,36 @@ MyComponent.prototype.onRemovedFromScene = function( scene )
 If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
 
 
+## Example
+
+```js
+function MyComponent( o )
+{
+    this.myvar = 1;
+    
+    if(o)
+        this.configure(o); //automatically created
+}
+
+MyComponent.prototype.onAddedToScene = function( scene )
+{
+  LEvent.bind( scene, "update", this.onUpdate, this );
+}
+
+MyComponent.prototype.onRemovedFromScene = function( scene )
+{
+  LEvent.unbind( scene, "update", this.onUpdate, this );
+}
+
+MyComponent.prototype.onUpdate = function( e, dt )
+{
+   //your code...
+}
+
+LS.registerComponent( MyComponent );
+
+```
+
+
 
 
