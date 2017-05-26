@@ -48,11 +48,19 @@ player.loadScene("scene.json");
 
 Some additional options you can pass to the player:
 
-- **canvas**: the canvas element where to attach the render context
+- **canvas**: the canvas element where to attach the render context (string selector or element)
+- **width** and **height**: if you want the player to create the canvas by itself
+- **container**: which DOM element where to attach the canvas, if not specified then the body is used.
+- **container_id**: the container id if no container element is supplied.
 - **loadingbar**: if true it will show the loading bar (default false)
 - **redraw**: if false the scene wont be redraw constantly
 - **autoresize**: if true the canvas will always try to match the parentNode size
 - **autoplay**: if false the player wont play the scene unless you do it manually
+- **shaders**: the path to the shaders.xml file, if omited then "data/shaders.xml"
+
+You can also add to the options information for the WebGLContext:
+- **alpha**: true if you want the canvas to be transparent
+- **premultipliedAlpha**: if you want to multiply the alpha by the color
 
 In case you want to overwrite the loading bar gizmo shown while loading the scene, you must overwrite the player.renderLoadingBar:
 
