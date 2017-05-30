@@ -4,9 +4,11 @@ Every node could host several components.
 
 A component is a element that adds behaviour and visual representation to a node. There are lots of different components that can be attached to any node to add behaviour.
 
+Thanks to components the engine is very dynamic, allows to construct new behaviours by blending different components in one node, and allows to extend the system with ease.
+
 All the component classes are stored in ```LS.Components```.
 
-## Creating and attaching components ##
+## Instantiating and attaching components ##
 
 To create a component you just instatiate the class:
 
@@ -26,6 +28,10 @@ node.removeComponent( my_component );
 ```
 
 Check the documentation for more info.
+
+## Creating your own components class
+
+If you want to create new component classes check [the guide to programe new components](programming_components.md).
 
 ## Important Components ##
 

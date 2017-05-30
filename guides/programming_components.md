@@ -44,6 +44,23 @@ function MyComponent( o )
 As you can see the component will receive an object as a parameter, this is in case we want the object to restore a previous state,
 when thats the case the object will contain all the serialized data. For now we just pass that object to the configure method.
 
+## Adding public variables
+
+Every property of the class is public and can be accessed. If you are working from the WebGLStudio editor then you will see that all properties are exposed in the component interface. To avoid that you should start all the properties with an underscore (```this._internal_data = 10;```) and only use regular names with variables that can be edited.
+
+When creating variables that are editable remember that only some basic types are supported. If the variable has a special type then the editor wont know how to create an interface.
+
+If you want a variable to have an specific editor you can specify it like this:
+
+```js
+MyComponent["@mydirection"] = { type: "enum", values: ["north","south","east","south"] };
+```
+
+Or if you want to have an specific widget:
+
+```js
+MyComponent["@age"] = { widget: "slider", min:1, max:90, step:1, precision:0 };
+```
 
 ## Registering the component
 
@@ -122,8 +139,7 @@ When we want to bind an action there are several ways but the most common one is
 ```
 
 Where the first parameter is the instance that will trigger the event, the second the name of the event, the thirth the callback and
-the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter
-but the problem with that approach is that you wont be able to unbind the event in the future.
+the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter but the problem with that approach is that you wont be able to unbind the event in the future (because the Function.bind returns a different function every time), so try to pass always the fourth parameter.
 
 If we want to unbind the event we could call unbind for every event or directly unbindAll to the specific instance:
 
@@ -131,8 +147,7 @@ If we want to unbind the event we could call unbind for every event or directly 
   LEvent.unbindAll( scene, this );
 ```
 
-When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node 
-has been removed) your component is no longer doing any action.**.
+When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node has been removed) your component is no longer doing any action.**.
 
 So when attaching events the best way to do it is using the **onAddedToScene** method in your component:
 
@@ -153,6 +168,8 @@ MyComponent.prototype.onRemovedFromScene = function( scene )
 ```
 
 If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
+
+If you want a list of events follow the [the LS Events list](https://github.com/jagenjo/litescene.js/blob/master/guides/events.md)
 
 
 ## Example ##

@@ -85,10 +85,16 @@ Or to create even Arrays that can be edited through the editor:
 this.createProperty( "myarray", [], { type: "array", data_type: LS.TYPES.TEXTURE });
 ```
 
+Or if you want to have a handy button in the component interface when using the editor:
+
+```javascript
+this.createAction( "Click me", this.myCallback );
+```
+
 ### Events ###
 
 To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the Renderer, the ResourcesManager, etc).
-The number of events is too big to list here, check the different components documentation and the examples to see to which events you can bind to.
+For a better list of execution events check the [events guide](events.md) or if you want events from a component check the specific component documentation.
 To bind an event you can call the bind method:
 
 ```javascript
@@ -200,6 +206,10 @@ You must add also the path to the component in the deploy_files.txt inside the u
 ### Missing Components ###
 
 If you have created your own component class from within an script and by any reason when loading a scene the system cannot find the component specified in the JSON of the scene (maybe the component changed its name, or the script wasnt loaded), the data wont be lost an it will be stored aside so it stays in the JSON if you serialize that again.
+
+## Useful API methods
+
+To know better some useful system methods, check [this guide about API methods in LiteScene](https://github.com/jagenjo/litescene.js/blob/master/guides/useful_API_methods.md)
 
 ## Documentation ##
 
