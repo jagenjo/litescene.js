@@ -23,28 +23,31 @@ function newStandardMaterial(o)
 
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" );
-	//this.emissive = new Float32Array([0.0,0.0,0.0]);
-	this.backlight_factor = 0;
+	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" ); //fourth component to control if emissive is affected by albedo
 
-	this._specular_data = vec2.fromValues( 0.1, 10.0 );
+	this._specular_data = vec4.fromValues( 0.1, 10.0, 0.0, 0.0 ); //specular factor, glossiness, specular_on_top
 	this.specular_on_top = false;
 	this.specular_on_alpha = false;
+
+	this.backlight_factor = 0;
+
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
 	this.reflection_additive = false;
 	this.reflection_specular = false;
+
 	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
 	this._velvet_info = vec4.create();
+
 	this._detail = new Float32Array([0.0, 10, 10]);
-	this._extra_data = vec4.create();
 
 	this.normalmap_factor = 1.0;
 	this.normalmap_tangent = true;
+
 	this.displacementmap_factor = 0.1;
-	this.bumpmap_factor = 1.0;
+
 	this.use_scene_ambient = true;
 
 	//used to change the render state
@@ -62,8 +65,6 @@ function newStandardMaterial(o)
 	};
 
 	//used for special fx 
-	this.extra_surface_shader_code = "";
-
 	this._uniforms = {
 		u_material_color: this._color,
 		u_ambient_color: this._ambient,
@@ -71,8 +72,8 @@ function newStandardMaterial(o)
 		u_specular: this._specular_data,
 		u_reflection_info: vec2.create(),
 		u_velvet_info: vec4.create(),
+		u_normal_info: vec2.create(),
 		u_detail_info: this._detail,
-		u_extra_data: this._extra_data,
 		u_texture_matrix: this.uvs_matrix
 	};
 
@@ -80,11 +81,10 @@ function newStandardMaterial(o)
 
 	this.needsUpdate = true;
 
-	this.extra_uniforms = {};
-
 	if(o) 
 		this.configure(o);
 }
+
 
 Object.defineProperty( newStandardMaterial.prototype, 'detail_factor', {
 	get: function() { return this._detail[0]; },
@@ -101,18 +101,6 @@ Object.defineProperty( newStandardMaterial.prototype, 'detail_scale', {
 Object.defineProperty( newStandardMaterial.prototype, 'emissive_extra', {
 	get: function() { return this._emissive[3]; },
 	set: function(v) { this._emissive[3] = v; },
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'extra_factor', {
-	get: function() { return this._extra_data[3]; },
-	set: function(v) { this._extra_data[3] = v; },
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'extra_color', {
-	get: function() { return this._extra_data.subarray(0,3); },
-	set: function(v) { this._extra_data.set( v ); },
 	enumerable: true
 });
 
@@ -139,9 +127,8 @@ newStandardMaterial.DISPLACEMENT_TEXTURE = "displacement";
 newStandardMaterial.BUMP_TEXTURE = "bump";
 newStandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
 newStandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
-newStandardMaterial.EXTRA_TEXTURE = "extra";
 
-newStandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture"];
+newStandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
 
 newStandardMaterial.prototype.prepare = function( scene )
 {
@@ -166,124 +153,148 @@ newStandardMaterial.prototype.prepare = function( scene )
 		}
 	}
 
+	this._light_mode = this.flags.ignore_lights ? Material.NO_LIGHTS : 1;
+
 	this.fillUniforms( scene ); //update uniforms
 }
 
-newStandardMaterial.prototype.createShaderCode = function()
+newStandardMaterial.FLAGS = {
+	COLOR_TEXTURE: 1<<1,
+	OPACITY_TEXTURE: 1<<2,
+	SPECULAR_TEXTURE: 1<<3,
+	REFLECTIVITY_TEXTURE: 1<<4,
+	AMBIENT_TEXTURE: 1<<5,
+	EMISSIVE_TEXTURE: 1<<6,
+	DETAIL_TEXTURE: 1<<7,
+	NORMAL_TEXTURE: 1<<8,
+	DISPLACEMENT_TEXTURE: 1<<9,
+	ENVIRONTMENT_TEXTURE: 1<<10,
+	IRRADIANCE_TEXTURE: 1<<11,
+	ALPHA_TEST: 1<<16,
+	REFLECTION: 1<<17,
+	ENVIRONMENT_TEXTURE: 1<<18,
+	ENVIRONMENT_CUBEMAP: 1<<19
+};	
+
+newStandardMaterial.shader_codes = {};
+
+
+newStandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	if(!this._shader_code)
-		this._shader_code = new LS.ShaderCode();
+	var FLAGS = newStandardMaterial.FLAGS;
 
-	var vs_code = 
-}
+	//lets check which code flags are active according to the configuration of the shader
+	var code_flags = 0;
+	var scene = LS.Renderer._current_scene;
 
-// RENDERING METHODS
-newStandardMaterial.prototype.fillShaderQuery = function( scene )
-{
-	var query = this._query;
-	query.clear();
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
+	//TEXTURES
+	if( this.textures.normal )
+		code_flags |= FLAGS.NORMAL_TEXTURE;
+	if( this.textures.color )
+		code_flags |= FLAGS.COLOR_TEXTURE;
+	if( this.textures.opacity )
+		code_flags |= FLAGS.OPACITY_TEXTURE;
+	if( this.textures.specular )
+		code_flags |= FLAGS.SPECULAR_TEXTURE;
+	if( this.reflectivity > 0 )
 	{
-		var texture_info = this.getTextureSampler(i);
-		if(!texture_info) continue;
-		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
+		code_flags |= FLAGS.REFLECTION;
+		if( this.textures.reflectivity )
+			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
 
-		var texture = Material.getTextureFromSampler( texture_info );
-		if(!texture) //loading or non-existant
-			continue;
+		/*
+		if( scene.info && scene.info.textures.environment )
+		{
+			var environment_texture = LS.ResourcesManager.getTexture( scene.info.textures.environment );
+			if( environment_texture )
+			{
+				if( environment_texture.type === GL.TEXTURE_CUBE_MAP )
+					code_flags |= FLAGS.ENVIRONMENT_CUBEMAP;
+				else
+					code_flags |= FLAGS.ENVIRONMENT_TEXTURE;
+			}
+		}
+		*/
+	}
+	if( this.textures.emissive )
+		code_flags |= FLAGS.EMISSIVE_TEXTURE;
+	if( this.textures.ambient )
+		code_flags |= FLAGS.AMBIENT_TEXTURE;
+	if( this.textures.detail )
+		code_flags |= FLAGS.DETAIL_TEXTURE;
+	//flags
+	if(this.flags.alpha_test)
+		code_flags |= FLAGS.ALPHA_TEST;
 
-		if(i == "normal")
-		{
-			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
-			{
-				query.macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					query.macros.USE_NORMALMAP_FACTOR = "";
-				if(this.normalmap_tangent && gl.derivatives_supported)
-					query.macros.USE_TANGENT_NORMALMAP = "";
-			}
-			continue;
-		}
-		else if(i == "displacement")
-		{
-			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
-			{
-				query.macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					query.macros.USE_DISPLACEMENTMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "bump")
-		{
-			if(this.bump_factor != 0.0 && gl.derivatives_supported )
-			{
-				query.macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					query.macros.USE_BUMP_FACTOR = "";
-			}
-			continue;
-		}
+	var shader_code = LS.newStandardMaterial.shader_codes[ code_flags ];
 
-		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+	//reuse shader codes when possible
+	if(shader_code)
+		return shader_code;
+
+	//generate code
+	var fs_code = "";
+
+	if( code_flags & FLAGS.NORMAL_TEXTURE )
+	{
+		fs_code += "	vec3 normal_pixel = texture2D( normal_texture, IN.uv ).xyz;\n\
+		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
+		if( u_normal_info.y > 0.0 )\n\
+			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, IN.uv, normal_pixel ));\n\
+		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n";
 	}
 
-	if(this.velvet && this.velvet_exp) //first light only
-		query.macros.USE_VELVET = "";
-	
-	if(this.emissive_material) //dont know whats this
-		query.macros.USE_EMISSIVE_MATERIAL = "";
-	
-	if(this.specular_on_top)
-		query.macros.USE_SPECULAR_ONTOP = "";
-	if(this.specular_on_alpha)
-		query.macros.USE_SPECULAR_ON_ALPHA = "";
-	if(this.reflection_specular)
-		query.macros.USE_SPECULAR_IN_REFLECTION = "";
-	if(this.backlight_factor > 0.001)
-		query.macros.USE_BACKLIGHT = "";
-
-	if(this.reflection_factor > 0.0) 
-		query.macros.USE_REFLECTION = "";
-
-	//extra code
-	if(this.extra_surface_shader_code)
+	if( code_flags & FLAGS.COLOR_TEXTURE )
 	{
-		var code = null;
-		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
-		{
-			code = Material.processShaderCode( this.extra_surface_shader_code );
-			this._last_processed_extra_surface_shader_code = code;
-		}
-		else
-			code = this._last_processed_extra_surface_shader_code;
-		if(code)
-			query.macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
+		fs_code += "	vec4 tex_color = texture2D( color_texture, IN.uv );\n\
+	o.Albedo *= tex_color.xyz;\n\
+	o.Alpha *= tex_color.w;\n";
 	}
+	if( code_flags & FLAGS.OPACITY_TEXTURE )
+		fs_code += "	o.Alpha *= texture2D( opacity_texture, IN.uv ).x;\n";
+	if( code_flags & FLAGS.SPECULAR_TEXTURE )
+	{
+		fs_code += "	vec4 spec_info = texture2D( specular_texture, IN.uv );\n\
+	o.Specular *= spec_info.x;\n\
+	o.Gloss *= spec_info.y;\n";
+	}
+	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
+		fs_code += "	o.Reflectivity = texture2D( reflectivity_texture, IN.uv ).x;\n";
+	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
+		fs_code += "	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n";
+	if( code_flags & FLAGS.AMBIENT_TEXTURE )
+		fs_code += "	o.Ambient *= texture2D( ambient_texture, IN.uv ).xyz;\n";
+	if( code_flags & FLAGS.DETAIL_TEXTURE )
+		fs_code += "	o.Albedo += (texture2D( detail_texture, IN.uv * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
 
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			query.macros[im] = this.extra_macros[im];
+	//flags
+	if( code_flags & FLAGS.ALPHA_TEST )
+		fs_code += "	if(o.Alpha < 0.5) discard;\n";
+
+	//compile shader and cache
+	shader_code = new LS.ShaderCode();
+	var code = newStandardMaterial.code_template.replace("{{FS_CODE}}",fs_code);
+	shader_code.code = code;
+	LS.newStandardMaterial.shader_codes[ code_flags ] = shader_code;
+	return shader_code;
 }
 
 newStandardMaterial.prototype.fillUniforms = function( scene, options )
 {
-	this._samplers.length = 0;
 	var uniforms = this._uniforms;
 
-	uniforms.u_reflection_info[0] = this.reflection_additive ? -this.reflection_factor : this.reflection_factor);
-	uniforms.u_reflection_info[1] = this.reflection_fresnel );
+	uniforms.u_reflection_info[0] = this.reflection_additive ? -this.reflection_factor : this.reflection_factor;
+	uniforms.u_reflection_info[1] = this.reflection_fresnel;
 	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normalmap_factor = this.normalmap_factor;
+	uniforms.u_normal_info[0] = this.normalmap_factor;
+	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
 	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
 
 	//iterate through textures in the material
 	var last_texture_slot = 0;
 	var samplers = this._samplers;
+	samplers.length = 0; //clear
 	for(var i in this.textures) 
 	{
 		var sampler = this.getTextureSampler(i);
@@ -318,7 +329,7 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 
 newStandardMaterial.prototype.getTextureChannels = function()
 {
-	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE, newStandardMaterial.EXTRA_TEXTURE ];
+	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE ];
 }
 
 /**
@@ -348,7 +359,6 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_tangent":
 		case "normalmap_factor":
 		case "displacementmap_factor":
-		case "extra_factor":
 		case "detail_factor":
 		case "emissive_extra":
 		//strings
@@ -359,7 +369,6 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
-		case "extra_surface_shader_code":
 		case "blend_mode":
 			if(value !== null)
 				this[name] = value; 
@@ -376,12 +385,8 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case "emissive": 
 		case "velvet":
 		case "detail_scale":
-		case "extra_color":
 			if(this[name].length == value.length)
 				this[name].set(value);
-			break;
-		case "extra_uniforms":
-			this.extra_uniforms = LS.cloneObject(value);
 			break;
 		default:
 			return false;
@@ -414,13 +419,10 @@ newStandardMaterial.prototype.getPropertiesInfo = function()
 		normalmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
 		emissive_extra: LS.TYPES.NUMBER,
-		extra_factor: LS.TYPES.NUMBER,
-		extra_surface_shader_code: LS.TYPES.STRING,
 
 		ambient: LS.TYPES.VEC3,
 		emissive: LS.TYPES.VEC3,
 		velvet: LS.TYPES.VEC3,
-		extra_color: LS.TYPES.VEC3,
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
@@ -456,15 +458,11 @@ newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "normalmap_factor":
 		case "displacementmap_factor":
 		case "emissive_extra":
-		case "extra_factor":
 		case "detail_factor":
 			type = LS.TYPES.NUMBER; break;
-		case "extra_surface_shader_code":
-			type = LS.TYPES.STRING; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
-		case "extra_color":
 			type = LS.TYPES.VEC3; break;
 		case "detail_scale":
 			type = LS.TYPES.VEC2; break;
@@ -502,7 +500,7 @@ attribute vec3 a_normal;\n\
 attribute vec2 a_coord;\n\
 #ifdef USE_COLORS\n\
 attribute vec4 a_color;\n\
-#endif
+#endif\n\
 \n\
 //varyings\n\
 varying vec3 v_pos;\n\
@@ -558,50 +556,51 @@ varying vec2 v_uvs;\n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
-uniform float u_time;\n\
 uniform vec3 u_background_color;\n\
 uniform vec4 u_material_color;\n\
 \n\
-#ifdef USE_COLOR_TEXTURE\n\
-	uniform sampler2D color_texture;\n\
-#endif\n\
+uniform vec3 u_ambient_color;\n\
+uniform vec4 u_emissive_color;\n\
+uniform vec4 u_specular;\n\
+uniform vec2 u_reflection_info;\n\
+uniform vec4 u_velvet_info;\n\
+uniform vec2 u_normal_info;\n\
+uniform vec3 u_detail_info;\n\
+uniform mat3 u_texture_matrix;\n\
 \n\
-#ifdef USE_OPACITY_TEXTURE\n\
-	uniform sampler2D opacity_texture;\n\
-#endif\n\
+uniform sampler2D color_texture;\n\
+uniform sampler2D opacity_texture;\n\
+uniform sampler2D specular_texture;\n\
+uniform sampler2D ambient_texture;\n\
+uniform sampler2D emissive_texture;\n\
+uniform sampler2D reflectivity_texture;\n\
+uniform sampler2D detail_texture;\n\
+uniform sampler2D normal_texture;\n\
 \n\
-#ifdef USE_SPECULAR_TEXTURE\n\
-	uniform sampler2D specular_texture;\n\
-#endif\n\
-\n\
-#ifdef USE_AMBIENT_TEXTURE\n\
-	uniform sampler2D ambient_texture;\n\
-#endif\n\
-\n\
-#ifdef USE_EMISSIVE_TEXTURE\n\
-	uniform sampler2D emissive_texture;\n\
-#endif\n\
-\n\
-#ifdef USE_NORMAL_TEXTURE\n\
-	uniform mat4 u_normal_model;\n\
-	uniform sampler2D normal_texture;\n\
-	uniform float u_normalmap_factor;
-#endif\n\
-\n\
-#ifdef USE_DETAIL_TEXTURE\n\
-	uniform sampler2D detail_texture;\n\
-	uniform vec3 u_detail_info;\n\
-#endif\n\
-\n\
-#ifdef USE_REFLECTIVITY_TEXTURE\n\
-	uniform sampler2D reflectivity_texture;\n\
-#endif\n\
 \n\
 #pragma shaderblock \"light\"\n\
+#pragma shaderblock \"applyReflection\"\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
 \n\
-{{FS_CODE}}\n\
+void surf(in Input IN, out SurfaceOutput o)\n\
+{\n\
+	o.Albedo = u_material_color.xyz;\n\
+	o.Alpha = u_material_color.a;\n\
+	o.Normal = normalize( v_normal );\n\
+	o.Specular = u_specular.x;\n\
+	o.Gloss = u_specular.y;\n\
+	o.Ambient = u_ambient_color;\n\
+	o.Emission = u_emissive_color.xyz;\n\
+	if(u_emissive_color.w > 0.0)\n\
+		o.Emission *= o.Albedo;\n\
+	o.Reflectivity = u_reflection_info.x;\n\
+	\n\
+	{{FS_CODE}}\n\
+	\n\
+	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
+}\n\
+\n\
 \n\
 void main() {\n\
   Input IN = getInput();\n\
@@ -611,6 +610,7 @@ void main() {\n\
   Light LIGHT = getLight();\n\
   final_color.xyz = computeLight( o, IN, LIGHT );\n\
   final_color.a = o.Alpha;\n\
+  final_color = applyReflection( IN, o, final_color );\n\
   gl_FragColor = final_color;\n\
 }\n\
 ";

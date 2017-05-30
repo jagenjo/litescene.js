@@ -311,6 +311,17 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 	if( this._has_error )
 		return null;
 
+	if( LS.Debug ) //debug shaders
+	{
+		console.log("Shader Compiled: ", this.fullpath || this.filename )
+		console.groupCollapsed("VS shader");
+		console.log(vs_code);
+		console.groupEnd();
+		console.groupCollapsed("FS shader");
+		console.log(fs_code);
+		console.groupEnd();
+	}
+
 	if(!LS.catch_exceptions)
 		return new GL.Shader( vs_code, fs_code );
 	else

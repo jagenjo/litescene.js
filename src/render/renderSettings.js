@@ -21,9 +21,8 @@ function RenderSettings( o )
 
 	this.force_wireframe = false; //render everything in wireframe
 	this.lights_disabled = false; //flat lighting
-	this.low_quality = false;	//try to use low quality shaders (where available)
+	this.quality = RenderSettings.AUTO_QUALITY;
 
-	this.update_materials = true; //update info in materials in every frame
 	this.render_all_cameras = true; //render secundary cameras too
 	this.render_fx = true; //postprocessing fx
 	this.render_gui = true; //render gui
@@ -34,18 +33,19 @@ function RenderSettings( o )
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility
 
-	this.clipping_plane = null;
+	this.clipping_plane = null; //global clipping plane
 
 	//info
 	this.in_player = true; //is in the player (not in the editor)
 
-	//this should change one day...
-	this.default_shader_id = "global";
-	this.default_low_shader_id = "lowglobal";
-
 	if(o)
 		this.configure(o);
 }
+
+RenderSettings.AUTO_QUALITY = 0;
+RenderSettings.HIGH_QUALITY = 1;
+RenderSettings.MEDIUM_QUALITY = 2;
+RenderSettings.LOW_QUALITY = 3;
 
 RenderSettings.default_shadowmap_resolution = 1024;
 

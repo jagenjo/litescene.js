@@ -451,6 +451,9 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 
 	var v = undefined;
 
+	if(!target) //unknown target
+		return null;
+
 	if( target.getPropertyInfoFromPath && target != this )
 	{
 		var r = target.getPropertyInfoFromPath( path.slice(1) );
@@ -899,11 +902,30 @@ SceneNode.prototype.reloadFromPrefab = function()
 /**
 * Assigns this node to one layer
 * @method setLayer
-* @param {number} num layer number
+* @param {number|String} the index of the layer or the name (according to scene.layer_names)
 * @param {boolean} value 
 */
-SceneNode.prototype.setLayer = function(num, value)
+SceneNode.prototype.setLayer = function( num_or_name, value )
 {
+	if( num_or_name == null )
+		throw("setLayer expects layer");
+
+	var num;
+
+	if(num_or_name.constructor === String)
+	{
+		var scene = this.scene || LS.GlobalScene;
+		var layer_num = scene.layer_names.indexOf( num_or_name );
+		if(layer_num == -1)
+		{
+			console.error("Layer with name:",num_or_name,"not found in scene");
+			return;
+		}
+		num = layer_num;
+	}
+	else
+		num = num_or_name;
+
 	var f = 1<<num;
 	this.layers = (this.layers & (~f));
 	if(value)
@@ -913,11 +935,30 @@ SceneNode.prototype.setLayer = function(num, value)
 /**
 * checks if this node is in the given layer
 * @method isInLayer
-* @param {number} num layer number
+* @param {number|String} index of layer or name according to scene.layer_names
 * @return {boolean} true if belongs to this layer
 */
-SceneNode.prototype.isInLayer = function(num)
+SceneNode.prototype.isInLayer = function( num_or_name )
 {
+	if( num_or_name == null )
+		throw("setLayer expects layer");
+
+	var num;
+
+	if(num_or_name.constructor === String)
+	{
+		var scene = this.scene || LS.GlobalScene;
+		var layer_num = scene.layer_names.indexOf( num_or_name );
+		if(layer_num == -1)
+		{
+			console.error("Layer with name:",num_or_name,"not found in scene");
+			return;
+		}
+		num = layer_num;
+	}
+	else
+		num = num_or_name;
+
 	return (this.layers & (1<<num)) !== 0;
 }
 

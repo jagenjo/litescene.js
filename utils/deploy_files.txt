@@ -17,6 +17,7 @@
 ../src/materials/shaderMaterial.js
 ../src/materials/standardMaterial.js
 ../src/materials/surfaceMaterial.js
+../src/materials/newStandardMaterial.js
 
 ../src/componentContainer.js
 ../src/compositePattern.js

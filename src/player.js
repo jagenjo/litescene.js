@@ -63,6 +63,7 @@ function Player(options)
 	this.canvas = this.gl.canvas;
 	this.render_settings = new LS.RenderSettings(); //this will be replaced by the scene ones.
 	this.scene = LS.GlobalScene;
+	this._file_drop_enabled = false; //use enableFileDrop
 
 	LS.ShadersManager.init( options.shaders || "data/shaders.xml" );
 	if(!options.shaders)
@@ -110,9 +111,24 @@ function Player(options)
 
 	LS.Input.init();
 
+	if(options.enableFileDrop !== false)
+		this.setFileDrop(true);
+
 	//launch render loop
 	gl.animate();
 }
+
+Object.defineProperty( Player.prototype, "file_drop_enabled", {
+	set: function(v)
+	{
+		this.setFileDrop(v);
+	},
+	get: function()
+	{
+		return this._file_drop_enabled;
+	},
+	enumerable: true
+});
 
 Player.prototype.loadConfig = function( url, on_complete )
 {
@@ -318,6 +334,78 @@ Player.prototype.stop = function()
 	this.state = LS.Player.STOPPED;
 	this.scene.finish();
 	LS.GUI.reset(); //clear GUI
+}
+
+Player.prototype.setFileDrop = function(v)
+{
+	if(this._file_drop_enabled == v)
+		return;
+
+	var that = this;
+	var element = this.canvas;
+
+	if(!v)
+	{
+		element.removeEventListener("dragenter", this._onDrag );
+		return;
+	}
+
+	this._file_drop_enabled = v;
+	this._onDrag = onDrag.bind(this);
+	this._onDrop = onDrop.bind(this);
+	this._onDragStop = onDragStop.bind(this);
+
+	element.addEventListener("dragenter", this._onDrag );
+
+	function onDragStop(evt)
+	{
+		evt.stopPropagation();
+		evt.preventDefault();
+	}
+
+	function onDrag(evt)
+	{
+		element.addEventListener("dragexit", this._onDragStop );
+		element.addEventListener("dragover", this._onDragStop );
+		element.addEventListener("drop", this._onDrop );
+		evt.stopPropagation();
+		evt.preventDefault();
+		/*
+		if(evt.type == "dragenter" && callback_enter)
+			callback_enter(evt, this);
+		if(evt.type == "dragexit" && callback_exit)
+			callback_exit(evt, this);
+		*/
+	}
+
+	function onDrop(evt)
+	{
+		evt.stopPropagation();
+		evt.preventDefault();
+
+		element.removeEventListener("dragexit", this._onDragStop );
+		element.removeEventListener("dragover", this._onDragStop );
+		element.removeEventListener("drop", this._onDrop );
+
+		if( evt.dataTransfer.files.length )
+		{
+			for(var i = 0; i < evt.dataTransfer.files.length; ++i )
+			{
+				var file = evt.dataTransfer.files[i];
+				var r = this._onfiledrop(file,evt);
+				if(r === false)
+				{
+					evt.stopPropagation();
+					evt.stopImmediatePropagation();
+				}
+			}
+		}
+	}
+}
+
+Player.prototype._onfiledrop = function( file, evt )
+{
+	return LEvent.trigger( LS.GlobalScene, "fileDrop", { file: file, event: evt } );
 }
 
 Player.prototype._ondraw = function()

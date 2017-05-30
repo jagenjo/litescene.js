@@ -34,7 +34,7 @@ Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	get: function() { return this._geometry; },
 	set: function(v) { 
 		v = (v === undefined || v === null ? -1 : v|0);
-		if(v < 0 || v > 7)
+		if(v < 0 || v > 8)
 			return;
 		this._geometry = v;
 	},
@@ -48,10 +48,12 @@ GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
 GeometricPrimitive.HEMISPHERE = 6;
 GeometricPrimitive.ICOSAHEDRON = 7;
+GeometricPrimitive.CONE = 8;
+
 //Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 
 GeometricPrimitive.icon = "mini-icon-cube.png";
-GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
+GeometricPrimitive["@geometry"] = { type:"enum", values: {"Cube":GeometricPrimitive.CUBE, "Plane": GeometricPrimitive.PLANE, "Cylinder":GeometricPrimitive.CYLINDER, "Sphere":GeometricPrimitive.SPHERE, "Cone":GeometricPrimitive.CONE, "Icosahedron":GeometricPrimitive.ICOSAHEDRON, "Circle":GeometricPrimitive.CIRCLE, "Hemisphere":GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive["@primitive"] = {widget:"enum", values: {"Default":-1, "Points": 0, "Lines":1, "Triangles":4, "Wireframe":10 }};
 GeometricPrimitive["@subdivisions"] = { type:"number", step:1, min:0 };
 GeometricPrimitive["@point_size"] = { type:"number", step:0.001 };
@@ -95,6 +97,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.ICOSAHEDRON:
 			this._mesh = GL.Mesh.icosahedron({size: this.size, subdivisions:subdivisions });
+			break;
+		case GeometricPrimitive.CONE:
+			this._mesh = GL.Mesh.cone({radius: this.size, height: this.size, subdivisions:subdivisions });
 			break;
 	}
 	this._key = key;

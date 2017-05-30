@@ -77,6 +77,7 @@ Script.defineAPIFunction( "onSceneRender", Script.BIND_TO_SCENE, "beforeRender" 
 Script.defineAPIFunction( "onCollectRenderInstances", Script.BIND_TO_NODE, "collectRenderInstances" ); //TODO: move to SCENE
 Script.defineAPIFunction( "onRender", Script.BIND_TO_SCENE, "beforeRenderInstances" );
 Script.defineAPIFunction( "onAfterRender", Script.BIND_TO_SCENE, "afterRenderInstances" );
+Script.defineAPIFunction( "onAfterSceneRender", Script.BIND_TO_SCENE, "afterRender" );
 Script.defineAPIFunction( "onRenderHelpers", Script.BIND_TO_SCENE, "renderHelpers" );
 Script.defineAPIFunction( "onRenderGUI", Script.BIND_TO_SCENE, "renderGUI" );
 Script.defineAPIFunction( "onEnableFrameContext", Script.BIND_TO_SCENE, "enableFrameContext" );
@@ -92,6 +93,8 @@ Script.defineAPIFunction( "onGamepadConnected", Script.BIND_TO_SCENE, "gamepadco
 Script.defineAPIFunction( "onGamepadDisconnected", Script.BIND_TO_SCENE, "gamepaddisconnected" );
 Script.defineAPIFunction( "onButtonDown", Script.BIND_TO_SCENE, "buttondown" );
 Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
+//global
+Script.defineAPIFunction( "onFileDrop", Script.BIND_TO_SCENE, "fileDrop" );
 //dtor
 Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
 
@@ -388,6 +391,7 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 		context[ varname ].set( value );
 	else
 		context[ varname ] = value;
+	return true;
 }
 
 /**

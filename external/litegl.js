@@ -520,6 +520,13 @@ global.typedArrayToArray = function(array)
 	return r;
 }
 
+global.RGBToHex = function(r, g, b) { 
+	r = Math.min(255, r*255);
+	g = Math.min(255, g*255);
+	b = Math.min(255, b*255);
+	return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
 global.hexColorToRGBA = (function() {
 	//to change the color: from http://www.w3schools.com/cssref/css_colorsfull.asp
 	var string_colors = {
@@ -3974,6 +3981,88 @@ Mesh.cylinder = function( options, gl ) {
 }
 
 /**
+* Returns a cone mesh 
+* @method Mesh.cone
+* @param {Object} options valid options: radius, height, subdivisions 
+*/
+Mesh.cone = function( options, gl ) {
+	options = options || {};
+	var radius = options.radius || options.size || 1;
+	var height = options.height || options.size || 2;
+	var subdivisions = options.subdivisions || 64;
+
+	var vertices = new Float32Array(subdivisions * 3 * 3 * 2);
+	var normals = new Float32Array(subdivisions * 3 * 3 * 2);
+	var coords = new Float32Array(subdivisions * 2 * 3 * 2);
+	//not indexed because caps have different normals and uvs so...
+
+	var delta = 2*Math.PI / subdivisions;
+	var normal = null;
+	var normal_y = radius / height;
+	var up = [0,1,0];
+
+	for(var i = 0; i < subdivisions; ++i)
+	{
+		var angle = i * delta;
+
+		normal = [ Math.sin(angle+delta*0.5), normal_y, Math.cos(angle+delta*0.5)];
+		vec3.normalize(normal,normal);
+		//normal = up;
+		vertices.set([ 0, height, 0] , i*6*3);
+		normals.set(normal, i*6*3 );
+		coords.set([i/subdivisions,1], i*6*2 );
+
+		normal = [ Math.sin(angle), normal_y, Math.cos(angle)];
+		vertices.set([ normal[0]*radius, 0, normal[2]*radius], i*6*3 + 3);
+		vec3.normalize(normal,normal);
+		normals.set(normal, i*6*3 + 3);
+		coords.set([i/subdivisions,0], i*6*2 + 2);
+
+		normal = [ Math.sin(angle+delta), normal_y, Math.cos(angle+delta)];
+		vertices.set([ normal[0]*radius, 0, normal[2]*radius], i*6*3 + 6);
+		vec3.normalize(normal,normal);
+		normals.set(normal, i*6*3 + 6);
+		coords.set([(i+1)/subdivisions,0], i*6*2 + 4);
+	}
+
+	var pos = 0;//i*3*3;
+	var pos_uv = 0;//i*3*2;
+
+	//cap
+	var bottom_center = vec3.fromValues(0,0,0);
+	var down = vec3.fromValues(0,-1,0);
+	for(var i = 0; i < subdivisions; ++i)
+	{
+		var angle = i * delta;
+
+		var uv = vec3.fromValues( Math.sin(angle), 0, Math.cos(angle) );
+		var uv2 = vec3.fromValues( Math.sin(angle+delta), 0, Math.cos(angle+delta) );
+
+		//bottom
+		vertices.set([ uv2[0]*radius, 0, uv2[2]*radius], pos + i*6*3 + 9);
+		normals.set(down, pos + i*6*3 + 9);
+		coords.set( [ uv2[0] * 0.5 + 0.5,uv2[2] * 0.5 + 0.5], pos_uv + i*6*2 + 6);
+
+		vertices.set([ uv[0]*radius, 0, uv[2]*radius], pos + i*6*3 + 12);
+		normals.set(down, pos + i*6*3 + 12 );
+		coords.set( [ uv[0] * 0.5 + 0.5,uv[2] * 0.5 + 0.5], pos_uv + i*6*2 + 8 );
+
+		vertices.set( bottom_center, pos + i*6*3 + 15 );
+		normals.set( down, pos + i*6*3 + 15);
+		coords.set( [0.5,0.5], pos_uv + i*6*2 + 10);
+	}
+
+	var buffers = {
+		vertices: vertices,
+		normals: normals,
+		coords: coords
+	}
+	options.bounding = BBox.fromCenterHalfsize( [0,height*0.5,0], [radius,height*0.5,radius] );
+
+	return Mesh.load( buffers, options, gl );
+}
+
+/**
 * Returns a sphere mesh 
 * @method Mesh.sphere
 * @param {Object} options valid options: radius, lat, long, subdivisions, hemi
@@ -4470,15 +4559,17 @@ Texture.setUploadOptions = function(options, gl)
 * @param {Image} img
 * @param {Object} options [optional] upload options (premultiply_alpha, no_flip)
 */
-Texture.prototype.uploadImage = function(image, options)
+Texture.prototype.uploadImage = function( image, options )
 {
 	this.bind();
 	var gl = this.gl;
+	if(!image)
+		throw("uploadImage parameter must be Image");
 
 	Texture.setUploadOptions(options, gl);
 
 	try {
-		gl.texImage2D(gl.TEXTURE_2D, 0, this.format, this.format, this.type, image);
+		gl.texImage2D( gl.TEXTURE_2D, 0, this.format, this.format, this.type, image );
 		this.width = image.videoWidth || image.width;
 		this.height = image.videoHeight || image.height;
 		this.data = image;
@@ -5135,7 +5226,7 @@ Texture.prototype.applyBlur = function( offsetx, offsety, intensity, temp_textur
 * @param {Function} on_complete
 * @return {Texture} the texture
 */
-Texture.fromURL = function(url, options, on_complete, gl) {
+Texture.fromURL = function( url, options, on_complete, gl ) {
 	gl = gl || global.gl;
 
 	options = options || {};
@@ -5154,7 +5245,22 @@ Texture.fromURL = function(url, options, on_complete, gl) {
 	gl.bindTexture( texture.texture_type, null ); //disable
 	texture.ready = false;
 
-	if( url.toLowerCase().indexOf(".dds") != -1)
+	var ext = null;
+	if( options.extension ) //to force format
+		ext = options.extension;
+
+	if(!ext && url.length < 512) //avoid base64 urls
+	{
+		var base = url;
+		var pos = url.indexOf("?");
+		if(pos != -1)
+			base = url.substr(0,pos);
+		pos = base.lastIndexOf(".");
+		if(pos != -1)
+			ext = base.substr(pos+1).toLowerCase();
+	}
+
+	if( ext == "dds")
 	{
 		var ext = gl.getExtension("WEBKIT_WEBGL_compressed_texture_s3tc") || gl.getExtension("WEBGL_compressed_texture_s3tc");
 		var new_texture = new GL.Texture(0,0, options, gl);
@@ -5166,7 +5272,20 @@ Texture.fromURL = function(url, options, on_complete, gl) {
 				on_complete(texture, url);
 		});
 	}
-	else
+	else if( ext == "tga" )
+	{
+		HttpRequest( url, null, function(data) {
+			var img_data = GL.Texture.parseTGA(data);
+			if(!img_data)
+				return;
+			options.texture = texture;
+			texture = GL.Texture.fromMemory( img_data.width, img_data.height, img_data.pixels, options );
+			delete texture["ready"]; //texture.ready = true;
+			if(on_complete)
+				on_complete( texture, url );
+		},null,{ binary: true });
+	}
+	else //png,jpg,webp,...
 	{
 		var image = new Image();
 		image.src = url;
@@ -5189,6 +5308,52 @@ Texture.fromURL = function(url, options, on_complete, gl) {
 	return texture;
 };
 
+Texture.parseTGA = function(data)
+{
+	if(!data || data.constructor !== ArrayBuffer)
+		throw( "TGA: data must be ArrayBuffer");
+	data = new Uint8Array(data);
+	var TGAheader = new Uint8Array( [0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0] );
+	var TGAcompare = data.subarray(0,12);
+	for(var i = 0; i < TGAcompare.length; i++)
+		if(TGAheader[i] != TGAcompare[i])
+		{
+			console.error("TGA header is not valid");
+			return null; //not a TGA
+		}
+
+	var header = data.subarray(12,18);
+	var img = {};
+	img.width = header[1] * 256 + header[0];
+	img.height = header[3] * 256 + header[2];
+	img.bpp = header[4];
+	img.bytesPerPixel = img.bpp / 8;
+	img.imageSize = img.width * img.height * img.bytesPerPixel;
+	img.pixels = data.subarray(18,18+img.imageSize);
+	img.pixels = new Uint8Array( img.pixels ); 	//clone
+	if(	(header[5] & (1<<4)) == 0) //hack, needs swap
+	{
+		//TGA comes in BGR format so we swap it, this is slooooow
+		for(var i = 0; i < img.imageSize; i+= img.bytesPerPixel)
+		{
+			var temp = img.pixels[i];
+			img.pixels[i] = img.pixels[i+2];
+			img.pixels[i+2] = temp;
+		}
+		header[5] |= 1<<4; //mark as swaped
+		img.format = img.bpp == 32 ? "RGBA" : "RGB";
+	}
+	else
+		img.format = img.bpp == 32 ? "RGBA" : "RGB";
+	//some extra bytes to avoid alignment problems
+	//img.pixels = new Uint8Array( img.imageSize + 14);
+	//img.pixels.set( data.subarray(18,18+img.imageSize), 0);
+	img.flipY = true;
+	//img.format = img.bpp == 32 ? "BGRA" : "BGR";
+	//trace("TGA info: " + img.width + "x" + img.height );
+	return img;
+}
+
 /**
 * Create a texture from an Image
 * @method Texture.fromImage
@@ -5196,10 +5361,10 @@ Texture.fromURL = function(url, options, on_complete, gl) {
 * @param {Object} options
 * @return {Texture} the texture
 */
-Texture.fromImage = function(image, options) {
+Texture.fromImage = function( image, options ) {
 	options = options || {};
 
-	var texture = options.texture || new GL.Texture(image.width, image.height, options);
+	var texture = options.texture || new GL.Texture( image.width, image.height, options);
 	texture.uploadImage( image, options );
 
 	texture.bind();
@@ -5244,7 +5409,7 @@ Texture.fromVideo = function(video, options) {
 
 	var texture = options.texture || new GL.Texture(video.videoWidth, video.videoHeight, options);
 	texture.bind();
-	texture.uploadImage(video, options);
+	texture.uploadImage( video, options );
 	if (options.minFilter && options.minFilter != gl.NEAREST && options.minFilter != gl.LINEAR) {
 		texture.bind();
 		gl.generateMipmap(texture.texture_type);
@@ -5287,7 +5452,7 @@ Texture.prototype.clone = function( options )
 * @param {Object} options
 * @return {Texture} the texture
 */
-Texture.fromMemory = function(width, height, pixels, options) //format in options as format
+Texture.fromMemory = function( width, height, pixels, options) //format in options as format
 {
 	options = options || {};
 
@@ -5296,7 +5461,9 @@ Texture.fromMemory = function(width, height, pixels, options) //format in option
 	texture.bind();
 
 	try {
-		gl.texImage2D(gl.TEXTURE_2D, 0, texture.format, width, height, 0, texture.format, texture.type, pixels);
+		gl.texImage2D( gl.TEXTURE_2D, 0, texture.format, width, height, 0, texture.format, texture.type, pixels );
+		texture.width = width;
+		texture.height = height;
 		texture.data = pixels;
 	} catch (e) {
 		if (location.protocol == 'file:') {
@@ -8219,6 +8386,19 @@ GL.create = function(options) {
 		gl._current_texture_drawto = null;
 		gl._current_fbo_color = null;
 		gl._current_fbo_depth = null;
+	}
+
+	gl.dump = function()
+	{
+		console.log("userAgent: ", navigator.userAgent );
+		console.log("Supported extensions:");
+		var extensions = gl.getSupportedExtensions();
+		console.log( extensions.join(",") );
+		var info = [ "VENDOR", "VERSION", "MAX_VERTEX_ATTRIBS", "MAX_VARYING_VECTORS", "MAX_VERTEX_UNIFORM_VECTORS", "MAX_VERTEX_TEXTURE_IMAGE_UNITS", "MAX_FRAGMENT_UNIFORM_VECTORS", "MAX_TEXTURE_SIZE", "MAX_TEXTURE_IMAGE_UNITS" ];
+		console.log("WebGL info:");
+		for(var i in info)
+			console.log(" * " + info[i] + ": " + gl.getParameter( gl[info[i]] ));
+		console.log("*************************************************")
 	}
 
 	//Reset state

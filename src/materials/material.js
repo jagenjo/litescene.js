@@ -91,15 +91,19 @@ function Material( o )
 	/**
 	* The alpha component to control opacity
 	* @property opacity
-	* @type {Number}
 	* @default 1
-	*/
+	**/
 	Object.defineProperty( this, 'opacity', {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },
 		enumerable: true
 	});
 
+	/**
+	* the render queue id where this instance belongs
+	* @property queue
+	* @default LS.RenderQueue.DEFAULT;
+	**/
 	Object.defineProperty( this, 'queue', {
 		get: function() { return this._queue; },
 		set: function(v) { 
@@ -110,6 +114,10 @@ function Material( o )
 		enumerable: true
 	});
 
+	/**
+	* the render state flags to control how the GPU behaves
+	* @property render_state
+	**/
 	Object.defineProperty( this, 'render_state', {
 		get: function() { return this._render_state; },
 		set: function(v) { 

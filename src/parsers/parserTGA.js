@@ -29,21 +29,23 @@ var parserTGA = {
 		img.imageSize = img.width * img.height * img.bytesPerPixel;
 		img.pixels = data.subarray(18,18+img.imageSize);
 		img.pixels = new Uint8Array( img.pixels ); 	//clone
+		var pixels = img.pixels;
 
-		if(	(header[5] & (1<<4)) == 0) //hack, needs swap
+		//TGA comes in BGR format so we swap it, this is slooooow
+		for(var i = 0, l = img.imageSize, d = img.bytesPerPixel; i < l; i+= d )
 		{
-			//TGA comes in BGR format so we swap it, this is slooooow
-			for(var i = 0; i < img.imageSize; i+= img.bytesPerPixel)
-			{
-				var temp = img.pixels[i];
-				img.pixels[i] = img.pixels[i+2];
-				img.pixels[i+2] = temp;
-			}
-			header[5] |= 1<<4; //mark as swaped
-			img.format = img.bpp == 32 ? "RGBA" : "RGB";
+			var temp = pixels[i];
+			pixels[i] = pixels[i+2];
+			pixels[i+2] = temp;
 		}
-		else
-			img.format = img.bpp == 32 ? "RGBA" : "RGB";
+		img.format = img.bpp == 32 ? "RGBA" : "RGB";
+
+		//if(	(header[5] & (1<<4)) == 0) //hack, needs swap
+		//{
+			//header[5] |= 1<<5; //mark as Y swaped
+		//}
+		//else
+		//	img.format = img.bpp == 32 ? "RGBA" : "RGB";
 
 		//some extra bytes to avoid alignment problems
 		//img.pixels = new Uint8Array( img.imageSize + 14);

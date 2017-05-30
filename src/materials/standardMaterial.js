@@ -16,9 +16,9 @@ function StandardMaterial(o)
 {
 	Material.call(this,null); //do not pass the data object, it is called later
 
-	this.shader_name = "global";
-
 	this.blend_mode = LS.Blend.NORMAL;
+
+	this.shader_name = "global";
 
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
@@ -126,38 +126,6 @@ StandardMaterial.BUMP_TEXTURE = "bump";
 StandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
 StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 StandardMaterial.EXTRA_TEXTURE = "extra";
-
-StandardMaterial.available_shaders = ["default","lowglobal","phong_texture","flat","normal","phong","flat_texture"];
-
-StandardMaterial.coding_help = "\
-Input IN -> info about the mesh\n\
-SurfaceOutput o -> info about the surface properties of this pixel\n\
-\n\
-struct Input {\n\
-	vec4 color;\n\
-	vec3 vertex;\n\
-	vec3 normal;\n\
-	vec2 uv;\n\
-	vec2 uv1;\n\
-	\n\
-	vec3 camPos;\n\
-	vec3 viewDir;\n\
-	vec3 worldPos;\n\
-	vec3 worldNormal;\n\
-	vec4 screenPos;\n\
-};\n\
-\n\
-struct SurfaceOutput {\n\
-	vec3 Albedo;\n\
-	vec3 Normal;\n\
-	vec3 Ambient;\n\
-	vec3 Emission;\n\
-	float Specular;\n\
-	float Gloss;\n\
-	float Alpha;\n\
-	float Reflectivity;\n\
-};\n\
-";
 
 StandardMaterial.prototype.prepare = function( scene )
 {
@@ -393,7 +361,6 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "detail_factor":
 		case "emissive_extra":
 		//strings
-		case "shader_name":
 		//bools
 		case "specular_on_top":
 		case "specular_on_alpha":
@@ -443,8 +410,6 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 	//add some more
 	o.merge({
-		shader_name:  LS.TYPES.STRING,
-
 		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,

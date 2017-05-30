@@ -244,7 +244,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 {
 	//get shader code
 	var shader = null;
-	var shader_code = this.getShaderCode();
+	var shader_code = this.getShaderCode(); //no parameters because we just want the render_state and init stuff
 	if( shader_code )
 		shader = shader_code.getShader();
 
@@ -289,13 +289,6 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 	}
 }
 
-ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
-{
-	if(!this.shader)
-		return true; //skip rendering
-	return LS.ResourcesManager.getResource( this.shader );
-}
-
 //called from LS.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
 {
@@ -329,6 +322,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//global stuff
 	this.render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
+	var global_flags = 0;
+	if( LS.Renderer._global_textures.environment )
+	{
+		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
+	}
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
@@ -369,6 +367,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	{
 		var light = lights[i];
 		block_flags = light.applyShaderBlockFlags( block_flags, pass, render_settings );
+
+		//global
+		block_flags |= global_flags;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
@@ -549,7 +550,7 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 }
 
 //get shader code
-ShaderMaterial.prototype.getShaderCode = function()
+ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
@@ -579,7 +580,7 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 		return false;
 
 	//get shader code
-	var shader_code = this.getShaderCode();
+	var shader_code = this.getShaderCode(); //special use
 	if(!shader_code)
 		return false;
 
@@ -770,6 +771,68 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 LS.registerMaterialClass( ShaderMaterial );
 LS.ShaderMaterial = ShaderMaterial;
 
-
 //Register ShaderBlocks
 //TODO?
+
+//ENVIRONMENT 
+var environment_code = "\n\
+	#ifdef ENVIRONMENT_TEXTURE\n\
+		uniform texture2D environment_texture;\n\
+	#endif\n\
+	#ifdef ENVIRONMENT_CUBEMAP\n\
+		uniform textureCube environment_texture;\n\
+	#endif\n\
+	vec2 polarToCartesian(in vec3 V)\n\
+	{\n\
+		return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		#ifdef ENVIRONMENT_TEXTURE\n\
+			vec2 uvs = polarToCartesian(V);\n\
+			return texture2D( environment_texture, uvs ).xyz;\n\
+		#endif\n\
+		#ifdef ENVIRONMENT_CUBEMAP\n\
+			return texture2D( environment_texture, V ).xyz;\n\
+		#endif\n\
+		return u_background_color.xyz;\n\
+	}\n\
+";
+var environment_disabled_code = "\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		return u_background_color.xyz;\n\
+	}\n\
+";
+
+var environment_block = new LS.ShaderBlock("environment");
+environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
+environment_block.register();
+
+
+var reflection_code = "\n\
+	#pragma shaderblock SHADOWBLOCK \"environment\"\n\
+	\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		vec3 R = reflect( IN.viewDir, o.Normal );\n\
+		vec3 bg = vec3(0.0);\n\
+		if(u_light_info.x == (u_light_info.y - 1.0))\n\
+			bg = getEnvironmentColor( R, 0.0 );\n\
+		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
+		return final_color;\n\
+	}\n\
+";
+
+var reflection_disabled_code = "\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		return final_color;\n\
+	}\n\
+";
+
+var reflection_block = new LS.ShaderBlock("applyReflection");
+ShaderMaterial.reflection_block = reflection_block;
+reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
+reflection_block.register();

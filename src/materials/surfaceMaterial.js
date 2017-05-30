@@ -41,7 +41,7 @@ function SurfaceMaterial( o )
 	this.computeCode();
 }
 
-SurfaceMaterial.prototype.applyFlagsToRenderState = StandardMaterial.prototype.applyFlagsToRenderState;
+
 SurfaceMaterial.prototype.prepare = StandardMaterial.prototype.prepare;
 
 SurfaceMaterial.icon = "mini-icon-material.png";
@@ -129,17 +129,6 @@ SurfaceMaterial.prototype.fillUniforms = function( scene, options )
 		if(prop.type == "texture" || prop.type == "cubemap" || prop.type == "sampler")
 		{
 			var texture = prop.value;
-			/*
-			if(!prop.value)
-				texture = ":black";
-			else
-			{
-				var tex_name = prop.type == "sampler" ? prop.value.texture : prop.value;
-				var texture = LS.getTexture( tex_name );
-				if(!texture)
-					texture = ":missing";
-			}
-			*/
 			samplers[ last_texture_slot ] = texture;
 			this._uniforms[ prop.name ] = last_texture_slot;
 			last_texture_slot++;

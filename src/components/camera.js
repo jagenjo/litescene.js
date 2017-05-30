@@ -585,6 +585,42 @@ Camera.prototype.lookAt = function( eye, center, up )
 }
 
 /**
+* Positions the camera using a matrix that contains the position an orientation (NOT FULLY TESTED)
+* If the camera is a node camera, then the node transform is modified (plus the center to match the focalLength)
+* @method lookAtFromMatrix
+* @param {mat4} matrix
+* @param {boolean} is_model if false the matrix is assumed to be a view matrix, otherwise a model (inverse of view)
+*/
+Camera.prototype.lookAtFromMatrix = function( matrix, is_model )
+{
+	if( this._root && this._root.transform )
+	{
+		if(!is_model) //convert view to model
+		{
+			var m = mat4.create();
+			matrix = mat4.invert(m, matrix);
+		}
+		this._root.transform.matrix = matrix;
+		this._eye.set(LS.ZEROS);
+		this._up.set([0,1,0]);
+		this._must_update_view_matrix = true;
+		this.focalLength = 1; //changes center
+	}
+	else
+	{
+		var inv = mat4.create();
+		mat4.invert( inv, matrix );
+		var view = is_model ? inv : matrix;
+		var model = is_model ? matrix : inv;
+
+		this._view_matrix.set( view );
+		vec3.transformMat4( this._eye, LS.ZEROS, model );
+		vec3.transformMat4( this._center, LS.FRONT, model );
+		mat4.rotateVec3( this._up, model, LS.TOP );
+	}
+}
+
+/**
 * resets eye, center and up, so they are in [0,0,0],[0,0,-focalDist] and [0,1,0]
 * @method resetVectors
 * @param {number} focalDist [optional] it not set it will be 1

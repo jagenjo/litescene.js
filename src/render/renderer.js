@@ -34,6 +34,7 @@ var Renderer = {
 	_current_camera: null,
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: null,
+	_global_textures: {}, //used to speed up fetching global textures
 
 	_queues: [], //render queues in order
 
@@ -338,7 +339,7 @@ var Renderer = {
 		LEvent.trigger(this, "beforeRenderScene", camera );
 
 		//here we render all the instances
-		this.renderInstances(render_settings);
+		this.renderInstances( render_settings );
 
 		//send after events
 		LEvent.trigger( scene, "afterRenderScene", camera );
@@ -532,7 +533,7 @@ var Renderer = {
 
 		//compute global scene info
 		this.fillSceneShaderQuery( scene, render_settings );
-		this.fillSceneShaderUniforms( scene, render_settings );
+		this.fillSceneUniforms( scene, render_settings );
 
 		//reset state of everything!
 		this.resetGLState( render_settings );
@@ -768,11 +769,7 @@ var Renderer = {
 			this.bindSamplers( samplers );
 
 		//find shader name
-		var shader_name = render_settings.default_shader_id;
-		if(render_settings.low_quality)
-			shader_name = render_settings.default_low_shader_id;
-		if( material.shader_name )
-			shader_name = material.shader_name;
+		var shader_name = material.shader_name;
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -1069,7 +1066,7 @@ var Renderer = {
 
 	//Called at the beginning of renderInstances (once per renderFrame)
 	//DO NOT CACHE, parameters can change between render passes
-	fillSceneShaderUniforms: function( scene, render_settings )
+	fillSceneUniforms: function( scene, render_settings )
 	{
 		//global uniforms
 		var uniforms = {
@@ -1089,6 +1086,10 @@ var Renderer = {
 		scene._samplers = scene._samplers || [];
 		scene._samplers.length = 0;
 
+		//clear globals
+		this._global_textures.environment = null;
+
+		//fetch globals
 		for(var i in scene.info.textures)
 		{
 			var texture = LS.getTexture( scene.info.textures[i] );
@@ -1112,6 +1113,9 @@ var Renderer = {
 			scene._samplers[ slot ] = texture;
 			scene._uniforms[ i + type ] = slot;
 			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
+
+			if( i == "environment" )
+				this._global_textures.environment = texture;
 		}
 
 		LEvent.trigger( scene, "fillSceneUniforms", scene._uniforms );
@@ -1250,9 +1254,8 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//update materials info only if they are in use
-		if(render_settings.update_materials)
-			this._prepareMaterials( materials, scene );
+		//update materials 
+		this._prepareMaterials( materials, scene );
 
 		//pack all macros, uniforms, and samplers relative to this instance in single containers
 		for(var i = 0, l = instances.length; i < l; ++i)
@@ -1290,6 +1293,8 @@ var Renderer = {
 			if( material.prepare )
 				material.prepare( scene );
 		}
+
+		LEvent.trigger( scene, "prepareMaterials" );
 	},
 
 	/**
