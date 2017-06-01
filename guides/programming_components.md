@@ -83,6 +83,51 @@ LS.registerComponent( MyComponent );
 
 This function is not only registering the component but also adding the mandatory methods to the component that you didn't fill (like serialize, configure).
 
+## Adding behaviour 
+
+We have our component but its not doing anything special so we need to add some behaviour.
+The best way to add behaviour to a component is binding some functions to specific events triggered by the system (like the render, mouseMove or update events).
+
+When we want to bind an action there are several ways but the most common one is:
+
+```javascript
+  LEvent.bind( scene, "update", this.onUpdate, this );
+```
+
+Where the first parameter is the instance that will trigger the event, the second the name of the event, the thirth the callback and
+the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter but the problem with that approach is that you wont be able to unbind the event in the future (because the Function.bind returns a different function every time), so try to pass always the fourth parameter.
+
+If we want to unbind the event we could call unbind for every event or directly unbindAll to the specific instance:
+
+```javascript
+  LEvent.unbindAll( scene, this );
+```
+
+When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node has been removed) your component is no longer doing any action.**.
+
+So when attaching events the best way to do it is using the **onAddedToScene** method in your component:
+
+```javascript
+MyComponent.prototype.onAddedToScene = function( scene )
+{
+  LEvent.bind( scene, "update", this.onUpdate, this );
+}
+```
+
+And for the opposite, create the method **onRemovedFromScene**:
+
+```javascript
+MyComponent.prototype.onRemovedFromScene = function( scene )
+{
+  LEvent.unbind( scene, "update", this.onUpdate, this );
+}
+```
+
+If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
+
+If you want a list of events follow the [the LS Events list](https://github.com/jagenjo/litescene.js/blob/master/guides/events.md)
+
+
 ## Serializing
 
 Components usually store data that the user can change to control the behaviour, and that data must be persistent so changes done in the scene will be saved.
@@ -137,51 +182,6 @@ In our case what we are going to do is add the file the external scripts in the 
 Once the file is loaded you will see your component when clicking the [add Component] button in any node.
 If you add the component to a node you also will see that the system has detected that your component has a local variable ( this.myvar )
 and has created a tiny interface so you can modify its value.
-
-## Adding behaviour 
-
-We have our component but its not doing anything special so we need to add some behaviour.
-The best way to add behaviour to a component is binding some functions to specific events triggered by the system (like the render, mouseMove or update events).
-
-When we want to bind an action there are several ways but the most common one is:
-
-```javascript
-  LEvent.bind( scene, "update", this.onUpdate, this );
-```
-
-Where the first parameter is the instance that will trigger the event, the second the name of the event, the thirth the callback and
-the fourth parameter is the instance where you want to execute the callback. You could use mycallback.bind( this ) and skip the fourth parameter but the problem with that approach is that you wont be able to unbind the event in the future (because the Function.bind returns a different function every time), so try to pass always the fourth parameter.
-
-If we want to unbind the event we could call unbind for every event or directly unbindAll to the specific instance:
-
-```javascript
-  LEvent.unbindAll( scene, this );
-```
-
-When binding events there is an important restriction: **you have to be sure that once this node is no longer attached to the scene (because the node has been removed) your component is no longer doing any action.**.
-
-So when attaching events the best way to do it is using the **onAddedToScene** method in your component:
-
-```javascript
-MyComponent.prototype.onAddedToScene = function( scene )
-{
-  LEvent.bind( scene, "update", this.onUpdate, this );
-}
-```
-
-And for the opposite, create the method **onRemovedFromScene**:
-
-```javascript
-MyComponent.prototype.onRemovedFromScene = function( scene )
-{
-  LEvent.unbind( scene, "update", this.onUpdate, this );
-}
-```
-
-If your actions are more related to the node then use the onAddedToNode and onRemovedFromNode.
-
-If you want a list of events follow the [the LS Events list](https://github.com/jagenjo/litescene.js/blob/master/guides/events.md)
-
 
 ## Example ##
 
