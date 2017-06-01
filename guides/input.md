@@ -56,6 +56,17 @@ this.myMouseCallback = function(type, event)
 }
 ```
 
+### Mouse Event
+Because most of the actions are performed using the mouse, the MouseEvent events are enhanced with some extra properties and methods:
+
+- ```x``` and ```y```: mouse coordinates relative to the canvas element (top-left)
+- ```dragging```: true if the user was dragging the mouse (one button clicked).
+- ```canvasx``` and ```canvasy```: mouse position in webgl viewport coordinates (bottom-left).
+- ```deltax``` and ```deltay```: amount dragged in both axis.
+- ```leftButton```,```middleButton``` and ```rightButton```: if the button is pressed
+- ```dragging```: true if any button is pressed.
+
+
 ## Reading the current Input state
 
 Sometimes you want to read the user raw input like the mouse coordinates, if a keyboard key is pressed or the gamepad axis.
