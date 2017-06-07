@@ -64,12 +64,13 @@ To have a full list of vec3 operations [the gl-matrix vec3 documentation](http:/
 
 For matrices the class is mat3 and mat4.
 
+To have a full list of mat4 operations [the gl-matrix mat4 documentation](http://glmatrix.net/docs/mat4.html)
 
 ## Operating with quaternions (quat)
 
 For quaternions the class is called quat.
 
-
+To have a full list of quat operations [the gl-matrix quat documentation](http://glmatrix.net/docs/quat.html)
 
 
 
