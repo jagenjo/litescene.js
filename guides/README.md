@@ -17,6 +17,7 @@ Here there is a list with the most commont topics to master LiteScene:
 
 Some advanced topics:
 
+- [Operating with Vectors and Matrices](operating_with_vectors.md): understanding gl-matrix and how to do mathematical operations.
 - [Events](events.md): how to capture events from the system to call your own callbacks
 - [Render pipeline](render_pipeline.md): How does the render pipeline work
 - [Shaders](shaders.md): How to write your own shaders
