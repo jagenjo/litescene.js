@@ -3,7 +3,7 @@
 When scripting any 3D application usually you will need to do mathematic operations like adding or multiplying vectors,
 normalizing, doing the cross or dot product, transforming vectors by matrices, rotating quaternions, etc.
 
-Instead of providing out own mathematical library, LiteScene uses gl-matrix as the base library for geometric operations.
+Instead of providing out own mathematical library, LiteScene uses [gl-matrix](http://glmatrix.net/) as the base library for geometric operations.
 
 Created by Brandon Jones, this library has proven to be very powerful and bug-free, but has a particula syntax that any user must understand in order to use it.
 
