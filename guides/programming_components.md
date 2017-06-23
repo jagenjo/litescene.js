@@ -65,12 +65,14 @@ If you want a variable to have an specific editor you can specify it like this:
 
 ```js
 MyComponent["@mydirection"] = { type: "enum", values: ["north","south","east","south"] };
+MyComponent["@profile_pic"] = { type: "resource" };
 ```
 
 Or if you want to have an specific widget:
 
 ```js
 MyComponent["@age"] = { widget: "slider", min:1, max:90, step:1, precision:0 };
+MyComponent["@gender"] = { widget: "combo", values: ["male","female","other"] };
 ```
 
 ## Registering the component
