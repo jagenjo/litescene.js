@@ -28,11 +28,11 @@ Although some resources could have also the property filename (a file without a 
 
 ## ResourcesManager ##
 
-There is a global class called the LS.ResourcesManager (also abreviated as LS.RM) which is in charge of loading, processing and storing all resources available by the system.
+There is a global class called the ```LS.ResourcesManager``` (also abreviated as ```LS.RM```) which is in charge of loading, processing and storing all resources available by the system.
 
 This way we can ensure that we are not loading a resource twice, or bind events when new resources are loaded.
 
-There are many methods in the ResourcesManager class, so check the documentation carefully to understand all its features.
+There are many methods in the ```LS.ResourcesManager``` class, so check the documentation carefully to understand all its features.
 
 Here is a list of the common methods:
 
@@ -41,13 +41,13 @@ Here is a list of the common methods:
 - ```registerResource( filename, resource )``` to make a resource available to the system
 - ```unregisterResource( resource )``` to remove a resource from the system
 
-Resources are stored in a container called LS.ResourcesManager.resources but also there are independent containers for textures and meshes to speed up fetching.
+Resources are stored in a container called ```LS.ResourcesManager.resources``` but also there are independent containers for textures and meshes to speed up fetching.
 
 ## Paths ##
 
-When loading resources we could need to fetech the files using a root folder as a base path, this way resources do not need to have absolute paths.
+When loading resources we could need to fetch the files using a root folder as a base path, this way resources do not need to have absolute paths.
 
-The paths where the resources will be loaded is specified using the ```setPath``` and stored in the path property.
+The paths where the resources will be loaded is specified using the ```LS.ResourcesManager.setPath``` and stored in the ```path``` property.
 
 To avoid cross-site origin scripting problems, the ResourcesManager allows to specify a path that will be used as a root path when fetching remote files, it is stored in the ```proxy``` property.
 
