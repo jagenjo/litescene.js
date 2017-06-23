@@ -57,6 +57,25 @@ Every resource must be loaded and parsed, and depending on the type this process
 
 All that information is controlled by the LS.Formats class, that contains information about every fileformat supported by the system.
 
+To know more about File Formats check the [File Formats guide](fileformats.md)
+
+## Example
+
+```js
+this.onStart = function()
+{
+   var that = this;
+   LS.ResourcesManager.load("data/myfile.txt", function(data) {
+      that.processData( data );
+   });
+}
+
+this.processData = function( data )
+{
+  //...
+}
+
+```
 
 
 
