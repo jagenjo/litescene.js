@@ -36,7 +36,7 @@ There are many methods in the ResourcesManager class, so check the documentation
 
 Here is a list of the common methods:
 
-- ```load( fullpath, options, on_complete)``` used to ask the ResourcesManager to load a resource, you can pass a list of options of how the file should be processed once is loaded, and a final callback to call once the file has been loaded. If the file is already loaded it wont load it again.
+- ```load( fullpath, options, on_complete)``` used to ask the ResourcesManager to load a resource, you can pass a list of options of how the file should be processed once is loaded, and a final callback( resource, url ) to call once the file has been loaded. If the file is already loaded it wont load it again.
 - ```getResource( fullpath )``` to retrieve a resource, if not found null is returned.
 - ```registerResource( filename, resource )``` to make a resource available to the system
 - ```unregisterResource( resource )``` to remove a resource from the system
