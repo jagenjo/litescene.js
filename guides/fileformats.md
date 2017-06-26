@@ -33,11 +33,10 @@ Adding new file formats requires several steps:
 
 - Creating an object with all the info for the file format like:
   * **extension**: a String with the filename extension that is associated with this format (or comma separated extensions)
-  * **type**: which type of resource
+  * **type**: which type of resource ("image","scene",mesh"), otherwise is assumed "data"
   * **resource**: the classname to instantiate for this resource (p.e. Mesh, Texture, ...)
-  * **format**: it is "text" or "binary"
-  * **dataType**: which dataType to request when requesting to server
-  * **parse**: the callback in charge of converting the data in something suitable by the system.
+  * **dataType**: which dataType send with the request when requesting to server ("text","arraybuffer")
+  * **parse**: a callback in charge of converting the data in something suitable by the system. If null then the data will be as it is received.
 - Registering it to LS.Formats with ```LS.Formats.addSupportedFormat( "extension", MyFormatInfo );```
 - If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor(extension, callback)```
 - If you want a postprocessor you need to call to ```LS.ResourcesManager.registerResourcePostProcessor( resource_classname, callback)``` but that shouldn't be necessary because all resources have already its own postprocessor.
