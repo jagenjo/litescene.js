@@ -42,5 +42,13 @@ Adding new file formats requires several steps:
 - If you want a preprocessor you need to call to ```LS.ResourcesManager.registerResourcePreProcessor(extension, callback)```
 - If you want a postprocessor you need to call to ```LS.ResourcesManager.registerResourcePostProcessor( resource_classname, callback)``` but that shouldn't be necessary because all resources have already its own postprocessor.
 
+## Example of adding support for a new fileformat
 
+```js
+//this will allow to load SRTs as text objects instead of binary objects
+LS.Formats.addSupportedFormat( "srt", {
+   extension:"srt",
+   format: "text" 
+});
+```
 
