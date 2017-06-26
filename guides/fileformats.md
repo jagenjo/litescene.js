@@ -47,7 +47,7 @@ Adding new file formats requires several steps:
 //this will allow to load SRTs as text objects instead of binary objects
 LS.Formats.addSupportedFormat( "srt", {
    extension:"srt",
-   format: "text" 
+   dataType: "text" 
 });
 ```
 
