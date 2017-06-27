@@ -1,135 +1,74 @@
 # Creating a GUI on top of your app #
 
-Usually when people start using LiteScene they wonder if the library includes a GUI system to create the interface of their applications.
-But they ignore that the web already has the best GUI system possible, and it is called HTML.
+In this chapter we will discuse different ways to create a user interface for you application.
 
-HTML is well documented, powerful, widely known, has lots of great features and it merges perfectly with the WebGL Canvas.
+## HTML GUIs
 
-So when creating applications that require the user to interact with some widgets the fastest solution is to use regular HTML elements on top of the WebGL Canvas.
+Usually when people start using LiteScene they wonder if the library includes a GUI system to create the interface of their applications. But they ignore that the web already has the best GUI system possible, and it is called HTML.
 
-Maybe there is a slight performance drop due to the way browsers compose WebGL and HTML together, but it is the best way to ensure the GUI will fit well in a website.
+The only problem is that it requires to know HTML and how the DOM works. 
 
-## HTML and LiteScene
+Use HTML GUIs if you have to display lots of information, or if  you want to use some special character set (japanese characters, etc).
 
-You are free to add any HTML element to the DOM at any moment, there are no limitations. The only problem come when you use the editor WebGLStudio.
+Check the [guide to create GUIs in HTML](gui_html.md) for a tutorial on how to use it.
 
-When working with a scene in WebGLStudio you have to ensure that your HTML is not colliding with any of the editor, and that your HTML will be destroyed once the scene is reset.
+## Immediate GUI 
 
-To do so you must follow some rules that are explained in the next chapters.
+The immediate GUI is a set of functions made to help create GUIs very easily. It is similar of how Unity does it.
 
-## Creating HTML Elements ##
+It works by calling some ```LS.GUI```methods, passing the area [x,y,width,height] for the widget, and catching the returned value in case of any interaction expected.
 
-First, do not add HTML elements to the GUI till the application starts (when the onStart event is launched), otherwise there will be elements during the editing process that could interfere with the user.
+The current widgets are:
+- ```LS.GUI.Box( area, color )```: to draw a box in the GUI
+- ```LS.GUI.Label( area, content )```: to draw a text label (or an image) on the GUI
+- ```LS.GUI.Button( area, content, content_over )```: to draw a button (content could be some string or a GL.Texture). Returns true if the button has been pressed.
+- ```LS.GUI.Toggle( area, value, content, content_off )```: to draw a checkbox (content could be some string or a GL.Texture). Returns the current value of the checkbox (it will be the same as the one passed unless the user clicked the toggle).
+- ```LS.GUI.HorizontalSlider( area, value, left_value, right_value, show_value )```: to draw a slider (left_value is min, right_value is max). Returns the current value of the slider (it will be the same as the one passed unless the user clicked the slider).
+- ```LS.GUI.VerticalSlider( area, value, left_value, right_value, show_value )```: to draw a slider (left_value is min, right_value is max). Returns the current value of the slider (it will be the same as the one passed unless the user clicked the slider).
 
-## Attaching HTML to the DOM ##
+As you can see some widgets (like toggle, or the sliders) return the resulting value. It is important that the returned value gets assigned again to the var that was passed as the value in the first place. Otherwise the changes wont affect the widget.
 
-Second, all DOM elements must be attached to the GUI root element, this way the system can remove all DOM elements if the scene is reset.
+Here is an example of immediate GUI script with all the widgets:
 
-To get the GUI root element use the function ```LS.GUI.getRoot()```:
+```js
+//@immediate gui
+//defined: component, node, scene, globals
 
-```javascript
-var gui_root = LS.GUI.getRoot();
-gui_root.innerHTML = "<button>click me</button>";
-```
+this.createProperty("texture","", LS.TYPES.TEXTURE );
 
-Be careful changing the style of the GUI root element. The GUI root element has the classname "litescene-gui", use that class to encapsulate your CSS properties to avoid collisions with other elements in the DOM.
+this.toggle_value = true;
+this.slider_value = 50;
 
-## Mouse Events ##
-
-The GUI root element is a div with 100% width and 100% height, positioned so that it overlays completly the canvas.
-
-Because of that the div would get all the mouse events and no mouse events would reach the canvas.
-
-To avoid that the GUI element has the ```style.pointerEvents``` set to ```none``` which means all the mouse events will be ignored by the element **and all its children**.
-
-But sometimes we want to process mouse events in our widgets (clicking buttons, draging scrolls, etc).
-If that is the case, you must set the ```style.pointerEvents``` to ```auto``` in the element that could get mouse events. You could do it by code or by CSS.
-
-Keep that in mind when working with GUI elements.
-
-## Creating GUI panels ##
-
-Most of the time you would like to make just a floating div on top of the GUI to show some HTML information.
-To help in those cases the easier solution is using the ```LS.GUI.createElement``` that behaves similar to ```document.createElement```, creating a tag of a given parameter, but it has some extra functionalities.
-
-First the element will be attached automatically to the GUIElement so we dont have to do it.
-
-Second the element pointerEvents will be set to auto, so we can add any normal HTML code and have the expected behaviour.
-
-Thirth, it will be anchored to the corner of our canvas that we specify (if not anchor point is specified it will asume top-left).
-
-Here is an example :
-
-```javascript
-var panel = LS.GUI.createElement("div","top-left");
-panel.innerHTML = "<h3>HELLO!</h3>";
-```
-
-Valid anchors are "top-left","top-right","bottom-left" and "bottom-right";
-
-## DOM events ##
-
-From here if you want to bind events to the DOM elements you can do it as in any HTML website:
-
-```javascript
-var button = panel.querySelector("button");
-button.addEventListener("click", my_function );
-```
-
-## Using HTML files ##
-
-Creating HTML from the javascript code is very tedious and not very friendly.
-
-Usually when creating HTML code you want to write it inside a normal HTML file. You can create a text file from the editor in WebGLStudio and add all the HTML code inside the file, retrieve the file when your application starts and attach it to the GUI element.
-
-Here is one example:
-
-```javascript
-this.onStart = function()
+this.onRenderGUI = function(ctx)
 {
-  LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.GUI.getRoot();
-    gui_root.innerHTML = res.data;
-  });
+	LS.GUI.Box( [5,5,320,600], "#111" );  
+  
+	LS.GUI.Label( [10,10,300,50], "Example of GUI" );
+  
+	if( LS.GUI.Button( [10,80,300,50], "Pulsame" ) )
+ 	{
+  		console.log("pulsado!");
+	}
+
+	if( LS.GUI.Button( [10,140,300,50], "Pulsame2" ) )
+	{
+  		console.log("pulsado2!");
+	}
+
+ 	this.toggle_value = LS.GUI.Toggle( [10,200,300,50], this.toggle_value, "toggle" );
+  
+	this.slider_value = LS.GUI.HorizontalSlider( [10,260,300,50], this.slider_value, 0,100, true );
+
+	for(var i = 0; i < 10; ++i)
+		this.slider_value = LS.GUI.VerticalSlider( [15 + i * 30,320,24,100], this.slider_value, 0,100 );
+  
+	LS.GUI.Label( [20,440,100,100], LS.RM.textures[ this.texture ] );
 }
 ```
 
-Or you can store several HTML elements and attach the ones that you need by retrieving it as a HTML element and using selector querys:
-```javascript
-this.onStart = function()
-{
-  LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.GUI.getRoot();
-    var html = res.getAsHTML();
-    gui_root.appendChild( html.querySelector("#mypanel") );
-  });
-}
-```
-Or to go faster just attach them as you need:
-```javascript
-this.onStart = function()
-{
-  LS.ResourcesManagear.load("myfile.html", function(res){
-    var html = res.getAsHTML();
-    LS.GUI.attach( html.querySelector("#mypanel"), "top-left" );
-  });
-}
-```
+## Canvas GUIs
 
-Or if you want to attach all the HTML to the GUI you can use ```LS.GUI.load("myfile.html", my_function)```:
-
-```javascript
-this.onStart = function()
-{
-  LS.GUI.load("myfile.html", function(html_root){
-    html_root.querySelector("#mypanel").addEventListener("click", my_click_function);
-  });
-}
-```
-
-## Canvas GUIs ##
-
-But if you dont want to use HTML and prefeer to create immediate GUIs by rendering manually to the WebGL canvas, you can use Canvas2DToWebGL, a library that allows to use regular Canvas2D calls inside the WebGL Canvas, this way you can easily render simple GUIs (more suited for non-interactive GUIs like HUDs).
+The last option is to create the GUI manually, you can use Canvas2DToWebGL, a library that allows to use regular Canvas2D calls inside the WebGL Canvas, this way you can easily render simple GUIs (more suited for non-interactive GUIs like HUDs).
 
 Also one of the benefits of using Canvas2D is that you can render WebGL textures (even the ones generated by the engine) as part of the interace.
 
