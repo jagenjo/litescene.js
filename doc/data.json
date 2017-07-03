@@ -1824,7 +1824,7 @@
             "namespace": "LS",
             "file": "../src/gui.js",
             "line": 2,
-            "description": "GUI is a static class used to attach HTML elements on top of the 3D Canvas in a safe way",
+            "description": "GUI is a static class used to create two kinds of GUIs: HTML GUIs on top of the 3D Canvas (in a safe way) or Immediate GUI using a Canvas2D (fast gui)\nFor HTML GUIs check the getHTMLRoot function.\nFor Immediate GUIs check the Box,Button,Toggle,Textfield,HorizontalSlider,VerticalSlider and Toolbar.\nTo change colors of the immediate GUI check the LS.GUI.GUIStyle",
             "is_constructor": 1
         },
         "LS.Input": {
@@ -9449,7 +9449,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 26,
+            "line": 29,
             "description": "Returns the DOM element responsible for the HTML GUI of the app. This is helpful because this GUI will be automatically removed if the app finishes.\nAny HTML must be attached to this element, otherwise it may have problems with the editor.",
             "itemtype": "method",
             "name": "getHTMLRoot",
@@ -9463,7 +9463,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 76,
+            "line": 79,
             "description": "Creates a HTMLElement of the tag_type and adds it to the DOM on top of the canvas",
             "itemtype": "method",
             "name": "createElement",
@@ -9489,7 +9489,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 93,
+            "line": 96,
             "description": "attach HTMLElement to HTML GUI Root in the anchor position specified",
             "itemtype": "method",
             "name": "attach",
@@ -9511,7 +9511,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 154,
+            "line": 157,
             "description": "Removes an element from the GUI (same as  element.parentNode.removeChild( element ); )",
             "itemtype": "method",
             "name": "detach",
@@ -9528,7 +9528,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 166,
+            "line": 169,
             "description": "Removes all the GUI elements from the DOM",
             "itemtype": "method",
             "name": "reset",
@@ -9538,30 +9538,30 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 188,
+            "line": 191,
             "description": "shows the HTML GUI",
             "itemtype": "method",
-            "name": "show",
+            "name": "showHTML",
             "class": "LS.GUI",
             "module": "LS",
             "namespace": "LS"
         },
         {
             "file": "../src/gui.js",
-            "line": 201,
+            "line": 204,
             "description": "hides the HTML GUI (but it is still existing)",
             "itemtype": "method",
-            "name": "hide",
+            "name": "hideHTML",
             "class": "LS.GUI",
             "module": "LS",
             "namespace": "LS"
         },
         {
             "file": "../src/gui.js",
-            "line": 213,
+            "line": 216,
             "description": "Loads resource containing the HTML code for the GUI and attachs it inside a div to the hud",
             "itemtype": "method",
-            "name": "load",
+            "name": "loadHTML",
             "params": [
                 {
                     "name": "url",
@@ -9580,7 +9580,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 270,
+            "line": 273,
             "description": "Called by the LS.Renderer to clear intermediate stuff",
             "itemtype": "method",
             "name": "ResetImmediateGUI",
@@ -9590,7 +9590,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 283,
+            "line": 286,
             "description": "Renders an immediate gui BOX, used as background",
             "itemtype": "method",
             "name": "Box",
@@ -9612,7 +9612,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 299,
+            "line": 302,
             "description": "Renders a text (or a texture)",
             "itemtype": "method",
             "name": "Label",
@@ -9634,7 +9634,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 328,
+            "line": 331,
             "description": "Renders a Button and returns if the button was pressed",
             "itemtype": "method",
             "name": "Button",
@@ -9665,7 +9665,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 386,
+            "line": 389,
             "description": "Renders a Toolbar (list of buttons) and returns the active one",
             "itemtype": "method",
             "name": "Toolbar",
@@ -9696,7 +9696,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 466,
+            "line": 469,
             "description": "Renders a checkbox widget, and returns the current state\nRemember: you must pass as value the same value returned by this function in order to work propertly",
             "itemtype": "method",
             "name": "Toggle",
@@ -9732,10 +9732,10 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 530,
+            "line": 533,
             "description": "Renders a textfield widget and returns the current value\nRemember: you must pass as text the same text returned by this function in order to work propertly",
             "itemtype": "method",
-            "name": "Toggle",
+            "name": "TextField",
             "params": [
                 {
                     "name": "area",
@@ -9763,7 +9763,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 619,
+            "line": 622,
             "description": "Renders an horizontal slider widget, returns the current value\nRemember: you must pass as value the same value returned by this function in order to work propertly",
             "itemtype": "method",
             "name": "HorizontalSlider",
@@ -9804,7 +9804,7 @@
         },
         {
             "file": "../src/gui.js",
-            "line": 688,
+            "line": 691,
             "description": "Renders an vertical slider widget, returns the current value\nRemember: you must pass as value the same value returned by this function in order to work propertly",
             "itemtype": "method",
             "name": "VerticalSlider",

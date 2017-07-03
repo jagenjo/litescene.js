@@ -160,7 +160,10 @@
 
 
 <div class="box intro">
-    <p>GUI is a static class used to attach HTML elements on top of the 3D Canvas in a safe way</p>
+    <p>GUI is a static class used to create two kinds of GUIs: HTML GUIs on top of the 3D Canvas (in a safe way) or Immediate GUI using a Canvas2D (fast gui)
+For HTML GUIs check the getHTMLRoot function.
+For Immediate GUIs check the Box,Button,Toggle,Textfield,HorizontalSlider,VerticalSlider and Toolbar.
+To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
 
 </div>
 
@@ -238,7 +241,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_hide">hide</a>
+                                <a href="#method_hideHTML">hideHTML</a>
 
                             </li>
                             <li class="index-item method">
@@ -250,7 +253,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_load">load</a>
+                                <a href="#method_loadHTML">loadHTML</a>
 
                             </li>
                             <li class="index-item method">
@@ -262,11 +265,11 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_show">show</a>
+                                <a href="#method_showHTML">showHTML</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_Toggle">Toggle</a>
+                                <a href="#method_TextField">TextField</a>
 
                             </li>
                             <li class="index-item method">
@@ -315,7 +318,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l93"><code>..&#x2F;src&#x2F;gui.js:93</code></a>
+        <a href="../files/.._src_gui.js.html#l96"><code>..&#x2F;src&#x2F;gui.js:96</code></a>
         </p>
 
 
@@ -382,7 +385,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l283"><code>..&#x2F;src&#x2F;gui.js:283</code></a>
+        <a href="../files/.._src_gui.js.html#l286"><code>..&#x2F;src&#x2F;gui.js:286</code></a>
         </p>
 
 
@@ -456,7 +459,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l328"><code>..&#x2F;src&#x2F;gui.js:328</code></a>
+        <a href="../files/.._src_gui.js.html#l331"><code>..&#x2F;src&#x2F;gui.js:331</code></a>
         </p>
 
 
@@ -547,7 +550,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l76"><code>..&#x2F;src&#x2F;gui.js:76</code></a>
+        <a href="../files/.._src_gui.js.html#l79"><code>..&#x2F;src&#x2F;gui.js:79</code></a>
         </p>
 
 
@@ -619,7 +622,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l154"><code>..&#x2F;src&#x2F;gui.js:154</code></a>
+        <a href="../files/.._src_gui.js.html#l157"><code>..&#x2F;src&#x2F;gui.js:157</code></a>
         </p>
 
 
@@ -670,7 +673,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l26"><code>..&#x2F;src&#x2F;gui.js:26</code></a>
+        <a href="../files/.._src_gui.js.html#l29"><code>..&#x2F;src&#x2F;gui.js:29</code></a>
         </p>
 
 
@@ -694,8 +697,8 @@ Any HTML must be attached to this element, otherwise it may have problems with t
 
 
 </div>
-<div id="method_hide" class="method item">
-    <h3 class="name"><code>hide</code></h3>
+<div id="method_hideHTML" class="method item">
+    <h3 class="name"><code>hideHTML</code></h3>
 
         <span class="paren">()</span>
 
@@ -709,7 +712,7 @@ Any HTML must be attached to this element, otherwise it may have problems with t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l201"><code>..&#x2F;src&#x2F;gui.js:201</code></a>
+        <a href="../files/.._src_gui.js.html#l204"><code>..&#x2F;src&#x2F;gui.js:204</code></a>
         </p>
 
 
@@ -761,7 +764,7 @@ Any HTML must be attached to this element, otherwise it may have problems with t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l619"><code>..&#x2F;src&#x2F;gui.js:619</code></a>
+        <a href="../files/.._src_gui.js.html#l622"><code>..&#x2F;src&#x2F;gui.js:622</code></a>
         </p>
 
 
@@ -872,7 +875,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l299"><code>..&#x2F;src&#x2F;gui.js:299</code></a>
+        <a href="../files/.._src_gui.js.html#l302"><code>..&#x2F;src&#x2F;gui.js:302</code></a>
         </p>
 
 
@@ -916,8 +919,8 @@ Remember: you must pass as value the same value returned by this function in ord
 
 
 </div>
-<div id="method_load" class="method item">
-    <h3 class="name"><code>load</code></h3>
+<div id="method_loadHTML" class="method item">
+    <h3 class="name"><code>loadHTML</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
@@ -940,7 +943,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l213"><code>..&#x2F;src&#x2F;gui.js:213</code></a>
+        <a href="../files/.._src_gui.js.html#l216"><code>..&#x2F;src&#x2F;gui.js:216</code></a>
         </p>
 
 
@@ -999,7 +1002,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l166"><code>..&#x2F;src&#x2F;gui.js:166</code></a>
+        <a href="../files/.._src_gui.js.html#l169"><code>..&#x2F;src&#x2F;gui.js:169</code></a>
         </p>
 
 
@@ -1030,7 +1033,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l270"><code>..&#x2F;src&#x2F;gui.js:270</code></a>
+        <a href="../files/.._src_gui.js.html#l273"><code>..&#x2F;src&#x2F;gui.js:273</code></a>
         </p>
 
 
@@ -1046,8 +1049,8 @@ Remember: you must pass as value the same value returned by this function in ord
 
 
 </div>
-<div id="method_show" class="method item">
-    <h3 class="name"><code>show</code></h3>
+<div id="method_showHTML" class="method item">
+    <h3 class="name"><code>showHTML</code></h3>
 
         <span class="paren">()</span>
 
@@ -1061,7 +1064,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l188"><code>..&#x2F;src&#x2F;gui.js:188</code></a>
+        <a href="../files/.._src_gui.js.html#l191"><code>..&#x2F;src&#x2F;gui.js:191</code></a>
         </p>
 
 
@@ -1074,6 +1077,101 @@ Remember: you must pass as value the same value returned by this function in ord
     </div>
 
 
+
+
+</div>
+<div id="method_TextField" class="method item">
+    <h3 class="name"><code>TextField</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>area</code>
+                </li>
+                <li class="arg">
+                        <code>value</code>
+                </li>
+                <li class="arg">
+                        <code>max_length</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Boolean</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_gui.js.html#l533"><code>..&#x2F;src&#x2F;gui.js:533</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Renders a textfield widget and returns the current value
+Remember: you must pass as text the same text returned by this function in order to work propertly</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">area</code>
+                        <span class="type">Array</span>
+
+
+                    <div class="param-description">
+                        <p>[x,y,width,height]</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">value</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>if the checkbox is on or off</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">max_length</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>to limit the text, otherwise leave blank</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Boolean</span>:
+                    <p>the current state of the checkbox (will be different from value if it was pressed)</p>
+
+            </div>
+        </div>
 
 
 </div>
@@ -1110,7 +1208,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l466"><code>..&#x2F;src&#x2F;gui.js:466</code></a>
+        <a href="../files/.._src_gui.js.html#l469"><code>..&#x2F;src&#x2F;gui.js:469</code></a>
         </p>
 
 
@@ -1186,101 +1284,6 @@ Remember: you must pass as value the same value returned by this function in ord
 
 
 </div>
-<div id="method_Toggle" class="method item">
-    <h3 class="name"><code>Toggle</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>area</code>
-                </li>
-                <li class="arg">
-                        <code>value</code>
-                </li>
-                <li class="arg">
-                        <code>max_length</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Boolean</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_gui.js.html#l530"><code>..&#x2F;src&#x2F;gui.js:530</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Renders a textfield widget and returns the current value
-Remember: you must pass as text the same text returned by this function in order to work propertly</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">area</code>
-                        <span class="type">Array</span>
-
-
-                    <div class="param-description">
-                        <p>[x,y,width,height]</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">value</code>
-                        <span class="type">Boolean</span>
-
-
-                    <div class="param-description">
-                        <p>if the checkbox is on or off</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">max_length</code>
-                        <span class="type">Number</span>
-
-
-                    <div class="param-description">
-                        <p>to limit the text, otherwise leave blank</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Boolean</span>:
-                    <p>the current state of the checkbox (will be different from value if it was pressed)</p>
-
-            </div>
-        </div>
-
-
-</div>
 <div id="method_Toolbar" class="method item">
     <h3 class="name"><code>Toolbar</code></h3>
 
@@ -1311,7 +1314,7 @@ Remember: you must pass as text the same text returned by this function in order
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l386"><code>..&#x2F;src&#x2F;gui.js:386</code></a>
+        <a href="../files/.._src_gui.js.html#l389"><code>..&#x2F;src&#x2F;gui.js:389</code></a>
         </p>
 
 
@@ -1408,7 +1411,7 @@ Remember: you must pass as text the same text returned by this function in order
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l688"><code>..&#x2F;src&#x2F;gui.js:688</code></a>
+        <a href="../files/.._src_gui.js.html#l691"><code>..&#x2F;src&#x2F;gui.js:691</code></a>
         </p>
 
 

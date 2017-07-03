@@ -2316,7 +2316,10 @@ var Input = {
 LS.Input = Input;
 
 /**
-* GUI is a static class used to attach HTML elements on top of the 3D Canvas in a safe way
+* GUI is a static class used to create two kinds of GUIs: HTML GUIs on top of the 3D Canvas (in a safe way) or Immediate GUI using a Canvas2D (fast gui)
+* For HTML GUIs check the getHTMLRoot function.
+* For Immediate GUIs check the Box,Button,Toggle,Textfield,HorizontalSlider,VerticalSlider and Toolbar.
+* To change colors of the immediate GUI check the LS.GUI.GUIStyle
 *
 * @class GUI
 * @namespace LS
@@ -2504,9 +2507,9 @@ var GUI = {
 	/**
 	* shows the HTML GUI 
 	*
-	* @method show
+	* @method showHTML
 	*/
-	show: function()
+	showHTML: function()
 	{
 		if(!this._root)
 			return;
@@ -2517,9 +2520,9 @@ var GUI = {
 	/**
 	* hides the HTML GUI (but it is still existing) 
 	*
-	* @method hide
+	* @method hideHTML
 	*/
-	hide: function()
+	hideHTML: function()
 	{
 		if(!this._root)
 			return;
@@ -2529,11 +2532,11 @@ var GUI = {
 	/**
 	* Loads resource containing the HTML code for the GUI and attachs it inside a div to the hud
 	*
-	* @method load
+	* @method loadHTML
 	* @param {String} url the url of the resource containing all the HTML code
 	* @param {Function} on_complete callback that will be called once the HTML has been loaded and attached to the doom, it receives the HTMLElement containing all the HTML
 	*/
-	load: function( url, on_complete )
+	loadHTML: function( url, on_complete )
 	{
 		LS.ResourcesManager.load( url, function(res){
 			var gui_root = LS.GUI.getHTMLRoot();
@@ -2847,7 +2850,7 @@ var GUI = {
 	* Renders a textfield widget and returns the current value
 	* Remember: you must pass as text the same text returned by this function in order to work propertly
 	*
-	* @method Toggle
+	* @method TextField
 	* @param {Array} area [x,y,width,height]
 	* @param {Boolean} value if the checkbox is on or off
 	* @param {Number} max_length to limit the text, otherwise leave blank
@@ -3069,6 +3072,11 @@ var GUI = {
 		gl.canvas.style.cursor = type || "";
 	}
 };
+
+//LEGACY API
+GUI.show = GUI.showHTML;
+GUI.hide = GUI.hideHTML;
+GUI.load = GUI.loadHTML;
 
 GUI.getRoot = function()
 {
