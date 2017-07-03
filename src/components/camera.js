@@ -431,10 +431,10 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 * @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
 */
 Object.defineProperty( Camera.prototype, "frame", {
-	get: function() {
+	set: function(v) {
 		throw("frame cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function() {
 		return this._frame;
 	},
 	enumerable: false
@@ -444,10 +444,10 @@ Object.defineProperty( Camera.prototype, "frame", {
 * @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
 */
 Object.defineProperty( Camera.prototype, "frame_color_texture", {
-	get: function() {
+	set: function(v) {
 		throw("frame_color_texture cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function(v) {
 		if(!this._frame)
 			return null;
 		return this._frame.getColorTexture();
@@ -459,10 +459,10 @@ Object.defineProperty( Camera.prototype, "frame_color_texture", {
 * @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
 */
 Object.defineProperty( Camera.prototype, "frame_depth_texture", {
-	get: function() {
+	set: function(v) {
 		throw("frame_depth_texture cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function() {
 		if(!this._frame)
 			return null;
 		return this._frame.getDepthTexture();
@@ -1356,6 +1356,9 @@ Camera.prototype.configure = function(o)
 	if(o.frame && this._frame) this._frame.configure( o.frame );
 	if(o.show_frame !== undefined) this.show_frame = o.show_frame;
 
+	if(o.clear_color !== undefined) this.clear_color = !!o.clear_color;
+	if(o.clear_depth !== undefined) this.clear_depth = !!o.clear_depth;
+
 	this.updateMatrices( true );
 }
 
@@ -1380,7 +1383,9 @@ Camera.prototype.serialize = function()
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
 		frame: this._frame ? this._frame.serialize() : null,
-		show_frame: this.show_frame
+		show_frame: this.show_frame,
+		clear_color: this.clear_color,
+		clear_depth: this.clear_depth
 	};
 
 	//clone

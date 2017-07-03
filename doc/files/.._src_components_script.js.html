@@ -229,6 +229,7 @@ Script.defineAPIFunction( &quot;onSceneRender&quot;, Script.BIND_TO_SCENE, &quot
 Script.defineAPIFunction( &quot;onCollectRenderInstances&quot;, Script.BIND_TO_NODE, &quot;collectRenderInstances&quot; ); //TODO: move to SCENE
 Script.defineAPIFunction( &quot;onRender&quot;, Script.BIND_TO_SCENE, &quot;beforeRenderInstances&quot; );
 Script.defineAPIFunction( &quot;onAfterRender&quot;, Script.BIND_TO_SCENE, &quot;afterRenderInstances&quot; );
+Script.defineAPIFunction( &quot;onAfterSceneRender&quot;, Script.BIND_TO_SCENE, &quot;afterRender&quot; );
 Script.defineAPIFunction( &quot;onRenderHelpers&quot;, Script.BIND_TO_SCENE, &quot;renderHelpers&quot; );
 Script.defineAPIFunction( &quot;onRenderGUI&quot;, Script.BIND_TO_SCENE, &quot;renderGUI&quot; );
 Script.defineAPIFunction( &quot;onEnableFrameContext&quot;, Script.BIND_TO_SCENE, &quot;enableFrameContext&quot; );
@@ -244,6 +245,8 @@ Script.defineAPIFunction( &quot;onGamepadConnected&quot;, Script.BIND_TO_SCENE, 
 Script.defineAPIFunction( &quot;onGamepadDisconnected&quot;, Script.BIND_TO_SCENE, &quot;gamepaddisconnected&quot; );
 Script.defineAPIFunction( &quot;onButtonDown&quot;, Script.BIND_TO_SCENE, &quot;buttondown&quot; );
 Script.defineAPIFunction( &quot;onButtonUp&quot;, Script.BIND_TO_SCENE, &quot;buttonup&quot; );
+//global
+Script.defineAPIFunction( &quot;onFileDrop&quot;, Script.BIND_TO_SCENE, &quot;fileDrop&quot; );
 //dtor
 Script.defineAPIFunction( &quot;onDestroy&quot;, Script.BIND_TO_NODE, &quot;destroy&quot; );
 
@@ -540,6 +543,7 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 		context[ varname ].set( value );
 	else
 		context[ varname ] = value;
+	return true;
 }
 
 /**
@@ -743,6 +747,17 @@ Script.prototype.onCodeChange = function(code)
 Script.prototype.getResources = function(res)
 {
 	var ctx = this.getContext();
+
+	for(var i in ctx)
+	{
+		var value = ctx[i];
+		var info = ctx.constructor[ &quot;@&quot; + i];
+		if( !value || !info )
+			continue;
+		if( info.type == LS.TYPES.RESOURCE || info.type == LS.TYPES.TEXTURE || info.type == LS.TYPES.MESH )
+			res[ value ] = true;
+	}
+
 	if(ctx &amp;&amp; ctx.onGetResources )
 		ctx.onGetResources( res );
 }

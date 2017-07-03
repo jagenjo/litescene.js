@@ -10,7 +10,7 @@ function ShaderMaterial( o )
 {
 	Material.call( this, null );
 
-	this._shader = null;
+	this._shader = "";
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
 
@@ -756,6 +756,39 @@ ShaderMaterial.prototype.createProperty = function( name, value, type, options )
 		enumerable: false, //must not be serialized
 		configurable: true //allows to overwrite this property
 	});
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Boolean} true if something was modified
+*/
+ShaderMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	var v = Material.prototype.onResourceRenamed.call(this, old_name, new_name, resource );
+	if( this.shader == old_name)
+	{
+		this.shader = new_name;
+		v = true;
+	}
+
+	//change texture also in shader values... (this should be automatic but it is not)
+	for(var i = 0; i < this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.internal) //internal is a property that is not for the shader (is for internal computations)
+			continue;
+
+		if( !p.is_texture || !p.value )
+			continue;
+		if( p.value.texture != old_name )
+			continue;
+		p.value.texture = new_name;
+		v = true;
+	}
+
+	return v;
 }
 
 ShaderMaterial.getDefaultPickingShaderCode = function()

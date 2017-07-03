@@ -186,6 +186,7 @@ var Renderer = {
 	_current_camera: null,
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: null,
+	_global_textures: {}, //used to speed up fetching global textures
 
 	_queues: [], //render queues in order
 
@@ -422,8 +423,16 @@ var Renderer = {
 				LEvent.trigger( scene, &quot;showFrameContext&quot;, render_settings );
 		}
 
-		if(render_settings.render_gui)
+		//renders GUI items using mostly the Canvas2DtoWebGL library
+		if(render_settings.render_gui &amp;&amp; LEvent.hasBind( scene, &quot;renderGUI&quot;) )
+		{
+			if(gl.start2D)
+				gl.start2D();
+			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
 			LEvent.trigger( scene, &quot;renderGUI&quot;, render_settings );
+			if(gl.finish2D)
+				gl.finish2D();
+		}
 
 		this._frame_cpu_time = getTime() - start_time;
 
@@ -490,7 +499,7 @@ var Renderer = {
 		LEvent.trigger(this, &quot;beforeRenderScene&quot;, camera );
 
 		//here we render all the instances
-		this.renderInstances(render_settings);
+		this.renderInstances( render_settings );
 
 		//send after events
 		LEvent.trigger( scene, &quot;afterRenderScene&quot;, camera );
@@ -684,7 +693,7 @@ var Renderer = {
 
 		//compute global scene info
 		this.fillSceneShaderQuery( scene, render_settings );
-		this.fillSceneShaderUniforms( scene, render_settings );
+		this.fillSceneUniforms( scene, render_settings );
 
 		//reset state of everything!
 		this.resetGLState( render_settings );
@@ -920,11 +929,7 @@ var Renderer = {
 			this.bindSamplers( samplers );
 
 		//find shader name
-		var shader_name = render_settings.default_shader_id;
-		if(render_settings.low_quality)
-			shader_name = render_settings.default_low_shader_id;
-		if( material.shader_name )
-			shader_name = material.shader_name;
+		var shader_name = material.shader_name;
 
 		//multi pass instance rendering
 		var num_lights = lights.length;
@@ -1221,7 +1226,7 @@ var Renderer = {
 
 	//Called at the beginning of renderInstances (once per renderFrame)
 	//DO NOT CACHE, parameters can change between render passes
-	fillSceneShaderUniforms: function( scene, render_settings )
+	fillSceneUniforms: function( scene, render_settings )
 	{
 		//global uniforms
 		var uniforms = {
@@ -1241,6 +1246,10 @@ var Renderer = {
 		scene._samplers = scene._samplers || [];
 		scene._samplers.length = 0;
 
+		//clear globals
+		this._global_textures.environment = null;
+
+		//fetch globals
 		for(var i in scene.info.textures)
 		{
 			var texture = LS.getTexture( scene.info.textures[i] );
@@ -1264,6 +1273,9 @@ var Renderer = {
 			scene._samplers[ slot ] = texture;
 			scene._uniforms[ i + type ] = slot;
 			scene._query.macros[ &quot;USE_&quot; + (i + type).toUpperCase() ] = &quot;uvs_polar_reflected&quot;;
+
+			if( i == &quot;environment&quot; )
+				this._global_textures.environment = texture;
 		}
 
 		LEvent.trigger( scene, &quot;fillSceneUniforms&quot;, scene._uniforms );
@@ -1402,9 +1414,8 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//update materials info only if they are in use
-		if(render_settings.update_materials)
-			this._prepareMaterials( materials, scene );
+		//update materials 
+		this._prepareMaterials( materials, scene );
 
 		//pack all macros, uniforms, and samplers relative to this instance in single containers
 		for(var i = 0, l = instances.length; i &lt; l; ++i)
@@ -1442,6 +1453,8 @@ var Renderer = {
 			if( material.prepare )
 				material.prepare( scene );
 		}
+
+		LEvent.trigger( scene, &quot;prepareMaterials&quot; );
 	},
 
 	/**

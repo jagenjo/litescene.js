@@ -186,7 +186,7 @@ Object.defineProperty( GeometricPrimitive.prototype, &#x27;geometry&#x27;, {
 	get: function() { return this._geometry; },
 	set: function(v) { 
 		v = (v === undefined || v === null ? -1 : v|0);
-		if(v &lt; 0 || v &gt; 7)
+		if(v &lt; 0 || v &gt; 8)
 			return;
 		this._geometry = v;
 	},
@@ -200,10 +200,12 @@ GeometricPrimitive.SPHERE = 4;
 GeometricPrimitive.CIRCLE = 5;
 GeometricPrimitive.HEMISPHERE = 6;
 GeometricPrimitive.ICOSAHEDRON = 7;
+GeometricPrimitive.CONE = 8;
+
 //Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 
 GeometricPrimitive.icon = &quot;mini-icon-cube.png&quot;;
-GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER, &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Icosahedron&quot;:GeometricPrimitive.ICOSAHEDRON, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
+GeometricPrimitive[&quot;@geometry&quot;] = { type:&quot;enum&quot;, values: {&quot;Cube&quot;:GeometricPrimitive.CUBE, &quot;Plane&quot;: GeometricPrimitive.PLANE, &quot;Cylinder&quot;:GeometricPrimitive.CYLINDER, &quot;Sphere&quot;:GeometricPrimitive.SPHERE, &quot;Cone&quot;:GeometricPrimitive.CONE, &quot;Icosahedron&quot;:GeometricPrimitive.ICOSAHEDRON, &quot;Circle&quot;:GeometricPrimitive.CIRCLE, &quot;Hemisphere&quot;:GeometricPrimitive.HEMISPHERE  }};
 GeometricPrimitive[&quot;@primitive&quot;] = {widget:&quot;enum&quot;, values: {&quot;Default&quot;:-1, &quot;Points&quot;: 0, &quot;Lines&quot;:1, &quot;Triangles&quot;:4, &quot;Wireframe&quot;:10 }};
 GeometricPrimitive[&quot;@subdivisions&quot;] = { type:&quot;number&quot;, step:1, min:0 };
 GeometricPrimitive[&quot;@point_size&quot;] = { type:&quot;number&quot;, step:0.001 };
@@ -247,6 +249,9 @@ GeometricPrimitive.prototype.updateMesh = function()
 			break;
 		case GeometricPrimitive.ICOSAHEDRON:
 			this._mesh = GL.Mesh.icosahedron({size: this.size, subdivisions:subdivisions });
+			break;
+		case GeometricPrimitive.CONE:
+			this._mesh = GL.Mesh.cone({radius: this.size, height: this.size, subdivisions:subdivisions });
 			break;
 	}
 	this._key = key;

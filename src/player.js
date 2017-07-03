@@ -130,19 +130,26 @@ Object.defineProperty( Player.prototype, "file_drop_enabled", {
 	enumerable: true
 });
 
-Player.prototype.loadConfig = function( url, on_complete )
+/**
+* Loads a config file for the player, it could also load an scene if the config specifies one
+* @method loadConfig
+* @param {String} url url to the JSON file containing the config
+* @param {Function} on_complete callback trigged when the config is loaded
+* @param {Function} on_scene_loaded callback trigged when the scene and the resources are loaded (in case the config contains a scene to load)
+*/
+Player.prototype.loadConfig = function( url, on_complete, on_scene_loaded )
 {
 	var that = this;
 	LS.Network.requestJSON( url, inner );
 	function inner( data )
 	{
-		that.configure( data );
+		that.configure( data, on_scene_loaded );
 		if(on_complete)
 			on_complete(data);
 	}
 }
 
-Player.prototype.configure = function( options )
+Player.prototype.configure = function( options, on_scene_loaded )
 {
 	var that = this;
 
@@ -212,7 +219,7 @@ Player.prototype.configure = function( options )
 		this.setDebugRender(true);
 
 	if(options.scene_url)
-		this.loadScene( options.scene_url );
+		this.loadScene( options.scene_url, on_scene_loaded );
 }
 
 Player.STOPPED = 0;
@@ -311,12 +318,19 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 	}
 }
 
-
+/**
+* Pauses the execution. This will launch a "paused" event and stop calling the update method
+* @method pause
+*/
 Player.prototype.pause = function()
 {
 	this.state = LS.Player.PAUSED;
 }
 
+/**
+* Starts the scene. This will launch a "start" event and start calling the update for every frame
+* @method play
+*/
 Player.prototype.play = function()
 {
 	if(this.state == LS.Player.PLAYING)
@@ -329,6 +343,10 @@ Player.prototype.play = function()
 	this.scene.start();
 }
 
+/**
+* Stops the scene. This will launch a "finish" event and stop calling the update 
+* @method stop
+*/
 Player.prototype.stop = function()
 {
 	this.state = LS.Player.STOPPED;
@@ -336,6 +354,11 @@ Player.prototype.stop = function()
 	LS.GUI.reset(); //clear GUI
 }
 
+/**
+* Enable the functionality to catch files droped in the canvas so script can catch the "fileDrop" event (onFileDrop in the Script components).
+* @method setFileDrop
+* @param {boolean} v true if you want to allow file drop (true by default)
+*/
 Player.prototype.setFileDrop = function(v)
 {
 	if(this._file_drop_enabled == v)
@@ -408,6 +431,7 @@ Player.prototype._onfiledrop = function( file, evt )
 	return LEvent.trigger( LS.GlobalScene, "fileDrop", { file: file, event: evt } );
 }
 
+//called by the render loop to draw every frame
 Player.prototype._ondraw = function()
 {
 	var scene = this.scene;
@@ -456,6 +480,9 @@ Player.prototype._onupdate = function(dt)
 //input
 Player.prototype._onmouse = function(e)
 {
+	//send to the input system
+	LS.Input.onMouse(e);
+
 	//console.log(e);
 	if(this.state != LS.Player.PLAYING)
 		return;
@@ -484,6 +511,9 @@ Player.prototype._ontouch = function(e)
 
 Player.prototype._onkey = function(e)
 {
+	//send to the input system
+	LS.Input.onKey(e);
+
 	if(this.state != LS.Player.PLAYING)
 		return;
 
@@ -514,6 +544,7 @@ Player.prototype._ongamepad = function(e)
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
+//renders the loading bar, you can replace it in case you want your own loading bar 
 Player.prototype.renderLoadingBar = function( loading )
 {
 	if(!loading)
@@ -546,6 +577,11 @@ Player.prototype.enableDebug = function(v)
 	LS.catch_exceptions = !v;
 }
 
+/**
+* Enable a debug renderer that shows gizmos for most of the things on the scene
+* @method setDebugRender
+* @param {boolean} v true if you want the debug render
+*/
 Player.prototype.setDebugRender = function(v)
 {
 	if(!this.debug_render)

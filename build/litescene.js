@@ -1731,6 +1731,7 @@ LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
 LS.STOPPED = 0;
 LS.PLAYING = 1; 
 LS.PAUSED = 2;
+LS.LOADING = 3;
 
 LS.RUNNING = 1; //LEGACY
 
@@ -2149,6 +2150,15 @@ var Input = {
 	Mouse: {},
 	Gamepads: [],
 
+	//used for GUI elements
+	last_click: null,
+	current_click: null,
+	current_key: null,
+	keys_buffer: [],
+
+	//_mouse_event_offset: [0,0],
+	_last_frame: -1, //internal
+
 	init: function()
 	{
 		this.Keyboard = gl.keys;
@@ -2167,6 +2177,35 @@ var Input = {
 		this.Gamepads = gl.getGamepads();
 	},
 
+	onMouse: function(e)
+	{
+		this.Mouse.mousex = e.mousex;
+		this.Mouse.mousey = e.mousey;
+
+		//save it in case we need to know where was the last click
+		if(e.type == "mousedown")
+			this.current_click = e;
+		else if(e.type == "mouseup")
+			this.current_click = null;
+	},
+
+	onKey: function(e)
+	{
+		if(e.type == "keydown")
+		{
+			this.current_key = e;
+			if( LS.Renderer._frame != this._last_frame )
+			{
+				this.keys_buffer.length = 0;
+				LS.Renderer._frame = this._last_frame;
+			}
+			if( this.keys_buffer.length < 10 ) //safety first!
+				this.keys_buffer.push(e);
+		}
+		else
+			this.current_key = null;
+	},
+
 	/**
 	* returns if the mouse is inside the rect defined by x,y, width,height
 	*
@@ -2181,6 +2220,11 @@ var Input = {
 	isMouseInRect: function(x,y,width,height, flip_y)
 	{
 		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
+	},
+
+	isEventInRect: function(e,area)
+	{
+		return (e.mousex >= area[0] && e.mousex < (area[0] + area[2]) && e.mousey >= area[1] && e.mousey < (area[1] + area[3]) );
 	},
 
 	/**
@@ -2281,14 +2325,28 @@ LS.Input = Input;
 var GUI = {
 
 	_root: null, //root DOM element containing the GUI
+	_allow_change_cursor: true,
+	_is_on_top_of_immediate_widget: false,
+
+	GUIStyle: {
+		font: "Arial",
+		color: "#FFF",
+		backgroundColor: "#333",
+		backgroundColorOver: "#AAA",
+		selected: "#AAF",
+		unselected: "#AAA"
+	},
+
+	clicked_enter: false,
 
 	/**
-	* Returns the DOM element responsible for the GUI of the app. This is helpful because this GUI will be automatically removed if the app finishes.
+	* Returns the DOM element responsible for the HTML GUI of the app. This is helpful because this GUI will be automatically removed if the app finishes.
+	* Any HTML must be attached to this element, otherwise it may have problems with the editor.
 	*
-	* @method getRoot
+	* @method getHTMLRoot
 	* @return {HTMLElement} 
 	*/
-	getRoot: function()
+	getHTMLRoot: function()
 	{
 		if( this._root )
 		{
@@ -2298,7 +2356,7 @@ var GUI = {
 		}
 
 		if(LS.GlobalScene._state != LS.PLAYING)
-			console.warn("GUI element created before the scene is playing. Only create the GUI elements from onStart or after, otherwise the GUI elements will be lost.");
+			console.warn("GUI element created before the scene is playing will be deleted once the app starts. Only create the GUI elements from onStart or after, otherwise the GUI elements will be lost.");
 
 		var gui = document.createElement("div");
 		gui.className = "litescene-gui";
@@ -2349,7 +2407,7 @@ var GUI = {
 	},
 
 	/**
-	* attach HTMLElement to GUI Root in the anchor position specified
+	* attach HTMLElement to HTML GUI Root in the anchor position specified
 	*
 	* @method attach
 	* @param {HTMLElement} element
@@ -2404,7 +2462,7 @@ var GUI = {
 				console.warn("invalid GUI anchor position: ",anchor);
 		}
 
-		var gui_root = this.getRoot();
+		var gui_root = this.getHTMLRoot();
 		gui_root.appendChild( element );
 		return element;
 	},
@@ -2444,7 +2502,7 @@ var GUI = {
 	},
 
 	/**
-	* shows the GUI 
+	* shows the HTML GUI 
 	*
 	* @method show
 	*/
@@ -2457,7 +2515,7 @@ var GUI = {
 	},
 
 	/**
-	* hides the GUI (but it is still existing) 
+	* hides the HTML GUI (but it is still existing) 
 	*
 	* @method hide
 	*/
@@ -2478,7 +2536,7 @@ var GUI = {
 	load: function( url, on_complete )
 	{
 		LS.ResourcesManager.load( url, function(res){
-			var gui_root = LS.GUI.getRoot();
+			var gui_root = LS.GUI.getHTMLRoot();
 			var html = res.getAsHTML();
 			if(!html)
 			{
@@ -2521,8 +2579,502 @@ var GUI = {
 			element.setAttribute("src", src );
 		}
 
+	},
+
+	//IMMEDIATE GUI STUFF
+
+	/**
+	* Called by the LS.Renderer to clear intermediate stuff
+	*
+	* @method ResetImmediateGUI
+	*/
+	ResetImmediateGUI: function()
+	{
+		this._is_on_top_of_immediate_widget = false;
+		this.setCursor(null);
+		LS.GlobalScene.requestFrame(); //force redraws
+		this.clicked_enter = false;
+	},
+
+	/**
+	* Renders an immediate gui BOX, used as background
+	*
+	* @method Box
+	* @param {Array} area [x,y,width,height]
+	* @param {String} color a color in string format "#AFAFAF"
+	*/
+	Box: function( area, color )
+	{
+		if(!area)
+			throw("No area");
+		var ctx = gl;
+		ctx.fillStyle = color || "#333";
+		ctx.fillRect( area[0], area[1], area[2], area[3] );
+	},
+
+	/**
+	* Renders a text (or a texture)
+	*
+	* @method Label
+	* @param {Array} area [x,y,width,height]
+	* @param {String|GL.Texture} content could be a string or a GL.Texture
+	*/
+	Label: function( area, content )
+	{
+		if(!area)
+			throw("No area");
+		if(!content)
+			return;
+
+		var ctx = gl;
+
+		if(content.constructor === GL.Texture)
+		{
+			ctx.drawImage( content, area[0], area[1], area[2], area[3] );
+		}
+		else if(content.constructor === String)
+		{
+			ctx.fillStyle = this.GUIStyle.color;
+			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+			ctx.textAlign = "left";
+			ctx.fillText( content, area[0] + area[3] * 0.2, area[1] + area[3] * 0.75 );
+		}
+	},
+
+	/**
+	* Renders a Button and returns if the button was pressed
+	*
+	* @method Button
+	* @param {Array} area [x,y,width,height]
+	* @param {String|GL.Texture} content could be a string or a GL.Texture
+	* @param {String|GL.Texture} content_over same as before but in case the mouse is over
+	* @return {Boolean} true if the button was pressed 
+	*/
+	Button: function( area, content, content_over )
+	{
+		if(!area)
+			throw("No area");
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area );
+			if(clicked)
+				LS.Input.current_click = false; //consume event
+		}
+
+		if( !content || content.constructor === String )
+		{
+			ctx.fillStyle = clicked ? "#FFF" : (is_over ? this.GUIStyle.backgroundColorOver : this.GUIStyle.backgroundColor );
+			ctx.fillRect( area[0], area[1], area[2], area[3] );
+		}
+
+		if(content)
+		{
+			if(content.constructor === GL.Texture)
+			{
+				var texture = content;
+				if( is_over && content_over && content_over.constructor === GL.Texture)
+					texture = content_over;
+				ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
+			}
+			else if(content.constructor === String)
+			{
+				ctx.fillStyle = this.GUIStyle.color;
+				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+				ctx.textAlign = "center";
+				ctx.fillText( content, area[0] + area[2] * 0.5, area[1] + area[3] * 0.75 );
+				ctx.textAlign = "left";
+			}
+		}
+
+		return clicked;
+	},
+
+	/**
+	* Renders a Toolbar (list of buttons) and returns the active one
+	*
+	* @method Toolbar
+	* @param {Array} area [x,y,width,height]
+	* @param {Number} selected the index of the selected option
+	* @param {Array[String|GL.Texture]} options an array containing either strings or GL.Texture
+	* @return {Number} the selected index
+	*/
+	Toolbar: function( area, selected, options )
+	{
+		if( !area )
+			throw("No area");
+		if( !options || options.constructor !== Array )
+			throw("No options");
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var num = options.length;
+		var x = area[0];
+		var w = area[2];
+		area[2] = w/num;
+
+		for(var i = 0; i < num; ++i)
+		{
+			var content = options[i];
+			var is_selected = selected == i;
+			var clicked = false;
+			area[0] = x + area[2] * i;
+
+			if( mouse )
+			{
+				clicked = LS.Input.isEventInRect( mouse, area );
+				if(clicked)
+				{
+					selected = i;
+					is_selected = true;
+					LS.Input.current_click = false; //consume event
+				}
+			}
+
+			if( !content || content.constructor === String )
+			{
+				ctx.fillStyle = is_selected ? this.GUIStyle.backgroundColorOver : this.GUIStyle.backgroundColor;
+				ctx.fillRect( area[0], area[1], area[2], area[3] );
+			}
+
+			if(content)
+			{
+				if(content.constructor === GL.Texture)
+				{
+					var texture = content;
+					if(!is_selected)
+						ctx.globalAlpha = 0.5;
+					ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
+					ctx.globalAlpha = 1;
+				}
+				else if(content.constructor === String)
+				{
+					ctx.fillStyle = this.GUIStyle.color;
+					ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+					ctx.textAlign = "center";
+					ctx.fillText( content, area[0] + area[2] * 0.5, area[1] + area[3] * 0.75 );
+					ctx.textAlign = "left";
+				}
+			}
+		}
+
+		area[0] = x;
+		area[2] = w;
+
+		return selected;
+	},
+
+	/**
+	* Renders a checkbox widget, and returns the current state
+	* Remember: you must pass as value the same value returned by this function in order to work propertly
+	*
+	* @method Toggle
+	* @param {Array} area [x,y,width,height]
+	* @param {Boolean} value if the checkbox is on or off
+	* @param {String|GL.Texture} content an string or image in case the checkbox is on
+	* @param {String|GL.Texture} content_off an string or image in case the checkbox is off 
+	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
+	*/
+	Toggle: function( area, value, content, content_off )
+	{
+		if(!area)
+			throw("No area");
+		value = !!value;
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area );
+			if(clicked)
+			{
+				LS.Input.current_click = false; //consume event
+			}
+		}
+
+		var margin = (area[3]*0.2)
+
+		if(content)
+		{
+			if(content.constructor === GL.Texture)
+			{
+				var texture = content;
+				if( !value && content_off && content_off.constructor === GL.Texture)
+					texture = content_off;
+				ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
+			}
+			else if(content.constructor === String)
+			{
+				ctx.fillStyle = this.GUIStyle.color;
+				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+				ctx.fillText( content, area[0] + margin, area[1] + area[3] * 0.75 );
+
+				var w = area[3] * 0.6;
+				ctx.fillStyle = this.GUIStyle.backgroundColor;
+				ctx.fillRect( area[0] + area[2] - margin*1.5 - w, area[1] + margin*0.5, w+margin, area[3] - margin );
+				ctx.fillStyle = value ? this.GUIStyle.selected : "#000";
+				ctx.fillRect( area[0] + area[2] - margin - w, area[1] + margin, w, area[3] - margin*2 );
+			}
+		}
+
+		return clicked ? !value : value;
+	},
+
+
+	/**
+	* Renders a textfield widget and returns the current value
+	* Remember: you must pass as text the same text returned by this function in order to work propertly
+	*
+	* @method Toggle
+	* @param {Array} area [x,y,width,height]
+	* @param {Boolean} value if the checkbox is on or off
+	* @param {Number} max_length to limit the text, otherwise leave blank
+	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
+	*/
+	TextField: function( area, text, max_length )
+	{
+		if(!area)
+			throw("No area");
+
+		text = text === undefined ? "" : String(text);
+		max_length = max_length || 1024;
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area );
+			if(clicked)
+			{
+				LS.Input.current_click = null; //consume event
+				LS.Input.last_click = mouse;
+			}
+		}
+		var is_selected = false;
+		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area ) )
+		{
+			is_selected = true;
+		}
+
+		if(is_selected)
+		{
+			var keys = LS.Input.keys_buffer;
+			for( var i = 0; i < keys.length; ++i )
+			{
+				var key = keys[i];
+				switch(key.keyCode)
+				{
+					case 8: text = text.substr(0, text.length - 1 ); break; //backspace
+					case 13: this.clicked_enter = true; break; //return
+					case 32: if(text.length < max_length) text += " "; break;
+					default:
+						if(text.length < max_length && key.key && key.key.length == 1) //length because control keys send a string like "Shift"
+							text += key.key;
+						/*
+						if( key.keyCode >= 65 && key.keyCode <= 122 ) //letters
+							text += key.shiftKey ? key.character.toUpperCase() : key.character.toLowerCase();
+						*/
+				}
+				//console.log(key.charCode, key.keyCode, key.character, key.which, key );
+			}
+			keys.length = 0; //consume them
+			LS.Input.current_key = null;
+		}
+
+		var line = (area[3]*0.02);
+		var margin = (area[3]*0.2);
+
+		//contour
+		ctx.fillStyle = this.GUIStyle.backgroundColor;
+		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillStyle = "#000";
+		ctx.fillRect( area[0] + line, area[1] + line, area[2] - line*2, area[3] - line*2 );
+
+		ctx.fillStyle = this.GUIStyle.color;
+		ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+		ctx.textAlign = "left";
+
+		var cursor = "";
+		if( is_selected && (((getTime() * 0.002)|0) % 2) == 0 )
+			cursor = "|";
+
+		ctx.fillText( text + cursor, area[0] + margin*2, area[1] + area[3] * 0.75 );
+
+		return text;
+	},
+
+	/**
+	* Renders an horizontal slider widget, returns the current value
+	* Remember: you must pass as value the same value returned by this function in order to work propertly
+	*
+	* @method HorizontalSlider
+	* @param {Array} area [x,y,width,height]
+	* @param {Number} value the value to show in the slider
+	* @param {Number} left_value the minimum value for the slider
+	* @param {Number} right_value the maximum value for the slider
+	* @param {Boolean} show_value if you want to see a caption in text format with the value
+	* @return {Number} the current value of the slider (will be different from value if it was clicked)
+	*/
+	HorizontalSlider: function( area, value, left_value, right_value, show_value )
+	{
+		if(!area)
+			throw("No area");
+
+		if(left_value === undefined)
+			left_value = 0;
+		if(right_value === undefined)
+			right_value = 1;
+		value = Number(value);
+		left_value = Number(left_value);
+		right_value = Number(right_value);
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		var range = right_value - left_value;
+		var norm_value = (value - left_value) / range;
+		if(norm_value < 0) norm_value = 0;
+		if(norm_value > 1) norm_value = 1;
+
+		var margin = (area[3]*0.2);
+
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area );
+			if(clicked)
+			{
+				norm_value = (LS.Input.Mouse.mousex - (area[0] + margin)) / (area[2] - margin*2);
+				if(norm_value < 0) norm_value = 0;
+				if(norm_value > 1) norm_value = 1;
+				value = norm_value * range + left_value;
+			}
+		}
+
+		ctx.fillStyle = this.GUIStyle.backgroundColor;
+		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
+		ctx.fillRect( area[0] + margin, area[1] + margin, (area[2] - margin*2) * norm_value, area[3] - margin*2 );
+
+		if(show_value)
+		{
+			ctx.textAlign = "center";
+			ctx.fillStyle = this.GUIStyle.color;
+			ctx.font = (area[3]*0.5).toFixed(0) + "px " + this.GUIStyle.font;
+			ctx.fillText( value.toFixed(2), area[0] + area[2] * 0.5, area[1] + area[3] * 0.7 );
+		}
+
+		return value;
+	},
+
+	/**
+	* Renders an vertical slider widget, returns the current value
+	* Remember: you must pass as value the same value returned by this function in order to work propertly
+	*
+	* @method VerticalSlider
+	* @param {Array} area [x,y,width,height]
+	* @param {Number} value the value to show in the slider
+	* @param {Number} bottom_value the minimum value for the slider
+	* @param {Number} top_value the maximum value for the slider
+	* @return {Number} the current value of the slider (will be different from value if it was clicked)
+	*/
+	VerticalSlider: function( area, value, bottom_value, top_value )
+	{
+		if(!area)
+			throw("No area");
+
+		value = Number(value);
+		if(bottom_value === undefined)
+			bottom_value = 0;
+		if(top_value === undefined)
+			top_value = 1;
+		bottom_value = Number(bottom_value);
+		top_value = Number(top_value);
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		var range = top_value - bottom_value;
+		var norm_value = (value - bottom_value) / range;
+		if(norm_value < 0) norm_value = 0;
+		if(norm_value > 1) norm_value = 1;
+
+		var margin = (area[2]*0.2)
+
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area );
+			if(clicked)
+			{
+				norm_value = (LS.Input.Mouse.mousey - (area[1] + margin)) / (area[3] - margin*2);
+				if(norm_value < 0) norm_value = 0;
+				if(norm_value > 1) norm_value = 1;
+				norm_value = 1 - norm_value; //reverse slider
+				value = norm_value * range + bottom_value;
+			}
+		}
+
+		ctx.fillStyle = this.GUIStyle.backgroundColor;
+		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
+		ctx.fillRect( area[0] + margin, area[1] + area[3] - (area[3] - margin*2) * norm_value - margin, area[2] - margin*2, (area[3] - margin*2) * norm_value );
+
+		return value;
+	},
+
+	setCursor: function(type)
+	{
+		if(!this._allow_change_cursor)
+			return;
+		gl.canvas.style.cursor = type || "";
 	}
 };
+
+GUI.getRoot = function()
+{
+	console.warn("LS.GUI.getRoot() deprecated, use LS.GUI.getHTMLRoot() instead.");
+	return LS.GUI.getHTMLRoot();
+}
 
 LS.GUI = GUI;
 /**
@@ -2550,11 +3102,13 @@ var ResourcesManager = {
 
 	path: "", //url to retrieve resources relative to the index.html
 	proxy: "", //url to retrieve resources outside of this host
-	ignore_cache: false, //change to true to ignore server cache
+	ignore_cache: false, //change to true to ignore client cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
 	keep_urls: false, //keep the local URLs of loaded files
 	allow_base_files: false, //allow to load files that are not in a subfolder
+
+	scene_external_repository: null, //this is used by some scenes to specify where are the resources located
 
 	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
@@ -2577,6 +3131,7 @@ var ResourcesManager = {
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
 	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
+	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -2600,6 +3155,8 @@ var ResourcesManager = {
 		this.textures = {};
 		this.materials = {};
 		this.materials_by_uid = {};
+
+		this.scene_external_repository = null;
 	},
 
 	/**
@@ -2840,7 +3397,8 @@ var ResourcesManager = {
 	},
 
 	/**
-	* transform a url to a full url taking into account proxy, virtual file systems and local_repository
+	* transform a url to a full url taking into account proxy, virtual file systems and external_repository
+	* used only when requesting a resource to be loaded
 	*
 	* @method getFullURL
 	* @param {String} url
@@ -2858,12 +3416,17 @@ var ResourcesManager = {
 			protocol = url.substr(0,pos);
 
 		var resources_path = this.path;
+
+		//from scene.external_repository
+		if(this.scene_external_repository) 
+			resources_path = this.scene_external_repository;
+
 		if(options && options.force_local_url)
 			resources_path = ".";
 
 		//used special repository
-		if(options && options.local_repository)
-			resources_path = options.local_repository;
+		if(options && options.external_repository)
+			resources_path = options.external_repository;
 
 		if(protocol)
 		{
@@ -3005,7 +3568,7 @@ var ResourcesManager = {
 	* @method resourceModified
 	* @param {Object} resource
 	*/
-	resourceModified: function(resource)
+	resourceModified: function( resource )
 	{
 		if(!resource)
 			return;
@@ -3020,7 +3583,7 @@ var ResourcesManager = {
 		delete resource._original_data;
 		delete resource._original_file;
 
-		if(resource.remotepath)
+		if( resource.remotepath )
 			resource._modified = true;
 
 		LEvent.trigger(this, "resource_modified", resource );
@@ -3139,11 +3702,6 @@ var ResourcesManager = {
 		if(format_info && format_info.has_preview && !options.is_preview )
 			LEvent.trigger( this, "load_resource_preview", url );
 
-		//avoid the cache (if you want)
-		var nocache = this.getNoCache();
-		if(nocache)
-			full_url += (full_url.indexOf("?") == -1 ? "?" : "&") + nocache;
-
 		//create the ajax request
 		var settings = {
 			url: full_url,
@@ -3165,7 +3723,7 @@ var ResourcesManager = {
 		};
 
 		//force no cache by request
-		settings.nocache = nocache || this.force_nocache_extensions[ extension ];
+		settings.nocache = this.ignore_cache || this.force_nocache_extensions[ extension ] || this.nocache_files[ url ];
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
@@ -3274,6 +3832,7 @@ var ResourcesManager = {
 				case "image":
 					resource = LS.ResourcesManager.processImage( url, data, options, process_final );
 					break;
+				case "data":
 				default:
 					if( format_info.parse )
 					{
@@ -3462,42 +4021,46 @@ var ResourcesManager = {
 	/**
 	* Changes the name of a resource and sends an event to all components to change it accordingly
 	* @method renameResource
-	* @param {String} old 
-	* @param {String} newname
+	* @param {String} old_name 
+	* @param {String} new_name
 	* @param {Boolean} [skip_event=false] ignore sending an event to all components to rename the resource
 	* @return {boolean} if the file was found
 	*/
-	renameResource: function(old, newname, skip_event)	
+	renameResource: function(old_name, new_name, skip_event)	
 	{
-		var res = this.resources[ old ];
+		var res = this.resources[ old_name ];
 		if(!res)
 			return false;
 
-		res.filename = newname;
+		res.filename = new_name;
 		if(res.fullpath)
-			res.fullpath = newname;
+			res.fullpath = new_name;
 
-		this.resources[newname] = res;
-		delete this.resources[ old ];
+		this.resources[new_name] = res;
+		delete this.resources[ old_name ];
 
 		if(!skip_event)
-			this.sendResourceRenamedEvent(old, newname, res);
+			LS.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
 
 		//ugly: too hardcoded
-		if( this.meshes[old] ) {
-			delete this.meshes[ old ];
-			this.meshes[ newname ] = res;
+		if( this.meshes[old_name] ) {
+			delete this.meshes[ old_name ];
+			this.meshes[ new_name ] = res;
 		}
-		if( this.textures[old] ) {
-			delete this.textures[ old ];
-			this.textures[ newname ] = res;
+		if( this.textures[old_name] ) {
+			delete this.textures[ old_name ];
+			this.textures[ new_name ] = res;
 		}
-		if( this.materials[old] ) {
-			delete this.materials[ old ];
-			this.materials[ newname ] = res;
+		if( this.materials[old_name] ) {
+			delete this.materials[ old_name ];
+			this.materials[ new_name ] = res;
 		}
 
-		this.resources_renamed_recently[ old ] = newname;
+		//in case somebody needs to know where a resource has gone
+		this.resources_renamed_recently[ old_name ] = new_name;
+
+		if(!skip_event)
+			LEvent.trigger( LS.ResourcesManager, "resource_renamed", [ old_name, new_name, res ] );
 		return true;
 	},
 
@@ -3574,40 +4137,6 @@ var ResourcesManager = {
 		if(name_or_id[0] == "@")
 			return this.materials_by_uid[ name_or_id ];
 		return this.materials[ name_or_id ];
-	},
-
-	//tells to all the components, nodes, materials, etc, that one resource has changed its name so they can update
-	sendResourceRenamedEvent: function( old_name, new_name, resource )
-	{
-		var scene = LS.GlobalScene;
-		var nodes = scene._nodes.concat();
-		for(var i = 0; i < nodes.length; i++)
-		{
-			//nodes
-			var node = nodes[i];
-
-			//prefabs
-			if( node.prefab && node.prefab === old_name )
-				node.prefab = new_name; //does this launch a reload prefab? dont know
-
-			//components
-			for(var j = 0; j < node._components.length; j++)
-			{
-				var component = node._components[j];
-				if(component.onResourceRenamed)
-					component.onResourceRenamed( old_name, new_name, resource )
-			}
-
-			//materials
-			if( node.material && node.material == old_name )
-				node.material = new_name;
-			else
-			{
-				var material = node.getMaterial();
-				if( material && material.onResourceRenamed )
-					material.onResourceRenamed(old_name, new_name, resource)
-			}
-		}
 	},
 
 	/**
@@ -3793,10 +4322,12 @@ LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data
 	var zip = new JSZip();
 	zip.loadAsync( data ).then(function(zip){
 		zip.forEach(function (relativePath, file){
+			if(file.dir)
+				return; //ignore folders
 			var ext = LS.ResourcesManager.getExtension( relativePath );
 			var format = LS.Formats.supported[ ext ];
 			file.async( format && format.dataType == "text" ? "string" : "arraybuffer").then( function(filedata){
-				if( relativePath == "scene.json" )
+				if( relativePath == "scene.json" && (!options || !options.to_memory) )
 					LS.GlobalScene.configure( JSON.parse( filedata ) );
 				else
 					LS.ResourcesManager.processResource( relativePath, filedata );
@@ -6107,18 +6638,23 @@ Material.prototype.getResources = function (res)
 * Event used to inform if one resource has changed its name
 * @method onResourceRenamed
 * @param {Object} resources object where all the resources are stored
-* @return {Texture}
+* @return {Boolean} true if something was modified
 */
 Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
+	var v = false;
 	for(var i in this.textures)
 	{
 		var sampler = this.textures[i];
 		if(!sampler)
 			continue;
 		if(sampler.texture == old_name)
+		{
 			sampler.texture = new_name;
+			v = true;
+		}
 	}
+	return v;
 }
 
 /**
@@ -6279,7 +6815,7 @@ function ShaderMaterial( o )
 {
 	Material.call( this, null );
 
-	this._shader = null;
+	this._shader = "";
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
 
@@ -7025,6 +7561,39 @@ ShaderMaterial.prototype.createProperty = function( name, value, type, options )
 		enumerable: false, //must not be serialized
 		configurable: true //allows to overwrite this property
 	});
+}
+
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Boolean} true if something was modified
+*/
+ShaderMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	var v = Material.prototype.onResourceRenamed.call(this, old_name, new_name, resource );
+	if( this.shader == old_name)
+	{
+		this.shader = new_name;
+		v = true;
+	}
+
+	//change texture also in shader values... (this should be automatic but it is not)
+	for(var i = 0; i < this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.internal) //internal is a property that is not for the shader (is for internal computations)
+			continue;
+
+		if( !p.is_texture || !p.value )
+			continue;
+		if( p.value.texture != old_name )
+			continue;
+		p.value.texture = new_name;
+		v = true;
+	}
+
+	return v;
 }
 
 ShaderMaterial.getDefaultPickingShaderCode = function()
@@ -13463,6 +14032,19 @@ if(typeof(LiteGraph) != "undefined")
 			this.title = LS.getClassName( compo.constructor );
 	}
 
+	LGraphComponent.prototype.onConnectionsChange = function( type, slot, created, link_info, slot_info )
+	{
+		if(type == LiteGraph.INPUT && slot_info && slot_info.name == "Component" )
+		{
+			var node = this.getInputNode(slot);
+			if(node && node.onExecute)
+			{
+				node.onExecute();
+				this.setDirtyCanvas(true,true);
+			}
+		}
+	}
+
 	LGraphComponent.prototype.getComponent = function()
 	{
 		var scene = this.graph._scene;
@@ -13471,7 +14053,19 @@ if(typeof(LiteGraph) != "undefined")
 
 		var node_id = this.properties.node_id;
 		if(!node_id)
-			return;
+		{
+			if( this.inputs && this.inputs.length )
+			{
+				var slot = this.findInputSlot("Component");
+				if(slot != -1)
+				{
+					var component = this.getInputData(slot);
+					return component ? component : null;
+				}
+			}
+
+			return null;
+		}
 
 		//find node
 		var node = scene.getNode( node_id );
@@ -13602,7 +14196,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.onGetInputs = function()
 	{ 
-		var inputs = [["Node",0],null];
+		var inputs = [["Node",0],["Component",0],null];
 
 		this.getComponentProperties("input", inputs);
 
@@ -14769,6 +15363,7 @@ FXStack.available_fx = {
 		}
 	}
 	*/
+	//median: https://github.com/patriciogonzalezvivo/flatLand/blob/master/bin/data/median.frag
 };
 
 //functions that could be used
@@ -17394,8 +17989,16 @@ var Renderer = {
 				LEvent.trigger( scene, "showFrameContext", render_settings );
 		}
 
-		if(render_settings.render_gui)
+		//renders GUI items using mostly the Canvas2DtoWebGL library
+		if(render_settings.render_gui && LEvent.hasBind( scene, "renderGUI") )
+		{
+			if(gl.start2D)
+				gl.start2D();
+			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
 			LEvent.trigger( scene, "renderGUI", render_settings );
+			if(gl.finish2D)
+				gl.finish2D();
+		}
 
 		this._frame_cpu_time = getTime() - start_time;
 
@@ -23015,10 +23618,10 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 * @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
 */
 Object.defineProperty( Camera.prototype, "frame", {
-	get: function() {
+	set: function(v) {
 		throw("frame cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function() {
 		return this._frame;
 	},
 	enumerable: false
@@ -23028,10 +23631,10 @@ Object.defineProperty( Camera.prototype, "frame", {
 * @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
 */
 Object.defineProperty( Camera.prototype, "frame_color_texture", {
-	get: function() {
+	set: function(v) {
 		throw("frame_color_texture cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function(v) {
 		if(!this._frame)
 			return null;
 		return this._frame.getColorTexture();
@@ -23043,10 +23646,10 @@ Object.defineProperty( Camera.prototype, "frame_color_texture", {
 * @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
 */
 Object.defineProperty( Camera.prototype, "frame_depth_texture", {
-	get: function() {
+	set: function(v) {
 		throw("frame_depth_texture cannot be assigned manually, enable render_to_texture");
 	},
-	set: function(v) {
+	get: function() {
 		if(!this._frame)
 			return null;
 		return this._frame.getDepthTexture();
@@ -23940,6 +24543,9 @@ Camera.prototype.configure = function(o)
 	if(o.frame && this._frame) this._frame.configure( o.frame );
 	if(o.show_frame !== undefined) this.show_frame = o.show_frame;
 
+	if(o.clear_color !== undefined) this.clear_color = !!o.clear_color;
+	if(o.clear_depth !== undefined) this.clear_depth = !!o.clear_depth;
+
 	this.updateMatrices( true );
 }
 
@@ -23964,7 +24570,9 @@ Camera.prototype.serialize = function()
 		viewport: toArray( this._viewport ),
 		render_to_texture: this.render_to_texture,
 		frame: this._frame ? this._frame.serialize() : null,
-		show_frame: this.show_frame
+		show_frame: this.show_frame,
+		clear_color: this.clear_color,
+		clear_depth: this.clear_depth
 	};
 
 	//clone
@@ -26030,6 +26638,11 @@ Object.defineProperty( MeshRenderer.prototype, 'textured_points', {
 	enumerable: true
 });
 
+Object.defineProperty( MeshRenderer.prototype, 'render_instance', {
+	get: function() { return this._RI; },
+	set: function(v) { throw("cannot set a render_instance, must use the collectRenderInstances process."); },
+	enumerable: false
+});
 
 MeshRenderer.icon = "mini-icon-teapot.png";
 
@@ -27735,8 +28348,22 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if(!render_instances.length)
 		return;
 
+	if(!this.root)
+		return;
+
+	var last_RI;
+
+	//get index
+	var index = this.root.getIndexOfComponent(this);
+	var prev_comp = this.root.getComponentByIndex( index - 1);
+	if(prev_comp)
+		last_RI = prev_comp._RI;
+
+	if(!last_RI)
+		return;
+
 	//take last one (although maybe using this._root.instances ...)
-	var last_RI = render_instances[ render_instances.length - 1];
+	//last_RI = render_instances[ render_instances.length - 1];
 	
 	if(!this.enabled)
 	{
@@ -30636,7 +31263,7 @@ function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
 
-	this._render_settings = new LS.RenderSettings();
+	//this._render_settings = new LS.RenderSettings();
 
 	this._textures = {};
 
@@ -30659,6 +31286,7 @@ Object.defineProperty( GlobalInfo.prototype, 'textures', {
 	enumerable: true
 });
 
+/*
 Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	set: function( v )
 	{
@@ -30671,6 +31299,7 @@ Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	},
 	enumerable: true
 });
+*/
 
 GlobalInfo.icon = "mini-icon-bg.png";
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);
@@ -30772,6 +31401,16 @@ if(typeof(LGraphTexture) != "undefined")
 	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
 	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
 }
+
+
+if( typeof(LGAudio) != "undefined" )
+{
+	LGAudio.onProcessAudioURL = function(url)
+	{
+		return LS.RM.getFullURL(url);
+	}
+}
+
 
 /**
 * This component allow to integrate a behaviour graph on any object
@@ -34137,6 +34776,17 @@ Script.prototype.onCodeChange = function(code)
 Script.prototype.getResources = function(res)
 {
 	var ctx = this.getContext();
+
+	for(var i in ctx)
+	{
+		var value = ctx[i];
+		var info = ctx.constructor[ "@" + i];
+		if( !value || !info )
+			continue;
+		if( info.type == LS.TYPES.RESOURCE || info.type == LS.TYPES.TEXTURE || info.type == LS.TYPES.MESH )
+			res[ value ] = true;
+	}
+
 	if(ctx && ctx.onGetResources )
 		ctx.onGetResources( res );
 }
@@ -35765,6 +36415,11 @@ function SceneTree()
 	this._cameras = [];
 	this._colliders = [];
 
+	//MOST OF THE PARAMETERS ARE CREATED IN init() METHOD
+
+	//in case the resources base path are located somewhere else, if null the default is used
+	this.external_repository = null;
+
 	//work in progress, not finished yet. This will contain all the objects
 	this._spatial_container = new LS.SpatialContainer();
 
@@ -35857,7 +36512,8 @@ SceneTree.prototype.init = function()
 {
 	this.id = "";
 	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
-	this.local_repository = null;
+	this.external_repository = null;
+
 	this.global_scripts = [];
 	this.external_scripts = [];
 	this.preloaded_resources = {};
@@ -35951,8 +36607,8 @@ SceneTree.prototype.configure = function( scene_info )
 	if((scene_info.object_class || scene_info.object_type) != "SceneTree") //legacy
 		console.warn("Warning: object set to scene doesnt look like a propper one.", scene_info);
 
-	if(scene_info.local_repository)
-		this.local_repository = scene_info.local_repository;
+	if(scene_info.external_repository)
+		this.external_repository = scene_info.external_repository;
 
 	//extra info that the user wanted to save (comments, etc)
 	if(scene_info.extra)
@@ -35964,42 +36620,6 @@ SceneTree.prototype.configure = function( scene_info )
 		this._spatial_container.clear(); // is this necessary?
 		this._root.configure( scene_info.root );
 	}
-
-	/*
-	//LEGACY
-	if(scene_info.nodes)
-		this.root.configure( { children: scene_info.nodes } );
-
-	//LEGACY
-	if(scene_info.components)
-		this._root.configureComponents(scene_info);
-
-	// LEGACY...
-	if(scene_info.camera)
-	{
-		if(this._root.camera)
-			this._root.camera.configure( scene_info.camera );
-		else
-			this._root.addComponent( new Camera( scene_info.camera ) );
-	}
-
-	if(scene_info.light)
-	{
-		if(this._root.light)
-			this._root.light.configure( scene_info.light );
-		else
-			this._root.addComponent( new Light(scene_info.light) );
-	}
-	else if(scene_info.hasOwnProperty("light")) //light is null
-	{
-		//skip default light
-		if(this._root.light)
-		{
-			this._root.removeComponent( this._root.light );
-			this._root.light = null;
-		}
-	}
-	*/
 
 	if( scene_info.global_scripts )
 		this.global_scripts = scene_info.global_scripts.concat();
@@ -36052,8 +36672,7 @@ SceneTree.prototype.serialize = function()
 	o.uid = this.uid;
 	o.object_class = LS.getObjectClassName(this);
 
-	//legacy
-	o.local_repository = this.local_repository;
+	o.external_repository = this.external_repository;
 
 	//o.nodes = [];
 	o.extra = this.extra || {};
@@ -36185,9 +36804,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		return;
 
 	var that = this;
-	var nocache = LS.ResourcesManager.getNoCache(true);
-	if(nocache)
-		url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
 
 	var extension = LS.ResourcesManager.getExtension( url );
 
@@ -36198,12 +36814,12 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		var index2 = url.indexOf("&",index);
 		url = decodeURIComponent( url.substr(index + 4, index2 - index - 4) );
 		extension = LS.ResourcesManager.getExtension( url );
-		if(nocache)
-			url += (url.indexOf("?") == -1 ? "?" : "&") + nocache;
 	}
 
+	//request scene file using our own library
 	LS.Network.request({
 		url: url,
+		nocache: true,
 		dataType: extension == "json" ? "json" : "binary",
 		success: extension == "json" ? inner_json_loaded : inner_pack_loaded,
 		progress: on_progress,
@@ -36922,8 +37538,11 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node,
 *
 * @method getResources
 * @param {Object} resources [optional] object with resources
+* @param {Boolean} as_array [optional] returns data in array format instead of object format
+* @param {Boolean} skip_in_pack [optional] skips resources that come from a pack
+* @param {Boolean} skip_local [optional] skips resources whose name starts with ":" (considered local resources)
 */
-SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
+SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, skip_local )
 {
 	resources = resources || {};
 
@@ -36949,6 +37568,14 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack )
 			if(!resource)
 				continue;
 			if(resource && (resource.from_prefab || resource.from_pack))
+				delete resources[i];
+		}
+
+	//remove the resources that are local (generated by the system)
+	if(skip_local)
+		for(var i in resources)
+		{
+			if(i[0] == ":")
 				delete resources[i];
 		}
 
@@ -36987,8 +37614,8 @@ SceneTree.prototype.loadResources = function( on_complete )
 
 	//used for scenes with special repository folders
 	var options = {};
-	if(this.local_repository)
-		options.local_repository = this.local_repository;
+	if( this.external_repository )
+		options.external_repository = this.external_repository;
 
 	//count resources
 	var num_resources = 0;
@@ -37461,9 +38088,10 @@ SceneTree.prototype.findNodeComponents = function( type )
 *
 * @method toPack
 * @param {String} fullpath a given fullpath name, it will be assigned to the scene with the appropiate extension
+* @param {Array} resources [optional] array with all the resources to add, if no array is given it will get the active resources in this scene
 * @return {LS.Pack} the pack
 */
-SceneTree.prototype.toPack = function( fullpath, force_all_resources )
+SceneTree.prototype.toPack = function( fullpath, resources )
 {
 	fullpath = fullpath || "unnamed_scene";
 
@@ -37475,7 +38103,8 @@ SceneTree.prototype.toPack = function( fullpath, force_all_resources )
 	var scene_json = JSON.stringify( this.serialize() );
 
 	//get all resources
-	var resources = this.getResources(null,true, !force_all_resources );
+	if(!resources)
+		resources = this.getResources( null, true, true, true );
 
 	//create pack
 	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );
@@ -37493,6 +38122,74 @@ SceneTree.prototype.updateStaticObjects = function()
 	this.collectData();
 	LS.allow_static = old;
 }
+
+//tells to all the components, nodes, materials, etc, that one resource has changed its name so they can update it inside
+SceneTree.prototype.sendResourceRenamedEvent = function( old_name, new_name, resource )
+{
+	//scene globals that use resources
+	for(var i = 0; i < this.external_scripts.length; i++)
+	{
+		if(this.external_scripts[i] == old_name)
+			this.external_scripts[i] = new_name;
+	}
+
+	for(var i = 0; i < this.global_scripts.length; i++)
+	{
+		if(this.global_scripts[i] == old_name)
+			this.global_scripts[i] = new_name;
+	}
+
+	for(var i in this.preloaded_resources)
+	{
+		if(i == old_name)
+		{
+			delete this.preloaded_resources[old_name];
+			this.preloaded_resources[ new_name ] = true;
+		}
+	}
+
+	//to nodes
+	var nodes = this._nodes.concat();
+
+	//for every node
+	for(var i = 0; i < nodes.length; i++)
+	{
+		//nodes
+		var node = nodes[i];
+
+		//prefabs
+		if( node.prefab && node.prefab === old_name )
+			node.prefab = new_name; //does this launch a reload prefab? dont know
+
+		//components
+		for(var j = 0; j < node._components.length; j++)
+		{
+			var component = node._components[j];
+			if(component.onResourceRenamed)
+				component.onResourceRenamed( old_name, new_name, resource )
+		}
+
+		//materials
+		if( node.material )
+		{
+			if( node.material == old_name )
+				node.material = new_name;
+			else
+			{
+				var material = node.getMaterial();
+				if( material && material.onResourceRenamed )
+				{
+					var modified = material.onResourceRenamed( old_name, new_name, resource );
+					if(modified) //we need this to remove material._original_data or anything that could interfiere
+						LS.RM.resourceModified( material );
+				}
+				else
+					console.warn("sendResourceRenamedEvent: Material not found or it didnt have a onResourceRenamed");
+			}
+		}
+	}
+}
+
 
 /**
 * Creates and returns an scene animation track
@@ -42982,6 +43679,7 @@ var parserOBJ = {
 			else
 			{
 				console.warn("unknown code: " + line);
+				break;
 			}
 		}
 
@@ -43038,6 +43736,12 @@ var parserOBJ = {
 		}
 
 		mesh.info = info;
+		if( !mesh.bounding )
+		{
+			console.log("empty mesh");
+			return null;
+		}
+
 		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
 			console.log("no radius found in mesh");
 		return mesh;
@@ -43445,19 +44149,26 @@ Object.defineProperty( Player.prototype, "file_drop_enabled", {
 	enumerable: true
 });
 
-Player.prototype.loadConfig = function( url, on_complete )
+/**
+* Loads a config file for the player, it could also load an scene if the config specifies one
+* @method loadConfig
+* @param {String} url url to the JSON file containing the config
+* @param {Function} on_complete callback trigged when the config is loaded
+* @param {Function} on_scene_loaded callback trigged when the scene and the resources are loaded (in case the config contains a scene to load)
+*/
+Player.prototype.loadConfig = function( url, on_complete, on_scene_loaded )
 {
 	var that = this;
 	LS.Network.requestJSON( url, inner );
 	function inner( data )
 	{
-		that.configure( data );
+		that.configure( data, on_scene_loaded );
 		if(on_complete)
 			on_complete(data);
 	}
 }
 
-Player.prototype.configure = function( options )
+Player.prototype.configure = function( options, on_scene_loaded )
 {
 	var that = this;
 
@@ -43527,7 +44238,7 @@ Player.prototype.configure = function( options )
 		this.setDebugRender(true);
 
 	if(options.scene_url)
-		this.loadScene( options.scene_url );
+		this.loadScene( options.scene_url, on_scene_loaded );
 }
 
 Player.STOPPED = 0;
@@ -43626,12 +44337,19 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 	}
 }
 
-
+/**
+* Pauses the execution. This will launch a "paused" event and stop calling the update method
+* @method pause
+*/
 Player.prototype.pause = function()
 {
 	this.state = LS.Player.PAUSED;
 }
 
+/**
+* Starts the scene. This will launch a "start" event and start calling the update for every frame
+* @method play
+*/
 Player.prototype.play = function()
 {
 	if(this.state == LS.Player.PLAYING)
@@ -43644,6 +44362,10 @@ Player.prototype.play = function()
 	this.scene.start();
 }
 
+/**
+* Stops the scene. This will launch a "finish" event and stop calling the update 
+* @method stop
+*/
 Player.prototype.stop = function()
 {
 	this.state = LS.Player.STOPPED;
@@ -43651,6 +44373,11 @@ Player.prototype.stop = function()
 	LS.GUI.reset(); //clear GUI
 }
 
+/**
+* Enable the functionality to catch files droped in the canvas so script can catch the "fileDrop" event (onFileDrop in the Script components).
+* @method setFileDrop
+* @param {boolean} v true if you want to allow file drop (true by default)
+*/
 Player.prototype.setFileDrop = function(v)
 {
 	if(this._file_drop_enabled == v)
@@ -43723,6 +44450,7 @@ Player.prototype._onfiledrop = function( file, evt )
 	return LEvent.trigger( LS.GlobalScene, "fileDrop", { file: file, event: evt } );
 }
 
+//called by the render loop to draw every frame
 Player.prototype._ondraw = function()
 {
 	var scene = this.scene;
@@ -43771,6 +44499,9 @@ Player.prototype._onupdate = function(dt)
 //input
 Player.prototype._onmouse = function(e)
 {
+	//send to the input system
+	LS.Input.onMouse(e);
+
 	//console.log(e);
 	if(this.state != LS.Player.PLAYING)
 		return;
@@ -43799,6 +44530,9 @@ Player.prototype._ontouch = function(e)
 
 Player.prototype._onkey = function(e)
 {
+	//send to the input system
+	LS.Input.onKey(e);
+
 	if(this.state != LS.Player.PLAYING)
 		return;
 
@@ -43829,6 +44563,7 @@ Player.prototype._ongamepad = function(e)
 	LEvent.trigger( this.scene, e.eventType || e.type, e );
 }
 
+//renders the loading bar, you can replace it in case you want your own loading bar 
 Player.prototype.renderLoadingBar = function( loading )
 {
 	if(!loading)
@@ -43861,6 +44596,11 @@ Player.prototype.enableDebug = function(v)
 	LS.catch_exceptions = !v;
 }
 
+/**
+* Enable a debug renderer that shows gizmos for most of the things on the scene
+* @method setDebugRender
+* @param {boolean} v true if you want the debug render
+*/
 Player.prototype.setDebugRender = function(v)
 {
 	if(!this.debug_render)

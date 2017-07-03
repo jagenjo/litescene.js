@@ -243,15 +243,19 @@ function Material( o )
 	/**
 	* The alpha component to control opacity
 	* @property opacity
-	* @type {Number}
 	* @default 1
-	*/
+	**/
 	Object.defineProperty( this, &#x27;opacity&#x27;, {
 		get: function() { return this._color[3]; },
 		set: function(v) { this._color[3] = v; },
 		enumerable: true
 	});
 
+	/**
+	* the render queue id where this instance belongs
+	* @property queue
+	* @default LS.RenderQueue.DEFAULT;
+	**/
 	Object.defineProperty( this, &#x27;queue&#x27;, {
 		get: function() { return this._queue; },
 		set: function(v) { 
@@ -262,6 +266,10 @@ function Material( o )
 		enumerable: true
 	});
 
+	/**
+	* the render state flags to control how the GPU behaves
+	* @property render_state
+	**/
 	Object.defineProperty( this, &#x27;render_state&#x27;, {
 		get: function() { return this._render_state; },
 		set: function(v) { 
@@ -797,18 +805,23 @@ Material.prototype.getResources = function (res)
 * Event used to inform if one resource has changed its name
 * @method onResourceRenamed
 * @param {Object} resources object where all the resources are stored
-* @return {Texture}
+* @return {Boolean} true if something was modified
 */
 Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
+	var v = false;
 	for(var i in this.textures)
 	{
 		var sampler = this.textures[i];
 		if(!sampler)
 			continue;
 		if(sampler.texture == old_name)
+		{
 			sampler.texture = new_name;
+			v = true;
+		}
 	}
+	return v;
 }
 
 /**

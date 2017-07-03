@@ -284,6 +284,11 @@ Object.defineProperty( MeshRenderer.prototype, &#x27;textured_points&#x27;, {
 	enumerable: true
 });
 
+Object.defineProperty( MeshRenderer.prototype, &#x27;render_instance&#x27;, {
+	get: function() { return this._RI; },
+	set: function(v) { throw(&quot;cannot set a render_instance, must use the collectRenderInstances process.&quot;); },
+	enumerable: false
+});
 
 MeshRenderer.icon = &quot;mini-icon-teapot.png&quot;;
 

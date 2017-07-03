@@ -8,6 +8,16 @@ if(typeof(LGraphTexture) != "undefined")
 	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
 }
 
+
+if( typeof(LGAudio) != "undefined" )
+{
+	LGAudio.onProcessAudioURL = function(url)
+	{
+		return LS.RM.getFullURL(url);
+	}
+}
+
+
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent

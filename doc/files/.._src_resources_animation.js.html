@@ -1774,7 +1774,7 @@ Track.prototype.convertToTrans10 = function()
 
 	//convert locator
 	var path = this.property.split(&quot;/&quot;);
-	if( path[ path.length - 1 ] != &quot;matrix&quot;)
+	if( path[ path.length - 1 ] != &quot;matrix&quot;) //from &quot;nodename/matrix&quot; to &quot;nodename/transform/data&quot;
 		return false;
 
 	path[ path.length - 1 ] = &quot;Transform/data&quot;;

@@ -595,6 +595,17 @@ Script.prototype.onCodeChange = function(code)
 Script.prototype.getResources = function(res)
 {
 	var ctx = this.getContext();
+
+	for(var i in ctx)
+	{
+		var value = ctx[i];
+		var info = ctx.constructor[ "@" + i];
+		if( !value || !info )
+			continue;
+		if( info.type == LS.TYPES.RESOURCE || info.type == LS.TYPES.TEXTURE || info.type == LS.TYPES.MESH )
+			res[ value ] = true;
+	}
+
 	if(ctx && ctx.onGetResources )
 		ctx.onGetResources( res );
 }

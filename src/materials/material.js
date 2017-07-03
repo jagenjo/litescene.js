@@ -653,18 +653,23 @@ Material.prototype.getResources = function (res)
 * Event used to inform if one resource has changed its name
 * @method onResourceRenamed
 * @param {Object} resources object where all the resources are stored
-* @return {Texture}
+* @return {Boolean} true if something was modified
 */
 Material.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {
+	var v = false;
 	for(var i in this.textures)
 	{
 		var sampler = this.textures[i];
 		if(!sampler)
 			continue;
 		if(sampler.texture == old_name)
+		{
 			sampler.texture = new_name;
+			v = true;
+		}
 	}
+	return v;
 }
 
 /**

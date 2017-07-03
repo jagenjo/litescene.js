@@ -414,6 +414,19 @@ if(typeof(LiteGraph) != "undefined")
 			this.title = LS.getClassName( compo.constructor );
 	}
 
+	LGraphComponent.prototype.onConnectionsChange = function( type, slot, created, link_info, slot_info )
+	{
+		if(type == LiteGraph.INPUT && slot_info && slot_info.name == "Component" )
+		{
+			var node = this.getInputNode(slot);
+			if(node && node.onExecute)
+			{
+				node.onExecute();
+				this.setDirtyCanvas(true,true);
+			}
+		}
+	}
+
 	LGraphComponent.prototype.getComponent = function()
 	{
 		var scene = this.graph._scene;
@@ -422,7 +435,19 @@ if(typeof(LiteGraph) != "undefined")
 
 		var node_id = this.properties.node_id;
 		if(!node_id)
-			return;
+		{
+			if( this.inputs && this.inputs.length )
+			{
+				var slot = this.findInputSlot("Component");
+				if(slot != -1)
+				{
+					var component = this.getInputData(slot);
+					return component ? component : null;
+				}
+			}
+
+			return null;
+		}
 
 		//find node
 		var node = scene.getNode( node_id );
@@ -553,7 +578,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphComponent.prototype.onGetInputs = function()
 	{ 
-		var inputs = [["Node",0],null];
+		var inputs = [["Node",0],["Component",0],null];
 
 		this.getComponentProperties("input", inputs);
 

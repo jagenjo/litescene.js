@@ -304,6 +304,7 @@ var parserOBJ = {
 			else
 			{
 				console.warn("unknown code: " + line);
+				break;
 			}
 		}
 
@@ -360,6 +361,12 @@ var parserOBJ = {
 		}
 
 		mesh.info = info;
+		if( !mesh.bounding )
+		{
+			console.log("empty mesh");
+			return null;
+		}
+
 		if( mesh.bounding.radius == 0 || isNaN(mesh.bounding.radius))
 			console.log("no radius found in mesh");
 		return mesh;

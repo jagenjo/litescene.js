@@ -168,9 +168,9 @@ function StandardMaterial(o)
 {
 	Material.call(this,null); //do not pass the data object, it is called later
 
-	this.shader_name = &quot;global&quot;;
-
 	this.blend_mode = LS.Blend.NORMAL;
+
+	this.shader_name = &quot;global&quot;;
 
 	this.createProperty( &quot;diffuse&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
 	this.createProperty( &quot;ambient&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
@@ -278,38 +278,6 @@ StandardMaterial.BUMP_TEXTURE = &quot;bump&quot;;
 StandardMaterial.REFLECTIVITY_TEXTURE = &quot;reflectivity&quot;;
 StandardMaterial.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;
 StandardMaterial.EXTRA_TEXTURE = &quot;extra&quot;;
-
-StandardMaterial.available_shaders = [&quot;default&quot;,&quot;lowglobal&quot;,&quot;phong_texture&quot;,&quot;flat&quot;,&quot;normal&quot;,&quot;phong&quot;,&quot;flat_texture&quot;];
-
-StandardMaterial.coding_help = &quot;\
-Input IN -&gt; info about the mesh\n\
-SurfaceOutput o -&gt; info about the surface properties of this pixel\n\
-\n\
-struct Input {\n\
-	vec4 color;\n\
-	vec3 vertex;\n\
-	vec3 normal;\n\
-	vec2 uv;\n\
-	vec2 uv1;\n\
-	\n\
-	vec3 camPos;\n\
-	vec3 viewDir;\n\
-	vec3 worldPos;\n\
-	vec3 worldNormal;\n\
-	vec4 screenPos;\n\
-};\n\
-\n\
-struct SurfaceOutput {\n\
-	vec3 Albedo;\n\
-	vec3 Normal;\n\
-	vec3 Ambient;\n\
-	vec3 Emission;\n\
-	float Specular;\n\
-	float Gloss;\n\
-	float Alpha;\n\
-	float Reflectivity;\n\
-};\n\
-&quot;;
 
 StandardMaterial.prototype.prepare = function( scene )
 {
@@ -545,7 +513,6 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case &quot;detail_factor&quot;:
 		case &quot;emissive_extra&quot;:
 		//strings
-		case &quot;shader_name&quot;:
 		//bools
 		case &quot;specular_on_top&quot;:
 		case &quot;specular_on_alpha&quot;:
@@ -595,8 +562,6 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 	//add some more
 	o.merge({
-		shader_name:  LS.TYPES.STRING,
-
 		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,

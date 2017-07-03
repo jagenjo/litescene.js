@@ -47,6 +47,15 @@ var Input = {
 	Mouse: {},
 	Gamepads: [],
 
+	//used for GUI elements
+	last_click: null,
+	current_click: null,
+	current_key: null,
+	keys_buffer: [],
+
+	//_mouse_event_offset: [0,0],
+	_last_frame: -1, //internal
+
 	init: function()
 	{
 		this.Keyboard = gl.keys;
@@ -65,6 +74,35 @@ var Input = {
 		this.Gamepads = gl.getGamepads();
 	},
 
+	onMouse: function(e)
+	{
+		this.Mouse.mousex = e.mousex;
+		this.Mouse.mousey = e.mousey;
+
+		//save it in case we need to know where was the last click
+		if(e.type == "mousedown")
+			this.current_click = e;
+		else if(e.type == "mouseup")
+			this.current_click = null;
+	},
+
+	onKey: function(e)
+	{
+		if(e.type == "keydown")
+		{
+			this.current_key = e;
+			if( LS.Renderer._frame != this._last_frame )
+			{
+				this.keys_buffer.length = 0;
+				LS.Renderer._frame = this._last_frame;
+			}
+			if( this.keys_buffer.length < 10 ) //safety first!
+				this.keys_buffer.push(e);
+		}
+		else
+			this.current_key = null;
+	},
+
 	/**
 	* returns if the mouse is inside the rect defined by x,y, width,height
 	*
@@ -79,6 +117,11 @@ var Input = {
 	isMouseInRect: function(x,y,width,height, flip_y)
 	{
 		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
+	},
+
+	isEventInRect: function(e,area)
+	{
+		return (e.mousex >= area[0] && e.mousex < (area[0] + area[2]) && e.mousey >= area[1] && e.mousey < (area[1] + area[3]) );
 	},
 
 	/**

@@ -23,11 +23,13 @@ var ResourcesManager = {
 
 	path: "", //url to retrieve resources relative to the index.html
 	proxy: "", //url to retrieve resources outside of this host
-	ignore_cache: false, //change to true to ignore server cache
+	ignore_cache: false, //change to true to ignore client cache
 	free_data: false, //free all data once it has been uploaded to the VRAM
 	keep_files: false, //keep the original files inside the resource (used mostly in the editor)
 	keep_urls: false, //keep the local URLs of loaded files
 	allow_base_files: false, //allow to load files that are not in a subfolder
+
+	scene_external_repository: null, //this is used by some scenes to specify where are the resources located
 
 	//some containers
 	resources: {}, //filename associated to a resource (texture,meshes,audio,script...)
@@ -50,6 +52,7 @@ var ResourcesManager = {
 	virtual_file_systems: {}, //protocols associated to urls  "VFS":"../"
 	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
+	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -73,6 +76,8 @@ var ResourcesManager = {
 		this.textures = {};
 		this.materials = {};
 		this.materials_by_uid = {};
+
+		this.scene_external_repository = null;
 	},
 
 	/**
@@ -313,7 +318,8 @@ var ResourcesManager = {
 	},
 
 	/**
-	* transform a url to a full url taking into account proxy, virtual file systems and local_repository
+	* transform a url to a full url taking into account proxy, virtual file systems and external_repository
+	* used only when requesting a resource to be loaded
 	*
 	* @method getFullURL
 	* @param {String} url
@@ -331,12 +337,17 @@ var ResourcesManager = {
 			protocol = url.substr(0,pos);
 
 		var resources_path = this.path;
+
+		//from scene.external_repository
+		if(this.scene_external_repository) 
+			resources_path = this.scene_external_repository;
+
 		if(options && options.force_local_url)
 			resources_path = ".";
 
 		//used special repository
-		if(options && options.local_repository)
-			resources_path = options.local_repository;
+		if(options && options.external_repository)
+			resources_path = options.external_repository;
 
 		if(protocol)
 		{
@@ -478,7 +489,7 @@ var ResourcesManager = {
 	* @method resourceModified
 	* @param {Object} resource
 	*/
-	resourceModified: function(resource)
+	resourceModified: function( resource )
 	{
 		if(!resource)
 			return;
@@ -493,7 +504,7 @@ var ResourcesManager = {
 		delete resource._original_data;
 		delete resource._original_file;
 
-		if(resource.remotepath)
+		if( resource.remotepath )
 			resource._modified = true;
 
 		LEvent.trigger(this, "resource_modified", resource );
@@ -612,11 +623,6 @@ var ResourcesManager = {
 		if(format_info && format_info.has_preview && !options.is_preview )
 			LEvent.trigger( this, "load_resource_preview", url );
 
-		//avoid the cache (if you want)
-		var nocache = this.getNoCache();
-		if(nocache)
-			full_url += (full_url.indexOf("?") == -1 ? "?" : "&") + nocache;
-
 		//create the ajax request
 		var settings = {
 			url: full_url,
@@ -638,7 +644,7 @@ var ResourcesManager = {
 		};
 
 		//force no cache by request
-		settings.nocache = nocache || this.force_nocache_extensions[ extension ];
+		settings.nocache = this.ignore_cache || this.force_nocache_extensions[ extension ] || this.nocache_files[ url ];
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
@@ -747,6 +753,7 @@ var ResourcesManager = {
 				case "image":
 					resource = LS.ResourcesManager.processImage( url, data, options, process_final );
 					break;
+				case "data":
 				default:
 					if( format_info.parse )
 					{
@@ -935,42 +942,46 @@ var ResourcesManager = {
 	/**
 	* Changes the name of a resource and sends an event to all components to change it accordingly
 	* @method renameResource
-	* @param {String} old 
-	* @param {String} newname
+	* @param {String} old_name 
+	* @param {String} new_name
 	* @param {Boolean} [skip_event=false] ignore sending an event to all components to rename the resource
 	* @return {boolean} if the file was found
 	*/
-	renameResource: function(old, newname, skip_event)	
+	renameResource: function(old_name, new_name, skip_event)	
 	{
-		var res = this.resources[ old ];
+		var res = this.resources[ old_name ];
 		if(!res)
 			return false;
 
-		res.filename = newname;
+		res.filename = new_name;
 		if(res.fullpath)
-			res.fullpath = newname;
+			res.fullpath = new_name;
 
-		this.resources[newname] = res;
-		delete this.resources[ old ];
+		this.resources[new_name] = res;
+		delete this.resources[ old_name ];
 
 		if(!skip_event)
-			this.sendResourceRenamedEvent(old, newname, res);
+			LS.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
 
 		//ugly: too hardcoded
-		if( this.meshes[old] ) {
-			delete this.meshes[ old ];
-			this.meshes[ newname ] = res;
+		if( this.meshes[old_name] ) {
+			delete this.meshes[ old_name ];
+			this.meshes[ new_name ] = res;
 		}
-		if( this.textures[old] ) {
-			delete this.textures[ old ];
-			this.textures[ newname ] = res;
+		if( this.textures[old_name] ) {
+			delete this.textures[ old_name ];
+			this.textures[ new_name ] = res;
 		}
-		if( this.materials[old] ) {
-			delete this.materials[ old ];
-			this.materials[ newname ] = res;
+		if( this.materials[old_name] ) {
+			delete this.materials[ old_name ];
+			this.materials[ new_name ] = res;
 		}
 
-		this.resources_renamed_recently[ old ] = newname;
+		//in case somebody needs to know where a resource has gone
+		this.resources_renamed_recently[ old_name ] = new_name;
+
+		if(!skip_event)
+			LEvent.trigger( LS.ResourcesManager, "resource_renamed", [ old_name, new_name, res ] );
 		return true;
 	},
 
@@ -1047,40 +1058,6 @@ var ResourcesManager = {
 		if(name_or_id[0] == "@")
 			return this.materials_by_uid[ name_or_id ];
 		return this.materials[ name_or_id ];
-	},
-
-	//tells to all the components, nodes, materials, etc, that one resource has changed its name so they can update
-	sendResourceRenamedEvent: function( old_name, new_name, resource )
-	{
-		var scene = LS.GlobalScene;
-		var nodes = scene._nodes.concat();
-		for(var i = 0; i < nodes.length; i++)
-		{
-			//nodes
-			var node = nodes[i];
-
-			//prefabs
-			if( node.prefab && node.prefab === old_name )
-				node.prefab = new_name; //does this launch a reload prefab? dont know
-
-			//components
-			for(var j = 0; j < node._components.length; j++)
-			{
-				var component = node._components[j];
-				if(component.onResourceRenamed)
-					component.onResourceRenamed( old_name, new_name, resource )
-			}
-
-			//materials
-			if( node.material && node.material == old_name )
-				node.material = new_name;
-			else
-			{
-				var material = node.getMaterial();
-				if( material && material.onResourceRenamed )
-					material.onResourceRenamed(old_name, new_name, resource)
-			}
-		}
 	},
 
 	/**
@@ -1266,10 +1243,12 @@ LS.ResourcesManager.registerResourcePreProcessor("zip", function( filename, data
 	var zip = new JSZip();
 	zip.loadAsync( data ).then(function(zip){
 		zip.forEach(function (relativePath, file){
+			if(file.dir)
+				return; //ignore folders
 			var ext = LS.ResourcesManager.getExtension( relativePath );
 			var format = LS.Formats.supported[ ext ];
 			file.async( format && format.dataType == "text" ? "string" : "arraybuffer").then( function(filedata){
-				if( relativePath == "scene.json" )
+				if( relativePath == "scene.json" && (!options || !options.to_memory) )
 					LS.GlobalScene.configure( JSON.parse( filedata ) );
 				else
 					LS.ResourcesManager.processResource( relativePath, filedata );

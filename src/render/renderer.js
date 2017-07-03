@@ -271,8 +271,16 @@ var Renderer = {
 				LEvent.trigger( scene, "showFrameContext", render_settings );
 		}
 
-		if(render_settings.render_gui)
+		//renders GUI items using mostly the Canvas2DtoWebGL library
+		if(render_settings.render_gui && LEvent.hasBind( scene, "renderGUI") )
+		{
+			if(gl.start2D)
+				gl.start2D();
+			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
 			LEvent.trigger( scene, "renderGUI", render_settings );
+			if(gl.finish2D)
+				gl.finish2D();
+		}
 
 		this._frame_cpu_time = getTime() - start_time;
 

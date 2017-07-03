@@ -235,6 +235,7 @@ FXStack.available_fx = {
 		}
 	}
 	*/
+	//median: https://github.com/patriciogonzalezvivo/flatLand/blob/master/bin/data/median.frag
 };
 
 //functions that could be used

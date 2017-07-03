@@ -162,7 +162,7 @@ function ShaderMaterial( o )
 {
 	Material.call( this, null );
 
-	this._shader = null;
+	this._shader = &quot;&quot;;
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
 
@@ -396,7 +396,7 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 {
 	//get shader code
 	var shader = null;
-	var shader_code = this.getShaderCode();
+	var shader_code = this.getShaderCode(); //no parameters because we just want the render_state and init stuff
 	if( shader_code )
 		shader = shader_code.getShader();
 
@@ -441,13 +441,6 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 	}
 }
 
-ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
-{
-	if(!this.shader)
-		return true; //skip rendering
-	return LS.ResourcesManager.getResource( this.shader );
-}
-
 //called from LS.Renderer when rendering an instance
 ShaderMaterial.prototype.renderInstance = function( instance, render_settings, pass )
 {
@@ -481,6 +474,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//global stuff
 	this.render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
+	var global_flags = 0;
+	if( LS.Renderer._global_textures.environment )
+	{
+		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
+	}
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
@@ -521,6 +519,9 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	{
 		var light = lights[i];
 		block_flags = light.applyShaderBlockFlags( block_flags, pass, render_settings );
+
+		//global
+		block_flags |= global_flags;
 
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
@@ -701,7 +702,7 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 }
 
 //get shader code
-ShaderMaterial.prototype.getShaderCode = function()
+ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
 	var shader_code = LS.ResourcesManager.getResource( this.shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
@@ -731,7 +732,7 @@ ShaderMaterial.prototype.applyToTexture = function( input_texture, output_textur
 		return false;
 
 	//get shader code
-	var shader_code = this.getShaderCode();
+	var shader_code = this.getShaderCode(); //special use
 	if(!shader_code)
 		return false;
 
@@ -909,6 +910,39 @@ ShaderMaterial.prototype.createProperty = function( name, value, type, options )
 	});
 }
 
+/**
+* Event used to inform if one resource has changed its name
+* @method onResourceRenamed
+* @param {Object} resources object where all the resources are stored
+* @return {Boolean} true if something was modified
+*/
+ShaderMaterial.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	var v = Material.prototype.onResourceRenamed.call(this, old_name, new_name, resource );
+	if( this.shader == old_name)
+	{
+		this.shader = new_name;
+		v = true;
+	}
+
+	//change texture also in shader values... (this should be automatic but it is not)
+	for(var i = 0; i &lt; this._properties.length; ++i)
+	{
+		var p = this._properties[i];
+		if(p.internal) //internal is a property that is not for the shader (is for internal computations)
+			continue;
+
+		if( !p.is_texture || !p.value )
+			continue;
+		if( p.value.texture != old_name )
+			continue;
+		p.value.texture = new_name;
+		v = true;
+	}
+
+	return v;
+}
+
 ShaderMaterial.getDefaultPickingShaderCode = function()
 {
 	if( ShaderMaterial.default_picking_shader_code )
@@ -922,9 +956,72 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 LS.registerMaterialClass( ShaderMaterial );
 LS.ShaderMaterial = ShaderMaterial;
 
-
 //Register ShaderBlocks
 //TODO?
+
+//ENVIRONMENT 
+var environment_code = &quot;\n\
+	#ifdef ENVIRONMENT_TEXTURE\n\
+		uniform texture2D environment_texture;\n\
+	#endif\n\
+	#ifdef ENVIRONMENT_CUBEMAP\n\
+		uniform textureCube environment_texture;\n\
+	#endif\n\
+	vec2 polarToCartesian(in vec3 V)\n\
+	{\n\
+		return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		#ifdef ENVIRONMENT_TEXTURE\n\
+			vec2 uvs = polarToCartesian(V);\n\
+			return texture2D( environment_texture, uvs ).xyz;\n\
+		#endif\n\
+		#ifdef ENVIRONMENT_CUBEMAP\n\
+			return texture2D( environment_texture, V ).xyz;\n\
+		#endif\n\
+		return u_background_color.xyz;\n\
+	}\n\
+&quot;;
+var environment_disabled_code = &quot;\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		return u_background_color.xyz;\n\
+	}\n\
+&quot;;
+
+var environment_block = new LS.ShaderBlock(&quot;environment&quot;);
+environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
+environment_block.register();
+
+
+var reflection_code = &quot;\n\
+	#pragma shaderblock SHADOWBLOCK \&quot;environment\&quot;\n\
+	\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		vec3 R = reflect( IN.viewDir, o.Normal );\n\
+		vec3 bg = vec3(0.0);\n\
+		if(u_light_info.x == (u_light_info.y - 1.0))\n\
+			bg = getEnvironmentColor( R, 0.0 );\n\
+		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
+		return final_color;\n\
+	}\n\
+&quot;;
+
+var reflection_disabled_code = &quot;\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		return final_color;\n\
+	}\n\
+&quot;;
+
+var reflection_block = new LS.ShaderBlock(&quot;applyReflection&quot;);
+ShaderMaterial.reflection_block = reflection_block;
+reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
+reflection_block.register();
+
     </pre>
 </div>
                     </div>

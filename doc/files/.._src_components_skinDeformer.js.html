@@ -286,8 +286,22 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if(!render_instances.length)
 		return;
 
+	if(!this.root)
+		return;
+
+	var last_RI;
+
+	//get index
+	var index = this.root.getIndexOfComponent(this);
+	var prev_comp = this.root.getComponentByIndex( index - 1);
+	if(prev_comp)
+		last_RI = prev_comp._RI;
+
+	if(!last_RI)
+		return;
+
 	//take last one (although maybe using this._root.instances ...)
-	var last_RI = render_instances[ render_instances.length - 1];
+	//last_RI = render_instances[ render_instances.length - 1];
 	
 	if(!this.enabled)
 	{

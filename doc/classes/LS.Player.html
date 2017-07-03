@@ -261,11 +261,35 @@ There is a list of options
 
                     <ul class="index-list methods">
                             <li class="index-item method">
+                                <a href="#method_loadConfig">loadConfig</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_loadScene">loadScene</a>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_pause">pause</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_play">play</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setDebugRender">setDebugRender</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setFileDrop">setFileDrop</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_setScene">setScene</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_stop">stop</a>
 
                             </li>
                     </ul>
@@ -278,6 +302,88 @@ There is a list of options
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
+<div id="method_loadConfig" class="method item">
+    <h3 class="name"><code>loadConfig</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>url</code>
+                </li>
+                <li class="arg">
+                        <code>on_complete</code>
+                </li>
+                <li class="arg">
+                        <code>on_scene_loaded</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l133"><code>..&#x2F;src&#x2F;player.js:133</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Loads a config file for the player, it could also load an scene if the config specifies one</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">url</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>url to the JSON file containing the config</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">on_complete</code>
+                        <span class="type">Function</span>
+
+
+                    <div class="param-description">
+                        <p>callback trigged when the config is loaded</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">on_scene_loaded</code>
+                        <span class="type">Function</span>
+
+
+                    <div class="param-description">
+                        <p>callback trigged when the scene and the resources are loaded (in case the config contains a scene to load)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_loadScene" class="method item">
     <h3 class="name"><code>loadScene</code></h3>
 
@@ -302,7 +408,7 @@ There is a list of options
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_player.js.html#l206"><code>..&#x2F;src&#x2F;player.js:206</code></a>
+        <a href="../files/.._src_player.js.html#l229"><code>..&#x2F;src&#x2F;player.js:229</code></a>
         </p>
 
 
@@ -346,6 +452,176 @@ There is a list of options
 
 
 </div>
+<div id="method_pause" class="method item">
+    <h3 class="name"><code>pause</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l321"><code>..&#x2F;src&#x2F;player.js:321</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Pauses the execution. This will launch a &quot;paused&quot; event and stop calling the update method</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_play" class="method item">
+    <h3 class="name"><code>play</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l330"><code>..&#x2F;src&#x2F;player.js:330</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Starts the scene. This will launch a &quot;start&quot; event and start calling the update for every frame</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_setDebugRender" class="method item">
+    <h3 class="name"><code>setDebugRender</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>v</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l580"><code>..&#x2F;src&#x2F;player.js:580</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Enable a debug renderer that shows gizmos for most of the things on the scene</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">v</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>true if you want the debug render</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_setFileDrop" class="method item">
+    <h3 class="name"><code>setFileDrop</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>v</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l357"><code>..&#x2F;src&#x2F;player.js:357</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Enable the functionality to catch files droped in the canvas so script can catch the &quot;fileDrop&quot; event (onFileDrop in the Script components).</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">v</code>
+                        <span class="type">Boolean</span>
+
+
+                    <div class="param-description">
+                        <p>true if you want to allow file drop (true by default)</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
 <div id="method_setScene" class="method item">
     <h3 class="name"><code>setScene</code></h3>
 
@@ -370,7 +646,7 @@ There is a list of options
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_player.js.html#l242"><code>..&#x2F;src&#x2F;player.js:242</code></a>
+        <a href="../files/.._src_player.js.html#l265"><code>..&#x2F;src&#x2F;player.js:265</code></a>
         </p>
 
 
@@ -409,6 +685,37 @@ There is a list of options
                 </li>
             </ul>
         </div>
+
+
+
+</div>
+<div id="method_stop" class="method item">
+    <h3 class="name"><code>stop</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_player.js.html#l346"><code>..&#x2F;src&#x2F;player.js:346</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Stops the scene. This will launch a &quot;finish&quot; event and stop calling the update</p>
+
+    </div>
+
 
 
 
