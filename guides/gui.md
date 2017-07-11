@@ -29,6 +29,10 @@ The current widgets are:
 
 As you can see some widgets (like Toggle, TextField or the sliders) return the resulting value. It is important that the returned value gets passed again the next time the widget is rendered. Otherwise the changes wont affect the widget.
 
+There are some interesting variables to tweak the GUI:
+- ```LS.GUI.GUIOffset``` is a vec2 that can be changed to position the GUI somewhere else. BUt it must be set every frame.
+- ```LS.GUI.GUIStyle``` contains some vars for colors and properties used to stylize the GUI.
+
 Here is an example of immediate GUI script with all the widgets:
 
 ```js
