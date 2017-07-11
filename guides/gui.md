@@ -22,11 +22,12 @@ The current widgets are:
 - ```LS.GUI.Box( area, color )```: to draw a box in the GUI
 - ```LS.GUI.Label( area, content )```: to draw a text label (or an image) on the GUI
 - ```LS.GUI.Button( area, content, content_over )```: to draw a button (content could be some string or a GL.Texture). Returns true if the button has been pressed.
+- ```LS.GUI.TextField( area, text, max_length, is_password )```: to draw a text field widget. Returns the text.
 - ```LS.GUI.Toggle( area, value, content, content_off )```: to draw a checkbox (content could be some string or a GL.Texture). Returns the current value of the checkbox (it will be the same as the one passed unless the user clicked the toggle).
 - ```LS.GUI.HorizontalSlider( area, value, left_value, right_value, show_value )```: to draw a slider (left_value is min, right_value is max). Returns the current value of the slider (it will be the same as the one passed unless the user clicked the slider).
 - ```LS.GUI.VerticalSlider( area, value, left_value, right_value, show_value )```: to draw a slider (left_value is min, right_value is max). Returns the current value of the slider (it will be the same as the one passed unless the user clicked the slider).
 
-As you can see some widgets (like toggle, or the sliders) return the resulting value. It is important that the returned value gets assigned again to the var that was passed as the value in the first place. Otherwise the changes wont affect the widget.
+As you can see some widgets (like Toggle, TextField or the sliders) return the resulting value. It is important that the returned value gets passed again the next time the widget is rendered. Otherwise the changes wont affect the widget.
 
 Here is an example of immediate GUI script with all the widgets:
 
@@ -38,6 +39,7 @@ this.createProperty("texture","", LS.TYPES.TEXTURE );
 
 this.toggle_value = true;
 this.slider_value = 50;
+this.text = "text";
 
 this.onRenderGUI = function(ctx)
 {
@@ -50,10 +52,9 @@ this.onRenderGUI = function(ctx)
   		console.log("pulsado!");
 	}
 
-	if( LS.GUI.Button( [10,140,300,50], "Pulsame2" ) )
-	{
-  		console.log("pulsado2!");
-	}
+	this.text = LS.GUI.TextField( [10,140,300,50], this.text );
+	if( LS.GUI.pressed_enter )
+    		this.text = "";	
 
  	this.toggle_value = LS.GUI.Toggle( [10,200,300,50], this.toggle_value, "toggle" );
   
