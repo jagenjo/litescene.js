@@ -27,7 +27,7 @@ Second, all DOM elements must be attached to the GUI root element, this way the 
 To get the GUI root element use the function ```LS.GUI.getRoot()```:
 
 ```javascript
-var gui_root = LS.GUI.getRoot();
+var gui_root = LS.GUI.getHTMLRoot();
 gui_root.innerHTML = "<button>click me</button>";
 ```
 
@@ -87,7 +87,7 @@ Here is one example:
 this.onStart = function()
 {
   LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.GUI.getRoot();
+    var gui_root = LS.GUI.getHTMLRoot();
     gui_root.innerHTML = res.data;
   });
 }
@@ -98,7 +98,7 @@ Or you can store several HTML elements and attach the ones that you need by retr
 this.onStart = function()
 {
   LS.ResourcesManagear.load("myfile.html", function(res){
-    var gui_root = LS.GUI.getRoot();
+    var gui_root = LS.GUI.getHTMLRoot();
     var html = res.getAsHTML();
     gui_root.appendChild( html.querySelector("#mypanel") );
   });
