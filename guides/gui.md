@@ -33,7 +33,7 @@ There are some interesting variables to tweak the GUI:
 - ```LS.GUI.GUIOffset``` is a vec2 that can be changed to position the GUI somewhere else. BUt it must be set every frame.
 - ```LS.GUI.GUIStyle``` contains some vars for colors and properties used to stylize the GUI.
 
-Here is an example of immediate GUI script with all the widgets:
+Here is an example of immediate GUI with all the widgets from a Script:
 
 ```js
 //@immediate gui
