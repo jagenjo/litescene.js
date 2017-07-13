@@ -16,7 +16,7 @@ Check the [guide to create GUIs in HTML](gui_html.md) for a tutorial on how to u
 
 The immediate GUI is a set of functions made to help create GUIs very easily. It is similar of how Unity does it.
 
-It works by calling some ```LS.GUI```methods, passing the area [x,y,width,height] for the widget, and catching the returned value in case of any interaction expected.
+It works by calling some ```LS.GUI```methods from the ```onRenderGUI``` (or the ```renderGUI``` event). Most methods require to pass the area ```[x,y,width,height]``` for the widget, and catching the returned value in case of any interaction expected.
 
 The current widgets are:
 - ```LS.GUI.Box( area, color )```: to draw a box in the GUI
