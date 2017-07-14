@@ -1439,9 +1439,9 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @method getRayInPixel
 * @param {number} x
 * @param {number} y
-* @param {vec4} viewport viewport coordinates (if omited full viewport is used)
+* @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {start:vec3, dir:vec3} or null is values are undefined or NaN
+* @return {Object} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
 Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 {

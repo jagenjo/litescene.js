@@ -21,10 +21,18 @@ var GUI = {
 		backgroundColor: "#333",
 		backgroundColorOver: "#AAA",
 		selected: "#AAF",
-		unselected: "#AAA"
+		unselected: "#AAA",
+		margin: 0.2
 	},
 
-	clicked_enter: false,
+	_offset: [0,0],
+
+	_gui_areas: {
+		data: new Float32Array(1024),
+		offset: 0
+	},
+
+	pressed_enter: false,
 
 	/**
 	* Returns the DOM element responsible for the HTML GUI of the app. This is helpful because this GUI will be automatically removed if the app finishes.
@@ -280,7 +288,51 @@ var GUI = {
 		this._is_on_top_of_immediate_widget = false;
 		this.setCursor(null);
 		LS.GlobalScene.requestFrame(); //force redraws
-		this.clicked_enter = false;
+		this.pressed_enter = false;
+		this._offset[0] = 0;
+		this._offset[1] = 0;
+		this._gui_areas.offset = 0;
+	},
+
+	//this is done so when clicking in the area where there is an immediate GUI widget the events are not send to the app
+	blockEventArea: function( area )
+	{
+		var data = this._gui_areas.data;
+		var offset = this._gui_areas.offset;
+
+		if(offset > data.length)
+			return; //too many guis?
+
+		data[ offset ] = area[0] + this._offset[0];
+		data[ offset + 1] = area[1] + this._offset[1];
+		data[ offset + 2] = area[2];
+		data[ offset + 3] = area[3];
+		this._gui_areas.offset += 4;
+
+		//double the size (weird situation)
+		if( this._gui_areas.offset >= data.length && data.length < 1024*24 )
+		{
+			this._gui_areas.data = new Float32Array( data.length * 2 );
+			this._gui_areas.data.set(data);
+		}
+	},
+
+	testEventInBlockedArea: function( e )
+	{
+		if(e.type != "mousedown")
+			return false;
+
+		var data = this._gui_areas.data;
+
+		for(var i = 0; i < this._gui_areas.offset; i+=4)
+		{
+			if( e.mousex >= data[i] && 
+				e.mousex < (data[i] + data[i+2]) &&
+				e.mousey >= data[i+1] && 
+				e.mousey < (data[i+1] + data[i+3]))
+				return true;
+		}
+		return false;
 	},
 
 	/**
@@ -294,9 +346,11 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
+		this.blockEventArea( area );
+
 		var ctx = gl;
 		ctx.fillStyle = color || "#333";
-		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 	},
 
 	/**
@@ -317,14 +371,14 @@ var GUI = {
 
 		if(content.constructor === GL.Texture)
 		{
-			ctx.drawImage( content, area[0], area[1], area[2], area[3] );
+			ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		}
 		else if(content.constructor === String)
 		{
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.textAlign = "left";
-			ctx.fillText( content, area[0] + area[3] * 0.2, area[1] + area[3] * 0.75 );
+			ctx.fillText( content, area[0] + area[3] * 0.2 + this._offset[0], area[1] + area[3] * 0.75  + this._offset[1]);
 		}
 	},
 
@@ -333,7 +387,7 @@ var GUI = {
 	*
 	* @method Button
 	* @param {Array} area [x,y,width,height]
-	* @param {String|GL.Texture} content could be a string or a GL.Texture
+	* @param {String|GL.Texture} content could be a string or a GL.Texture (if null the button will be invisible)
 	* @param {String|GL.Texture} content_over same as before but in case the mouse is over
 	* @return {Boolean} true if the button was pressed 
 	*/
@@ -341,9 +395,10 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
+		this.blockEventArea( area );
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -353,34 +408,34 @@ var GUI = {
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area );
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 				LS.Input.current_click = false; //consume event
 		}
 
-		if( !content || content.constructor === String )
+		if(content == null) //allows to create invisible buttons
+			return clicked;
+
+		if( content.constructor === String )
 		{
 			ctx.fillStyle = clicked ? "#FFF" : (is_over ? this.GUIStyle.backgroundColorOver : this.GUIStyle.backgroundColor );
-			ctx.fillRect( area[0], area[1], area[2], area[3] );
+			ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		}
 
-		if(content)
+		if(content.constructor === GL.Texture)
 		{
-			if(content.constructor === GL.Texture)
-			{
-				var texture = content;
-				if( is_over && content_over && content_over.constructor === GL.Texture)
-					texture = content_over;
-				ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
-			}
-			else if(content.constructor === String)
-			{
-				ctx.fillStyle = this.GUIStyle.color;
-				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
-				ctx.textAlign = "center";
-				ctx.fillText( content, area[0] + area[2] * 0.5, area[1] + area[3] * 0.75 );
-				ctx.textAlign = "left";
-			}
+			var texture = content;
+			if( is_over && content_over && content_over.constructor === GL.Texture)
+				texture = content_over;
+			ctx.drawImage( texture, area[0] + this._offset[0], area[1] + this._offset[0], area[2], area[3] );
+		}
+		else if(content.constructor === String)
+		{
+			ctx.fillStyle = this.GUIStyle.color;
+			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
+			ctx.textAlign = "center";
+			ctx.fillText( content, area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1]);
+			ctx.textAlign = "left";
 		}
 
 		return clicked;
@@ -401,9 +456,10 @@ var GUI = {
 			throw("No area");
 		if( !options || options.constructor !== Array )
 			throw("No options");
+		this.blockEventArea( area );
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -424,7 +480,7 @@ var GUI = {
 
 			if( mouse )
 			{
-				clicked = LS.Input.isEventInRect( mouse, area );
+				clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 				if(clicked)
 				{
 					selected = i;
@@ -436,7 +492,7 @@ var GUI = {
 			if( !content || content.constructor === String )
 			{
 				ctx.fillStyle = is_selected ? this.GUIStyle.backgroundColorOver : this.GUIStyle.backgroundColor;
-				ctx.fillRect( area[0], area[1], area[2], area[3] );
+				ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 			}
 
 			if(content)
@@ -446,7 +502,7 @@ var GUI = {
 					var texture = content;
 					if(!is_selected)
 						ctx.globalAlpha = 0.5;
-					ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
+					ctx.drawImage( texture, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 					ctx.globalAlpha = 1;
 				}
 				else if(content.constructor === String)
@@ -454,7 +510,7 @@ var GUI = {
 					ctx.fillStyle = this.GUIStyle.color;
 					ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
 					ctx.textAlign = "center";
-					ctx.fillText( content, area[0] + area[2] * 0.5, area[1] + area[3] * 0.75 );
+					ctx.fillText( content, area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1] );
 					ctx.textAlign = "left";
 				}
 			}
@@ -482,9 +538,10 @@ var GUI = {
 		if(!area)
 			throw("No area");
 		value = !!value;
+		this.blockEventArea( area );
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -494,7 +551,7 @@ var GUI = {
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area );
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
 				LS.Input.current_click = false; //consume event
@@ -510,19 +567,19 @@ var GUI = {
 				var texture = content;
 				if( !value && content_off && content_off.constructor === GL.Texture)
 					texture = content_off;
-				ctx.drawImage( texture, area[0], area[1], area[2], area[3] );
+				ctx.drawImage( texture, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 			}
 			else if(content.constructor === String)
 			{
 				ctx.fillStyle = this.GUIStyle.color;
 				ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
-				ctx.fillText( content, area[0] + margin, area[1] + area[3] * 0.75 );
+				ctx.fillText( content, area[0] + margin + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1]);
 
 				var w = area[3] * 0.6;
 				ctx.fillStyle = this.GUIStyle.backgroundColor;
-				ctx.fillRect( area[0] + area[2] - margin*1.5 - w, area[1] + margin*0.5, w+margin, area[3] - margin );
+				ctx.fillRect( area[0] + area[2] - margin*1.5 - w + this._offset[0], area[1] + margin*0.5 + this._offset[1], w+margin, area[3] - margin );
 				ctx.fillStyle = value ? this.GUIStyle.selected : "#000";
-				ctx.fillRect( area[0] + area[2] - margin - w, area[1] + margin, w, area[3] - margin*2 );
+				ctx.fillRect( area[0] + area[2] - margin - w + this._offset[0], area[1] + margin + this._offset[1], w, area[3] - margin*2 );
 			}
 		}
 
@@ -531,25 +588,27 @@ var GUI = {
 
 
 	/**
-	* Renders a textfield widget and returns the current value
+	* Renders a textfield widget and returns the current text value
 	* Remember: you must pass as text the same text returned by this function in order to work propertly
 	*
 	* @method TextField
 	* @param {Array} area [x,y,width,height]
-	* @param {Boolean} value if the checkbox is on or off
+	* @param {String} text the text to show in the textfield
 	* @param {Number} max_length to limit the text, otherwise leave blank
+	* @param {Boolean} is_password set to true to show as password
 	* @return {Boolean} the current state of the checkbox (will be different from value if it was pressed)
 	*/
-	TextField: function( area, text, max_length )
+	TextField: function( area, text, max_length, is_password )
 	{
 		if(!area)
 			throw("No area");
+		this.blockEventArea( area );
 
 		text = text === undefined ? "" : String(text);
 		max_length = max_length || 1024;
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -559,7 +618,7 @@ var GUI = {
 		var clicked = false;
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area );
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
 				LS.Input.current_click = null; //consume event
@@ -567,11 +626,12 @@ var GUI = {
 			}
 		}
 		var is_selected = false;
-		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area ) )
+		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area, this._offset ) )
 		{
 			is_selected = true;
 		}
 
+		this.pressed_enter = false;
 		if(is_selected)
 		{
 			var keys = LS.Input.keys_buffer;
@@ -581,7 +641,7 @@ var GUI = {
 				switch(key.keyCode)
 				{
 					case 8: text = text.substr(0, text.length - 1 ); break; //backspace
-					case 13: this.clicked_enter = true; break; //return
+					case 13: this.pressed_enter = true; break; //return
 					case 32: if(text.length < max_length) text += " "; break;
 					default:
 						if(text.length < max_length && key.key && key.key.length == 1) //length because control keys send a string like "Shift"
@@ -602,9 +662,9 @@ var GUI = {
 
 		//contour
 		ctx.fillStyle = this.GUIStyle.backgroundColor;
-		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		ctx.fillStyle = "#000";
-		ctx.fillRect( area[0] + line, area[1] + line, area[2] - line*2, area[3] - line*2 );
+		ctx.fillRect( area[0] + line + this._offset[0], area[1] + line + this._offset[1], area[2] - line*2, area[3] - line*2 );
 
 		ctx.fillStyle = this.GUIStyle.color;
 		ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
@@ -614,7 +674,15 @@ var GUI = {
 		if( is_selected && (((getTime() * 0.002)|0) % 2) == 0 )
 			cursor = "|";
 
-		ctx.fillText( text + cursor, area[0] + margin*2, area[1] + area[3] * 0.75 );
+		var final_text = text;
+		if(is_password)
+		{
+			final_text = "";
+			for(var i = 0; i < text.length; ++i)
+				final_text += "*";
+		}
+
+		ctx.fillText( final_text + cursor, area[0] + margin*2 + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1] );
 
 		return text;
 	},
@@ -635,6 +703,7 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
+		this.blockEventArea( area );
 
 		if(left_value === undefined)
 			left_value = 0;
@@ -645,7 +714,7 @@ var GUI = {
 		right_value = Number(right_value);
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -658,14 +727,14 @@ var GUI = {
 		if(norm_value < 0) norm_value = 0;
 		if(norm_value > 1) norm_value = 1;
 
-		var margin = (area[3]*0.2);
+		var margin = (area[3]*this.GUIStyle.margin);
 
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area );
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = (LS.Input.Mouse.mousex - (area[0] + margin)) / (area[2] - margin*2);
+				norm_value = ( (LS.Input.Mouse.mousex - this._offset[0]) - (area[0] + margin)) / (area[2] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				value = norm_value * range + left_value;
@@ -673,16 +742,16 @@ var GUI = {
 		}
 
 		ctx.fillStyle = this.GUIStyle.backgroundColor;
-		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
-		ctx.fillRect( area[0] + margin, area[1] + margin, (area[2] - margin*2) * norm_value, area[3] - margin*2 );
+		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + margin + this._offset[1], (area[2] - margin*2) * norm_value, area[3] - margin*2 );
 
 		if(show_value)
 		{
 			ctx.textAlign = "center";
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.5).toFixed(0) + "px " + this.GUIStyle.font;
-			ctx.fillText( value.toFixed(2), area[0] + area[2] * 0.5, area[1] + area[3] * 0.7 );
+			ctx.fillText( value.toFixed(2), area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.7 + this._offset[1] );
 		}
 
 		return value;
@@ -703,6 +772,7 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
+		this.blockEventArea( area );
 
 		value = Number(value);
 		if(bottom_value === undefined)
@@ -713,7 +783,7 @@ var GUI = {
 		top_value = Number(top_value);
 
 		var ctx = gl;
-		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area );
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
 			this._is_on_top_of_immediate_widget = true;
@@ -726,14 +796,14 @@ var GUI = {
 		if(norm_value < 0) norm_value = 0;
 		if(norm_value > 1) norm_value = 1;
 
-		var margin = (area[2]*0.2)
+		var margin = (area[2]*this.GUIStyle.margin)
 
 		if( mouse )
 		{
-			clicked = LS.Input.isEventInRect( mouse, area );
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
 			if(clicked)
 			{
-				norm_value = (LS.Input.Mouse.mousey - (area[1] + margin)) / (area[3] - margin*2);
+				norm_value = ( (LS.Input.Mouse.mousey - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
 				if(norm_value < 0) norm_value = 0;
 				if(norm_value > 1) norm_value = 1;
 				norm_value = 1 - norm_value; //reverse slider
@@ -742,12 +812,54 @@ var GUI = {
 		}
 
 		ctx.fillStyle = this.GUIStyle.backgroundColor;
-		ctx.fillRect( area[0], area[1], area[2], area[3] );
+		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
-		ctx.fillRect( area[0] + margin, area[1] + area[3] - (area[3] - margin*2) * norm_value - margin, area[2] - margin*2, (area[3] - margin*2) * norm_value );
+		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + area[3] - (area[3] - margin*2) * norm_value - margin + this._offset[1], area[2] - margin*2, (area[3] - margin*2) * norm_value );
 
 		return value;
 	},
+
+	//*
+	DragArea: function( area, value )
+	{
+		if(!area)
+			throw("No area");
+		if(!value)
+			throw("No value");
+		this.blockEventArea( area );
+
+		var ctx = gl;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			if(clicked)
+			{
+				LS.Input.current_click = null; //consume event
+				LS.Input.last_click = mouse;
+			}
+		}
+		var is_selected = false;
+		if( LS.Input.last_click && LS.Input.isEventInRect( LS.Input.last_click, area, this._offset ) )
+		{
+			is_selected = true;
+			if( LS.Input.Mouse.dragging )
+			{
+				value[0] += LS.Input.Mouse.deltax || 0;
+				value[1] += LS.Input.Mouse.deltay || 0;
+			}
+		}
+
+		return value;
+	},
+	//*/
 
 	setCursor: function(type)
 	{
@@ -756,6 +868,20 @@ var GUI = {
 		gl.canvas.style.cursor = type || "";
 	}
 };
+
+Object.defineProperty( GUI, "GUIOffset", {
+	set: function(v){
+		if(!v.length || v.length < 2)
+			return;
+		this._offset[0] = v[0];
+		this._offset[1] = v[1];
+	},
+	get: function()
+	{
+		return this._offset;
+	},
+	enumerable: true
+});
 
 //LEGACY API
 GUI.show = GUI.showHTML;

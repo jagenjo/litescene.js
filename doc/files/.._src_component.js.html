@@ -262,6 +262,10 @@ Component.prototype.clone = function()
 **/
 Component.prototype.createProperty = function( name, value, type, setter, getter )
 {
+	if(this[name] !== undefined)
+		return; //console.warn(&quot;createProperty: this component already has a property called &quot; + name );
+
+	//if we have type info, stored in the constructor, useful for GUIs
 	if(type)
 	{
 		//control errors
@@ -286,32 +290,47 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 
 	var private_name = &quot;_&quot; + name;
 
-	//vector type has special type with setters and getters to avoid overwritting
+	if( Object.hasOwnProperty( this, private_name ) )
+		return;
+
+
+	var property_root = this; //with proto is problematic, because the getters cannot do this.set (this is the proto, not the component)
+
+	//vector type has special type with setters and getters to avoid replacing the container during assignations
 	if(value &amp;&amp; value.constructor === Float32Array)
 	{
 		value = new Float32Array( value ); //clone
 		this[ private_name ] = value; //this could be removed...
 
 		//create setter
-		Object.defineProperty( this, name, {
+		Object.defineProperty( property_root, name, {
 			get: getter || function() { return value; },
 			set: setter || function(v) { value.set( v ); },
 			enumerable: true
+			//writable: false //cannot be set to true if setter/getter
 		});
 	}
-	else
+	else //this is for vars that has their own setter/getter
 	{
-		//define private
-		Object.defineProperty( this, private_name, { 
+		//define private (writable because it can be overwriten with different values)
+		Object.defineProperty( property_root, private_name, { 
 			value: value, 
-			enumerable: false
+			enumerable: false,
+			writable: true 
 		});
 
+		var that = this;
+
 		//define public
-		Object.defineProperty( this, name, {
-			get: getter || function() { return this[ private_name ]; },
-			set: setter || function(v) { this[ private_name ] = v; },
+		Object.defineProperty( property_root, name, {
+			get: getter || function() { 
+				return this[ private_name ];
+			},
+			set: setter || function(v) { 
+				this[ private_name ] = v;
+			},
 			enumerable: true
+			//writable: false //cannot be set to true if setter/getter
 		});
 	}
 }
@@ -342,6 +361,88 @@ Component.prototype.getLocator = function( property_name )
 		return this._root.uid + &quot;/&quot; + this.uid + &quot;/&quot; + property_name;
 	}
 	return this._root.uid + &quot;/&quot; + this.uid;
+}
+
+Component.prototype.getPropertyInfoFromPath = function( path )
+{
+	if( !path.length )
+		return null;
+
+	var v;
+	var varname = path[0];
+
+	//to know the value of a property of the given target
+	if( this.getPropertyValue )
+		v = this.getPropertyValue( varname );
+
+	//special case when the component doesnt specify any locator info but the property referenced does
+	//used in TextureFX
+	if (v === undefined &amp;&amp; path.length &gt; 1 &amp;&amp; this[ varname ] &amp;&amp; this[ varname ].getPropertyInfoFromPath )
+	{
+		var r = this[ varname ].getPropertyInfoFromPath( path.slice(1) );
+		if(r)
+		{
+			r.node = this.root;
+			return r;
+		}
+	}
+
+	if(v === undefined &amp;&amp; this[ varname ] === undefined )
+		return null;
+
+	//if we dont have a value yet then take it directly from the object
+	var value = v !== undefined ? v : this[ varname ];
+
+	var extra_info = this.constructor[ &quot;@&quot; + varname ];
+	var type = &quot;&quot;;
+	if(extra_info)
+		type = extra_info.type;
+	if(!type &amp;&amp; value !== null &amp;&amp; value !== undefined)
+	{
+		if(value.constructor === String)
+			type = &quot;string&quot;;
+		else if(value.constructor === Boolean)
+			type = &quot;boolean&quot;;
+		else if(value.length)
+			type = &quot;vec&quot; + value.length;
+		else if(value.constructor === Number)
+			type = &quot;number&quot;;
+	}
+
+	return {
+		node: this.root,
+		target: this,
+		name: varname,
+		value: value,
+		type: type
+	};	
+}
+
+/**
+* calls a method in all components in this node and all the children nodes
+* @method broadcastMessage
+* @param {String} method_name 
+* @param {*} data
+**/
+Component.prototype.broadcastMessage = function( method_name, data )
+{
+	var node = this._root;
+	if(!node)
+		return;
+	node.broadcastMessage( method_name, data );
+}
+
+/**
+* returns the first component of type class_name of the SceneNode where this component belongs
+* @method getComponent
+* @param {String|Component} class_name the name of the class in string format or the component class itself
+* @return {*} Component or null
+**/
+Component.prototype.getComponent = function( class_name )
+{
+	if(!this._root)
+		return null;
+	return this._root.getComponent( class_name );
 }
 
 /**

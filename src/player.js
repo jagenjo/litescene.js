@@ -480,8 +480,9 @@ Player.prototype._onupdate = function(dt)
 //input
 Player.prototype._onmouse = function(e)
 {
-	//send to the input system
-	LS.Input.onMouse(e);
+	//send to the input system (if blocked ignore it)
+	if( LS.Input.onMouse(e) == true )
+		return;
 
 	//console.log(e);
 	if(this.state != LS.Player.PLAYING)

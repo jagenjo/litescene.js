@@ -1,7 +1,10 @@
 //Global Scope
 //better array conversion to string for serializing
-var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
-typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
+if( !Uint8Array.prototype.toJSON )
+{
+	var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
+	typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
+}
 
 /**
 * LS is the global scope for the global functions and containers of LiteScene
@@ -914,6 +917,11 @@ var LSQ = {
 		if( v === undefined && target[ varname ] === undefined )
 			return null;
 		return v !== undefined ? v : target[ varname ];
+	},
+
+	log: function()
+	{
+		console.log.call( console, arguments );
 	}
 };
 

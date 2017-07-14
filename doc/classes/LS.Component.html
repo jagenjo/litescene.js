@@ -187,6 +187,10 @@ Components can overwrite this methods if they want.</p>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_broadcastMessage">broadcastMessage</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_clone">clone</a>
 
                             </li>
@@ -196,6 +200,10 @@ Components can overwrite this methods if they want.</p>
                             </li>
                             <li class="index-item method">
                                 <a href="#method_createProperty">createProperty</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getComponent">getComponent</a>
 
                             </li>
                             <li class="index-item method">
@@ -256,7 +264,7 @@ Components can overwrite this methods if they want.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_component.js.html#l195"><code>..&#x2F;src&#x2F;component.js:195</code></a>
+        <a href="../files/.._src_component.js.html#l296"><code>..&#x2F;src&#x2F;component.js:296</code></a>
         </p>
 
 
@@ -335,6 +343,72 @@ Components can overwrite this methods if they want.</p>
                     <div class="param-description">
                         <p>[optional] getter function, otherwise one will be created</p>
 
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_broadcastMessage" class="method item">
+    <h3 class="name"><code>broadcastMessage</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>method_name</code>
+                </li>
+                <li class="arg">
+                        <code>data</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_component.js.html#l269"><code>..&#x2F;src&#x2F;component.js:269</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>calls a method in all components in this node and all the children nodes</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">method_name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">data</code>
+                        <span class="type"></span>
+
+
+                    <div class="param-description">
+                         
                     </div>
 
                 </li>
@@ -551,6 +625,72 @@ Components can overwrite this methods if they want.</p>
 
 
 </div>
+<div id="method_getComponent" class="method item">
+    <h3 class="name"><code>getComponent</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>class_name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type"></span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_component.js.html#l283"><code>..&#x2F;src&#x2F;component.js:283</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the first component of type class_name of the SceneNode where this component belongs</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">class_name</code>
+                        <span class="type">String | Component</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the class in string format or the component class itself</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type"></span>:
+                    <p>Component or null</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_getLocator" class="method item">
     <h3 class="name"><code>getLocator</code></h3>
 
@@ -575,7 +715,7 @@ Components can overwrite this methods if they want.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_component.js.html#l176"><code>..&#x2F;src&#x2F;component.js:176</code></a>
+        <a href="../files/.._src_component.js.html#l195"><code>..&#x2F;src&#x2F;component.js:195</code></a>
         </p>
 
 

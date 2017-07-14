@@ -288,7 +288,7 @@ var ResourcesManager = {
 		var point = complex_extension ? fullpath.indexOf(&quot;.&quot;) : fullpath.lastIndexOf(&quot;.&quot;);
 		if(point == -1)
 			return &quot;&quot;;
-		return fullpath.substr(point+1).toLowerCase();
+		return fullpath.substr(point+1).toLowerCase().trim();
 	},
 
 	/**

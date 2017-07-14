@@ -139,7 +139,7 @@ function Light(o)
 
 	//light uniforms
 	this._uniforms = {
-		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, etc
+		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, index of pass, num passes
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
@@ -985,6 +985,8 @@ Light._enabled_fs_shaderblock_code = "\n\
 	{\n\
 		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
 		vec3 final_color = o.Albedo * total_light;\n\
+		if(u_light_info.z == 0.0)\n\
+			final_color += o.Emission;\n\
 		final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
 		return max( final_color, vec3(0.0) );\n\
 	}\n\
@@ -1085,7 +1087,10 @@ Light._disabled_shaderblock_code = "\n\
 		FINALLIGHT.Specular = 0.0;\n\
 		FINALLIGHT.Attenuation = 0.0;\n\
 		FINALLIGHT.Shadow = 0.0;\n\
-		return o.Albedo * LIGHT.Ambient;\n\
+		vec3 final_color = o.Albedo * LIGHT.Ambient;\n\
+		if(u_light_info.z == 0.0)\n\
+			final_color += o.Emission;\n\
+		return final_color;\n\
 	}\n\
 	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT)\n\
 	{\n\

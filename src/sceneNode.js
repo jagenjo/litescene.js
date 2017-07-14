@@ -305,9 +305,16 @@ Object.defineProperty( SceneNode.prototype, 'className', {
 /**
 * Destroys this node
 * @method destroy
+* @param {number} time [optional] time in seconds to wait till destroying the node
 **/
-SceneNode.prototype.destroy = function()
+SceneNode.prototype.destroy = function( time )
 {
+	if(time && time.constructor === Number && time > 0)
+	{
+		setTimeout( this.destroy.bind(this,0), time * 0.001 );
+		return;
+	}
+
 	LEvent.trigger( this, "destroy" );
 	this.removeAllComponents();
 	if(this.children)
@@ -400,6 +407,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			};
 		}
 
+		//special cases for a node
 		switch(path[0])
 		{
 			case "matrix":
@@ -449,63 +457,14 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 	{
 	}
 
-	var v = undefined;
-
 	if(!target) //unknown target
 		return null;
 
-	if( target.getPropertyInfoFromPath && target != this )
-	{
-		var r = target.getPropertyInfoFromPath( path.slice(1) );
-		if(r)
-			return r;
-	}
+	//this was moved to Component.prototype.getPropertyInfoFromPath  (if any errors check cases)
+	if( target != this && target.getPropertyInfoFromPath ) //avoid weird recursion
+		return target.getPropertyInfoFromPath( path.slice(1) );
 
-	//to know the value of a property of the given target
-	if( target.getPropertyValue )
-		v = target.getPropertyValue( varname );
-
-	//special case when the component doesnt specify any locator info but the property referenced does
-	//used in TextureFX
-	if (v === undefined && path.length > 2 && target[ varname ] && target[ varname ].getPropertyInfoFromPath )
-	{
-		var r = target[ varname ].getPropertyInfoFromPath( path.slice(2) );
-		if(r)
-		{
-			r.node = this;
-			return r;
-		}
-	}
-
-	if(v === undefined && target[ varname ] === undefined )
-		return null;
-
-	//if we dont have a value yet then take it directly from the object
-	var value = v !== undefined ? v : target[ varname ];
-
-	var extra_info = target.constructor[ "@" + varname ];
-	var type = "";
-	if(extra_info)
-		type = extra_info.type;
-	if(!type && value !== null && value !== undefined)
-	{
-		if(value.constructor === String)
-			type = "string";
-		else if(value.constructor === Boolean)
-			type = "boolean";
-		else if(value.length)
-			type = "vec" + value.length;
-		else if(value.constructor === Number)
-			type = "number";
-	}
-
-	return {
-		node: this,
-		target: target,
-		name: varname,
-		value: value,
-		type: type
-	};
+	return null;
 }
 
 /**
@@ -885,9 +844,12 @@ SceneNode.prototype.reloadFromPrefab = function()
 
 	//apply info
 	this.removeAllChildren();
-	this.init( true, true );
+	this.init( true, true ); //keep components, keep_info
+	var prefab_data = prefab.prefab_data;
+	
 	//remove all but children info (prefabs overwrite only children info)
-	var prefab_data = { children: prefab.prefab_data.children };
+	prefab_data = { children: prefab.prefab_data.children };
+
 	//uid data is already removed from the prefab
 	this.configure( prefab_data );
 
@@ -1106,9 +1068,9 @@ SceneNode.prototype.configure = function(info)
 
 	//restore components
 	if(info.components)
-		this.configureComponents(info);
+		this.configureComponents( info );
 
-	if(info.prefab) 
+	if(info.prefab && !this._is_root)  //is_root because in some weird situations the prefab was set to the root node
 		this.prefab = info.prefab; //assign and calls this.reloadFromPrefab();
 	else //configure children if it is not a prefab
 		this.configureChildren(info);
@@ -1212,7 +1174,7 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 		o.submesh_id = this.submesh_id;
 	if(this.material) 
 		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
-	if(this.prefab && !ignore_prefab) 
+	if(this.prefab && !ignore_prefab && !this._is_root ) 
 		o.prefab = this.prefab;
 
 	if(this.flags) 

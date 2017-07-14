@@ -408,7 +408,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 * @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
 */
 
-SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on_resources_loaded )
+SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on_resources_loaded, on_loaded )
 {
 	if(!url)
 		return;
@@ -474,11 +474,15 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	function inner_success( response )
 	{
-		if(on_complete)
-			on_complete(that, url);
+		if(on_loaded)
+			on_loaded(that, url);
 
 		that.init();
 		that.configure(response);
+
+		if(on_complete)
+			on_complete(that, url);
+
 		that.loadResources( inner_all_loaded );
 		/**
 		 * Fired when the scene has been loaded but before the resources
@@ -563,7 +567,8 @@ SceneTree.getScriptsList = function( root, allow_local )
 	return scripts;
 }
 
-SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
+//reloads external and global scripts taking into account if they come from wbins
+SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
 	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
@@ -588,7 +593,7 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error )
 	{
 		var script_fullpath = scripts[i];
 		var res = LS.ResourcesManager.getResource( script_fullpath );
-		if(!res)
+		if(!res || force_reload)
 		{
 			final_scripts.push( script_fullpath );
 			continue;
@@ -1008,7 +1013,10 @@ SceneTree.prototype.getPropertyInfo = function( property_uid )
 {
 	var path = property_uid.split("/");
 
-	if(path[0].substr(0,5) == "@MAT-")
+	var start = path[0].substr(0,5);
+
+	//for global materials
+	if( start == "@MAT-")
 	{
 		var material = LS.RM.materials_by_uid[ path[0] ];
 		if(!material)
@@ -1016,7 +1024,24 @@ SceneTree.prototype.getPropertyInfo = function( property_uid )
 		return material.getPropertyInfoFromPath( path.slice(1) );
 	}
 
+	//for components
+	if( start == "@COMP")
+	{
+		var comp = this.findComponentByUId( path[0] );
+		if(!comp)
+			return null;
+		if(path.length == 1)
+			return {
+				node: comp.root,
+				target: comp,
+				name: comp ? LS.getObjectClassName( comp ) : "",
+				type: "component",
+				value: comp
+			};
+		return comp.getPropertyInfoFromPath( path.slice(1) );
+	}
 
+	//for regular locators
 	var node = this.getNode( path[0] );
 	if(!node)
 		return null;
@@ -1144,13 +1169,15 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node,
 
 /**
 * Returns the resources used by the scene
-* includes the nodes, components and preloads
+* includes the nodes, components, preloads and global_scripts
+* doesn't include external_scripts
 *
 * @method getResources
 * @param {Object} resources [optional] object with resources
 * @param {Boolean} as_array [optional] returns data in array format instead of object format
 * @param {Boolean} skip_in_pack [optional] skips resources that come from a pack
 * @param {Boolean} skip_local [optional] skips resources whose name starts with ":" (considered local resources)
+* @return {Object|Array} the resources in object format (or if as_array is true, then an array)
 */
 SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, skip_local )
 {
@@ -1691,6 +1718,35 @@ SceneTree.prototype.findNodeComponents = function( type )
 				result.push( components[j] );
 	}
 	return result;
+}
+
+/**
+* Allows to instantiate a prefab from the fullpath of the resource
+*
+* @method instantiate
+* @param {String} prefab_url the filename to the resource containing the prefab
+* @param {vec3} position where to instantiate
+* @param {quat} rotation the orientation
+* @param {SceneNode} parent [optional] if no parent then scene.root will be used
+* @return {SceneNode} the resulting prefab node
+*/
+SceneTree.prototype.instantiate = function( prefab_url, position, rotation, parent )
+{
+	if(!prefab_url || prefab_url.constructor !== String)
+		throw("prefab must be the url to the prefab");
+
+	var node = new LS.SceneNode();
+	if(position && position.length === 3)
+		node.transform.position = position;
+	if(rotation && rotation.length === 4)
+		node.transform.rotation = rotation;
+
+	parent = parent || this.root;
+	parent.addChild( node );
+
+	node.prefab = prefab_url;
+
+	return node;
 }
 
 /**

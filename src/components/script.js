@@ -12,11 +12,19 @@ function Script(o)
 	this.enabled = true;
 	this.code = this.constructor.templates["script"];
 	this._blocked_functions = new Set(); //used to block functions that has errors
+	this._name = "";
 
 	this._script = new LScript();
 
+	//this are the methods that will be in the prototype of the script context by default
 	this._script.extra_methods = {
-		getComponent: (function() { return this; }).bind(this),
+		getComponent: (function(type,index) { 
+			if(!arguments.length)
+				return this;
+			if(!this._root)
+				return null;
+			return this._root.getComponent(type,index)
+			}).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
 		createProperty: LS.Component.prototype.createProperty,
 		createAction: LS.Component.prototype.createAction,
@@ -40,7 +48,7 @@ Script.catch_important_exceptions = true; //catch exception during parsing, othe
 
 Script.icon = "mini-icon-script.png";
 Script.templates = {
-	"script":"//@unnamed\n//defined: component, node, scene, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}"
+	"script":"//@unnamed\n//defined: component, node, scene, transform, globals\nthis.onStart = function()\n{\n}\n\nthis.onUpdate = function(dt)\n{\n\t//node.scene.refresh();\n}"
 };
 
 Script["@code"] = {type:'script'};
@@ -117,18 +125,10 @@ Object.defineProperty( Script.prototype, "context", {
 
 Object.defineProperty( Script.prototype, "name", {
 	set: function(v){ 
-		console.error("Script: name cannot be assigned");
+		console.error("Script: name cannot be assigned, add to the first line //@name");
 	},
 	get: function() { 
-		if(!this._script.code)
-			return;
-		var line = this._script.code.substr(0,32);
-		if(line.indexOf("//@") != 0)
-			return null;
-		var last = line.indexOf("\n");
-		if(last == -1)
-			last = undefined;
-		return line.substr(3,last - 3);
+		return this._name;
 	},
 	enumerable: false //if it was enumerable it would be serialized
 });
@@ -181,6 +181,15 @@ Script.prototype.setCode = function( code, skip_events )
 }
 
 /**
+* Force to reevaluate the code (only for special situations)
+* @method reload
+*/
+Script.prototype.reload = function()
+{
+	this.processCode();
+}
+
+/**
 * This is the method in charge of compiling the code and executing the constructor, which also creates the context.
 * It is called everytime the code is modified, that implies that the context is created when the component is configured.
 * @method processCode
@@ -189,6 +198,21 @@ Script.prototype.processCode = function( skip_events )
 {
 	this._blocked_functions.clear();
 	this._script.code = this.code;
+
+	//extract name
+	this._name = "";
+	if(this.code)
+	{
+		var line = this.code.substr(0,128);
+		if(line.indexOf("//@") == 0)
+		{
+			var last = line.indexOf("\n");
+			if(last == -1)
+				last = undefined;
+			this._name = line.substr(3,last - 3).trim();
+		}
+	}
+
 	if(!this._root || LS.Script.block_execution )
 		return true;
 
@@ -200,7 +224,7 @@ Script.prototype.processCode = function( skip_events )
 	var old = this._stored_properties || this.getContextProperties();
 
 	//compiles and executes the context
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
 
@@ -228,6 +252,9 @@ Script.prototype.processCode = function( skip_events )
 		this._script._context._initialized = true; //avoid initializing it twice
 	}
 
+	if( this._name && this._root && this._root.scene )
+		LS.Script.active_scripts[ this._name ] = this;
+
 	return ret;
 }
 
@@ -250,6 +277,7 @@ Script.prototype.setContextProperties = function( properties )
 		return;
 	}
 
+	//to copy we use the clone in target method
 	LS.cloneObject( properties, ctx, false, true );
 }
 
@@ -323,7 +351,8 @@ Script.prototype.getPropertyInfoFromPath = function( path )
 			name:"context",
 			node: this._root,
 			target: context,
-			type: "object"
+			type: "object",
+			value: context
 		};
 
 	var varname = path[1];
@@ -478,7 +507,7 @@ Script.prototype.onRemovedFromNode = function( node )
 
 Script.prototype.onAddedToScene = function( scene )
 {
-	if( this._name && !LS.Script.active_scripts[ this._name ] )
+	if( this._name )
 		LS.Script.active_scripts[ this._name ] = this;
 
 	//avoid to parse it again
@@ -511,7 +540,7 @@ Script.prototype.onAddedToScene = function( scene )
 
 Script.prototype.onRemovedFromScene = function(scene)
 {
-	if( this._name && LS.Script.active_scripts[ this._name ] )
+	if( this._name && LS.Script.active_scripts[ this._name ] == this )
 		delete LS.Script.active_scripts[ this._name ];
 
 	//ensures no binded events
@@ -626,6 +655,7 @@ function ScriptFromFile(o)
 {
 	this.enabled = true;
 	this._filename = "";
+	this._name = "";
 
 	this._script = new LScript();
 	this._blocked_functions = new Set(); //used to block functions that has errors
@@ -677,18 +707,10 @@ Object.defineProperty( ScriptFromFile.prototype, "context", {
 
 Object.defineProperty( ScriptFromFile.prototype, "name", {
 	set: function(v){ 
-		console.error("Script: name cannot be assigned");
+		console.error("Script: name cannot be assigned, set the first line with //@name");
 	},
 	get: function() { 
-		if(!this._script.code)
-			return;
-		var line = this._script.code.substr(0,32);
-		if(line.indexOf("//@") != 0)
-			return null;
-		var last = line.indexOf("\n");
-		if(last == -1)
-			last = undefined;
-		return line.substr(3,last - 3);
+		return this._name;
 	},
 	enumerable: false //if it was enumerable it would be serialized
 });
@@ -724,7 +746,22 @@ ScriptFromFile.prototype.onAddedToScene = function( scene )
 	}
 }
 
-ScriptFromFile.prototype.processCode = function( skip_events )
+/**
+* Force to reevaluate the code (only for special situations like remove codes)
+* @method reload
+*/
+ScriptFromFile.prototype.reload = function()
+{
+	if(!this.filename)
+		return;
+	//remove old version
+	LS.ResourcesManager.unregisterResource( this.filename );
+	//load again
+	this.processCode();
+}
+
+
+ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 {
 	var that = this;
 	if(!this.filename)
@@ -737,13 +774,37 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 			if( url != that.filename )
 				return;
 			that.processCode( skip_events );
+			if(on_complete)
+				on_complete(that);
 		});
 		return;
 	}
 
 	var code = script_resource.data;
-	if( code === undefined || this._script.code == code )
+	if( code === undefined)
+	{
+		this._name = "";
 		return;
+	}
+
+	if( this._script.code == code )
+		return;
+
+	// ****** CODE PROCESSED ***********************
+
+	//extract name
+	this._name = "";
+	if(code)
+	{
+		var line = code.substr(0,128);
+		if(line.indexOf("//@") == 0)
+		{
+			var last = line.indexOf("\n");
+			if(last == -1)
+				last = undefined;
+			this._name = line.substr(3,last - 3).trim();
+		}
+	}
 
 	if(!this._root || LS.Script.block_execution )
 		return true;
@@ -783,6 +844,12 @@ ScriptFromFile.prototype.processCode = function( skip_events )
 
 		this._script._context._initialized = true; //avoid initializing it twice
 	}
+
+	if( this._name && this._root && this._root.scene )
+		LS.Script.active_scripts[ this._name ] = this;
+
+	if(on_complete)
+		on_complete(this);
 
 	return ret;
 }

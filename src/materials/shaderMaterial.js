@@ -149,7 +149,8 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 				prop.value = { texture: prop.value };
 			this.properties[i] = prop;
 			this._properties_by_name[ prop.name ] = prop;
-			this._samplers.push( prop.value );
+			//if(prop.is_texture)
+			//	this._samplers.push( prop.value );
 		}
 	}
 	else if( this._properties_by_name[ name ] )
@@ -316,17 +317,26 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	render_uniforms.u_model = model; 
 	render_uniforms.u_normal_model = instance.normal_matrix; 
 
-	//compute flags
+	//compute flags: checks the ShaderBlocks attached to this instance and resolves the flags
 	var block_flags = instance.computeShaderBlockFlags();
 
 	//global stuff
 	this.render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
 	var global_flags = 0;
-	if( LS.Renderer._global_textures.environment )
+
+	if(1) //allow reflections
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
+		if( LS.Renderer._global_textures.environment )
+		{
+			if( LS.Renderer._global_textures.environment.texture_type == GL.TEXTURE_2D )
+				global_flags |= environment_2d_block.flag_mask;
+			else
+				global_flags |= environment_cubemap_block.flag_mask;
+		}
 	}
+
 
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
@@ -337,7 +347,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( pass.id == COLOR_PASS && this._light_mode !== Material.NO_LIGHTS )
 		lights = LS.Renderer.getNearLights( instance );
 
-	var ignore_lights = render_settings.lights_disabled;
+	var ignore_lights = render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
 
 	if( !lights || lights.length == 0 || ignore_lights )
 	{
@@ -684,11 +694,26 @@ ShaderMaterial.prototype.createSampler = function( name, uniform, sampler_option
 	if(!name || !uniform)
 		throw("parameter missing in createSampler");
 
-	var sampler = {
-		texture: value
-	};
+	var type = "sampler";
+	if( sampler_options && sampler_options.type )
+		type = sampler_options.type;
 
-	var prop = { name: name, uniform: uniform, value: sampler, type: "sampler", is_texture: 1, sampler_slot: -1 };
+	var sampler = null;
+
+	//do not overwrite
+	if( this._properties_by_name[ name ] )
+	{
+		var current_prop = this._properties_by_name[ name ];
+		if( current_prop.type == type && current_prop.value )
+			sampler = current_prop.value;
+	}
+
+	if(!sampler)
+		sampler = {
+			texture: value
+		};
+
+	var prop = { name: name, uniform: uniform, value: sampler, type: type, is_texture: 1, sampler_slot: -1 };
 
 	if(sampler_options)
 	{
@@ -810,10 +835,10 @@ LS.ShaderMaterial = ShaderMaterial;
 //ENVIRONMENT 
 var environment_code = "\n\
 	#ifdef ENVIRONMENT_TEXTURE\n\
-		uniform texture2D environment_texture;\n\
+		uniform sampler2D environment_texture;\n\
 	#endif\n\
 	#ifdef ENVIRONMENT_CUBEMAP\n\
-		uniform textureCube environment_texture;\n\
+		uniform samplerCube environment_texture;\n\
 	#endif\n\
 	vec2 polarToCartesian(in vec3 V)\n\
 	{\n\
@@ -827,7 +852,7 @@ var environment_code = "\n\
 			return texture2D( environment_texture, uvs ).xyz;\n\
 		#endif\n\
 		#ifdef ENVIRONMENT_CUBEMAP\n\
-			return texture2D( environment_texture, V ).xyz;\n\
+			return textureCube( environment_texture, -V ).xyz;\n\
 		#endif\n\
 		return u_background_color.xyz;\n\
 	}\n\
@@ -839,19 +864,29 @@ var environment_disabled_code = "\n\
 	}\n\
 ";
 
+var environment_cubemap_block = new LS.ShaderBlock("environment_cubemap");
+environment_cubemap_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_CUBEMAP: "" } );
+environment_cubemap_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_cubemap"});
+environment_cubemap_block.register();
+
+var environment_2d_block = new LS.ShaderBlock("environment_2D");
+environment_2d_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_2D"});
+environment_2d_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_TEXTURE: "" } );
+environment_2d_block.register();
+
 var environment_block = new LS.ShaderBlock("environment");
 environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
 environment_block.register();
 
 
 var reflection_code = "\n\
-	#pragma shaderblock SHADOWBLOCK \"environment\"\n\
+	#pragma shaderblock ENVIRONMENTBLOCK \"environment\"\n\
 	\n\
 	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
 	{\n\
 		vec3 R = reflect( IN.viewDir, o.Normal );\n\
 		vec3 bg = vec3(0.0);\n\
-		if(u_light_info.x == (u_light_info.y - 1.0))\n\
+		if(u_light_info.z == (u_light_info.w - 1.0))\n\
 			bg = getEnvironmentColor( R, 0.0 );\n\
 		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
 		return final_color;\n\

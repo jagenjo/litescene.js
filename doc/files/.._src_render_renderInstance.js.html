@@ -279,6 +279,10 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.mesh = mesh;
 		this.vertex_buffers = {};
 	}
+
+	if(!this.mesh)
+		return;
+
 	//this.vertex_buffers = mesh.vertexBuffers;
 	for(var i in mesh.vertexBuffers)
 		this.vertex_buffers[i] = mesh.vertexBuffers[i];
@@ -479,7 +483,7 @@ RenderInstance.prototype.removeShaderBlock = function( block )
 	}
 }
 
-//checks the shader blocks attached to this instance and resolves the flags
+//checks the ShaderBlocks attached to this instance and resolves the flags
 RenderInstance.prototype.computeShaderBlockFlags = function()
 {
 	return this.shader_block_flags;

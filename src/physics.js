@@ -341,7 +341,7 @@ var Physics = {
 	* @method raycastRenderInstances
 	* @param {vec3} origin in world space
 	* @param {vec3} direction in world space
-	* @param {Object} options ( triangle_collision: true if you want to test against triangles, max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
+	* @param {Object} options { instances: array of instances, if not the scene will be used, triangle_collision: true if you want to test against triangles, max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) }
 	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
 	*/
 	raycastRenderInstances: function( origin, direction, options )
@@ -358,7 +358,7 @@ var Physics = {
 		var compute_normal = !!options.normal;
 		var ignore_transparent = !!options.ignore_transparent;
 
-		var instances = scene._instances;
+		var instances = options.instances || scene._instances;
 		if(!instances || !instances.length)
 			return null;
 
@@ -366,7 +366,6 @@ var Physics = {
 
 		var local_origin = vec3.create();
 		var local_direction = vec3.create();
-
 
 		//for every instance
 		for(var i = 0, l = instances.length; i < l; ++i)
@@ -427,6 +426,23 @@ var Physics = {
 
 		collisions.sort( LS.Collision.isCloser );
 		return collisions;
+	},
+
+	/**
+	* Cast a ray that traverses the scene checking for collisions with RenderInstances instead of colliders
+	* Similar to Physics.raycast but using the RenderInstances (if options.triangle_collision it builds Octrees for the RIs whose OOBB collides with the ray)
+	* @method raycastRenderInstances
+	* @param {vec3} origin in world space
+	* @param {vec3} direction in world space
+	* @param {LS.SceneNode} node 
+	* @param {Object} options ( triangle_collision: true if you want to test against triangles, max_distance: maxium ray distance, layers, scene, max_distance, first_collision : returns the first collision (which could be not the closest one) )
+	* @return {Array} array containing all the RenderInstances that collided with the ray in the form [SceneNode, RenderInstance, collision point, distance]
+	*/
+	raycastNode: function( origin, direction, node, options )
+	{
+		options = options || {};
+		options.instances = node._instances;
+		return this.raycastRenderInstances( origin, direction, options );
 	}
 }
 

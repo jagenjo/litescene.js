@@ -29,6 +29,9 @@ ComponentContainer.prototype.configureComponents = function( info )
 	if(!info.components)
 		return;
 
+	var to_configure = [];
+
+	//attach first, configure later
 	for(var i = 0, l = info.components.length; i < l; ++i)
 	{
 		var comp_info = info.components[i];
@@ -58,7 +61,12 @@ ComponentContainer.prototype.configureComponents = function( info )
 		}
 
 		//what about configure the comp after adding it? 
-		comp.configure( comp_info[1] );
+		//comp.configure( comp_info[1] );
+		to_configure.push( comp, comp_info[1] );
+
+		//HACK very special case: due to requireScript
+		if( comp.constructor === LS.Components.ScriptFromFile )
+			comp._filename = comp_info[1].filename;
 
 		//editor stuff
 		if( comp_info[1].editor )
@@ -67,6 +75,13 @@ ComponentContainer.prototype.configureComponents = function( info )
 		//ensure the component uid is stored, some components may forgot about it
 		if( comp_info[1].uid && comp_info[1].uid !== comp.uid )
 			comp.uid = comp_info[1].uid;
+	}
+
+	//configure components now that all of them are created
+	//this is to avoid problems with components that check if the node has other components and if not they create it
+	for(var i = 0, l = to_configure.length; i < l; i+=2)
+	{
+		to_configure[i].configure( to_configure[i+1] );
 	}
 }
 
@@ -144,6 +159,16 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	if(!component)
 		throw("addComponent cannot receive null");
 
+	//you may pass a component class instead of an instance
+	if(component.constructor === String)
+	{
+		component = LS.Components[ component ];
+		if(!component)
+			throw("component class not found: ", arguments[0] );
+	}
+	if(component.is_component)
+		component = new component();
+	
 	//link component with container
 	component._root = this;
 
@@ -283,6 +308,26 @@ ComponentContainer.prototype.getComponent = function( component_class, index )
 	//convert string to class
 	if( component_class.constructor === String )
 	{
+		//special case, locator by name (the locator starts with an underscore if it is meant to be a name)
+		if( component_class[0] == "_" ) 
+		{
+			component_class = component_class.substr(1); //remove underscore
+			for(var i = 0, l = this._components.length; i < l; ++i)
+			{
+				if( this._components[i].name == component_class )
+				{
+					if(index !== undefined && index > 0)
+					{
+						index--;
+						continue;
+					}
+					return this._components[i];
+				}
+			}
+			return false;
+		}
+
+		//otherwise the string represents the class name
 		component_class = LS.Components[ component_class ];
 		if(!component_class)
 			return;
@@ -374,25 +419,108 @@ ComponentContainer.prototype.setComponentIndex = function( component, index )
 
 
 /**
-* executes the method with a given name in all the components
-* @method processActionInComponents
-* @param {String} action_name the name of the function to execute in all components (in string format)
-* @param {Array} params array with every parameter that the function may need
+* Ensures this node has a component of the specified class, if not it creates one and attaches it
+* @method requireComponent
+* @param {Object|String} component_class the class to search a component from (could be the class or the name)
+* @param {Object} data [optional] the object to configure the component from
+* @return {Component} the component found or created
 */
-ComponentContainer.prototype.processActionInComponents = function(action_name,params)
+ComponentContainer.prototype.requireComponent = function( component_class, data )
 {
-	if(!this._components)
-		return;
-	for(var i = 0, l = this._components.length; i < l; ++i)
+	if(!component_class)
+		throw("no component class specified");
+
+	//convert string to class
+	if( component_class.constructor === String )
+	{
+		component_class = LS.Components[ component_class ];
+		if(!component_class)
+		{
+			console.error("component class not found:", arguments[0] );
+			return null;
+		}
+	}
+
+	//search component
+	var l = this._components.length;
+	for(var i = 0; i < l; ++i)
+	{
+		if( this._components[i].constructor === component_class )
+			return this._components[i];
+	}
+
+	var compo = new component_class();
+	this.addComponent(compo, l ); //insert before the latest scripts, to avoid situations where when partially parsed the components the component is attached but not parsed yet
+	if(data)
+		compo.configure(data);
+	return compo;
+}
+
+/**
+* Ensures this node has a ScriptFromFile component of the specified script url, if not it creates one and attaches it
+* @method requireScript
+* @param {String} url the url to the script
+* @return {Component} the ScriptFromFile component found or created
+*/
+ComponentContainer.prototype.requireScript = function( url )
+{
+	if(!url)
+		throw("no url specified");
+
+	var component_class = LS.Components.ScriptFromFile;
+	url = LS.ResourcesManager.cleanFullpath( url ); //remove double slashes or spaces
+
+	//search component
+	var l = this._components.length;
+	for(var i = 0; i < l; ++i)
 	{
 		var comp = this._components[i];
-		if( !comp[action_name] || comp[action_name].constructor !== Function )
-			continue;
-
-		if(!params || params.constructor !== Array)
-			comp[action_name].call(comp, params);
-		else
-			comp[action_name].apply(comp, params);
+		if( comp.constructor === component_class && comp._filename == url )
+			return comp;
 	}
+
+	var compo = new component_class();
+	compo.filename = url;
+	this.addComponent( compo, l );
+	return compo;
+}
+
+/**
+* executes the method with a given name in all the components
+* @method processActionInComponents
+* @param {String} method_name the name of the function to execute in all components (in string format)
+* @param {Array} params array with every parameter that the function may need
+*/
+ComponentContainer.prototype.processActionInComponents = function( method_name, params )
+{
+	if(this._components && this._components.length)
+	{
+		for(var i = 0, l = this._components.length; i < l; ++i)
+		{
+			var comp = this._components[i];
+			if( !comp[method_name] || comp[method_name].constructor !== Function )
+				continue;
+
+			if(!params || params.constructor !== Array)
+				comp[method_name].call(comp, params);
+			else
+				comp[method_name].apply(comp, params);
+		}
+	}
+}
+
+/**
+* executes the method with a given name in all the components and its children
+* @method broadcastMessage
+* @param {String} method_name the name of the function to execute in all components (in string format)
+* @param {Array} params array with every parameter that the function may need
+*/
+ComponentContainer.prototype.broadcastMessage = function( method_name, params )
+{
+	this.processActionInComponents( method_name, params );
+
+	if(this._children && this._children.length )
+		for(var i = 0, l = this._children.length; i < l; ++i)
+			this._children[i].broadcastMessage( method_name, params );
 }
 

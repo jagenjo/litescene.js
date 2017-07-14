@@ -10,6 +10,8 @@
 
 function Prefab(o)
 {
+	this.filename = null; //base file
+	this.fullpath = null; //full path 
 	this.resource_names = []; 
 	this.prefab_json = null;
 	this.prefab_data = null; //json object
@@ -20,6 +22,20 @@ function Prefab(o)
 }
 
 Prefab.version = "0.2"; //used to know where the file comes from 
+
+/**
+* assign the json object
+* @method setData
+* @param {object|SceneNode} data
+**/
+Prefab.prototype.setData = function(data)
+{
+	if( data && data.constructor === LS.SceneNode )
+		data = data.serialize();
+	data.object_class = "SceneNode";
+	this.prefab_data = data;
+	this.prefab_json = JSON.stringify( data );
+}
 
 /**
 * configure the prefab
@@ -133,7 +149,7 @@ Prefab.prototype.createObject = function()
 	}
 
 	var node = new LS.SceneNode();
-	node.configure(conf_data);
+	node.configure( conf_data );
 	LS.ResourcesManager.loadResources( node.getResources({},true) );
 
 	if(this.fullpath)
@@ -161,19 +177,17 @@ Prefab.createPrefab = function( filename, node_data, resource_names_list )
 	filename = filename.replace(/ /gi,"_");
 	resource_names_list = resource_names_list || [];
 
-	//LS.clearUIds( node_data ); //remove uids of nodes and components
-	node_data.object_class = "SceneNode";
-
 	var prefab = new LS.Prefab();
 	var ext = LS.ResourcesManager.getExtension(filename);
-	if(ext != "wbin")
+	if( ext != "wbin" )
 		filename += ".wbin";
 
 	//checkfilenames and rename them to short names
 	prefab.filename = filename;
 	prefab.resource_names = resource_names_list;
-	prefab.prefab_data = node_data;
-	prefab.prefab_json = JSON.stringify( prefab.prefab_data );
+
+	//assign data
+	prefab.setData( node_data );
 
 	//get all the resources and store them in a WBin
 	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version } );
@@ -229,7 +243,7 @@ Prefab.packResources = function( resource_names_list, base_data )
 
 Prefab.prototype.containsResources = function()
 {
-	return this.resource_names.length > 0;
+	return this.resource_names && this.resource_names.length > 0 ? true : false;
 }
 
 Prefab.prototype.updateFromNode = function( node, clear_uids )
@@ -290,6 +304,13 @@ Prefab.prototype.applyToNodes = function( scene )
 Prefab.prototype.getDataToStore = function()
 {
 	this.prefab_json = JSON.stringify( this.prefab_data );
+	var filename = this.fullpath || this.filename;
+
+	//prefab in json format
+	if( !(this.resource_names && this.resource_names.length) && filename && LS.RM.getExtension(filename) == "json" )
+		return JSON.stringify( { object_class:"Prefab", "@json": this.prefab_json } );
+
+	//return the binary data of the wbin
 	return LS.Prefab.packResources( this.resource_names, { "@json": this.prefab_json, "@version": LS.Prefab.version } );
 }
 

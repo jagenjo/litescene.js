@@ -577,6 +577,7 @@ Take.prototype.onlyRotations = function()
 {
 	var num = 0;
 	var temp = new Float32Array(10);
+	var temp_quat = new Float32Array(4);
 	var final_quat = temp.subarray(3,7);
 
 	for(var i = 0; i < this.tracks.length; ++i)
@@ -613,8 +614,9 @@ Take.prototype.onlyRotations = function()
 			{
 				var sample = data.subarray(k*17+1,(k*17)+17);
 				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-				data[k*11] = data[k*17]; //timestamp
-				data.set( final_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
+				temp_quat.set( temp.subarray(3,7) );
+				data[k*5] = data[k*17]; //timestamp
+				data.set( temp_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
 			}
 		}
 		else if( old_type == "trans10" )
@@ -1636,7 +1638,7 @@ Track.prototype.convertToTrans10 = function()
 	for(var k = 0; k < num_samples; ++k)
 	{
 		var sample = data.subarray(k*17+1,(k*17)+17);
-		var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+		LS.Transform.fromMatrix4ToTransformData( sample, temp );
 		data[k*11] = data[k*17]; //timestamp
 		data.set(temp,k*11+1); //overwrite inplace (because the output is less big that the input)
 	}

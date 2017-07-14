@@ -890,6 +890,15 @@ Material.prototype.getLocator = function()
 	return this.uid;
 }
 
+Material.prototype.assignToNode = function(node)
+{
+	if(!node)
+		return false;
+	var filename = this.fullpath || this.filename;
+	node.material = filename ? filename : this;
+	return true;
+}
+
 //this has been moved to ShaderCode?
 Material.processShaderCode = function(code)
 {

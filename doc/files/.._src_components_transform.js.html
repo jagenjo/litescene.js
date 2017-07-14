@@ -391,8 +391,24 @@ Object.defineProperty( Transform.prototype, &#x27;globalMatrix&#x27;, {
 		return this._global_matrix;
 	},
 	set: function(v) { 
+		throw(&quot;globalMatrix cannot be set&quot;);
 	},
 	enumerable: true
+});
+
+/**
+* The local matrix transform relative to its parent in mat4 format
+* @property matrix {mat4}
+*/
+Object.defineProperty( Transform.prototype, &#x27;forward&#x27;, {
+	get: function() { 
+		this.updateGlobalMatrix();
+		return mat4.rotateVec3( vec3.create(), this._global_matrix, LS.FRONT );
+	},
+	set: function(v) { 
+		throw(&quot;forward cannot be set&quot;);
+	},
+	enumerable: false //dont worry, it uses its own serialize
 });
 
 /**

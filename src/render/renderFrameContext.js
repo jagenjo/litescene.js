@@ -11,24 +11,25 @@ function RenderFrameContext( o )
 {
 	this.width = 0; //0 means the same size as the viewport, negative numbers mean reducing the texture in half N times
 	this.height = 0; //0 means the same size as the viewport
-	this.precision = RenderFrameContext.DEFAULT_PRECISION;
-	this.filter_texture = true; //magFilter
-	this.format = GL.RGBA;
-	this.use_depth_texture = false;
-	this.use_stencil_buffer = false;
+	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float
+	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
+	this.format = GL.RGBA; //how many color channels
+	this.use_depth_texture = false; //store the depth in a texture
+	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
-	this.name = null; //if a name is provided all the textures will be stored
+	this.name = null; //if a name is provided all the textures will be stored in the LS.ResourcesManager
 
-	this.adjust_aspect = false;
-	this.clone_after_unbind = false; //used when the texture will be in the 3D scene
+	this.generate_mipmaps = false; //try to generate mipmaps if possible (only when the texture is power of two)
+	this.adjust_aspect = false; //when the size doesnt match the canvas size it could look distorted, settings this to true will fix the problem
+	this.clone_after_unbind = false; //clones the textures after unbinding it. Used when the texture will be in the 3D scene
 
 	this._fbo = null;
 	this._color_texture = null;
 	this._depth_texture = null;
-	this._textures = []; //all color textures
-	this._cloned_textures = null;
+	this._textures = []; //all color textures (the first will be _color_texture)
+	this._cloned_textures = null; //in case we set the clone_after_unbind to true
 
-	this._version = 1;
+	this._version = 1; //to detect changes
 
 	if(o)
 		this.configure(o);
@@ -126,8 +127,12 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		final_height = viewport_height >> Math.abs( this.height ); //subsampling
 
 	var format = this.format;
-	var filter = this.filter_texture ? gl.LINEAR : gl.NEAREST ;
+	var magFilter = this.filter_texture ? gl.LINEAR : gl.NEAREST ;
 	var type = 0;
+
+	var minFilter = gl.LINEAR;
+	if(this.generate_mipmaps && GL.isPowerOfTwo(final_width) && GL.isPowerOfTwo(final_height) )
+		minFilter = gl.LINEAR_MIPMAP_LINEAR;
 
 	switch( this.precision )
 	{
@@ -147,10 +152,10 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	//for the color: check that the texture size matches
 	if( !this._color_texture || 
 		this._color_texture.width != final_width || this._color_texture.height != final_height || 
-		this._color_texture.type != type || this._color_texture.format != format )
-		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
+		this._color_texture.type != type || this._color_texture.format != format || this._color_texture.minFilter != minFilter )
+		this._color_texture = new GL.Texture( final_width, final_height, { minFilter: minFilter, magFilter: magFilter, format: format, type: type });
 	else
-		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
+		this._color_texture.setParameter( gl.TEXTURE_MAG_FILTER, magFilter );
 	textures[0] = this._color_texture;
 
 	//extra color texture (multibuffer rendering)
@@ -158,10 +163,10 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	for(var i = 0; i < total_extra; ++i) //MAX is 4
 	{
 		var extra_texture = textures[1 + i];
-		if( (!extra_texture || extra_texture.width != final_width || extra_texture.height != final_height || extra_texture.type != type || extra_texture.format != format) )
-			extra_texture = new GL.Texture( final_width, final_height, { minFilter: gl.LINEAR, magFilter: filter, format: format, type: type });
+		if( (!extra_texture || extra_texture.width != final_width || extra_texture.height != final_height || extra_texture.type != type || extra_texture.format != format || extra_texture.minFilter != minFilter) )
+			extra_texture = new GL.Texture( final_width, final_height, { minFilter: minFilter, magFilter: magFilter, format: format, type: type });
 		else
-			extra_texture.setParameter( gl.TEXTURE_MAG_FILTER, filter );
+			extra_texture.setParameter( gl.TEXTURE_MAG_FILTER, magFilter );
 		textures[1 + i] = extra_texture;
 	}
 

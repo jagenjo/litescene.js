@@ -170,12 +170,18 @@ Resource.prototype.getCategory = function()
 
 Resource.prototype.assignToNode = function(node)
 {
-	if(!node || this.getCategory() != "Script")
+	if(!node) 
 		return false;
 
 	var filename = this.fullpath || this.filename;
-	var script_component = new LS.Components.ScriptFromFile({ filename: filename });
-	node.addComponent( script_component );
+	var category = this.getCategory();
+
+	if( category == "Script" )
+	{
+		var script_component = new LS.Components.ScriptFromFile({ filename: filename });
+		node.addComponent( script_component );
+	}
+
 	return true;
 }
 

@@ -16,7 +16,7 @@ function ShaderCode( code )
 	this._global_uniforms = {};
 	this._code_parts = {};
 	this._subfiles = {};
-	this._compiled_shaders = {};
+	this._compiled_shaders = {}; //all shaders compiled using this ShaderCode
 
 	this._shaderblock_flags_num = 0; //used to assign flags to dependencies
 	this._shaderblock_flags = {}; //used to store which shaderblock represent to every flag bit

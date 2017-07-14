@@ -33,7 +33,6 @@ function newStandardMaterial(o)
 
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
-	this.reflection_additive = false;
 	this.reflection_specular = false;
 
 	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
@@ -70,7 +69,7 @@ function newStandardMaterial(o)
 		u_ambient_color: this._ambient,
 		u_emissive_color: this._emissive,
 		u_specular: this._specular_data,
-		u_reflection_info: vec2.create(),
+		u_reflection_info: vec2.create(), //factor and fresnel
 		u_velvet_info: vec4.create(),
 		u_normal_info: vec2.create(),
 		u_detail_info: this._detail,
@@ -168,10 +167,9 @@ newStandardMaterial.FLAGS = {
 	DETAIL_TEXTURE: 1<<7,
 	NORMAL_TEXTURE: 1<<8,
 	DISPLACEMENT_TEXTURE: 1<<9,
-	ENVIRONTMENT_TEXTURE: 1<<10,
-	IRRADIANCE_TEXTURE: 1<<11,
+
 	ALPHA_TEST: 1<<16,
-	REFLECTION: 1<<17,
+
 	ENVIRONMENT_TEXTURE: 1<<18,
 	ENVIRONMENT_CUBEMAP: 1<<19
 };	
@@ -196,25 +194,11 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 		code_flags |= FLAGS.OPACITY_TEXTURE;
 	if( this.textures.specular )
 		code_flags |= FLAGS.SPECULAR_TEXTURE;
-	if( this.reflectivity > 0 )
+	if( this.reflection_factor > 0 )
 	{
-		code_flags |= FLAGS.REFLECTION;
+		//code_flags |= FLAGS.REFLECTION;
 		if( this.textures.reflectivity )
 			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
-
-		/*
-		if( scene.info && scene.info.textures.environment )
-		{
-			var environment_texture = LS.ResourcesManager.getTexture( scene.info.textures.environment );
-			if( environment_texture )
-			{
-				if( environment_texture.type === GL.TEXTURE_CUBE_MAP )
-					code_flags |= FLAGS.ENVIRONMENT_CUBEMAP;
-				else
-					code_flags |= FLAGS.ENVIRONMENT_TEXTURE;
-			}
-		}
-		*/
 	}
 	if( this.textures.emissive )
 		code_flags |= FLAGS.EMISSIVE_TEXTURE;
@@ -259,7 +243,7 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 	o.Gloss *= spec_info.y;\n";
 	}
 	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
-		fs_code += "	o.Reflectivity = texture2D( reflectivity_texture, IN.uv ).x;\n";
+		fs_code += "	o.Reflectivity *= texture2D( reflectivity_texture, IN.uv ).x;\n";
 	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
 		fs_code += "	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n";
 	if( code_flags & FLAGS.AMBIENT_TEXTURE )
@@ -283,12 +267,13 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 {
 	var uniforms = this._uniforms;
 
-	uniforms.u_reflection_info[0] = this.reflection_additive ? -this.reflection_factor : this.reflection_factor;
+	uniforms.u_reflection_info[0] = this.reflection_factor;
 	uniforms.u_reflection_info[1] = this.reflection_fresnel;
 	uniforms.u_backlight_factor = this.backlight_factor;
 	uniforms.u_normal_info[0] = this.normalmap_factor;
 	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
+	uniforms.u_velvet_info.set( this._velvet );
 	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
 
 	//iterate through textures in the material
@@ -322,8 +307,8 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 			last_texture_slot++;
 
 		samplers[ slot ] = sampler;
-		var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
-		uniforms[ uniform_name ] = slot;
+		//var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
+		uniforms[ i + "_texture" ] = slot;
 	}
 }
 
@@ -556,7 +541,7 @@ varying vec2 v_uvs;\n\
 //globals\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
-uniform vec3 u_background_color;\n\
+uniform vec4 u_background_color;\n\
 uniform vec4 u_material_color;\n\
 \n\
 uniform vec3 u_ambient_color;\n\
@@ -592,12 +577,16 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Gloss = u_specular.y;\n\
 	o.Ambient = u_ambient_color;\n\
 	o.Emission = u_emissive_color.xyz;\n\
-	if(u_emissive_color.w > 0.0)\n\
-		o.Emission *= o.Albedo;\n\
 	o.Reflectivity = u_reflection_info.x;\n\
 	\n\
 	{{FS_CODE}}\n\
 	\n\
+	if(u_velvet_info.w > 0.0)\n\
+		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
+	else if(u_velvet_info.w < 0.0)\n\
+		o.Albedo = mix( o.Albedo, u_velvet_info.xyz, 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), abs(u_velvet_info.w) ) );\n\
+	if(u_emissive_color.w > 0.0)\n\
+		o.Emission *= o.Albedo;\n\
 	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
 }\n\
 \n\

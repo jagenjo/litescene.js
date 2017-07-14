@@ -17,6 +17,7 @@ function SkinDeformer( o )
 	this.ignore_transform = true;
 
 	this._mesh = null;
+	this._last_bones = null;
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
@@ -161,6 +162,32 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 	//grab the RI created previously and modified
 	this.applySkinning( last_RI );
 }
+
+/*
+SkinDeformer.prototype.setBonesToBindPose = function()
+{
+	//bone matrices
+	var bones = this._last_bones;
+	if( !bones || !this._mesh || !this._mesh.bones )
+		return;
+
+	var mesh = this._mesh;
+	var m = mat4.create();
+
+	for(var i = 0; i < mesh.bones.length; ++i)
+	{
+		var m = bones[i]; //mat4.create();
+		var joint = mesh.bones[i];
+		var bone_node = this.getBoneNode( joint[0] );
+		if(!bone_node)
+			continue;
+		mat4.invert( m, joint[1] ); //invert first
+		if(mesh.bind_matrix)
+			mat4.multiply( m, m, mesh.bind_matrix);
+		bone_node.transform.matrix = m;
+	}
+}
+*/
 
 //Applies skinning taking into account the options available (using uniforms, a texture or applying it by software)
 SkinDeformer.prototype.applySkinning = function(RI)

@@ -5,6 +5,7 @@ if(typeof(LGraphTexture) != "undefined")
 {
 	//link LGraph textures system with LiteScene
 	LGraphTexture.getTexturesContainer = function() { return LS.ResourcesManager.textures };
+	LGraphTexture.storeTexture = function(name, texture) { return LS.ResourcesManager.registerResource(name, texture); };
 	LGraphTexture.loadTexture = LS.ResourcesManager.load.bind( LS.ResourcesManager );
 }
 

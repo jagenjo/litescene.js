@@ -200,6 +200,7 @@ var Input = {
 	Gamepads: [],
 
 	//used for GUI elements
+	last_mouse: null,
 	last_click: null,
 	current_click: null,
 	current_key: null,
@@ -226,8 +227,11 @@ var Input = {
 		this.Gamepads = gl.getGamepads();
 	},
 
+	//called from LS.Player when onmouse
 	onMouse: function(e)
 	{
+		this.last_mouse = e;
+
 		this.Mouse.mousex = e.mousex;
 		this.Mouse.mousey = e.mousey;
 
@@ -236,8 +240,12 @@ var Input = {
 			this.current_click = e;
 		else if(e.type == &quot;mouseup&quot;)
 			this.current_click = null;
+
+		//we test if this event should be sent to the components or it was blocked by the GUI
+		return LS.GUI.testEventInBlockedArea(e);
 	},
 
+	//called from LS.Player when onkey
 	onKey: function(e)
 	{
 		if(e.type == &quot;keydown&quot;)
@@ -266,14 +274,21 @@ var Input = {
 	* @param {boolean} flip [optional] if you want to flip the y coordinate
 	* @return {boolean}
 	*/
-	isMouseInRect: function(x,y,width,height, flip_y)
+	isMouseInRect: function( x, y, width, height, flip_y )
 	{
 		return this.Mouse.isInsideRect(x,y,width,height,flip_y);
 	},
 
-	isEventInRect: function(e,area)
+	isEventInRect: function( e, area, offset )
 	{
-		return (e.mousex &gt;= area[0] &amp;&amp; e.mousex &lt; (area[0] + area[2]) &amp;&amp; e.mousey &gt;= area[1] &amp;&amp; e.mousey &lt; (area[1] + area[3]) );
+		var offsetx = 0;
+		var offsety = 0;
+		if(offset)
+		{
+			offsetx = offset[0];
+			offsety = offset[1];
+		}
+		return ( (e.mousex - offsetx) &gt;= area[0] &amp;&amp; (e.mousex - offsetx) &lt; (area[0] + area[2]) &amp;&amp; (e.mousey - offsety) &gt;= area[1] &amp;&amp; (e.mousey - offsety) &lt; (area[1] + area[3]) );
 	},
 
 	/**

@@ -18,6 +18,8 @@ function CameraController(o)
 
 	this._moving = vec3.fromValues(0,0,0);
 	this._collision = vec3.create();
+	this._dragging = false; //true if the mousedown was caught so the drag belongs to this component
+	this._button = null;
 
 	this.configure(o);
 }
@@ -109,10 +111,14 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		else
 			this.testPerpendicularPlane( mouse_event.canvasx, gl.canvas.height - mouse_event.canvasy, cam.getCenter(), this._collision );
 		this._button = mouse_event.button;
+		this._dragging = true;
 	}
 
+	if(!mouse_event.dragging)
+		this._dragging = false;
+
 	//regular mouse dragging
-	if( mouse_event.eventType != "mousemove" || !mouse_event.dragging )
+	if( mouse_event.eventType != "mousemove" || !mouse_event.dragging || !this._dragging )
 		return;
 
 	var changed = false;

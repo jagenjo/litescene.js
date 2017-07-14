@@ -715,6 +715,9 @@ var ShadersManager = {
 		}
 		else
 			block_id = this.num_shaderblocks++;
+		if(block_id &gt;= 64)
+			console.warn(&quot;Too many shaderblocks registered, not enought bits in a 64bits variable&quot;);
+
 		shader_block.flag_id = block_id;
 		shader_block.flag_mask = 1&lt;&lt;block_id;
 		this.shader_blocks.set( block_id, shader_block );
@@ -966,7 +969,7 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context
 		var macros_code = &quot;&quot;;
 		for(var i in code.macros)
 			macros_code += &quot;#define &quot; + i + code.macros[i] + &quot;\n&quot;;
-		finalcode = macros + finalcode;
+		finalcode = macros_code + finalcode;
 	}
 	return finalcode;
 }

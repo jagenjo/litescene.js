@@ -199,7 +199,6 @@ var Renderer = {
 		scene._frame += 1;
 		this._frame += 1;
 		scene._must_redraw = false;
-
 		var start_time = getTime();
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
@@ -215,8 +214,8 @@ var Renderer = {
 		//force fullscreen viewport
 		if( !render_settings.keep_viewport )
 		{
-			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-			this.setFullViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+			gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight );
+			this.setFullViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight); //assign this as the full available viewport
 		}
 		else
 			this.setFullViewport( gl.viewport_data );
@@ -274,6 +273,8 @@ var Renderer = {
 		//renders GUI items using mostly the Canvas2DtoWebGL library
 		if(render_settings.render_gui && LEvent.hasBind( scene, "renderGUI") )
 		{
+			//assign full viewport?
+			gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
 			if(gl.start2D)
 				gl.start2D();
 			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
@@ -557,6 +558,9 @@ var Renderer = {
 			return 0;
 
 		var render_instances = instances || this._visible_instances;
+
+		this.bindSamplers( scene._samplers );
+
 
 		//compute visibility pass
 		for(var i = 0, l = render_instances.length; i < l; ++i)
@@ -1119,7 +1123,8 @@ var Renderer = {
 				texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid artifact
 			}
 			scene._samplers[ slot ] = texture;
-			scene._uniforms[ i + type ] = slot;
+			scene._uniforms[ i + "_texture" ] = slot; 
+			scene._uniforms[ i + type ] = slot; //LEGACY
 			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 
 			if( i == "environment" )
@@ -1276,7 +1281,8 @@ var Renderer = {
 			var query = instance._final_query;
 			query.clear();
 			query.add( node._query );
-			query.add( material._query );
+			if(material)
+				query.add( material._query );
 			query.add( instance.query );
 		}
 
