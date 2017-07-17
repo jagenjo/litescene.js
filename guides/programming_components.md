@@ -134,10 +134,10 @@ If you want a list of events follow the [the LS Events list](https://github.com/
 
 Components usually store data that the user can change to control the behaviour, and that data must be persistent so changes done in the scene will be saved.
 
-The system will call the ```serialize``` method of every component to extract the state.
+The system will call the ```serialize``` method of every component to extract the state (if you don't want that this component is persistent you must the ```component.skip_serialize = true;```).
 And when the component state is restored it will call the method ```configure``` (or pass it as a first parameter in the constructor).
 
-If the user doesnt define a configure or serialize method the system will create one by default.
+If the user doesn't define a configure or serialize method the system will create one by default.
 This default methods will save any public variable of the component (the ones that doesnt start with an underscore character) and restore its state.
 
 Keep in mind that sometimes you want to do some computations when the component state is retrieved or when the component state is assigned, so define your methods if that is the case.
