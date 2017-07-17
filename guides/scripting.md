@@ -219,7 +219,7 @@ To know more about the APIs accessible from LiteScene check the documation websi
 
 ## Example of Script ##
 
-```
+```js
 //@InputController
 //defined: component, node, scene, globals
 
