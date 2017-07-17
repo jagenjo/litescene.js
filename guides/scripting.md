@@ -1,16 +1,18 @@
 # Scripting #
 
-LiteScene allows to run scripts so users can code the behaviour of the application.
+LiteScene allows to run scripts so users can code the behaviour of the application from with in the editor itself.
 
-The info about the scripts is stored inside the scene so when a new scene is loaded it loads its scripts too.
+The info about the scripts can be stored inside the scene so when a new scene is loaded it loads its scripts too.
 
 There are several ways to interact programmatically with LiteScene, every method is better suited for different purposes.
 
-## Using script components ##
+Before delving into the Script component keep in mind that you can create your own components without the need of using the Script component. To know more about it check the [programming components guide](programming_components.md).
 
-This is the easiest way. You can attach a Script or a ScriptFromFile component to any node. The difference between both is that Script stores the code inside the component while ScriptFromFile references the code from a resource file (better suited when sharing the same behaviour among different nodes or projects).
+## Using Script components ##
 
-ScriptFromFile behave as regular Scripts but because its load is asynchromous it means their context will be created later in time after the scene has started, keep that in mind (events like start will me called once the node is loaded).
+The Script component is the easiest way to add behaviour to a project. You can attach a ```Script``` or a ```ScriptFromFile``` component to any node. The difference between both is that ```Script``` stores the code inside the component while ```ScriptFromFile``` references the code from a resource file (better suited when sharing the same behaviour among different nodes or projects).
+
+```ScriptFromFile``` behave as regular ```Script``` but because its load is asynchromous it means their context will be created later in time after the scene has started, keep that in mind (events like start will me called once the node is loaded).
 
 ### The script context ###
 
@@ -18,7 +20,7 @@ Every script has its own execution context usually referred as the script contex
 
 The context is created when the component is configured and the code loaded.
 
-When programming inside a LS.Script, the context is the ```this``` of your code:
+When programming inside a ```Script```, the context is the ```this``` of your code:
 
 ```javascript
 this.foo = 100; //adds a property foo to the script context
@@ -31,16 +33,16 @@ var node = scene.getNode("mynode");
 var script_component = node.getComponent( LS.Script ); //or LS.ScriptFromFile, depending on the component used
 script_component.context.foo = 10;
 ```
-
 Check the section below to know other ways to access a context of another component.
 
 ### Global vars of every script ###
 
-Besides all the objects of the system, every script has three globals vars associated to that script:
+Besides all the objects of the system, every script has four globals vars associated to that script:
 
 - **scene**: the scene where the node of this script component is attached, (usually the same as ```LS.GlobalScene``` )
 - **node**: the node where this script component is attached, (equivalent to ```component._root``` )
 - **component**: the script component itself
+- **transform**: the transform of the node where the script is attached
 
 So feel free to access them from inside your script at any time.
 
@@ -93,7 +95,7 @@ this.createAction( "Click me", this.myCallback );
 
 ### Events ###
 
-To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the Renderer, the ResourcesManager, etc).
+To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the ```LS.Renderer```, the ```LS.ResourcesManager```, etc).
 For a better list of execution events check the [events guide](events.md) or if you want events from a component check the specific component documentation.
 To bind an event you can call the bind method:
 
@@ -101,12 +103,12 @@ To bind an event you can call the bind method:
 this.bind( scene, "update", myfunction );
 ```
 
-Keep in mind that myfunction must be a public method attached to the context (p.e. this.myfunc), otherwise the system wont be able to remove it automatically.
+Keep in mind that myfunction must be a public method attached to the context (p.e. ```this.myfunction```), otherwise the system wont be able to remove it automatically.
 
 ### API exported methods ###
 
 However, there are some events that scripts usually want to use, like **start**, **init**, **render**, **update** and **finish**.
-You do not need to bind (or unbind) those events, the Script component does it automatically if it detect a method in the context with an specific name (depending on the event):
+You do not need to bind (or unbind) those events, the Script component does it automatically when it detects a method in the context with an specific name (depending on the event):
 
 ```javascript
 this.onUpdate = function(dt) { ... };
@@ -118,7 +120,7 @@ Here is a list of the automatically binded events:
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
 - **onPrefabReady**: triggered by the node "prefabReady", used to access components or node that come from the prefab
 - **onUpdate**: triggered by scene "update" event. it receives the delta time in seconds.
-- **onClicked**: triggered by the node "clicked" event. Remember that you need an InteractiveController in the scene to dispatch this events.
+- **onClicked**: triggered by the node "clicked" event. Remember that you need an ```InteractiveController``` in the scene to dispatch this events.
 - **onCollectRenderInstances**: triggered by node "collectRenderInstances" event. To pass RenderInstasnces
 - **onSceneRender**: triggered by scene "beforeRender" event. Used to prepare stuff before any rendering is done.
 - **onRender**: triggered by the node "beforeRenderInstances" event. Used to direct render stuff before the RenderInstances are rendered.
@@ -130,7 +132,7 @@ Here is a list of the automatically binded events:
 - **onRemovedFromScene**: called when the node where the script belongs is detached from the scene.
 - **onGetResources**: called when the script needs to collect resources. This function receives an object that needs to be filled with the fullpath : type of the resources it uses so they can be automatically loaded when the scene is loaded.
 
-Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the onRemovedFromScene so no lose binds are left.
+Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the ```onRemovedFromScene``` so no lose binds are left.
 
 ### Input ###
 
@@ -171,13 +173,13 @@ Although you are free to register the components in some global container when t
 LS.Globals.my_special_script_context = this;
 ```
 
-
 ### Script considerations ###
 
 When coding scripts for LiteScene there are several things you must take into account:
+
 - Remember to unbind every event you bind, otherwise the editor could have erratic behaviour.
-- When using LS.Component.Script keep in mind that when the context is created (when your global code is executed) if you try to access to the scene tree to retrieve information (like nodes) it is possible that this info is not yet available because it hasnt been parsed yet.
-- Scripts onlu exists if they are attached to a node, when they are detached all the data not serialized will be lost.
+- When using ```LS.Component.Script``` keep in mind that when the context is created (when your global code is executed) if you try to access to the scene tree to retrieve information (like nodes) it is possible that this info is not yet available because it hasnt been parsed yet.
+- Scripts only exists if they are attached to a node, when they are detached all the data not serialized will be lost.
 
 ## Global Scripts ##
 
@@ -185,15 +187,15 @@ Sometimes we want to create our own Components bypassing the scripts system, thi
 
 But this scripts must be loaded **before** the scene is loaded. The problem with regular scripts is that they are parsed during the scene construction, this could lead to a ordering problem where a node is created using a component that is not yet defined.
 
-To solve this problem and many others, scenes can include scripts that will be loaded before the scene tree is parsed. This are called global scripts, they are executed in the global context (window) like if they were external scripts, but the files are fetched using the ResourcesManager (so paths are relative to the resources manager root path).
+To solve this problem and many others, scenes can include scripts that will be loaded before the scene tree is parsed. This are called global scripts, they are executed in the global context (window) like if they were external scripts, but the files are fetched using the ```LS.ResourcesManager``` (so paths are relative to the resources manager root path unless they are absolute).
 
-Global scripts are stored in scene.global_scripts array.
+The list of all the global scripts is stored in ```scene.global_scripts``` array.
 
 ## External Scripts ##
 
 When we just want to load some external library to use in our code we can add it by appending the url to the external scripts array of the scene.
 
-External scripts are stored in scene.external_scripts array.
+The list of all the external scripts is stored in ```scene.external_scripts``` array.
 
 ## Editing LiteScene base code ##
 
