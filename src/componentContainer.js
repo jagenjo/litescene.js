@@ -51,6 +51,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 				console.error("Unknown component found: " + comp_class);
 				if(!this._missing_components)
 					this._missing_components = [];
+				comp_info[2] = i; //store index
 				this._missing_components.push( comp_info );
 				continue;
 			}
@@ -100,7 +101,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 	for(var i = 0, l = this._components.length; i < l; ++i)
 	{
 		var comp = this._components[i];
-		if( !comp.serialize )
+		if( !comp.serialize || comp.skip_serialize )
 			continue;
 		var obj = comp.serialize();
 
@@ -120,8 +121,16 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		o.components.push([ object_class, obj ]);
 	}
 
-	if(this._missing_components && this._missing_components.length)
-		o.components = o.components.concat( this._missing_components );
+	//missing components are stored in another container and should be mergen with the rest of the components
+	if( this._missing_components && this._missing_components.length )
+	{
+		//try to copy in place (not perfect but this shouldnt happend very often)
+		for(var i = 0; i < this._missing_components.length; ++i )
+		{
+			var comp_info = this._missing_components[i];
+			o.components.splice( comp_info[2] || 0, 0, comp_info );
+		}
+	}
 }
 
 /**
@@ -490,21 +499,35 @@ ComponentContainer.prototype.requireScript = function( url )
 * @method processActionInComponents
 * @param {String} method_name the name of the function to execute in all components (in string format)
 * @param {Array} params array with every parameter that the function may need
+* @param {Boolean} skip_scripts [optional] skip scripts
 */
-ComponentContainer.prototype.processActionInComponents = function( method_name, params )
+ComponentContainer.prototype.processActionInComponents = function( method_name, params, skip_scripts )
 {
 	if(this._components && this._components.length)
 	{
 		for(var i = 0, l = this._components.length; i < l; ++i)
 		{
 			var comp = this._components[i];
-			if( !comp[method_name] || comp[method_name].constructor !== Function )
+			if( comp[method_name] && comp[method_name].constructor === Function )
+			{
+				if(!params || params.constructor !== Array)
+					comp[method_name].call(comp, params);
+				else
+					comp[method_name].apply(comp, params);
+				continue;
+			}
+
+			if(skip_scripts)
 				continue;
 
-			if(!params || params.constructor !== Array)
-				comp[method_name].call(comp, params);
-			else
-				comp[method_name].apply(comp, params);
+			if(comp.context && comp.context[method_name] && comp.context[method_name].constructor === Function)
+			{
+				if(!params || params.constructor !== Array)
+					comp.context[method_name].call(comp.context, params);
+				else
+					comp.context[method_name].apply(comp.context, params);
+				continue;
+			}
 		}
 	}
 }

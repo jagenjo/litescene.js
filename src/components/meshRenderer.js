@@ -436,7 +436,10 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 
 	//matrix: do not need to update, already done
-	RI.setMatrix( this._root.transform._global_matrix );
+	if(this._root.transform)
+		RI.setMatrix( this._root.transform._global_matrix );
+	else
+		RI.setMatrix( LS.IDENTITY );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
 

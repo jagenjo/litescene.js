@@ -364,7 +364,7 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
-		if(!content)
+		if(content == null)
 			return;
 
 		var ctx = gl;
@@ -373,8 +373,12 @@ var GUI = {
 		{
 			ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		}
-		else if(content.constructor === String)
+		else 
 		{
+			if(content.constructor === Number)
+				content = content.toFixed(3);
+			else (content.constructor !== String)
+				content = String(content);
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.textAlign = "left";

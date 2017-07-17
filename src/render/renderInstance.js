@@ -68,7 +68,19 @@ RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
 
-//set the material and apply material flags to render instance
+RenderInstance.prototype.fromNode = function(node)
+{
+	if(!node)
+		throw("no node");
+	this.node = node;
+	if(node.transform)
+		this.setMatrix( node.transform._global_matrix );
+	else
+		this.setMatrix( LS.IDENTITY );
+	mat4.multiplyVec3( this.center, this.matrix, LS.ZEROS );
+}
+
+//set the matrix 
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 {
 	this.matrix.set( matrix );

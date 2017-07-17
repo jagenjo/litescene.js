@@ -96,6 +96,7 @@
 ../src/components/poser.js
 ../src/components/spline.js
 ../src/components/threeJS.js
+../src/components/canvas3d.js
 ../src/components/interactiveController.js
 
 ../src/scene.js

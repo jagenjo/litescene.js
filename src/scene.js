@@ -417,15 +417,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	var extension = LS.ResourcesManager.getExtension( url );
 
-	//very special case from the editor, trying to load from a URL that comes from a player.html
-	if(extension == "html" && LS.ResourcesManager.getFilename(url) == "player.html" )
-	{
-		var index = url.indexOf("url=");
-		var index2 = url.indexOf("&",index);
-		url = decodeURIComponent( url.substr(index + 4, index2 - index - 4) );
-		extension = LS.ResourcesManager.getExtension( url );
-	}
-
 	//request scene file using our own library
 	LS.Network.request({
 		url: url,

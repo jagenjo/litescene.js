@@ -858,47 +858,74 @@ var LS = {
 	* Register a component (or several) so it is listed when searching for new components to attach
 	*
 	* @method registerComponent
-	* @param {ComponentClass} c component class to register
+	* @param {Component} component component class to register
+	* @param {String} old_classname [optional] the name of the component that this class replaces (in case you are renaming it)
 	*/
-	registerComponent: function( c ) { 
+	registerComponent: function( component, old_classname ) { 
+
 		//allows to register several at the same time
-		for(var i = 0; i < arguments.length; ++i)
+		var name = LS.getClassName( component );
+
+		if(old_classname && old_classname.constructor !== String)
+			throw("old_classname must be null or a String");
+
+		//save the previous class in case we are replacing it
+		var old_class = this.Components[ old_classname || name ];
+
+		//register
+		this.Components[ name ] = component; 
+		component.is_component = true;	
+		component.resource_type = "Component";
+
+		//Helper: checks for errors
+		if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
+			!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
+			console.warn("%c Component "+name+" could have a bug, check events: " + name , "font-size: 2em");
+		if( component.prototype.getResources && !component.prototype.onResourceRenamed )
+			console.warn("%c Component "+name+" could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.", "font-size: 1.2em");
+
+		//add stuff to the class
+		if(!component.actions)
+			component.actions = {};
+
+		//add default methods
+		LS.extendClass( component, LS.Component );
+		Component.addExtraMethods( component );
+
+		if( LS.debug )
 		{
-			var component = arguments[i];
-			var name = LS.getClassName( component );
-
-			//register
-			this.Components[ name ] = component; 
-			component.is_component = true;	
-			component.resource_type = "Component";
-
-			//Helper: checks for errors
-			if( !!component.prototype.onAddedToNode != !!component.prototype.onRemovedFromNode ||
-				!!component.prototype.onAddedToScene != !!component.prototype.onRemovedFromScene )
-				console.warn("%c Component "+name+" could have a bug, check events: " + name , "font-size: 2em");
-			if( component.prototype.getResources && !component.prototype.onResourceRenamed )
-				console.warn("%c Component "+name+" could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.", "font-size: 1.2em");
-
-			//add stuff to the class
-			if(!component.actions)
-				component.actions = {};
-
-			//add default methods
-			LS.extendClass( component, LS.Component );
-			Component.addExtraMethods( component );
-
-			if( LS.debug )
-			{
-				var c = new component();
-				var r = c.serialize();
-				if(!r.object_class)
-					console.warn("%c Component "+name+" could have a bug, serialize() method has object_class missing.", "font-size: 1.2em");
-			}
-
-			//event
-			LEvent.trigger(LS, "component_registered", component ); 
+			var c = new component();
+			var r = c.serialize();
+			if(!r.object_class)
+				console.warn("%c Component "+name+" could have a bug, serialize() method has object_class missing.", "font-size: 1.2em");
 		}
+
+		//event
+		LEvent.trigger(LS, "component_registered", component ); 
+
+		if(LS.GlobalScene) //because main components are create before the global scene is created
+		{
+			this.replaceComponentClass( LS.GlobalScene, old_classname || name, name );
+			if( old_classname != name )
+				this.unregisterComponent( old_classname );
+		}
+
 	},
+
+	/**
+	* Unregisters a component from the system (although existing instances are kept in the scene)
+	*
+	* @method unregisterComponent
+	* @param {String} name the name of the component to unregister
+	*/
+	unregisterComponent: function( name ) { 
+		//not found
+		if(!this.Components[name])
+			return;
+		//delete from the list of component (existing components will still exists)
+		delete this.Components[name];
+	},
+
 
 	/**
 	* Tells you if one class is a registered component class
@@ -920,20 +947,66 @@ var LS = {
 	* @param {SceneTree} scene where to apply the replace
 	* @param {String} old_class_name name of the class to be replaced
 	* @param {String} new_class_name name of the class that will be used instead
+	* @return {Number} the number of components replaced
 	*/
 	replaceComponentClass: function( scene, old_class_name, new_class_name )
 	{
-		var proposed_class = LS.Components[ new_class_name ];
+		var proposed_class = new_class_name.constructor === String ? LS.Components[ new_class_name ] : new_class_name;
 		if(!proposed_class)
-			return false;
+			return 0;
+
+		//this may be a problem if the old class has ben unregistered...
+		var old_class = null;
+		
+		if(	old_class_name.constructor === String )
+		{
+			old_class = LS.Components[ old_class_name ];
+			old_class_name = LS.getClassName( old_class );
+		}
+
+		var num = 0;
 
 		for(var i = 0; i < scene._nodes.length; ++i)
 		{
 			var node = scene._nodes[i];
 
-			if(!node.hasComponent( old_class_name, true ))
-				continue;
+			//search in current components
+			for(var j = 0; j < node._components.length; ++j)
+			{
+				var comp = node._components[j];
+				//it it is the exact same class then skip it
+				if(comp.constructor === proposed_class)
+					continue;
+				var comp_name = LS.getObjectClassName( comp );
+				//if this component is neither the old comp nor the new one
+				if( comp_name != old_class_name && comp_name != new_class_name ) 
+					continue;
 
+				var info = comp.serialize();
+				node.removeComponent( comp );
+				var new_comp = new proposed_class();
+				node.addComponent( new_comp, j < node._components.length ? j : undefined );
+				new_comp.configure( info );
+				num++;
+			}
+
+			//search in missing components
+			if(node._missing_components)
+			for(var j = 0; j < node._missing_components.length; ++j)
+			{
+				var comp_info = node._missing_components[j];
+				if( comp_info[0] !== old_class_name )
+					continue;
+				node._missing_components.splice(j,1); //remove from the list
+				var new_comp = new proposed_class();
+				node.addComponent( new_comp, comp_info[2] < node._components.length ? comp_info[2] : undefined ); //add in the place where it should be
+				new_comp.configure( comp_info[1] );
+				j--; 
+				num++;
+			}
+			
+
+			/*
 			//this is a slow way but we dont care, this is used very rarely
 			var info = node.serialize();
 			info = { components: info.components }; //just want the components
@@ -946,9 +1019,10 @@ var LS = {
 			//now force the node to be reloaded
 			node.removeAllComponents();
 			node.configure( info );
+			*/
 		}
 
-		return true;
+		return num;
 	},
 
 	/**
@@ -2703,7 +2777,7 @@ var GUI = {
 	{
 		if(!area)
 			throw("No area");
-		if(!content)
+		if(content == null)
 			return;
 
 		var ctx = gl;
@@ -2712,8 +2786,12 @@ var GUI = {
 		{
 			ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		}
-		else if(content.constructor === String)
+		else 
 		{
+			if(content.constructor === Number)
+				content = content.toFixed(3);
+			else (content.constructor !== String)
+				content = String(content);
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.textAlign = "left";
@@ -3817,7 +3895,7 @@ var ResourcesManager = {
 
 		//extract the filename extension
 		var extension = this.getExtension( url );
-		if(!extension) //unknown file type
+		if(!extension && !this.resources[url] ) //unknown file type and didnt came from a pack or prefab
 		{
 			console.warn("Cannot load a file without extension: " + url );
 			return false;
@@ -9504,6 +9582,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 				console.error("Unknown component found: " + comp_class);
 				if(!this._missing_components)
 					this._missing_components = [];
+				comp_info[2] = i; //store index
 				this._missing_components.push( comp_info );
 				continue;
 			}
@@ -9553,7 +9632,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 	for(var i = 0, l = this._components.length; i < l; ++i)
 	{
 		var comp = this._components[i];
-		if( !comp.serialize )
+		if( !comp.serialize || comp.skip_serialize )
 			continue;
 		var obj = comp.serialize();
 
@@ -9573,8 +9652,16 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		o.components.push([ object_class, obj ]);
 	}
 
-	if(this._missing_components && this._missing_components.length)
-		o.components = o.components.concat( this._missing_components );
+	//missing components are stored in another container and should be mergen with the rest of the components
+	if( this._missing_components && this._missing_components.length )
+	{
+		//try to copy in place (not perfect but this shouldnt happend very often)
+		for(var i = 0; i < this._missing_components.length; ++i )
+		{
+			var comp_info = this._missing_components[i];
+			o.components.splice( comp_info[2] || 0, 0, comp_info );
+		}
+	}
 }
 
 /**
@@ -9943,21 +10030,35 @@ ComponentContainer.prototype.requireScript = function( url )
 * @method processActionInComponents
 * @param {String} method_name the name of the function to execute in all components (in string format)
 * @param {Array} params array with every parameter that the function may need
+* @param {Boolean} skip_scripts [optional] skip scripts
 */
-ComponentContainer.prototype.processActionInComponents = function( method_name, params )
+ComponentContainer.prototype.processActionInComponents = function( method_name, params, skip_scripts )
 {
 	if(this._components && this._components.length)
 	{
 		for(var i = 0, l = this._components.length; i < l; ++i)
 		{
 			var comp = this._components[i];
-			if( !comp[method_name] || comp[method_name].constructor !== Function )
+			if( comp[method_name] && comp[method_name].constructor === Function )
+			{
+				if(!params || params.constructor !== Array)
+					comp[method_name].call(comp, params);
+				else
+					comp[method_name].apply(comp, params);
+				continue;
+			}
+
+			if(skip_scripts)
 				continue;
 
-			if(!params || params.constructor !== Array)
-				comp[method_name].call(comp, params);
-			else
-				comp[method_name].apply(comp, params);
+			if(comp.context && comp.context[method_name] && comp.context[method_name].constructor === Function)
+			{
+				if(!params || params.constructor !== Array)
+					comp.context[method_name].call(comp.context, params);
+				else
+					comp.context[method_name].apply(comp.context, params);
+				continue;
+			}
 		}
 	}
 }
@@ -17373,7 +17474,19 @@ RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
 
-//set the material and apply material flags to render instance
+RenderInstance.prototype.fromNode = function(node)
+{
+	if(!node)
+		throw("no node");
+	this.node = node;
+	if(node.transform)
+		this.setMatrix( node.transform._global_matrix );
+	else
+		this.setMatrix( LS.IDENTITY );
+	mat4.multiplyVec3( this.center, this.matrix, LS.ZEROS );
+}
+
+//set the matrix 
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 {
 	this.matrix.set( matrix );
@@ -27445,7 +27558,10 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 
 
 	//matrix: do not need to update, already done
-	RI.setMatrix( this._root.transform._global_matrix );
+	if(this._root.transform)
+		RI.setMatrix( this._root.transform._global_matrix );
+	else
+		RI.setMatrix( LS.IDENTITY );
 	//this._root.transform.getGlobalMatrix(RI.matrix);
 	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
 
@@ -34139,6 +34255,16 @@ PlayAnimation["@root_node"] = { type: "node" };
 PlayAnimation["@mode"] = { type:"enum", values: PlayAnimation.MODES };
 PlayAnimation["@current_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
 PlayAnimation["@blend_time"] = { type: LS.TYPES.NUMBER, min: 0, units:"s" };
+PlayAnimation["@take"] = { type: "enum", values: function(){
+	var anim = this.instance.getAnimation();
+	if(!anim)
+		return ["default"];
+	var takes = anim.takes;
+	var result = [];
+	for(var i in takes)
+		result.push(i);
+	return result;
+}};
 
 /**
 * the name of the LS.Animation resource where the takes and tracks are stored
@@ -35621,7 +35747,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 
 	//compiles and executes the context
 	var old = this._stored_properties || this.getContextProperties();
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
 	this.setContextProperties( old );
@@ -36952,6 +37078,149 @@ ThreeJS.prototype.processCode = function( skip_events )
 
 LS.registerComponent( ThreeJS );
 
+
+/**
+* Allows to render 2d canvas primitives, but they are rendered into a plane that can be positioned in 3D space.
+* It also supports to store the texture so it can be used in another material.
+*
+* To fill the canvas you must have a Script in the same node, that contains a method called OnRenderCanvas
+* @class Canvas3D
+* @namespace LS.Components
+* @constructor
+* @param {String} object to configure from
+*/
+function Canvas3D(o)
+{
+	this.enabled = true;
+
+	this.mode = 1;
+	this.width = 512;
+	this.height = 512;
+	this.to_texture = null;
+	this.visible = true;
+	this.filter = true;
+
+	this._texture = null;
+	this._fbo = null;
+	this._RI = null;
+	this._material = null;
+
+	if(o)
+		this.configure(o);
+}
+
+Canvas3D.icon = "mini-icon-brush.png";
+
+Canvas3D.MODE_CANVAS2D = 1;
+Canvas3D.MODE_WEBGL = 2;
+Canvas3D.MODE_IMMEDIATE = 3; //not supported yet
+
+Canvas3D["@mode"] = { type:"enum", values: { "Canvas2D":Canvas3D.MODE_CANVAS2D, "WebGL":Canvas3D.MODE_WEBGL } };
+Canvas3D["@width"] = { type:"number", step:1, precision:0 };
+Canvas3D["@height"] = { type:"number", step:1, precision:0 };
+Canvas3D["@to_texture"] = { type:"string" };
+
+Canvas3D.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind(scene,"beforeRender",this.onRender,this);
+}
+
+Canvas3D.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind(scene,"beforeRender",this.onRender,this);
+}
+
+Canvas3D.prototype.onAddedToNode = function( node )
+{
+	LEvent.bind( node, "collectRenderInstances", this.onCollectInstances, this );
+}
+
+Canvas3D.prototype.onRemovedFromNode = function( node )
+{
+	LEvent.unbind( node, "collectRenderInstances", this.onCollectInstances, this );
+}
+
+Canvas3D.prototype.onRender = function()
+{
+	if(!this.enabled)
+		return;
+
+	var w = this.width|0;
+	var h = this.height|0;
+
+	if( this.mode == Canvas3D.MODE_CANVAS2D )
+	{
+		if(!this._canvas)
+			this._canvas = document.createElement("canvas");
+		this._canvas.width = w;
+		this._canvas.height = w;
+	}
+
+	if(this.mode != Canvas3D.MODE_IMMEDIATE)
+	{
+		if(!this._texture || this._texture.width != w || this._texture.height != h)
+			this._texture = new GL.Texture(w,h,{ format: GL.RGBA, filter: GL.LINEAR, wrap: GL.CLAMP_TO_EDGE });
+	}
+
+	if( this.mode == Canvas3D.MODE_CANVAS2D )
+	{
+		var ctx = this._canvas.getContext("2d");
+		ctx.clearRect(0,0,this._canvas.width,this._canvas.height); //clear
+		this._root.processActionInComponents("onRenderCanvas",[ctx,this._canvas]);
+		this._texture.uploadImage( this._canvas );
+	}
+	else if ( this.mode == Canvas3D.MODE_WEBGL )
+	{
+		var ctx = gl;
+		if(!this._fbo)
+			this._fbo = new GL.FBO();
+		this._fbo.setTextures([this._texture]);
+		this._fbo.bind();
+		gl.start2D();
+		gl.clearColor(0,0,0,0);
+		gl.clear(GL.COLOR_BUFFER_BIT);
+		this._root.processActionInComponents("onRenderCanvas",[ctx,this._texture]);
+		gl.finish2D();
+		this._fbo.unbind();
+	}
+	else //not implemented yet
+	{
+		//requires to support extra_projection in canvas2DtoWebGL which is not yet implemented
+		return;
+	}
+
+	this._texture.setParameter( GL.MAG_FILTER, this.filter ? GL.LINEAR : GL.NEAREST );
+
+	if(this.to_texture)
+		LS.RM.registerResource( this.to_texture, this._texture );
+}
+
+Canvas3D.prototype.onCollectInstances = function(e,instances)
+{
+	if(!this.enabled || !this.visible)
+		return;
+
+	if(!this._RI)
+		this._RI = new LS.RenderInstance();
+	var RI = this._RI;
+	if(!this._material)
+		this._material = new LS.newStandardMaterial({ blend_mode: LS.Blend.ALPHA });
+	this._material.setTexture("color", this._texture );
+	var sampler = this._material.textures["color"];
+	sampler.magFilter = this.filter ? GL.LINEAR : GL.NEAREST;
+
+	RI.fromNode( this._root );
+	RI.setMaterial( this._material );
+
+	if(!this._mesh)
+		this._mesh = GL.Mesh.plane();
+	RI.setMesh(this._mesh);
+	instances.push(RI);
+
+	return instances;
+}
+
+LS.registerComponent( Canvas3D );
 /**
 * Allows to easily test interaction between the user and the scene, attach the InteractiveController to the root and the mouse down,move and up events will
 * be processed using a raycast and trigger events.
@@ -37495,15 +37764,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 	var that = this;
 
 	var extension = LS.ResourcesManager.getExtension( url );
-
-	//very special case from the editor, trying to load from a URL that comes from a player.html
-	if(extension == "html" && LS.ResourcesManager.getFilename(url) == "player.html" )
-	{
-		var index = url.indexOf("url=");
-		var index2 = url.indexOf("&",index);
-		url = decodeURIComponent( url.substr(index + 4, index2 - index - 4) );
-		extension = LS.ResourcesManager.getExtension( url );
-	}
 
 	//request scene file using our own library
 	LS.Network.request({

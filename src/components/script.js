@@ -818,7 +818,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 
 	//compiles and executes the context
 	var old = this._stored_properties || this.getContextProperties();
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
 	this.setContextProperties( old );
