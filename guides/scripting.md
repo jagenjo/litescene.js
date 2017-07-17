@@ -217,3 +217,71 @@ To know better some useful system methods, check [this guide about API methods i
 
 To know more about the APIs accessible from LiteScene check the documation websites for [LiteGL](https://github.com/jagenjo/litegl.js), [LiteScene](https://github.com/jagenjo/litescene.js) and [LiteGraph](https://github.com/jagenjo/litegraph.js).
 
+## Example of Script ##
+
+```
+//@InputController
+//defined: component, node, scene, globals
+
+this.moving_speed = 100;
+this.rotating_speed = 90;
+this.reverse_front = true;
+
+this.onStart = function()
+{
+}
+
+this.onRenderGUI = function()
+{
+  gl.start2D();
+  gl.strokeStyle = "white";
+  var centerx = LS.Input.Mouse.clientx;
+  var centery = LS.Input.Mouse.clienty;
+  var f = (scene.time % 2) / 2;
+  gl.globalAlpha = 1.0 - f;
+	gl.beginPath();
+  gl.arc(centerx,centery, f * 50, 0,Math.PI*2);
+  gl.stroke();
+  gl.globalAlpha = 1;
+  gl.finish2D();
+}
+
+this.onUpdate = function(dt)
+{
+  var x_axis = 0;
+  var y_axis = 0;
+  
+  var gamepad = LS.Input.getGamepad(0);
+  if(gamepad)
+  {
+    x_axis = LS.Input.getGamepadAxis(0,"LX");
+    y_axis = LS.Input.getGamepadAxis(0,"LY");
+  }
+  
+  if(LS.Input.Keyboard["UP"])
+    y_axis -= 1;
+  if(LS.Input.Keyboard["DOWN"])
+    y_axis += 1;
+  if(LS.Input.Keyboard["LEFT"])
+    x_axis -= 1;
+  if(LS.Input.Keyboard["RIGHT"])
+    x_axis += 1;
+  
+  x_axis = Math.clamp(x_axis,-1,1);
+  y_axis = Math.clamp(y_axis,-1,1);
+  
+  if(this.reverse_front)
+    y_axis *= -1;
+  
+  node.transform.translate(0,0,y_axis * dt * this.moving_speed);
+  node.transform.rotateY(-x_axis * dt * this.rotating_speed);
+  
+	node.scene.refresh();
+}
+
+this.onGamepadConnected = function()
+{
+  console.log("PAD!!!");
+}
+```
+
