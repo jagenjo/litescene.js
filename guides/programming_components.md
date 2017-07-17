@@ -7,10 +7,11 @@ or executing scripts, comes from one of the many components.
 
 Components are attached to the nodes in the scene to extend the properties of every node, this way the system is very modular and easy to extend.
 
-Although the system comes with many components sometimes you need special features and you don't want to rely in Scripts
-because they are heavier that regular components and they are not as easy to add as default components.
+Although the system comes with many components sometimes you need special features. In that case you have two choices, to create a Script or to code the Component. Scripts are heavier and offer less freedom that regular components and they are not as easy to add as default components.
 
-In that case you can create your own components and add them to the components's pool.
+Check the [Scripting guide](scripting.md) to know how to create Script components and which are their benefits.
+
+If you dont want to rely on Scripts you can create your own components and add them to the components's pool.
 
 # Creating a new Component class
 
