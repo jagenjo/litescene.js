@@ -37,12 +37,13 @@ Check the section below to know other ways to access a context of another compon
 
 ### Global vars of every script ###
 
-Besides all the objects of the system, every script has four globals vars associated to that script:
+Besides all the objects of the system, every script has five globals vars associated to that script:
 
 - **scene**: the scene where the node of this script component is attached, (usually the same as ```LS.GlobalScene``` )
 - **node**: the node where this script component is attached, (equivalent to ```component._root``` )
 - **component**: the script component itself
 - **transform**: the transform of the node where the script is attached
+- **globals**: the container shared among all the Scripts, the same as ```LS.Globals```
 
 So feel free to access them from inside your script at any time.
 
@@ -233,17 +234,7 @@ this.onStart = function()
 
 this.onRenderGUI = function()
 {
-  gl.start2D();
-  gl.strokeStyle = "white";
-  var centerx = LS.Input.Mouse.clientx;
-  var centery = LS.Input.Mouse.clienty;
-  var f = (scene.time % 2) / 2;
-  gl.globalAlpha = 1.0 - f;
-	gl.beginPath();
-  gl.arc(centerx,centery, f * 50, 0,Math.PI*2);
-  gl.stroke();
-  gl.globalAlpha = 1;
-  gl.finish2D();
+    LS.GUI.Label([10,10,100,40], "X: " + transform.x.toFixed(2) + " Z: " + transform.z.toFixed(2));
 }
 
 this.onUpdate = function(dt)
