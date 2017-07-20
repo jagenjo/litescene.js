@@ -19,14 +19,13 @@ Creating a component is easy, which just a few lines of code you will have your 
 the complex part is ensure that this component is going to interact propertly with the system, here is a list of common 
 steps that you will have to fulfill to create a component:
 
-* Create the component class and register it in the system
-* Add the configure and serialize methods in case you want to perform special actions when storing/restoring the state
-* Add the onAddedToScene and onRemovedFromScene methods to hook the appropiate events with the system
-* Define the widgets of the interface for the editor, or in the last resort, define the full interface of the component.
-* Be sure that any project that uses this component is including the script as an external script.
+* Create the **component class** and register it in the system
+* Add the **configure** and **serialize** methods in case you want to perform special actions when storing/restoring the state
+* Add the ```onAddedToScene``` and ```onRemovedFromScene``` methods to hook the appropiate events with the system
+* Define the type or widget information for the public vars, this helps the editor show propper interfaces. Or in the last resort, define the full interface of the component.
+* Be sure that any project that uses this component is including the code of this component as an external or global script.
 
-Keep in mind that to create new components you cannot use the editor itself, because they are external files that need to be included in the library.
-So you will need to have access to  your own server and store the file there to be included in the system.
+The file containing the code of new components can be included in the HTML, or in the scene using the external_scripts or global_scripts.
 
 ## The component class
 
@@ -38,7 +37,7 @@ function MyComponent( o )
     this.myvar = 1;
     
     if(o)
-    this.configure(o);
+    	this.configure(o);
 }
 ```
 
@@ -76,6 +75,8 @@ MyComponent["@age"] = { widget: "slider", min:1, max:90, step:1, precision:0 };
 MyComponent["@gender"] = { widget: "combo", values: ["male","female","other"] };
 ```
 
+If you are planning to create a custom interface for this component, check the [guide for custom editor interfaces](custom_editor_interfaces.md)
+
 ## Registering the component
 
 The next step is to register the component in the system so it can be listed in the components list in the editor.
@@ -85,6 +86,9 @@ LS.registerComponent( MyComponent );
 ```
 
 This function is not only registering the component but also adding the mandatory methods to the component that you didn't fill (like serialize, configure).
+
+When a component is registered it checks if the current scene contains this component, and if that is the case it replaces it.
+
 
 ## Adding behaviour 
 
@@ -147,8 +151,8 @@ Keep in mind that sometimes you want to do some computations when the component 
 MyComponent.prototype.serialize = function()
 {
 	return {
-	  myvar: this.myvar
-	 };
+		myvar: this.myvar
+	};
 }
 
 MyComponent.prototype.configure = function(o)
@@ -181,6 +185,7 @@ MyComponent.prototype.getEventActions = function()
 ## Testing your component in the editor
 
 The problem with our component is that is stored in a javascript file that our editor doesnt load, so there are different ways to force the editor to load new files.
+
 In our case what we are going to do is add the file the external scripts in the Scene settings, to do so go to Scene - Settings and add the URL of the file in the external scripts.
 Once the file is loaded you will see your component when clicking the [add Component] button in any node.
 If you add the component to a node you also will see that the system has detected that your component has a local variable ( this.myvar )
