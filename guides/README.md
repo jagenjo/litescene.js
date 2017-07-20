@@ -14,7 +14,7 @@ Here there is a list with the most commont topics to master LiteScene:
 - [GUI](gui.md): how to add a GUI to your application
 - [Resources](resources.md): How to handle resources (textures, meshes, etc)
 - [Player](player.md): how to use the player to embed your scene in any website
-- [Custom components]([programming_components.md): How to create your own components
+- [Custom components](programming_components.md): How to create your own components
 
 Some advanced topics:
 
