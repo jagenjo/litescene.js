@@ -14,6 +14,7 @@ Here there is a list with the most commont topics to master LiteScene:
 - [GUI](gui.md): how to add a GUI to your application
 - [Resources](resources.md): How to handle resources (textures, meshes, etc)
 - [Player](player.md): how to use the player to embed your scene in any website
+- [Custom components]([programming_components.md): How to create your own components
 
 Some advanced topics:
 
@@ -23,6 +24,7 @@ Some advanced topics:
 - [Shaders](shaders.md): How to write your own shaders
 - [Post-processing](post-processing.md): How to apply postprocessing effects
 - [Animation](animation.md): How to create animations
+- [Custom editor interfaces](custom_editor_interfaces.md): configuring the interface in the editor
 - [Tweening](tweening.md): how to interpolate values easily
 - [Draw](draw.md): how to draw in immediate mode
 
