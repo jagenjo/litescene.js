@@ -76,7 +76,7 @@ MyComponent["@age"] = { widget: "slider", min:1, max:90, step:1, precision:0 };
 MyComponent["@gender"] = { widget: "combo", values: ["male","female","other"] };
 ```
 
-If you are planning to create a custom interface for this component, check the [guide for custom editor interfaces](editor_interfaces.md)
+If you are planning to create a custom interface for this component, check the [guide for custom editor interfaces](custom_editor_interfaces.md)
 
 ## Registering the component
 
