@@ -232,6 +232,9 @@ var Renderer = {
 		this._visible_cameras = cameras; //the cameras being rendered
 		this._main_camera = cameras[0];
 
+		//Event: readyToRender when we have all the info to render
+		LEvent.trigger( scene, "readyToRender", render_settings );
+
 		//remove the lights that do not lay in front of any camera (this way we avoid creating shadowmaps)
 		//TODO
 
@@ -1043,6 +1046,12 @@ var Renderer = {
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_S, sampler.wrap);
 					gl.texParameteri(tex.texture_type, gl.TEXTURE_WRAP_T, sampler.wrap);
 				}
+				if(sampler.anisotropic != null && gl.extensions.EXT_texture_filter_anisotropic )
+					gl.texParameteri(tex.texture_type, gl.extensions.EXT_texture_filter_anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, sampler.anisotropic );
+
+				//sRGB textures must specified ON CREATION, so no
+				//if(sampler.anisotropic != null && gl.extensions.EXT_sRGB )
+
 				//sampler._must_update = false;
 			}
 		}
@@ -1295,6 +1304,8 @@ var Renderer = {
 		//prepare lights (collect data and generate shadowmaps)
 		for(var i = 0, l = this._visible_lights.length; i < l; ++i)
 			this._visible_lights[i].prepare( render_settings );
+
+		LEvent.trigger( scene, "afterCollectData", scene );
 	},
 
 	//outside of processVisibleData to allow optimizations in processVisibleData

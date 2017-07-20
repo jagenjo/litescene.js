@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -901,15 +902,20 @@ ScriptFromFile.prototype.onAddedToScene = function( scene )
 /**
 * Force to reevaluate the code (only for special situations like remove codes)
 * @method reload
+* @param {Function} [on_complete=null] 
 */
-ScriptFromFile.prototype.reload = function()
+ScriptFromFile.prototype.reload = function( on_complete )
 {
 	if(!this.filename)
 		return;
-	//remove old version
-	LS.ResourcesManager.unregisterResource( this.filename );
-	//load again
-	this.processCode();
+	var that = this;
+	LS.ResourcesManager.load( this.filename, null, function( res, url ){
+		if( url != that.filename )
+			return;
+		that.processCode();
+		if(on_complete)
+			on_complete(that);
+	}, true);
 }
 
 
@@ -970,7 +976,7 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 
 	//compiles and executes the context
 	var old = this._stored_properties || this.getContextProperties();
-	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, globals: LS.Globals });
+	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
 	this.setContextProperties( old );

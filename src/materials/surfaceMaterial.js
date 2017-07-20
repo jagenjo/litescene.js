@@ -26,7 +26,7 @@ function SurfaceMaterial( o )
 	o.Emission = vec3(0.0);\n\
 	o.Specular = 1.0;\n\
 	o.Gloss = 40.0;\n\
-	o.Reflectivity = 0.0;\n\
+	o.Reflectivity = max(0.0, 0.5 - dot(IN.viewDir,o.Normal));\n\
 	o.Alpha = IN.color.a;\n}\n";
 
 	this._uniforms = {};
@@ -100,8 +100,7 @@ SurfaceMaterial.prototype.computeCode = function()
 	*/
 
 	this.surf_code = uniforms_code + "\n" + this._code;
-	var code = LS.SurfaceMaterial.code_template;
-	var final_code = code.replace("{{FS_CODE}}", this.surf_code );
+	var final_code = LS.SurfaceMaterial.code_template.replace( /{{}}/gi, this.surf_code );
 	if(!this._shadercode)
 		this._shadercode = new LS.ShaderCode();
 	this._shadercode.code = final_code;
@@ -446,23 +445,108 @@ varying vec2 v_uvs;\n\
 uniform vec3 u_camera_eye;\n\
 uniform vec4 u_clipping_plane;\n\
 uniform float u_time;\n\
-uniform vec3 u_background_color;\n\
+uniform vec4 u_background_color;\n\
 uniform vec4 u_material_color;\n\
 \n\
 #pragma shaderblock \"light\"\n\
+#pragma shaderblock \"applyReflection\"\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
 \n\
-{{FS_CODE}}\n\
+{{}}\n\
+\n\
+void main() {\n\
+	Input IN = getInput();\n\
+	SurfaceOutput o = getSurfaceOutput();\n\
+	surf(IN,o);\n\
+	vec4 final_color = vec4(0.0);\n\
+	Light LIGHT = getLight();\n\
+	final_color.xyz = computeLight( o, IN, LIGHT );\n\
+	final_color.a = o.Alpha;\n\
+	if( o.Reflectivity > 0.0 )\n\
+		final_color = applyReflection( IN, o, final_color );\n\
+	\n\
+	gl_FragColor = final_color;\n\
+}\n\
+\n\
+\\shadow.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#ifdef USE_COLORS\n\
+attribute vec4 a_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+uniform mat4 u_model;\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+  \n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  applyLight(v_pos);\n\
+  \n\
+	//normal\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\\shadow.fs\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform vec4 u_material_color;\n\
+\n\
+uniform mat3 u_texture_matrix;\n\
+\n\
+#pragma snippet \"input\"\n\
+#pragma snippet \"surface\"\n\
+#pragma snippet \"perturbNormal\"\n\
+#define SHADOWMAP\n\
+\n\
+{{}}\n\
 \n\
 void main() {\n\
   Input IN = getInput();\n\
   SurfaceOutput o = getSurfaceOutput();\n\
   surf(IN,o);\n\
-  vec4 final_color = vec4(0.0);\n\
-  Light LIGHT = getLight();\n\
-  final_color.xyz = computeLight( o, IN, LIGHT );\n\
-  final_color.a = o.Alpha;\n\
-  gl_FragColor = final_color;\n\
+  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
 }\n\
 ";

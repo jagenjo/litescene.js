@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -220,7 +221,20 @@ RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
 
-//set the material and apply material flags to render instance
+RenderInstance.prototype.fromNode = function(node)
+{
+	if(!node)
+		throw(&quot;no node&quot;);
+	this.node = node;
+	if(node.transform)
+		this.setMatrix( node.transform._global_matrix );
+	else
+		this.setMatrix( LS.IDENTITY );
+	mat4.multiplyVec3( this.center, this.matrix, LS.ZEROS );
+	this.layers = node.layers;
+}
+
+//set the matrix 
 RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 {
 	this.matrix.set( matrix );

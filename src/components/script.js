@@ -749,15 +749,20 @@ ScriptFromFile.prototype.onAddedToScene = function( scene )
 /**
 * Force to reevaluate the code (only for special situations like remove codes)
 * @method reload
+* @param {Function} [on_complete=null] 
 */
-ScriptFromFile.prototype.reload = function()
+ScriptFromFile.prototype.reload = function( on_complete )
 {
 	if(!this.filename)
 		return;
-	//remove old version
-	LS.ResourcesManager.unregisterResource( this.filename );
-	//load again
-	this.processCode();
+	var that = this;
+	LS.ResourcesManager.load( this.filename, null, function( res, url ){
+		if( url != that.filename )
+			return;
+		that.processCode();
+		if(on_complete)
+			on_complete(that);
+	}, true);
 }
 
 

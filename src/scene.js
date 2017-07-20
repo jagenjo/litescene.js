@@ -524,33 +524,40 @@ SceneTree.prototype.loadFromResources = function( url, on_complete, on_error, on
 }
 
 
-//returns a list of all the scripts that must be loaded, in order and with the full path
-SceneTree.getScriptsList = function( root, allow_local )
+
+/**
+* Static method, returns a list of all the scripts that must be loaded, in order and with the full path
+*
+* @method SceneTree.getScriptsList
+* @param {SceneTree|Object} scene the object containing info about the scripts (could be a scene or a JSON object)
+* @param {Boolean} allow_local if we allow local resources
+* @param {Boolean} full_paths if true it will return the full path to every resource
+*/
+SceneTree.getScriptsList = function( scene, allow_local, full_paths )
 {
+	if(!scene)
+		throw("SceneTree.getScriptsList: scene cannot be null");
+
 	var scripts = [];
-	if ( root.external_scripts && root.external_scripts.length )
-		scripts = scripts.concat( root.external_scripts );
-	if ( root.global_scripts && root.global_scripts.length )
+	if ( scene.external_scripts && scene.external_scripts.length )
+		scripts = scripts.concat( scene.external_scripts );
+	if ( scene.global_scripts && scene.global_scripts.length )
 	{
-		for(var i in root.global_scripts)
+		for(var i in scene.global_scripts)
 		{
-			var script_fullpath = root.global_scripts[i];
-			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != "js" )
+			var script_url = scene.global_scripts[i];
+			if(!script_url || LS.ResourcesManager.getExtension( script_url ) != "js" )
 				continue;
 
-			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
-
-			var res = LS.ResourcesManager.getResource( script_fullpath );
+			var res = LS.ResourcesManager.getResource( script_url );
 			if(res)
 			{
-				/*
-				if( res.from_prefab )
-					script_url = LS.ResourcesManager.cleanFullpath( "@" + script_fullpath );
-				else 
-				*/
-					if( allow_local )
-					script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+				if( allow_local )
+					script_url = LS.ResourcesManager.cleanFullpath( script_url );
 			}
+
+			if(full_paths)
+				script_url = LS.ResourcesManager.getFullURL( script_url );
 
 			scripts.push( script_url );
 		}
@@ -561,6 +568,7 @@ SceneTree.getScriptsList = function( root, allow_local )
 //reloads external and global scripts taking into account if they come from wbins
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
+	//get a list of scripts (they cannot be fullpaths)
 	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
 	if(!scripts.length)
@@ -582,11 +590,11 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, forc
 
 	for(var i in scripts)
 	{
-		var script_fullpath = scripts[i];
-		var res = LS.ResourcesManager.getResource( script_fullpath );
+		var script_url = scripts[i];
+		var res = LS.ResourcesManager.getResource( script_url );
 		if(!res || force_reload)
 		{
-			final_scripts.push( script_fullpath );
+			final_scripts.push( LS.ResourcesManager.getFullURL( script_url ) );
 			continue;
 		}
 

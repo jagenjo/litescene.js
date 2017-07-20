@@ -520,14 +520,8 @@ ComponentContainer.prototype.processActionInComponents = function( method_name, 
 			if(skip_scripts)
 				continue;
 
-			if(comp.context && comp.context[method_name] && comp.context[method_name].constructor === Function)
-			{
-				if(!params || params.constructor !== Array)
-					comp.context[method_name].call(comp.context, params);
-				else
-					comp.context[method_name].apply(comp.context, params);
-				continue;
-			}
+			if(comp._script)
+				comp._script.callMethod( method_name, params, true );
 		}
 	}
 }

@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -423,11 +424,11 @@ MeshRenderer.prototype.getAnyMesh = function() {
 
 MeshRenderer.prototype.getResources = function(res)
 {
-	if(typeof(this.mesh) == &quot;string&quot;)
-		res[this.mesh] = GL.Mesh;
-	if(typeof(this.lod_mesh) == &quot;string&quot;)
+	if( this.mesh &amp;&amp; this.mesh.constructor === String )
+		res[ this.mesh ] = GL.Mesh;
+	if( this.lod_mesh &amp;&amp; this.lod_mesh.constructor === String )
 		res[this.lod_mesh] = GL.Mesh;
-	if(typeof(this.material) == &quot;string&quot;)
+	if( this.material &amp;&amp; this.material.constructor === String )
 		res[this.material] = LS.Material;
 
 	if(this.use_submaterials)
@@ -486,10 +487,8 @@ MeshRenderer.prototype.updateRIs = function()
 	//if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
-	//matrix: do not need to update, already done
-	RI.setMatrix( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix( RI.matrix );
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+	//assigns matrix, layers
+	RI.fromNode( this._root );
 
 	//material (after flags because it modifies the flags)
 	var material = null;
@@ -586,11 +585,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//if( is_static &amp;&amp; LS.allow_static &amp;&amp; !this._must_update_static &amp;&amp; (!transform || (transform &amp;&amp; this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
-
-	//matrix: do not need to update, already done
-	RI.setMatrix( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+	//assigns matrix, layers
+	RI.fromNode( this._root );
 
 	//material (after flags because it modifies the flags)
 	var material = null;

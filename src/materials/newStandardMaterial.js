@@ -186,30 +186,38 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 	var scene = LS.Renderer._current_scene;
 
 	//TEXTURES
-	if( this.textures.normal )
-		code_flags |= FLAGS.NORMAL_TEXTURE;
 	if( this.textures.color )
 		code_flags |= FLAGS.COLOR_TEXTURE;
 	if( this.textures.opacity )
 		code_flags |= FLAGS.OPACITY_TEXTURE;
-	if( this.textures.specular )
-		code_flags |= FLAGS.SPECULAR_TEXTURE;
-	if( this.reflection_factor > 0 )
+
+	//color textures are not necessary 
+	if( pass.id == COLOR_PASS )
 	{
-		//code_flags |= FLAGS.REFLECTION;
-		if( this.textures.reflectivity )
-			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
+		if( this.textures.normal )
+			code_flags |= FLAGS.NORMAL_TEXTURE;
+		if( this.textures.specular )
+			code_flags |= FLAGS.SPECULAR_TEXTURE;
+		if( this.reflection_factor > 0 )
+		{
+			//code_flags |= FLAGS.REFLECTION;
+			if( this.textures.reflectivity )
+				code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
+		}
+		if( this.textures.emissive )
+			code_flags |= FLAGS.EMISSIVE_TEXTURE;
+		if( this.textures.ambient )
+			code_flags |= FLAGS.AMBIENT_TEXTURE;
+		if( this.textures.detail )
+			code_flags |= FLAGS.DETAIL_TEXTURE;
 	}
-	if( this.textures.emissive )
-		code_flags |= FLAGS.EMISSIVE_TEXTURE;
-	if( this.textures.ambient )
-		code_flags |= FLAGS.AMBIENT_TEXTURE;
-	if( this.textures.detail )
-		code_flags |= FLAGS.DETAIL_TEXTURE;
+
 	//flags
-	if(this.flags.alpha_test)
+	if( (this.flags.alpha_test && pass.id == COLOR_PASS) ||
+		(this.flags.alpha_test_shadows && pass.id == SHADOW_PASS) )
 		code_flags |= FLAGS.ALPHA_TEST;
 
+	//check if we already have this shader created
 	var shader_code = LS.newStandardMaterial.shader_codes[ code_flags ];
 
 	//reuse shader codes when possible
@@ -257,7 +265,7 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 
 	//compile shader and cache
 	shader_code = new LS.ShaderCode();
-	var code = newStandardMaterial.code_template.replace("{{FS_CODE}}",fs_code);
+	var code = newStandardMaterial.code_template.replace( /{{}}/gi, fs_code );
 	shader_code.code = code;
 	LS.newStandardMaterial.shader_codes[ code_flags ] = shader_code;
 	return shader_code;
@@ -579,7 +587,7 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Emission = u_emissive_color.xyz;\n\
 	o.Reflectivity = u_reflection_info.x;\n\
 	\n\
-	{{FS_CODE}}\n\
+	{{}}\n\
 	\n\
 	if(u_velvet_info.w > 0.0)\n\
 		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
@@ -601,5 +609,92 @@ void main() {\n\
   final_color.a = o.Alpha;\n\
   final_color = applyReflection( IN, o, final_color );\n\
   gl_FragColor = final_color;\n\
+}\n\
+\\shadow.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#ifdef USE_COLORS\n\
+attribute vec4 a_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+uniform mat4 u_model;\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+  \n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  applyLight(v_pos);\n\
+  \n\
+	//normal\n\
+	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\\shadow.fs\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform vec4 u_material_color;\n\
+\n\
+uniform mat3 u_texture_matrix;\n\
+\n\
+uniform sampler2D color_texture;\n\
+uniform sampler2D opacity_texture;\n\
+\n\
+#pragma snippet \"input\"\n\
+#pragma snippet \"surface\"\n\
+\n\
+void surf(in Input IN, out SurfaceOutput o)\n\
+{\n\
+	o.Albedo = u_material_color.xyz;\n\
+	o.Alpha = u_material_color.a;\n\
+	\n\
+	{{}}\n\
+}\n\
+\n\
+void main() {\n\
+  Input IN = getInput();\n\
+  SurfaceOutput o = getSurfaceOutput();\n\
+  surf(IN,o);\n\
+  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
 }\n\
 ";

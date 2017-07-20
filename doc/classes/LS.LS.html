@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -250,6 +251,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_unregisterComponent">unregisterComponent</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_validateName">validateName</a>
 
                             </li>
@@ -298,7 +303,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l430"><code>..&#x2F;src&#x2F;core.js:430</code></a>
+        <a href="../files/.._src_core.js.html#l504"><code>..&#x2F;src&#x2F;core.js:504</code></a>
         </p>
 
 
@@ -358,7 +363,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l303"><code>..&#x2F;src&#x2F;core.js:303</code></a>
+        <a href="../files/.._src_core.js.html#l377"><code>..&#x2F;src&#x2F;core.js:377</code></a>
         </p>
 
 
@@ -441,7 +446,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l268"><code>..&#x2F;src&#x2F;core.js:268</code></a>
+        <a href="../files/.._src_core.js.html#l342"><code>..&#x2F;src&#x2F;core.js:342</code></a>
         </p>
 
 
@@ -550,7 +555,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l499"><code>..&#x2F;src&#x2F;core.js:499</code></a>
+        <a href="../files/.._src_core.js.html#l573"><code>..&#x2F;src&#x2F;core.js:573</code></a>
         </p>
 
 
@@ -616,7 +621,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l474"><code>..&#x2F;src&#x2F;core.js:474</code></a>
+        <a href="../files/.._src_core.js.html#l548"><code>..&#x2F;src&#x2F;core.js:548</code></a>
         </p>
 
 
@@ -682,7 +687,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l524"><code>..&#x2F;src&#x2F;core.js:524</code></a>
+        <a href="../files/.._src_core.js.html#l598"><code>..&#x2F;src&#x2F;core.js:598</code></a>
         </p>
 
 
@@ -747,7 +752,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l630"><code>..&#x2F;src&#x2F;core.js:630</code></a>
+        <a href="../files/.._src_core.js.html#l704"><code>..&#x2F;src&#x2F;core.js:704</code></a>
         </p>
 
 
@@ -813,7 +818,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l131"><code>..&#x2F;src&#x2F;core.js:131</code></a>
+        <a href="../files/.._src_core.js.html#l158"><code>..&#x2F;src&#x2F;core.js:158</code></a>
         </p>
 
 
@@ -861,7 +866,10 @@
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
                 <li class="arg">
-                        <code>c</code>
+                        <code>component</code>
+                </li>
+                <li class="arg">
+                        <code>old_classname</code>
                 </li>
             </ul><span class="paren">)</span>
         </div>
@@ -893,12 +901,23 @@
 
             <ul class="params-list">
                 <li class="param">
-                        <code class="param-name">c</code>
-                        <span class="type">ComponentClass</span>
+                        <code class="param-name">component</code>
+                        <span class="type">Component</span>
 
 
                     <div class="param-description">
                         <p>component class to register</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">old_classname</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the name of the component that this class replaces (in case you are renaming it)</p>
 
                     </div>
 
@@ -930,7 +949,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l607"><code>..&#x2F;src&#x2F;core.js:607</code></a>
+        <a href="../files/.._src_core.js.html#l681"><code>..&#x2F;src&#x2F;core.js:681</code></a>
         </p>
 
 
@@ -984,7 +1003,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l182"><code>..&#x2F;src&#x2F;core.js:182</code></a>
+        <a href="../files/.._src_core.js.html#l256"><code>..&#x2F;src&#x2F;core.js:256</code></a>
         </p>
 
 
@@ -1034,6 +1053,9 @@
             </ul><span class="paren">)</span>
         </div>
 
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
 
 
 
@@ -1044,7 +1066,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l144"><code>..&#x2F;src&#x2F;core.js:144</code></a>
+        <a href="../files/.._src_core.js.html#l171"><code>..&#x2F;src&#x2F;core.js:171</code></a>
         </p>
 
 
@@ -1096,6 +1118,15 @@
             </ul>
         </div>
 
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the number of components replaced</p>
+
+            </div>
+        </div>
 
 
 </div>
@@ -1114,7 +1145,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l666"><code>..&#x2F;src&#x2F;core.js:666</code></a>
+        <a href="../files/.._src_core.js.html#l740"><code>..&#x2F;src&#x2F;core.js:740</code></a>
         </p>
 
 
@@ -1157,7 +1188,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l199"><code>..&#x2F;src&#x2F;core.js:199</code></a>
+        <a href="../files/.._src_core.js.html#l273"><code>..&#x2F;src&#x2F;core.js:273</code></a>
         </p>
 
 
@@ -1236,7 +1267,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l246"><code>..&#x2F;src&#x2F;core.js:246</code></a>
+        <a href="../files/.._src_core.js.html#l320"><code>..&#x2F;src&#x2F;core.js:320</code></a>
         </p>
 
 
@@ -1316,7 +1347,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l224"><code>..&#x2F;src&#x2F;core.js:224</code></a>
+        <a href="../files/.._src_core.js.html#l298"><code>..&#x2F;src&#x2F;core.js:298</code></a>
         </p>
 
 
@@ -1360,6 +1391,60 @@
 
                     <div class="param-description">
                          
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_unregisterComponent" class="method item">
+    <h3 class="name"><code>unregisterComponent</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_core.js.html#l143"><code>..&#x2F;src&#x2F;core.js:143</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Unregisters a component from the system (although existing instances are kept in the scene)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>the name of the component to unregister</p>
+
                     </div>
 
                 </li>
@@ -1475,7 +1560,7 @@ valid characters are letters, numbers, spaces, dash, underscore and dot</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l598"><code>..&#x2F;src&#x2F;core.js:598</code></a>
+        <a href="../files/.._src_core.js.html#l672"><code>..&#x2F;src&#x2F;core.js:672</code></a>
         </p>
 
 

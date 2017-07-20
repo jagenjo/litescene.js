@@ -271,11 +271,11 @@ MeshRenderer.prototype.getAnyMesh = function() {
 
 MeshRenderer.prototype.getResources = function(res)
 {
-	if(typeof(this.mesh) == "string")
-		res[this.mesh] = GL.Mesh;
-	if(typeof(this.lod_mesh) == "string")
+	if( this.mesh && this.mesh.constructor === String )
+		res[ this.mesh ] = GL.Mesh;
+	if( this.lod_mesh && this.lod_mesh.constructor === String )
 		res[this.lod_mesh] = GL.Mesh;
-	if(typeof(this.material) == "string")
+	if( this.material && this.material.constructor === String )
 		res[this.material] = LS.Material;
 
 	if(this.use_submaterials)
@@ -334,10 +334,8 @@ MeshRenderer.prototype.updateRIs = function()
 	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
-	//matrix: do not need to update, already done
-	RI.setMatrix( this._root.transform._global_matrix );
-	//this._root.transform.getGlobalMatrix( RI.matrix );
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+	//assigns matrix, layers
+	RI.fromNode( this._root );
 
 	//material (after flags because it modifies the flags)
 	var material = null;
@@ -434,14 +432,8 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	//if( is_static && LS.allow_static && !this._must_update_static && (!transform || (transform && this._transform_version == transform._version)) )
 	//	return instances.push( RI );
 
-
-	//matrix: do not need to update, already done
-	if(this._root.transform)
-		RI.setMatrix( this._root.transform._global_matrix );
-	else
-		RI.setMatrix( LS.IDENTITY );
-	//this._root.transform.getGlobalMatrix(RI.matrix);
-	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
+	//assigns matrix, layers
+	RI.fromNode( this._root );
 
 	//material (after flags because it modifies the flags)
 	var material = null;

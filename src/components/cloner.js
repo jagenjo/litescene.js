@@ -30,7 +30,7 @@ Cloner.icon = "mini-icon-cloner.png";
 Cloner["@mesh"] = { type: "mesh" };
 Cloner["@lod_mesh"] = { type: "mesh" };
 Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE } };
-Cloner["@count"] = { type:"vec3", min:1, step:1 };
+Cloner["@count"] = { type:"vec3", min:1, step:1, precision: 0 };
 
 Cloner.prototype.onAddedToScene = function(scene)
 {
@@ -46,22 +46,22 @@ Cloner.prototype.onRemovedFromScene = function(scene)
 }
 
 Cloner.prototype.getMesh = function() {
-	if(typeof(this.mesh) === "string")
-		return ResourcesManager.meshes[this.mesh];
+	if( this.mesh && this.mesh.constructor === String )
+		return ResourcesManager.meshes[ this.mesh ];
 	return this.mesh;
 }
 
 Cloner.prototype.getLODMesh = function() {
-	if(typeof(this.lod_mesh) === "string")
+	if( this.lod_mesh && this.lod_mesh.constructor === String )
 		return ResourcesManager.meshes[this.lod_mesh];
-	return this.low_mesh;
+	return this.lod_mesh;
 }
 
 Cloner.prototype.getResources = function(res)
 {
-	if(typeof(this.mesh) == "string")
+	if( this.mesh && this.mesh.constructor === String )
 		res[this.mesh] = Mesh;
-	if(typeof(this.lod_mesh) == "string")
+	if( this.lod_mesh && this.lod_mesh.constructor === String )
 		res[this.lod_mesh] = Mesh;
 	return res;
 }
@@ -122,14 +122,7 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 		var RI = RIs[i];
 
 		RI.setMesh(mesh);
-		/*
-		if(this.lod_mesh)
-		{
-			var lod_mesh = this.getLODMesh();
-			if(lod_mesh)
-				RI.setLODMesh( lod_mesh );
-		}
-		*/
+		RI.layers = node.layers;
 		RI.setMaterial( material );
 		instances[ start_array_pos + i ] = RI;
 	}
@@ -187,6 +180,8 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 	var county = this._count[1]|0;
 	var countz = this._count[2]|0;
 
+	var node = this._root;
+
 	//Set position according to the cloner mode
 	if(this.mode == Cloner.GRID_MODE)
 	{
@@ -213,6 +208,7 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 			tmp[1] = y * offset[1] - hsize[1];
 			tmp[2] = z * offset[2] - hsize[2];
 			mat4.translate( RI.matrix, global, tmp );
+			RI.setMatrix( RI.matrix ); //force normal matrix generation
 			mat4.multiplyVec3( RI.center, RI.matrix, zero );
 			++i;
 			RI.picking_node = null;
@@ -234,6 +230,7 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 			RI.matrix.set( global );
 			mat4.translate( RI.matrix, RI.matrix, tmp );
 			mat4.rotateY( RI.matrix,RI.matrix, offset * i );
+			RI.setMatrix( RI.matrix ); //force normal matrix generation
 			mat4.multiplyVec3( RI.center, RI.matrix, zero );
 			RI.picking_node = null;
 		}

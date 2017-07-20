@@ -185,31 +185,7 @@ Player.prototype.configure = function( options, on_scene_loaded )
 	if(options.loadingbar)
 	{
 		if(!this.loading)
-		{
-			this.loading = {
-				visible: true,
-				scene_loaded: 0,
-				resources_loaded: 0
-			};
-			LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
-				if(!this.loading)
-					return;
-				this.loading.resources_loaded = 0.0; 
-			}).bind(this) );
-			LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
-				if(!this.loading)
-					return;
-				if( this.loading.resources_loaded < v )
-					this.loading.resources_loaded = v;
-			}).bind(this) );
-			LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
-				if(!this.loading)
-					return;
-				this._total_loading = undefined; 
-				this.loading.resources_loaded = 1; 
-				this.loading.visible = false;
-			}).bind(this) );
-		}
+			this.enableLoadingBar();
 	}
 	else if(options.loadingbar === false)
 		this.loading = null;	
@@ -236,6 +212,9 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 {
 	var that = this;
 	var scene = this.scene;
+	if(this.loading)
+		this.loading.visible = true;
+
 	scene.load( url, null, null, inner_progress, inner_start );
 
 	function inner_start()
@@ -244,14 +223,15 @@ Player.prototype.loadScene = function(url, on_complete, on_progress)
 		if(that.autoplay)
 			that.play();
 		//console.log("Scene playing");
-		that.loading = null;
+		if(	that.loading )
+			that.loading.visible = false;
 		if(on_complete)
 			on_complete();
 	}
 
 	function inner_progress(e)
 	{
-		if(that.loading === undefined)
+		if(that.loading == null)
 			return;
 		var partial_load = 0;
 		if(e.total) //sometimes we dont have the total so we dont know the amount
@@ -355,6 +335,17 @@ Player.prototype.stop = function()
 }
 
 /**
+* Clears the current scene
+* @method clear
+*/
+Player.prototype.clear = function()
+{
+	LS.Input.reset(); //this force some events to be sent
+	LS.GUI.reset(); //clear GUI
+	this.scene.clear();
+}
+
+/**
 * Enable the functionality to catch files droped in the canvas so script can catch the "fileDrop" event (onFileDrop in the Script components).
 * @method setFileDrop
 * @param {boolean} v true if you want to allow file drop (true by default)
@@ -424,6 +415,33 @@ Player.prototype.setFileDrop = function(v)
 			}
 		}
 	}
+}
+
+Player.prototype.enableLoadingBar = function()
+{
+	this.loading = {
+		visible: true,
+		scene_loaded: 0,
+		resources_loaded: 0
+	};
+	LEvent.bind( LS.ResourcesManager, "start_loading_resources", (function(e,v){ 
+		if(!this.loading)
+			return;
+		this.loading.resources_loaded = 0.0; 
+	}).bind(this) );
+	LEvent.bind( LS.ResourcesManager, "loading_resources_progress", (function(e,v){ 
+		if(!this.loading)
+			return;
+		if( this.loading.resources_loaded < v )
+			this.loading.resources_loaded = v;
+	}).bind(this) );
+	LEvent.bind( LS.ResourcesManager, "end_loading_resources", (function(e,v){ 
+		if(!this.loading)
+			return;
+		this._total_loading = undefined; 
+		this.loading.resources_loaded = 1; 
+		this.loading.visible = false;
+	}).bind(this) );
 }
 
 Player.prototype._onfiledrop = function( file, evt )

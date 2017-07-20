@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -569,15 +570,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	var extension = LS.ResourcesManager.getExtension( url );
 
-	//very special case from the editor, trying to load from a URL that comes from a player.html
-	if(extension == &quot;html&quot; &amp;&amp; LS.ResourcesManager.getFilename(url) == &quot;player.html&quot; )
-	{
-		var index = url.indexOf(&quot;url=&quot;);
-		var index2 = url.indexOf(&quot;&amp;&quot;,index);
-		url = decodeURIComponent( url.substr(index + 4, index2 - index - 4) );
-		extension = LS.ResourcesManager.getExtension( url );
-	}
-
 	//request scene file using our own library
 	LS.Network.request({
 		url: url,
@@ -685,33 +677,40 @@ SceneTree.prototype.loadFromResources = function( url, on_complete, on_error, on
 }
 
 
-//returns a list of all the scripts that must be loaded, in order and with the full path
-SceneTree.getScriptsList = function( root, allow_local )
+
+/**
+* Static method, returns a list of all the scripts that must be loaded, in order and with the full path
+*
+* @method SceneTree.getScriptsList
+* @param {SceneTree|Object} scene the object containing info about the scripts (could be a scene or a JSON object)
+* @param {Boolean} allow_local if we allow local resources
+* @param {Boolean} full_paths if true it will return the full path to every resource
+*/
+SceneTree.getScriptsList = function( scene, allow_local, full_paths )
 {
+	if(!scene)
+		throw(&quot;SceneTree.getScriptsList: scene cannot be null&quot;);
+
 	var scripts = [];
-	if ( root.external_scripts &amp;&amp; root.external_scripts.length )
-		scripts = scripts.concat( root.external_scripts );
-	if ( root.global_scripts &amp;&amp; root.global_scripts.length )
+	if ( scene.external_scripts &amp;&amp; scene.external_scripts.length )
+		scripts = scripts.concat( scene.external_scripts );
+	if ( scene.global_scripts &amp;&amp; scene.global_scripts.length )
 	{
-		for(var i in root.global_scripts)
+		for(var i in scene.global_scripts)
 		{
-			var script_fullpath = root.global_scripts[i];
-			if(!script_fullpath || LS.ResourcesManager.getExtension( script_fullpath ) != &quot;js&quot; )
+			var script_url = scene.global_scripts[i];
+			if(!script_url || LS.ResourcesManager.getExtension( script_url ) != &quot;js&quot; )
 				continue;
 
-			var script_url = LS.ResourcesManager.getFullURL( script_fullpath );
-
-			var res = LS.ResourcesManager.getResource( script_fullpath );
+			var res = LS.ResourcesManager.getResource( script_url );
 			if(res)
 			{
-				/*
-				if( res.from_prefab )
-					script_url = LS.ResourcesManager.cleanFullpath( &quot;@&quot; + script_fullpath );
-				else 
-				*/
-					if( allow_local )
-					script_url = LS.ResourcesManager.cleanFullpath( script_fullpath );
+				if( allow_local )
+					script_url = LS.ResourcesManager.cleanFullpath( script_url );
 			}
+
+			if(full_paths)
+				script_url = LS.ResourcesManager.getFullURL( script_url );
 
 			scripts.push( script_url );
 		}
@@ -722,6 +721,7 @@ SceneTree.getScriptsList = function( root, allow_local )
 //reloads external and global scripts taking into account if they come from wbins
 SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
+	//get a list of scripts (they cannot be fullpaths)
 	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
 
 	if(!scripts.length)
@@ -743,11 +743,11 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, forc
 
 	for(var i in scripts)
 	{
-		var script_fullpath = scripts[i];
-		var res = LS.ResourcesManager.getResource( script_fullpath );
+		var script_url = scripts[i];
+		var res = LS.ResourcesManager.getResource( script_url );
 		if(!res || force_reload)
 		{
-			final_scripts.push( script_fullpath );
+			final_scripts.push( LS.ResourcesManager.getFullURL( script_url ) );
 			continue;
 		}
 

@@ -419,6 +419,7 @@ Material.prototype.setProperty = function( name, value )
 		case "flags":
 			for(var i in value)
 				this.flags[i] = value[i];
+			break;
 		case "transparency": //special cases
 			this.opacity = 1 - value;
 			break;

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/helpers/spatialContainer.js</title>
+    <title>LS.Components.Canvas3D</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -147,76 +147,104 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/helpers/spatialContainer.js</h1>
-
-<div class="file">
-    <pre class="code prettyprint linenums">
-//WORK IN PROGRESS
-
-/** SpatialContainer
-* This class allows to store data spatially so it can be retrieved by proximity or by camera frustum view.
-* It can store objects associated with a bounding box.
-* It is used by the renderer to store all the RenderInstances, Lights and Colliders
-* IT IS A WORK IN PROGRESS SO FOR NOW IT DO NOT STORES THE INFO SPATIALLY, IT JUST EXPOSES AN INTERFACE
-* @class SpatialContainer
-*/
-
-function SpatialContainer()
-{
-	this.size = 100000;
-	this.root = [];
-	this.objecs_cell_by_id = new WeakMap();
-}
-
-//adds a new object to the container
-SpatialContainer.prototype.add = function( object, bounding )
-{
-	this.root.push( object );
-	this.objecs_cell_by_id.set( object, this.root ); //in which container is
-	return object.uid;
-}
-
-SpatialContainer.prototype.updateBounding = function( object, new_bounding )
-{
-	//...
-}
+<h1>LS.Components.Canvas3D Class</h1>
+<div class="box meta">
 
 
-//adds a new object to the container
-SpatialContainer.prototype.remove = function( object, bounding )
-{
-	var cell = 	this.objecs_cell_by_id.get( object );
-	if(!cell)
-		return;
-	var index = cell.indexOf( object );
-	if(index !== -1)
-		this.root.splice( index, 1 );
-	this.objecs_cell_by_id.delete( object );
-}
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_components_canvas3d.js.html#l2"><code>..&#x2F;src&#x2F;components&#x2F;canvas3d.js:2</code></a>
+        </div>
 
-//retrieves a list of objects overlaping this area
-SpatialContainer.prototype.retrieve = function( bounding )
-{
-	//TODO: search cells that lay inside the bounding
-	return this.root;
-}
+            Module: <a href="../modules/LS.html">LS</a>
 
-//retrieves a list of objects overlaping this area
-SpatialContainer.prototype.retrieveFromCamera = function( camera )
-{
-	//TODO: search cells that lay inside the frustum
-	return this.root;
-}
+</div>
 
 
-SpatialContainer.prototype.clear = function()
-{
-	this.root.length = 0;
-	this.objecs_cell_by_id = new WeakMap();
-}
+<div class="box intro">
+    <p>Allows to render 2d canvas primitives, but they are rendered into a plane that can be positioned in 3D space.
+It also supports to store the texture so it can be used in another material.</p>
+<p>The CANVAS2D mode renders busing a native Canvas2D, which has all the features but it could be slower because it has to upload the full canvas every frame.
+The WEBGL mode renders the canvas using WebGL calls, it is faster but the quality is worse and some features are not available (but you can render other textures as images)
+To fill the canvas you must have a Script in the same node, that contains a method called OnRenderCanvas</p>
 
-LS.SpatialContainer = SpatialContainer;
-    </pre>
+</div>
+
+    <div class="constructor">
+        <h2>Constructor</h2>
+<div id="method_LS.Components.Canvas3D" class="method item">
+    <h3 class="name"><code>LS.Components.Canvas3D</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>object</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_canvas3d.js.html#l2"><code>..&#x2F;src&#x2F;components&#x2F;canvas3d.js:2</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">object</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>to configure from</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+    </div>
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+
+
+
+        </div>
+
+
+
+
+    </div>
 </div>
                     </div>
                 </div>

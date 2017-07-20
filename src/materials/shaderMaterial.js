@@ -325,7 +325,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	LS.Renderer.bindSamplers( this._samplers );
 	var global_flags = 0;
 
-	if(1) //allow reflections
+	if( pass.id == COLOR_PASS ) //allow reflections only in color pass
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
 		if( LS.Renderer._global_textures.environment )
@@ -337,17 +337,17 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		}
 	}
 
-
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
 	//add flags related to lights
 	var lights = null;
 
-	if( pass.id == COLOR_PASS && this._light_mode !== Material.NO_LIGHTS )
-		lights = LS.Renderer.getNearLights( instance );
+	//ignore lights renders the object with illumination
+	var ignore_lights = pass.id != COLOR_PASS || render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
 
-	var ignore_lights = render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
+	if( !ignore_lights )
+		lights = LS.Renderer.getNearLights( instance );
 
 	if( !lights || lights.length == 0 || ignore_lights )
 	{

@@ -78,6 +78,7 @@ RenderInstance.prototype.fromNode = function(node)
 	else
 		this.setMatrix( LS.IDENTITY );
 	mat4.multiplyVec3( this.center, this.matrix, LS.ZEROS );
+	this.layers = node.layers;
 }
 
 //set the matrix 

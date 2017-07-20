@@ -11,6 +11,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Components.CameraController",
         "LS.Components.CameraDirector",
         "LS.Components.CameraFX",
+        "LS.Components.Canvas3D",
         "LS.Components.CustomData",
         "LS.Components.FXGraphComponent",
         "LS.Components.FXStack",

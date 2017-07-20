@@ -185,33 +185,29 @@ Object.defineProperty( Transform.prototype, 'data', {
 	enumerable: false
 });
 
+//in degrees
 Object.defineProperty( Transform.prototype, 'xrotation', {
 	get: function() { return 0; },
 	set: function(v) { 
 		this.rotateX(v * DEG2RAD);
-		//this._rotation[0] = Math.sin(v * DEG2RAD * 0.5);
-		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update = true; 
 	},
 	enumerable: false
 });
+
+//in degrees
 Object.defineProperty( Transform.prototype, 'yrotation', {
 	get: function() { return 0; },
 	set: function(v) { 
 		this.rotateY(v * DEG2RAD);
-		//this._rotation[1] = Math.sin(v * DEG2RAD * 0.5);
-		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update = true; 
 	},
 	enumerable: false
 });
+
+//in degrees
 Object.defineProperty( Transform.prototype, 'zrotation', {
 	get: function() { return 0; },
 	set: function(v) { 
 		this.rotateZ(v * DEG2RAD);
-		//this._rotation[2] = Math.sin(v * DEG2RAD * 0.5);
-		//quat.normalize(this._rotation,this._rotation);
-		//this._must_update = true; 
 	},
 	enumerable: false
 });
@@ -938,11 +934,11 @@ Transform.prototype.rotate = (function(){
 /**
 * rotate object in local space in local X axis
 * @method rotateX
-* @param {number} angle_in_deg 
+* @param {number} angle_in_rad
 */
-Transform.prototype.rotateX = function(angle_in_deg)
+Transform.prototype.rotateX = function(angle_in_rad)
 {
-	quat.rotateX( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateX( this._rotation, this._rotation, angle_in_rad  );
 	this._must_update = true;
 	this._on_change(true);
 }
@@ -950,11 +946,11 @@ Transform.prototype.rotateX = function(angle_in_deg)
 /**
 * rotate object in local space in local Y axis
 * @method rotateY
-* @param {number} angle_in_deg 
+* @param {number} angle_in_rad 
 */
-Transform.prototype.rotateY = function(angle_in_deg)
+Transform.prototype.rotateY = function(angle_in_rad)
 {
-	quat.rotateY( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateY( this._rotation, this._rotation, angle_in_rad );
 	this._must_update = true;
 	this._on_change();
 }
@@ -962,11 +958,11 @@ Transform.prototype.rotateY = function(angle_in_deg)
 /**
 * rotate object in local space in local Z axis
 * @method rotateZ
-* @param {number} angle_in_deg 
+* @param {number} angle_in_rad 
 */
-Transform.prototype.rotateZ = function(angle_in_deg)
+Transform.prototype.rotateZ = function(angle_in_rad)
 {
-	quat.rotateZ( this._rotation, this._rotation, angle_in_deg * 0.0174532925 );
+	quat.rotateZ( this._rotation, this._rotation, angle_in_rad );
 	this._must_update = true;
 	this._on_change(true);
 }

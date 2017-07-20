@@ -188,7 +188,7 @@ GraphComponent.prototype.runGraph = function()
 	if(!this._root._in_tree || !this.enabled)
 		return;
 	if(this._graph)
-		this._graph.runStep(1);
+		this._graph.runStep( 1, LS.catch_exceptions );
 	if(this.force_redraw)
 		this._root.scene.requestFrame();
 }
@@ -572,7 +572,7 @@ FXGraphComponent.prototype.applyGraph = function()
 	}
 
 	//execute graph
-	this._graph.runStep(1);
+	this._graph.runStep(1, LS.catch_exceptions );
 }
 
 LS.registerComponent( FXGraphComponent );

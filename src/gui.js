@@ -18,6 +18,7 @@ var GUI = {
 	GUIStyle: {
 		font: "Arial",
 		color: "#FFF",
+		colorTextOver: "#FFF",
 		backgroundColor: "#333",
 		backgroundColorOver: "#AAA",
 		selected: "#AAF",
@@ -31,6 +32,8 @@ var GUI = {
 		data: new Float32Array(1024),
 		offset: 0
 	},
+
+	_ctx: null, //
 
 	pressed_enter: false,
 
@@ -292,6 +295,7 @@ var GUI = {
 		this._offset[0] = 0;
 		this._offset[1] = 0;
 		this._gui_areas.offset = 0;
+		this._ctx = gl;
 	},
 
 	//this is done so when clicking in the area where there is an immediate GUI widget the events are not send to the app
@@ -367,11 +371,19 @@ var GUI = {
 		if(content == null)
 			return;
 
-		var ctx = gl;
+		var ctx = this._ctx;
 
 		if(content.constructor === GL.Texture)
 		{
-			ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
+			if(ctx.constructor === CanvasRenderingContext2D) //canvas 2D cannot render images
+				content = content.data && (content.data.constructor === HTMLImageElement || content.data.constructor === Image) ? content.data : null;
+			if(content)
+				ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
+		}
+		else if(content.constructor === HTMLImageElement || content.constructor === Image)
+		{
+			if(ctx.constructor === CanvasRenderingContext2D)
+				ctx.drawImage( content, area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
 		}
 		else 
 		{
@@ -401,7 +413,7 @@ var GUI = {
 			throw("No area");
 		this.blockEventArea( area );
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -435,7 +447,7 @@ var GUI = {
 		}
 		else if(content.constructor === String)
 		{
-			ctx.fillStyle = this.GUIStyle.color;
+			ctx.fillStyle = is_over ? this.GUIStyle.colorTextOver : this.GUIStyle.color;
 			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
 			ctx.textAlign = "center";
 			ctx.fillText( content, area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.75 + this._offset[1]);
@@ -462,7 +474,7 @@ var GUI = {
 			throw("No options");
 		this.blockEventArea( area );
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -544,7 +556,7 @@ var GUI = {
 		value = !!value;
 		this.blockEventArea( area );
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -611,7 +623,7 @@ var GUI = {
 		text = text === undefined ? "" : String(text);
 		max_length = max_length || 1024;
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -717,7 +729,7 @@ var GUI = {
 		left_value = Number(left_value);
 		right_value = Number(right_value);
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -745,10 +757,12 @@ var GUI = {
 			}
 		}
 
+		//bg
 		ctx.fillStyle = this.GUIStyle.backgroundColor;
 		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
-		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
-		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + margin + this._offset[1], (area[2] - margin*2) * norm_value, area[3] - margin*2 );
+		//slider
+		ctx.fillStyle = is_over ? this.GUIStyle.selected : this.GUIStyle.unselected;
+		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + margin + this._offset[1], Math.max(2, (area[2] - margin*2) * norm_value ), area[3] - margin*2 );
 
 		if(show_value)
 		{
@@ -786,7 +800,7 @@ var GUI = {
 		bottom_value = Number(bottom_value);
 		top_value = Number(top_value);
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{
@@ -814,11 +828,14 @@ var GUI = {
 				value = norm_value * range + bottom_value;
 			}
 		}
-
+	
+		//bg
 		ctx.fillStyle = this.GUIStyle.backgroundColor;
 		ctx.fillRect( area[0] + this._offset[0], area[1] + this._offset[1], area[2], area[3] );
-		ctx.fillStyle = clicked ? this.GUIStyle.selected : this.GUIStyle.unselected;
-		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + area[3] - (area[3] - margin*2) * norm_value - margin + this._offset[1], area[2] - margin*2, (area[3] - margin*2) * norm_value );
+		//slider
+		ctx.fillStyle = is_over ? this.GUIStyle.selected : this.GUIStyle.unselected;
+		var slider_height = Math.max(2, (area[3] - margin*2) * norm_value);
+		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + area[3] - slider_height - margin + this._offset[1], area[2] - margin*2, slider_height );
 
 		return value;
 	},
@@ -832,7 +849,7 @@ var GUI = {
 			throw("No value");
 		this.blockEventArea( area );
 
-		var ctx = gl;
+		var ctx = this._ctx;
 		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
 		if(is_over)
 		{

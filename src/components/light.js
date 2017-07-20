@@ -79,16 +79,22 @@ function Light(o)
 
 	this.constant_diffuse = false;
 	this.use_specular = true;
-	this.linear_attenuation = false;
-	this.range_attenuation = true;
 	this.att_start = 0;
 	this.att_end = 1000;
+
+	/**
+	* type of attenuation: Light.NO_ATTENUATION, Light.LINEAR_ATTENUATION, Light.RANGE_ATTENUATION
+	* @property attenuation_type
+	* @type {Number}
+	* @default [1,1,1]
+	*/
+	this.attenuation_type = Light.RANGE_ATTENUATION; //0: none, 1:linear, 2:range, ...
 	this.offset = 0;
 	this._spot_cone = true;
 
 	this.projective_texture = null;
 
-	this._attenuation_info = new Float32Array([ this.att_start, this.att_end ]);
+	this._attenuation_info = new Float32Array([ this.att_start, this.att_end, this.attenuation_type, 0 ]); //start,end,type,extra
 
 	//use target (when attached to node)
 	this.use_target = false;
@@ -96,7 +102,7 @@ function Light(o)
 	/**
 	* The color of the light
 	* @property color
-	* @type {[[r,g,b]]}
+	* @type {vec3}
 	* @default [1,1,1]
 	*/
 	this._color = vec3.fromValues(1,1,1);
@@ -164,9 +170,20 @@ function Light(o)
 		Light.use_shadowmap_depth_texture = false;
 }
 
+Light.NO_ATTENUATION = 0;
+Light.LINEAR_ATTENUATION = 1;
+Light.RANGE_ATTENUATION = 2;
+
+Light.AttenuationTypes = {
+	"none": Light.NO_ATTENUATION,
+	"linear": Light.LINEAR_ATTENUATION,
+	"range": Light.RANGE_ATTENUATION
+};
+
 Light["@projective_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@extra_texture"] = { type: LS.TYPES.TEXTURE };
 Light["@color"] = { type: LS.TYPES.COLOR };
+Light["@attenuation_type"] = { type: "enum", values: Light.AttenuationTypes };
 
 Object.defineProperty( Light.prototype, 'type', {
 	get: function() { return this._type; },
@@ -507,9 +524,9 @@ Light.prototype.prepare = function( render_settings )
 
 	if(this._spot_cone)
 		query.macros.USE_SPOT_CONE = "";
-	if(this.linear_attenuation)
+	if(this.attenuation_type == Light.LINEAR_ATTENUATION)
 		query.macros.USE_LINEAR_ATTENUATION = "";
-	if(this.range_attenuation)
+	if(this.attenuation_type == Light.RANGE_ATTENUATION)
 		query.macros.USE_RANGE_ATTENUATION = "";
 	if(this.offset > 0.001)
 		query.macros.USE_LIGHT_OFFSET = "";
@@ -552,6 +569,7 @@ Light.prototype.prepare = function( render_settings )
 	vec3.scale( uniforms.u_light_color, this.color, this.intensity );
 	this._attenuation_info[0] = this.att_start;
 	this._attenuation_info[1] = this.att_end;
+	this._attenuation_info[2] = this.attenuation_type;
 	uniforms.u_light_offset = this.offset;
 
 	//generate shadowmaps
@@ -562,7 +580,7 @@ Light.prototype.prepare = function( render_settings )
 		var cameras = LS.Renderer._visible_cameras;
 		var is_inside_one_camera = false;
 
-		if( !render_settings.update_all_shadowmaps && cameras && this.type == Light.OMNI && this.range_attenuation )
+		if( !render_settings.update_all_shadowmaps && cameras && this.type == Light.OMNI && this.attenuation_type > Light.LINEAL_ATTENUATION )
 		{
 			var closest_far = this.computeShadowmapFar();
 			for(var i = 0; i < cameras.length; i++)
@@ -696,14 +714,14 @@ Light.prototype.computeShadowmapFar = function()
 	if( this.type == Light.OMNI )
 	{
 		//Math.SQRT2 because in a 45º triangle the hypotenuse is sqrt(1+1) * side
-		if( this.range_attenuation && (this.att_end * Math.SQRT2) < closest_far)
+		if( this.attenuation_type == Light.RANGE_ATTENUATION  && (this.att_end * Math.SQRT2) < closest_far)
 			closest_far = this.att_end / Math.SQRT2;
 
 		//TODO, if no range_attenuation but linear_attenuation also check intensity to reduce the far
 	}
 	else 
 	{
-		if( this.range_attenuation && this.att_end < closest_far)
+		if( this.attenuation_type == Light.RANGE_ATTENUATION && this.att_end < closest_far)
 			closest_far = this.att_end;
 	}
 
@@ -728,7 +746,8 @@ Light.prototype.computeLightIntensity = function()
 */
 Light.prototype.computeLightRadius = function()
 {
-	if(!this.range_attenuation)
+	//linear attenuation has no ending so infinite
+	if(this.attenuation_type == Light.NO_ATTENUATION || this.attenuation_type == Light.LINEAR_ATTENUATION )
 		return -1;
 
 	if( this.type == Light.OMNI )
@@ -869,6 +888,10 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 
 	flags |= Light.shader_block.flag_mask;
 
+	//attenuation
+	if(this.attenuation_type)
+		flags |= Light.attenuation_block.flag_mask;
+
 	//disabled now
 	if( this.cast_shadows && render_settings.shadows_enabled )
 	{
@@ -910,7 +933,7 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	uniform vec3 u_light_front;\n\
 	uniform vec3 u_light_color;\n\
 	uniform vec4 u_light_angle; //cone start,end,phi,theta \n\
-	uniform vec2 u_light_att; //start,end \n\
+	uniform vec4 u_light_att; //start,end \n\
 	uniform float u_light_offset; //ndotl offset\n\
 	uniform vec4 u_light_extra; //user data\n\
 	uniform mat4 u_light_matrix; //to light space\n\
@@ -922,10 +945,11 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		vec3 Position;\n\
 		vec3 Front;\n\
 		vec4 ConeInfo; //for spotlights\n\
-		vec2 Attenuation; //start and end\n\
+		vec4 Attenuation; //start,end,type,extra\n\
 		float Offset; //phong_offset\n\
 		vec4 Extra; //users can use this\n\
 		mat4 Matrix; //converts to light space\n\
+		float Distance;\n\
 	};\n\
 	//Returns the info about the light\n\
 	Light getLight()\n\
@@ -942,6 +966,7 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		LIGHT.ConeInfo = u_light_angle; //for spotlights\n\
 		LIGHT.Attenuation = u_light_att; //start and end\n\
 		LIGHT.Offset = u_light_offset;\n\
+		LIGHT.Distance = length( u_light_position - v_pos );\n\
 		LIGHT.Extra = u_light_extra;\n\
 		LIGHT.Matrix = u_light_matrix; //converts to light space\n\
 		return LIGHT;\n\
@@ -977,6 +1002,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
+	#pragma shaderblock \"attenuation\"\n\
 	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
 	\n\
 	//Light is separated in two functions, computeLight (how much light receives the object) and applyLight (compute resulting final color)\n\
@@ -1004,9 +1030,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 		float cam_dist = length(E);\n\
 		E /= cam_dist;\n\
 		\n\
-		vec3 L = (LIGHT.Position - v_pos);\n\
-		float light_distance = length(L);\n\
-		L /= light_distance;\n\
+		vec3 L = (LIGHT.Position - v_pos) / LIGHT.Distance;\n\
 		\n\
 		if( LIGHT.Info.x == 3.0 )\n\
 			L = -LIGHT.Front;\n\
@@ -1024,6 +1048,9 @@ Light._enabled_fs_shaderblock_code = "\n\
 		// ATTENUATION\n\
 		FINALLIGHT.Attenuation = 1.0;\n\
 		\n\
+		#ifdef BLOCK_ATTENUATION\n\
+			FINALLIGHT.Attenuation = computeAttenuation( LIGHT );\n\
+		#endif\n\
 		if( LIGHT.Info.x == 2.0 && LIGHT.Info.y == 1.0 )\n\
 			FINALLIGHT.Attenuation *= spotFalloff( LIGHT.Front, normalize( LIGHT.Position - v_pos ), LIGHT.ConeInfo.z, LIGHT.ConeInfo.w );\n\
 		\n\
@@ -1047,35 +1074,6 @@ Light._enabled_fs_shaderblock_code = "\n\
 	}\n\
 	\n\
 ";
-
-/*
-//attenuation
-	#ifdef USE_LINEAR_ATTENUATION\n\
-		LIGHT.Attenuation = 100.0 / light_distance;\n\
-	#endif\n\
-	\n\
-	#ifdef USE_RANGE_ATTENUATION\n\
-		#ifndef USE_DIRECTIONAL_LIGHT\n\
-			if(light_distance >= u_light_att.y)\n\
-				LIGHT.Attenuation = 0.0;\n\
-			else if(light_distance >= u_light_att.x)\n\
-				LIGHT.Attenuation *= 1.0 - (light_distance - u_light_att.x) / (u_light_att.y - u_light_att.x);\n\
-		#endif\n\
-	#endif\n\
-
-//no lights
-	#ifdef USE_IGNORE_LIGHTS\n\
-		LIGHT.Color = vec3(1.0);\n\
-		LIGHT.Ambient = vec3(0.0);\n\
-		LIGHT.Diffuse = 1.0;\n\
-		LIGHT.Specular = 0.0;\n\
-	#endif\n\
-
-//first pass
-	#ifdef FIRST_PASS\n\
-		final_color += o.Emission;\n\
-	#endif\n\
-*/
 
 Light._disabled_shaderblock_code = "\n\
 	#pragma snippet \"input\"\n\
@@ -1104,6 +1102,36 @@ light_block.addCode( GL.VERTEX_SHADER, Light._vs_shaderblock_code, Light._vs_sha
 light_block.addCode( GL.FRAGMENT_SHADER, Light._enabled_fs_shaderblock_code, Light._disabled_shaderblock_code );
 light_block.register();
 Light.shader_block = light_block;
+
+// ATTENUATION
+Light._attenuation_enabled_fragment_code = "\n\
+	const float LINEAR_ATTENUATION = 1.0;\n\
+	const float RANGE_ATTENUATION = 2.0;\n\
+	float computeAttenuation( in Light LIGHT )\n\
+	{\n\
+		//no attenuation\n\
+		if(LIGHT.Attenuation.z == 0.0)\n\
+			return 1.0;\n\
+		//directional light\n\
+		if( LIGHT.Info.x == 3.0 )\n\
+			return 1.0;\n\
+		if( LIGHT.Attenuation.z == LINEAR_ATTENUATION )\n\
+			return 10.0 / LIGHT.Distance;\n\
+		if( LIGHT.Attenuation.z == RANGE_ATTENUATION )\n\
+		{\n\
+			if(LIGHT.Distance >= LIGHT.Attenuation.y)\n\
+				return 0.0;\n\
+			if(LIGHT.Distance >= LIGHT.Attenuation.x)\n\
+				return 1.0 - (LIGHT.Distance - LIGHT.Attenuation.x) / (LIGHT.Attenuation.y - LIGHT.Attenuation.x);\n\
+		}\n\
+		return 1.0;\n\
+	}\n\
+";
+Light._attenuation_disabled_fragment_code = "";
+
+var attenuation_block = Light.attenuation_block = new LS.ShaderBlock("attenuation");
+attenuation_block.addCode( GL.FRAGMENT_SHADER, Light._attenuation_enabled_fragment_code, Light._attenuation_disabled_fragment_code  );
+attenuation_block.register();
 
 //OMNI LIGHT SHADOWMAP *****************************************
 Light._shadowmap_cubemap_code = "\n\

@@ -48,6 +48,7 @@
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
                                 <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
                                 <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
                                 <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
                                 <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
                                 <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
@@ -214,6 +215,16 @@ PlayAnimation[&quot;@root_node&quot;] = { type: &quot;node&quot; };
 PlayAnimation[&quot;@mode&quot;] = { type:&quot;enum&quot;, values: PlayAnimation.MODES };
 PlayAnimation[&quot;@current_time&quot;] = { type: LS.TYPES.NUMBER, min: 0, units:&quot;s&quot; };
 PlayAnimation[&quot;@blend_time&quot;] = { type: LS.TYPES.NUMBER, min: 0, units:&quot;s&quot; };
+PlayAnimation[&quot;@take&quot;] = { type: &quot;enum&quot;, values: function(){
+	var anim = this.instance.getAnimation();
+	if(!anim)
+		return [&quot;default&quot;];
+	var takes = anim.takes;
+	var result = [];
+	for(var i in takes)
+		result.push(i);
+	return result;
+}};
 
 /**
 * the name of the LS.Animation resource where the takes and tracks are stored

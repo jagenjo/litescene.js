@@ -553,10 +553,11 @@ var ResourcesManager = {
 	*
 	* @method load
 	* @param {String} url where the resource is located (if its a relative url it depends on the path attribute)
-	* @param {Object}[options={}] options to apply to the loaded resource when processing it
+	* @param {Object}[options={}] options to apply to the loaded resource when processing it { force: to force a reload }
 	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( resource, url  ) //( url, resource, options )
+	* @param {Boolean} [force_load=false] if true it will load the resource, even if it already exists
 	*/
-	load: function( url, options, on_complete )
+	load: function( url, options, on_complete, force_load )
 	{
 		if(!url)
 			return console.error("LS.ResourcesManager.load requires url");
@@ -570,7 +571,7 @@ var ResourcesManager = {
 
 		//if we already have it, then nothing to do
 		var resource = this.resources[url];
-		if( resource != null && !resource.is_preview )
+		if( resource != null && !resource.is_preview && (!options || !options.force) && !force_load )
 		{
 			if(on_complete)
 				on_complete(resource,url);
@@ -773,10 +774,23 @@ var ResourcesManager = {
 		else //or just store the resource as a plain data buffer
 		{
 			var resource = null;
+			//has this resource an special class specified?
 			if(format_info && format_info.resourceClass)
 				resource = new format_info.resourceClass();
-			else
-				resource = new LS.Resource();
+			else //otherwise create a generic LS.Resource (they store data or scripts)
+			{
+				//if we already have a LS.Resource, reuse it (this is to avoid garbage and solve a problem with the editor
+				var old_res = this.resources[url];
+				if( old_res && old_res.constructor === LS.Resource )
+				{
+					resource = old_res;
+					delete resource._original_data;
+					delete resource._original_file;
+					resource._modified = false;
+				}
+				else
+					resource = new LS.Resource();
+			}
 
 			if(resource.setData)
 				resource.setData(data, true)
