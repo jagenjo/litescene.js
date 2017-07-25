@@ -1,8 +1,8 @@
 # Actions
 
-To make the editor more powerful some components allow to perform special actions on them.
+To make the editor more powerful some components allow to perform special actions on them directly from the editor (they appear in the contextual menu of the component if you right click in the title).
 
-This actions are defined by the components, or by the editor, and stored in a way they can be easily accessed through the context menu of the editor.
+This actions could be defined by the components, or by the editor, and stored in a way they can be easily accessed.
 
 Here are some examples of common actions:
 - copy
