@@ -132,6 +132,7 @@ Here is a list of the automatically binded events:
 - **onShowFrameContext**: triggered by the scene "showFrameContext" event. After the final frame, to show the frame into the viewport.
 - **onRemovedFromScene**: called when the node where the script belongs is detached from the scene.
 - **onGetResources**: called when the script needs to collect resources. This function receives an object that needs to be filled with the fullpath : type of the resources it uses so they can be automatically loaded when the scene is loaded.
+- **onFileDrop**: called if the user drags and drop a file over the scene. Receives and object that contains the file.
 
 Keep in mind that you are free to bind to any events of the system that you want. Just remember to unbind them from the ```onRemovedFromScene``` so no lose binds are left.
 
