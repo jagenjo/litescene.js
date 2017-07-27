@@ -70,6 +70,8 @@ Pack.prototype.processResources = function()
 	if(!this.resource_names)
 		return;
 
+	var pack_filename = this.fullpath || this.filename;
+
 	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
 	//another one contained in this pack
 	for(var i = 0; i < this.resource_names.length; ++i)
@@ -93,7 +95,7 @@ Pack.prototype.processResources = function()
 			console.warn("resource data in Pack is undefined, skipping it:" + resname);
 			continue;
 		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_pack: true } );
+		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_pack: pack_filename } );
 	}
 }
 
@@ -101,6 +103,8 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 {
 	this.resource_names = [];
 	this._resources_data = {};
+
+	var pack_filename = this.fullpath || this.filename;
 
 	//get resources
 	for(var i = 0; i < resource_names.length; ++i)
@@ -112,7 +116,7 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 		if(!resource)
 			continue;
 		if(mark_them)
-			resource.from_pack = true;
+			resource.from_pack = pack_filename;
 		this.resource_names.push( res_name );
 	}
 
@@ -182,7 +186,7 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 		if(!resource)
 			continue;
 		if(mark_them)
-			resource.from_pack = true;
+			resource.from_pack = pack.filename;
 	}
 
 	//create the WBIN in case this pack gets stored
@@ -252,7 +256,7 @@ Pack.prototype.flagResources = function()
 		if(!resource)
 			continue;
 
-		resource.from_pack = this.fullpath || this.filename || true;
+		resource.from_pack = this.fullpath || this.filename;
 	}
 }
 

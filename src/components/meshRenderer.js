@@ -37,19 +37,6 @@ function MeshRenderer(o)
 	*/
 	this._primitive = -1;
 
-	/**
-	* When rendering points the point size, if positive is in world space, if negative is in screen space
-	* @property point_size {number}
-	* @default -1;
-	*/
-	this._point_size = 0.1;
-	/**
-	* When rendering points tells if you want to use for every point the texture coordinates of the vertex or the point texture coordinates
-	* @property textured_points {boolean}
-	* @default false;
-	*/
-	this._textured_points = false;
-
 	this._must_update_static = true; //used in static meshes
 	this._transform_version = -1;
 
@@ -117,18 +104,6 @@ Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 Object.defineProperty( MeshRenderer.prototype, 'submesh_id', {
 	get: function() { return this._submesh_id; },
 	set: function(v) { this._submesh_id = v; },
-	enumerable: true
-});
-
-Object.defineProperty( MeshRenderer.prototype, 'point_size', {
-	get: function() { return this._point_size; },
-	set: function(v) { this._point_size = v; },
-	enumerable: true
-});
-
-Object.defineProperty( MeshRenderer.prototype, 'textured_points', {
-	get: function() { return this._textured_points; },
-	set: function(v) { this._textured_points = v; },
 	enumerable: true
 });
 
@@ -206,9 +181,6 @@ MeshRenderer.prototype.configure = function(o)
 	this.use_submaterials = !!o.use_submaterials;
 	if(o.submaterials)
 		this.submaterials = o.submaterials;
-	if(o.point_size !== undefined) //legacy
-		this.point_size = o.point_size;
-	this.textured_points = !!o.textured_points;
 	if(o.material && o.material.constructor === String)
 		this.material = o.material;
 }
@@ -235,8 +207,6 @@ MeshRenderer.prototype.serialize = function()
 		o.primitive = this.primitive;
 	if(this.submesh_id != -1)
 		o.submesh_id = this.submesh_id;
-	o.point_size = this.point_size;
-	o.textured_points = this.textured_points;
 	o.material = this.material;
 
 	if(this.use_submaterials)
@@ -381,19 +351,6 @@ MeshRenderer.prototype.updateRIs = function()
 	*/
 		RI.collision_mesh = mesh;
 
-	if(this.primitive == gl.POINTS)
-	{
-		RI.uniforms.u_point_size = this.point_size;
-		RI.query.macros["USE_POINTS"] = "";
-		if(this.textured_points)
-			RI.query.macros["USE_TEXTURED_POINTS"] = "";
-	}
-	
-	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
-		delete RI.query.macros["USE_TEXTURED_POINTS"];
-
-
-
 	//mark it as ready once no more changes should be applied
 	if( is_static && LS.allow_static && !this.isLoading() )
 	{
@@ -468,19 +425,6 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	else
 	*/
 		RI.collision_mesh = mesh;
-
-	if(this.primitive == gl.POINTS)
-	{
-		RI.uniforms.u_point_size = this.point_size;
-		RI.query.macros["USE_POINTS"] = "";
-		if(this.textured_points)
-			RI.query.macros["USE_TEXTURED_POINTS"] = "";
-	}
-	
-	if(!this.textured_points && RI.query.macros["USE_TEXTURED_POINTS"])
-		delete RI.query.macros["USE_TEXTURED_POINTS"];
-
-
 
 	//mark it as ready once no more changes should be applied
 	if( is_static && LS.allow_static && !this.isLoading() )

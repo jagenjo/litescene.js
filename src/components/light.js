@@ -135,9 +135,9 @@ function Light(o)
 	this.extra_texture = null;
 
 	//vectors in world space
-	this._front = vec3.clone( Light.FRONT_VECTOR );
-	this._right = vec3.clone( Light.RIGHT_VECTOR );
-	this._top = vec3.clone( Light.UP_VECTOR );
+	this._front = vec3.clone( LS.FRONT );
+	this._right = vec3.clone( LS.RIGHT );
+	this._top = vec3.clone( LS.TOP );
 
 	//for StandardMaterial
 	this._query = new LS.ShaderQuery();
@@ -234,11 +234,6 @@ Object.defineProperty( Light.prototype, 'spot_cone', {
 	},
 	enumerable: true
 });
-
-//do not change
-Light.FRONT_VECTOR = new Float32Array([0,0,-1]); //const
-Light.RIGHT_VECTOR = new Float32Array([1,0,0]); //const
-Light.UP_VECTOR = new Float32Array([0,1,0]); //const
 
 Light.OMNI = 1;
 Light.SPOT = 2;
@@ -374,13 +369,13 @@ Light.prototype.updateVectors = (function(){
 		mat4.getTranslation( this._position, mat);
 		//target
 		if (!this.use_target)
-			mat4.multiplyVec3( this._target, mat, Light.FRONT_VECTOR ); //right in front of the object
+			mat4.multiplyVec3( this._target, mat, LS.FRONT ); //right in front of the object
 		//up
-		mat4.multiplyVec3( this._up, mat, Light.UP_VECTOR ); //right in front of the object
+		mat4.multiplyVec3( this._up, mat, LS.TOP ); //right in front of the object
 
 		//vectors
-		mat4.rotateVec3( this._front, mat, Light.FRONT_VECTOR ); 
-		mat4.rotateVec3( this._right, mat, Light.RIGHT_VECTOR ); 
+		mat4.rotateVec3( this._front, mat, LS.FRONT ); 
+		mat4.rotateVec3( this._right, mat, LS.RIGHT ); 
 		vec3.copy( this._top, this.up ); 
 	}
 })();
@@ -393,7 +388,7 @@ Light.prototype.updateVectors = (function(){
 Light.prototype.getPosition = function( out )
 {
 	out = out || vec3.create();
-	//if(this._root && this._root.transform) return this._root.transform.transformPointGlobal(this.position, p || vec3.create() );
+	//if(this._root && this._root.transform) return this._root.transform.localToGlobal( this.position, p || vec3.create() );
 	if(this._root && this._root.transform) 
 		return this._root.transform.getGlobalPosition( out );
 	out.set( this._position );
@@ -409,10 +404,8 @@ Light.prototype.getPosition = function( out )
 Light.prototype.getTarget = function( out )
 {
 	out = out || vec3.create();
-	//if(this._root && this._root.transform && !this.use_target) 
-	//	return this._root.transform.transformPointGlobal(this.target, p || vec3.create() );
 	if(this._root && this._root.transform && !this.use_target) 
-		return this._root.transform.transformPointGlobal( Light.FRONT_VECTOR , out);
+		return this._root.transform.localToGlobal( LS.FRONT , out );
 	out.set( this._target );
 	return out;
 }
@@ -428,7 +421,7 @@ Light.prototype.getUp = function( out )
 	out = out || vec3.create();
 
 	if(this._root && this._root.transform) 
-		return this._root.transform.transformVector( Light.UP_VECTOR , out );
+		return this._root.transform.transformVector( LS.TOP , out );
 	out.set( this._up );
 	return out;
 }
@@ -886,6 +879,7 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 	if(!this.enabled)
 		return flags;
 
+	//get the default light shader block
 	flags |= Light.shader_block.flag_mask;
 
 	//attenuation
@@ -1057,7 +1051,7 @@ Light._enabled_fs_shaderblock_code = "\n\
 		// SHADOWS\n\
 		FINALLIGHT.Shadow = 1.0;\n\
 		#ifdef BLOCK_TESTSHADOW\n\
-			FINALLIGHT.Shadow = testShadow();\n\
+			FINALLIGHT.Shadow = testShadow( LIGHT );\n\
 		#endif\n\
 		\n\
 		// LIGHT MODIFIERS\n\
@@ -1155,7 +1149,7 @@ Light._shadowmap_cubemap_code = "\n\
 		return dot(depth.xyzw , bitShifts);\n\
 	}\n\
 	\n\
-	float testShadow( vec3 offset )\n\
+	float testShadow( Light LIGHT, vec3 offset )\n\
 	{\n\
 		float shadow = 0.0;\n\
 		float depth = 0.0;\n\
@@ -1203,7 +1197,7 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 		#endif\n\
 	}\n\
 	\n\
-	float testShadow()\n\
+	float testShadow( Light LIGHT )\n\
 	{\n\
 		vec3 offset = vec3(0.0);\n\
 		float shadow = 0.0;\n\
@@ -1213,7 +1207,7 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 		vec2 sample = (v_light_coord.xy / v_light_coord.w) * vec2(0.5) + vec2(0.5) + offset.xy;\n\
 		//is inside light frustum\n\
 		if (clamp(sample, 0.0, 1.0) != sample) \n\
-			return 0.0; //outside of shadowmap, no shadow\n\
+			return LIGHT.Info.x == 3.0 ? 1.0 : 0.0; //outside of shadowmap, no shadow\n\
 		float sampleDepth = UnpackDepth( texture2D(shadowmap, sample) );\n\
 		depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
 		if (depth > 0.0) \n\
@@ -1222,7 +1216,7 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 	}\n\
 ";
 
-Light._shadowmap_2d_disabled_code = "\nfloat testShadow() { return 1.0; }\n";
+Light._shadowmap_2d_disabled_code = "\nfloat testShadow( Light LIGHT ) { return 1.0; }\n";
 
 var shadowmapping_depth_in_color_block = new LS.ShaderBlock("depth_in_color");
 shadowmapping_depth_in_color_block.register();

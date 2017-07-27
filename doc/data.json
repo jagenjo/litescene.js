@@ -3273,7 +3273,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 334,
+            "line": 329,
             "description": "Returns the camera that will match the light orientation (taking into account fov, etc), useful for shadowmaps",
             "itemtype": "method",
             "name": "getLightCamera",
@@ -3286,7 +3286,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 346,
+            "line": 341,
             "description": "updates all the important vectors (target, position, etc) according to the node parent of the light",
             "itemtype": "method",
             "name": "updateVectors",
@@ -3295,7 +3295,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 387,
+            "line": 382,
             "description": "returns a copy of the light position (in global coordinates), if you want local you can access the position property",
             "itemtype": "method",
             "name": "getPosition",
@@ -3315,7 +3315,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 403,
+            "line": 398,
             "description": "returns a copy of the light target (in global coordinates), if you want local you can access the target property",
             "itemtype": "method",
             "name": "getTarget",
@@ -3335,7 +3335,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 420,
+            "line": 413,
             "description": "returns a copy of the light up vector (in global coordinates), if you want local you can access the up property",
             "itemtype": "method",
             "name": "getUp",
@@ -3355,7 +3355,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 436,
+            "line": 429,
             "description": "returns a copy of the front vector (in global coordinates)",
             "itemtype": "method",
             "name": "getFront",
@@ -3375,7 +3375,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 486,
+            "line": 479,
             "description": "This method is called by the LS.Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)",
             "itemtype": "method",
             "name": "prepare",
@@ -3391,7 +3391,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 665,
+            "line": 658,
             "description": "Collects and returns the shader query of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getQuery",
@@ -3416,7 +3416,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 705,
+            "line": 698,
             "description": "Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach",
             "itemtype": "method",
             "name": "computeShadowmapFar",
@@ -3429,7 +3429,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 731,
+            "line": 724,
             "description": "Computes the max amount of light this object can produce (taking into account every color channel)",
             "itemtype": "method",
             "name": "computeLightIntensity",
@@ -3442,7 +3442,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 742,
+            "line": 735,
             "description": "Computes the light radius according to the attenuation",
             "itemtype": "method",
             "name": "computeLightRadius",
@@ -3455,7 +3455,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 759,
+            "line": 752,
             "description": "Generates the shadowmap for this light",
             "itemtype": "method",
             "name": "generateShadowmap",
@@ -3468,7 +3468,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 838,
+            "line": 831,
             "description": "It returns a matrix in the position of the given light property (target, position), mostly used for gizmos",
             "itemtype": "method",
             "name": "getTransformMatrix",
@@ -3493,7 +3493,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 861,
+            "line": 854,
             "description": "apply a transformation to a given light property, this is done in a function to allow more complex gizmos",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -3567,29 +3567,7 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 40,
-            "description": "When rendering points the point size, if positive is in world space, if negative is in screen space",
-            "itemtype": "property",
-            "name": "point_size",
-            "type": "Number",
-            "default": "-1;",
-            "class": "LS.Components.MeshRenderer",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/meshRenderer.js",
-            "line": 46,
-            "description": "When rendering points tells if you want to use for every point the texture coordinates of the vertex or the point texture coordinates",
-            "itemtype": "property",
-            "name": "textured_points",
-            "type": "Boolean",
-            "default": "false;",
-            "class": "LS.Components.MeshRenderer",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/meshRenderer.js",
-            "line": 189,
+            "line": 164,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -3605,7 +3583,7 @@
         },
         {
             "file": "../src/components/meshRenderer.js",
-            "line": 216,
+            "line": 188,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -4835,27 +4813,6 @@
             "line": 1182,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
-            "name": "transformPointGlobal",
-            "params": [
-                {
-                    "name": "point",
-                    "description": "",
-                    "type": "Vec3"
-                },
-                {
-                    "name": "destination",
-                    "description": "(optional)",
-                    "type": "Vec3"
-                }
-            ],
-            "class": "LS.Components.Transform",
-            "namespace": "LS.Components"
-        },
-        {
-            "file": "../src/components/transform.js",
-            "line": 1196,
-            "description": "convert from local coordinates to global coordinates (it is the same as transformPointGlobal)\nIf no destination is specified a new vector is created",
-            "itemtype": "method",
             "name": "localToGlobal",
             "params": [
                 {
@@ -4874,8 +4831,29 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1205,
-            "description": "convert from global coordinates to local coordinates\nIf no destination is specified a new vector is created",
+            "line": 1196,
+            "description": "same as localToGlobal",
+            "itemtype": "method",
+            "name": "transformPointGlobal",
+            "params": [
+                {
+                    "name": "point",
+                    "description": "",
+                    "type": "Vec3"
+                },
+                {
+                    "name": "destination",
+                    "description": "(optional)",
+                    "type": "Vec3"
+                }
+            ],
+            "class": "LS.Components.Transform",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/transform.js",
+            "line": 1204,
+            "description": "convert from global coordinates to local coordinates",
             "itemtype": "method",
             "name": "globalToLocal",
             "params": [
@@ -4895,8 +4873,8 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1223,
-            "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
+            "line": 1221,
+            "description": "Applies the transformation to a vector (rotate but not translate)",
             "itemtype": "method",
             "name": "transformVector",
             "params": [
@@ -4916,10 +4894,10 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1234,
-            "description": "Applies the transformation to a vector (rotate but not translate)\nIf no destination is specified the transform is applied to vec",
+            "line": 1231,
+            "description": "Applies the transformation to a vector (rotate but not translate)",
             "itemtype": "method",
-            "name": "transformVectorGlobal",
+            "name": "localVectorToGlobal",
             "params": [
                 {
                     "name": "vector",
@@ -4937,7 +4915,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1253,
+            "line": 1249,
             "description": "Apply a transform to this transform",
             "itemtype": "method",
             "name": "applyTransform",
@@ -4946,7 +4924,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1275,
+            "line": 1271,
             "description": "Applies the transformation using a matrix",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -8193,7 +8171,7 @@
         },
         {
             "file": "../src/resources/pack.js",
-            "line": 150,
+            "line": 154,
             "description": "to create a WBin containing all the resource and metadata",
             "itemtype": "method",
             "name": "Pack.createWBin",
@@ -8259,7 +8237,7 @@
         },
         {
             "file": "../src/resources/prefab.js",
-            "line": 132,
+            "line": 134,
             "description": "Creates an instance of the object inside the prefab",
             "itemtype": "method",
             "name": "createObject",
@@ -8271,7 +8249,7 @@
         },
         {
             "file": "../src/resources/prefab.js",
-            "line": 161,
+            "line": 163,
             "description": "to create a new prefab, it packs all the data an instantiates the resource",
             "itemtype": "method",
             "name": "Prefab.createPrefab",
@@ -8300,7 +8278,30 @@
         },
         {
             "file": "../src/resources/resource.js",
-            "line": 46,
+            "line": 34,
+            "itemtype": "method",
+            "name": "rename",
+            "class": "LS.Resource",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/resource.js",
+            "line": 42,
+            "itemtype": "method",
+            "name": "rename",
+            "params": [
+                {
+                    "name": "new_filename",
+                    "description": "the new filename",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Resource",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/resource.js",
+            "line": 57,
             "description": "Static method: Returns an object with a representation of the resource internal data\nThe order to obtain that object is:\n0. checks if getDataToStore function in resource\n1. test for _original_file (File or Blob)\n2. test for _original_data (ArrayBuffer)\n3. toBinary() (ArrayBuffer)\n4. toBlob() (Blob)\n5. toBase64() (String)\n6. serialize() (Object in JSON format)\n7. data property \n8. JSON.stringify(...)",
             "itemtype": "method",
             "name": "Resource.getDataToStore",
@@ -8309,6 +8310,11 @@
                     "name": "resource",
                     "description": "",
                     "type": "Object"
+                },
+                {
+                    "name": "allow_blob",
+                    "description": "[optional]",
+                    "type": "Boolean"
                 }
             ],
             "return": {
@@ -8320,7 +8326,7 @@
         },
         {
             "file": "../src/resources/resource.js",
-            "line": 151,
+            "line": 166,
             "itemtype": "method",
             "name": "clone",
             "return": {
@@ -8332,7 +8338,23 @@
         },
         {
             "file": "../src/resources/resource.js",
-            "line": 188,
+            "line": 177,
+            "itemtype": "method",
+            "name": "getCategory",
+            "class": "LS.Resource",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/resource.js",
+            "line": 189,
+            "itemtype": "method",
+            "name": "assignToNode",
+            "class": "LS.Resource",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/resource.js",
+            "line": 209,
             "itemtype": "method",
             "name": "getAsSubfiles",
             "return": {
@@ -8344,13 +8366,21 @@
         },
         {
             "file": "../src/resources/resource.js",
-            "line": 199,
+            "line": 220,
             "itemtype": "method",
             "name": "getAsHTML",
             "return": {
                 "description": "the root HTMLElement that contains the code",
                 "type": "HTMLElement"
             },
+            "class": "LS.Resource",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/resources/resource.js",
+            "line": 234,
+            "itemtype": "method",
+            "name": "hasEditableText",
             "class": "LS.Resource",
             "namespace": "LS"
         },
@@ -11415,7 +11445,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1002,
+            "line": 1005,
             "description": "Tells if it is loading resources (or an specific resource)",
             "itemtype": "method",
             "name": "isLoading",
@@ -11429,7 +11459,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1017,
+            "line": 1020,
             "description": "forces to try to reload again resources not found",
             "itemtype": "method",
             "name": "isLoading",
@@ -11443,7 +11473,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1034,
+            "line": 1037,
             "description": "returns a mesh resource if it is loaded",
             "itemtype": "method",
             "name": "getMesh",
@@ -11464,7 +11494,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1051,
+            "line": 1054,
             "description": "returns a texture resource if it is loaded",
             "itemtype": "method",
             "name": "getTexture",
@@ -11485,7 +11515,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1077,
+            "line": 1080,
             "description": "Binds a callback for when a resource is loaded (in case you need to do something special)",
             "itemtype": "method",
             "name": "onceLoaded",
@@ -11510,7 +11540,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1102,
+            "line": 1105,
             "description": "Cancels the binding of a onceLoaded",
             "itemtype": "method",
             "name": "cancelOnceLoaded",

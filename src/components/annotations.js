@@ -74,7 +74,7 @@ AnnotationComponent.prototype.getObjectCenter = function()
 	var mesh = this._root.getMesh();
 	if(mesh && mesh.bounding )
 		vec3.copy( center, BBox.getCenter(mesh.bounding) );
-	var pos = this._root.transform.transformPointGlobal(center, vec3.create());
+	var pos = this._root.transform.localToGlobal( center );
 	return pos;
 }
 

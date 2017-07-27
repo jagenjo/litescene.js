@@ -68,7 +68,7 @@ Prefab.prototype.configure = function(data)
 		this.prefab_data = JSON.parse( prefab_json );
 	}
 
-	this.resource_names = data["@resources_name"] || data.resource_names;
+	this.resource_names = data["@resources_name"] || data.resource_names || [];
 
 	//extract resource names
 	if(this.resource_names)
@@ -102,6 +102,8 @@ Prefab.prototype.processResources = function()
 	if(!this._resources_data)
 		return;
 
+	var pack_filename = this.fullpath || this.filename;
+
 	var resources = this._resources_data;
 
 	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
@@ -122,10 +124,10 @@ Prefab.prototype.processResources = function()
 		var resdata = resources[resname];
 		if(!resdata)
 		{
-			console.warn("resource data in prefab is undefined, skipping it:" + resname);
+			console.warn( "resource data in prefab is undefined, skipping it:" + resname );
 			continue;
 		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: true } );
+		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: pack_filename } );
 	}
 }
 
@@ -217,18 +219,29 @@ Prefab.packResources = function( resource_names_list, base_data )
 			else
 			{
 				var data_info = LS.Resource.getDataToStore( resource );
+				if(!data_info)
+				{
+					console.warn("Data to store from resource is null, skipping: ", res_name );
+					continue;
+				}
+				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png)
+				if(data_info.extension && data_info.extension != LS.ResourcesManager.getExtension( res_name ))
+				{
+					console.warn("The resource extension has changed while saving, this could lead to problems: ", res_name, data_info.extension );
+					continue;
+				}
 				data = data_info.data;
 			}
 
 			if(!data)
 			{
-				console.warning("Wrong data in resource");
+				console.warn("Wrong data in resource");
 				continue;
 			}
 
 			if(data.constructor === Blob || data.constructor === File)
 			{
-				console.warning("WBin does not support to store File or Blob, please convert to ArrayBuffer using FileReader");
+				console.warn("WBin does not support to store File or Blob, please convert to ArrayBuffer using FileReader");
 				continue;
 			}
 
@@ -267,12 +280,15 @@ Prefab.prototype.flagResources = function()
 		if(!resource)
 			continue;
 
-		resource.from_prefab = this.fullpath || this.filename || true;
+		resource.from_prefab = this.fullpath || this.filename;
 	}
 }
 
 Prefab.prototype.setResourcesLink = function( value )
 {
+	if(!this.resource_names)
+		return;
+
 	for(var i = 0; i < this.resource_names.length; ++i)
 	{
 		var res_name = this.resource_names[i];

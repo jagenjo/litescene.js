@@ -284,8 +284,8 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 			var mesh = this._root.getMesh();
 			if(mesh)
 			{
-				plane_center = this._root.transform.transformPointGlobal( BBox.getCenter( mesh.bounding ) );
-				plane_normal = this._root.transform.transformVectorGlobal( [0,1,0] );
+				plane_center = this._root.transform.globalToLocal( BBox.getCenter( mesh.bounding ) );
+				plane_normal = this._root.transform.globalVectorToLocal( LS.UP );
 			}
 		}
 

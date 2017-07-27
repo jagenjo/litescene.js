@@ -25,6 +25,7 @@ function Canvas3D(o)
 	this.generate_mipmaps = false;
 
 	this._clear_buffer = true; //not public, just here in case somebody wants it
+	this._skip_backside = true;
 	this._texture = null;
 	this._fbo = null;
 	this._RI = null;
@@ -268,9 +269,9 @@ Canvas3D.prototype.projectMouse = function()
 		var camera_front = camera.getFront();
 
 		var temp = vec3.create();
-		var plane_normal = this.root.transform.globalVectorToLocal( LS.FRONT, temp );
+		var plane_normal = this.root.transform.localVectorToGlobal( LS.FRONT, temp );
 
-		if( vec3.dot( ray.direction, plane_normal ) < 0.0 )
+		if( !this._skip_backside || vec3.dot( ray.direction, plane_normal ) > 0.0 )
 		{
 			var local_origin = this.root.transform.globalToLocal( ray.origin, temp );
 			var local_direction = this.root.transform.globalVectorToLocal( ray.direction );

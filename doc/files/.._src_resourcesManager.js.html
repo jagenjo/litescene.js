@@ -1114,11 +1114,14 @@ var ResourcesManager = {
 	* @param {Boolean} [skip_event=false] ignore sending an event to all components to rename the resource
 	* @return {boolean} if the file was found
 	*/
-	renameResource: function(old_name, new_name, skip_event)	
+	renameResource: function( old_name, new_name, skip_event )	
 	{
 		var res = this.resources[ old_name ];
 		if(!res)
 			return false;
+
+		if(this.resources[ new_name ])
+			console.warn(&quot;There is a resource already with this name, overwritting it: &quot; + new_name );
 
 		res.filename = new_name;
 		if(res.fullpath)

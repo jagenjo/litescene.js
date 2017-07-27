@@ -31,10 +31,21 @@ Object.defineProperty( Resource.prototype, "data", {
 	enumerable: true
 });
 
-//makes this resource available 
+/** makes this resource available by registering in the resources manager
+* @method rename
+*/
 Resource.prototype.register = function()
 {
 	LS.ResourcesManager.registerResource( this.fullpath || this.filename, this );
+}
+
+/** Renames the resource and ensures the resources manager is updated accordingly
+* @method rename
+* @param {String} new_filename the new filename
+*/
+Resource.prototype.rename = function( new_filename )
+{
+	LS.ResourcesManager.renameResource( this.fullpath || this.filename, new_filename );
 }
 
 Object.defineProperty( Resource.prototype, "uid", { 
@@ -58,9 +69,10 @@ Object.defineProperty( Resource.prototype, "uid", {
 *
 * @method Resource.getDataToStore
 * @param {Object} resource 
+* @param {Boolean} allow_blob [optional] 
 * @return {Object} it has two fields: data and encoding
 */
-Resource.getDataToStore = function( resource )
+Resource.getDataToStore = function( resource, allow_blob )
 {
 	var data = null;
 	var encoding = "text";
@@ -90,9 +102,12 @@ Resource.getDataToStore = function( resource )
 	{
 		data = resource.toBinary();
 		encoding = "binary";
-		extension = "wbin";
+		if(resource.constructor.binary_extension) //special case, textures are in PNG to keep alpha
+			extension = resource.constructor.binary_extension;
+		else
+			extension = "wbin";
 	}
-	else if(resource.toBlob) //a blob (Canvas should have this)
+	else if(resource.toBlob && allow_blob) //a blob (Canvas should have this)
 	{
 		data = resource.toBlob();
 		encoding = "file";
@@ -159,6 +174,9 @@ Resource.prototype.clone = function()
 	return r;
 }
 
+/** Returns a string representing to which category this resource belongs
+* @method getCategory
+*/
 Resource.prototype.getCategory = function()
 {
 	var filename = this.fullpath || this.filename;
@@ -168,6 +186,9 @@ Resource.prototype.getCategory = function()
 	return "Data";
 }
 
+/** When dropping this resource into a SceneNode
+* @method assignToNode
+*/
 Resource.prototype.assignToNode = function(node)
 {
 	if(!node) 
@@ -185,7 +206,7 @@ Resource.prototype.assignToNode = function(node)
 	return true;
 }
 
-/** Parses the resource data as subfiles (subfiles are fragments of the code identified by a slash followed by name string)
+/** Parses the resource data as subfiles (subfiles are fragments of the code identified by a slash followed by name string), used by ShaderCode
 * @method getAsSubfiles
 * @return {Object} the object that contains every subfile
 */
@@ -210,6 +231,9 @@ Resource.prototype.getAsHTML = function()
 	return container;
 }
 
+/** Used by the editor to know if it can be edited in the text editor
+* @method hasEditableText
+*/
 Resource.prototype.hasEditableText = function()
 {
 	return this._data && this._data.constructor === String;

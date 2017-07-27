@@ -18,8 +18,10 @@ function SpatialContainer()
 //adds a new object to the container
 SpatialContainer.prototype.add = function( object, bounding )
 {
-	this.root.push( object );
-	this.objecs_cell_by_id.set( object, this.root ); //in which container is
+	var cell = this.root;
+
+	cell.push( object );
+	this.objecs_cell_by_id.set( object, cell ); //in which container is
 	return object.uid;
 }
 
@@ -37,7 +39,7 @@ SpatialContainer.prototype.remove = function( object, bounding )
 		return;
 	var index = cell.indexOf( object );
 	if(index !== -1)
-		this.root.splice( index, 1 );
+		cell.splice( index, 1 );
 	this.objecs_cell_by_id.delete( object );
 }
 

@@ -1182,11 +1182,11 @@ Transform.prototype.transformPoint = function(vec, dest) {
 /**
 * convert from local coordinates to global coordinates
 * If no destination is specified a new vector is created
-* @method transformPointGlobal
+* @method localToGlobal
 * @param {vec3} point
 * @param {vec3} destination (optional)
 */
-Transform.prototype.transformPointGlobal = function(vec, dest) {
+Transform.prototype.localToGlobal = function(vec, dest) {
 	dest = dest || vec3.create();
 	if(this._must_update)
 		this.updateMatrix();
@@ -1194,17 +1194,15 @@ Transform.prototype.transformPointGlobal = function(vec, dest) {
 }
 
 /**
-* convert from local coordinates to global coordinates (it is the same as transformPointGlobal)
-* If no destination is specified a new vector is created
-* @method localToGlobal
+* same as localToGlobal
+* @method transformPointGlobal
 * @param {vec3} point
 * @param {vec3} destination (optional)
 */
-Transform.prototype.localToGlobal = Transform.prototype.transformPointGlobal;
+Transform.prototype.transformPointGlobal = Transform.prototype.localToGlobal;
 
 /**
 * convert from global coordinates to local coordinates
-* If no destination is specified a new vector is created
 * @method globalToLocal
 * @param {vec3} point
 * @param {vec3} destination (optional)
@@ -1222,27 +1220,25 @@ Transform.prototype.globalToLocal = (function(){
 
 /**
 * Applies the transformation to a vector (rotate but not translate)
-* If no destination is specified the transform is applied to vec
 * @method transformVector
 * @param {vec3} vector
 * @param {vec3} destination (optional)
 */
-Transform.prototype.transformVector = function(vec, dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec, this._rotation );
+Transform.prototype.transformVector = function( vec, dest ) {
+	return vec3.transformQuat( dest || vec3.create(), vec, this._rotation );
 }
 
 /**
 * Applies the transformation to a vector (rotate but not translate)
-* If no destination is specified the transform is applied to vec
-* @method transformVectorGlobal
+* @method localVectorToGlobal
 * @param {vec3} vector
 * @param {vec3} destination (optional)
 */
-Transform.prototype.transformVectorGlobal = function(vec, dest) {
-	return vec3.transformQuat(dest || vec3.create(), vec, this.getGlobalRotation() );
+Transform.prototype.localVectorToGlobal = function(vec, dest) {
+	return vec3.transformQuat( dest || vec3.create(), vec, this.getGlobalRotation() );
 }
 
-Transform.prototype.localVectorToGlobal = Transform.prototype.transformVectorGlobal;
+Transform.prototype.transformVectorGlobal = Transform.prototype.localVectorToGlobal;
 
 Transform.prototype.globalVectorToLocal = function(vec, dest) {
 	var Q = this.getGlobalRotation();
