@@ -6,43 +6,47 @@ If you are happy with the current rendering pipeline you do not need to read thi
 
 ## WebGL, LiteGL and LiteScene
 
-The first and most important part is to understand the layers involved in the rendering process.
+The first and most important part is to understand the layers involved in the engine and how they affect the rendering process.
 
-Obviously in the lowest point we have the WebGL API supplied by the browser. You can call the WebGL API directly if you want, just keep in mind that during the rendering of a frame the Renderer will assume that the state of the API is in the state itw as left by it, so be careful when changing the state.
-But I recommend not to call WebGL directly an use LiteGL instead.
+Obviously in the lowest point we have the WebGL API supplied by the browser. You can call the WebGL API directly if you want, just keep in mind that during the rendering of a frame the Renderer will assume that the state of the API is in the state it was left by it, so be careful when changing the state.
+My recommendation is to do not call WebGL directly, an instead use LiteGL (it is easier).
 
-LiteGL is a low-level wrapper of WebGL that makes it easy to compile shaders, create meshes or upload textures, without performance loss. 
-It is important to know how to use it if you plan to modify the rendering pipeline. Although you are more prone to interact with LiteScene than with LiteGL.
+LiteGL is a low-level wrapper of WebGL that makes it easy to compile shaders, create meshes or upload textures, without any noticeable performance loss. It is important to know how to use it if you plan to modify the rendering pipeline. 
 
-LiteScene rendering methods are in charge of creating the final frame, and those are the ones that you will have to tweak to change how the render pipeline works.
+To know more about LiteGL [check the repository of LiteGL](https://github.com/jagenjo/litegl.js).
+
+Although you are more prone to interact with LiteScene than with LiteGL. LiteScene rendering methods are in charge of creating the final frame, and those are the ones that you will have to tweak to change how the render pipeline works.
 
 ## LS.RenderInstance ##
 
-First we need to understand the atomic class to render stuff that uses LiteScene, it is called RenderInstance.
+First we need to understand the atomic class to render stuff that uses LiteScene, it is called ```LS.RenderInstance```.
 
-A RenderInstance represents one object to render, and it contains the mesh, the material and the flags that must be taken into account when rendering that mesh.
+A ```RenderInstance``` represents one object to render in the scene, and it contains the mesh, the material and the flags that must be taken into account when rendering that mesh.
 
-So every component of the scene that plans to render something on the screen needs to create a RenderInstance and supplied to the system when the collectRenderInstances event is generated.
+So every component of the scene that plans to render something on the screen needs to create a ```RenderInstance``` and supplied to the system when the ```"collectRenderInstances"``` event is generated.
 
-Take into account that a RenderInstance is not a low-level API render call, because it still depends in many parameters to determine how to render it.
+Take into account that a ```RenderInstance``` is not a low-level API render call, because it still depends in many parameters to determine how to render it (mostly the material).
 
-For example, the same RenderInstasnce will be rendered with different shaders depending if it is being rendered to the color buffer or to the shadow buffer.
+For example, the same ```RenderInstance``` will be rendered with different shaders depending if it is being rendered to the color buffer or to the shadow buffer.
 
-Also one SceneNode can generate one RenderInstance, several or none, it depends on what it wants to do.
+Also one ```SceneNode``` can generate one RenderInstance, several or none, it depends on what it wants to do.
 
-## The Renderer ##
+But don't worry about RenderInstances, you usually wont need to deal with them directly. There are components in charge of generating RenderInstances like the ```MeshRenderer``` or the ```GeometryPrimitive```.
 
-Most of the rendering pipeline is contained in the LS.Renderer static class.
+## The LS.Renderer ##
+
+Most of the rendering pipeline is contained in the ```LS.Renderer``` static class.
 This class is in charge of taking a scene and generate the final frame.
+
 It is important to take into account that to generate the final frame sometimes it is required to render the scene several times (for shadowmaps, reflections, secondary cameras, ...).
 So if you plan to change the rendering pipeline maybe is better to change only the parts that really matter.
 
-The Renderer class is used by many components to do intermediate steps, so do not replace it completly unless the new class contains most of its  methods.
-The Renderer also keeps tracks of the current state of the rendering in process, so components can retrieve info during the rendering (stuff like the current camera, active samplers, lights, etc).
+The ```LS.Renderer``` class is used by many components to do intermediate steps, so do not replace it completly unless the new class contains most of its  methods.
+The ```LS.Renderer``` also keeps tracks of the current state of the rendering in process, so components can retrieve info during the rendering (stuff like the current camera, active samplers, lights, etc).
 
-### Renderer.render ###
+### Renderer.render(...) ###
 
-This is the most important method from the Renderer, is the one that generates the final frame.
+This is the most important method from the ```Renderer```, is the one that generates the final frame.
 Here is a list of the steps performed by the render pipeline when calling the render function:
 
 1. **Collect visible data** 
@@ -91,8 +95,10 @@ It is important to notice that once this action is performed and while rendering
 ### Materials ###
 
 When rendering a single instance the actions that must be performed depend on the kind of material it has assigned.
+
 Different materials can specify different ways to render an instance, but to understand better the rendering pipeline lets focus in two different materials.
-The ShaderMaterial and the StandardMaterial
+
+The ```ShaderMaterial``` and the ```StandardMaterial```
 
 #### ShaderMaterial rendering ####
 
@@ -117,17 +123,15 @@ In those situations the system has to be aware of the different modifiers to app
 
 All those actors can affect the shader, changing its behaviour. So an StandardMaterial cannot have an specific shader applied to it.
 
-Instead, the RenderPipeline computes the shader based on all those actors and renders the RenderInstance with the final shader.
+Instead, the render pipeline computes the shader based on all those actors and renders the RenderInstance with the final shader.
 
 This process is slower than using a fixed shader but ensures that people with no knowledge about shader coding can create its own materials easily.
-
-How does it achieve this? Well, every actor creates something called a ShaderQuery that stores all the information that must be taken into account when computing the shader of the render instance, and when rendering the ShaderQuery returns a shader that matches all those properties.
 
 ### Multi light rendering ###
 
 When rendering an scene we want to be sure than an object can be affected by multiple lights. This is achieved by using a multi pass rendering approach.
 
-This means that for every light affecint the RenderInstance, the pipeline is going to render that instance. This could lead to bad performance when we have an scene with several meshes an lights.
+This means that for every light affecting the ```RenderInstance```, the pipeline is going to do a render pass for that instance. This could lead to bad performance when we have an scene with several meshes an lights.
 
 ## RenderState ##
 
@@ -135,13 +139,17 @@ Materials can control the way they are rendered by changing the flags in the GPU
 
 This way a material can decide if it is z-culled, two-sided, blended, etc. The info about how it should be rendered is contained in the ```LS.RenderState``` class in the ```material.render_state``` property.
 
+To know more check the [guide about RenderState](shaders.md#renderstate)
+
 
 ## Post-processing Effects ##
 
 A camera could be rendered to the screen or to a texture, in which case the texture could have FX applied to it.
 
-To render to a texture we use a class called RenderFrameContext, which helps setting up the context.
+To render to a texture we use a class called ```RenderFrameContext```, which helps setting up the context.
 
 There are several components that allow to apply FX to the camera, just keep in mind that we could apply an FX per camera or to the whole scene.
 
 Those components will bind events to the camera enableFrameBuffer (or the scene enableFrameBuffer), so they can redirect the render to the 
+
+Check the [guide about post-processing effects](post-processing.md) to know more.
