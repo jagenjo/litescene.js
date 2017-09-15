@@ -127,7 +127,7 @@ Here is a list of the automatically binded events:
 - **onRender**: triggered by the node "beforeRenderInstances" event. Used to direct render stuff before the RenderInstances are rendered.
 - **onAfterRender**: triggered by the node "afterRenderInstances" event. Used to direct render stuff after the RenderInstances are rendered.
 - **onRenderHelpers**: triggered by scene "renderHelpers" event. To direct render stuff related to the editor.
-- **onRenderGUI**: triggered by scene "renderGUI", to render stuff in 2D (using the canvas2D).
+- **onRenderGUI**: triggered by scene "renderGUI", to render stuff in 2D (using the [canvas2D](paint_in_2d.md) or the [LS.GUI](gui.md) ).
 - **onEnableFrameContext**: triggered by the scene "enableFrameContext" event. Before rendering the final frame, used to setup a special RenderFrameContext and apply FX to the final image.
 - **onShowFrameContext**: triggered by the scene "showFrameContext" event. After the final frame, to show the frame into the viewport.
 - **onRemovedFromScene**: called when the node where the script belongs is detached from the scene.
