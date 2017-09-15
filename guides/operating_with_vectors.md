@@ -3,13 +3,13 @@
 When scripting any 3D application usually you will need to do mathematic operations like adding or multiplying vectors,
 normalizing, doing the cross or dot product, transforming vectors by matrices, rotating quaternions, etc.
 
-Instead of providing out own mathematical library, LiteScene uses [gl-matrix](http://glmatrix.net/) as the base library for geometric operations.
+Instead of providing our own mathematical library, LiteScene uses [gl-matrix](http://glmatrix.net/) as the base library for geometric operations.
 
-Created by Brandon Jones, this library has proven to be very powerful and bug-free, but has a particula syntax that any user must understand in order to use it.
+Created by Brandon Jones, this library has proven to be very powerful and bug-free, but has a particular syntax that any user must understand in order to use it.
 
 ## Understanding gl-matrix
 
-gl-matrix doesnt create classes to store vectors, matrices and quaternions. Instead it relies in the Float32Array class.
+gl-matrix does not create classes to store vectors, matrices and quaternions. Instead it relies in the Float32Array class.
 
 This means that any vector, matrix or quaternion created using gl-matrix is stored in a regular Float32Array(...).
 
@@ -27,7 +27,6 @@ To create a vector we have several ways:
 ```js
    var myvector = vec3.create(); //default 0,0,0
    var myvector = vec3.fromValues(x,y,z);
-   
    var myvector = vec3.clone([x,y,z]);
    var myvector = new Float32Array([x,y,z]);
 ```
@@ -71,6 +70,15 @@ To have a full list of mat4 operations [the gl-matrix mat4 documentation](http:/
 For quaternions the class is called quat.
 
 To have a full list of quat operations [the gl-matrix quat documentation](http://glmatrix.net/docs/quat.html)
+
+## Intersections 
+
+Besides vectors and matrices, the system also provides some basic intersection tests:
+
+* ```geo.testRaySphere( start, direction, center, radius, result, max_dist )```
+* ```geo.testRayBox( start, direction, minB, maxB, result, max_dist )```
+* ```geo.testRayPlane( start, direction, P, N, result )```
+* ```geo.testSegmentPlane(start, end, P, N, result )```
 
 
 
