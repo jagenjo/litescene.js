@@ -371,6 +371,9 @@ PlayAnimation.prototype.getDuration = function()
 */
 PlayAnimation.prototype.play = function()
 {
+	if(!this._root || !this._root.scene)
+		console.error("cannot play an animation if the component doesnt belong to a node in a scene");
+
 	this.playing = true;
 
 	this.current_time = 0;

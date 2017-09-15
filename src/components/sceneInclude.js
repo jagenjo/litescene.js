@@ -29,6 +29,10 @@ function SceneInclude( o )
 SceneInclude.max_recursive_level = 32;
 SceneInclude.recursive_level = 0;
 
+//which events from the scene should be propagated to the included scene...
+SceneInclude.propagable_events = ["finish","beforeRenderMainPass","beforeRenderInstances","afterRenderInstances","readyToRender","renderGUI","renderHelpers"];
+SceneInclude.fx_propagable_events = ["enableFrameContext","showFrameContext"];
+
 Object.defineProperty( SceneInclude.prototype, "scene_path", {
 	set: function(v){ 
 		if(this._scene_path == v)
@@ -57,9 +61,6 @@ SceneInclude["@scene_path"] = { type: LS.TYPES.SCENE, widget: "resource" };
 
 SceneInclude.icon = "mini-icon-teapot.png";
 
-//which events from the scene should be propagated to the included scene...
-SceneInclude.propagable_events = ["finish","beforeRenderMainPass","beforeRenderInstances","afterRenderInstances"];
-SceneInclude.fx_propagable_events = ["enableFrameContext","showFrameContext"];
 
 SceneInclude.prototype.onAddedToScene = function(scene)
 {
@@ -106,6 +107,17 @@ SceneInclude.prototype.onUpdate = function(e, dt)
 	SceneInclude.recursive_level -= 1;
 }
 
+//propagate events
+SceneInclude.prototype.onEvent = function(e,p)
+{
+	if(!this.enabled || !this.send_events || !this._scene_path)
+		return;
+
+	SceneInclude.recursive_level += 1;
+	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		LEvent.trigger( this._scene, e, p );
+	SceneInclude.recursive_level -= 1;
+}
 
 SceneInclude.prototype.updateBindings = function()
 {
@@ -173,18 +185,6 @@ SceneInclude.prototype.onCollectData = function()
 	{
 		scene._cameras.push.apply( scene._cameras, inner_scene._cameras);
 	}
-}
-
-//propagate events
-SceneInclude.prototype.onEvent = function(e,p)
-{
-	if(!this.enabled || !this.send_events || !this._scene_path)
-		return;
-
-	SceneInclude.recursive_level += 1;
-	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
-		LEvent.trigger( this._scene, e, p );
-	SceneInclude.recursive_level -= 1;
 }
 
 SceneInclude.prototype.load = function()

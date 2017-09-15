@@ -749,6 +749,11 @@ var LS = {
 		LEvent.trigger( LS, "reset" );
 	},
 
+	log: function()
+	{
+		console.log.call( console, arguments );
+	},
+
 	stringToValue: function( v )
 	{
 		var value = v;
@@ -991,11 +996,6 @@ var LSQ = {
 		if( v === undefined && target[ varname ] === undefined )
 			return null;
 		return v !== undefined ? v : target[ varname ];
-	},
-
-	log: function()
-	{
-		console.log.call( console, arguments );
 	}
 };
 

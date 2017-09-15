@@ -8,10 +8,10 @@
 * @constructor
 */
 
-function Prefab(o)
+function Prefab( o, filename )
 {
-	this.filename = null; //base file
-	this.fullpath = null; //full path 
+	this.filename = filename || null; //base file
+	this.fullpath = filename || null; //full path 
 	this.resource_names = []; 
 	this.prefab_json = null;
 	this.prefab_data = null; //json object
@@ -88,12 +88,12 @@ Prefab.prototype.configure = function(data)
 	this.processResources();
 }
 
-Prefab.fromBinary = function(data)
+Prefab.fromBinary = function( data, filename )
 {
 	if(data.constructor == ArrayBuffer)
 		data = WBin.load(data, true);
 
-	return new LS.Prefab(data);
+	return new LS.Prefab( data, filename );
 }
 
 //given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
@@ -192,14 +192,14 @@ Prefab.createPrefab = function( filename, node_data, resource_names_list )
 	prefab.setData( node_data );
 
 	//get all the resources and store them in a WBin
-	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version } );
+	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version }, this );
 	prefab._original_data = bindata;
 
 	return prefab;
 }
 
 //Given a list of resources and some base data, it creates a WBin with all the data
-Prefab.packResources = function( resource_names_list, base_data )
+Prefab.packResources = function( resource_names_list, base_data, from_prefab )
 {
 	var to_binary = base_data || {};
 	var resource_names = [];
@@ -224,11 +224,15 @@ Prefab.packResources = function( resource_names_list, base_data )
 					console.warn("Data to store from resource is null, skipping: ", res_name );
 					continue;
 				}
-				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png)
+				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png) or meshes that add wbin
 				if(data_info.extension && data_info.extension != LS.ResourcesManager.getExtension( res_name ))
 				{
 					console.warn("The resource extension has changed while saving, this could lead to problems: ", res_name, data_info.extension );
-					continue;
+					//after this change all the references will be wrong
+					var old_name = res_name;
+					res_name = res_name + "." + data_info.extension;
+					resource_names_list[i] = res_name;
+					LS.GlobalScene.sendResourceRenamedEvent( old_name, res_name, resource ); //force change
 				}
 				data = data_info.data;
 			}
@@ -252,11 +256,6 @@ Prefab.packResources = function( resource_names_list, base_data )
 
 	to_binary["@resources_name"] = resource_names;
 	return WBin.create( to_binary, "Prefab" );
-}
-
-Prefab.prototype.containsResources = function()
-{
-	return this.resource_names && this.resource_names.length > 0 ? true : false;
 }
 
 Prefab.prototype.updateFromNode = function( node, clear_uids )
@@ -324,11 +323,22 @@ Prefab.prototype.getDataToStore = function()
 
 	//prefab in json format
 	if( !(this.resource_names && this.resource_names.length) && filename && LS.RM.getExtension(filename) == "json" )
-		return JSON.stringify( { object_class:"Prefab", "@json": this.prefab_json } );
+		return JSON.stringify( { object_class: LS.getObjectClassName( this ), "@json": this.prefab_json } );
 
 	//return the binary data of the wbin
-	return LS.Prefab.packResources( this.resource_names, { "@json": this.prefab_json, "@version": LS.Prefab.version } );
+	return LS.Prefab.packResources( this.resource_names, this.getBaseData(), this );
 }
+
+Prefab.prototype.getBaseData = function()
+{
+	return { "@json": this.prefab_json, "@version": LS.Prefab.version };
+}
+
+//inheritet methods from Pack
+Prefab.prototype.containsResources = Pack.prototype.containsResources;
+Prefab.prototype.onResourceRenamed = Pack.prototype.onResourceRenamed;
+Prefab.prototype.checkResourceNames = Pack.prototype.checkResourceNames;
+Prefab.prototype.setResources = Pack.prototype.setResources;
 
 LS.Prefab = Prefab;
 LS.registerResourceClass( Prefab );

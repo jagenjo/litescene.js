@@ -1,4 +1,6 @@
 
+//defined before Prefab
+
 /**
 * Pack is an object that contain several resources, helpful when you want to carry a whole scene in one single file
 * 
@@ -9,6 +11,7 @@
 function Pack(o)
 {
 	this.resource_names = []; 
+	this.metadata = null;
 	this._data = {}; //the original chunks from the WBin, including the @JSON and @resource_names
 	this._resources_data = {}; //every resource in arraybuffer format
 	if(o)
@@ -121,8 +124,13 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	}
 
 	//repack the pack info
-	this._original_data = LS.Pack.packResources( resource_names, { "@metadata": JSON.stringify( this.metadata ), "@version": LS.Pack.version } );
+	this._original_data = LS.Pack.packResources( resource_names, this.getBaseData() );
 	this._modified = true;
+}
+
+Pack.prototype.getBaseData = function()
+{
+	return { "@metadata": this.metadata, "@version": LS.Pack.version };
 }
 
 //adds to every resource in this pack info about where it came from (the pack)
@@ -190,7 +198,8 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 	}
 
 	//create the WBIN in case this pack gets stored
-	var bindata = LS.Pack.packResources( resource_names, extra_data );
+	this.metadata = extra_data;
+	var bindata = LS.Pack.packResources( resource_names, this.getBaseData() );
 	pack._original_data = bindata;
 
 	return pack;
@@ -262,9 +271,71 @@ Pack.prototype.flagResources = function()
 
 Pack.prototype.getDataToStore = function()
 {
-	return LS.Pack.packResources( this.resource_names, { "@version": LS.Pack.version } );
+	return LS.Pack.packResources( this.resource_names, this.getBaseData() );
 }
 
+Pack.prototype.checkResourceNames = function()
+{
+	if(!this.resource_names)
+		return 0;
+
+	var changed = 0;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var old_name = res_name;
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		//avoid problematic symbols
+		if( LS.ResourcesManager.valid_resource_name_reg.test( res_name ) == false )
+		{
+			console.warn("Invalid filename in pack/prefab: ", res_name  );
+			res_name = res_name.replace( /[^a-zA-Z0-9-_\.\/]/g, '_' );
+		}
+
+		//ensure extensions
+		var extension = LS.ResourcesManager.getExtension( res_name );
+		if(!extension)
+		{
+			extension = resource.constructor.EXTENSION;
+			if(!extension)
+				console.warn("Resource without extension and not known default extension: ", res_name , resource.constructor.name );
+			else
+				res_name = res_name + "." + extension;
+		}
+
+		if(old_name == res_name)
+			continue;
+
+		this.resource_names[i] = res_name;
+		LS.ResourcesManager.renameResource( old_name, res_name ); //force change
+		changed++;
+	}
+
+	if(changed)
+		LS.ResourcesManager.resourceModified( this );
+
+	return changed;
+}
+
+Pack.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if(!this.resource_names)
+		return;
+	var index = this.resource_names[ old_name ];
+	if( index == -1 )
+		return;
+	this.resource_names[ index ] = new_name;
+	LS.ResourcesManager.resourceModified( this );
+}
+
+Pack.prototype.containsResources = function()
+{
+	return this.resource_names && this.resource_names.length > 0 ? true : false;
+}
 
 LS.Pack = Pack;
 LS.registerResourceClass( Pack );

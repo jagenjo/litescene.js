@@ -60,6 +60,7 @@ function newStandardMaterial(o)
 		ignore_lights: false,
 		cast_shadows: true,
 		receive_shadows: true,
+//		flat_normals: false,
 		ignore_frustum: false
 	};
 
@@ -262,6 +263,9 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 	//flags
 	if( code_flags & FLAGS.ALPHA_TEST )
 		fs_code += "	if(o.Alpha < 0.5) discard;\n";
+
+	//if( code_flags & FLAGS.FLAT_NORMALS )
+	//	flat_normals += "";
 
 	//compile shader and cache
 	shader_code = new LS.ShaderCode();
@@ -569,6 +573,14 @@ uniform sampler2D emissive_texture;\n\
 uniform sampler2D reflectivity_texture;\n\
 uniform sampler2D detail_texture;\n\
 uniform sampler2D normal_texture;\n\
+\n\
+uniform vec4 u_color_texture_settings;\n\
+uniform vec4 u_opacity_texture_settings;\n\
+uniform vec4 u_specular_texture_settings;\n\
+uniform vec4 u_ambient_texture_settings;\n\
+uniform vec4 u_emissive_texture_settings;\n\
+uniform vec4 u_reflectivity_texture_settings;\n\
+uniform vec4 u_normal_texture_settings;\n\
 \n\
 \n\
 #pragma shaderblock \"light\"\n\

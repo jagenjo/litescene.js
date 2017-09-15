@@ -312,7 +312,7 @@ It supports Numbers, Strings and TypedArrays or ArrayBuffer</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_utils_wbin.js.html#l314"><code>..&#x2F;src&#x2F;utils&#x2F;wbin.js:314</code></a>
+        <a href="../files/.._src_utils_wbin.js.html#l315"><code>..&#x2F;src&#x2F;utils&#x2F;wbin.js:315</code></a>
         </p>
 
 
@@ -427,6 +427,9 @@ It supports Numbers, Strings and TypedArrays or ArrayBuffer</p>
                 <li class="arg">
                         <code>skip_classname</code>
                 </li>
+                <li class="arg">
+                        <code>filename</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
@@ -477,6 +480,17 @@ If the data contains info about the class to instantiate, the WBin instantiates 
 
                     <div class="param-description">
                         <p>avoid getting the instance of the class specified in classname, and get only the lumps</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">filename</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the filename where this wbin came from (important to mark resources)</p>
 
                     </div>
 

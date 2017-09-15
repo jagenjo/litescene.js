@@ -24,6 +24,7 @@ function Animation(o)
 		this.configure(o);
 }
 
+Animation.EXTENSION = "wbin";
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
 
@@ -843,7 +844,12 @@ Track.prototype.serialize = function()
 	if(this.data)
 	{
 		if(this.value_size <= 1)
-			o.data = this.data.concat(); //regular array, clone it
+		{
+			if(this.data.concat)
+				o.data = this.data.concat(); //regular array, clone it
+			else
+				o.data = new this.data.constructor( o.data ); //clone for typed arrays (weird, this should never happen but it does)
+		}
 		else //pack data
 		{
 			this.packData();

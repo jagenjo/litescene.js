@@ -176,6 +176,7 @@ var GUI = {
 		backgroundColorOver: &quot;#AAA&quot;,
 		selected: &quot;#AAF&quot;,
 		unselected: &quot;#AAA&quot;,
+		outline: &quot;#000&quot;,
 		margin: 0.2
 	},
 
@@ -989,6 +990,125 @@ var GUI = {
 		ctx.fillStyle = is_over ? this.GUIStyle.selected : this.GUIStyle.unselected;
 		var slider_height = Math.max(2, (area[3] - margin*2) * norm_value);
 		ctx.fillRect( area[0] + margin + this._offset[0], area[1] + area[3] - slider_height - margin + this._offset[1], area[2] - margin*2, slider_height );
+
+		return value;
+	},
+
+	/**
+	* Renders an knob slider widget, returns the current value
+	* Remember: you must pass as value the same value returned by this function in order to work propertly
+	*
+	* @method Knob
+	* @param {Array} area [x,y,width,height]
+	* @param {Number} value the value to show in the slider
+	* @param {Number} bottom_value the minimum value for the slider
+	* @param {Number} top_value the maximum value for the slider
+	* @param {Number} steps [optional] the numeber of steps (if 0 then infinite)
+	* @param {Image|GL.Texture} content [optional] a texture or image to use as the knob
+	* @return {Number} the current value of the slider (will be different from value if it was clicked)
+	*/
+	Knob: function( area, value, bottom_value, top_value, steps, content )
+	{
+		if(!area)
+			throw(&quot;No area&quot;);
+		this.blockEventArea( area );
+
+		value = Number(value);
+		if(bottom_value === undefined)
+			bottom_value = 0;
+		if(top_value === undefined)
+			top_value = 1;
+		steps = steps || 0;
+		bottom_value = Number(bottom_value);
+		top_value = Number(top_value);
+
+		var ctx = this._ctx;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor(&quot;pointer&quot;);
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		var range = top_value - bottom_value;
+		var norm_value = (value - bottom_value) / range;
+		if(norm_value &lt; 0) norm_value = 0;
+		if(norm_value &gt; 1) norm_value = 1;
+
+		var margin = (area[2]*this.GUIStyle.margin)
+		var start_angle = -Math.PI*0.75;
+		var total_angle = 1.5*Math.PI;
+
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			if(clicked)
+			{
+				var dx = LS.Input.Mouse.mousex - (area[0] + area[2] * 0.5) - this._offset[0];
+				var dy = LS.Input.Mouse.mousey - (area[1] + area[3] * 0.5) - this._offset[1];
+				//var angle = Math.atan2( dx, -dy ) / Math.PI;
+				var angle = ( Math.atan2( dx, -dy ) - start_angle ) / total_angle;
+				norm_value = angle;
+				//norm_value = ( (LS.Input.Mouse.mousey - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				//norm_value = 1 - norm_value; //reverse slider
+				if(norm_value &lt; 0) norm_value = 0;
+				if(norm_value &gt; 1) norm_value = 1;
+				value = norm_value * range + bottom_value;
+			}
+		}
+
+		if(steps)
+			norm_value = Math.round(norm_value * steps) / steps;
+
+		if( content !== undefined ) //texture
+		{
+			if( content !== null ) // in case we are loading the texture
+			{
+				var texture = null;
+				if(content.constructor === GL.Texture)
+				{
+					if(ctx.constructor === CanvasRenderingContext2D) //canvas 2D cannot render images
+						content = content.data &amp;&amp; (content.data.constructor === HTMLImageElement || content.data.constructor === Image) ? content.data : null;
+					if(content)
+						texture = content;
+				}
+				else if(content.constructor === HTMLImageElement || content.constructor === Image)
+				{
+					if(ctx.constructor === CanvasRenderingContext2D)
+						texture = content;
+				}
+				if(texture)
+				{
+					ctx.save();
+					ctx.translate( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1] );
+					ctx.rotate( norm_value * total_angle + start_angle );
+					ctx.scale( area[3] / texture.height , area[3] / texture.height );
+					ctx.drawImage( texture, -texture.width * 0.5, -texture.height * 0.5 );
+					ctx.restore();
+				}
+			}
+		}
+		else
+		{
+			//bg
+			ctx.strokeStyle = this.GUIStyle.outline;
+			ctx.fillStyle = this.GUIStyle.backgroundColor;
+			ctx.beginPath();
+			ctx.arc( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1], area[3] * 0.45, 0, 2 * Math.PI, false );
+			ctx.fill();
+			ctx.stroke();
+
+			//slider
+			ctx.lineWidth = area[3]*0.1;
+			ctx.strokeStyle = is_over ? this.GUIStyle.selected : this.GUIStyle.unselected;
+			ctx.beginPath();
+
+			start_angle = -Math.PI*1.25;
+			ctx.arc( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1], area[3] * 0.35, start_angle, start_angle + Math.max(DEG2RAD,total_angle * norm_value), false );
+			ctx.stroke();
+			ctx.lineWidth = 1;
+		}
 
 		return value;
 	},

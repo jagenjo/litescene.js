@@ -112,6 +112,9 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	var material = this.material || this._root.getMaterial();
 	var flags = 0;
 
+	if(!RIs)
+		return;
+
 	//resize the instances array to fit the new RIs (avoids using push)
 	var start_array_pos = instances.length;
 	instances.length = start_array_pos + RIs.length;
@@ -147,7 +150,8 @@ Cloner.prototype.updateRenderInstancesArray = function()
 
 	if(!total) 
 	{
-		this._RIs.length = 0;
+		if(this._RIs)
+			this._RIs.length = 0;
 		return;
 	}
 

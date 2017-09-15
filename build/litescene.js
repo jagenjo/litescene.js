@@ -232,9 +232,10 @@ WBin.create = function( origin, origin_class_name )
 * @method WBin.load
 * @param {UInt8Array} data_array 
 * @param {bool} skip_classname avoid getting the instance of the class specified in classname, and get only the lumps
+* @param {String} filename [optional] the filename where this wbin came from (important to mark resources)
 * @return {*} Could be an Object with all the lumps or an instance to the class specified in the WBin data
 */
-WBin.load = function( data_array, skip_classname )
+WBin.load = function( data_array, skip_classname, filename )
 {
 	if(!data_array || ( data_array.constructor !== Uint8Array && data_array.constructor !== ArrayBuffer ) )
 		throw("WBin data must be ArrayBuffer or Uint8Array");
@@ -305,11 +306,11 @@ WBin.load = function( data_array, skip_classname )
 	{
 		var ctor = WBin.classes[ header.classname ] || window[ header.classname ];
 		if(ctor && ctor.fromBinary)
-			return ctor.fromBinary(object);
+			return ctor.fromBinary( object, filename );
 		else if(ctor && ctor.prototype.fromBinary)
 		{
 			var inst = new ctor();
-			inst.fromBinary(object);
+			inst.fromBinary( object, filename );
 			return inst;
 		}
 		else
@@ -1521,6 +1522,11 @@ var LS = {
 		LEvent.trigger( LS, "reset" );
 	},
 
+	log: function()
+	{
+		console.log.call( console, arguments );
+	},
+
 	stringToValue: function( v )
 	{
 		var value = v;
@@ -1763,11 +1769,6 @@ var LSQ = {
 		if( v === undefined && target[ varname ] === undefined )
 			return null;
 		return v !== undefined ? v : target[ varname ];
-	},
-
-	log: function()
-	{
-		console.log.call( console, arguments );
 	}
 };
 
@@ -2436,6 +2437,7 @@ var GUI = {
 		backgroundColorOver: "#AAA",
 		selected: "#AAF",
 		unselected: "#AAA",
+		outline: "#000",
 		margin: 0.2
 	},
 
@@ -2802,7 +2804,7 @@ var GUI = {
 		{
 			if(content.constructor === Number)
 				content = content.toFixed(3);
-			else (content.constructor !== String)
+			else if (content.constructor !== String)
 				content = String(content);
 			ctx.fillStyle = this.GUIStyle.color;
 			ctx.font = (area[3]*0.75).toFixed(0) + "px " + this.GUIStyle.font;
@@ -3253,6 +3255,125 @@ var GUI = {
 		return value;
 	},
 
+	/**
+	* Renders an knob slider widget, returns the current value
+	* Remember: you must pass as value the same value returned by this function in order to work propertly
+	*
+	* @method Knob
+	* @param {Array} area [x,y,width,height]
+	* @param {Number} value the value to show in the slider
+	* @param {Number} bottom_value the minimum value for the slider
+	* @param {Number} top_value the maximum value for the slider
+	* @param {Number} steps [optional] the numeber of steps (if 0 then infinite)
+	* @param {Image|GL.Texture} content [optional] a texture or image to use as the knob
+	* @return {Number} the current value of the slider (will be different from value if it was clicked)
+	*/
+	Knob: function( area, value, bottom_value, top_value, steps, content )
+	{
+		if(!area)
+			throw("No area");
+		this.blockEventArea( area );
+
+		value = Number(value);
+		if(bottom_value === undefined)
+			bottom_value = 0;
+		if(top_value === undefined)
+			top_value = 1;
+		steps = steps || 0;
+		bottom_value = Number(bottom_value);
+		top_value = Number(top_value);
+
+		var ctx = this._ctx;
+		var is_over = LS.Input.isEventInRect( LS.Input.Mouse, area, this._offset );
+		if(is_over)
+		{
+			this._is_on_top_of_immediate_widget = true;
+			this.setCursor("pointer");
+		}
+		var mouse = LS.Input.current_click;
+		var clicked = false;
+		var range = top_value - bottom_value;
+		var norm_value = (value - bottom_value) / range;
+		if(norm_value < 0) norm_value = 0;
+		if(norm_value > 1) norm_value = 1;
+
+		var margin = (area[2]*this.GUIStyle.margin)
+		var start_angle = -Math.PI*0.75;
+		var total_angle = 1.5*Math.PI;
+
+		if( mouse )
+		{
+			clicked = LS.Input.isEventInRect( mouse, area, this._offset );
+			if(clicked)
+			{
+				var dx = LS.Input.Mouse.mousex - (area[0] + area[2] * 0.5) - this._offset[0];
+				var dy = LS.Input.Mouse.mousey - (area[1] + area[3] * 0.5) - this._offset[1];
+				//var angle = Math.atan2( dx, -dy ) / Math.PI;
+				var angle = ( Math.atan2( dx, -dy ) - start_angle ) / total_angle;
+				norm_value = angle;
+				//norm_value = ( (LS.Input.Mouse.mousey - this._offset[1]) - (area[1] + margin)) / (area[3] - margin*2);
+				//norm_value = 1 - norm_value; //reverse slider
+				if(norm_value < 0) norm_value = 0;
+				if(norm_value > 1) norm_value = 1;
+				value = norm_value * range + bottom_value;
+			}
+		}
+
+		if(steps)
+			norm_value = Math.round(norm_value * steps) / steps;
+
+		if( content !== undefined ) //texture
+		{
+			if( content !== null ) // in case we are loading the texture
+			{
+				var texture = null;
+				if(content.constructor === GL.Texture)
+				{
+					if(ctx.constructor === CanvasRenderingContext2D) //canvas 2D cannot render images
+						content = content.data && (content.data.constructor === HTMLImageElement || content.data.constructor === Image) ? content.data : null;
+					if(content)
+						texture = content;
+				}
+				else if(content.constructor === HTMLImageElement || content.constructor === Image)
+				{
+					if(ctx.constructor === CanvasRenderingContext2D)
+						texture = content;
+				}
+				if(texture)
+				{
+					ctx.save();
+					ctx.translate( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1] );
+					ctx.rotate( norm_value * total_angle + start_angle );
+					ctx.scale( area[3] / texture.height , area[3] / texture.height );
+					ctx.drawImage( texture, -texture.width * 0.5, -texture.height * 0.5 );
+					ctx.restore();
+				}
+			}
+		}
+		else
+		{
+			//bg
+			ctx.strokeStyle = this.GUIStyle.outline;
+			ctx.fillStyle = this.GUIStyle.backgroundColor;
+			ctx.beginPath();
+			ctx.arc( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1], area[3] * 0.45, 0, 2 * Math.PI, false );
+			ctx.fill();
+			ctx.stroke();
+
+			//slider
+			ctx.lineWidth = area[3]*0.1;
+			ctx.strokeStyle = is_over ? this.GUIStyle.selected : this.GUIStyle.unselected;
+			ctx.beginPath();
+
+			start_angle = -Math.PI*1.25;
+			ctx.arc( area[0] + area[2] * 0.5 + this._offset[0], area[1] + area[3] * 0.5 + this._offset[1], area[3] * 0.35, start_angle, start_angle + Math.max(DEG2RAD,total_angle * norm_value), false );
+			ctx.stroke();
+			ctx.lineWidth = 1;
+		}
+
+		return value;
+	},
+
 	//*
 	DragArea: function( area, value )
 	{
@@ -3384,6 +3505,8 @@ var ResourcesManager = {
 	skip_proxy_extensions: ["mp3","wav","ogg"], //this file formats should not be passed through the proxy
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
 	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
+
+	valid_resource_name_reg: /^[A-Za-z\d\s\/\_\-\.]+$/,
 
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
@@ -4199,6 +4322,11 @@ var ResourcesManager = {
 	{
 		if(!filename || !resource)
 			throw("registerResource missing filename or resource");
+
+		//test filename is valid (alphanumeric with spaces, dot or underscore and dash and slash
+		if( this.valid_resource_name_reg.test( filename ) == false )
+			console.warn( "invalid filename for resource: ", filename );
+
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
@@ -4308,8 +4436,17 @@ var ResourcesManager = {
 		this.resources[new_name] = res;
 		delete this.resources[ old_name ];
 
+		//inform everybody in the scene
 		if(!skip_event)
 			LS.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
+
+		//inform prefabs and packs...
+		for(var i in this.resources)
+		{
+			var alert_res = this.resources[i];
+			if( alert_res != res && alert_res.onResourceRenamed )
+				alert_res.onResourceRenamed( old_name, new_name, res );
+		}
 
 		//ugly: too hardcoded
 		if( this.meshes[old_name] ) {
@@ -4530,7 +4667,7 @@ LS.getTexture = function( name_or_texture ) {
 LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
 
 	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
-	var data = WBin.load( data );
+	var data = WBin.load( data, false, filename );
 	return data;
 },"binary");
 
@@ -6109,6 +6246,9 @@ LS.ShadersManager.registerSnippet("surface","\n\
 
 //Add some functions to the classes in LiteGL to fit better in the LiteScene engine
 
+GL.Texture.EXTENSION = "png";
+GL.Mesh.EXTENSION = "wbin";
+
 //when working with animations sometimes you want the bones to be referenced by node name and no node uid, because otherwise you cannot reuse
 //the same animation with different characters in the same scene.
 GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
@@ -6169,10 +6309,13 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 GL.Mesh.fromBinary = function( data_array )
 {
 	var o = null;
-	if(data_array.constructor == ArrayBuffer )
+	if( data_array.constructor == ArrayBuffer )
 		o = WBin.load( data_array );
 	else
 		o = data_array;
+
+	if( o.format )
+		GL.Mesh.uncompress( o );
 
 	var vertex_buffers = {};
 	for(var i in o.vertex_buffers)
@@ -6197,6 +6340,8 @@ GL.Mesh.fromBinary = function( data_array )
 	
 	return mesh;
 }
+
+GL.Mesh.enable_wbin_compression = true;
 
 GL.Mesh.prototype.toBinary = function()
 {
@@ -6249,12 +6394,168 @@ GL.Mesh.prototype.toBinary = function()
 	o.vertex_buffers = vertex_buffers;
 	o.index_buffers = index_buffers;
 
+	//compress wbin using the bounding
+	if( GL.Mesh.enable_wbin_compression ) //apply compression
+		GL.Mesh.compress( o );
+
 	//create pack file
 	var bin = WBin.create(o, "Mesh");
 
 	return bin;
 }
 
+GL.Mesh.compress = function( o )
+{
+	o.format = {
+		type: "bounding_compressed"
+	};
+
+	if(!o.vertex_buffers)
+		throw("buffers not found");
+
+	var min = BBox.getMin( o.bounding );
+	var max = BBox.getMax( o.bounding );
+	var range = vec3.sub( vec3.create(), max, min );
+
+	var vertices = o.vertices;
+	var new_vertices = new Uint16Array( vertices.length );
+	for(var i = 0; i < vertices.length; i+=3)
+	{
+		new_vertices[i] = ((vertices[i] - min[0]) / range[0]) * 65535;
+		new_vertices[i+1] = ((vertices[i+1] - min[1]) / range[1]) * 65535;
+		new_vertices[i+2] = ((vertices[i+2] - min[2]) / range[2]) * 65535;
+	}
+	o.vertices = new_vertices;		
+
+	if( o.normals )
+	{
+		var normals = o.normals;
+		var new_normals = new Uint8Array( normals.length );
+		var normals_range = new_normals.constructor == Uint8Array ? 255 : 65535;
+		for(var i = 0; i < normals.length; i+=3)
+		{
+			new_normals[i] = (normals[i] * 0.5 + 0.5) * normals_range;
+			new_normals[i+1] = (normals[i+1] * 0.5 + 0.5) * normals_range;
+			new_normals[i+2] = (normals[i+2] * 0.5 + 0.5) * normals_range;
+		}
+		o.normals = new_normals;
+	}
+
+	if( o.coords )
+	{
+		//compute uv bounding: [minu,minv,maxu,maxv]
+		var coords = o.coords;
+		var uvs_bounding = [10000,10000,-10000,-10000];
+		for(var i = 0; i < coords.length; i+=2)
+		{
+			var u = coords[i];
+			if( uvs_bounding[0] > u ) uvs_bounding[0] = u;
+			else if( uvs_bounding[2] < u ) uvs_bounding[2] = u;
+			var v = coords[i+1];
+			if( uvs_bounding[1] > v ) uvs_bounding[1] = v;
+			else if( uvs_bounding[3] < v ) uvs_bounding[3] = v;
+		}
+		o.format.uvs_bounding = uvs_bounding;
+
+		var new_coords = new Uint16Array( coords.length );
+		var range = [ uvs_bounding[2] - uvs_bounding[0], uvs_bounding[3] - uvs_bounding[1] ];
+		for(var i = 0; i < coords.length; i+=2)
+		{
+			new_coords[i] = ((coords[i] - uvs_bounding[0]) / range[0]) * 65535;
+			new_coords[i+1] = ((coords[i+1] - uvs_bounding[1]) / range[1]) * 65535;
+		}
+		o.coords = new_coords;
+	}
+
+	if( o.weights )
+	{
+		var weights = o.weights;
+		var new_weights = new Uint16Array( weights.length ); //using only one byte distorts the meshes a lot
+		var weights_range = new_weights.constructor == Uint8Array ? 255 : 65535;
+		for(var i = 0; i < weights.length; i+=4)
+		{
+			new_weights[i] = weights[i] * weights_range;
+			new_weights[i+1] = weights[i+1] * weights_range;
+			new_weights[i+2] = weights[i+2] * weights_range;
+			new_weights[i+3] = weights[i+3] * weights_range;
+		}
+		o.weights = new_weights;
+	}
+}
+
+GL.Mesh.uncompress = function( o )
+{
+	var bounding = o.bounding;
+	var min = BBox.getMin( bounding );
+	var max = BBox.getMax( bounding );
+	var range = vec3.sub( vec3.create(), max, min );
+
+	var format = o.format;
+
+	if(format.type == "bounding_compressed")
+	{
+		var inv8 = 1 / 255;
+		var inv16 = 1 / 65535;
+		var vertices = o.vertices;
+		var new_vertices = new Float32Array( vertices.length );
+		for( var i = 0, l = vertices.length; i < l; i += 3 )
+		{
+			new_vertices[i] = ((vertices[i] * inv16) * range[0]) + min[0];
+			new_vertices[i+1] = ((vertices[i+1] * inv16) * range[1]) + min[1];
+			new_vertices[i+2] = ((vertices[i+2] * inv16) * range[2]) + min[2];
+		}
+		o.vertices = new_vertices;		
+
+		if( o.normals && o.normals.constructor != Float32Array )
+		{
+			var normals = o.normals;
+			var new_normals = new Float32Array( normals.length );
+			var inormals_range = normals.constructor == Uint8Array ? inv8 : inv16;
+			for( var i = 0, l = normals.length; i < l; i += 3 )
+			{
+				new_normals[i] = (normals[i] * inormals_range) * 2.0 - 1.0;
+				new_normals[i+1] = (normals[i+1] * inormals_range) * 2.0 - 1.0;
+				new_normals[i+2] = (normals[i+2] * inormals_range) * 2.0 - 1.0;
+				var N = new_normals.subarray(i,i+3);
+				vec3.normalize(N,N);
+			}
+			o.normals = new_normals;
+		}
+
+		if( o.coords && format.uvs_bounding && o.coords.constructor != Float32Array )
+		{
+			var coords = o.coords;
+			var uvs_bounding = format.uvs_bounding;
+			var range = [ uvs_bounding[2] - uvs_bounding[0], uvs_bounding[3] - uvs_bounding[1] ];
+			var new_coords = new Float32Array( coords.length );
+			for( var i = 0, l = coords.length; i < l; i += 2 )
+			{
+				new_coords[i] = (coords[i] * inv16) * range[0] + uvs_bounding[0];
+				new_coords[i+1] = (coords[i+1] * inv16) * range[1] + uvs_bounding[1];
+			}
+			o.coords = new_coords;
+		}
+
+		//bones are already in Uint8 format so dont need to compress them further, but weights yes
+		if( o.weights && o.weights.constructor != Float32Array ) //do we really need to unpack them? what if we use them like this?
+		{
+			var weights = o.weights;
+			var new_weights = new Float32Array( weights.length );
+			var iweights_range = weights.constructor == Uint8Array ? inv8 : inv16;
+			for(var i = 0, l = weights.length; i < l; i += 4 )
+			{
+				new_weights[i] = weights[i] * iweights_range;
+				new_weights[i+1] = weights[i+1] * iweights_range;
+				new_weights[i+2] = weights[i+2] * iweights_range;
+				new_weights[i+3] = weights[i+3] * iweights_range;
+			}
+			o.weights = new_weights;
+		}
+
+	}
+	else
+		throw("unknown mesh format compression");
+}
 
 
 
@@ -9105,6 +9406,7 @@ function newStandardMaterial(o)
 		ignore_lights: false,
 		cast_shadows: true,
 		receive_shadows: true,
+//		flat_normals: false,
 		ignore_frustum: false
 	};
 
@@ -9307,6 +9609,9 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 	//flags
 	if( code_flags & FLAGS.ALPHA_TEST )
 		fs_code += "	if(o.Alpha < 0.5) discard;\n";
+
+	//if( code_flags & FLAGS.FLAT_NORMALS )
+	//	flat_normals += "";
 
 	//compile shader and cache
 	shader_code = new LS.ShaderCode();
@@ -9614,6 +9919,14 @@ uniform sampler2D emissive_texture;\n\
 uniform sampler2D reflectivity_texture;\n\
 uniform sampler2D detail_texture;\n\
 uniform sampler2D normal_texture;\n\
+\n\
+uniform vec4 u_color_texture_settings;\n\
+uniform vec4 u_opacity_texture_settings;\n\
+uniform vec4 u_specular_texture_settings;\n\
+uniform vec4 u_ambient_texture_settings;\n\
+uniform vec4 u_emissive_texture_settings;\n\
+uniform vec4 u_reflectivity_texture_settings;\n\
+uniform vec4 u_normal_texture_settings;\n\
 \n\
 \n\
 #pragma shaderblock \"light\"\n\
@@ -11509,6 +11822,7 @@ function Animation(o)
 		this.configure(o);
 }
 
+Animation.EXTENSION = "wbin";
 Animation.DEFAULT_SCENE_NAME = "@scene";
 Animation.DEFAULT_DURATION = 10;
 
@@ -12328,7 +12642,12 @@ Track.prototype.serialize = function()
 	if(this.data)
 	{
 		if(this.value_size <= 1)
-			o.data = this.data.concat(); //regular array, clone it
+		{
+			if(this.data.concat)
+				o.data = this.data.concat(); //regular array, clone it
+			else
+				o.data = new this.data.constructor( o.data ); //clone for typed arrays (weird, this should never happen but it does)
+		}
 		else //pack data
 		{
 			this.packData();
@@ -13261,340 +13580,7 @@ LS.Interpolators["texture"] = function( a, b, t, last )
 }
 
 
-/**
-* Prefab work in two ways: 
-* - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)
-* - When a node in the scene was created from a Prefab, the prefab is loaded so the associated resources are recovered, but the node structure is not modified.
-* 
-* @class Prefab
-* @constructor
-*/
-
-function Prefab(o)
-{
-	this.filename = null; //base file
-	this.fullpath = null; //full path 
-	this.resource_names = []; 
-	this.prefab_json = null;
-	this.prefab_data = null; //json object
-	this._resources_data = {}; //data as it was loaded from the WBin
-
-	if(o)
-		this.configure(o);
-}
-
-Prefab.version = "0.2"; //used to know where the file comes from 
-
-/**
-* assign the json object
-* @method setData
-* @param {object|SceneNode} data
-**/
-Prefab.prototype.setData = function(data)
-{
-	if( data && data.constructor === LS.SceneNode )
-		data = data.serialize();
-	data.object_class = "SceneNode";
-	this.prefab_data = data;
-	this.prefab_json = JSON.stringify( data );
-}
-
-/**
-* configure the prefab
-* @method configure
-* @param {*} data
-**/
-
-Prefab.prototype.configure = function(data)
-{
-	if(!data)
-		throw("No prefab data found");
-
-	if(data.hasOwnProperty("prefab_data"))
-	{
-		this.prefab_data = data.prefab_data;
-		this.prefab_json = data.prefab_json || JSON.stringify( this.prefab_data );
-	}
-	else
-	{
-		//read from WBin info
-		var prefab_json = data["@json"];
-		if(!prefab_json)
-		{
-			console.warn("No JSON found in prefab");
-			return;
-		}
-
-		var version = data["@version"]; //not used yet
-		this.prefab_json = prefab_json;
-		this.prefab_data = JSON.parse( prefab_json );
-	}
-
-	this.resource_names = data["@resources_name"] || data.resource_names || [];
-
-	//extract resource names
-	if(this.resource_names)
-	{
-		var resources = {};
-		for(var i in this.resource_names)
-		{
-			if(!version) //legacy
-				resources[ this.resource_names[i] ] = data[ this.resource_names[i] ];
-			else
-				resources[ this.resource_names[i] ] = data[ "@RES_" + i ];
-		}
-		this._resources_data = resources;
-	}
-
-	//store resources in ResourcesManager
-	this.processResources();
-}
-
-Prefab.fromBinary = function(data)
-{
-	if(data.constructor == ArrayBuffer)
-		data = WBin.load(data, true);
-
-	return new LS.Prefab(data);
-}
-
-//given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
-Prefab.prototype.processResources = function()
-{
-	if(!this._resources_data)
-		return;
-
-	var pack_filename = this.fullpath || this.filename;
-
-	var resources = this._resources_data;
-
-	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
-	//another one contained in this Prefab
-	for(var resname in resources)
-	{
-		if( LS.ResourcesManager.resources[ resname ] )
-			continue; //already loaded
-		LS.ResourcesManager.resources_being_processed[ resname ] = true;
-	}
-
-	//process and store in ResourcesManager
-	for(var resname in resources)
-	{
-		if( LS.ResourcesManager.resources[resname] )
-			continue; //already loaded
-
-		var resdata = resources[resname];
-		if(!resdata)
-		{
-			console.warn( "resource data in prefab is undefined, skipping it:" + resname );
-			continue;
-		}
-		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: pack_filename } );
-	}
-}
-
-/**
-* Creates an instance of the object inside the prefab
-* @method createObject
-* @return object contained 
-**/
-
-Prefab.prototype.createObject = function()
-{
-	if(!this.prefab_json)
-		throw("No prefab_json data found");
-
-	var conf_data = JSON.parse(this.prefab_json);
-
-	if(!conf_data)
-	{
-		console.error("Prefab data is null");
-		return null;
-	}
-
-	var node = new LS.SceneNode();
-	node.configure( conf_data );
-	LS.ResourcesManager.loadResources( node.getResources({},true) );
-
-	if(this.fullpath)
-		node.prefab = this.fullpath;
-
-	return node;
-}
-
-/**
-* to create a new prefab, it packs all the data an instantiates the resource
-* @method Prefab.createPrefab
-* @param {String} filename a name for this prefab (if wbin is not appended, it will)
-* @param {Object} node_data an object containing all the node data to store
-* @param {Array} resource_names_list an array with the name of the resources to store
-* @return object containing the prefab data ready to be converted to WBin (it also stores _original_data with the WBin)
-**/
-Prefab.createPrefab = function( filename, node_data, resource_names_list )
-{
-	if(!filename)
-		return;
-
-	if(!node_data)
-		throw("No node_data in prefab");
-
-	filename = filename.replace(/ /gi,"_");
-	resource_names_list = resource_names_list || [];
-
-	var prefab = new LS.Prefab();
-	var ext = LS.ResourcesManager.getExtension(filename);
-	if( ext != "wbin" )
-		filename += ".wbin";
-
-	//checkfilenames and rename them to short names
-	prefab.filename = filename;
-	prefab.resource_names = resource_names_list;
-
-	//assign data
-	prefab.setData( node_data );
-
-	//get all the resources and store them in a WBin
-	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version } );
-	prefab._original_data = bindata;
-
-	return prefab;
-}
-
-//Given a list of resources and some base data, it creates a WBin with all the data
-Prefab.packResources = function( resource_names_list, base_data )
-{
-	var to_binary = base_data || {};
-	var resource_names = [];
-
-	if(resource_names_list && resource_names_list.length)
-	{
-		for(var i = 0; i < resource_names_list.length; ++i)
-		{
-			var res_name = resource_names_list[i];
-			var resource = LS.ResourcesManager.resources[ res_name ];
-			if(!resource)
-				continue;
-
-			var data = null;
-			if(resource._original_data) //must be string or bytes
-				data = resource._original_data;
-			else
-			{
-				var data_info = LS.Resource.getDataToStore( resource );
-				if(!data_info)
-				{
-					console.warn("Data to store from resource is null, skipping: ", res_name );
-					continue;
-				}
-				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png)
-				if(data_info.extension && data_info.extension != LS.ResourcesManager.getExtension( res_name ))
-				{
-					console.warn("The resource extension has changed while saving, this could lead to problems: ", res_name, data_info.extension );
-					continue;
-				}
-				data = data_info.data;
-			}
-
-			if(!data)
-			{
-				console.warn("Wrong data in resource");
-				continue;
-			}
-
-			if(data.constructor === Blob || data.constructor === File)
-			{
-				console.warn("WBin does not support to store File or Blob, please convert to ArrayBuffer using FileReader");
-				continue;
-			}
-
-			to_binary["@RES_" + resource_names.length ] = data;
-			resource_names.push( res_name );
-		}
-	}
-
-	to_binary["@resources_name"] = resource_names;
-	return WBin.create( to_binary, "Prefab" );
-}
-
-Prefab.prototype.containsResources = function()
-{
-	return this.resource_names && this.resource_names.length > 0 ? true : false;
-}
-
-Prefab.prototype.updateFromNode = function( node, clear_uids )
-{
-	var data = node.serialize(true);
-	if(clear_uids)
-		LS.clearUIds(data); //remove UIDs
-	this.prefab_data = data;
-	this.prefab_json = JSON.stringify( data );
-}
-
-Prefab.prototype.flagResources = function()
-{
-	if(!this.resource_names)
-		return;
-
-	for(var i = 0; i < this.resource_names.length; ++i)
-	{
-		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
-		if(!resource)
-			continue;
-
-		resource.from_prefab = this.fullpath || this.filename;
-	}
-}
-
-Prefab.prototype.setResourcesLink = function( value )
-{
-	if(!this.resource_names)
-		return;
-
-	for(var i = 0; i < this.resource_names.length; ++i)
-	{
-		var res_name = this.resource_names[i];
-		var resource = LS.ResourcesManager.resources[ res_name ];
-		if(!resource)
-			continue;
-		if(value)
-			resource.from_prefab = value;
-		else
-			delete resource.from_prefab;
-	}
-}
-
-//search for nodes using this prefab and creates the nodes
-Prefab.prototype.applyToNodes = function( scene )
-{
-	scene = scene || LS.GlobalScene;	
-	var name = this.fullpath || this.filename;
-
-	for(var i = 0; i < scene._nodes.length; ++i)
-	{
-		var node = scene._nodes[i];
-		if(node.prefab != name)
-			continue;
-		node.reloadFromPrefab();
-	}
-}
-
-Prefab.prototype.getDataToStore = function()
-{
-	this.prefab_json = JSON.stringify( this.prefab_data );
-	var filename = this.fullpath || this.filename;
-
-	//prefab in json format
-	if( !(this.resource_names && this.resource_names.length) && filename && LS.RM.getExtension(filename) == "json" )
-		return JSON.stringify( { object_class:"Prefab", "@json": this.prefab_json } );
-
-	//return the binary data of the wbin
-	return LS.Prefab.packResources( this.resource_names, { "@json": this.prefab_json, "@version": LS.Prefab.version } );
-}
-
-LS.Prefab = Prefab;
-LS.registerResourceClass( Prefab );
-
+//defined before Prefab
 
 /**
 * Pack is an object that contain several resources, helpful when you want to carry a whole scene in one single file
@@ -13606,6 +13592,7 @@ LS.registerResourceClass( Prefab );
 function Pack(o)
 {
 	this.resource_names = []; 
+	this.metadata = null;
 	this._data = {}; //the original chunks from the WBin, including the @JSON and @resource_names
 	this._resources_data = {}; //every resource in arraybuffer format
 	if(o)
@@ -13718,8 +13705,13 @@ Pack.prototype.setResources = function( resource_names, mark_them )
 	}
 
 	//repack the pack info
-	this._original_data = LS.Pack.packResources( resource_names, { "@metadata": JSON.stringify( this.metadata ), "@version": LS.Pack.version } );
+	this._original_data = LS.Pack.packResources( resource_names, this.getBaseData() );
 	this._modified = true;
+}
+
+Pack.prototype.getBaseData = function()
+{
+	return { "@metadata": this.metadata, "@version": LS.Pack.version };
 }
 
 //adds to every resource in this pack info about where it came from (the pack)
@@ -13787,7 +13779,8 @@ Pack.createPack = function( filename, resource_names, extra_data, mark_them )
 	}
 
 	//create the WBIN in case this pack gets stored
-	var bindata = LS.Pack.packResources( resource_names, extra_data );
+	this.metadata = extra_data;
+	var bindata = LS.Pack.packResources( resource_names, this.getBaseData() );
 	pack._original_data = bindata;
 
 	return pack;
@@ -13859,13 +13852,420 @@ Pack.prototype.flagResources = function()
 
 Pack.prototype.getDataToStore = function()
 {
-	return LS.Pack.packResources( this.resource_names, { "@version": LS.Pack.version } );
+	return LS.Pack.packResources( this.resource_names, this.getBaseData() );
 }
 
+Pack.prototype.checkResourceNames = function()
+{
+	if(!this.resource_names)
+		return 0;
+
+	var changed = 0;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var old_name = res_name;
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		//avoid problematic symbols
+		if( LS.ResourcesManager.valid_resource_name_reg.test( res_name ) == false )
+		{
+			console.warn("Invalid filename in pack/prefab: ", res_name  );
+			res_name = res_name.replace( /[^a-zA-Z0-9-_\.\/]/g, '_' );
+		}
+
+		//ensure extensions
+		var extension = LS.ResourcesManager.getExtension( res_name );
+		if(!extension)
+		{
+			extension = resource.constructor.EXTENSION;
+			if(!extension)
+				console.warn("Resource without extension and not known default extension: ", res_name , resource.constructor.name );
+			else
+				res_name = res_name + "." + extension;
+		}
+
+		if(old_name == res_name)
+			continue;
+
+		this.resource_names[i] = res_name;
+		LS.ResourcesManager.renameResource( old_name, res_name ); //force change
+		changed++;
+	}
+
+	if(changed)
+		LS.ResourcesManager.resourceModified( this );
+
+	return changed;
+}
+
+Pack.prototype.onResourceRenamed = function( old_name, new_name, resource )
+{
+	if(!this.resource_names)
+		return;
+	var index = this.resource_names[ old_name ];
+	if( index == -1 )
+		return;
+	this.resource_names[ index ] = new_name;
+	LS.ResourcesManager.resourceModified( this );
+}
+
+Pack.prototype.containsResources = function()
+{
+	return this.resource_names && this.resource_names.length > 0 ? true : false;
+}
 
 LS.Pack = Pack;
 LS.registerResourceClass( Pack );
 
+
+
+/**
+* Prefab work in two ways: 
+* - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)
+* - When a node in the scene was created from a Prefab, the prefab is loaded so the associated resources are recovered, but the node structure is not modified.
+* 
+* @class Prefab
+* @constructor
+*/
+
+function Prefab( o, filename )
+{
+	this.filename = filename || null; //base file
+	this.fullpath = filename || null; //full path 
+	this.resource_names = []; 
+	this.prefab_json = null;
+	this.prefab_data = null; //json object
+	this._resources_data = {}; //data as it was loaded from the WBin
+
+	if(o)
+		this.configure(o);
+}
+
+Prefab.version = "0.2"; //used to know where the file comes from 
+
+/**
+* assign the json object
+* @method setData
+* @param {object|SceneNode} data
+**/
+Prefab.prototype.setData = function(data)
+{
+	if( data && data.constructor === LS.SceneNode )
+		data = data.serialize();
+	data.object_class = "SceneNode";
+	this.prefab_data = data;
+	this.prefab_json = JSON.stringify( data );
+}
+
+/**
+* configure the prefab
+* @method configure
+* @param {*} data
+**/
+
+Prefab.prototype.configure = function(data)
+{
+	if(!data)
+		throw("No prefab data found");
+
+	if(data.hasOwnProperty("prefab_data"))
+	{
+		this.prefab_data = data.prefab_data;
+		this.prefab_json = data.prefab_json || JSON.stringify( this.prefab_data );
+	}
+	else
+	{
+		//read from WBin info
+		var prefab_json = data["@json"];
+		if(!prefab_json)
+		{
+			console.warn("No JSON found in prefab");
+			return;
+		}
+
+		var version = data["@version"]; //not used yet
+		this.prefab_json = prefab_json;
+		this.prefab_data = JSON.parse( prefab_json );
+	}
+
+	this.resource_names = data["@resources_name"] || data.resource_names || [];
+
+	//extract resource names
+	if(this.resource_names)
+	{
+		var resources = {};
+		for(var i in this.resource_names)
+		{
+			if(!version) //legacy
+				resources[ this.resource_names[i] ] = data[ this.resource_names[i] ];
+			else
+				resources[ this.resource_names[i] ] = data[ "@RES_" + i ];
+		}
+		this._resources_data = resources;
+	}
+
+	//store resources in ResourcesManager
+	this.processResources();
+}
+
+Prefab.fromBinary = function( data, filename )
+{
+	if(data.constructor == ArrayBuffer)
+		data = WBin.load(data, true);
+
+	return new LS.Prefab( data, filename );
+}
+
+//given a list of resources that come from a Prefab (usually a wbin) it extracts, process and register them 
+Prefab.prototype.processResources = function()
+{
+	if(!this._resources_data)
+		return;
+
+	var pack_filename = this.fullpath || this.filename;
+
+	var resources = this._resources_data;
+
+	//block this resources of being loaded, this is to avoid chain reactions when a resource uses 
+	//another one contained in this Prefab
+	for(var resname in resources)
+	{
+		if( LS.ResourcesManager.resources[ resname ] )
+			continue; //already loaded
+		LS.ResourcesManager.resources_being_processed[ resname ] = true;
+	}
+
+	//process and store in ResourcesManager
+	for(var resname in resources)
+	{
+		if( LS.ResourcesManager.resources[resname] )
+			continue; //already loaded
+
+		var resdata = resources[resname];
+		if(!resdata)
+		{
+			console.warn( "resource data in prefab is undefined, skipping it:" + resname );
+			continue;
+		}
+		var resource = LS.ResourcesManager.processResource( resname, resdata, { is_local: true, from_prefab: pack_filename } );
+	}
+}
+
+/**
+* Creates an instance of the object inside the prefab
+* @method createObject
+* @return object contained 
+**/
+
+Prefab.prototype.createObject = function()
+{
+	if(!this.prefab_json)
+		throw("No prefab_json data found");
+
+	var conf_data = JSON.parse(this.prefab_json);
+
+	if(!conf_data)
+	{
+		console.error("Prefab data is null");
+		return null;
+	}
+
+	var node = new LS.SceneNode();
+	node.configure( conf_data );
+	LS.ResourcesManager.loadResources( node.getResources({},true) );
+
+	if(this.fullpath)
+		node.prefab = this.fullpath;
+
+	return node;
+}
+
+/**
+* to create a new prefab, it packs all the data an instantiates the resource
+* @method Prefab.createPrefab
+* @param {String} filename a name for this prefab (if wbin is not appended, it will)
+* @param {Object} node_data an object containing all the node data to store
+* @param {Array} resource_names_list an array with the name of the resources to store
+* @return object containing the prefab data ready to be converted to WBin (it also stores _original_data with the WBin)
+**/
+Prefab.createPrefab = function( filename, node_data, resource_names_list )
+{
+	if(!filename)
+		return;
+
+	if(!node_data)
+		throw("No node_data in prefab");
+
+	filename = filename.replace(/ /gi,"_");
+	resource_names_list = resource_names_list || [];
+
+	var prefab = new LS.Prefab();
+	var ext = LS.ResourcesManager.getExtension(filename);
+	if( ext != "wbin" )
+		filename += ".wbin";
+
+	//checkfilenames and rename them to short names
+	prefab.filename = filename;
+	prefab.resource_names = resource_names_list;
+
+	//assign data
+	prefab.setData( node_data );
+
+	//get all the resources and store them in a WBin
+	var bindata = LS.Prefab.packResources( resource_names_list, { "@json": prefab.prefab_json, "@version": Prefab.version }, this );
+	prefab._original_data = bindata;
+
+	return prefab;
+}
+
+//Given a list of resources and some base data, it creates a WBin with all the data
+Prefab.packResources = function( resource_names_list, base_data, from_prefab )
+{
+	var to_binary = base_data || {};
+	var resource_names = [];
+
+	if(resource_names_list && resource_names_list.length)
+	{
+		for(var i = 0; i < resource_names_list.length; ++i)
+		{
+			var res_name = resource_names_list[i];
+			var resource = LS.ResourcesManager.resources[ res_name ];
+			if(!resource)
+				continue;
+
+			var data = null;
+			if(resource._original_data) //must be string or bytes
+				data = resource._original_data;
+			else
+			{
+				var data_info = LS.Resource.getDataToStore( resource );
+				if(!data_info)
+				{
+					console.warn("Data to store from resource is null, skipping: ", res_name );
+					continue;
+				}
+				//HACK: resource could be renamed to extract the binary info (this happens in jpg textures that are converted to png) or meshes that add wbin
+				if(data_info.extension && data_info.extension != LS.ResourcesManager.getExtension( res_name ))
+				{
+					console.warn("The resource extension has changed while saving, this could lead to problems: ", res_name, data_info.extension );
+					//after this change all the references will be wrong
+					var old_name = res_name;
+					res_name = res_name + "." + data_info.extension;
+					resource_names_list[i] = res_name;
+					LS.GlobalScene.sendResourceRenamedEvent( old_name, res_name, resource ); //force change
+				}
+				data = data_info.data;
+			}
+
+			if(!data)
+			{
+				console.warn("Wrong data in resource");
+				continue;
+			}
+
+			if(data.constructor === Blob || data.constructor === File)
+			{
+				console.warn("WBin does not support to store File or Blob, please convert to ArrayBuffer using FileReader");
+				continue;
+			}
+
+			to_binary["@RES_" + resource_names.length ] = data;
+			resource_names.push( res_name );
+		}
+	}
+
+	to_binary["@resources_name"] = resource_names;
+	return WBin.create( to_binary, "Prefab" );
+}
+
+Prefab.prototype.updateFromNode = function( node, clear_uids )
+{
+	var data = node.serialize(true);
+	if(clear_uids)
+		LS.clearUIds(data); //remove UIDs
+	this.prefab_data = data;
+	this.prefab_json = JSON.stringify( data );
+}
+
+Prefab.prototype.flagResources = function()
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+
+		resource.from_prefab = this.fullpath || this.filename;
+	}
+}
+
+Prefab.prototype.setResourcesLink = function( value )
+{
+	if(!this.resource_names)
+		return;
+
+	for(var i = 0; i < this.resource_names.length; ++i)
+	{
+		var res_name = this.resource_names[i];
+		var resource = LS.ResourcesManager.resources[ res_name ];
+		if(!resource)
+			continue;
+		if(value)
+			resource.from_prefab = value;
+		else
+			delete resource.from_prefab;
+	}
+}
+
+//search for nodes using this prefab and creates the nodes
+Prefab.prototype.applyToNodes = function( scene )
+{
+	scene = scene || LS.GlobalScene;	
+	var name = this.fullpath || this.filename;
+
+	for(var i = 0; i < scene._nodes.length; ++i)
+	{
+		var node = scene._nodes[i];
+		if(node.prefab != name)
+			continue;
+		node.reloadFromPrefab();
+	}
+}
+
+Prefab.prototype.getDataToStore = function()
+{
+	this.prefab_json = JSON.stringify( this.prefab_data );
+	var filename = this.fullpath || this.filename;
+
+	//prefab in json format
+	if( !(this.resource_names && this.resource_names.length) && filename && LS.RM.getExtension(filename) == "json" )
+		return JSON.stringify( { object_class: LS.getObjectClassName( this ), "@json": this.prefab_json } );
+
+	//return the binary data of the wbin
+	return LS.Prefab.packResources( this.resource_names, this.getBaseData(), this );
+}
+
+Prefab.prototype.getBaseData = function()
+{
+	return { "@json": this.prefab_json, "@version": LS.Prefab.version };
+}
+
+//inheritet methods from Pack
+Prefab.prototype.containsResources = Pack.prototype.containsResources;
+Prefab.prototype.onResourceRenamed = Pack.prototype.onResourceRenamed;
+Prefab.prototype.checkResourceNames = Pack.prototype.checkResourceNames;
+Prefab.prototype.setResources = Pack.prototype.setResources;
+
+LS.Prefab = Prefab;
+LS.registerResourceClass( Prefab );
 
 
 /**
@@ -15944,7 +16344,8 @@ function FXStack( o )
 
 	this._uniforms = { u_aspect: 1, u_viewport: vec2.create(), u_iviewport: vec2.create(), u_texture: 0, u_depth_texture: 1, u_random: vec2.create() };
 
-	this._passes = []; //WIP
+	this._passes = null;
+	this._must_update_passes = true;
 
 	if(o)
 		this.configure(o);
@@ -16018,11 +16419,10 @@ FXStack.available_fx = {
 	},
 	"aberration": {
 		name: "Chromatic Aberration",
-		pass: "before",
+		break_pass: true,
 		uniforms: {
 			difraction: { name: "u_difraction", type: "float", value: 1 }
 		},
-		next_pass: true,
 		code: "color.x = texture2D(u_texture, uv - to_center * 0.001 * u_difraction@ ).x;" + 
 			"color.z = texture2D(u_texture, uv + to_center * 0.001 * u_difraction@ ).z;"
 	},
@@ -16048,6 +16448,7 @@ FXStack.available_fx = {
 	},
 	"lens": {
 		name: "Lens Distortion",
+		break_pass: true,
 		uniforms: {
 			lens_k: { name: "u_lens_k", type: "float", value: -0.15 },
 			lens_kcube: { name: "u_lens_kcube", type: "float", value: 0.8 },
@@ -16066,13 +16467,14 @@ FXStack.available_fx = {
 	},
 	"warp": {
 		name: "Warp",
+		break_pass: true,
 		uniforms: {
 			warp_amp: { name: "u_warp_amp", type: "float", value: 0.01, step: 0.001 },
-			warp_offset_x: { name: "u_warp_offset_x", type: "float", value: 0, step: 0.001 },
-			warp_offset_y: { name: "u_warp_offset_y", type: "float", value: 0, step: 0.001 },
+			warp_offset: { name: "u_warp_offset", type: "vec2", value: [0,0], step: 0.001 },
+			warp_scale: { name: "u_warp_scale", type: "vec2", value: [1,1], step: 0.001 },
 			warp_texture: { name: "u_warp_texture", type: "sampler2D", widget: "Texture", value: "" }
 		},
-		uv_code:"uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv + vec2(u_warp_offset_x@, u_warp_offset_y@) ).xy - vec2(0.5));"
+		uv_code:"uv = uv + u_warp_amp@ * (texture2D( u_warp_texture@, uv * u_warp_scale@ + u_warp_offset@ ).xy - vec2(0.5));"
 	},
 	"LUT": {
 		name: "LUT",
@@ -16100,10 +16502,10 @@ FXStack.available_fx = {
 	},
 	"edges": {
 		name: "Edges",
+		break_pass: true,
 		uniforms: {
 			"Edges factor": { name: "u_edges_factor", type: "float", value: 1 }
 		},
-		next_pass: true,
 		code:"vec4 color@ = texture2D(u_texture, uv );\n\
 				vec4 color_up@ = texture2D(u_texture, uv + vec2(0., u_iviewport.y));\n\
 				vec4 color_right@ = texture2D(u_texture, uv + vec2(u_iviewport.x,0.));\n\
@@ -16130,15 +16532,11 @@ FXStack.available_fx = {
 	"ditherBN": {
 		name: "dither B/N",
 		functions: ["dither"],
-		uniforms: {
-		},
 		code:"color.xyz = vec3( dither( color.x ) );"
 	},
 	"dither": {
 		name: "Dither",
 		functions: ["dither"],
-		uniforms: {
-		},
 		code:"color.xyz = vec3( dither( color.x ), dither( color.y ), dither( color.z ) );"
 	},
 	"gamma": {
@@ -16308,6 +16706,7 @@ FXStack.prototype.configure = function(o)
 	this.apply_fxaa = !!o.apply_fxaa;
 	if(o.fx)
 		this.fx = o.fx.concat();
+	this._must_update_passes = true;
 }
 
 FXStack.prototype.serialize = FXStack.prototype.toJSON = function()
@@ -16371,6 +16770,7 @@ FXStack.prototype.addFX = function( name )
 		return;
 	}
 	this.fx.push({ name: name });
+	this._must_update_passes = true;
 }
 
 //returns the Nth FX in the FX Stack
@@ -16396,6 +16796,7 @@ FXStack.prototype.moveFX = function( fx, offset )
 		this.fx.splice(index,0,fx);
 	else
 		this.fx.push(fx);
+	this._must_update_passes = true;
 }
 
 //removes an FX from the FX stack
@@ -16407,9 +16808,300 @@ FXStack.prototype.removeFX = function( fx )
 			continue;
 
 		this.fx.splice(i,1);
+		this._must_update_passes = true;
 		return;
 	}
 }
+
+//extract the number of passes to do according to the fx enabled
+FXStack.prototype.buildPasses = function()
+{
+	var fxs = this.fx;
+
+	var passes = [];
+	var current_pass = {
+		fxs:[],
+		uniforms:{},
+		shader:null,
+		first_fx_id: 0
+	};
+
+	var uv_code = "";
+	var color_code = "";
+	var uniforms_code = "";
+	var included_functions = {};
+
+	var is_first = true;
+
+	var fx_id = 0;
+	for(var i = 0; i < fxs.length; i++)
+	{
+		//the FX settings
+		var fx = fxs[i];
+		fx_id = i;
+
+		//the FX definition
+		var fx_info = FXStack.available_fx[ fx.name ];
+		if(!fx_info)
+			continue;
+
+		//break this pass
+		if( fx_info.break_pass && !is_first)
+		{
+			current_pass.uv_code = uv_code;
+			current_pass.color_code = color_code;
+			current_pass.uniforms_code = uniforms_code;
+			current_pass.included_functions = included_functions;
+			passes.push(current_pass);
+			this.buildPassShader( current_pass );
+
+			uv_code = "";
+			color_code = "";
+			uniforms_code = "";
+			included_functions = {};
+
+			current_pass = {
+				fxs:[],
+				uniforms:{},
+				first_fx_id: fx_id
+			};
+			is_first = true;
+		}
+		else
+			is_first = false;
+
+		if(fx_info.functions)
+			for(var z in fx_info.functions)
+				included_functions[ fx_info.functions[z] ] = true;
+		if( fx_info.code )
+			color_code += fx_info.code.split("@").join( fx_id ) + ";\n";
+		if( fx_info.uv_code )
+			uv_code += fx_info.uv_code.split("@").join( fx_id ) + ";\n";
+
+		if(fx_info.uniforms)
+			for(var j in fx_info.uniforms)
+			{
+				var uniform = fx_info.uniforms[j];
+				var varname = uniform.name + fx_id;
+				uniforms_code += "uniform " + uniform.type + " " + varname + ";\n";
+			}
+
+		current_pass.fxs.push( fx );
+	}
+
+	if(!is_first)
+	{
+		current_pass.uv_code = uv_code;
+		current_pass.color_code = color_code;
+		current_pass.included_functions = included_functions;
+		passes.push( current_pass );
+		this.buildPassShader( current_pass );
+	}
+
+	this._passes = passes;
+}
+
+FXStack.prototype.buildPassShader = function( pass )
+{
+	var functions_code = "";
+	for(var i in pass.included_functions)
+	{
+		var func = FXStack.available_functions[ i ];
+		if(!func)
+		{
+			console.error("FXStack: Function not found: " + i);
+			continue;
+		}
+		functions_code += func + "\n";
+	}
+
+	var fullcode = "\n\
+		#extension GL_OES_standard_derivatives : enable\n\
+		precision highp float;\n\
+		#define color3 vec3\n\
+		#define color4 vec4\n\
+		uniform sampler2D u_texture;\n\
+		uniform sampler2D u_depth_texture;\n\
+		varying vec2 v_coord;\n\
+		uniform vec2 u_viewport;\n\
+		uniform vec2 u_iviewport;\n\
+		uniform float u_aspect;\n\
+		uniform vec2 u_depth_range;\n\
+		uniform vec2 u_random;\n\
+		vec2 uv;\n\
+		" + pass.uniforms_code + "\n\
+		" + functions_code + "\n\
+		void main() {\n\
+			uv = v_coord;\n\
+			vec2 to_center = vec2(0.5) - uv;\n\
+			float dist_to_center = length(to_center);\n\
+			" + pass.uv_code + "\n\
+			vec4 color = texture2D(u_texture, uv);\n\
+			float temp = 0.0;\n\
+			" + pass.color_code + "\n\
+			gl_FragColor = color;\n\
+		}\n\
+		";
+
+	this._must_update_passes = false;
+	pass.shader = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, fullcode );
+	return pass.shader;
+}
+
+
+FXStack.prototype.applyFX = function( input_texture, output_texture, options )
+{
+	var color_texture = input_texture;
+	var depth_texture = options.depth_texture;
+
+	var global_uniforms = this._uniforms;
+	global_uniforms.u_viewport[0] = color_texture.width;
+	global_uniforms.u_viewport[1] = color_texture.height;
+	global_uniforms.u_iviewport[0] = 1 / color_texture.width;
+	global_uniforms.u_iviewport[1] = 1 / color_texture.height;
+	global_uniforms.u_aspect = color_texture.width / color_texture.height;
+	global_uniforms.u_random[0] = Math.random();
+	global_uniforms.u_random[1] = Math.random();
+
+	if(!this._passes || this._must_update_passes )
+		this.buildPasses();
+
+	if(!this._passes.length)
+	{
+		if(output_texture)
+			input_texture.copyTo( output_texture );
+		else
+		{
+			var fxaa_shader = GL.Shader.getFXAAShader();
+			fxaa_shader.setup();
+			input_texture.toViewport( this.apply_fxaa ? fxaa_shader : null );
+		}
+		return;
+	}
+
+	var w = output_texture ? output_texture.width : input_texture.width;
+	var h = output_texture ? output_texture.height : input_texture.height;
+
+	var origin_texture = GL.Texture.getTemporary( w, h, { type: input_texture.type, format: input_texture.format } );
+	var target_texture = GL.Texture.getTemporary( w, h, { type: input_texture.type, format: input_texture.format } );
+
+	input_texture.copyTo( origin_texture );
+
+	var fx_id = 0;
+	for(var i = 0; i < this._passes.length; i++)
+	{
+		var pass = this._passes[i];
+		var texture_slot = 2;
+		var uniforms = pass.uniforms;
+
+		//gather uniform values
+		for(var j = 0; j < pass.fxs.length; ++j)
+		{
+			var fx = pass.fxs[j];
+			fx_id = pass.first_fx_id + j;
+
+			//the FX definition
+			var fx_info = FXStack.available_fx[ fx.name ];
+			if(!fx_info)
+				continue;
+
+			if(!fx_info.uniforms)
+				continue;
+
+			for(var k in fx_info.uniforms)
+			{
+				var uniform = fx_info.uniforms[k];
+				var varname = uniform.name + fx_id;
+				if(uniform.type == "sampler2D")
+				{
+					uniforms[ varname ] = texture_slot;
+					var tex = this.getTexture( fx[k] );
+					if(tex)
+					{
+						tex.bind( texture_slot );
+						if(uniform.filter == "nearest")
+						{
+							gl.texParameteri( tex.texture_type, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
+							gl.texParameteri( tex.texture_type, gl.TEXTURE_MIN_FILTER, gl.NEAREST );
+						}
+						if(uniform.wrap == "clamp")
+						{
+							gl.texParameteri( tex.texture_type, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE );
+							gl.texParameteri( tex.texture_type, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE );
+						}
+					}
+					else
+					{
+						//bind something to avoid problems
+						tex = LS.Renderer._missing_texture;
+						if(tex)
+							tex.bind( texture_slot );
+					}
+					texture_slot++;
+				}
+				else
+					uniforms[ varname ] = fx[j] !== undefined ? fx[j] : uniform.value;
+			}
+		}
+
+		//apply pass
+		var shader = pass.shader;
+		//error compiling shader
+		if(!shader)
+		{
+			input_texture.toViewport(); //what about output_texture?
+			break;
+		}
+
+		//set the depth texture for some FXs like fog or depth
+		if(shader.hasUniform("u_depth_texture"))
+		{
+			depth_texture.bind(1);
+			if(depth_texture.near_far_planes)
+				uniforms.u_depth_range = depth_texture.near_far_planes;
+		}
+
+		//apply FX and accumulate in secondary texture ***************
+		shader.uniforms( global_uniforms );
+		origin_texture.copyTo( target_texture, shader, uniforms );
+
+		//swap
+		var tmp = origin_texture;
+		origin_texture = target_texture;
+		target_texture = tmp;
+	}
+
+	//to the screen or the output_texture
+	var final_texture = target_texture;
+	final_texture.setParameter( gl.TEXTURE_MAG_FILTER, this.filter ? gl.LINEAR : gl.NEAREST );
+	final_texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
+
+	//to screen
+	if( this.apply_fxaa )
+	{
+		var fx_aa_shader = GL.Shader.getFXAAShader();
+		fx_aa_shader.setup();
+		if(!output_texture)
+			final_texture.toViewport( fx_aa_shader );
+		else
+			final_texture.copyTo( output_texture, fx_aa_shader );
+	}
+	else
+	{
+		if(!output_texture)
+			final_texture.toViewport();
+		else
+		{
+			shader.uniforms( uniforms );
+			final_texture.copyTo( output_texture, shader );
+		}
+	}
+
+	//release textures back to the pool
+	GL.Texture.releaseTemporary( origin_texture );
+	GL.Texture.releaseTemporary( target_texture );
+}
+
 
 //executes the FX stack in the input texture and outputs the result in the output texture (or the screen)
 FXStack.prototype.applyFX = function( input_texture, output_texture, options )
@@ -16419,20 +17111,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 
 	var fxs = this.fx;
 
-	//shadercode: TODO, do this in a lazy way
-	var key = "";
-	var update_shader = true;
-	for(var i = 0; i < fxs.length; i++)
-		key += fxs[i].name + "|";
-	if(key == this._last_shader_key)
-		update_shader = false;
-	this._last_shader_key = key;
-
-	var uv_code = "";
-	var color_code = "";
-	var included_functions = {};
-	var uniforms_code = "";
-	var texture_slot = 2;
+	var update_shader = this._must_update_passes;
 
 	var uniforms = this._uniforms;
 	uniforms.u_viewport[0] = color_texture.width;
@@ -16443,17 +17122,24 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	uniforms.u_random[0] = Math.random();
 	uniforms.u_random[1] = Math.random();
 
-	//var passes = [];
-	//var current_pass = {};
+	var uv_code = "";
+	var color_code = "";
+	var included_functions = {};
+	var uniforms_code = "";
+	var texture_slot = 2;
 
 	var fx_id = 0;
 	for(var i = 0; i < fxs.length; i++)
 	{
+		//the FX settings
 		var fx = fxs[i];
 		fx_id = i;
+
+		//the FX definition
 		var fx_info = FXStack.available_fx[ fx.name ];
 		if(!fx_info)
 			continue;
+
 		if(update_shader)
 		{
 			if(fx_info.functions)
@@ -16464,6 +17150,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 			if( fx_info.uv_code )
 				uv_code += fx_info.uv_code.split("@").join( fx_id ) + ";\n";
 		}
+
 		if(fx_info.uniforms)
 			for(var j in fx_info.uniforms)
 			{
@@ -16669,13 +17356,14 @@ FXStack.prototype.setPropertyValueFromPath = function( path, value, offset )
 		fx[ varname ] = value;
 }
 
+//static method to register new FX in the system
 FXStack.registerFX = function( name, fx_info )
 {
 	if( !fx_info.name )
 		fx_info.name = name;
 	if( fx_info.code === undefined )
 		throw("FXStack must have a code");
-	if( fx_info.uniforms && fx_info.code && fx_info.code.indexOf("@") )
+	if( fx_info.uniforms && Object.keys( fx_info.uniforms ) && fx_info.code && fx_info.code.indexOf("@") == -1 )
 		console.warn("FXStack using uniforms must use the character '@' at the end of every use to avoid collisions with other variables with the same name.");
 
 	FXStack.available_fx[ name ] = fx_info;
@@ -24107,6 +24795,8 @@ function Camera(o)
 
 	this._background_color = vec4.fromValues(0,0,0,1);
 
+	this._use_custom_projection_matrix = false;
+
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
@@ -24417,6 +25107,35 @@ Object.defineProperty( Camera.prototype, "orthographic", {
 });
 
 /**
+* The view matrix of the camera 
+* @property projection_matrix {vec4}
+*/
+Object.defineProperty( Camera.prototype, "view_matrix", {
+	get: function() {
+		return this._view_matrix;
+	},
+	set: function(v) {
+		this.fromViewMatrix(v);
+	},
+	enumerable: true
+});
+
+/**
+* The projection matrix of the camera (cannot be set manually, use setCustomProjectionMatrix instead)
+* @property projection_matrix {mat4}
+*/
+Object.defineProperty( Camera.prototype, "projection_matrix", {
+	get: function() {
+		return this._projection_matrix;
+	},
+	set: function(v) {
+		throw("projection matrix cannot be set manually, use setCustomProjectionMatrix instead.");
+	},
+	enumerable: true
+});
+
+
+/**
 * The viewport in normalized coordinates (left,bottom, width, height)
 * @property viewport {vec4}
 */
@@ -24706,7 +25425,7 @@ Camera.prototype.updateMatrices = function( force )
 		return;
 
 	//update projection
-	if( this._must_update_projection_matrix || force )
+	if( (this._must_update_projection_matrix || force) && !this._use_custom_projection_matrix )
 	{
 		if(this.type == Camera.ORTHOGRAPHIC)
 			mat4.ortho(this._projection_matrix, -this._frustum_size*this._final_aspect*0.5, this._frustum_size*this._final_aspect*0.5, -this._frustum_size*0.5, this._frustum_size*0.5, this._near, this._far);
@@ -25227,7 +25946,12 @@ Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 	this.setOrientation(q);
 }
 
-Camera.prototype.fromViewmatrix = function(mat)
+/**
+* uses a view matrix to compute the eye,center,up vectors
+* @method fromViewMatrix
+* @param {mat4} mat the given view matrix
+*/
+Camera.prototype.fromViewMatrix = function(mat)
 {
 	var M = mat4.invert( mat4.create(), mat );
 	this.eye = vec3.transformMat4(vec3.create(),vec3.create(),M);
@@ -25235,6 +25959,28 @@ Camera.prototype.fromViewmatrix = function(mat)
 	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
 	this._must_update_view_matrix = true;
 }
+
+/**
+* overwrites the current projection matrix with a given one (it also blocks the camera from modifying the projection matrix)
+* @method setCustomProjectionMatrix
+* @param {mat4} mat the given projection matrix (or null to disable it)
+*/
+Camera.prototype.setCustomProjectionMatrix = function( mat )
+{
+	if(!v)
+	{
+		this._use_custom_projection_matrix = false;
+		this._must_update_projection_matrix = true;
+	}
+	else
+	{
+		this._use_custom_projection_matrix = true;
+		this._projection_matrix.set( mat );
+		this._must_update_projection_matrix = false;
+		mat4.multiply( this._viewprojection_matrix, this._projection_matrix, this._view_matrix );
+	}
+}
+
 
 /**
 * Sets the viewport in pixels (using the gl.canvas as reference)
@@ -26096,7 +26842,7 @@ function Light(o)
 
 	//light uniforms
 	this._uniforms = {
-		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, index of pass, num passes
+		u_light_info: vec4.fromValues( this._type, this._spot_cone ? 1 : 0, 0, 0 ), //light type, spot cone, index of pass, num passes
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
@@ -26180,8 +26926,8 @@ Object.defineProperty( Light.prototype, 'color', {
 Object.defineProperty( Light.prototype, 'spot_cone', {
 	get: function() { return this._spot_cone; },
 	set: function(v) { 
-		this._uniforms.u_light_info[1] = v;
 		this._spot_cone = v;
+		this._uniforms.u_light_info[1] = v ? 1 : 0;
 	},
 	enumerable: true
 });
@@ -30704,6 +31450,10 @@ function SceneInclude( o )
 SceneInclude.max_recursive_level = 32;
 SceneInclude.recursive_level = 0;
 
+//which events from the scene should be propagated to the included scene...
+SceneInclude.propagable_events = ["finish","beforeRenderMainPass","beforeRenderInstances","afterRenderInstances","readyToRender","renderGUI","renderHelpers"];
+SceneInclude.fx_propagable_events = ["enableFrameContext","showFrameContext"];
+
 Object.defineProperty( SceneInclude.prototype, "scene_path", {
 	set: function(v){ 
 		if(this._scene_path == v)
@@ -30732,9 +31482,6 @@ SceneInclude["@scene_path"] = { type: LS.TYPES.SCENE, widget: "resource" };
 
 SceneInclude.icon = "mini-icon-teapot.png";
 
-//which events from the scene should be propagated to the included scene...
-SceneInclude.propagable_events = ["finish","beforeRenderMainPass","beforeRenderInstances","afterRenderInstances"];
-SceneInclude.fx_propagable_events = ["enableFrameContext","showFrameContext"];
 
 SceneInclude.prototype.onAddedToScene = function(scene)
 {
@@ -30781,6 +31528,17 @@ SceneInclude.prototype.onUpdate = function(e, dt)
 	SceneInclude.recursive_level -= 1;
 }
 
+//propagate events
+SceneInclude.prototype.onEvent = function(e,p)
+{
+	if(!this.enabled || !this.send_events || !this._scene_path)
+		return;
+
+	SceneInclude.recursive_level += 1;
+	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
+		LEvent.trigger( this._scene, e, p );
+	SceneInclude.recursive_level -= 1;
+}
 
 SceneInclude.prototype.updateBindings = function()
 {
@@ -30848,18 +31606,6 @@ SceneInclude.prototype.onCollectData = function()
 	{
 		scene._cameras.push.apply( scene._cameras, inner_scene._cameras);
 	}
-}
-
-//propagate events
-SceneInclude.prototype.onEvent = function(e,p)
-{
-	if(!this.enabled || !this.send_events || !this._scene_path)
-		return;
-
-	SceneInclude.recursive_level += 1;
-	if(SceneInclude.recursive_level < SceneInclude.max_recursive_level )
-		LEvent.trigger( this._scene, e, p );
-	SceneInclude.recursive_level -= 1;
 }
 
 SceneInclude.prototype.load = function()
@@ -34777,6 +35523,9 @@ PlayAnimation.prototype.getDuration = function()
 */
 PlayAnimation.prototype.play = function()
 {
+	if(!this._root || !this._root.scene)
+		console.error("cannot play an animation if the component doesnt belong to a node in a scene");
+
 	this.playing = true;
 
 	this.current_time = 0;
@@ -36400,6 +37149,9 @@ Cloner.prototype.onCollectInstances = function(e, instances)
 	var material = this.material || this._root.getMaterial();
 	var flags = 0;
 
+	if(!RIs)
+		return;
+
 	//resize the instances array to fit the new RIs (avoids using push)
 	var start_array_pos = instances.length;
 	instances.length = start_array_pos + RIs.length;
@@ -36435,7 +37187,8 @@ Cloner.prototype.updateRenderInstancesArray = function()
 
 	if(!total) 
 	{
-		this._RIs.length = 0;
+		if(this._RIs)
+			this._RIs.length = 0;
 		return;
 	}
 
@@ -40461,6 +41214,9 @@ SceneNode.prototype.reloadFromPrefab = function()
 	var prefab = LS.ResourcesManager.resources[ this.prefab ];
 	if(!prefab)
 		return;
+
+	if( prefab.constructor !== LS.Prefab )
+		throw("prefab must be a LS.Prefab class");
 
 	//apply info
 	this.removeAllChildren();

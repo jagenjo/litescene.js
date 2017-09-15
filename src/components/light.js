@@ -145,7 +145,7 @@ function Light(o)
 
 	//light uniforms
 	this._uniforms = {
-		u_light_info: vec4.fromValues( this._type, 0, 0, 0 ), //light type, spot cone, index of pass, num passes
+		u_light_info: vec4.fromValues( this._type, this._spot_cone ? 1 : 0, 0, 0 ), //light type, spot cone, index of pass, num passes
 		u_light_front: this._front,
 		u_light_angle: vec4.fromValues( this.angle * DEG2RAD, this.angle_end * DEG2RAD, Math.cos( this.angle * DEG2RAD * 0.5 ), Math.cos( this.angle_end * DEG2RAD * 0.5 ) ),
 		u_light_position: this._position,
@@ -229,8 +229,8 @@ Object.defineProperty( Light.prototype, 'color', {
 Object.defineProperty( Light.prototype, 'spot_cone', {
 	get: function() { return this._spot_cone; },
 	set: function(v) { 
-		this._uniforms.u_light_info[1] = v;
 		this._spot_cone = v;
+		this._uniforms.u_light_info[1] = v ? 1 : 0;
 	},
 	enumerable: true
 });

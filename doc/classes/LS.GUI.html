@@ -250,6 +250,10 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_Knob">Knob</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_Label">Label</a>
 
                             </li>
@@ -319,7 +323,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l107"><code>..&#x2F;src&#x2F;gui.js:107</code></a>
+        <a href="../files/.._src_gui.js.html#l108"><code>..&#x2F;src&#x2F;gui.js:108</code></a>
         </p>
 
 
@@ -386,7 +390,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l342"><code>..&#x2F;src&#x2F;gui.js:342</code></a>
+        <a href="../files/.._src_gui.js.html#l343"><code>..&#x2F;src&#x2F;gui.js:343</code></a>
         </p>
 
 
@@ -460,7 +464,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l401"><code>..&#x2F;src&#x2F;gui.js:401</code></a>
+        <a href="../files/.._src_gui.js.html#l402"><code>..&#x2F;src&#x2F;gui.js:402</code></a>
         </p>
 
 
@@ -551,7 +555,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l90"><code>..&#x2F;src&#x2F;gui.js:90</code></a>
+        <a href="../files/.._src_gui.js.html#l91"><code>..&#x2F;src&#x2F;gui.js:91</code></a>
         </p>
 
 
@@ -623,7 +627,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l168"><code>..&#x2F;src&#x2F;gui.js:168</code></a>
+        <a href="../files/.._src_gui.js.html#l169"><code>..&#x2F;src&#x2F;gui.js:169</code></a>
         </p>
 
 
@@ -674,7 +678,7 @@ To change colors of the immediate GUI check the LS.GUI.GUIStyle</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l40"><code>..&#x2F;src&#x2F;gui.js:40</code></a>
+        <a href="../files/.._src_gui.js.html#l41"><code>..&#x2F;src&#x2F;gui.js:41</code></a>
         </p>
 
 
@@ -713,7 +717,7 @@ Any HTML must be attached to this element, otherwise it may have problems with t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l215"><code>..&#x2F;src&#x2F;gui.js:215</code></a>
+        <a href="../files/.._src_gui.js.html#l216"><code>..&#x2F;src&#x2F;gui.js:216</code></a>
         </p>
 
 
@@ -765,7 +769,7 @@ Any HTML must be attached to this element, otherwise it may have problems with t
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l706"><code>..&#x2F;src&#x2F;gui.js:706</code></a>
+        <a href="../files/.._src_gui.js.html#l707"><code>..&#x2F;src&#x2F;gui.js:707</code></a>
         </p>
 
 
@@ -852,6 +856,143 @@ Remember: you must pass as value the same value returned by this function in ord
 
 
 </div>
+<div id="method_Knob" class="method item">
+    <h3 class="name"><code>Knob</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>area</code>
+                </li>
+                <li class="arg">
+                        <code>value</code>
+                </li>
+                <li class="arg">
+                        <code>bottom_value</code>
+                </li>
+                <li class="arg">
+                        <code>top_value</code>
+                </li>
+                <li class="arg">
+                        <code>steps</code>
+                </li>
+                <li class="arg">
+                        <code>content</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_gui.js.html#l844"><code>..&#x2F;src&#x2F;gui.js:844</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Renders an knob slider widget, returns the current value
+Remember: you must pass as value the same value returned by this function in order to work propertly</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">area</code>
+                        <span class="type">Array</span>
+
+
+                    <div class="param-description">
+                        <p>[x,y,width,height]</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">value</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the value to show in the slider</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">bottom_value</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the minimum value for the slider</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">top_value</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>the maximum value for the slider</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">steps</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the numeber of steps (if 0 then infinite)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">content</code>
+                        <span class="type">Image | GL.Texture</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] a texture or image to use as the knob</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the current value of the slider (will be different from value if it was clicked)</p>
+
+            </div>
+        </div>
+
+
+</div>
 <div id="method_Label" class="method item">
     <h3 class="name"><code>Label</code></h3>
 
@@ -876,7 +1017,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l360"><code>..&#x2F;src&#x2F;gui.js:360</code></a>
+        <a href="../files/.._src_gui.js.html#l361"><code>..&#x2F;src&#x2F;gui.js:361</code></a>
         </p>
 
 
@@ -944,7 +1085,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l227"><code>..&#x2F;src&#x2F;gui.js:227</code></a>
+        <a href="../files/.._src_gui.js.html#l228"><code>..&#x2F;src&#x2F;gui.js:228</code></a>
         </p>
 
 
@@ -1003,7 +1144,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l180"><code>..&#x2F;src&#x2F;gui.js:180</code></a>
+        <a href="../files/.._src_gui.js.html#l181"><code>..&#x2F;src&#x2F;gui.js:181</code></a>
         </p>
 
 
@@ -1034,7 +1175,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l284"><code>..&#x2F;src&#x2F;gui.js:284</code></a>
+        <a href="../files/.._src_gui.js.html#l285"><code>..&#x2F;src&#x2F;gui.js:285</code></a>
         </p>
 
 
@@ -1065,7 +1206,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l202"><code>..&#x2F;src&#x2F;gui.js:202</code></a>
+        <a href="../files/.._src_gui.js.html#l203"><code>..&#x2F;src&#x2F;gui.js:203</code></a>
         </p>
 
 
@@ -1114,7 +1255,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l606"><code>..&#x2F;src&#x2F;gui.js:606</code></a>
+        <a href="../files/.._src_gui.js.html#l607"><code>..&#x2F;src&#x2F;gui.js:607</code></a>
         </p>
 
 
@@ -1223,7 +1364,7 @@ Remember: you must pass as text the same text returned by this function in order
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l541"><code>..&#x2F;src&#x2F;gui.js:541</code></a>
+        <a href="../files/.._src_gui.js.html#l542"><code>..&#x2F;src&#x2F;gui.js:542</code></a>
         </p>
 
 
@@ -1329,7 +1470,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l460"><code>..&#x2F;src&#x2F;gui.js:460</code></a>
+        <a href="../files/.._src_gui.js.html#l461"><code>..&#x2F;src&#x2F;gui.js:461</code></a>
         </p>
 
 
@@ -1426,7 +1567,7 @@ Remember: you must pass as value the same value returned by this function in ord
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_gui.js.html#l778"><code>..&#x2F;src&#x2F;gui.js:778</code></a>
+        <a href="../files/.._src_gui.js.html#l779"><code>..&#x2F;src&#x2F;gui.js:779</code></a>
         </p>
 
 

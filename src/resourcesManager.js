@@ -54,6 +54,8 @@ var ResourcesManager = {
 	force_nocache_extensions: ["js","glsl","json"], //this file formats should be reloaded without using the cache
 	nocache_files: {}, //this is used by the editor to avoid using cached version of recently loaded files
 
+	valid_resource_name_reg: /^[A-Za-z\d\s\/\_\-\.]+$/,
+
 	/**
 	* Returns a string to append to any url that should use the browser cache (when updating server info)
 	*
@@ -868,6 +870,11 @@ var ResourcesManager = {
 	{
 		if(!filename || !resource)
 			throw("registerResource missing filename or resource");
+
+		//test filename is valid (alphanumeric with spaces, dot or underscore and dash and slash
+		if( this.valid_resource_name_reg.test( filename ) == false )
+			console.warn( "invalid filename for resource: ", filename );
+
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
 
@@ -977,8 +984,17 @@ var ResourcesManager = {
 		this.resources[new_name] = res;
 		delete this.resources[ old_name ];
 
+		//inform everybody in the scene
 		if(!skip_event)
 			LS.GlobalScene.sendResourceRenamedEvent( old_name, new_name, res );
+
+		//inform prefabs and packs...
+		for(var i in this.resources)
+		{
+			var alert_res = this.resources[i];
+			if( alert_res != res && alert_res.onResourceRenamed )
+				alert_res.onResourceRenamed( old_name, new_name, res );
+		}
 
 		//ugly: too hardcoded
 		if( this.meshes[old_name] ) {
@@ -1199,7 +1215,7 @@ LS.getTexture = function( name_or_texture ) {
 LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
 
 	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
-	var data = WBin.load( data );
+	var data = WBin.load( data, false, filename );
 	return data;
 },"binary");
 

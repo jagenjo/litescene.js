@@ -221,9 +221,10 @@ WBin.create = function( origin, origin_class_name )
 * @method WBin.load
 * @param {UInt8Array} data_array 
 * @param {bool} skip_classname avoid getting the instance of the class specified in classname, and get only the lumps
+* @param {String} filename [optional] the filename where this wbin came from (important to mark resources)
 * @return {*} Could be an Object with all the lumps or an instance to the class specified in the WBin data
 */
-WBin.load = function( data_array, skip_classname )
+WBin.load = function( data_array, skip_classname, filename )
 {
 	if(!data_array || ( data_array.constructor !== Uint8Array && data_array.constructor !== ArrayBuffer ) )
 		throw("WBin data must be ArrayBuffer or Uint8Array");
@@ -294,11 +295,11 @@ WBin.load = function( data_array, skip_classname )
 	{
 		var ctor = WBin.classes[ header.classname ] || window[ header.classname ];
 		if(ctor && ctor.fromBinary)
-			return ctor.fromBinary(object);
+			return ctor.fromBinary( object, filename );
 		else if(ctor && ctor.prototype.fromBinary)
 		{
 			var inst = new ctor();
-			inst.fromBinary(object);
+			inst.fromBinary( object, filename );
 			return inst;
 		}
 		else

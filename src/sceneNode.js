@@ -842,6 +842,9 @@ SceneNode.prototype.reloadFromPrefab = function()
 	if(!prefab)
 		return;
 
+	if( prefab.constructor !== LS.Prefab )
+		throw("prefab must be a LS.Prefab class");
+
 	//apply info
 	this.removeAllChildren();
 	this.init( true, true ); //keep components, keep_info

@@ -25,8 +25,8 @@
 
 ../src/resources/resource.js
 ../src/resources/animation.js
-../src/resources/prefab.js
 ../src/resources/pack.js
+../src/resources/prefab.js
 ../src/resources/shaderCode.js
 
 ../src/graph/scene.js
