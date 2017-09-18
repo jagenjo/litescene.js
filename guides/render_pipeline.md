@@ -19,13 +19,28 @@ Although you are more prone to interact with LiteScene than with LiteGL. LiteSce
 
 ## LS.RenderInstance ##
 
-First we need to understand the atomic class to render stuff that uses LiteScene, it is called ```LS.RenderInstance```.
+First we need to understand the atomic class to render geometry that uses LiteScene, it is called ```LS.RenderInstance```.
 
-A ```RenderInstance``` represents one object to render in the scene, and it contains the mesh, the material and the flags that must be taken into account when rendering that mesh.
+A ```LS.RenderInstance``` represents one object to render in the scene, and it contains the mesh, the material and some extra information that must be taken into account when rendering that mesh (like layers, mesh range, primitive, etc).
 
-So every component of the scene that plans to render something on the screen needs to create a ```RenderInstance``` and supplied to the system when the ```"collectRenderInstances"``` event is generated.
+Here is a list of the most relevant properties:
 
-Take into account that a ```RenderInstance``` is not a low-level API render call, because it still depends in many parameters to determine how to render it (mostly the material).
+- __vertex_buffers__: tells the buffers required 
+- __index_buffer__: which index buffer must be used
+- __range__: to render only a range of the buffers
+- __primitive__: the WebGL primitive (default is GL.TRIANGLES)
+- __material__: the material in charge of rendering this primitive
+- __layers__: in which layers is visible
+- __mesh__: the original mesh
+- __collision_mesh__: a optional collision mesh (used for ray picking)
+- __priority__: the info about the rendering priority
+- __matrix__: the matrix defining where to render it
+- __normal_matrix__: the matrix defining how to transform the normals
+- __aabb__: the bounding box
+
+So every component of the scene that plans to render something on the screen needs to create a ```LS.RenderInstance``` and supplied to the system when the ```"collectRenderInstances"``` event is generated.
+
+Take into account that a ```LS.RenderInstance``` is not a low-level API render call, because it still depends in many parameters to determine how to render it (mostly the material), and one RenderInstance could end up using several draw calls.
 
 For example, the same ```RenderInstance``` will be rendered with different shaders depending if it is being rendered to the color buffer or to the shadow buffer.
 
