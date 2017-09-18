@@ -21,6 +21,7 @@ Some advanced topics:
 - [Operating with Vectors and Matrices](operating_with_vectors.md): understanding gl-matrix and how to do mathematical operations.
 - [Events](events.md): how to capture events from the system to call your own callbacks
 - [Render pipeline](render_pipeline.md): How does the render pipeline work
+- [Rendering methods](rendering_methods.md): Different ways to render in LiteScene
 - [Shaders](shaders.md): How to write your own shaders
 - [Post-processing](post-processing.md): How to apply postprocessing effects
 - [Animation](animation.md): How to create animations
