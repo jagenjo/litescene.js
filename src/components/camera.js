@@ -362,7 +362,7 @@ Object.defineProperty( Camera.prototype, "orthographic", {
 
 /**
 * The view matrix of the camera 
-* @property projection_matrix {vec4}
+* @property view_matrix {vec4}
 */
 Object.defineProperty( Camera.prototype, "view_matrix", {
 	get: function() {
@@ -1160,6 +1160,11 @@ Camera.prototype.setDistanceToCenter = function( new_distance, move_eye )
 	this._must_update_view_matrix = true;
 }
 
+/**
+* orients the camera (changes where is facing) according to the rotation supplied
+* @method setOrientation
+* @param {quat} q
+*/
 Camera.prototype.setOrientation = function(q, use_vr)
 {
 	var center = this.getCenter();
@@ -1193,6 +1198,13 @@ Camera.prototype.setOrientation = function(q, use_vr)
 	this._must_update_view_matrix = true;
 }
 
+/**
+* orients the camera (changes where is facing) using euler angles (yaw,pitch,roll)
+* @method setEulerAngles
+* @param {Number} yaw
+* @param {Number} pitch
+* @param {Number} roll
+*/
 Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 {
 	var q = quat.create();
@@ -1207,10 +1219,17 @@ Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 */
 Camera.prototype.fromViewMatrix = function(mat)
 {
+	if( this._root && this._root.transform )
+	{
+		var model = mat4.invert( mat4.create(), mat );
+		this._root.transform.fromMatrix( model, true );
+		return;
+	}
+
 	var M = mat4.invert( mat4.create(), mat );
-	this.eye = vec3.transformMat4(vec3.create(),vec3.create(),M);
-	this.center = vec3.transformMat4(vec3.create(),[0,0,-1],M);
-	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
+	this.eye = vec3.transformMat4( vec3.create(), LS.ZEROS, M );
+	this.center = vec3.transformMat4( vec3.create(), LS.FRONT, M );
+	this.up = mat4.rotateVec3( vec3.create(), M, LS.TOP );
 	this._must_update_view_matrix = true;
 }
 
@@ -1221,7 +1240,7 @@ Camera.prototype.fromViewMatrix = function(mat)
 */
 Camera.prototype.setCustomProjectionMatrix = function( mat )
 {
-	if(!v)
+	if(!mat)
 	{
 		this._use_custom_projection_matrix = false;
 		this._must_update_projection_matrix = true;

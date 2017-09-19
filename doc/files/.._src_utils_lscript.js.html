@@ -373,6 +373,53 @@ LScript.expandCode = function(code)
 		}
 	}
 
+	//allow to use public var foo = 10;
+	var lines = code.split(&quot;\n&quot;);
+	var update = false;
+	for(var i = 0; i &lt; lines.length; ++i)
+	{
+		var line = lines[i].trim();
+		if(line.indexOf(&quot;public&quot;) != -1)
+		{
+			var index = line.indexOf(&quot;//&quot;);
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var index = line.lastIndexOf(&quot;;&quot;);
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var t = line.split(&quot; &quot;);
+			if(t[0] != &#x27;public&#x27; || t[1] != &#x27;var&#x27;)
+				continue;
+			var varname = t[2];
+			if(!varname)
+				continue;
+			var name_type = varname.split(&quot;:&quot;);
+			var type = name_type[1] || &quot;&quot;;
+			if( !type &amp;&amp; t[3] == &quot;:&quot; &amp;&amp; t[4] &amp;&amp; t[4] != &quot;=&quot; )
+				type = t[4];
+			var index = line.indexOf(&quot;=&quot;);
+			var value = (index != -1) ? line.substr(index+1) : &quot;undefined&quot;;
+			var type_options = {};
+			if(type)
+				type_options.type = type;
+			if( LS.Components[ type ] ) //for components
+			{
+				type_options.component_class = type;
+				type_options.type = LS.TYPES.COMPONENT;
+			}
+			else if( type == &quot;int&quot; || type == &quot;integer&quot;)
+			{
+				type_options.step = 1;
+				type_options.type = LS.TYPES.NUMBER;
+			}
+			lines[i] = &quot;this.createProperty(&#x27;&quot; + name_type[0] + &quot;&#x27;,&quot; + value + &quot;, &quot;+JSON.stringify( type_options )+&quot; );&quot;;
+			update = true;
+		}
+	}
+	if(update)
+		code = lines.join(&quot;\n&quot;);
+
+
 	/* using regex, not working
 	if( code.indexOf(&quot;&#x27;&#x27;&#x27;&quot;) != -1 )
 	{

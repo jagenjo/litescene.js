@@ -502,9 +502,10 @@ Take.prototype.createTrack = function( data )
 * @param {boolean} ignore_interpolation in case you want to sample the nearest one
 * @param {SceneNode} weight [Optional] allows to blend animations with current value (default is 1)
 * @param {Number} root [Optional] if you want to limit the locator to search inside a node
+* @param {Function} on_pre_apply [Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight, on_pre_apply )
 {
 	scene = scene || LS.GlobalScene;
 	if(weight === 0)
@@ -561,7 +562,11 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
+			{
+				if( on_pre_apply &amp;&amp; on_pre_apply( track._property_path, sample, root_node, 0 ) === false)
+					continue; //skip
 				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
+			}
 		}
 	}
 }

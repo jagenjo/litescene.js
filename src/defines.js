@@ -58,10 +58,12 @@ LS.TYPES = {
 	RESOURCE: "resource",
 	TEXTURE : "texture",
 	MESH: "mesh",
+	OBJECT: "object",
 	SCENE: "scene",
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
 	COMPONENT: "component",
+	COMPONENT_ID: "component_id",
 	MATERIAL: "material",
 	ARRAY: "array"
 };

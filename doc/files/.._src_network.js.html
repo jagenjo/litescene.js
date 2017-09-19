@@ -173,6 +173,11 @@ var Network = {
 
 		//change protocol when working over https
 		var url = request.url;
+
+		//apply proxy
+		if(request.use_proxy)
+			url = LS.ResourcesManager.getFullURL(url);
+
 		if( this.protocol === null )
 			this.protocol = LS.ResourcesManager.getProtocol( location.href );
 		var protocol = LS.ResourcesManager.getProtocol( url );

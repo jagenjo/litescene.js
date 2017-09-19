@@ -230,7 +230,8 @@ if( !Object.prototype.hasOwnProperty(&quot;defineAttribute&quot;) )
 				enumerable: false
 			});
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 
 	Object.defineProperty( Object.prototype, &quot;getAttribute&quot;, {
@@ -242,7 +243,8 @@ if( !Object.prototype.hasOwnProperty(&quot;defineAttribute&quot;) )
 				return this.constructor[v];
 			return null;
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 }
 

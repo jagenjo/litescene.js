@@ -35,6 +35,8 @@ function PlayAnimation(o)
 	this.blend_time = 0;
 	this.range = null;
 
+	this.onPreApply = null;
+
 	this._last_time = 0;
 
 	this._use_blend_animation = false;
@@ -160,14 +162,12 @@ PlayAnimation.prototype.configure = function(o)
 		this.blend_time = o.blend_time;
 }
 
-
 PlayAnimation.icon = "mini-icon-clock.png";
 
 PlayAnimation.prototype.onAddedToScene = function(scene)
 {
 	LEvent.bind( scene, "update", this.onUpdate, this);
 }
-
 
 PlayAnimation.prototype.onRemovedFromScene = function(scene)
 {
@@ -436,6 +436,10 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 	if( last_time === undefined )
 		last_time = time;
 
+	//this could happen if the component was removed during the onUpdate
+	if(!this._root) 
+		return;
+
 	var root_node = null;
 	if(this.root_node && this._root.scene)
 	{
@@ -444,7 +448,7 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply );
 }
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)

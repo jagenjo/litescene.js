@@ -283,6 +283,9 @@
                 <li class="arg">
                         <code>root</code>
                 </li>
+                <li class="arg">
+                        <code>on_pre_apply</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
@@ -367,6 +370,17 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
                     <div class="param-description">
                         <p>[Optional] if you want to limit the locator to search inside a node</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">on_pre_apply</code>
+                        <span class="type">Function</span>
+
+
+                    <div class="param-description">
+                        <p>[Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped</p>
 
                     </div>
 
@@ -467,7 +481,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l573"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:573</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l578"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:578</code></a>
         </p>
 
 
@@ -498,7 +512,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l514"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:514</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l519"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:519</code></a>
         </p>
 
 
@@ -529,7 +543,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l639"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:639</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l644"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:644</code></a>
         </p>
 
 

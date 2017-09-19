@@ -220,6 +220,53 @@ LScript.expandCode = function(code)
 		}
 	}
 
+	//allow to use public var foo = 10;
+	var lines = code.split("\n");
+	var update = false;
+	for(var i = 0; i < lines.length; ++i)
+	{
+		var line = lines[i].trim();
+		if(line.indexOf("public") != -1)
+		{
+			var index = line.indexOf("//");
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var index = line.lastIndexOf(";");
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var t = line.split(" ");
+			if(t[0] != 'public' || t[1] != 'var')
+				continue;
+			var varname = t[2];
+			if(!varname)
+				continue;
+			var name_type = varname.split(":");
+			var type = name_type[1] || "";
+			if( !type && t[3] == ":" && t[4] && t[4] != "=" )
+				type = t[4];
+			var index = line.indexOf("=");
+			var value = (index != -1) ? line.substr(index+1) : "undefined";
+			var type_options = {};
+			if(type)
+				type_options.type = type;
+			if( LS.Components[ type ] ) //for components
+			{
+				type_options.component_class = type;
+				type_options.type = LS.TYPES.COMPONENT;
+			}
+			else if( type == "int" || type == "integer")
+			{
+				type_options.step = 1;
+				type_options.type = LS.TYPES.NUMBER;
+			}
+			lines[i] = "this.createProperty('" + name_type[0] + "'," + value + ", "+JSON.stringify( type_options )+" );";
+			update = true;
+		}
+	}
+	if(update)
+		code = lines.join("\n");
+
+
 	/* using regex, not working
 	if( code.indexOf("'''") != -1 )
 	{

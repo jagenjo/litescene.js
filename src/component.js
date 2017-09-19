@@ -78,7 +78,7 @@ Component.prototype.configure = function(o)
 **/
 Component.prototype.serialize = function()
 {
-	var o = LS.cloneObject(this);
+	var o = LS.cloneObject(this,null,false,false,true);
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
 	if(!o.object_class)
@@ -113,7 +113,7 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 	if(this[name] !== undefined)
 		return; //console.warn("createProperty: this component already has a property called " + name );
 
-	//if we have type info, stored in the constructor, useful for GUIs
+	//if we have type info, we must store it in the constructor, useful for GUIs
 	if(type)
 	{
 		//control errors
@@ -127,6 +127,38 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 			this.constructor[ "@" + name ] = type;
 		else
 			this.constructor[ "@" + name ] = { type: type };
+
+		//is a component
+		if( type == LS.TYPES.COMPONENT || LS.Components[ type ] || type.constructor.is_component || type.type == LS.TYPES.COMPONENT )
+		{
+			var property_root = this; //with proto is problematic, because the getters cannot do this.set (this is the proto, not the component)
+			var private_name = "_" + name;
+			Object.defineProperty( property_root, name, {
+				get: function() { 
+					if( !this[ private_name ] )
+						return null;
+					var scene = this._root && this._root.scene ? this._root._in_tree : LS.GlobalScene;
+					return LSQ.get( this[ private_name ], null, scene );
+				},
+				set: function(v) { 
+					if(!v)
+						this[ private_name ] = v;
+					else
+						this[ private_name ] = v.constructor === String ? v : v.uid;
+				},
+				enumerable: true
+				//writable: false //cannot be set to true if setter/getter
+			});
+
+			if( LS.Components[ type ] || type.constructor.is_component ) //passing component class name or component class constructor
+				type = { type: LS.TYPES.COMPONENT, component_class: type.constructor === String ? type : LS.getClassName( type ) };
+
+			if( typeof(type) == "object" )
+				this.constructor[ "@" + name ] = type;
+			else
+				this.constructor[ "@" + name ] = { type: type };
+			return;
+		}
 	}
 
 	//basic type

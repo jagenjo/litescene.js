@@ -725,6 +725,53 @@ LScript.expandCode = function(code)
 		}
 	}
 
+	//allow to use public var foo = 10;
+	var lines = code.split("\n");
+	var update = false;
+	for(var i = 0; i < lines.length; ++i)
+	{
+		var line = lines[i].trim();
+		if(line.indexOf("public") != -1)
+		{
+			var index = line.indexOf("//");
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var index = line.lastIndexOf(";");
+			if(index != -1)
+				line = line.substr(0,index); //remove one-line comments
+			var t = line.split(" ");
+			if(t[0] != 'public' || t[1] != 'var')
+				continue;
+			var varname = t[2];
+			if(!varname)
+				continue;
+			var name_type = varname.split(":");
+			var type = name_type[1] || "";
+			if( !type && t[3] == ":" && t[4] && t[4] != "=" )
+				type = t[4];
+			var index = line.indexOf("=");
+			var value = (index != -1) ? line.substr(index+1) : "undefined";
+			var type_options = {};
+			if(type)
+				type_options.type = type;
+			if( LS.Components[ type ] ) //for components
+			{
+				type_options.component_class = type;
+				type_options.type = LS.TYPES.COMPONENT;
+			}
+			else if( type == "int" || type == "integer")
+			{
+				type_options.step = 1;
+				type_options.type = LS.TYPES.NUMBER;
+			}
+			lines[i] = "this.createProperty('" + name_type[0] + "'," + value + ", "+JSON.stringify( type_options )+" );";
+			update = true;
+		}
+	}
+	if(update)
+		code = lines.join("\n");
+
+
 	/* using regex, not working
 	if( code.indexOf("'''") != -1 )
 	{
@@ -1158,7 +1205,7 @@ var LS = {
 	* @param {Object} target=null optional, the destination object
 	* @return {Object} returns the cloned object (target if it is specified)
 	*/
-	cloneObject: function( object, target, recursive, only_existing )
+	cloneObject: function( object, target, recursive, only_existing, encode_objects )
 	{
 		if(object === undefined)
 			return undefined;
@@ -1232,13 +1279,25 @@ var LS = {
 			{
 				//not safe to use concat or slice(0) because it doesnt clone content, only container
 				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
+				{
 					o[i].set(v);
+					continue;
+				}
+
+				if( encode_objects && target && v[0] == "@ENC" ) //encoded object (component, node...)
+					o[i] = LS.decodeObject(v);
 				else
 					o[i] = LS.cloneObject( v ); 
 			}
-			else //Object: 
+			else //Objects: 
 			{
-				if(v.constructor !== Object && !target && !v.toJSON )
+				if( encode_objects && !target )
+				{
+					o[i] = LS.encodeObject(v);
+					continue;
+				}
+
+				if( v.constructor !== Object && !target && !v.toJSON )
 				{
 					console.warn("Cannot clone internal classes:", LS.getObjectClassName( v )," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'");
 					continue;
@@ -1273,6 +1332,53 @@ var LS = {
 		}
 		return o;
 	},
+
+	encodeObject: function( obj )
+	{
+		if( !obj || obj.constructor === Number || obj.constructor === String || obj.constructor === Boolean || obj.constructor === Object ) //regular objects
+			return obj;
+		if( obj.constructor.is_component && obj._root) //in case the value of this property is an actual component in the scene
+			return [ "@ENC", LS.TYPES.COMPONENT, obj.getLocator(), LS.getObjectClassName( obj ) ];
+		if( obj.constructor == LS.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
+			return [ "@ENC", LS.TYPES.NODE, obj.uid ];
+		if( obj.constructor == LS.SceneTree)
+			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
+		if( obj.serialize || obj.toJSON )
+			return [ "@ENC", LS.TYPES.OBJECT, obj.serialize ? obj.serialize() : obj.toJSON(), LS.getObjectClassName( obj ) ];
+		console.warn("Cannot clone internal classes:", LS.getObjectClassName( obj )," When serializing an object I found a property with a class that doesnt support serialization. If this property shouldn't be serialized start the name with underscore.'");
+		return null;
+	},
+
+	decodeObject: function( data )
+	{
+		if(!data || data.constructor !== Array || data[0] != "@ENC" )
+			return null;
+
+		switch( data[1] )
+		{
+			case LS.TYPES.COMPONENT: 
+			case LS.TYPES.NODE: 
+				var obj = LSQ.get( data[2] );
+				if( obj )
+					return obj;
+				return data[2]; break;
+				//return  break;
+			case LS.TYPES.SCENE: return null; break; //weird case
+			case LS.TYPES.OBJECT: 
+			default:
+				if( !data[2] || !data[2].object_class )
+					return null;
+				var ctor = LS.Classes[ data[2].object_class ];
+				if(!ctor)
+					return null;
+				var v = new ctor();
+				v.configure(data[2]);
+				return v;
+			break;
+		}
+		return null;
+	},
+
 
 	/**
 	* Clears all the uids inside this object and children (it also works with serialized object)
@@ -1677,6 +1783,8 @@ var LSQ = {
 	*/
 	get: function( locator, root, scene )
 	{
+		if(!locator) //sometimes we have a var with a locator that is null
+			return null;
 		scene = scene || LS.GlobalScene;
 		var info;
 		if(!root)
@@ -1843,10 +1951,12 @@ LS.TYPES = {
 	RESOURCE: "resource",
 	TEXTURE : "texture",
 	MESH: "mesh",
+	OBJECT: "object",
 	SCENE: "scene",
 	SCENENODE: "node",
 	SCENENODE_ID: "node_id",
 	COMPONENT: "component",
+	COMPONENT_ID: "component_id",
 	MATERIAL: "material",
 	ARRAY: "array"
 };
@@ -1873,6 +1983,11 @@ var Network = {
 
 		//change protocol when working over https
 		var url = request.url;
+
+		//apply proxy
+		if(request.use_proxy)
+			url = LS.ResourcesManager.getFullURL(url);
+
 		if( this.protocol === null )
 			this.protocol = LS.ResourcesManager.getProtocol( location.href );
 		var protocol = LS.ResourcesManager.getProtocol( url );
@@ -4946,6 +5061,12 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 		console.error("Error parsing scene: " + filename);
 		return null;
 	}
+
+	if( scene_data && scene_data.constructor === LS.SceneTree )
+		throw("processScene must receive object, no SceneTree");
+
+	if(!scene_data.root)
+		throw("this is not an scene, root property missing");
 
 	LS.ResourcesManager._parsing_local_file = true;
 
@@ -10081,7 +10202,6 @@ function ComponentContainer()
 * @method configureComponents
 * @param {Object} info object containing all the info from a previous serialization
 */
-
 ComponentContainer.prototype.configureComponents = function( info )
 {
 	if(!info.components)
@@ -10144,12 +10264,13 @@ ComponentContainer.prototype.configureComponents = function( info )
 	}
 }
 
+
+
 /**
 * Adds a component to this node.
 * @method serializeComponents
 * @param {Object} o container where the components will be stored
 */
-
 ComponentContainer.prototype.serializeComponents = function( o )
 {
 	if(!this._components)
@@ -10162,6 +10283,17 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		if( !comp.serialize || comp.skip_serialize )
 			continue;
 		var obj = comp.serialize();
+
+		//check for bad stuff inside the component
+		/*
+		for(var j in obj)
+		{
+			var v = obj[j];
+			if( !v || v.constructor === Number || v.constructor === String || v.constructor === Boolean || v.constructor === Object || v.constructor === Array ) //regular data
+				continue;
+			obj[j] = LS.encodeObject(v);
+		}
+		*/
 
 		if(comp._editor)
 			obj.editor = comp._editor;
@@ -10231,7 +10363,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	{
 		component = LS.Components[ component ];
 		if(!component)
-			throw("component class not found: ", arguments[0] );
+			throw("component class not found: " + arguments[0] );
 	}
 	if(component.is_component)
 		component = new component();
@@ -11190,7 +11322,7 @@ Component.prototype.configure = function(o)
 **/
 Component.prototype.serialize = function()
 {
-	var o = LS.cloneObject(this);
+	var o = LS.cloneObject(this,null,false,false,true);
 	if(this.uid) //special case, not enumerable
 		o.uid = this.uid;
 	if(!o.object_class)
@@ -11225,7 +11357,7 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 	if(this[name] !== undefined)
 		return; //console.warn("createProperty: this component already has a property called " + name );
 
-	//if we have type info, stored in the constructor, useful for GUIs
+	//if we have type info, we must store it in the constructor, useful for GUIs
 	if(type)
 	{
 		//control errors
@@ -11239,6 +11371,38 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 			this.constructor[ "@" + name ] = type;
 		else
 			this.constructor[ "@" + name ] = { type: type };
+
+		//is a component
+		if( type == LS.TYPES.COMPONENT || LS.Components[ type ] || type.constructor.is_component || type.type == LS.TYPES.COMPONENT )
+		{
+			var property_root = this; //with proto is problematic, because the getters cannot do this.set (this is the proto, not the component)
+			var private_name = "_" + name;
+			Object.defineProperty( property_root, name, {
+				get: function() { 
+					if( !this[ private_name ] )
+						return null;
+					var scene = this._root && this._root.scene ? this._root._in_tree : LS.GlobalScene;
+					return LSQ.get( this[ private_name ], null, scene );
+				},
+				set: function(v) { 
+					if(!v)
+						this[ private_name ] = v;
+					else
+						this[ private_name ] = v.constructor === String ? v : v.uid;
+				},
+				enumerable: true
+				//writable: false //cannot be set to true if setter/getter
+			});
+
+			if( LS.Components[ type ] || type.constructor.is_component ) //passing component class name or component class constructor
+				type = { type: LS.TYPES.COMPONENT, component_class: type.constructor === String ? type : LS.getClassName( type ) };
+
+			if( typeof(type) == "object" )
+				this.constructor[ "@" + name ] = type;
+			else
+				this.constructor[ "@" + name ] = { type: type };
+			return;
+		}
 	}
 
 	//basic type
@@ -12147,9 +12311,10 @@ Take.prototype.createTrack = function( data )
 * @param {boolean} ignore_interpolation in case you want to sample the nearest one
 * @param {SceneNode} weight [Optional] allows to blend animations with current value (default is 1)
 * @param {Number} root [Optional] if you want to limit the locator to search inside a node
+* @param {Function} on_pre_apply [Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight, on_pre_apply )
 {
 	scene = scene || LS.GlobalScene;
 	if(weight === 0)
@@ -12206,7 +12371,11 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
+			{
+				if( on_pre_apply && on_pre_apply( track._property_path, sample, root_node, 0 ) === false)
+					continue; //skip
 				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
+			}
 		}
 	}
 }
@@ -17686,7 +17855,7 @@ function SpatialContainer()
 {
 	this.size = 100000;
 	this.root = [];
-	this.objecs_cell_by_id = new WeakMap();
+	this.objects_cell_by_id = new WeakMap();
 }
 
 //adds a new object to the container
@@ -17695,7 +17864,7 @@ SpatialContainer.prototype.add = function( object, bounding )
 	var cell = this.root;
 
 	cell.push( object );
-	this.objecs_cell_by_id.set( object, cell ); //in which container is
+	this.objects_cell_by_id.set( object, cell ); //in which container is
 	return object.uid;
 }
 
@@ -17708,13 +17877,13 @@ SpatialContainer.prototype.updateBounding = function( object, new_bounding )
 //adds a new object to the container
 SpatialContainer.prototype.remove = function( object, bounding )
 {
-	var cell = 	this.objecs_cell_by_id.get( object );
+	var cell = 	this.objects_cell_by_id.get( object );
 	if(!cell)
 		return;
 	var index = cell.indexOf( object );
 	if(index !== -1)
 		cell.splice( index, 1 );
-	this.objecs_cell_by_id.delete( object );
+	this.objects_cell_by_id["delete"]( object );
 }
 
 //retrieves a list of objects overlaping this area
@@ -17735,7 +17904,7 @@ SpatialContainer.prototype.retrieveFromCamera = function( camera )
 SpatialContainer.prototype.clear = function()
 {
 	this.root.length = 0;
-	this.objecs_cell_by_id = new WeakMap();
+	this.objects_cell_by_id = new WeakMap();
 }
 
 LS.SpatialContainer = SpatialContainer;
@@ -19328,6 +19497,9 @@ var Renderer = {
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
 		this._normal_texture = new GL.Texture(1,1, { pixel_data: [128,128,255,255] });
 		this._missing_texture = this._gray_texture;
+		var internal_textures = [ this._black_texture, this._gray_texture, this._white_texture, this._normal_texture, this._missing_texture ];
+		internal_textures.forEach(function(t){ t._is_internal = true; });
+
 		LS.ResourcesManager.textures[":black"] = this._black_texture;
 		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
 		LS.ResourcesManager.textures[":white"] = this._white_texture;
@@ -19517,7 +19689,7 @@ var Renderer = {
 			if(gl.start2D)
 				gl.start2D();
 			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
-			LEvent.trigger( scene, "renderGUI", render_settings );
+			LEvent.trigger( scene, "renderGUI", gl );
 			if(gl.finish2D)
 				gl.finish2D();
 		}
@@ -19669,7 +19841,24 @@ var Renderer = {
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
 	},
 
-	//clear color using camerae info
+	/**
+	* Returns the camera active
+	*
+	* @method getCurrentCamera
+	* @return {Camera} camera
+	*/
+	getCurrentCamera: function()
+	{
+		return this._current_camera;
+	},
+
+	/**
+	* clear color using camera info ( background color, viewport scissors, clear depth, etc )
+	*
+	* @method clearBuffer
+	* @param {Camera} camera
+	* @param {LS.RenderSettings} render_settings
+	*/
 	clearBuffer: function( camera, render_settings )
 	{
 		if( render_settings.ignore_clear || (!camera.clear_color && !camera.clear_depth) )
@@ -24032,7 +24221,7 @@ Transform.prototype.getNormalMatrix = function (m)
 		mat4.multiply( this._global_matrix, this._parent.getGlobalMatrix(), this._local_matrix );
 	else
 		m.set(this._local_matrix); //return local because it has no parent
-	return mat4.transpose(m, mat4.invert(m,m));
+	return mat4.transpose(m, mat4.invert(m,m) );
 }
 
 /**
@@ -24055,7 +24244,9 @@ Transform.prototype.fromMatrix = (function() {
 		{
 			mat4.copy(this._global_matrix, m); //assign to global
 			var M_parent = this._parent.getGlobalMatrix( global_temp ); //get parent transform
-			mat4.invert(M_parent,M_parent); //invert
+			var r = mat4.invert( M_parent, M_parent ); //invert
+			if(!r)
+				return;
 			m = mat4.multiply( this._local_matrix, M_parent, m ); //transform from global to local
 		}
 
@@ -24412,6 +24603,8 @@ Transform.prototype.lookAt = (function() {
 		{
 			this._parent.getGlobalMatrix( GM );
 			var inv = mat4.invert(GM,GM);
+			if(!inv)
+				return;
 			mat4.multiplyVec3(temp_pos, inv, pos);
 			mat4.multiplyVec3(temp_target, inv, target);
 			mat4.rotateVec3(temp_up, inv, up );
@@ -24531,7 +24724,8 @@ Transform.prototype.globalToLocal = (function(){
 		dest = dest || vec3.create();
 		if(this._must_update)
 			this.updateMatrix();
-		mat4.invert( inv, this.getGlobalMatrixRef() );
+		if( !mat4.invert( inv, this.getGlobalMatrixRef() ) )
+			return inv;
 		return mat4.multiplyVec3( dest, inv, vec );
 	};
 })();
@@ -24645,7 +24839,9 @@ Transform.prototype.applyTransformMatrix = (function(){
 		var PGM = this._parent._global_matrix;
 		mat4.multiply( this._global_matrix, M, GM );
 
-		mat4.invert(temp,PGM);
+		if(!mat4.invert( temp, PGM ))
+			return;
+		
 		mat4.multiply( this._local_matrix, temp, this._global_matrix );
 		this.fromMatrix( this._local_matrix );
 		//*/
@@ -24653,32 +24849,40 @@ Transform.prototype.applyTransformMatrix = (function(){
 })();
 
 //applies matrix to position, rotation and scale individually, doesnt take into account parents
-Transform.prototype.applyLocalTransformMatrix = function( M )
-{
+Transform.prototype.applyLocalTransformMatrix = (function() {
 	var temp = vec3.create();
+	var temp_mat3 = mat3.create();
+	var temp_mat4 = mat4.create();
+	var temp_quat = quat.create();
 
-	//apply translation
-	vec3.transformMat4( this._position, this._position, M );
+	return (function( M )
+	{
+		//apply translation
+		vec3.transformMat4( this._position, this._position, M );
 
-	//apply scale
-	mat4.rotateVec3( temp, M, [1,0,0] );
-	this._scaling[0] *= vec3.length( temp );
-	mat4.rotateVec3( temp, M, [0,1,0] );
-	this._scaling[1] *= vec3.length( temp );
-	mat4.rotateVec3( temp, M, [0,0,1] );
-	this._scaling[2] *= vec3.length( temp );
+		//apply scale
+		mat4.rotateVec3( temp, M, [1,0,0] );
+		this._scaling[0] *= vec3.length( temp );
+		mat4.rotateVec3( temp, M, [0,1,0] );
+		this._scaling[1] *= vec3.length( temp );
+		mat4.rotateVec3( temp, M, [0,0,1] );
+		this._scaling[2] *= vec3.length( temp );
 
-	//apply rotation
-	var m = mat4.invert(mat4.create(), M);
-	mat4.transpose(m, m);
-	var m3 = mat3.fromMat4( mat3.create(), m);
-	var q = quat.fromMat3(quat.create(), m3);
-	quat.normalize(q, q);
-	quat.multiply( this._rotation, q, this._rotation );
+		//apply rotation
+		var m = mat4.invert( temp_mat4, M );
+		if(!m)
+			return;
 
-	this._must_update = true; //matrix must be redone?
-	this._on_change();
-}
+		mat4.transpose(m, m);
+		var m3 = mat3.fromMat4( temp_mat3, m);
+		var q = quat.fromMat3( temp_quat, m3);
+		quat.normalize(q, q);
+		quat.multiply( this._rotation, q, this._rotation );
+
+		this._must_update = true; //matrix must be redone?
+		this._on_change();
+	});
+})();
 
 
 /*
@@ -25108,7 +25312,7 @@ Object.defineProperty( Camera.prototype, "orthographic", {
 
 /**
 * The view matrix of the camera 
-* @property projection_matrix {vec4}
+* @property view_matrix {vec4}
 */
 Object.defineProperty( Camera.prototype, "view_matrix", {
 	get: function() {
@@ -25906,6 +26110,11 @@ Camera.prototype.setDistanceToCenter = function( new_distance, move_eye )
 	this._must_update_view_matrix = true;
 }
 
+/**
+* orients the camera (changes where is facing) according to the rotation supplied
+* @method setOrientation
+* @param {quat} q
+*/
 Camera.prototype.setOrientation = function(q, use_vr)
 {
 	var center = this.getCenter();
@@ -25939,6 +26148,13 @@ Camera.prototype.setOrientation = function(q, use_vr)
 	this._must_update_view_matrix = true;
 }
 
+/**
+* orients the camera (changes where is facing) using euler angles (yaw,pitch,roll)
+* @method setEulerAngles
+* @param {Number} yaw
+* @param {Number} pitch
+* @param {Number} roll
+*/
 Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 {
 	var q = quat.create();
@@ -25953,10 +26169,17 @@ Camera.prototype.setEulerAngles = function(yaw,pitch,roll)
 */
 Camera.prototype.fromViewMatrix = function(mat)
 {
+	if( this._root && this._root.transform )
+	{
+		var model = mat4.invert( mat4.create(), mat );
+		this._root.transform.fromMatrix( model, true );
+		return;
+	}
+
 	var M = mat4.invert( mat4.create(), mat );
-	this.eye = vec3.transformMat4(vec3.create(),vec3.create(),M);
-	this.center = vec3.transformMat4(vec3.create(),[0,0,-1],M);
-	this.up = mat4.rotateVec3( vec3.create(), M, [0,1,0] );
+	this.eye = vec3.transformMat4( vec3.create(), LS.ZEROS, M );
+	this.center = vec3.transformMat4( vec3.create(), LS.FRONT, M );
+	this.up = mat4.rotateVec3( vec3.create(), M, LS.TOP );
 	this._must_update_view_matrix = true;
 }
 
@@ -25967,7 +26190,7 @@ Camera.prototype.fromViewMatrix = function(mat)
 */
 Camera.prototype.setCustomProjectionMatrix = function( mat )
 {
-	if(!v)
+	if(!mat)
 	{
 		this._use_custom_projection_matrix = false;
 		this._must_update_projection_matrix = true;
@@ -35187,6 +35410,8 @@ function PlayAnimation(o)
 	this.blend_time = 0;
 	this.range = null;
 
+	this.onPreApply = null;
+
 	this._last_time = 0;
 
 	this._use_blend_animation = false;
@@ -35312,14 +35537,12 @@ PlayAnimation.prototype.configure = function(o)
 		this.blend_time = o.blend_time;
 }
 
-
 PlayAnimation.icon = "mini-icon-clock.png";
 
 PlayAnimation.prototype.onAddedToScene = function(scene)
 {
 	LEvent.bind( scene, "update", this.onUpdate, this);
 }
-
 
 PlayAnimation.prototype.onRemovedFromScene = function(scene)
 {
@@ -35588,6 +35811,10 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 	if( last_time === undefined )
 		last_time = time;
 
+	//this could happen if the component was removed during the onUpdate
+	if(!this._root) 
+		return;
+
 	var root_node = null;
 	if(this.root_node && this._root.scene)
 	{
@@ -35596,7 +35823,7 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply );
 }
 
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
@@ -36154,7 +36381,7 @@ Script.prototype.getContextProperties = function()
 	var ctx = this.getContext();
 	if(!ctx)
 		return;
-	return LS.cloneObject( ctx );
+	return LS.cloneObject( ctx, null, false, false, true );
 }
 
 Script.prototype.setContextProperties = function( properties )
@@ -36169,7 +36396,7 @@ Script.prototype.setContextProperties = function( properties )
 	}
 
 	//to copy we use the clone in target method
-	LS.cloneObject( properties, ctx, false, true );
+	LS.cloneObject( properties, ctx, false, true, true );
 }
 
 //used for graphs
@@ -37840,19 +38067,33 @@ ThreeJS.prototype.setupContext = function()
 	if(this._engine)
 		return;
 
+	if( typeof(THREE) == "undefined")
+	{
+		console.error("ThreeJS library not loaded");
+		return;
+	}
+
+	if( !THREE.Scene )
+	{
+		console.error("ThreeJS error parsing library");
+		return; //this could happen if there was an error parsing THREE.JS
+	}
+
+	//GLOBAL VARS
 	this._engine = {
 		component: this,
 		node: this._root,
 		scene: new THREE.Scene(),
 		camera: new THREE.PerspectiveCamera( 70, gl.canvas.width / gl.canvas.height, 1, 1000 ),
 		renderer: new THREE.WebGLRenderer( { canvas: gl.canvas, context: gl } ),
-		root: new THREE.Object3D()
+		root: new THREE.Object3D(),
+		ThreeJS: this.constructor
 	};
 	this._engine.scene.add( this._engine.root );
 }
 
 ThreeJS.default_code = "//renderer, camera, scene, already created, they are globals.\n//use root as your base Object3D node if you want to use the scene manipulators.\n\nthis.start = function() {\n}\n\nthis.render = function(){\n}\n\nthis.update = function(dt){\n}\n";
-ThreeJS.library_url = "http://threejs.org/build/three.min.js";
+ThreeJS.library_url = "http://threejs.org/build/three.js";
 
 
 Object.defineProperty( ThreeJS.prototype, "code", {
@@ -37932,26 +38173,14 @@ ThreeJS.prototype.onEvent = function( e, param )
 		engine.camera.lookAt( new THREE.Vector3( current_camera._global_center[0], current_camera._global_center[1], current_camera._global_center[2] ) );
 
 		//copy the root info
-		var global_position = vec3.create();
-		if(this._root.transform)
-			this._root.transform.getGlobalPosition(	global_position );
-		engine.root.position.set( global_position[0], global_position[1], global_position[2] );
-
-		//rotation
-		var global_rotation = quat.create();
-		if(this._root.transform)
-			this._root.transform.getGlobalRotation( global_rotation );
-		engine.root.quaternion.set( global_rotation[0], global_rotation[1], global_rotation[2], global_rotation[3] );
-
-		//scale
-		var global_scale = vec3.fromValues(1,1,1);
-		if(this._root.transform)
-			this._root.transform.getGlobalScale( global_scale );
-		engine.root.scale.set( global_scale[0], global_scale[1], global_scale[2] );
+		ThreeJS.copyTransform( this._root, engine.root );
 		
 		//render using ThreeJS
 		engine.renderer.setSize( gl.viewport_data[2], gl.viewport_data[3] );
-		engine.renderer.resetGLState();
+		if( engine.renderer.resetGLState )
+			engine.renderer.resetGLState();
+		else if( engine.renderer.state.reset )
+			engine.renderer.state.reset();
 
 		if(this._script)
 			this._script.callMethod( "render" );
@@ -37988,8 +38217,62 @@ ThreeJS.prototype.setCode = function( code, skip_events )
 }
 */
 
+ThreeJS.copyTransform = function( a, b )
+{
+	//litescene to threejs
+	if( a.constructor === LS.SceneNode )
+	{
+		var global_position = vec3.create();
+		if(a.transform)
+			a.transform.getGlobalPosition( global_position );
+		b.position.set( global_position[0], global_position[1], global_position[2] );
+
+		//rotation
+		var global_rotation = quat.create();
+		if(a.transform)
+			a.transform.getGlobalRotation( global_rotation );
+		b.quaternion.set( global_rotation[0], global_rotation[1], global_rotation[2], global_rotation[3] );
+
+		//scale
+		var global_scale = vec3.fromValues(1,1,1);
+		if(a.transform)
+			a.transform.getGlobalScale( global_scale );
+		b.scale.set( global_scale[0], global_scale[1], global_scale[2] );
+	}
+	if( a.constructor === LS.Transform )
+	{
+		var global_position = vec3.create();
+		a.getGlobalPosition( global_position );
+		b.position.set( global_position[0], global_position[1], global_position[2] );
+
+		//rotation
+		var global_rotation = quat.create();
+		a.getGlobalRotation( global_rotation );
+		b.quaternion.set( global_rotation[0], global_rotation[1], global_rotation[2], global_rotation[3] );
+
+		//scale
+		var global_scale = vec3.fromValues(1,1,1);
+		a.getGlobalScale( global_scale );
+		b.scale.set( global_scale[0], global_scale[1], global_scale[2] );
+	}
+	else //threejs to litescene
+	{
+		if( b.constructor == LS.Transform )
+			b.fromMatrix( a.matrixWorld );
+		else if( b.constructor == LS.SceneNode && b.transform )
+			b.transform.fromMatrix( a.matrixWorld );
+	}
+}
+
 ThreeJS.prototype.loadLibrary = function( on_complete )
 {
+	if( typeof(THREE) !== "undefined" )
+	{
+		if(on_complete)
+			on_complete.call(this);
+		return;
+	}
+
 	if( this._loading )
 	{
 		LEvent.bind( this, "threejs_loaded", on_complete, this );
@@ -38005,6 +38288,7 @@ ThreeJS.prototype.loadLibrary = function( on_complete )
 
 	this._loading = true;
 	var that = this;
+
 	LS.Network.requestScript( ThreeJS.library_url, function(){
 		console.log("ThreeJS library loaded");
 		that._loading = false;
@@ -38700,6 +38984,8 @@ SceneTree.prototype.configure = function( scene_info )
 {
 	if(!scene_info || scene_info.constructor === String)
 		throw("SceneTree configure requires object");
+
+	LEvent.trigger(this,"preConfigure",scene_info);
 
 	this._root.removeAllComponents(); //remove light, camera, skybox
 
@@ -40732,6 +41018,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 {
 	var target = this;
 	var varname = path[0];
+	var no_slice = false;
 
 	if(path.length == 0)
 	{
@@ -40793,6 +41080,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 			case "rotZ":
 				target = this.transform;
 				varname = path[0];
+				no_slice = true;
 				break;
 			default: 
 				target = this;
@@ -40835,7 +41123,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 
 	//this was moved to Component.prototype.getPropertyInfoFromPath  (if any errors check cases)
 	if( target != this && target.getPropertyInfoFromPath ) //avoid weird recursion
-		return target.getPropertyInfoFromPath( path.slice(1) );
+		return target.getPropertyInfoFromPath( no_slice ? path : path.slice(1) );
 
 	return null;
 }
@@ -40862,6 +41150,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 {
 	var target = this;
 	var varname = path[0];
+	var no_slice = false;
 
 	if(path.length == 0)
 		return null
@@ -40887,6 +41176,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 			case "rotZ":
 				target = this.transform;
 				varname = path[0];
+				no_slice = true;
 				break;
 			default: 
 				target = this;
@@ -40928,7 +41218,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 
 	if( target.getPropertyValueFromPath && target != this )
 	{
-		var r = target.getPropertyValueFromPath( path.slice(1) );
+		var r = target.getPropertyValueFromPath( no_slice ? path : path.slice(1) );
 		if(r)
 			return r;
 	}
@@ -40941,7 +41231,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 	//used in TextureFX
 	if (v === undefined && path.length > 2 && target[ varname ] && target[ varname ].getPropertyValueFromPath )
 	{
-		var r = target[ varname ].getPropertyValueFromPath( path.slice(2) );
+		var r = target[ varname ].getPropertyValueFromPath( no_slice ? path.slice(1) : path.slice(2) );
 		if(r)
 		{
 			r.node = this;
@@ -41404,6 +41694,8 @@ SceneNode.prototype.configure = function(info)
 		this.transform.position = info.position;
 	if(info.model) 
 		this.transform.fromMatrix( info.model ); 
+	if(info.matrix) 
+		this.transform.fromMatrix( info.matrix ); 
 	if(info.transform) 
 		this.transform.configure( info.transform ); 
 
@@ -47114,7 +47406,8 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 				enumerable: false
 			});
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 
 	Object.defineProperty( Object.prototype, "getAttribute", {
@@ -47126,7 +47419,8 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 				return this.constructor[v];
 			return null;
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 }
 

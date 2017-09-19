@@ -23,7 +23,6 @@ function ComponentContainer()
 * @method configureComponents
 * @param {Object} info object containing all the info from a previous serialization
 */
-
 ComponentContainer.prototype.configureComponents = function( info )
 {
 	if(!info.components)
@@ -86,12 +85,13 @@ ComponentContainer.prototype.configureComponents = function( info )
 	}
 }
 
+
+
 /**
 * Adds a component to this node.
 * @method serializeComponents
 * @param {Object} o container where the components will be stored
 */
-
 ComponentContainer.prototype.serializeComponents = function( o )
 {
 	if(!this._components)
@@ -104,6 +104,17 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		if( !comp.serialize || comp.skip_serialize )
 			continue;
 		var obj = comp.serialize();
+
+		//check for bad stuff inside the component
+		/*
+		for(var j in obj)
+		{
+			var v = obj[j];
+			if( !v || v.constructor === Number || v.constructor === String || v.constructor === Boolean || v.constructor === Object || v.constructor === Array ) //regular data
+				continue;
+			obj[j] = LS.encodeObject(v);
+		}
+		*/
 
 		if(comp._editor)
 			obj.editor = comp._editor;
@@ -173,7 +184,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 	{
 		component = LS.Components[ component ];
 		if(!component)
-			throw("component class not found: ", arguments[0] );
+			throw("component class not found: " + arguments[0] );
 	}
 	if(component.is_component)
 		component = new component();

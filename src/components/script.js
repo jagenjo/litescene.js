@@ -263,7 +263,7 @@ Script.prototype.getContextProperties = function()
 	var ctx = this.getContext();
 	if(!ctx)
 		return;
-	return LS.cloneObject( ctx );
+	return LS.cloneObject( ctx, null, false, false, true );
 }
 
 Script.prototype.setContextProperties = function( properties )
@@ -278,7 +278,7 @@ Script.prototype.setContextProperties = function( properties )
 	}
 
 	//to copy we use the clone in target method
-	LS.cloneObject( properties, ctx, false, true );
+	LS.cloneObject( properties, ctx, false, true, true );
 }
 
 //used for graphs

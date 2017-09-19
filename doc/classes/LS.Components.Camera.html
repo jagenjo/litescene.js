@@ -351,6 +351,14 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_setEulerAngles">setEulerAngles</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_setOrientation">setOrientation</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_setOrthographic">setOrthographic</a>
 
                             </li>
@@ -446,15 +454,15 @@
 
                             </li>
                             <li class="index-item property">
-                                <a href="#property_projection_matrix">projection_matrix</a>
-
-                            </li>
-                            <li class="index-item property">
                                 <a href="#property_type">type</a>
 
                             </li>
                             <li class="index-item property">
                                 <a href="#property_up">up</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_view_matrix">view_matrix</a>
 
                             </li>
                             <li class="index-item property">
@@ -499,7 +507,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1203"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1203</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1215"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1215</code></a>
         </p>
 
 
@@ -919,7 +927,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1314"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1314</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1333"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1333</code></a>
         </p>
 
 
@@ -1219,7 +1227,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1343"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1343</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1362"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1362</code></a>
         </p>
 
 
@@ -1666,7 +1674,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1373"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1373</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1392"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1392</code></a>
         </p>
 
 
@@ -2103,7 +2111,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1256"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1256</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1275"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1275</code></a>
         </p>
 
 
@@ -2198,7 +2206,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1292"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1292</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1311"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1311</code></a>
         </p>
 
 
@@ -2418,7 +2426,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1217"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1217</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1236"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1236</code></a>
         </p>
 
 
@@ -2509,6 +2517,138 @@ If the camera is a node camera, then the node transform is modified (plus the ce
                     <div class="param-description">
                         <p>if this is true it moves the eye closer, otherwise it moves the center closer to the eye</p>
 
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_setEulerAngles" class="method item">
+    <h3 class="name"><code>setEulerAngles</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>yaw</code>
+                </li>
+                <li class="arg">
+                        <code>pitch</code>
+                </li>
+                <li class="arg">
+                        <code>roll</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l1201"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1201</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>orients the camera (changes where is facing) using euler angles (yaw,pitch,roll)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">yaw</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">pitch</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">roll</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+<div id="method_setOrientation" class="method item">
+    <h3 class="name"><code>setOrientation</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>q</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l1163"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1163</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>orients the camera (changes where is facing) according to the rotation supplied</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">q</code>
+                        <span class="type">Quat</span>
+
+
+                    <div class="param-description">
+                         
                     </div>
 
                 </li>
@@ -2762,7 +2902,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1239"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1239</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1258"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1258</code></a>
         </p>
 
 
@@ -2854,7 +2994,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1283"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1283</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1302"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1302</code></a>
         </p>
 
 
@@ -3432,31 +3572,6 @@ When focalLength is modified it will change the center so it matches the distanc
 
 
 </div>
-<div id="property_projection_matrix" class="property item">
-    <h3 class="name"><code>projection_matrix</code></h3>
-    <span class="type">Vec4</span>
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_components_camera.js.html#l363"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:363</code></a>
-        </p>
-
-
-    </div>
-
-    <div class="description">
-        <p>The view matrix of the camera</p>
-
-    </div>
-
-
-
-</div>
 <div id="property_type" class="property item">
     <h3 class="name"><code>type</code></h3>
     <span class="type">Vec3</span>
@@ -3506,6 +3621,31 @@ When focalLength is modified it will change the center so it matches the distanc
     </div>
 
         <p><strong>Default:</strong> [0,1,0]</p>
+
+
+</div>
+<div id="property_view_matrix" class="property item">
+    <h3 class="name"><code>view_matrix</code></h3>
+    <span class="type">Vec4</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_camera.js.html#l363"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:363</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>The view matrix of the camera</p>
+
+    </div>
+
 
 
 </div>

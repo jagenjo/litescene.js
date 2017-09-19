@@ -77,7 +77,8 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 				enumerable: false
 			});
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 
 	Object.defineProperty( Object.prototype, "getAttribute", {
@@ -89,7 +90,8 @@ if( !Object.prototype.hasOwnProperty("defineAttribute") )
 				return this.constructor[v];
 			return null;
 		},
-		enumerable: false
+		enumerable: false,
+		writable: true
 	});
 }
 

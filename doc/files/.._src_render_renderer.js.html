@@ -245,6 +245,9 @@ var Renderer = {
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
 		this._normal_texture = new GL.Texture(1,1, { pixel_data: [128,128,255,255] });
 		this._missing_texture = this._gray_texture;
+		var internal_textures = [ this._black_texture, this._gray_texture, this._white_texture, this._normal_texture, this._missing_texture ];
+		internal_textures.forEach(function(t){ t._is_internal = true; });
+
 		LS.ResourcesManager.textures[&quot;:black&quot;] = this._black_texture;
 		LS.ResourcesManager.textures[&quot;:gray&quot;] = this._gray_texture;
 		LS.ResourcesManager.textures[&quot;:white&quot;] = this._white_texture;
@@ -434,7 +437,7 @@ var Renderer = {
 			if(gl.start2D)
 				gl.start2D();
 			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
-			LEvent.trigger( scene, &quot;renderGUI&quot;, render_settings );
+			LEvent.trigger( scene, &quot;renderGUI&quot;, gl );
 			if(gl.finish2D)
 				gl.finish2D();
 		}
@@ -586,7 +589,24 @@ var Renderer = {
 		LEvent.trigger( scene, &quot;afterCameraEnabled&quot;, camera ); //used to change stuff according to the current camera (reflection textures)
 	},
 
-	//clear color using camerae info
+	/**
+	* Returns the camera active
+	*
+	* @method getCurrentCamera
+	* @return {Camera} camera
+	*/
+	getCurrentCamera: function()
+	{
+		return this._current_camera;
+	},
+
+	/**
+	* clear color using camera info ( background color, viewport scissors, clear depth, etc )
+	*
+	* @method clearBuffer
+	* @param {Camera} camera
+	* @param {LS.RenderSettings} render_settings
+	*/
 	clearBuffer: function( camera, render_settings )
 	{
 		if( render_settings.ignore_clear || (!camera.clear_color &amp;&amp; !camera.clear_depth) )

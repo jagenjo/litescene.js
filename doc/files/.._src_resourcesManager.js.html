@@ -1648,6 +1648,12 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 		return null;
 	}
 
+	if( scene_data &amp;&amp; scene_data.constructor === LS.SceneTree )
+		throw(&quot;processScene must receive object, no SceneTree&quot;);
+
+	if(!scene_data.root)
+		throw(&quot;this is not an scene, root property missing&quot;);
+
 	LS.ResourcesManager._parsing_local_file = true;
 
 	//resources (meshes, textures...)

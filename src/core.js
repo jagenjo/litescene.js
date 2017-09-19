@@ -385,7 +385,7 @@ var LS = {
 	* @param {Object} target=null optional, the destination object
 	* @return {Object} returns the cloned object (target if it is specified)
 	*/
-	cloneObject: function( object, target, recursive, only_existing )
+	cloneObject: function( object, target, recursive, only_existing, encode_objects )
 	{
 		if(object === undefined)
 			return undefined;
@@ -459,13 +459,25 @@ var LS = {
 			{
 				//not safe to use concat or slice(0) because it doesnt clone content, only container
 				if( o[i] && o[i].set && o[i].length >= v.length ) //reuse old container
+				{
 					o[i].set(v);
+					continue;
+				}
+
+				if( encode_objects && target && v[0] == "@ENC" ) //encoded object (component, node...)
+					o[i] = LS.decodeObject(v);
 				else
 					o[i] = LS.cloneObject( v ); 
 			}
-			else //Object: 
+			else //Objects: 
 			{
-				if(v.constructor !== Object && !target && !v.toJSON )
+				if( encode_objects && !target )
+				{
+					o[i] = LS.encodeObject(v);
+					continue;
+				}
+
+				if( v.constructor !== Object && !target && !v.toJSON )
 				{
 					console.warn("Cannot clone internal classes:", LS.getObjectClassName( v )," When serializing an object I found a var with a class that doesnt support serialization. If this var shouldnt be serialized start the name with underscore.'");
 					continue;
@@ -500,6 +512,53 @@ var LS = {
 		}
 		return o;
 	},
+
+	encodeObject: function( obj )
+	{
+		if( !obj || obj.constructor === Number || obj.constructor === String || obj.constructor === Boolean || obj.constructor === Object ) //regular objects
+			return obj;
+		if( obj.constructor.is_component && obj._root) //in case the value of this property is an actual component in the scene
+			return [ "@ENC", LS.TYPES.COMPONENT, obj.getLocator(), LS.getObjectClassName( obj ) ];
+		if( obj.constructor == LS.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
+			return [ "@ENC", LS.TYPES.NODE, obj.uid ];
+		if( obj.constructor == LS.SceneTree)
+			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
+		if( obj.serialize || obj.toJSON )
+			return [ "@ENC", LS.TYPES.OBJECT, obj.serialize ? obj.serialize() : obj.toJSON(), LS.getObjectClassName( obj ) ];
+		console.warn("Cannot clone internal classes:", LS.getObjectClassName( obj )," When serializing an object I found a property with a class that doesnt support serialization. If this property shouldn't be serialized start the name with underscore.'");
+		return null;
+	},
+
+	decodeObject: function( data )
+	{
+		if(!data || data.constructor !== Array || data[0] != "@ENC" )
+			return null;
+
+		switch( data[1] )
+		{
+			case LS.TYPES.COMPONENT: 
+			case LS.TYPES.NODE: 
+				var obj = LSQ.get( data[2] );
+				if( obj )
+					return obj;
+				return data[2]; break;
+				//return  break;
+			case LS.TYPES.SCENE: return null; break; //weird case
+			case LS.TYPES.OBJECT: 
+			default:
+				if( !data[2] || !data[2].object_class )
+					return null;
+				var ctor = LS.Classes[ data[2].object_class ];
+				if(!ctor)
+					return null;
+				var v = new ctor();
+				v.configure(data[2]);
+				return v;
+			break;
+		}
+		return null;
+	},
+
 
 	/**
 	* Clears all the uids inside this object and children (it also works with serialized object)
@@ -904,6 +963,8 @@ var LSQ = {
 	*/
 	get: function( locator, root, scene )
 	{
+		if(!locator) //sometimes we have a var with a locator that is null
+			return null;
 		scene = scene || LS.GlobalScene;
 		var info;
 		if(!root)
