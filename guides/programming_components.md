@@ -1,6 +1,6 @@
 # Programming new components
 
-LiteScene is a component based engine.
+LiteScene is a component based engine. To know more about Components read the [components guide](components.md).
 
 That means that any action performed by the system, like rendering on the screen, adding lights, applying postprocessing effects, 
 or executing scripts, comes from one of the many components.
