@@ -917,7 +917,7 @@ Object.defineProperty( LS, "block_scripts", {
 
 
 //Add some classes
-LS.Classes.WBin = LS.WBin = WBin;
+LS.Classes.WBin = LS.WBin = global.WBin = WBin;
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers

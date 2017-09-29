@@ -737,7 +737,8 @@ var ResourcesManager = {
 				process_final( url, resource, options );
 			else //resource is null
 			{
-				this._resourceLoadedError( url, "Resource couldnt be processed" );
+				console.warn("resource preprocessor_callback returned null");
+				this._resourceLoadedError( url, "Resource couldn't be processed" );
 				return;
 			}
 		}
@@ -1213,10 +1214,26 @@ LS.getTexture = function( name_or_texture ) {
 
 //global formats: take a file and extract info
 LS.ResourcesManager.registerResourcePreProcessor("wbin", function( filename, data, options) {
-
-	//WBin will detect there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
-	var data = WBin.load( data, false, filename );
-	return data;
+	//this object has already been expanded, it happens with objects created from parsers that encode the wbin extension
+	if(data.constructor === Object && data.object_class )
+	{
+		if( LS.Classes[ data.object_class ] )
+		{
+			var ctor = LS.Classes[ data.object_class ] || window[ data.object_class ];
+			if( ctor && ctor.fromBinary )
+				return ctor.fromBinary( data, filename );
+			else if(ctor && ctor.prototype.fromBinary)
+			{
+				var inst = new ctor();
+				inst.fromBinary( object, filename );
+				return inst;
+			}
+		}
+		return data; 
+	}
+	//WBin will detect if there is a class name inside the data and do the conversion to the specified class (p.e. a Prefab or a Mesh)
+	var final_data = WBin.load( data, false, filename );
+	return final_data;
 },"binary");
 
 LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data, options) {

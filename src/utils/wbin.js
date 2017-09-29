@@ -28,6 +28,8 @@ Lump binary: all the binary data...
 * @class WBin
 */
 
+(function(global){
+
 function WBin()
 {
 }
@@ -427,24 +429,12 @@ WBin.readUint16 = function( buffer, pos )
 {
 	var dv = new DataView( buffer.buffer, buffer.byteOffset );
 	return dv.getUint16( pos, true );
-	/* this may be slow but helps removing Endian problems
-	var f = new Uint16Array(1);
-	var view = new Uint8Array(f.buffer);
-	view.set( buffer.subarray(pos,pos+2) );
-	return f[0];
-	*/
 }
 
 WBin.readUint32 = function(buffer, pos)
 {
 	var dv = new DataView( buffer.buffer, buffer.byteOffset);
 	return dv.getUint32( pos, true );
-	/*
-	var f = new Uint32Array(1);
-	var view = new Uint8Array(f.buffer);
-	view.set( buffer.subarray(pos,pos+4) );
-	return f[0];
-	*/
 }
 
 WBin.readFloat32 = function(buffer, pos)
@@ -453,42 +443,6 @@ WBin.readFloat32 = function(buffer, pos)
 	return dv.getFloat32( pos, true );
 }
 
-/* CANNOT BE DONE, XMLHTTPREQUEST DO NOT ALLOW TO READ PROGRESSIVE BINARY DATA (yet)
-//ACCORDING TO THIS SOURCE: http://chimera.labs.oreilly.com/books/1230000000545/ch15.html#XHR_STREAMING
+global.WBin = WBin;
 
-WBin.progressiveLoad = function(url, on_header, on_lump, on_complete, on_error)
-{
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-
-    //get binary format
-	xhr.responseType = "arraybuffer";
-  	xhr.overrideMimeType( "application/octet-stream" );
-
-    //get data as it arrives
-	xhr.onprogress = function(evt)
-    {
-		console.log(this.response); //this is null till the last packet
-		if (!evt.lengthComputable) return;
-		var percentComplete = Math.round(evt.loaded * 100 / evt.total);
-		//on_progress( percentComplete );
-    }
-
-    xhr.onload = function(load)
-	{
-		var response = this.response;
-		if(on_complete)
-			on_complete.call(this, response);
-	};
-    xhr.onerror = function(err) {
-    	console.error(err);
-		if(on_error)
-			on_error(err);
-	}
-	//start downloading
-    xhr.send();
-}
-*/
-
-//WBin is not registered in LS here, because WBin is included before LS
-//IT is done from LS
+})( typeof(global) != "undefined" ? global : this );

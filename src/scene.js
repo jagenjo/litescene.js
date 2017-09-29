@@ -418,13 +418,14 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 	var that = this;
 
 	var extension = LS.ResourcesManager.getExtension( url );
+	var format_info = LS.Formats.getFileFormatInfo( extension );
 
 	//request scene file using our own library
 	LS.Network.request({
 		url: url,
 		nocache: true,
-		dataType: extension == "json" ? "json" : "binary",
-		success: extension == "json" ? inner_json_loaded : inner_pack_loaded,
+		dataType: extension == "json" ? "json" : (format_info.dataType || "text"), //datatype of json is text...
+		success: extension == "json" ? inner_json_loaded : inner_data_loaded,
 		progress: on_progress,
 		error: inner_error
 	});
@@ -435,20 +436,36 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 	 */
 	LEvent.trigger(this,"beforeLoad");
 
-	function inner_pack_loaded( response )
+	function inner_data_loaded( response )
 	{
-		//process pack
-		LS.ResourcesManager.processResource( url, response, null, inner_pack_processed );
+		//process whatever we loaded (in case it is a pack)
+		LS.ResourcesManager.processResource( url, response, null, inner_data_processed );
 	}
 
-	function inner_pack_processed( pack_url, pack )
+	function inner_data_processed( pack_url, pack )
 	{
-		if(!pack || !pack._data || !pack._data["scene.json"] )
+		if(!pack)
+			return;
+
+		//for DAEs
+		if( pack.object_class == "SceneTree")
+		{
+			inner_json_loaded( pack );
+			return;
+		}
+		else if( pack.object_class == "SceneNode") 
+		{
+			var root = pack.serialize();
+			inner_json_loaded( { object_class: "SceneTree", root: root } );
+			return;
+		}
+
+		//for packs
+		if( !pack._data || !pack._data["scene.json"] )
 		{
 			console.error("Error loading PACK, doesnt look like it has a valid scene inside");
 			return;
 		}
-
 		var scene = JSON.parse( pack._data["scene.json"] );
 
 		inner_json_loaded( scene );
@@ -456,6 +473,9 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 
 	function inner_json_loaded( response )
 	{
+		if( response.constructor !== Object )
+			throw("response must be object");
+
 		var scripts = LS.SceneTree.getScriptsList( response, true );
 
 		//check JSON for special scripts

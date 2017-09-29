@@ -829,6 +829,23 @@ Light.prototype.generateShadowmap = function (render_settings)
 }
 
 /**
+* It returns the global matrix 
+* @method getGlobalMatrix
+* @param {mat4} output [optional]
+* @return {mat4} mat4
+*/
+Light.prototype.getGlobalMatrix = function( mat )
+{
+	if( this._root && this._root.transform )
+		return this._root.transform.getGlobalMatrix( mat ); //use the node transform
+
+	mat = mat || mat4.create();
+	mat4.lookAt( mat, this._position, this._target, LS.TOP );
+	return mat;
+}
+
+
+/**
 * It returns a matrix in the position of the given light property (target, position), mostly used for gizmos
 * @method getTransformMatrix
 * @param {String} element "target" or "position"
@@ -838,12 +855,14 @@ Light.prototype.generateShadowmap = function (render_settings)
 Light.prototype.getTransformMatrix = function( element, mat )
 {
 	if( this._root && this._root.transform )
-		return null; //use the node transform
+		return this._root.transform.getGlobalMatrix( mat ); //use the node transform
 
 	var p = null;
+	if( element == "matrix" )
+		return this.getGlobalMatrix(mat);
 	if (element == "target")
 		p = this.target;
-	else
+	else //if (element == "position")
 		p = this.position;
 
 	var T = mat || mat4.create();

@@ -3563,6 +3563,26 @@
         {
             "file": "../src/components/light.js",
             "line": 831,
+            "description": "It returns the global matrix",
+            "itemtype": "method",
+            "name": "getGlobalMatrix",
+            "params": [
+                {
+                    "name": "output",
+                    "description": "[optional]",
+                    "type": "Mat4"
+                }
+            ],
+            "return": {
+                "description": "mat4",
+                "type": "Mat4"
+            },
+            "class": "LS.Light",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/components/light.js",
+            "line": 848,
             "description": "It returns a matrix in the position of the given light property (target, position), mostly used for gizmos",
             "itemtype": "method",
             "name": "getTransformMatrix",
@@ -3587,7 +3607,7 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 854,
+            "line": 873,
             "description": "apply a transformation to a given light property, this is done in a function to allow more complex gizmos",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -8519,7 +8539,7 @@
         },
         {
             "file": "../src/utils/wbin.js",
-            "line": 56,
+            "line": 58,
             "description": "Allows to check if one Uint8Array contains a WBin file",
             "itemtype": "method",
             "name": "WBin.isWBin",
@@ -8539,7 +8559,7 @@
         },
         {
             "file": "../src/utils/wbin.js",
-            "line": 71,
+            "line": 73,
             "description": "Builds a WBin data stream from an object (every property of the object will be considered a lump with data)\nIt supports Numbers, Strings and TypedArrays or ArrayBuffer",
             "itemtype": "method",
             "name": "WBin.create",
@@ -8564,7 +8584,7 @@
         },
         {
             "file": "../src/utils/wbin.js",
-            "line": 218,
+            "line": 220,
             "description": "Extract the info from a Uint8Array containing WBin info and returns the object with all the lumps.\nIf the data contains info about the class to instantiate, the WBin instantiates the class and passes the data to it",
             "itemtype": "method",
             "name": "WBin.load",
@@ -8594,7 +8614,7 @@
         },
         {
             "file": "../src/utils/wbin.js",
-            "line": 315,
+            "line": 317,
             "description": "Extract the header info from an ArrayBuffer (it contains version, and lumps info)",
             "itemtype": "method",
             "name": "WBin.getHeaderInfo",
@@ -10498,7 +10518,7 @@
         },
         {
             "file": "../src/network.js",
-            "line": 175,
+            "line": 176,
             "description": "retrieve a JSON file from url (you can bind LEvents to done and fail)",
             "itemtype": "method",
             "name": "requestJSON",
@@ -10525,7 +10545,7 @@
         },
         {
             "file": "../src/network.js",
-            "line": 192,
+            "line": 194,
             "description": "retrieve a file from url (you can bind LEvents to done and fail)",
             "itemtype": "method",
             "name": "requestFile",
@@ -10552,7 +10572,7 @@
         },
         {
             "file": "../src/network.js",
-            "line": 209,
+            "line": 212,
             "description": "Request script and inserts it in the DOM",
             "itemtype": "method",
             "name": "requestScript",
@@ -11498,7 +11518,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 810,
+            "line": 811,
             "description": "Takes a resource instance, and adds some extra properties and register it",
             "itemtype": "method",
             "name": "processFinalResource",
@@ -11532,7 +11552,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 862,
+            "line": 863,
             "description": "Stores the resource inside the manager containers. This way it will be retrieveble by anybody who needs it.",
             "itemtype": "method",
             "name": "registerResource",
@@ -11554,7 +11574,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 912,
+            "line": 913,
             "description": "removes the resources from all the containers",
             "itemtype": "method",
             "name": "unregisterResource",
@@ -11575,7 +11595,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 944,
+            "line": 945,
             "description": "Used to load files and get them as File (or Blob)",
             "itemtype": "method",
             "name": "getURLasFile",
@@ -11596,7 +11616,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 963,
+            "line": 964,
             "description": "Changes the name of a resource and sends an event to all components to change it accordingly",
             "itemtype": "method",
             "name": "renameResource",
@@ -11629,7 +11649,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1021,
+            "line": 1022,
             "description": "Tells if it is loading resources (or an specific resource)",
             "itemtype": "method",
             "name": "isLoading",
@@ -11643,7 +11663,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1036,
+            "line": 1037,
             "description": "forces to try to reload again resources not found",
             "itemtype": "method",
             "name": "isLoading",
@@ -11657,7 +11677,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1053,
+            "line": 1054,
             "description": "returns a mesh resource if it is loaded",
             "itemtype": "method",
             "name": "getMesh",
@@ -11678,7 +11698,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1070,
+            "line": 1071,
             "description": "returns a texture resource if it is loaded",
             "itemtype": "method",
             "name": "getTexture",
@@ -11699,7 +11719,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1096,
+            "line": 1097,
             "description": "Binds a callback for when a resource is loaded (in case you need to do something special)",
             "itemtype": "method",
             "name": "onceLoaded",
@@ -11724,7 +11744,7 @@
         },
         {
             "file": "../src/resourcesManager.js",
-            "line": 1121,
+            "line": 1122,
             "description": "Cancels the binding of a onceLoaded",
             "itemtype": "method",
             "name": "cancelOnceLoaded",
@@ -11979,7 +11999,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 432,
+            "line": 433,
             "description": "Fired before loading scene",
             "itemtype": "event",
             "name": "beforeLoad",
@@ -11989,7 +12009,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 480,
+            "line": 500,
             "description": "Fired when the scene has been loaded but before the resources",
             "itemtype": "event",
             "name": "load",
@@ -11999,7 +12019,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 494,
+            "line": 514,
             "description": "Fired after all resources have been loaded",
             "itemtype": "event",
             "name": "loadCompleted",
@@ -12009,7 +12029,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 511,
+            "line": 531,
             "description": "Loads a scene from a relative url pointing to a JSON description (or WBIN,ZIP)\nIt uses the resources folder as the root folder (in comparison with the regular load function)",
             "itemtype": "method",
             "name": "loadFromResources",
@@ -12054,7 +12074,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 530,
+            "line": 550,
             "description": "Static method, returns a list of all the scripts that must be loaded, in order and with the full path",
             "itemtype": "method",
             "name": "SceneTree.getScriptsList",
@@ -12081,7 +12101,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 705,
+            "line": 725,
             "description": "Returns an array with all the cameras enabled in the scene",
             "itemtype": "method",
             "name": "getActiveCameras",
@@ -12102,7 +12122,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 719,
+            "line": 739,
             "description": "Returns an array with all the cameras in the scene (even if they are disabled)",
             "itemtype": "method",
             "name": "getAllCameras",
@@ -12116,7 +12136,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 743,
+            "line": 763,
             "description": "Returns an array with all the lights enabled in the scene",
             "itemtype": "method",
             "name": "getActiveLights",
@@ -12137,7 +12157,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 793,
+            "line": 813,
             "description": "Fired when a new node is added to this scene",
             "itemtype": "event",
             "name": "nodeAdded",
@@ -12154,7 +12174,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 820,
+            "line": 840,
             "description": "Fired after a node has been removed",
             "itemtype": "event",
             "name": "nodeRemoved",
@@ -12171,7 +12191,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 831,
+            "line": 851,
             "description": "all nodes are stored in an array, this function recomputes the array so they are in the right order in case one has changed order",
             "itemtype": "method",
             "name": "recomputeNodesArray",
@@ -12181,7 +12201,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 865,
+            "line": 885,
             "description": "Returns the array containing all the nodes in the scene",
             "itemtype": "method",
             "name": "getNodes",
@@ -12202,7 +12222,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 879,
+            "line": 899,
             "description": "retrieves a Node based on the name, path ( name|childname|etc ) or uid",
             "itemtype": "method",
             "name": "getNode",
@@ -12223,7 +12243,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 908,
+            "line": 928,
             "description": "retrieves a Node that matches that name. It is fast because they are stored in an object.\nIf more than one object has the same name, the first one added to the tree is returned",
             "itemtype": "method",
             "name": "getNodeByName",
@@ -12244,7 +12264,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 921,
+            "line": 941,
             "description": "retrieves a Node based on a given uid. It is fast because they are stored in an object",
             "itemtype": "method",
             "name": "getNodeByUId",
@@ -12265,7 +12285,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 933,
+            "line": 953,
             "description": "retrieves a Node by its index",
             "itemtype": "method",
             "name": "getNodeByIndex",
@@ -12286,7 +12306,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 948,
+            "line": 968,
             "description": "retrieves a node array filtered by the filter function",
             "itemtype": "method",
             "name": "filterNodes",
@@ -12307,7 +12327,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 964,
+            "line": 984,
             "description": "searches the component with this uid, it iterates through all the nodes and components (slow)",
             "itemtype": "method",
             "name": "findComponentByUId",
@@ -12328,7 +12348,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 982,
+            "line": 1002,
             "description": "searches the material with this uid, it iterates through all the nodes (slow)",
             "itemtype": "method",
             "name": "findMaterialByUId",
@@ -12349,7 +12369,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1005,
+            "line": 1025,
             "description": "Returns information of a node component property based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "getPropertyInfo",
@@ -12370,7 +12390,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1053,
+            "line": 1073,
             "description": "Returns information of a node component property based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "getPropertyInfoFromPath",
@@ -12391,7 +12411,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1078,
+            "line": 1098,
             "description": "Assigns a value to the property of a component in a node based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "getPropertyValue",
@@ -12422,7 +12442,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1121,
+            "line": 1141,
             "description": "Assigns a value to the property of a component in a node based on the locator of that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "setPropertyValue",
@@ -12453,7 +12473,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1137,
+            "line": 1157,
             "description": "Assigns a value to the property of a component in a node based on the locator that property\nLocators are in the form of \"{NODE_UID}/{COMPONENT_UID}/{property_name}\"",
             "itemtype": "method",
             "name": "setPropertyValueFromPath",
@@ -12489,7 +12509,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1171,
+            "line": 1191,
             "description": "Returns the resources used by the scene\nincludes the nodes, components, preloads and global_scripts\ndoesn't include external_scripts",
             "itemtype": "method",
             "name": "getResources",
@@ -12525,7 +12545,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1241,
+            "line": 1261,
             "description": "Loads all the resources of all the nodes in this scene\nit sends a signal to every node to get all the resources info\nand load them in bulk using the ResourceManager",
             "itemtype": "method",
             "name": "loadResources",
@@ -12542,7 +12562,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1282,
+            "line": 1302,
             "description": "Adds a resource that must be loaded when the scene is loaded",
             "itemtype": "method",
             "name": "addPreloadResource",
@@ -12559,7 +12579,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1293,
+            "line": 1313,
             "description": "Remove a resource from the list of resources to preload",
             "itemtype": "method",
             "name": "removePreloadResource",
@@ -12576,7 +12596,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1305,
+            "line": 1325,
             "description": "start the scene (triggers an \"start\" event)",
             "itemtype": "method",
             "name": "start",
@@ -12593,7 +12613,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1318,
+            "line": 1338,
             "description": "Fired when the nodes need to be initialized",
             "itemtype": "event",
             "name": "init",
@@ -12610,7 +12630,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1326,
+            "line": 1346,
             "description": "Fired when the scene is starting to play",
             "itemtype": "event",
             "name": "start",
@@ -12627,7 +12647,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1336,
+            "line": 1356,
             "description": "pauses the scene (triggers an \"pause\" event)",
             "itemtype": "method",
             "name": "pause",
@@ -12637,7 +12657,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1347,
+            "line": 1367,
             "description": "Fired when the scene pauses (mostly in the editor)",
             "itemtype": "event",
             "name": "pause",
@@ -12654,7 +12674,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1358,
+            "line": 1378,
             "description": "unpauses the scene (triggers an \"unpause\" event)",
             "itemtype": "method",
             "name": "unpause",
@@ -12664,7 +12684,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1369,
+            "line": 1389,
             "description": "Fired when the scene unpauses (mostly in the editor)",
             "itemtype": "event",
             "name": "unpause",
@@ -12681,7 +12701,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1381,
+            "line": 1401,
             "description": "stop the scene (triggers an \"finish\" event)",
             "itemtype": "method",
             "name": "finish",
@@ -12698,7 +12718,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1393,
+            "line": 1413,
             "description": "Fired when the scene stops playing",
             "itemtype": "event",
             "name": "finish",
@@ -12715,7 +12735,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1405,
+            "line": 1425,
             "description": "renders the scene using the assigned renderer",
             "itemtype": "method",
             "name": "render",
@@ -12725,7 +12745,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1415,
+            "line": 1435,
             "description": "This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)\nMostly rendering stuff but also some collision info.\nTO DO: refactor this so it doesnt redo the same task in every frame, only if changes are made",
             "itemtype": "method",
             "name": "collectData",
@@ -12735,7 +12755,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1543,
+            "line": 1563,
             "description": "Fired before doing an update",
             "itemtype": "event",
             "name": "beforeUpdate",
@@ -12752,7 +12772,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1556,
+            "line": 1576,
             "description": "Fired while updating",
             "itemtype": "event",
             "name": "update",
@@ -12769,7 +12789,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1565,
+            "line": 1585,
             "description": "Fired after updating the scene",
             "itemtype": "event",
             "name": "afterUpdate",
@@ -12779,7 +12799,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1573,
+            "line": 1593,
             "description": "triggers an event to all nodes in the scene\nthis is slow if the scene has too many nodes, thats why we use bindings",
             "itemtype": "method",
             "name": "triggerInNodes",
@@ -12801,7 +12821,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1587,
+            "line": 1607,
             "description": "generate a unique node name given a prefix",
             "itemtype": "method",
             "name": "generateUniqueNodeName",
@@ -12822,7 +12842,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1616,
+            "line": 1636,
             "description": "Marks that this scene must be rendered again",
             "itemtype": "method",
             "name": "requestFrame",
@@ -12832,7 +12852,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1629,
+            "line": 1649,
             "description": "returns current scene time (remember that scene time remains freezed if the scene is not playing)",
             "itemtype": "method",
             "name": "getTime",
@@ -12846,7 +12866,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1672,
+            "line": 1692,
             "description": "returns an array with the name of all the layers given a layers mask",
             "itemtype": "method",
             "name": "getLayerNames",
@@ -12867,7 +12887,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1691,
+            "line": 1711,
             "description": "returns an array with all the components in the scene and scenenodes that matches this class",
             "itemtype": "method",
             "name": "findNodeComponents",
@@ -12888,7 +12908,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1724,
+            "line": 1744,
             "description": "Allows to instantiate a prefab from the fullpath of the resource",
             "itemtype": "method",
             "name": "instantiate",
@@ -12924,7 +12944,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1753,
+            "line": 1773,
             "description": "returns a pack containing all the scene and resources, used to save a scene to harddrive",
             "itemtype": "method",
             "name": "toPack",
@@ -12950,7 +12970,7 @@
         },
         {
             "file": "../src/scene.js",
-            "line": 1861,
+            "line": 1881,
             "description": "Creates and returns an scene animation track",
             "itemtype": "method",
             "name": "createAnimation",
@@ -13220,6 +13240,28 @@
         {
             "file": "../src/sceneNode.js",
             "line": 768,
+            "description": "Allows to load some kind of resource and associate it to this node.\nIt can be for prefabs, meshes, scenes from daes, etc",
+            "itemtype": "method",
+            "name": "load",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "on_complete",
+                    "description": "",
+                    "type": "Function"
+                }
+            ],
+            "class": "LS.SceneNode",
+            "module": "LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/sceneNode.js",
+            "line": 808,
             "description": "Simple way to assign a mesh to a node, it created a MeshRenderer component or reuses and existing one and assigns the mesh",
             "itemtype": "method",
             "name": "setMesh",
@@ -13241,7 +13283,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 835,
+            "line": 843,
             "description": "Apply prefab info (skipping the root components) to node, so all children will be removed and components lost and overwritten\nIt is called from prefab.applyToNodes when a prefab is loaded in memory",
             "itemtype": "method",
             "name": "reloadFromPrefab",
@@ -13251,7 +13293,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 871,
+            "line": 879,
             "description": "Assigns this node to one layer",
             "itemtype": "method",
             "name": "setLayer",
@@ -13273,7 +13315,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 904,
+            "line": 912,
             "description": "checks if this node is in the given layer",
             "itemtype": "method",
             "name": "isInLayer",
@@ -13294,7 +13336,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 948,
+            "line": 956,
             "description": "Returns the root node of the prefab incase it is inside a prefab, otherwise null",
             "itemtype": "method",
             "name": "insidePrefab",
@@ -13308,7 +13350,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 965,
+            "line": 973,
             "description": "remember clones this node and returns the new copy (you need to add it to the scene to see it)",
             "itemtype": "method",
             "name": "clone",
@@ -13322,7 +13364,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 987,
+            "line": 995,
             "description": "Configure this node from an object containing the info",
             "itemtype": "method",
             "name": "configure",
@@ -13339,7 +13381,7 @@
         },
         {
             "file": "../src/sceneNode.js",
-            "line": 1154,
+            "line": 1162,
             "description": "Serializes this node by creating an object with all the info\nit contains info about the components too",
             "itemtype": "method",
             "name": "serialize",

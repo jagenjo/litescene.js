@@ -42,8 +42,8 @@ var parserDAE = {
 		var renamed_meshes = {};
 		for(var i in scene.meshes)
 		{
-			var newmeshname = basename + "__" + i;
-			newmeshname = newmeshname.replace(/[^a-z0-9]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
+			var newmeshname = basename + "__" + i + ".wbin";
+			newmeshname = newmeshname.replace(/[^a-z0-9\.\-]/gi,"_"); //newmeshname.replace(/ /#/g,"_");
 			renamed[ i ] = newmeshname;
 			renamed_meshes[ newmeshname ] = scene.meshes[i];
 		}

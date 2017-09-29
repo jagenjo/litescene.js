@@ -162,10 +162,11 @@ var Network = {
 	* @param {object} params form params
 	* @param {function} callback( data )
 	*/
-	requestText: function(url, data, callback, callback_error)
+	requestText: function( url, data, callback, callback_error )
 	{
 		if(typeof(data) == "function")
 		{
+			callback_error = callback;
 			callback = data;
 			data = null;
 		}
@@ -179,10 +180,11 @@ var Network = {
 	* @param {object} params form params
 	* @param {function} callback( json )
 	*/
-	requestJSON: function(url, data, callback, callback_error)
+	requestJSON: function( url, data, callback, callback_error )
 	{
 		if(typeof(data) == "function")
 		{
+			callback_error = callback;
 			callback = data;
 			data = null;
 		}
@@ -196,10 +198,11 @@ var Network = {
 	* @param {object} params form params
 	* @param {function} callback( file )
 	*/
-	requestFile: function(url, data, callback, callback_error)
+	requestFile: function( url, data, callback, callback_error )
 	{
 		if(typeof(data) == "function")
 		{
+			callback_error = callback;
 			callback = data;
 			data = null;
 		}
