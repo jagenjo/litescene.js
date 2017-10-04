@@ -117,6 +117,8 @@ this.onUpdate = function(dt) { ... };
 
 Here is a list of the automatically binded events:
 
+- **onDestroy**: called when the script is removed from the node (and no longer belongs to the scene).
+
 - **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
 - **onPrefabReady**: triggered by the node "prefabReady", used to access components or node that come from the prefab
