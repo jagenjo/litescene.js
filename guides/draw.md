@@ -1,14 +1,14 @@
 # LS.Draw 
 
-To render things on our scene we rely on the rendering pipeline and the LS.RenderInstances that are collected from the scene.
+To render things on our scene we rely on the rendering pipeline and the ```LS.RenderInstance``` that are collected from the scene.
 
 But sometimes we want to render in immediate mode (mostly for debug purposes but also to create 3D GUIs or helpers).
 
-LiteScene includes a namespace called ```LS.Draw``` which contains several functions to render basic shapes or meshes without the need to create a LS.RenderInstance.
+LiteScene includes a namespace called ```LS.Draw``` which contains several functions to render basic shapes or meshes without the need to create a ```LS.RenderInstance```.
 
 Keep in mind that anything rendered using immediate mode wont receive any of the behaviours provided by the render pipeline (like shadows, reflections, picking, etc).
 
-Also remember that you can always call WebGL directly or to use the LiteGL methods to access WebGL to render anything, LS.Draw is just a list of helpers to make it easier.
+Also remember that you can always call WebGL directly or to use the LiteGL methods to access WebGL to render anything, LS.Draw is just a list of helpers to make it easier. For more info [check the render methods for litescene](rendering_methods.md)
 
 ## Rendering in immediate mode
 
@@ -33,7 +33,7 @@ When you have some basic data like points or lines use:
 - ```renderPoints```: renders the points on the screen using the point size set by ```LS.Draw.setPointSize```, you can pass also a stream with colors if they have different colros.
 - ```renderPointsWithSize```: same as ```renderPoints``` but you can pass an extra stream with the size of every point related to the global point size.
 - ```renderRoundPoints```: same as ```renderPoints``` but points will be rounded.
-- ```renderLines```: renders lines passed as an array of points, you can specify LINE_STRIP if you want.
+- ```renderLines```: renders lines passed as an array of points, you can specify if they must be a strip or not.
 
 ```javascript
 LS.Draw.renderPoints( [0,0,0, 100,100,100], [1,1,1,1, 1,0,0,1] ); //this will render two points, one white and the other red.
