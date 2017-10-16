@@ -143,9 +143,14 @@ You do not need to bind (or unbind) those events, the Script component does it a
 this.onUpdate = function(dt) { ... };
 ```
 
-Here is a list of the automatically binded events:
+Here is a list of the automatically binded events, all of them are optional:
 
 - **onDestroy**: called when the script is removed from the node (and no longer belongs to the scene).
+
+- **onConfigure**: triggered after the object has been configured. In case we want to do something else.
+- **onSerialize**: triggered if the user wants to store something, must return object with all properties that must be serialized, if this method ins not specified the system stores all the properties attached to the context.
+- **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
+
 
 - **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
