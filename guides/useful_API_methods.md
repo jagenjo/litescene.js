@@ -87,6 +87,9 @@ Sometimes you want to remove some element from the system:
 * For components: ```node.removeComponent( component );```
 * For resources: ```LS.ResourcesManager.unregisterResource( filename );```
 
+## Accessing the user Input
+
+For input check the [guide for input](input.md)
 
 
 
