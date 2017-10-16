@@ -94,6 +94,16 @@ Or if you want to have a handy button in the component interface when using the 
 this.createAction( "Click me", this.myCallback );
 ```
 
+There is also the option of using this syntax which is more user friendly:
+
+```js
+public var myvar : Number = 10; //for public vars
+private var myvar2 : Texture = null; //for private vars
+public var my_array : [Animation] = []; //for arrays of one specific type
+```
+
+but keep in mind that this is just a trick that is replaced by the syntax you have seen before, this means that if you want to access the vars **you still need to specify the scope of the var using ```this```**.
+
 ### Events ###
 
 To interact with the system, scripts need to attach callbacks to events dispatched by the different elements of the scene, mostly by the scene (but could be the ```LS.Renderer```, the ```LS.ResourcesManager```, etc).
