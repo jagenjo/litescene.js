@@ -97,9 +97,27 @@ this.createAction( "Click me", this.myCallback );
 There is also the option of using this syntax which is more user friendly:
 
 ```js
-public var myvar : Number = 10; //for public vars
-private var myvar2 : Texture = null; //for private vars
+public var myvar = 10; //for public vars
+public var my_texture : Texture = null; //for specific types
 public var my_array : [Animation] = []; //for arrays of one specific type
+```
+
+but keep in mind that this is just a trick that is replaced by the syntax you have seen before, this means that if you want to access the vars **you still need to specify the scope of the var using ```this```**.
+
+### Private vars ###
+
+Private vars are vars that you don't want to appear in the inspector.
+
+You can define them passing the widget null, like this:
+
+```js
+this.createProperty("myvar", 10, {type: "number", widget:"null" });
+```
+
+or using the more user-friendly syntax with the keyword private:
+
+```js
+private var myvar : Number = 10;
 ```
 
 but keep in mind that this is just a trick that is replaced by the syntax you have seen before, this means that if you want to access the vars **you still need to specify the scope of the var using ```this```**.
