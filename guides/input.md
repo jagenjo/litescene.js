@@ -2,7 +2,7 @@
 
 In this guide we will explain different ways to read the user input
 
-## Input Events ##
+## Input Events on Scripts ##
 
 The Event driven input is meant to capture events that happend when the user interacts with the application, like keys pressed, mouse movements, buttons being pressed, etc.
 
