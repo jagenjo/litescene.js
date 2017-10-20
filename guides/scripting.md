@@ -149,9 +149,7 @@ Here is a list of the automatically binded events, all of them are optional:
 
 - **onConfigure**: triggered after the object has been configured. In case we want to do something else.
 - **onSerialize**: triggered if the user wants to store something, must return object with all properties that must be serialized, if this method ins not specified the system stores all the properties attached to the context.
-- **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
-
-
+- **onAwake**: triggered after the whole scene has been configured (use it to access other components)
 - **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
 - **onPrefabReady**: triggered by the node "prefabReady", used to access components or node that come from the prefab
