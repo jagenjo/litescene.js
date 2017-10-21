@@ -53,7 +53,7 @@ Here is a list:
 In case you want to call a callback once per update or once it finishes you can pass the callbacks in order:
 
 ```javascript
-  	LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
+LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
 ```
 
 ## Info returned
