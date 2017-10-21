@@ -23,7 +23,7 @@ By default it will use EASE_IN_OUT_QUAD interpolation function (quadratic interp
 ```javascript
 LS.Tween.easeProperty( node.transform, "x", 2.5, LS.Tween.EASE_IN_CUBIC );
 ```
-Here is a list:
+Here is a list of the common easing functions, [check on google](https://www.google.es/search?q=tween+functions&source=lnms&tbm=isch) to see the shape of them:
 
 - EASE_IN_QUAD:
 - EASE_OUT_QUAD: 
