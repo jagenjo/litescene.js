@@ -8,14 +8,20 @@ LiteScene comes with its own tweening system.
 
 To tween just call the LS.Tween.easyProperty passing the object containing the property, the property name in string format, the target value, and the time the transition should last.
 
-```javascript
-  	LS.Tween.easeProperty( node.transform, "x", 2.5, 1 );
+```js
+  LS.Tween.easeProperty( object, property_name, time, easing_function_name, on_complete, on_progress );
+```
+
+Here is an example of usage:
+
+```js
+  	LS.Tween.easeProperty( node.transform, "x", 2.5 );
 ```
 
 By default it will use EASE_IN_OUT_QUAD interpolation function (quadratic interpolation for in and out), but you can choose any of the supported functions:
 
 ```javascript
-  	LS.Tween.easeProperty( node.transform, "x", 2.5, 1, LS.Tween.EASE_IN_CUBIC );
+  	LS.Tween.easeProperty( node.transform, "x", 2.5, LS.Tween.EASE_IN_CUBIC );
 ```
 Here is a list:
 
@@ -50,10 +56,30 @@ In case you want to call a callback once per update or once it finishes you can 
   	LS.Tween.easeProperty( node.transform, "x", target, 1, LS.Tween.EASE_IN_CUBIC, on_complete, on_progress );
 ```
 
+## Info returned
+
+When called the function returns an object with the next info:
+```js
+var data = { 
+  object: object,  //the object being modified
+  property: property, //the name of the property
+  origin: origin,  //the start value
+  target: target,  //the end value
+  current: 0,  //current interpolation factor
+  time: time,  //total time
+  easing: easing_function, //easing function 
+  on_complete: on_complete, //callback for when it finishes
+  on_progress: on_progress, //callback
+  size: size, //num values
+  type: type, //type of value,
+  running: true //if it is still running
+};
+```
+
 ## Update ##
 
-The pending tweens are processed using the method LS.Tween.update which is called automatically from LS.Player.update.
+The pending tweens are processed using the method ```LS.Tween.update``` which is called automatically from ```LS.Player.update(dt)```.
 
-Also the system will check for a ```mustUpdate``` variable in the object and if it is pressed it will set it to true.
+Also the system will check for a ```mustUpdate``` variable in the object and if it exists it will set it to true.
 
-Keep in mind that if the scene is not running the tweens wont be processed.
+Keep in mind that if the scene is not running the tweens won't be processed.
