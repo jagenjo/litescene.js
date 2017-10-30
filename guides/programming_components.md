@@ -168,7 +168,7 @@ Usually components use resources that mast be preloaded before the scene starts.
 
 To inform the system which resources are being used by this component you must create the ```getResources``` method in your component.
 
-The function receives an object that contain all the resources already assigned by others components and you must add yours.
+The function receives an object that contain all the resources already assigned by others components and the component must add yours.
 
 The function must fill the resources object assigning the url of the resource equals to the type of the resource (also you can assign them to true if you want).
 
@@ -179,8 +179,8 @@ Check the next example:
 ```js
 MyComponentClass.prototype.getResources = function( res )
 {
-	if(this.mymesh)
-		res[ this.mymesh ] = GL.Mesh;
+	if( this.mymesh_url )
+		res[ this.mymesh_url ] = GL.Mesh;
 	return res;
 }
 ```
