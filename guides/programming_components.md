@@ -162,6 +162,30 @@ MyComponent.prototype.configure = function(o)
 }
 ```
 
+## Resources used
+
+Usually components use resources that mast be preloaded before the scene starts.
+
+To inform the system which resources are being used by this component you must create the ```getResources``` method in your component.
+
+The function receives an object that contain all the resources already assigned by others components and you must add yours.
+
+The function must fill the resources object assigning the url of the resource equals to the type of the resource (also you can assign them to true if you want).
+
+The function must return the same object as it has been passed to the function.
+
+Check the next example:
+
+```js
+MyComponentClass.prototype.getResources = function( res )
+{
+	if(this.mymesh)
+		res[ this.mymesh ] = GL.Mesh;
+	return res;
+}
+```
+
+
 ## Special Events and Actions
 
 Some components could trigger events (p.e. the user has clicked the node) or could be connected to actions (it must play an animation).
