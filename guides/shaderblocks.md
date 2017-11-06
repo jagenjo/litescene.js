@@ -83,6 +83,16 @@ var morphing_texture_block = new LS.ShaderBlock("morphing_texture");
 morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture"} );
 ```
 
+## Preprocessor macros
+
+Sometimes you want the code to be executed only if a certain shaderblock is enabled, in that case every shaderblock enabled defines the macro with its name in uppercase prefixed with "BLOCK_":
+
+```glsl
+  #ifdef BLOCK_MORPHING_TEXTURE
+    //...
+  #endif
+```
+
 ## Conclusion
 
 Check the ```LS.ShaderMaterial```, ```LS.ShaderCode```, ```LS.ShaderManager```, ```LS.ShaderBlock``` and ```LS.GLSLCode``` to understand better how it works.
