@@ -85,7 +85,7 @@ morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture
 
 ## Conclusion
 
-Check the ShaderMaterial, ShaderCode, ShaderManager, ShaderBlock and GLSLParser to understand better how it works.
+Check the ```LS.ShaderMaterial```, ```LS.ShaderCode```, ```LS.ShaderManager```, ```LS.ShaderBlock``` and ```LS.GLSLCode``` to understand better how it works.
 
 Also check the MorphDeformer component as a complete use-case.
 
