@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -163,7 +164,11 @@ var Network = {
 	*
 	* @method request
 	* @param {Object} request object with the fields for the request: 
-    *			dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}
+    *			dataType: result type {text,xml,json,binary,arraybuffer,image},
+				data: object with form fields,
+				method: &quot;POST&quot;,&quot;GET&quot;,&quot;DELETE&quot;,&quot;PUT&quot;, if omited if will use post or get depending on the parameters,
+				use_proxy: if true it will use LiteScene proxy if available
+				callbacks supported: {success, error, progress}
 	* @return {XMLHttpRequest} the XMLHttpRequest of the petition
 	*/
 	request: function(request)
@@ -210,7 +215,7 @@ var Network = {
 
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;, url, true);
+        xhr.open( request.method || (request.data ? &#x27;POST&#x27; : &#x27;GET&#x27;), url, true);
 		xhr.withCredentials = this.withCredentials; //if true doesnt work
 		if(request.withCredentials !== undefined)
 			xhr.withCredentials = request.withCredentials;

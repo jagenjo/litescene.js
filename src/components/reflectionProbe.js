@@ -8,12 +8,11 @@
 
 function ReflectionProbe(o)
 {
-	this.enabled = true;
+	this._enabled = true;
 	this.texture_size = 512;
 	this.high_precision = false;
-	this.clip_offset = 0.5; //to avoid ugly edges near clipping plane
 	this.texture_name = "";
-	this.blur = 0;
+	this.generate_irradiance = true;
 	this.generate_mipmaps = false;
 	this.refresh_rate = 1; //in frames
 	this.layers = 0xFF;
@@ -22,9 +21,21 @@ function ReflectionProbe(o)
 	this.far = 1000;
 	this.background_color = vec4.create();
 
+	this._position = vec3.create();
+	this._current = vec3.create();
+	this._version = -1;
+
+	this._texture = null;
+	this._irradiance_texture = null;
+
+	this._texid = ":probe_" + ReflectionProbe.last_id;
+	ReflectionProbe.last_id++;
+
 	if(o)
 		this.configure(o);
 }
+
+ReflectionProbe.last_id = 0;
 
 ReflectionProbe.icon = "mini-icon-reflector.png";
 
@@ -32,32 +43,98 @@ ReflectionProbe["@texture_size"] = { type:"enum", values:["viewport",64,128,256,
 ReflectionProbe["@layers"] = { type:"layers" };
 ReflectionProbe["@background_color"] = { type:"color" };
 
+Object.defineProperty( ReflectionProbe.prototype, "enabled", {
+	set: function(v){ 
+		if(v == this._enabled)
+			return;
+		this._enabled = v; 
+		if(!this._enabled)
+			return;
+		this.onRenderReflection();
+		LS.GlobalScene.requestFrame();
+	},
+	get: function() { return this._enabled; },
+	enumerable: true
+});
+
 ReflectionProbe.prototype.onAddedToScene = function(scene)
 {
+	LEvent.bind( scene,"start", this.onRenderReflection, this );
 	LEvent.bind( scene,"renderReflections", this.onRenderReflection, this );
-	LEvent.bind( scene,"afterCameraEnabled", this.onCameraEnabled, this );
-}
+	//LEvent.bind( scene,"afterCameraEnabled", this.onCameraEnabled, this );
+	//LEvent.bind( LS.Renderer,"renderHelpers", this.onVisualizeProbe, this );
 
+	this.assignCubemaps(scene);
+}
 
 ReflectionProbe.prototype.onRemovedFromScene = function(scene)
 {
 	LEvent.unbindAll( scene, this );
+	//LEvent.unbindAll( LS.Renderer, this );
+	
 	if(this._texture)
-		LS.ResourcesManager.unregisterResource( ":reflection_" + this.uid );
+		LS.ResourcesManager.unregisterResource( this._texid );
+	if(this._irradiance_texture)
+		LS.ResourcesManager.unregisterResource( this._texid + "_IR" );
+
+	//TODO: USE POOL!!
 	this._texture = null;
+	this._irradiance_texture = null;
 }
 
-ReflectionProbe.prototype.onRenderReflection = function( e, render_settings )
+ReflectionProbe.prototype.afterSerialize = function(o)
 {
-	if(!this.enabled || !this._root)
+	if(this._irradiance_texture)
+		o.irradiance_info = ReflectionProbe.cubemapToObject( this._irradiance_texture );
+}
+
+ReflectionProbe.prototype.afterConfigure = function(o)
+{
+	if(o.irradiance_info)
+	{
+		this._irradiance_texture = ReflectionProbe.objectToCubemap( o.irradiance_info, this._irradiance_texture );
+		this.assignCubemaps();
+	}
+}
+
+ReflectionProbe.prototype.onRenderReflection = function( e )
+{
+	this.updateTextures();
+}
+
+ReflectionProbe.prototype.updateTextures = function( render_settings, force )
+{
+	if(!this._enabled || !this._root || !this._root.scene )
 		return;
 
 	var scene = this._root.scene;
-	if(!scene)
+
+	this._root.transform.getGlobalPosition( this._current );
+	//if ( vec3.distance( this._current, this._position ) < 0.1 )
+	//	force = true;
+
+	if( LS.ResourcesManager.isLoading() )
 		return;
 
-	this.refresh_rate = this.refresh_rate << 0;
-	if( (scene._frame == 0 || (scene._frame % this.refresh_rate) != 0) && this._rt)
+	this.refresh_rate = this.refresh_rate|0;
+	if( this.refresh_rate < 1 && this._texture && !force )
+		return;
+
+	if ( this._texture && (scene._frame % this.refresh_rate) != 0 && !force )
+		return;
+
+	this.updateCubemap( this._current, render_settings );
+
+	if(this.generate_irradiance)
+		this.updateIrradiance();
+}
+
+ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
+{
+	render_settings = render_settings || LS.Renderer.default_render_settings;
+
+	var scene = this._root.scene;
+	if(!scene)
 		return;
 
 	var texture_size = parseInt( this.texture_size );
@@ -80,20 +157,23 @@ ReflectionProbe.prototype.onRenderReflection = function( e, render_settings )
 		this._texture = texture;
 	}
 
-	texture._locked = true; //block binding this texture during rendering of the reflection
+	if(position)
+		this._position.set( position );
+	else
+		position = this._root.transform.getGlobalPosition( this._position );
 
-	//camera
-	var reflected_camera = this._reflected_camera || new LS.Camera();
-	this._reflected_camera = reflected_camera;
-	var eye = this._root.getGlobalPosition();
+	texture._in_current_fbo = true; //block binding this texture during rendering of the reflection
 
-	LS.Renderer.renderToCubemap( eye, 0, texture, render_settings, this.near, this.far, this.background_color );
-
-	if(this.blur)
+	//first render
+	if( !LS.Renderer._visible_instances )
 	{
-		/* TODO
-		*/
+		LS.Renderer.processVisibleData( scene, render_settings );
+		LS.Renderer.regenerateShadowmaps( scene, render_settings );
 	}
+
+	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+
+	texture._in_current_fbo = false;
 
 	if(this.generate_mipmaps && isPowerOfTwo( texture_size ) )
 	{
@@ -102,17 +182,143 @@ ReflectionProbe.prototype.onRenderReflection = function( e, render_settings )
 		texture.unbind();
 	}
 
-	texture._locked = false;
-
 	if(this.texture_name)
 		LS.ResourcesManager.registerResource( this.texture_name, texture );
-	LS.ResourcesManager.registerResource( ":reflection_" + this.uid, texture );
+	LS.ResourcesManager.registerResource( this._texid, texture );
 
 	//add probe to LS.Renderer
 	//TODO
+	//HACK
+	if( scene.info )
+		scene.info.textures.environment = this._texid;
 
 	//remove flags
 	render_settings.layers = old_layers;
 }
+
+ReflectionProbe.prototype.updateIrradiance = function()
+{
+	var scene = this._root.scene;
+	if(!scene)
+		return;
+
+	if(!this._texture)
+		this.updateCubemap();
+
+	if(!this._texture)
+		return;
+
+	var cubemap = this._texture;
+
+	if(!ReflectionProbe._downscale_cubemap)
+		ReflectionProbe._downscale_cubemap = new GL.Texture( 32, 32, { texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
+	var downscale_cubemap = ReflectionProbe._downscale_cubemap;
+
+	//downscale
+	cubemap.copyTo( downscale_cubemap );
+	
+	//blur
+	for(var i = 0; i < 8; ++i)
+	{
+		downscale_cubemap._tmp = downscale_cubemap.applyBlur( i,i,1, null, downscale_cubemap._tmp );
+		downscale_cubemap._tmp.copyTo( downscale_cubemap );
+	}
+
+	//downscale again
+	var irradiance_cubemap = this._irradiance_texture;
+	if(!irradiance_cubemap)
+		irradiance_cubemap = this._irradiance_texture = new GL.Texture( 4, 4, { texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
+	downscale_cubemap.copyTo( irradiance_cubemap );
+
+	//blur again
+	for(var i = 0; i < 4; ++i)
+	{
+		irradiance_cubemap._tmp = irradiance_cubemap.applyBlur( i,i,1, null, irradiance_cubemap._tmp );
+		irradiance_cubemap._tmp.copyTo( irradiance_cubemap );
+	}
+
+	this.assignCubemaps();
+
+	return irradiance_cubemap;
+}
+
+ReflectionProbe.prototype.assignCubemaps = function( scene )
+{
+	if(!scene && this._root)
+		scene = this._root.scene;
+	if(!scene)
+		scene = LS.GlobalScene;
+
+	if(this._texture)
+	{
+		LS.ResourcesManager.registerResource( this._texid, this._texture );
+		if( scene.info )
+			scene.info.textures.environment = this._texid;
+	}
+
+	if(this._irradiance_texture)
+	{
+		var ir_name = this._texid + "_IR";
+		LS.ResourcesManager.registerResource( ir_name, this._irradiance_texture );
+		if( scene.info )
+			scene.info.textures.irradiance = ir_name;
+	}
+}
+
+
+ReflectionProbe.prototype.renderProbe = function( picking_color )
+{
+	if( !this._texture || !this._enabled )
+		return;
+
+	LS.Draw.push();
+	LS.Draw.translate( this._position );
+	LS.Draw.scale( ReflectionProbe.helper_size );
+
+	if(!picking_color) //regular texture
+	{
+		var shader = GL.Shader.getCubemapShowShader();
+		this._texture.bind(0);
+		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES, shader );
+		LS.Draw.setColor( LS.WHITE );
+		LS.Draw.scale( 1.1 );
+		gl.enable( gl.CULL_FACE );
+		gl.frontFace( gl.CW );
+		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
+		gl.frontFace( gl.CCW );
+	}
+	else
+	{
+		LS.Draw.setColor( picking_color )
+		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
+	}
+
+	LS.Draw.pop();
+}
+
+ReflectionProbe.cubemapToObject = function( cubemap )
+{
+	var faces = [];
+	for( var i = 0; i < 6; ++i )
+		faces.push( typedArrayToArray( cubemap.getPixels(null,null,i) ) );
+	return {
+		texture_type: cubemap.texture_type,
+		size: cubemap.width,
+		format: cubemap.format,
+		faces: faces
+	};
+}
+
+ReflectionProbe.objectToCubemap = function( data, out )
+{
+	if(!out)
+		out = new GL.Texture( data.size, data.size, { texture_type: gl.TEXTURE_CUBE_MAP, format: GL.RGBA });
+	for(var i = 0; i < data.faces.length; ++i )
+		out.setPixels( new Uint8Array( data.faces[i] ), i, i == 5 );
+	return out;
+}
+
+ReflectionProbe.render_helpers = true;
+ReflectionProbe.helper_size = 1;
 
 LS.registerComponent( ReflectionProbe );

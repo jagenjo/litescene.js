@@ -263,21 +263,32 @@ var ResourcesManager = {
 	* Loads all the resources in the Object (it uses an object to store not only the filename but also the type)
 	*
 	* @method loadResources
-	* @param {Object} resources contains all the resources, associated with its type
+	* @param {Object|Array} resources contains all the resources, associated with its type
 	* @param {Object}[options={}] options to apply to the loaded resources
 	* @return {number} the actual amount of resources being loaded (this differs fromt he resources passed because some could be already in memory)
 	*/
-	loadResources: function(res, options )
+	loadResources: function( resources, options )
 	{
-		if(!res)
+		if(!resources)
 			return;
 
-		for(var i in res)
+		if(resources.constructor === Array)
 		{
-			if( !i || i[0] == ":" || i[0] == "_" )
-				continue;
-			this.load( i, options );
+			for( var i = 0; i < resources.length; ++i )
+			{
+				var name = resources[i];
+				if( !name || name[0] == ":" || name[0] == "_" )
+					continue;
+				this.load( name, options );
+			}
 		}
+		else //object
+			for(var i in resources)
+			{
+				if( !i || i[0] == ":" || i[0] == "_" )
+					continue;
+				this.load( i, options );
+			}
 
 		this._total_resources_to_load = this.num_resources_being_loaded;
 		LEvent.trigger( this, "start_loading_resources", this._total_resources_to_load );
@@ -558,8 +569,9 @@ var ResourcesManager = {
 	* @param {Object}[options={}] options to apply to the loaded resource when processing it { force: to force a reload }
 	* @param {Function} [on_complete=null] callback when the resource is loaded and cached, params: callback( resource, url  ) //( url, resource, options )
 	* @param {Boolean} [force_load=false] if true it will load the resource, even if it already exists
+	* @param {Function} [on_error=null] callback in case the file wasnt found
 	*/
-	load: function( url, options, on_complete, force_load )
+	load: function( url, options, on_complete, force_load, on_error )
 	{
 		if(!url)
 			return console.error("LS.ResourcesManager.load requires url");
@@ -634,6 +646,8 @@ var ResourcesManager = {
 			},
 			error: function(err) { 	
 				LS.ResourcesManager._resourceLoadedError(url,err);
+				if(on_error)
+					on_error(url);
 			},
 			progress: function(e) { 
 				var partial_load = 0;
@@ -711,7 +725,10 @@ var ResourcesManager = {
 
 			//Keep original file inside the resource in case we want to save it
 			if(LS.ResourcesManager.keep_files && (data.constructor == ArrayBuffer || data.constructor == String) && (!resource._original_data && !resource._original_file) )
-				resource._original_data = data;
+			{
+				if( extension == LS.ResourcesManager.getExtension( resource.filename ) )
+					resource._original_data = data;
+			}
 		}
 
 		//this.resources_being_loaded[url] = [];
@@ -844,8 +861,8 @@ var ResourcesManager = {
 			delete LS.ResourcesManager.resources_being_processed[ fullpath ];
 
 		//Load associated resources (some resources like LS.Prefab or LS.SceneTree have other resources associated that must be loaded too)
-		if(resource.getResources)
-			ResourcesManager.loadResources( resource.getResources({}) );
+		if( resource.getResources )
+			LS.ResourcesManager.loadResources( resource.getResources({}) );
 
 		//REGISTER adds to containers *******************************************
 		LS.ResourcesManager.registerResource( fullpath, resource );
@@ -873,7 +890,7 @@ var ResourcesManager = {
 			throw("registerResource missing filename or resource");
 
 		//test filename is valid (alphanumeric with spaces, dot or underscore and dash and slash
-		if( this.valid_resource_name_reg.test( filename ) == false )
+		if( filename[0] != ":" && this.valid_resource_name_reg.test( filename ) == false )
 			console.warn( "invalid filename for resource: ", filename );
 
 		//clean up the filename (to avoid problems with //)
@@ -1495,7 +1512,7 @@ LS.ResourcesManager.processTextMesh = function( filename, data, options ) {
 		return null;
 	}
 
-	var mesh = GL.Mesh.load(mesh_data);
+	var mesh = GL.Mesh.load( mesh_data );
 	return mesh;
 }
 
@@ -1508,7 +1525,7 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 
 	if(scene_data == null)
 	{
-		console.error("Error parsing scene: " + filename);
+		console.error( "Error parsing scene: " + filename );
 		return null;
 	}
 
@@ -1567,10 +1584,11 @@ LS.ResourcesManager.registerResourcePostProcessor("Mesh", function(filename, mes
 		mesh.metadata = {};
 		mesh.generateMetadata(); //useful
 	}
-	if(!mesh.bounding || mesh.bounding.length != BBox.data_length)
+	//force to regenerate boundings
+	if(!mesh.bounding || mesh.bounding.length != BBox.data_length || (mesh.info && mesh.info.groups && mesh.info.groups.length && !mesh.info.groups[0].bounding) )
 	{
 		mesh.bounding = null; //remove bad one (just in case)
-		mesh.updateBounding();
+		mesh.updateBoundingBox();
 	}
 	if(!mesh.getBuffer("normals"))
 		mesh.computeNormals();
@@ -1609,3 +1627,6 @@ LS.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filena
 	shader_code.applyToMaterials();
 });
 
+
+//load priority
+GL.Mesh.load_priority = -10;

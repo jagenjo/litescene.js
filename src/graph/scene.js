@@ -728,7 +728,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	global.LGraphMaterial = function()
 	{
-		this.properties = {mat_name:""};
+		this.properties = { material_id: "", node_id: "" };
 		this.addInput("Material","Material");
 		this.size = [100,20];
 	}
@@ -752,27 +752,7 @@ if(typeof(LiteGraph) != "undefined")
 
 			if(input.name == "Material")
 				continue;
-
-			mat.setProperty(input.name, v);
-
-			/*
-			switch( input.name )
-			{
-				case "Alpha": mat.alpha = v; break;
-				case "Specular f.": mat.specular_factor = v; break;
-				case "Diffuse": vec3.copy(mat.diffuse,v); break;
-				case "Ambient": vec3.copy(mat.ambient,v); break;
-				case "Emissive": vec3.copy(mat.emissive,v); break;
-				case "UVs trans.": mat.uvs_matrix.set(v); break;
-				default:
-					if(input.name.substr(0,4) == "tex_")
-					{
-						var channel = input.name.substr(4);
-						mat.setTexture(v, channel);
-					}
-					break;
-			}
-			*/
+			mat.setProperty( input.name, v );
 		}
 
 		//write outputs
@@ -783,24 +763,8 @@ if(typeof(LiteGraph) != "undefined")
 			if(!output.links || !output.links.length)
 				continue;
 			var v = mat.getProperty( output.name );
-			/*
-			var v;
-			switch( output.name )
-			{
-				case "Material": v = mat; break;
-				case "Alpha": v = mat.alpha; break;
-				case "Specular f.": v = mat.specular_factor; break;
-				case "Diffuse": v = mat.diffuse; break;
-				case "Ambient": v = mat.ambient; break;
-				case "Emissive": v = mat.emissive; break;
-				case "UVs trans.": v = mat.uvs_matrix; break;
-				default: continue;
-			}
-			*/
 			this.setOutputData( i, v );
 		}
-
-		//this.setOutputData(0, parseFloat( this.properties["value"] ) );
 	}
 
 	LGraphMaterial.prototype.getMaterial = function()
@@ -810,8 +774,16 @@ if(typeof(LiteGraph) != "undefined")
 		if( slot != -1)
 			return this.getInputData( slot );
 
-		if(	this.properties.mat_name )
-			return LS.RM.materials[ this.properties.mat_name ];
+		if(	this.properties.material_id && LS.RM.materials[ this.properties.material_id ] )
+			return LS.RM.materials[ this.properties.material_id ];
+
+		if(	this.properties.node_id )
+		{
+			var scene = this.graph.getScene();
+			var node = scene.getNode( this.properties.node_id );
+			if(node)
+				return node.getMaterial();
+		}
 
 		return null;
 	}

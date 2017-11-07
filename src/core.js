@@ -6,6 +6,10 @@ if( !Uint8Array.prototype.toJSON )
 	typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
 }
 
+if( typeof(GL) === "undefined" )
+	console.error("LiteScene requires to include LiteGL first. More info: https://github.com/jagenjo/litegl.js");
+
+
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *
@@ -111,6 +115,8 @@ var LS = {
 			console.warn("%c Component "+name+" could have a bug, check events: " + name , "font-size: 2em");
 		if( component.prototype.getResources && !component.prototype.onResourceRenamed )
 			console.warn("%c Component "+name+" could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.", "font-size: 1.2em");
+		//if( !component.prototype.serialize || !component.prototype.configure )
+		//	console.warn("%c Component "+name+" could have a bug, it doesnt have a serialize or configure method. No state will be saved.", "font-size: 1.2em");
 
 		//add stuff to the class
 		if(!component.actions)
@@ -427,12 +433,13 @@ var LS = {
 				o = {};
 		}
 
+		//copy every property of this object
 		for(var i in object)
 		{
 			if(i[0] == "@" || i[0] == "_" || i.substr(0,6) == "jQuery") //skip vars with _ (they are private) or '@' (they are definitions)
 				continue;
 
-			if(only_existing && target[i] === undefined)
+			if(only_existing && !target.hasOwnProperty(i) && !target.__proto__.hasOwnProperty(i) ) //target[i] === undefined)
 				continue;
 
 			//if(o.constructor === Array) //not necessary
@@ -471,6 +478,12 @@ var LS = {
 			}
 			else //Objects: 
 			{
+				if( v.constructor.is_resource )
+				{
+					console.error("Resources cannot be saved as a property of a component nor script, they must be saved individually as files in the file system. If assigning them to a component/script use private variables (name start with underscore) to avoid being serialized.");
+					continue;
+				}
+
 				if( encode_objects && !target )
 				{
 					o[i] = LS.encodeObject(v);
@@ -1065,6 +1078,11 @@ if(global.GL)
 {
 	LS.registerResourceClass( GL.Mesh );
 	LS.registerResourceClass( GL.Texture );
+
+	LS.Mesh = GL.Mesh;
+	LS.Texture = GL.Texture;
+	LS.Buffer = GL.Buffer;
+	//LS.Shader = GL.Shader; //this could be confussing since there is also ShaderBlocks etc in LiteScene
 }
 
 

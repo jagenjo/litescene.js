@@ -74,6 +74,21 @@ var parserDAE = {
 				delete node.type; //to be sure it doesnt overlaps with some existing var
 			}
 
+			//rename materials
+			if(node.material)
+			{
+				var new_name = node.material.replace(/[^a-z0-9\.\-]/gi,"_") + ".json";
+				renamed[ node.material ] = new_name
+				node.material = new_name;
+			}
+			if(node.materials)
+				for(var i in node.materials)
+				{
+					var new_name = node.materials[i].replace(/[^a-z0-9\.\-]/gi,"_") + ".json";
+					renamed[ node.material ] = new_name
+					node.materials[i] = new_name;
+				}
+
 			//change mesh names to engine friendly ids
 			if(node.meshes)
 			{
@@ -105,19 +120,48 @@ var parserDAE = {
 			}
 		}
 
+		//replace animation name
+		if(	scene.root.animation )
+			scene.root.animation = this.renameResource( scene.root.animation, scene.root.animation + ".wbin", scene.resources );
+
 		//Materials need some renames
+		var renamed_materials = {};
 		for(var i in scene.materials)
-			this.processMaterial( scene.materials[i] );
+		{
+			var mat = scene.materials[i];
+			this.processMaterial( mat );
+			renamed_materials[ mat.id ] = mat;
+			//this.renameResource( i, mat.id, scene.resources ); //materials are not stored in the resources container
+		}
+		scene.materials = renamed_materials;
 
 		//check resources
 		for(var i in scene.resources)
 		{
 			var res = scene.resources[i];
+			var ext = LS.ResourcesManager.getBasename( i );
+			if(!ext)
+				console.warn("DAE contains resources without extension: " + i, res.constructor );
 			if(res.object_class == "Animation")
 				this.processAnimation( res, renamed );
 		}
 
 		return scene;
+	},
+
+	renameResource: function( old_name, new_name, resources )
+	{
+		var res = resources[ old_name ];
+		if(!res)
+		{
+			if(!resources[ new_name ])
+				console.warn("Resource not found: " + old_name );
+			return new_name;
+		}
+		delete resources[ old_name ];
+		resources[ new_name ] = res;
+		res.filename = new_name;
+		return new_name;
 	},
 
 	processMesh: function( mesh, renamed )
@@ -282,12 +326,19 @@ var parserDAE = {
 	processMaterial: function(material)
 	{
 		material.object_class = "StandardMaterial";
+		if(material.id)
+			material.id = material.id.replace(/[^a-z0-9\.\-]/gi,"_") + ".json";
 
-		if(material.transparency)
+		if( material.transparency !== undefined )
 		{
+			material.opacity = 1.0; //fuck it
+			//I have no idea how to parse the transparency info from DAEs...
+			//https://github.com/openscenegraph/OpenSceneGraph/blob/master/src/osgPlugins/dae/daeRMaterials.cpp#L1185
+			/*
 			material.opacity = 1.0 - parseFloat( material.transparency );
-			if(material.transparent)
-				material.opacity = material.transparency; //why? dont know but works
+			if( material.opaque_info == "RGB_ZERO")
+				material.opacity = 1.0 - parseFloat( material.transparent[0] ); //use the red channel
+			*/
 		}
 
 		//collada supports materials with colors as specular_factor but StandardMaterial only support one value

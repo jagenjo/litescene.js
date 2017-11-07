@@ -71,6 +71,10 @@ var Renderer = {
 	//safety
 	_is_rendering_frame: false,
 
+	//debug
+	allow_textures: true,
+	_sphere_mesh: null,
+
 	//fixed texture slots for global textures
 	SHADOWMAP_TEXTURE_SLOT: 6,
 	ENVIRONMENT_TEXTURE_SLOT: 5,
@@ -94,6 +98,8 @@ var Renderer = {
 		this._missing_texture = this._gray_texture;
 		var internal_textures = [ this._black_texture, this._gray_texture, this._white_texture, this._normal_texture, this._missing_texture ];
 		internal_textures.forEach(function(t){ t._is_internal = true; });
+
+		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
 
 		LS.ResourcesManager.textures[":black"] = this._black_texture;
 		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
@@ -191,15 +197,13 @@ var Renderer = {
 			return;
 		}
 
+		//init frame
 		this._is_rendering_frame = true;
-
 		render_settings = render_settings || this.default_render_settings;
 		this._current_render_settings = render_settings;
 		this._current_scene = scene;
 		this._main_camera = cameras ? cameras[0] : null;
-
-		//done at the beginning just in case it crashes
-		scene._frame += 1;
+		scene._frame += 1; //done at the beginning just in case it crashes
 		this._frame += 1;
 		scene._must_redraw = false;
 		var start_time = getTime();
@@ -253,46 +257,29 @@ var Renderer = {
 		//Event: beforeRenderMainPass in case a last step is missing
 		LEvent.trigger(scene, "beforeRenderMainPass", render_settings );
 
-		//allows to overwrite renderer
-		if(this.custom_renderer && this.custom_renderer.render && render_settings.custom_renderer )
-		{
-			this.custom_renderer.render( cameras, render_settings );
-		}
-		else
-		{
-			//enable FX
-			if(render_settings.render_fx)
-				LEvent.trigger( scene, "enableFrameContext", render_settings );
+		//enable global FX context
+		if(render_settings.render_fx)
+			LEvent.trigger( scene, "enableFrameContext", render_settings );
 
-			//render
-			this.renderFrameCameras( cameras, render_settings );
+		//render all cameras
+		this.renderFrameCameras( cameras, render_settings );
 
-			//keep original viewport
-			if( render_settings.keep_viewport )
-				gl.setViewport( this._global_viewport );
+		//keep original viewport
+		if( render_settings.keep_viewport )
+			gl.setViewport( this._global_viewport );
 
-			//disable and show FX
-			if(render_settings.render_fx)
-				LEvent.trigger( scene, "showFrameContext", render_settings );
-		}
+		//disable and show final FX context
+		if(render_settings.render_fx)
+			LEvent.trigger( scene, "showFrameContext", render_settings );
 
-		//renders GUI items using mostly the Canvas2DtoWebGL library
-		if(render_settings.render_gui && LEvent.hasBind( scene, "renderGUI") )
-		{
-			//assign full viewport?
-			gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] );
-			if(gl.start2D)
-				gl.start2D();
-			LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
-			LEvent.trigger( scene, "renderGUI", gl );
-			if(gl.finish2D)
-				gl.finish2D();
-		}
+		//renderGUI
+		this.renderGUI( render_settings );
 
+		//profiling
 		this._frame_cpu_time = getTime() - start_time;
 
 		//Event: afterRender to give closure to some actions
-		LEvent.trigger(scene, "afterRender", render_settings );
+		LEvent.trigger( scene, "afterRender", render_settings );
 		this._is_rendering_frame = false;
 	},
 
@@ -542,12 +529,12 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} instances array of RIs, if not specified the last visible_instances are rendered
 	*/
-	renderInstances: function( render_settings, instances )
+	renderInstances: function( render_settings, instances, scene )
 	{
-		var scene = this._current_scene;
+		scene = scene || this._current_scene;
 		if(!scene)
 		{
-			console.warn("LS.Renderer.renderInstances: no scene found");
+			console.warn("LS.Renderer.renderInstances: no scene found in LS.Renderer._current_scene");
 			return 0;
 		}
 
@@ -678,6 +665,21 @@ var Renderer = {
 		this.resetGLState( render_settings );
 
 		return this._rendered_instances - start;
+	},
+
+	renderGUI: function( render_settings )
+	{
+		//renders GUI items using mostly the Canvas2DtoWebGL library
+		gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] ); //assign full viewport always?
+		if(gl.start2D) //in case we have Canvas2DtoWebGL installed (it is optional)
+			gl.start2D();
+		LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
+		if( render_settings.render_gui )
+			LEvent.trigger( this._current_scene, "renderGUI", gl );
+		if( this.on_render_gui ) //used by the editor (here to ignore render_gui flag)
+			this.on_render_gui( render_settings );
+		if( gl.finish2D )
+			gl.finish2D();
 	},
 
 	/**
@@ -968,6 +970,15 @@ var Renderer = {
 		instance.render( shader );
 	},
 
+	regenerateShadowmaps: function( scene, render_settings )
+	{
+		scene = scene || this._current_scene;
+		render_settings = render_settings || this.default_render_settings;
+		LEvent.trigger( scene, "renderShadows", render_settings );
+		for(var i = 0; i < this._visible_lights.length; ++i)
+			this._visible_lights[i].prepare( render_settings );
+	},
+
 	mergeSamplers: function( samplers, result )
 	{
 		result = result || [];
@@ -1005,6 +1016,8 @@ var Renderer = {
 		if(!samplers)
 			return;
 
+		var allow_textures = this.allow_textures; //used for debug
+
 		for(var i = 0; i < samplers.length; ++i)
 		{
 			var sampler = samplers[i];
@@ -1025,8 +1038,11 @@ var Renderer = {
 				//continue; //if we continue the sampler slot will remain empty which could lead to problems
 			}
 
-			if(tex && tex.constructor === String)
+			if( tex && tex.constructor === String)
 				tex = LS.ResourcesManager.textures[ tex ];
+			if(!allow_textures)
+				tex = null;
+
 			if(!tex)
 			{
 				if(sampler)
@@ -1177,6 +1193,8 @@ var Renderer = {
 	{
 		//options = options || {};
 		//options.scene = scene;
+
+		this._current_scene = scene;
 
 		//update info about scene (collecting it all or reusing the one collected in the frame before)
 		if(!skip_collect_data)
@@ -1398,11 +1416,17 @@ var Renderer = {
 		near = near || 1;
 		far = far || 1000;
 
+		if(render_settings && render_settings.constructor !== LS.RenderSettings)
+			throw("render_settings parameter must be LS.RenderSettings.");
+
 		var eye = position;
 		if( !texture || texture.constructor != GL.Texture)
 			texture = null;
 
 		var scene = this._current_scene;
+		if(!scene)
+			scene = this._current_scene = LS.GlobalScene;
+
 		var camera = this._cubemap_camera;
 		if(!camera)
 			camera = this._cubemap_camera = new LS.Camera();
@@ -1420,7 +1444,7 @@ var Renderer = {
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 			camera.configure({ eye: eye, center: [ eye[0] + info.dir[0], eye[1] + info.dir[1], eye[2] + info.dir[2]], up: info.up });
 			LS.Renderer.enableCamera( camera, render_settings, true );
-			LS.Renderer.renderInstances( render_settings, instances );
+			LS.Renderer.renderInstances( render_settings, instances, scene );
 		});
 
 		this._current_target = null;
@@ -1476,7 +1500,10 @@ var Renderer = {
 		}
 
 		if(options.rotate)
+		{
+			node.transform.reset();
 			node.transform.rotateY( options.rotate );
+		}
 
 		var new_material = null;
 		if( material.constructor === String )

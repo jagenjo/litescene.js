@@ -47,28 +47,14 @@ Component.prototype.getRootNode = function()
 **/
 Component.prototype.configure = function(o)
 { 
-	if(!o)
+	if( !o )
 		return;
-	if(o.uid) 
+	if( o.uid ) 
 		this.uid = o.uid;
-	/*
-	{
-		//special case, uid must never be enumerable to avoid showing it in the editor
-		if(this.uid === undefined && !Object.hasOwnProperty(this, "uid"))
-		{
-			this._uid = o.uid;
+	LS.cloneObject( o, this, false, true ); 
 
-			Object.defineProperty(this, "uid", { 
-				set: o.uid, 
-				enumerable: false,
-				writable: true
-			});
-		}
-		else
-			this.uid = o.uid;
-	}
-	*/
-	LS.cloneObject(o, this, false, true); 
+	if( this.afterConfigure )
+		this.afterConfigure( o );
 }
 
 /**
@@ -83,6 +69,10 @@ Component.prototype.serialize = function()
 		o.uid = this.uid;
 	if(!o.object_class)
 		o.object_class = LS.getObjectClassName( this );
+
+	if( this.afterSerialize )
+		this.afterSerialize( o );
+
 	return o;
 }
 

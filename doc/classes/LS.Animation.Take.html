@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -152,7 +153,7 @@
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_resources_animation.js.html#l273"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:273</code></a>
+            Defined in: <a href="../files/.._src_resources_animation.js.html#l303"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:303</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -182,7 +183,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l273"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:273</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l303"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:303</code></a>
         </p>
 
 
@@ -286,6 +287,9 @@
                 <li class="arg">
                         <code>on_pre_apply</code>
                 </li>
+                <li class="arg">
+                        <code>on_apply_sample</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
@@ -302,7 +306,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l342"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:342</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l372"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:372</code></a>
         </p>
 
 
@@ -380,7 +384,18 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
 
 
                     <div class="param-description">
-                        <p>[Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped</p>
+                        <p>[Optional] a callback called per track to see if this track should be applyed, if it returns false it is skipped. callback receives (track, current_time, root_node, weight)</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">on_apply_sample</code>
+                        <span class="type">Function</span>
+
+
+                    <div class="param-description">
+                        <p>[Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped. callback parameters ( track, sample, root_node, weight )</p>
 
                     </div>
 
@@ -424,7 +439,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l322"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:322</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l352"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:352</code></a>
         </p>
 
 
@@ -481,7 +496,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l578"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:578</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l624"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:624</code></a>
         </p>
 
 
@@ -512,7 +527,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l519"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:519</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l565"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:565</code></a>
         </p>
 
 
@@ -543,7 +558,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l644"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:644</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l641"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:641</code></a>
         </p>
 
 
@@ -575,7 +590,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l290"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:290</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l320"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:320</code></a>
         </p>
 
 
@@ -599,7 +614,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l282"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:282</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l312"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:312</code></a>
         </p>
 
 
@@ -623,7 +638,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l286"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:286</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l316"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:316</code></a>
         </p>
 
 

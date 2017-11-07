@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -227,6 +228,7 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 
 //init
 Script.defineAPIFunction( &quot;onStart&quot;, Script.BIND_TO_SCENE, &quot;start&quot; );
+Script.defineAPIFunction( &quot;onAwake&quot;, Script.BIND_TO_SCENE, &quot;awake&quot; );
 Script.defineAPIFunction( &quot;onFinish&quot;, Script.BIND_TO_SCENE, &quot;finish&quot; );
 Script.defineAPIFunction( &quot;onPrefabReady&quot;, Script.BIND_TO_NODE, &quot;prefabReady&quot; );
 //behaviour
@@ -256,9 +258,10 @@ Script.defineAPIFunction( &quot;onButtonDown&quot;, Script.BIND_TO_SCENE, &quot;
 Script.defineAPIFunction( &quot;onButtonUp&quot;, Script.BIND_TO_SCENE, &quot;buttonup&quot; );
 //global
 Script.defineAPIFunction( &quot;onFileDrop&quot;, Script.BIND_TO_SCENE, &quot;fileDrop&quot; );
-//dtor
-Script.defineAPIFunction( &quot;onDestroy&quot;, Script.BIND_TO_NODE, &quot;destroy&quot; );
-
+//editor stuff
+Script.defineAPIFunction( &quot;onEditorEvent&quot;, Script.BIND_TO_SCENE, &quot;editorEvent&quot; );
+Script.defineAPIFunction( &quot;onEditorRender&quot;, Script.BIND_TO_SCENE, &quot;renderEditor&quot; );
+Script.defineAPIFunction( &quot;onEditorRenderGUI&quot;, Script.BIND_TO_SCENE, &quot;renderEditorGUI&quot; );
 
 Script.coding_help = &quot;For a complete guide check: &lt;a href=&#x27;https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md&#x27; target=&#x27;blank&#x27;&gt;Scripting Guide&lt;/a&gt;&quot;;
 
@@ -326,11 +329,11 @@ Script.prototype.getCode = function()
 	return this.code;
 }
 
-Script.prototype.setCode = function( code, skip_events )
+Script.prototype.setCode = function( code, skip_events, reset_state )
 {
 	this.code = code;
 	this._blocked_functions.clear();
-	this.processCode( skip_events );
+	this.processCode( skip_events, reset_state );
 }
 
 /**
@@ -347,7 +350,7 @@ Script.prototype.reload = function()
 * It is called everytime the code is modified, that implies that the context is created when the component is configured.
 * @method processCode
 */
-Script.prototype.processCode = function( skip_events )
+Script.prototype.processCode = function( skip_events, reset_state )
 {
 	this._blocked_functions.clear();
 	this._script.code = this.code;
@@ -381,7 +384,9 @@ Script.prototype.processCode = function( skip_events )
 	if(!skip_events)
 		this.hookEvents();
 
-	this.setContextProperties( old );
+	if(!reset_state)
+		this.setContextProperties( old );
+
 	this._stored_properties = null;
 
 	//execute some starter functions
@@ -416,6 +421,9 @@ Script.prototype.getContextProperties = function()
 	var ctx = this.getContext();
 	if(!ctx)
 		return;
+
+	if(this.onSerialize)
+		return this.onSerialize();
 	return LS.cloneObject( ctx, null, false, false, true );
 }
 
@@ -432,6 +440,9 @@ Script.prototype.setContextProperties = function( properties )
 
 	//to copy we use the clone in target method
 	LS.cloneObject( properties, ctx, false, true, true );
+
+	if(ctx.onConfigure)
+		ctx.onConfigure( properties );
 }
 
 //used for graphs
@@ -577,7 +588,7 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 }
 
 /**
-* This check if the context has API functions that should be called, if thats the case, it binds events automatically
+* This check if the context binds engine events to the methods in the context with an specific name.
 * This way we dont have to bind manually all the methods.
 * @method hookEvents
 */
@@ -613,7 +624,7 @@ Script.prototype.hookEvents = function()
 		//check if this function exist
 		if( context[ func_name ] &amp;&amp; context[ func_name ].constructor === Function )
 		{
-			if( !LEvent.isBind( target, event_info.event, this.onScriptEvent, this )  )
+			if( !LEvent.isBind( target, event_info.event, this.onScriptEvent, this )  ) //not already binded
 				LEvent.bind( target, event_info.event, this.onScriptEvent, this );
 		}
 		else //if it doesnt ensure we are not binding the event
@@ -625,12 +636,27 @@ Script.prototype.hookEvents = function()
 * Called every time an event should be redirected to one function in the script context
 * @method onScriptEvent
 */
-Script.prototype.onScriptEvent = function(event_type, params)
+Script.prototype.onScriptEvent = function( event_type, params )
 {
 	if(!this.enabled)
 		return;
 
-	var event_info = LS.Script.API_events_to_function[ event_type ];
+	//special case: sometimes we want to pass several parameters to the 
+	var expand = false;
+	var type = event_type;
+	/*
+	if( type.constructor !== String &amp;&amp; type.constructor !== Number ) //you can pass an event directly, in that case it will send all directly
+	{
+		type = event_type.type;
+		params = Array.prototype.slice.call(arguments, 0);
+		expand = true;
+	}
+	*/
+
+	if(!type)
+		throw(&quot;Event without type&quot;);
+
+	var event_info = LS.Script.API_events_to_function[ type ];
 	if(!event_info)
 		return; //????
 	if(this._breakpoint_on_call)
@@ -642,7 +668,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
 		return;
 
-	var r = this._script.callMethod( event_info.name, params, undefined, this );
+	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
 }
 
@@ -654,6 +680,9 @@ Script.prototype.onAddedToNode = function( node )
 
 Script.prototype.onRemovedFromNode = function( node )
 {
+	if(this._script._context &amp;&amp; this._script._context.onDestroy)
+		this._script._context.onDestroy();
+
 	if(node.script == this)
 		delete node.script;
 }
@@ -784,8 +813,17 @@ Script.prototype.getResources = function(res)
 		var info = ctx.constructor[ &quot;@&quot; + i];
 		if( !value || !info )
 			continue;
-		if( info.type == LS.TYPES.RESOURCE || info.type == LS.TYPES.TEXTURE || info.type == LS.TYPES.MESH )
+
+		//for basic resource types
+		if( LS.RESOURCE_TYPES[ info.type ] )
 			res[ value ] = true;
+
+		//for arrays
+		if( info.type == LS.TYPES.ARRAY &amp;&amp; value.length &amp;&amp; info.data_type &amp;&amp; info.data_type.constructor === String &amp;&amp; LS.RESOURCE_TYPES[ (info.data_type).toLowerCase() ] )
+		{
+			for(var j = 0; j &lt; value.length; ++j)
+				res[ value[j] ] = true;
+		}
 	}
 
 	if(ctx &amp;&amp; ctx.onGetResources )
@@ -919,7 +957,7 @@ ScriptFromFile.prototype.reload = function( on_complete )
 }
 
 
-ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
+ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset_state )
 {
 	var that = this;
 	if(!this.filename)
@@ -979,7 +1017,8 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
-	this.setContextProperties( old );
+	if(!reset_state)
+		this.setContextProperties( old );
 	this._stored_properties = null;
 
 	//try to catch up with all the events missed while loading the script
@@ -1071,13 +1110,13 @@ ScriptFromFile.prototype.getCode = function()
 	return script_resource.data;
 }
 
-ScriptFromFile.prototype.setCode = function( code, skip_events )
+ScriptFromFile.prototype.setCode = function( code, skip_events, reset_state )
 {
 	var script_resource = LS.ResourcesManager.getResource( this.filename );
 	if(!script_resource)
 		return &quot;&quot;;
 	script_resource.data = code;
-	this.processCode( skip_events );
+	this.processCode( skip_events, null, reset_state );
 }
 
 ScriptFromFile.updateComponents = function( script, skip_events )

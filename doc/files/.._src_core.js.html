@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -158,6 +159,10 @@ if( !Uint8Array.prototype.toJSON )
 	var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
 	typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
 }
+
+if( typeof(GL) === &quot;undefined&quot; )
+	console.error(&quot;LiteScene requires to include LiteGL first. More info: https://github.com/jagenjo/litegl.js&quot;);
+
 
 /**
 * LS is the global scope for the global functions and containers of LiteScene
@@ -264,6 +269,8 @@ var LS = {
 			console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, check events: &quot; + name , &quot;font-size: 2em&quot;);
 		if( component.prototype.getResources &amp;&amp; !component.prototype.onResourceRenamed )
 			console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, it uses resources but doesnt implement onResourceRenamed, this could lead to problems when resources are renamed.&quot;, &quot;font-size: 1.2em&quot;);
+		//if( !component.prototype.serialize || !component.prototype.configure )
+		//	console.warn(&quot;%c Component &quot;+name+&quot; could have a bug, it doesnt have a serialize or configure method. No state will be saved.&quot;, &quot;font-size: 1.2em&quot;);
 
 		//add stuff to the class
 		if(!component.actions)
@@ -580,12 +587,13 @@ var LS = {
 				o = {};
 		}
 
+		//copy every property of this object
 		for(var i in object)
 		{
 			if(i[0] == &quot;@&quot; || i[0] == &quot;_&quot; || i.substr(0,6) == &quot;jQuery&quot;) //skip vars with _ (they are private) or &#x27;@&#x27; (they are definitions)
 				continue;
 
-			if(only_existing &amp;&amp; target[i] === undefined)
+			if(only_existing &amp;&amp; !target.hasOwnProperty(i) &amp;&amp; !target.__proto__.hasOwnProperty(i) ) //target[i] === undefined)
 				continue;
 
 			//if(o.constructor === Array) //not necessary
@@ -624,6 +632,12 @@ var LS = {
 			}
 			else //Objects: 
 			{
+				if( v.constructor.is_resource )
+				{
+					console.error(&quot;Resources cannot be saved as a property of a component nor script, they must be saved individually as files in the file system. If assigning them to a component/script use private variables (name start with underscore) to avoid being serialized.&quot;);
+					continue;
+				}
+
 				if( encode_objects &amp;&amp; !target )
 				{
 					o[i] = LS.encodeObject(v);
@@ -1218,6 +1232,11 @@ if(global.GL)
 {
 	LS.registerResourceClass( GL.Mesh );
 	LS.registerResourceClass( GL.Texture );
+
+	LS.Mesh = GL.Mesh;
+	LS.Texture = GL.Texture;
+	LS.Buffer = GL.Buffer;
+	//LS.Shader = GL.Shader; //this could be confussing since there is also ShaderBlocks etc in LiteScene
 }
 
 

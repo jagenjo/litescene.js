@@ -11,11 +11,12 @@ function GeometricPrimitive( o )
 	this._size = 10;
 	this._subdivisions = 10;
 	this._geometry = GeometricPrimitive.CUBE;
-	this._custom_mesh = null;
+	this._custom_mesh = null; //used for meshes that must be stored with the JSON
 	this._primitive = -1; //GL.POINTS, GL.LINES, GL.TRIANGLES, etc...
 	this._point_size = 0.1;
 
 	this._version = 1;
+	this._mesh = null;
 	this._mesh_version = 0;
 
 	if(o)
@@ -28,7 +29,7 @@ Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 		if( this._geometry == v )
 			return;
 		v = (v === undefined || v === null ? -1 : v|0);
-		if( v < 0 || v > 100 )
+		if( !GeometricPrimitive.VALID[v] )
 			return;
 		this._geometry = v;
 		this._version++;
@@ -79,6 +80,20 @@ Object.defineProperty( GeometricPrimitive.prototype, 'point_size', {
 	enumerable: true
 });
 
+//assign a custom mesh
+Object.defineProperty( GeometricPrimitive.prototype, 'mesh', {
+	get: function() { return this._custom_mesh || this._mesh; },
+	set: function(v) { 
+		if(v && v.constructor !== GL.Mesh)
+			throw("mesh must be a GL.Mesh");
+		this._custom_mesh = v;
+		if(v)
+			this._geometry = GeometricPrimitive.CUSTOM;
+	},
+	enumerable: false
+});
+
+
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
@@ -89,6 +104,8 @@ GeometricPrimitive.ICOSAHEDRON = 7;
 GeometricPrimitive.CONE = 8;
 GeometricPrimitive.QUAD = 9;
 GeometricPrimitive.CUSTOM = 100;
+
+GeometricPrimitive.VALID = { 1:"CUBE", 2:"PLANE", 3:"CYLINDER", 4:"SPHERE", 5:"CIRCLE", 6:"HEMISPHERE", 7:"ICOSAHEDRON", 8: "CONE", 9:"QUAD", 100:"CUSTOM" };
 
 //Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 

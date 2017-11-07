@@ -35,7 +35,9 @@ function PlayAnimation(o)
 	this.blend_time = 0;
 	this.range = null;
 
-	this.onPreApply = null;
+	//coding callbacks
+	this.onPreApply = null; //configurable callback to check if this track must be applied
+	this.onApplySample = null; //configurable callback to check if this sample must be applied
 
 	this._last_time = 0;
 
@@ -58,6 +60,8 @@ PlayAnimation.ONCE = 3;
 PlayAnimation.PAUSED = 4;
 
 PlayAnimation.MODES = {"loop":PlayAnimation.LOOP, "pingpong":PlayAnimation.PINGPONG, "once":PlayAnimation.ONCE, "paused":PlayAnimation.PAUSED };
+
+PlayAnimation.properties_order = ["animation","take"]; //this ones should be the first ones to show in the inspector
 
 PlayAnimation["@animation"] = { widget: "animation" };
 PlayAnimation["@root_node"] = { type: "node" };
@@ -448,9 +452,10 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply, this.onApplySample );
 }
 
+//not in use
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
 {
 	var scene = this._root.scene;
@@ -467,12 +472,6 @@ PlayAnimation.prototype._processSample = function(nodename, property, value, opt
 		case "translate.X": if(trans) trans.position[0] = value; break;
 		case "translate.Y": if(trans) trans.position[1] = value; break;
 		case "translate.Z": if(trans) trans.position[2] = value; break;
-		//NOT TESTED
-		/*
-		case "rotateX.ANGLE": if(trans) trans.rotation[0] = value * DEG2RAD; break;
-		case "rotateY.ANGLE": if(trans) trans.rotation[1] = value * DEG2RAD; break;
-		case "rotateZ.ANGLE": if(trans) trans.rotation[2] = value * DEG2RAD; break;
-		*/
 		case "matrix": if(trans) trans.fromMatrix(value); break;
 		default: break;
 	}

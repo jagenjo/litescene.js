@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -164,11 +165,12 @@ function GeometricPrimitive( o )
 	this._size = 10;
 	this._subdivisions = 10;
 	this._geometry = GeometricPrimitive.CUBE;
-	this._custom_mesh = null;
+	this._custom_mesh = null; //used for meshes that must be stored with the JSON
 	this._primitive = -1; //GL.POINTS, GL.LINES, GL.TRIANGLES, etc...
 	this._point_size = 0.1;
 
 	this._version = 1;
+	this._mesh = null;
 	this._mesh_version = 0;
 
 	if(o)
@@ -181,7 +183,7 @@ Object.defineProperty( GeometricPrimitive.prototype, &#x27;geometry&#x27;, {
 		if( this._geometry == v )
 			return;
 		v = (v === undefined || v === null ? -1 : v|0);
-		if( v &lt; 0 || v &gt; 100 )
+		if( !GeometricPrimitive.VALID[v] )
 			return;
 		this._geometry = v;
 		this._version++;
@@ -232,6 +234,20 @@ Object.defineProperty( GeometricPrimitive.prototype, &#x27;point_size&#x27;, {
 	enumerable: true
 });
 
+//assign a custom mesh
+Object.defineProperty( GeometricPrimitive.prototype, &#x27;mesh&#x27;, {
+	get: function() { return this._custom_mesh || this._mesh; },
+	set: function(v) { 
+		if(v &amp;&amp; v.constructor !== GL.Mesh)
+			throw(&quot;mesh must be a GL.Mesh&quot;);
+		this._custom_mesh = v;
+		if(v)
+			this._geometry = GeometricPrimitive.CUSTOM;
+	},
+	enumerable: false
+});
+
+
 GeometricPrimitive.CUBE = 1;
 GeometricPrimitive.PLANE = 2;
 GeometricPrimitive.CYLINDER = 3;
@@ -242,6 +258,8 @@ GeometricPrimitive.ICOSAHEDRON = 7;
 GeometricPrimitive.CONE = 8;
 GeometricPrimitive.QUAD = 9;
 GeometricPrimitive.CUSTOM = 100;
+
+GeometricPrimitive.VALID = { 1:&quot;CUBE&quot;, 2:&quot;PLANE&quot;, 3:&quot;CYLINDER&quot;, 4:&quot;SPHERE&quot;, 5:&quot;CIRCLE&quot;, 6:&quot;HEMISPHERE&quot;, 7:&quot;ICOSAHEDRON&quot;, 8: &quot;CONE&quot;, 9:&quot;QUAD&quot;, 100:&quot;CUSTOM&quot; };
 
 //Warning : if you add more primitives, be careful with the setter, it doesnt allow values bigger than 7
 

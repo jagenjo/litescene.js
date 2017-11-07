@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -385,7 +386,7 @@ It also contains the parsers and methods in charge of processing them</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1122"><code>..&#x2F;src&#x2F;resourcesManager.js:1122</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1139"><code>..&#x2F;src&#x2F;resourcesManager.js:1139</code></a>
         </p>
 
 
@@ -797,7 +798,7 @@ It is slow, so use it only in changes, not in getters</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l322"><code>..&#x2F;src&#x2F;resourcesManager.js:322</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l333"><code>..&#x2F;src&#x2F;resourcesManager.js:333</code></a>
         </p>
 
 
@@ -873,7 +874,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1054"><code>..&#x2F;src&#x2F;resourcesManager.js:1054</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1071"><code>..&#x2F;src&#x2F;resourcesManager.js:1071</code></a>
         </p>
 
 
@@ -1070,7 +1071,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l398"><code>..&#x2F;src&#x2F;resourcesManager.js:398</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l409"><code>..&#x2F;src&#x2F;resourcesManager.js:409</code></a>
         </p>
 
 
@@ -1150,7 +1151,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l438"><code>..&#x2F;src&#x2F;resourcesManager.js:438</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l449"><code>..&#x2F;src&#x2F;resourcesManager.js:449</code></a>
         </p>
 
 
@@ -1227,7 +1228,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l420"><code>..&#x2F;src&#x2F;resourcesManager.js:420</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l431"><code>..&#x2F;src&#x2F;resourcesManager.js:431</code></a>
         </p>
 
 
@@ -1292,7 +1293,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1071"><code>..&#x2F;src&#x2F;resourcesManager.js:1071</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1088"><code>..&#x2F;src&#x2F;resourcesManager.js:1088</code></a>
         </p>
 
 
@@ -1356,7 +1357,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l945"><code>..&#x2F;src&#x2F;resourcesManager.js:945</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l962"><code>..&#x2F;src&#x2F;resourcesManager.js:962</code></a>
         </p>
 
 
@@ -1415,7 +1416,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1037"><code>..&#x2F;src&#x2F;resourcesManager.js:1037</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1054"><code>..&#x2F;src&#x2F;resourcesManager.js:1054</code></a>
         </p>
 
 
@@ -1456,7 +1457,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1022"><code>..&#x2F;src&#x2F;resourcesManager.js:1022</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1039"><code>..&#x2F;src&#x2F;resourcesManager.js:1039</code></a>
         </p>
 
 
@@ -1496,6 +1497,9 @@ used only when requesting a resource to be loaded</p>
                 <li class="arg">
                         <code class="optional">[force_load=false]</code>
                 </li>
+                <li class="arg">
+                        <code class="optional">[on_error=null]</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
@@ -1509,7 +1513,7 @@ used only when requesting a resource to be loaded</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l552"><code>..&#x2F;src&#x2F;resourcesManager.js:552</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l563"><code>..&#x2F;src&#x2F;resourcesManager.js:563</code></a>
         </p>
 
 
@@ -1573,6 +1577,18 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
                     </div>
 
                 </li>
+                <li class="param">
+                        <code class="param-name optional">[on_error=null]</code>
+                        <span class="type">Function</span>
+                        <span class="flag optional" title="This parameter is optional.">optional</span>
+
+
+                    <div class="param-description">
+                        <p>callback in case the file wasnt found</p>
+
+                    </div>
+
+                </li>
             </ul>
         </div>
 
@@ -1624,7 +1640,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
             <ul class="params-list">
                 <li class="param">
                         <code class="param-name">resources</code>
-                        <span class="type">Object</span>
+                        <span class="type">Object | Array</span>
 
 
                     <div class="param-description">
@@ -1687,7 +1703,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l1097"><code>..&#x2F;src&#x2F;resourcesManager.js:1097</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l1114"><code>..&#x2F;src&#x2F;resourcesManager.js:1114</code></a>
         </p>
 
 
@@ -1769,7 +1785,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l811"><code>..&#x2F;src&#x2F;resourcesManager.js:811</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l828"><code>..&#x2F;src&#x2F;resourcesManager.js:828</code></a>
         </p>
 
 
@@ -1866,7 +1882,7 @@ Do not use to load regular files (txts, csv, etc), instead use the LS.Network me
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l662"><code>..&#x2F;src&#x2F;resourcesManager.js:662</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l676"><code>..&#x2F;src&#x2F;resourcesManager.js:676</code></a>
         </p>
 
 
@@ -1959,7 +1975,7 @@ It is called for every single resource that comes from an external source (URL) 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l384"><code>..&#x2F;src&#x2F;resourcesManager.js:384</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l395"><code>..&#x2F;src&#x2F;resourcesManager.js:395</code></a>
         </p>
 
 
@@ -2029,7 +2045,7 @@ P.e:   &quot;e&quot;,&quot;<a href="http://domain.com">http://domain.com</a>&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l863"><code>..&#x2F;src&#x2F;resourcesManager.js:863</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l880"><code>..&#x2F;src&#x2F;resourcesManager.js:880</code></a>
         </p>
 
 
@@ -2347,7 +2363,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l964"><code>..&#x2F;src&#x2F;resourcesManager.js:964</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l981"><code>..&#x2F;src&#x2F;resourcesManager.js:981</code></a>
         </p>
 
 
@@ -2462,7 +2478,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l488"><code>..&#x2F;src&#x2F;resourcesManager.js:488</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l499"><code>..&#x2F;src&#x2F;resourcesManager.js:499</code></a>
         </p>
 
 
@@ -2515,7 +2531,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l537"><code>..&#x2F;src&#x2F;resourcesManager.js:537</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l548"><code>..&#x2F;src&#x2F;resourcesManager.js:548</code></a>
         </p>
 
 
@@ -2568,7 +2584,7 @@ Registering a resource preprocessor the data will be converted once it is in mem
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l289"><code>..&#x2F;src&#x2F;resourcesManager.js:289</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l300"><code>..&#x2F;src&#x2F;resourcesManager.js:300</code></a>
         </p>
 
 
@@ -2622,7 +2638,7 @@ By default it will use the website home address</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l301"><code>..&#x2F;src&#x2F;resourcesManager.js:301</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l312"><code>..&#x2F;src&#x2F;resourcesManager.js:312</code></a>
         </p>
 
 
@@ -2679,7 +2695,7 @@ request will be in this form: proxy_url + &quot;/&quot; + url_with_protocol: -&g
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resourcesManager.js.html#l913"><code>..&#x2F;src&#x2F;resourcesManager.js:913</code></a>
+        <a href="../files/.._src_resourcesManager.js.html#l930"><code>..&#x2F;src&#x2F;resourcesManager.js:930</code></a>
         </p>
 
 

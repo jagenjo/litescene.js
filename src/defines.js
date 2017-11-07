@@ -44,6 +44,8 @@ LS.LEFT = vec3.fromValues(-1,0,0);
 LS.FRONT = vec3.fromValues(0,0,-1);
 LS.BACK = vec3.fromValues(0,0,1);
 LS.IDENTITY = mat4.create();
+LS.WHITE = LS.ONES;
+LS.BLACK = LS.ZEROS;
 
 //types
 LS.TYPES = {
@@ -65,5 +67,14 @@ LS.TYPES = {
 	COMPONENT: "component",
 	COMPONENT_ID: "component_id",
 	MATERIAL: "material",
+	ANIMATION: "animation",
 	ARRAY: "array"
 };
+
+LS.RESOURCE_TYPES = {};
+LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.TEXTURE ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.MESH ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
+//audio and video?
+

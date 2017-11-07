@@ -40,7 +40,7 @@ function MeshRenderer(o)
 	this._must_update_static = true; //used in static meshes
 	this._transform_version = -1;
 
-	//used to render with several materials
+	//used to render with several materials (WIP, not finished yet)
 	this.use_submaterials = false;
 	this.submaterials = [];
 
@@ -103,7 +103,10 @@ Object.defineProperty( MeshRenderer.prototype, 'lod_mesh', {
 
 Object.defineProperty( MeshRenderer.prototype, 'submesh_id', {
 	get: function() { return this._submesh_id; },
-	set: function(v) { this._submesh_id = v; },
+	set: function(v) { 
+		//what about if v is a string, search for the index?
+		this._submesh_id = v;
+	},
 	enumerable: true
 });
 
@@ -263,6 +266,8 @@ MeshRenderer.prototype.onResourceRenamed = function (old_name, new_name, resourc
 		this.mesh = new_name;
 	if(this.lod_mesh == old_name)
 		this.lod_mesh = new_name;
+	if(this.material == old_name)
+		this.material = new_name;
 	if(this.morph_targets)
 		for(var i in this.morph_targets)
 			if( this.morph_targets[i].mesh == old_name )
@@ -407,7 +412,11 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	{
 		var group = mesh.info.groups[this.submesh_id];
 		if(group)
+		{
 			RI.setRange( group.start, group.length );
+			if( group.bounding )
+				RI.setBoundingBox( group.bounding );
+		}
 	}
 	else
 		RI.setRange(0,-1);
@@ -436,6 +445,7 @@ MeshRenderer.prototype.onCollectInstances = function(e, instances)
 	instances.push( RI );
 }
 
+//not fully tested
 MeshRenderer.prototype.onCollectInstancesSubmaterials = function(instances)
 {
 	if(!this._RIs)
@@ -502,6 +512,29 @@ MeshRenderer.prototype.isLoading = function()
 	return false;
 }
 
+//used when a node has too many submeshes with materials
+MeshRenderer.prototype.explodeSubmeshesToChildNodes = function() { 
+	var node = this._root;
+	if(!node)
+		return;
+
+	var mesh = this.getMesh();
+	if(!mesh || !mesh.info || !mesh.info.groups )
+		return;
+
+	node.removeComponent( this );
+
+	for(var i = 0; i < mesh.info.groups.length; ++i)
+	{
+		var group = mesh.info.groups[i];
+		var child_node = new LS.SceneNode();
+		node.addChild( child_node );
+		var comp = new LS.Components.MeshRenderer({ mesh: this.mesh, submesh_id: i, material: group.material });
+		child_node.addComponent( comp );	
+	}
+
+	LS.GlobalScene.refresh();
+}
 
 LS.registerComponent( MeshRenderer );
 LS.MeshRenderer = MeshRenderer;

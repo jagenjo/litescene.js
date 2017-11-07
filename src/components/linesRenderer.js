@@ -1,6 +1,6 @@
 /* lineCloud.js */
 
-function LineCloud(o)
+function LinesRenderer(o)
 {
 	this.enabled = true;
 	this.max_lines = 1024;
@@ -10,6 +10,8 @@ function LineCloud(o)
 	this.global_opacity = 1;
 	this.color = vec3.fromValues(1,1,1);
 	this.additive_blending = false;
+
+	this.line_width = 1;
 
 	this.use_node_material = false; 
 	this.premultiplied_alpha = false;
@@ -33,24 +35,24 @@ function LineCloud(o)
 	*/
 
 }
-LineCloud.icon = "mini-icon-lines.png";
-LineCloud["@color"] = { widget: "color" };
+LinesRenderer.icon = "mini-icon-lines.png";
+LinesRenderer["@color"] = { widget: "color" };
 
-Object.defineProperty( LineCloud.prototype, "num_lines", {
+Object.defineProperty( LinesRenderer.prototype, "num_lines", {
 	set: function(v) {},
 	get: function() { return this._lines.length; },
 	enumerable: true
 });
 
-LineCloud.prototype.clear = function()
+LinesRenderer.prototype.clear = function()
 {
 	this._lines.length = 0;
 }
 
-LineCloud.prototype.reset = LineCloud.prototype.clear;
+LinesRenderer.prototype.reset = LinesRenderer.prototype.clear;
 
 //Adds a point connect to the last one
-LineCloud.prototype.addPoint = function( point, color )
+LinesRenderer.prototype.addPoint = function( point, color )
 {
 	//last
 	var start = null;
@@ -69,7 +71,7 @@ LineCloud.prototype.addPoint = function( point, color )
 	this.addLine( start, point, start_color, color );
 }
 
-LineCloud.prototype.addLine = function( start, end, start_color, end_color )
+LinesRenderer.prototype.addLine = function( start, end, start_color, end_color )
 {
 	var data = new Float32Array(3+3+4+4);
 	data.set(start,0);
@@ -93,7 +95,7 @@ LineCloud.prototype.addLine = function( start, end, start_color, end_color )
 	return this._lines.length - 1;
 }
 
-LineCloud.prototype.setLine = function(id, start, end, start_color, end_color )
+LinesRenderer.prototype.setLine = function(id, start, end, start_color, end_color )
 {
 	var data = this._lines[id];
 
@@ -110,28 +112,24 @@ LineCloud.prototype.setLine = function(id, start, end, start_color, end_color )
 	this._must_update = true;
 }
 
-LineCloud.prototype.removeLine = function(id)
+LinesRenderer.prototype.removeLine = function(id)
 {
 	this._lines.splice(id,1);
 	this._must_update = true;
 }
 
 
-LineCloud.prototype.onAddedToNode = function(node)
+LinesRenderer.prototype.onAddedToNode = function(node)
 {
-	LEvent.bind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.bind(node, "afterRenderScene", this.onAfterRender, this);
 }
 
-LineCloud.prototype.onRemovedFromNode = function(node)
+LinesRenderer.prototype.onRemovedFromNode = function(node)
 {
-	LEvent.unbind(node, "collectRenderInstances", this.onCollectInstances, this);
+	LEvent.unbind(node, "afterRenderScene", this.onAfterRender, this);
 }
 
-LineCloud.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-}
-
-LineCloud.prototype.createMesh = function ()
+LinesRenderer.prototype.createMesh = function ()
 {
 	if( this._mesh_max_lines == this.max_lines) return;
 
@@ -143,7 +141,7 @@ LineCloud.prototype.createMesh = function ()
 	this._mesh_max_lines = this.max_lines;
 }
 
-LineCloud.prototype.updateMesh = function ()
+LinesRenderer.prototype.updateMesh = function ()
 {
 	if( this._mesh_max_lines != this.max_lines)
 		this.createMesh();
@@ -174,56 +172,19 @@ LineCloud.prototype.updateMesh = function ()
 	this._mesh.vertexBuffers["colors"].upload();
 }
 
-LineCloud._identity = mat4.create();
+LinesRenderer._identity = mat4.create();
 
-LineCloud.prototype.onCollectInstances = function(e, instances, options)
+LinesRenderer.prototype.onAfterRender = function(e)
 {
-	if(!this._root) return;
-
-	if(this._lines.length == 0 || !this.enabled)
+	if( !this._root )
 		return;
 
-	var camera = Renderer._current_camera;
+	if( this._lines.length == 0 || !this.enabled )
+		return;
 
-	if(this._must_update)
-		this.updateMesh();
-
-	if(!this._material)
-	{
-		this._material = new Material({ shader_name:"lowglobal" });
-	}
-
-	var material = this._material;
-
-	material.color.set(this.color);
-	material.opacity = this.global_opacity - 0.01; //try to keep it under 1
-	material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
-	material.constant_diffuse = true;
-
-	if(!this._mesh)
-		return null;
-
-	var RI = this._render_instance;
-	if(!RI)
-		this._render_instance = RI = new RenderInstance(this._root, this);
-
-	if(this.in_world_coordinates && this._root.transform )
-		RI.matrix.set( this._root.transform._global_matrix );
-	else
-		mat4.copy( RI.matrix, LineCloud._identity );
-
-	var material = (this._root.material && this.use_node_material) ? this._root.getMaterial() : this._material;
-	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
-
-	RI.setMaterial( material );
-	RI.setMesh( this._mesh, gl.LINES );
-	var primitives = this._lines.length * 2;
-	if(primitives > this._vertices.length / 3)
-		primitives = this._vertices.length / 3;
-	RI.setRange(0,primitives);
-
-	instances.push(RI);
+	LS.Draw.setLineWidth( this.line_width );
+	LS.Draw.renderMesh( this._mesh, GL.LINES );
 }
 
 
-LS.registerComponent( LineCloud );
+LS.registerComponent( LinesRenderer );

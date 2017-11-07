@@ -74,6 +74,7 @@ Script.defineAPIFunction = function( func_name, target, event, info ) {
 
 //init
 Script.defineAPIFunction( "onStart", Script.BIND_TO_SCENE, "start" );
+Script.defineAPIFunction( "onAwake", Script.BIND_TO_SCENE, "awake" );
 Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
 //behaviour
@@ -103,9 +104,10 @@ Script.defineAPIFunction( "onButtonDown", Script.BIND_TO_SCENE, "buttondown" );
 Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
 //global
 Script.defineAPIFunction( "onFileDrop", Script.BIND_TO_SCENE, "fileDrop" );
-//dtor
-Script.defineAPIFunction( "onDestroy", Script.BIND_TO_NODE, "destroy" );
-
+//editor stuff
+Script.defineAPIFunction( "onEditorEvent", Script.BIND_TO_SCENE, "editorEvent" );
+Script.defineAPIFunction( "onEditorRender", Script.BIND_TO_SCENE, "renderEditor" );
+Script.defineAPIFunction( "onEditorRenderGUI", Script.BIND_TO_SCENE, "renderEditorGUI" );
 
 Script.coding_help = "For a complete guide check: <a href='https://github.com/jagenjo/litescene.js/blob/master/guides/scripting.md' target='blank'>Scripting Guide</a>";
 
@@ -173,11 +175,11 @@ Script.prototype.getCode = function()
 	return this.code;
 }
 
-Script.prototype.setCode = function( code, skip_events )
+Script.prototype.setCode = function( code, skip_events, reset_state )
 {
 	this.code = code;
 	this._blocked_functions.clear();
-	this.processCode( skip_events );
+	this.processCode( skip_events, reset_state );
 }
 
 /**
@@ -194,7 +196,7 @@ Script.prototype.reload = function()
 * It is called everytime the code is modified, that implies that the context is created when the component is configured.
 * @method processCode
 */
-Script.prototype.processCode = function( skip_events )
+Script.prototype.processCode = function( skip_events, reset_state )
 {
 	this._blocked_functions.clear();
 	this._script.code = this.code;
@@ -228,7 +230,9 @@ Script.prototype.processCode = function( skip_events )
 	if(!skip_events)
 		this.hookEvents();
 
-	this.setContextProperties( old );
+	if(!reset_state)
+		this.setContextProperties( old );
+
 	this._stored_properties = null;
 
 	//execute some starter functions
@@ -263,6 +267,9 @@ Script.prototype.getContextProperties = function()
 	var ctx = this.getContext();
 	if(!ctx)
 		return;
+
+	if(this.onSerialize)
+		return this.onSerialize();
 	return LS.cloneObject( ctx, null, false, false, true );
 }
 
@@ -279,6 +286,9 @@ Script.prototype.setContextProperties = function( properties )
 
 	//to copy we use the clone in target method
 	LS.cloneObject( properties, ctx, false, true, true );
+
+	if(ctx.onConfigure)
+		ctx.onConfigure( properties );
 }
 
 //used for graphs
@@ -424,7 +434,7 @@ Script.prototype.setPropertyValueFromPath = function( path, value, offset )
 }
 
 /**
-* This check if the context has API functions that should be called, if thats the case, it binds events automatically
+* This check if the context binds engine events to the methods in the context with an specific name.
 * This way we dont have to bind manually all the methods.
 * @method hookEvents
 */
@@ -460,7 +470,7 @@ Script.prototype.hookEvents = function()
 		//check if this function exist
 		if( context[ func_name ] && context[ func_name ].constructor === Function )
 		{
-			if( !LEvent.isBind( target, event_info.event, this.onScriptEvent, this )  )
+			if( !LEvent.isBind( target, event_info.event, this.onScriptEvent, this )  ) //not already binded
 				LEvent.bind( target, event_info.event, this.onScriptEvent, this );
 		}
 		else //if it doesnt ensure we are not binding the event
@@ -472,12 +482,27 @@ Script.prototype.hookEvents = function()
 * Called every time an event should be redirected to one function in the script context
 * @method onScriptEvent
 */
-Script.prototype.onScriptEvent = function(event_type, params)
+Script.prototype.onScriptEvent = function( event_type, params )
 {
 	if(!this.enabled)
 		return;
 
-	var event_info = LS.Script.API_events_to_function[ event_type ];
+	//special case: sometimes we want to pass several parameters to the 
+	var expand = false;
+	var type = event_type;
+	/*
+	if( type.constructor !== String && type.constructor !== Number ) //you can pass an event directly, in that case it will send all directly
+	{
+		type = event_type.type;
+		params = Array.prototype.slice.call(arguments, 0);
+		expand = true;
+	}
+	*/
+
+	if(!type)
+		throw("Event without type");
+
+	var event_info = LS.Script.API_events_to_function[ type ];
 	if(!event_info)
 		return; //????
 	if(this._breakpoint_on_call)
@@ -489,7 +514,7 @@ Script.prototype.onScriptEvent = function(event_type, params)
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
 		return;
 
-	var r = this._script.callMethod( event_info.name, params, undefined, this );
+	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
 }
 
@@ -501,6 +526,9 @@ Script.prototype.onAddedToNode = function( node )
 
 Script.prototype.onRemovedFromNode = function( node )
 {
+	if(this._script._context && this._script._context.onDestroy)
+		this._script._context.onDestroy();
+
 	if(node.script == this)
 		delete node.script;
 }
@@ -631,8 +659,17 @@ Script.prototype.getResources = function(res)
 		var info = ctx.constructor[ "@" + i];
 		if( !value || !info )
 			continue;
-		if( info.type == LS.TYPES.RESOURCE || info.type == LS.TYPES.TEXTURE || info.type == LS.TYPES.MESH )
+
+		//for basic resource types
+		if( LS.RESOURCE_TYPES[ info.type ] )
 			res[ value ] = true;
+
+		//for arrays
+		if( info.type == LS.TYPES.ARRAY && value.length && info.data_type && info.data_type.constructor === String && LS.RESOURCE_TYPES[ (info.data_type).toLowerCase() ] )
+		{
+			for(var j = 0; j < value.length; ++j)
+				res[ value[j] ] = true;
+		}
 	}
 
 	if(ctx && ctx.onGetResources )
@@ -766,7 +803,7 @@ ScriptFromFile.prototype.reload = function( on_complete )
 }
 
 
-ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
+ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset_state )
 {
 	var that = this;
 	if(!this.filename)
@@ -826,7 +863,8 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete )
 	var ret = this._script.compile({component:this, node: this._root, scene: this._root.scene, transform: this._root.transform, globals: LS.Globals });
 	if(!skip_events)
 		this.hookEvents();
-	this.setContextProperties( old );
+	if(!reset_state)
+		this.setContextProperties( old );
 	this._stored_properties = null;
 
 	//try to catch up with all the events missed while loading the script
@@ -918,13 +956,13 @@ ScriptFromFile.prototype.getCode = function()
 	return script_resource.data;
 }
 
-ScriptFromFile.prototype.setCode = function( code, skip_events )
+ScriptFromFile.prototype.setCode = function( code, skip_events, reset_state )
 {
 	var script_resource = LS.ResourcesManager.getResource( this.filename );
 	if(!script_resource)
 		return "";
 	script_resource.data = code;
-	this.processCode( skip_events );
+	this.processCode( skip_events, null, reset_state );
 }
 
 ScriptFromFile.updateComponents = function( script, skip_events )

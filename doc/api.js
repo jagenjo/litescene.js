@@ -69,6 +69,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.ShadersManager",
         "LS.SpatialContainer",
         "LS.StandardMaterial",
+        "LS.Tween",
         "LS.UnityMaterial",
         "LS.WBin",
         "LSQ"
