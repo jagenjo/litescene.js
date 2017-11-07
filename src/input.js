@@ -76,6 +76,7 @@ var Input = {
 	},
 
 	//called from LS.Player when onmouse
+	//returns true if the event was blocked
 	onMouse: function(e)
 	{
 		this.last_mouse = e;

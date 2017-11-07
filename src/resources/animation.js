@@ -161,6 +161,9 @@ Animation.fromBinary = function( data )
 		data = WBin.load(data, true);
 
 	var o = data["@json"];
+	if(!o) //sometimes the data already comes extractedin the object itself
+		o = data;
+
 	for(var i in o.takes)
 	{
 		var take = o.takes[i];
@@ -221,15 +224,28 @@ Animation.prototype.toBinary = function()
 	return bin;
 }
 
-//Used when the animation tracks use UIDs instead of node names
-//to convert the track locator to node names, so they can be reused between nodes in the same scene
-Animation.prototype.convertIDstoNames = function( use_basename, root )
+//Used when the animation tracks use names instead of node ids
+//to convert the track locator to node names, so they affect to only one node
+Animation.prototype.convertNamesToIDs = function( use_basename, root )
 {
 	var num = 0;
 	for(var i in this.takes)
 	{
 		var take = this.takes[i];
-		num += take.convertIDstoNames( use_basename, root );
+		num += take.convertNamesToIDs( use_basename, root );
+	}
+	return num;
+}
+
+//Used when the animation tracks use UIDs instead of node names
+//to convert the track locator to node names, so they can be reused between nodes in the same scene
+Animation.prototype.convertIDsToNames = function( use_basename, root )
+{
+	var num = 0;
+	for(var i in this.takes)
+	{
+		var take = this.takes[i];
+		num += take.convertIDsToNames( use_basename, root );
 	}
 	return num;
 }
@@ -266,6 +282,20 @@ Animation.prototype.optimizeTracks = function()
 	}
 	return num;
 }
+
+/**
+* It creates a PlayAnimation component to the node (or reuse and old existing one). Used when a resource is assigned to a node
+* @method assignToNode
+* @param {LS.SceneNode} node node where to assign this animation
+*/
+Animation.prototype.assignToNode = function(node)
+{
+	var component = node.getComponent( LS.Components.PlayAnimation );
+	if(!component)
+		component = node.addComponent( LS.Components.PlayAnimation );
+	component.animation = this.fullpath || this.filename;
+}
+
 
 
 LS.Classes["Animation"] = LS.Animation = Animation;
@@ -349,10 +379,11 @@ Take.prototype.createTrack = function( data )
 * @param {boolean} ignore_interpolation in case you want to sample the nearest one
 * @param {SceneNode} weight [Optional] allows to blend animations with current value (default is 1)
 * @param {Number} root [Optional] if you want to limit the locator to search inside a node
-* @param {Function} on_pre_apply [Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped
+* @param {Function} on_pre_apply [Optional] a callback called per track to see if this track should be applyed, if it returns false it is skipped. callback receives (track, current_time, root_node, weight)
+* @param {Function} on_apply_sample [Optional] a callback called before applying a keyframe, if the callback returns false the keyframe will be skipped. callback parameters ( track, sample, root_node, weight )
 * @return {Component} the target where the action was performed
 */
-Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight, on_pre_apply )
+Take.prototype.applyTracks = function( current_time, last_time, ignore_interpolation, root_node, scene, weight, on_pre_apply, on_apply_sample )
 {
 	scene = scene || LS.GlobalScene;
 	if(weight === 0)
@@ -364,6 +395,9 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 	{
 		var track = this.tracks[i];
 		if( track.enabled === false || !track.data )
+			continue;
+
+		if(on_pre_apply && on_pre_apply( track, current_time, root_node, weight ) === false)
 			continue;
 
 		//events are an special kind of tracks, they execute actions
@@ -410,7 +444,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			//apply the value to the property specified by the locator
 			if( sample !== undefined ) 
 			{
-				if( on_pre_apply && on_pre_apply( track._property_path, sample, root_node, 0 ) === false)
+				if( on_apply_sample && on_apply_sample( track, sample, root_node, weight ) === false)
 					continue; //skip
 				track._target = scene.setPropertyValueFromPath( track._property_path, sample, root_node, 0 );
 			}
@@ -488,7 +522,19 @@ Take.prototype.loadResources = function()
 }
 
 //convert track locators from using UIDs to use node names (this way the same animation can be used in several parts of the scene)
-Take.prototype.convertIDstoNames = function( use_basename, root )
+Take.prototype.convertNamesToIDs = function( use_basename, root )
+{
+	var num = 0;
+	for(var j = 0; j < this.tracks.length; ++j)
+	{
+		var track = this.tracks[j];
+		num += track.convertNameToID( use_basename, root )
+	}
+	return num;
+}
+
+//convert track locators from using UIDs to use node names (this way the same animation can be used in several parts of the scene)
+Take.prototype.convertIDsToNames = function( use_basename, root )
 {
 	var num = 0;
 	for(var j = 0; j < this.tracks.length; ++j)
@@ -582,61 +628,12 @@ Take.prototype.matchTranslation = function( root )
 Take.prototype.onlyRotations = function()
 {
 	var num = 0;
-	var temp = new Float32Array(10);
-	var temp_quat = new Float32Array(4);
-	var final_quat = temp.subarray(3,7);
 
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-
-		//convert locator
-		var path = track.property.split("/");
-		var last_path = path[ path.length - 1 ];
-		var old_size = track.value_size;
-		if( track.type != "mat4" && track.type != "trans10" )
-			continue;
-
-		if(last_path == "matrix")
-			path[ path.length - 1 ] = "Transform/rotation";
-		else if (last_path == "data")
-			path[ path.length - 1 ] = "rotation";
-
-		//convert samples
-		if(!track.packed_data)
-			track.packData();
-
-		track.property = path.join("/");
-		var old_type = track.type;
-		track.type = "quat";
-		track.value_size = 4;
-
-		var data = track.data;
-		var num_samples = data.length / (old_size+1);
-
-		if( old_type == "mat4" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*17+1,(k*17)+17);
-				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
-				temp_quat.set( temp.subarray(3,7) );
-				data[k*5] = data[k*17]; //timestamp
-				data.set( temp_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		else if( old_type == "trans10" )
-		{
-			for(var k = 0; k < num_samples; ++k)
-			{
-				var sample = data.subarray(k*11+4,(k*11)+8);
-				data[k*5] = data[k*11]; //timestamp
-				data.set( sample, k*5+1); //overwrite inplace (because the output is less big that the input)
-			}
-		}
-		
-		track.data = new Float32Array( data.subarray(0,num_samples*5) );
-		num += 1;
+		if( track.onlyRotations() )
+			num += 1;
 	}
 	return num;
 }
@@ -652,30 +649,8 @@ Take.prototype.removeScaling = function()
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		var modified = false;
-
-		if(track.type == "matrix")
-		{
-			track.convertToTrans10();
-			modified = true;
-		}
-
-		if( track.type != "trans10" )
-		{
-			if(modified)
-				num += 1;
-			continue;
-		}
-
-		var num_keyframes = track.getNumberOfKeyframes();
-
-		for( var j = 0; j < num_keyframes; ++j )
-		{
-			var k = track.getKeyframe(j);
-			k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
-		}
-
-		num += 1;
+		if( track.removeScaling() )
+			num += 1;
 	}
 	return num;
 }
@@ -708,6 +683,17 @@ Take.prototype.trimTracks = function( start, end )
 	this.duration = end - start;
 
 	return num;
+}
+
+Take.prototype.stretchTracks = function( duration )
+{
+	if(duration <= 0 || this.duration == 0)
+		return 0;
+	var scale = duration / this.duration;
+	this.duration *= scale;
+	for(var i = 0; i < this.tracks.length; ++i)
+		this.tracks[i].stretch( scale );
+	return this.tracks.length;
 }
 
 
@@ -909,6 +895,22 @@ Track.prototype.getIDasName = function( use_basename, root )
 	else
 		result[0] = node.fullname;
 	return result.join("/");
+}
+
+//used to change every track so instead of using node names for properties it uses node uids
+//this is used when you want to apply an animation to an specific node
+Track.prototype.convertNameToID = function( root )
+{
+	if(this._property_path[0][0] === LS._uid_prefix)
+		return false; //is already using UIDs
+
+	var node = LSQ.get( this._property_path[0], root );
+	if(!node)
+		return false;
+
+	this._property_path[0] = node.uid;
+	this._property = this._property_path[0].join("/");
+	return true;
 }
 
 //used to change every track so instead of using UIDs for properties it uses node names
@@ -1418,7 +1420,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 		if(this.type == "quat")
 		{
-			quat.slerp( result, a[1], b[1], t ); //force quats without bezier interpolation
+			quat.slerp( result, b[1], a[1], t ); //force quats without bezier interpolation
 			quat.normalize( result, result );
 		}
 		else if(this.type == "trans10")
@@ -1606,7 +1608,7 @@ Track.prototype.trim = function( start, end )
 	var size = this.data.length;
 
 	var result = [];
-	for(var i = 0; i < this.data.length; ++i)
+	for(var i = 0; i < size; ++i)
 	{
 		var d = this.data[i];
 		if(d[0] < start || d[0] > end)
@@ -1622,8 +1624,26 @@ Track.prototype.trim = function( start, end )
 	return 0;
 }
 
-//if the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
-//this makes working with animations faster
+/**
+* Scales the time in every keyframe
+* @method stretch
+* @param {number} scale the sacle to apply to all times
+*/
+Track.prototype.stretch = function( scale )
+{
+	if(this.packed_data)
+		this.unpackData();
+	var size = this.data.length;
+	for(var i = 0; i < size; ++i)
+		this.data[i][0] *= scale; //scale time
+	return 1;
+}
+
+/**
+* If the track used matrices, it transform them to position,quaternion and scale (10 floats, also known as trans10)
+* this makes working with animations faster
+* @method convertToTrans10
+*/
 Track.prototype.convertToTrans10 = function()
 {
 	if( this.value_size != 16 )
@@ -1657,6 +1677,94 @@ Track.prototype.convertToTrans10 = function()
 
 	return true;
 }
+
+/**
+* If this track changes the scale, it forces it to be 1,1,1
+* @method removeScaling
+*/
+Track.prototype.removeScaling = function()
+{
+	var modified = false;
+
+	if(this.type == "matrix")
+	{
+		this.convertToTrans10();
+		modified = true;
+	}
+
+	if( this.type != "trans10" )
+	{
+		if(modified)
+			return true;
+	}
+
+	var num_keyframes = this.getNumberOfKeyframes();
+	for( var j = 0; j < num_keyframes; ++j )
+	{
+		var k = this.getKeyframe(j);
+		k[1][7] = k[1][8] = k[1][9] = 1; //set scale equal to 1
+	}
+	return true;
+}
+
+
+Track.prototype.onlyRotations = (function()
+{
+	var temp = new Float32Array(10);
+	var temp_quat = new Float32Array(4);
+
+	return function(){
+
+		//convert locator
+		var path = this.property.split("/");
+		var last_path = path[ path.length - 1 ];
+		var old_size = this.value_size;
+		if( this.type != "mat4" && this.type != "trans10" )
+			return false;
+
+		if(last_path == "matrix")
+			path[ path.length - 1 ] = "Transform/rotation";
+		else if (last_path == "data")
+			path[ path.length - 1 ] = "rotation";
+
+		//convert samples
+		if(!this.packed_data)
+			this.packData();
+
+		this.property = path.join("/");
+		var old_type = this.type;
+		this.type = "quat";
+		this.value_size = 4;
+
+		var data = this.data;
+		var num_samples = data.length / (old_size+1);
+
+		if( old_type == "mat4" )
+		{
+			for(var k = 0; k < num_samples; ++k)
+			{
+				var sample = data.subarray(k*17+1,(k*17)+17);
+				var new_data = LS.Transform.fromMatrix4ToTransformData( sample, temp );
+				temp_quat.set( temp.subarray(3,7) );
+				data[k*5] = data[k*17]; //timestamp
+				data.set( temp_quat, k*5+1); //overwrite inplace (because the output is less big that the input)
+			}
+		}
+		else if( old_type == "trans10" )
+		{
+			for(var k = 0; k < num_samples; ++k)
+			{
+				var sample = data.subarray(k*11+4,(k*11)+8);
+				data[k*5] = data[k*11]; //timestamp
+				data.set( sample, k*5+1); //overwrite inplace (because the output is less big that the input)
+			}
+		}
+		
+		this.data = new Float32Array( data.subarray(0,num_samples*5) );
+		return true;
+	};
+})();
+
 
 Animation.Track = Track;
 

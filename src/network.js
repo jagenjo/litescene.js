@@ -10,7 +10,11 @@ var Network = {
 	*
 	* @method request
 	* @param {Object} request object with the fields for the request: 
-    *			dataType: result type {text,xml,json,binary,arraybuffer,image}, data: object with form fields, callbacks supported: {success, error, progress}
+    *			dataType: result type {text,xml,json,binary,arraybuffer,image},
+				data: object with form fields,
+				method: "POST","GET","DELETE","PUT", if omited if will use post or get depending on the parameters,
+				use_proxy: if true it will use LiteScene proxy if available
+				callbacks supported: {success, error, progress}
 	* @return {XMLHttpRequest} the XMLHttpRequest of the petition
 	*/
 	request: function(request)
@@ -57,7 +61,7 @@ var Network = {
 
 		//regular case, use AJAX call
         var xhr = new XMLHttpRequest();
-        xhr.open(request.data ? 'POST' : 'GET', url, true);
+        xhr.open( request.method || (request.data ? 'POST' : 'GET'), url, true);
 		xhr.withCredentials = this.withCredentials; //if true doesnt work
 		if(request.withCredentials !== undefined)
 			xhr.withCredentials = request.withCredentials;

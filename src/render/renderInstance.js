@@ -12,6 +12,7 @@ function RenderInstance( node, component )
 	this.uid = LS.generateUId("RINS"); //unique identifier for this RI
 	this.layers = 3; //in layer 1 and 2 by default
 	this.index = -1; //used to know the rendering order
+	this.version = -1; //not used yet
 
 	//info about the mesh
 	this.vertex_buffers = {};
@@ -19,6 +20,8 @@ function RenderInstance( node, component )
 	this.wireframe_index_buffer = null;
 	this.range = new Int32Array([0,-1]); //start, offset
 	this.primitive = GL.TRIANGLES;
+
+	this.transform = null; //parented transform: not finished
 
 	this.mesh = null; //shouldnt be used (buffers are added manually), but just in case
 	this.collision_mesh = null; //in case of raycast
@@ -129,7 +132,7 @@ RenderInstance.prototype.setMaterial = function(material)
 }
 
 //sets the buffers to render, the primitive, and the bounding
-RenderInstance.prototype.setMesh = function(mesh, primitive)
+RenderInstance.prototype.setMesh = function( mesh, primitive )
 {
 	if( primitive == -1 || primitive === undefined )
 		primitive = gl.TRIANGLES;
@@ -182,10 +185,28 @@ RenderInstance.prototype.setMesh = function(mesh, primitive)
 		this.use_bounding = false;
 }
 
-RenderInstance.prototype.setRange = function(start, offset)
+/**
+* Sets the object oriented bounding box using the BBox format (usually is the mesh bounding but in some cases could be different like with skinning or submeshes)
+*
+* @method setBoundinbBox
+* @param {BBox} bbox bounding in bbox format
+*/
+RenderInstance.prototype.setBoundingBox = function(bbox)
+{
+	this.oobb.set( bbox );
+}
+
+/**
+* specifies the rendering range for the mesh (from where and how many primitives), if -1 then ignored
+*
+* @method setRange
+* @param {Number} start
+* @param {Number} length
+*/
+RenderInstance.prototype.setRange = function( start, length )
 {
 	this.range[0] = start;
-	this.range[1] = offset;
+	this.range[1] = length;
 }
 
 /**
@@ -229,7 +250,7 @@ RenderInstance.prototype.isFlag = function(flag)
 */
 RenderInstance.prototype.updateAABB = function()
 {
-	BBox.transformMat4(this.aabb, this.oobb, this.matrix );
+	BBox.transformMat4( this.aabb, this.oobb, this.matrix );
 }
 
 /**

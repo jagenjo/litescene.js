@@ -37,6 +37,7 @@
 ../src/helpers/path.js
 ../src/helpers/FXstack.js
 ../src/helpers/tween.js
+../src/helpers/animationBlender.js
 ../src/helpers/spatialContainer.js
 
 ../src/render/renderSettings.js
@@ -86,9 +87,10 @@
 ../src/components/particles.js
 ../src/components/label.js
 ../src/components/pointCloud.js
-../src/components/lineCloud.js
+../src/components/linesRenderer.js
 ../src/components/playAnimation.js
 ../src/components/realtimeReflector.js
+../src/components/reflectionProbe.js
 ../src/components/script.js
 ../src/components/terrainRenderer.js
 ../src/components/cloner.js
@@ -97,10 +99,13 @@
 ../src/components/spline.js
 ../src/components/threeJS.js
 ../src/components/canvas3d.js
+../src/components/videoPlayer.js
 ../src/components/interactiveController.js
 
 ../src/scene.js
 ../src/sceneNode.js
+
+../src/render/basePipeline.js
 
 ../src/formats.js
 ../src/parsers/parserASE.js

@@ -9,6 +9,11 @@ function Deformer()
 	this.uniforms = {}
 }
 
+Deformer.prototype.applyToRenderInstance = function( RI )
+{
+}
+
+
 Deformer.prototype.applyByCPU = function( vertex_data, normals_data )
 {
 	//overwrite

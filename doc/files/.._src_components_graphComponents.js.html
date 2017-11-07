@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -202,7 +203,14 @@ function GraphComponent(o)
 	LEvent.bind(this,&quot;trigger&quot;, this.trigger, this );	
 }
 
-GraphComponent[&quot;@on_event&quot;] = { type:&quot;enum&quot;, values: [&quot;start&quot;,&quot;render&quot;,&quot;update&quot;,&quot;trigger&quot;] };
+GraphComponent[&quot;@on_event&quot;] = { type:&quot;enum&quot;, values: [&quot;start&quot;,&quot;render&quot;,&quot;beforeRenderScene&quot;,&quot;update&quot;,&quot;trigger&quot;] };
+
+/*
+GraphComponent.events_translator = {
+	beforeRender: &quot;beforeRenderMainPass&quot;,
+	render: &quot;beforeRenderScene&quot;
+};
+*/
 
 GraphComponent.icon = &quot;mini-icon-graph.png&quot;;
 
@@ -278,6 +286,7 @@ GraphComponent.prototype.onAddedToScene = function( scene )
 	LEvent.bind( scene , &quot;unpause&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;finish&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;beforeRenderMainPass&quot;, this.onSceneEvent, this );
+	LEvent.bind( scene , &quot;beforeRenderScene&quot;, this.onSceneEvent, this );
 	LEvent.bind( scene , &quot;update&quot;, this.onSceneEvent, this );
 }
 
@@ -290,6 +299,7 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 	LEvent.unbind( scene, &quot;unpause&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;finish&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;beforeRenderMainPass&quot;, this.onSceneEvent, this );
+	LEvent.unbind( scene, &quot;beforeRenderScene&quot;, this.onSceneEvent, this );
 	LEvent.unbind( scene, &quot;update&quot;, this.onSceneEvent, this );
 }
 
@@ -302,6 +312,8 @@ GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
 {
 	if(event_type == &quot;beforeRenderMainPass&quot;)
 		event_type = &quot;render&quot;;
+	//if( GraphComponent.events_translator[ event_type ] )
+	//	event_type = GraphComponent.events_translator[ event_type ];
 
 	if(event_type == &quot;init&quot;)
 		this._graph.sendEventToAllNodes(&quot;onInit&quot;);

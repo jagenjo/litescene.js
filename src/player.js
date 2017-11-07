@@ -520,7 +520,7 @@ Player.prototype._ontouch = function(e)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === false )
+	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === true )
 		return false;
 
 	//hardcoded event handlers in the player

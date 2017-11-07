@@ -9,6 +9,8 @@
 
 function Knob(o)
 {
+	this.enabled = true;
+
 	this.value = 0;
 	this.delta = 0.01;
 
@@ -43,7 +45,7 @@ Knob.prototype.onRemovedFromScene = function(scene)
 
 Knob.prototype.updateKnob = function()
 {
-	if(!this._root)
+	if(!this._root || !this.enabled)
 		return;
 
 	var f = this.value / (this.max_value - this.min_value);
@@ -54,6 +56,9 @@ Knob.prototype.updateKnob = function()
 
 Knob.prototype.onMouse = function(e, mouse_event)
 { 
+	if(!this.enabled)
+		return;
+
 	if( e == "mousedown")
 	{
 		if(!this._root || !this._root._instances || !this._root._instances.length)

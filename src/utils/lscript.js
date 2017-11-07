@@ -2,6 +2,7 @@
 
 /**
 * LScript allows to compile code during execution time having a clean context
+* It adds some syntactic features and controls errors in a safe way
 * @class LScript
 * @constructor
 */
@@ -22,6 +23,7 @@ LScript.eval = function(argv_names,code) { return eval("(function("+argv_names+"
 LScript.catch_exceptions = false;
 LScript.show_errors_in_console = true;
 
+//compiles the string, tryes to keep the current state
 LScript.prototype.compile = function( arg_vars, save_context_vars )
 {
 	var argv_names = [];
@@ -105,6 +107,7 @@ LScript.prototype.compile = function( arg_vars, save_context_vars )
 	return true;
 }
 
+//does this script contains this method?
 LScript.prototype.hasMethod = function(name)
 {
 	if(!this._context || !this._context[name] || typeof(this._context[name]) != "function") 
@@ -162,6 +165,7 @@ LScript.applyToConstructor = function(constructor, argArray, methods) {
     return factoryFunction;
 }
 
+//dumps all the code to the console
 LScript.showCodeInConsole = function( code, error_line)
 {
 	if(!code)
@@ -198,6 +202,9 @@ LScript.cleanCode = function(code)
 	return result.join("\n");
 }
 
+// Adds some extra features to JS like:
+// - support for multiline strings (this feature was introduced in ES6 but in case is not supported)
+// - the use of private or public in variables.
 LScript.expandCode = function(code)
 {
 	if(!code)
@@ -226,63 +233,94 @@ LScript.expandCode = function(code)
 	for(var i = 0; i < lines.length; ++i)
 	{
 		var line = lines[i].trim();
-		if(line.indexOf("public") != -1)
+		var pos = line.indexOf(" ");
+		var first_word = line.substr(0,pos);
+
+		//all this horrendous code to parse "public var name : type = value;" and all the possible combinations
+		if( first_word == "public" || first_word == "private" || first_word == "hidden" )
 		{
 			var index = line.indexOf("//");
 			if(index != -1)
 				line = line.substr(0,index); //remove one-line comments
 			var index = line.lastIndexOf(";");
 			if(index != -1)
-				line = line.substr(0,index); //remove one-line comments
+				line = line.substr(0,index); //remove semicolon
 			var t = line.split(" ");
-			if(t[0] != 'public' || t[1] != 'var')
+			if( t[1] != 'var')
 				continue;
-			var varname = t[2];
+			var text = line;
+			var type = null;
+			var value = "undefined";
+			var equal_index = text.indexOf("=");
+			if( equal_index != -1 )
+			{
+				value = text.substr( equal_index + 1 ).trim();
+				text = text.substr( 0, equal_index ).trim();
+			}
+
+			var colon_index = text.indexOf(":");
+			if(colon_index != -1)
+			{
+				type = text.substr( colon_index + 1 ).trim();
+				text = text.substr( 0, colon_index ).trim();
+			}
+			var keywords = text.split(" ");
+
+			var varname = keywords[2];
 			if(!varname)
 				continue;
-			var name_type = varname.split(":");
-			var type = name_type[1] || "";
-			if( !type && t[3] == ":" && t[4] && t[4] != "=" )
-				type = t[4];
-			var index = line.indexOf("=");
-			var value = (index != -1) ? line.substr(index+1) : "undefined";
 			var type_options = {};
 			if(type)
-				type_options.type = type;
-			if( LS.Components[ type ] ) //for components
 			{
-				type_options.component_class = type;
-				type_options.type = LS.TYPES.COMPONENT;
+				var array_index = type.indexOf('[]');
+				if( array_index != -1 )
+				{
+					type_options.type = LS.TYPES.ARRAY;
+					type_options.data_type = type.substr( 0, array_index );
+					if(!value || value === "undefined")
+						value = "[]";
+				}
+				else
+				{
+					type_options.type = type;
+				}
+
+				if( LS.Components[ type ] ) //for components
+				{
+					type_options.component_class = type;
+					type_options.type = LS.TYPES.COMPONENT;
+					if(!value)
+						value = "null";
+				}
+				else if( LS.ResourceClasses[ type ] ) //for resources
+				{
+					type_options.resource_classname = type;
+					type_options.type = LS.TYPES.RESOURCE;
+					if(!value)
+						value = "null";
+				}
+				else if( type == "int" || type == "integer")
+				{
+					type_options.step = 1;
+					type_options.type = LS.TYPES.NUMBER;
+					if(!value)
+						value = 0;
+				}
 			}
-			else if( type == "int" || type == "integer")
-			{
-				type_options.step = 1;
-				type_options.type = LS.TYPES.NUMBER;
-			}
-			lines[i] = "this.createProperty('" + name_type[0] + "'," + value + ", "+JSON.stringify( type_options )+" );";
+			if( keywords[0] == "private" || keywords[0] == "hidden" )
+				type_options.widget = "null";
+			lines[i] = "this.createProperty('" + varname + "'," + value + ", "+JSON.stringify( type_options )+" );";
 			update = true;
 		}
 	}
 	if(update)
 		code = lines.join("\n");
 
-
-	/* using regex, not working
-	if( code.indexOf("'''") != -1 )
-	{
-		var exp = new RegExp("\'\'\'(.|\n)*\'\'\'", "mg");
-		code = code.replace( exp, addSlashes );
-	}
-
-	function addSlashes(a){ 
-		var str = a.split("\n").join("\\n\\\n");
-		return '"' + str.substr(3, str.length - 6 ) + '"'; //remove '''
-	}
-	*/
-
 	return code;
 }
 
+// In case of error inside the scripts, tries to determine the error line (not as easy as it seems)
+// Doesnt work in all cases
 LScript.computeLineFromError = function( err )
 {
 	if(err.lineNumber !== undefined)

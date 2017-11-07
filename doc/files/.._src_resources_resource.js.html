@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -253,7 +254,10 @@ Resource.getDataToStore = function( resource, allow_blob )
 	}
 	else if(resource.toBinary) //a function to compute the ArrayBuffer format
 	{
-		data = resource.toBinary();
+		if( resource.constructor === GL.Texture ) //HACK: textures require that extra parameter...
+			data = resource.toBinary(true);
+		else
+			data = resource.toBinary();
 		encoding = &quot;binary&quot;;
 		if(resource.constructor.binary_extension) //special case, textures are in PNG to keep alpha
 			extension = resource.constructor.binary_extension;

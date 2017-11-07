@@ -163,8 +163,9 @@ var parserBVH = {
 			var track = tracks[i];
 			track.duration = duration;
 		}
-		var animation = { name: "#animation", object_class: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
-		root.animations = animation.name;
+		var basename = LS.ResourcesManager.getBasename( filename );
+		var animation = { name: basename + "_animation.wbin", object_class: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
+		root.animation = animation.name;
 		scene.resources[ animation["name"] ] = animation;
 
 		console.log(scene);

@@ -1,4 +1,6 @@
-/** Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
+/**
+* Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
+* It uses lazy update to recompute the matrices.
 * @class Transform
 * @constructor
 * @param {Object} object to configure from
@@ -226,8 +228,8 @@ Object.defineProperty( Transform.prototype, 'globalPosition', {
 });
 
 /**
-* The local matrix transform relative to its parent in mat4 format
-* @property matrix {mat4}
+* The matrix transform relative to world coordinates
+* @property globalMatrix {mat4}
 */
 Object.defineProperty( Transform.prototype, 'globalMatrix', {
 	get: function() { 
@@ -241,8 +243,8 @@ Object.defineProperty( Transform.prototype, 'globalMatrix', {
 });
 
 /**
-* The local matrix transform relative to its parent in mat4 format
-* @property matrix {mat4}
+* The forward vector in global coordinates
+* @property forward {mat4}
 */
 Object.defineProperty( Transform.prototype, 'forward', {
 	get: function() { 
@@ -256,7 +258,7 @@ Object.defineProperty( Transform.prototype, 'forward', {
 });
 
 /**
-* Force object to update matrices
+* Force object to update matrices in case they were modified
 * @property mustUpdate {boolean}
 */
 Object.defineProperty( Transform.prototype, 'mustUpdate', {
@@ -340,14 +342,27 @@ Transform.prototype.configure = function(o)
 */
 Transform.prototype.serialize = function()
 {
-	return {
+	
+	var o = {
 		object_class: "Transform",
 		uid: this.uid,
 		position: [ this._position[0],this._position[1],this._position[2] ],
 		rotation: [ this._rotation[0],this._rotation[1],this._rotation[2],this._rotation[3] ],
-		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ],
-		matrix: toArray( this._local_matrix ) //could be useful
+		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ]
 	};
+
+	if( !this.isIdentity() )
+		o.matrix = toArray( this._local_matrix );; //could be useful
+
+	return o;
+}
+
+Transform.prototype.isIdentity = function()
+{
+	for(var i = 0; i < this._local_matrix.length; ++i)
+		if( Math.abs( this._local_matrix[i] - LS.IDENTITY[i] ) > 0.001 )
+			return false;
+	return true;
 }
 
 /**

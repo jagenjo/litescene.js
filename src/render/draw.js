@@ -33,6 +33,7 @@ var Draw = {
 		this.mvp_matrix = mat4.create();
 		this.temp_matrix = mat4.create();
 		this.point_size = 2;
+		this.line_width = 1;
 
 		this.stack = new Float32Array(16 * 32); //stack max size
 		this.model_matrix = new Float32Array(this.stack.buffer,0,16);
@@ -46,6 +47,9 @@ var Draw = {
 		this.viewprojection_matrix = mat4.create();
 
 		this.camera_stack = []; //not used yet
+
+		//temp containers
+		this._temp = vec3.create();
 
 		//Meshes
 		var vertices = [[-1,1,0],[1,1,0],[1,-1,0],[-1,-1,0]];
@@ -304,6 +308,12 @@ var Draw = {
 	{
 		if(!this.ready)
 			this.init();
+		else
+		{
+			this.color.set([1,1,1,1]);
+			this.point_size = 2;
+			this.line_width = 1;
+		}
 
 		if( reset_memory )
 			this.images = {}; //clear images
@@ -344,6 +354,20 @@ var Draw = {
 	setPointSize: function(v)
 	{
 		this.point_size = v;
+	},
+
+	/**
+	* Sets the line width
+	* @method setLineWidth
+	* @param {number} v width in pixels
+	*/
+	setLineWidth: function(v)
+	{
+		if(gl.setLineWidth)
+			gl.setLineWidth(v);
+		else
+			gl.lineWidth(v);
+		this.line_width = v;
 	},
 
 	/**
@@ -582,7 +606,7 @@ var Draw = {
 		var axis = [0,1,0];
 		var num_segments = segments || 100;
 		var R = quat.create();
-		var temp = vec3.create();
+		var temp = this._temp;
 		var vertices = new Float32Array(num_segments * 3);
 
 		var offset =  2 * Math.PI / num_segments;
@@ -641,7 +665,7 @@ var Draw = {
 		var axis = [0,1,0];
 		segments = segments || 100;
 		var R = quat.create();
-		var temp = vec3.create();
+		var temp = this._temp;
 		var vertices = new Float32Array( segments * 2 * 3 * 3); 
 
 		var delta = 1.0 / segments * Math.PI * 2;
@@ -837,7 +861,7 @@ var Draw = {
 		var axis = [0,1,0];
 		segments = segments || 100;
 		var R = quat.create();
-		var temp = vec3.create();
+		var temp = this._temp;
 		var vertices = new Float32Array( (segments+2) * 3);
 		vertices.set(in_z ? [0,0,height] : [0,height,0], 0);
 
@@ -875,7 +899,7 @@ var Draw = {
 		var axis = [0,1,0];
 		segments = segments || 100;
 		var R = quat.create();
-		var temp = vec3.create();
+		var temp = this._temp;
 		var vertices = new Float32Array( (segments+1) * 3 * 2);
 
 		for(var i = 0; i <= segments; i++)
@@ -1185,11 +1209,19 @@ var Draw = {
 	scale: function(x,y,z)
 	{
 		if(arguments.length == 3)
-			mat4.scale(this.model_matrix,this.model_matrix,[x,y,z]);
+		{
+			var temp = this._temp;
+			temp[0] = x; temp[1] = y; temp[2] = z;
+			mat4.scale(this.model_matrix,this.model_matrix,temp);
+		}
 		else if(x.length)//one argument: x is vec3
 			mat4.scale(this.model_matrix,this.model_matrix,x);
 		else //is number
-			mat4.scale(this.model_matrix,this.model_matrix,[x,x,x]);
+		{
+			var temp = this._temp;
+			temp[0] = temp[1] = temp[2] = x;
+			mat4.scale(this.model_matrix,this.model_matrix,temp);
+		}
 	},
 
 	/**
@@ -1202,7 +1234,11 @@ var Draw = {
 	translate: function(x,y,z)
 	{
 		if(arguments.length == 3)
-			mat4.translate(this.model_matrix,this.model_matrix,[x,y,z]);
+		{
+			var temp = this._temp;
+			temp[0] = x; temp[1] = y; temp[2] = z;
+			mat4.translate(this.model_matrix,this.model_matrix,temp);
+		}
 		else  //one argument: x -> vec3
 			mat4.translate(this.model_matrix,this.model_matrix,x);
 	},
@@ -1218,7 +1254,11 @@ var Draw = {
 	rotate: function(angle, x,y,z)
 	{
 		if(arguments.length == 4)
+		{
+			var temp = this._temp;
+			temp[0] = x; temp[1] = y; temp[2] = z;
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, [x,y,z]);
+		}
 		else //two arguments: x -> vec3
 			mat4.rotate(this.model_matrix, this.model_matrix, angle * DEG2RAD, x);
 	},

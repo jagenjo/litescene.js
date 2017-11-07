@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -673,7 +674,7 @@ Player.prototype._ontouch = function(e)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === false )
+	if( LEvent.trigger( this.scene, e.eventType || e.type, e, true ) === true )
 		return false;
 
 	//hardcoded event handlers in the player

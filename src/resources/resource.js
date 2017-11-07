@@ -100,7 +100,10 @@ Resource.getDataToStore = function( resource, allow_blob )
 	}
 	else if(resource.toBinary) //a function to compute the ArrayBuffer format
 	{
-		data = resource.toBinary();
+		if( resource.constructor === GL.Texture ) //HACK: textures require that extra parameter...
+			data = resource.toBinary(true);
+		else
+			data = resource.toBinary();
 		encoding = "binary";
 		if(resource.constructor.binary_extension) //special case, textures are in PNG to keep alpha
 			extension = resource.constructor.binary_extension;

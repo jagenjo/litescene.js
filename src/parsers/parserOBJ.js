@@ -128,7 +128,6 @@ var parserOBJ = {
 			group.start = group_index;
 			group.length = group.indices.length;
 			indices = indices.concat( group.indices );
-			//TODO: compute bounding of group here
 			delete group.indices; //do not store indices in JSON format!
 			group_index += group.length;
 			final_groups.push( group );
@@ -154,12 +153,12 @@ var parserOBJ = {
 			mesh.triangles = new ( support_uint && group_index > 256*256 ? Uint32Array : Uint16Array )(indices);
 
 		//extra info
-		mesh.bounding = GL.Mesh.computeBounding( mesh.vertices );
+		mesh.bounding = GL.Mesh.computeBoundingBox( mesh.vertices );
 		var info = {};
 		if(groups.length > 1)
 		{
 			info.groups = groups;
-			//compute bounding of groups? //TODO
+			//compute bounding of groups? //TODO: this is complicated, it is affected by indices, etc, better done afterwards
 		}
 
 		mesh.info = info;
@@ -623,7 +622,7 @@ var parserOBJ = {
 			mesh.triangles = new (support_uint && max_index > 256*256 ? Uint32Array : Uint16Array)(indicesArray);
 
 		//extra info
-		mesh.bounding = GL.Mesh.computeBounding( mesh.vertices );
+		mesh.bounding = GL.Mesh.computeBoundingBox( mesh.vertices );
 		var info = {};
 		if(groups.length > 1)
 		{
@@ -711,6 +710,10 @@ var parserMTL = {
 				case "map_Ks":
 					current_material.textures["specular"] = this.clearPath( tokens[1] );
 					current_material.specular_factor = 1;
+					break;
+				case "map_d":
+					current_material.textures["opacity"] = this.clearPath( tokens[1] );
+					current_material.blend_mode = LS.Blend.ALPHA;
 					break;
 				case "bump":
 				case "map_bump":

@@ -1172,33 +1172,3 @@ GLSLCode.breakLines = function(lines)
 	return clean_lines;
 }
 
-//SNIPPETS ******************************
-
-LS.ShadersManager.registerSnippet("surface","\n\
-	//used to store surface shading properties\n\
-	struct SurfaceOutput {\n\
-		vec3 Albedo;\n\
-		vec3 Normal; //separated in case there is a normal map\n\
-		vec3 Emission;\n\
-		vec3 Ambient;\n\
-		float Specular;\n\
-		float Gloss;\n\
-		float Alpha;\n\
-		float Reflectivity;\n\
-		vec4 Extra; //for special purposes\n\
-	};\n\
-	\n\
-	SurfaceOutput getSurfaceOutput()\n\
-	{\n\
-		SurfaceOutput o;\n\
-		o.Albedo = u_material_color.xyz;\n\
-		o.Alpha = u_material_color.a;\n\
-		o.Normal = normalize( v_normal );\n\
-		o.Specular = 0.5;\n\
-		o.Gloss = 10.0;\n\
-		o.Ambient = vec3(1.0);\n\
-		o.Emission = vec3(0.0);\n\
-		o.Reflectivity = 0.0;\n\
-		return o;\n\
-	}\n\
-");

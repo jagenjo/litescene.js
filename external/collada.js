@@ -88,6 +88,7 @@ global.Collada = {
 
 	_xmlroot: null,
 	_nodes_by_id: null,
+	_nodes_by_sid: null,
 	_transferables: null,
 	_controllers_found: null,
 	_geometries_found: null,
@@ -283,6 +284,7 @@ global.Collada = {
 
 		//hack to avoid problems with bones with spaces in names
 		this._nodes_by_id = {}; //clear
+		this._nodes_by_sid = {}; //clear
 		this._controllers_found = {};//we need to check what controllers had been found, in case we miss one at the end
 		this._geometries_found = {};
 
@@ -306,10 +308,16 @@ global.Collada = {
 		var xmlnodes = xmlvisual_scene.childNodes;
 		for(var i = 0; i < xmlnodes.length; i++)
 		{
-			if(xmlnodes.item(i).localName != "node")
+			var item = xmlnodes.item(i);
+			if(item.nodeType != 1 ) //not tag
 				continue;
 
-			var node = this.readNodeTree( xmlnodes.item(i), scene, 0, flip );
+			var node = null;
+			if(item.localName == "node")
+				node = this.readNodeTree( item, scene, 0, flip );
+			else 
+				console.warn("DAE contains unknown node type: " + item.localName );
+
 			if(node)
 				scene.root.children.push(node);
 		}
@@ -326,12 +334,12 @@ global.Collada = {
 		this.readLibraryControllers( scene );
 
 		//read animations
-		var animations = this.readAnimations(root, scene);
+		var animations = this.readAnimations( root, scene );
 		if(animations)
 		{
-			var animations_name = "#animations_" + filename.substr(0,filename.indexOf("."));
+			var animations_name = "animations_" + filename.substr(0,filename.indexOf("."));
 			scene.resources[ animations_name ] = animations;
-			scene.root.animations = animations_name;
+			scene.root.animation = animations_name;
 		}
 
 		//read external files (images)
@@ -339,6 +347,7 @@ global.Collada = {
 
 		//clear memory
 		this._nodes_by_id = {};
+		this._nodes_by_sid = {};
 		this._controllers_found = {};
 		this._geometries_found = {};
 		this._xmlroot = null;
@@ -397,7 +406,8 @@ global.Collada = {
 		return metadata;
 	},
 
-	readNodeTree: function(xmlnode, scene, level, flip)
+	//reads the tree structure (also the transform)
+	readNodeTree: function( xmlnode, scene, level, flip )
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
 		var node_sid = this.safeString( xmlnode.getAttribute("sid") );
@@ -415,6 +425,7 @@ global.Collada = {
 		var node = { 
 			name: node_name,
 			id: unique_name, 
+			sid: node_sid, //just in case
 			children:[], 
 			_depth: level 
 		};
@@ -427,7 +438,10 @@ global.Collada = {
 		if( node_id )
 			this._nodes_by_id[ node_id ] = node;
 		if( node_sid )
+		{
+			this._nodes_by_sid[ node_sid ] = node;
 			this._nodes_by_id[ node_sid ] = node;
+		}
 
 		//transform
 		node.model = this.readTransform(xmlnode, level, flip );
@@ -447,11 +461,30 @@ global.Collada = {
 					node.children.push( child_node );
 				continue;
 			}
+			else if (xmlchild.localName == "instance_node") //DAE allows instancing (referencing nodes in the three so it can be reused several times)
+			{
+				var xmllibrarynodes = this._xmlroot.querySelector("library_nodes");
+				if(!xmllibrarynodes)
+					continue;
+				var url = xmlchild.getAttribute("url");
+				url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
+				var xmlchild2 = xmllibrarynodes.querySelector( url );
+				if(!xmlchild2)
+				{
+					console.warn("instanced node not found:" + url );
+					continue;
+				}
+				var child_node = this.readNodeTree( xmlchild2, scene, level+1, flip);
+				if(child_node)
+					node.children.push( child_node );
+			}
 		}
 
 		return node;
 	},
 
+	//extracts the info of a node
+	//this is done AFTER having created the scene tree to avoid problems of nodes referencing other nodes that are not yet created
 	readNodeInfo: function( xmlnode, scene, level, flip, parent )
 	{
 		var node_id = this.safeString( xmlnode.getAttribute("id") );
@@ -459,16 +492,6 @@ global.Collada = {
 		var node_name = this.safeString( xmlnode.getAttribute("name") );
 
 		var unique_name = node_id || node_sid || node_name;
-
-		/*
-		if(!node_id && !node_sid)
-		{
-			console.warn("Collada: node without id, creating a random one");
-			node_id = this.generateName("node_");
-			return null;
-		}
-		*/
-
 		var node;
 		if(!unique_name) {
 			//if there is no id, then either all of this node's properties 
@@ -483,8 +506,11 @@ global.Collada = {
 				return null;
 			}
 		} 
-		else
+		else //retrieve node
 			node = this._nodes_by_id[ unique_name ];
+
+		if(!node)
+			node = this._nodes_by_sid[ node_sid ];
 
 		if(!node)
 		{
@@ -506,9 +532,12 @@ global.Collada = {
 				this.readNodeInfo( xmlchild, scene, level+1, flip, xmlnode );
 				continue;
 			}
-
-			//geometry
-			if(xmlchild.localName == "instance_geometry")
+			else if(xmlchild.localName == "instance_node")
+			{
+				this.readInstancedNodeInfo( xmlchild, scene, level+1, flip, xmlnode );
+				continue;
+			}
+			else if(xmlchild.localName == "instance_geometry") //geometry
 			{
 				var url = xmlchild.getAttribute("url");
 				var mesh_id = url.toString().substr(1);
@@ -531,6 +560,8 @@ global.Collada = {
 						scene.meshes[ mesh_id ] = mesh_data;
 					}
 				}
+				else
+					console.warn("DAE node references mesh but not found: " + url );
 
 				//binded material
 				var xmlmaterials = xmlchild.querySelectorAll("instance_material");
@@ -568,94 +599,108 @@ global.Collada = {
 					}
 				}
 			}
-
-
-			//this node has a controller: skinning, morph targets or even multimaterial are controllers
-			//warning: I detected that some nodes could have a controller but they are not referenced here.  ??
-			if(xmlchild.localName == "instance_controller")
+			else if(xmlchild.localName == "instance_controller") //this node has a controller: skinning, morph targets or even multimaterial are controllers
 			{
+				//warning: I detected that some nodes could have a controller but they are not referenced here.  ??
 				var url = xmlchild.getAttribute("url");
+				url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
 				var xmlcontroller = this._xmlroot.querySelector("controller" + url);
 
-				if(xmlcontroller)
+				if(!xmlcontroller)
 				{
+					console.warn("DAE, node controller not found: " + url );
+					continue;
+				}
 
-					var mesh_data = this.readController( xmlcontroller, flip, scene );
+				var mesh_data = this.readController( xmlcontroller, flip, scene );
 
-					//binded materials
-					var xmlbind_material = xmlchild.querySelector("bind_material");
-					if(xmlbind_material){
-						//removed readBindMaterials up here for consistency
-						var xmltechniques = xmlbind_material.querySelectorAll("technique_common");
-						for(var iTec = 0; iTec < xmltechniques.length; iTec++)
-						{
-							var xmltechnique = xmltechniques.item(iTec);
-							var xmlinstance_materials = xmltechnique.querySelectorAll("instance_material");
-							for(var iMat = 0; iMat < xmlinstance_materials.length; iMat++)
-							{
-								var xmlinstance_material = xmlinstance_materials.item(iMat);
-								if(!xmlinstance_material)
-								{
-									console.warn("instance_material for controller not found: " + xmlinstance_material);
-									continue;
-								}
-								var matname = xmlinstance_material.getAttribute("target").toString().substr(1);
-								if(!scene.materials[ matname ])
-								{
-
-									var material = this.readMaterial(matname);
-									if(material)
-									{
-										material.id = matname; 
-										scene.materials[ material.id ] = material;
-									}
-								}
-								if(iMat == 0)
-									node.material = matname;
-								else
-								{
-									if(!node.materials)
-										node.materials = [];
-									node.materials.push(matname);
-								}
-
-							}
-						}
-
-					}
-
-					if(mesh_data)
+				//binded materials
+				var xmlbind_material = xmlchild.querySelector("bind_material");
+				if(xmlbind_material){
+					//removed readBindMaterials up here for consistency
+					var xmltechniques = xmlbind_material.querySelectorAll("technique_common");
+					for(var iTec = 0; iTec < xmltechniques.length; iTec++)
 					{
-						var mesh = mesh_data;
-						if( mesh_data.type == "morph" )
+						var xmltechnique = xmltechniques.item(iTec);
+						var xmlinstance_materials = xmltechnique.querySelectorAll("instance_material");
+						for(var iMat = 0; iMat < xmlinstance_materials.length; iMat++)
 						{
-							mesh = mesh_data.mesh;
-							node.morph_targets = mesh_data.morph_targets;
-						}
+							var xmlinstance_material = xmlinstance_materials.item(iMat);
+							if(!xmlinstance_material)
+							{
+								console.warn("instance_material for controller not found: " + xmlinstance_material);
+								continue;
+							}
+							var matname = xmlinstance_material.getAttribute("target").toString().substr(1);
+							if(!scene.materials[ matname ])
+							{
 
-						mesh.name = url.toString();
-						node.mesh = url.toString();
-						scene.meshes[ url ] = mesh;
+								var material = this.readMaterial(matname);
+								if(material)
+								{
+									material.id = matname; 
+									scene.materials[ material.id ] = material;
+								}
+							}
+							if(iMat == 0)
+								node.material = matname;
+							else
+							{
+								if(!node.materials)
+									node.materials = [];
+								node.materials.push(matname);
+							}
+
+						}
 					}
+
+				}
+
+				if(mesh_data)
+				{
+					var mesh = mesh_data;
+					if( mesh_data.type == "morph" )
+					{
+						mesh = mesh_data.mesh;
+						node.morph_targets = mesh_data.morph_targets;
+					}
+
+					mesh.name = url.toString();
+					node.mesh = url.toString();
+					scene.meshes[ url ] = mesh;
 				}
 			}
-
-			//light
-			if(xmlchild.localName == "instance_light")
+			else if(xmlchild.localName == "instance_light") //light
 			{
 				var url = xmlchild.getAttribute("url");
 				this.readLight(node, url);
 			}
-
-			//camera
-			if(xmlchild.localName == "instance_camera")
+			else if(xmlchild.localName == "instance_camera") //camera
 			{
 				var url = xmlchild.getAttribute("url");
 				this.readCamera(node, url);
 			}
-
+			//else //disable to avoid translate, rotate, scale, etc
+			//	console.warn("DAE contains unknown nodes: " + xmlchild.localName );
 			//other possible tags?
 		}
+	},
+
+	readInstancedNodeInfo: function( xmlnode, scene, level, flip, parent )
+	{
+		var xmllibrarynodes = this._xmlroot.querySelector("library_nodes");
+		if(!xmllibrarynodes)
+			return false;
+		var url = xmlnode.getAttribute("url");
+		url = url.replace(/\./gi,"\\."); //url could contain dots which invalidates the querySelector, we need to escape them
+		var xmlnode2 = xmllibrarynodes.querySelector( url );
+		if(!xmlnode2)
+		{
+			console.warn("instanced node not found:" + url );
+			return false;
+		}
+		this.readNodeInfo( xmlnode2, scene, level+1, flip);
+		return true;
 	},
 
 	//if you want to rename some material names
@@ -687,6 +732,7 @@ global.Collada = {
 	//used when id have spaces (regular selector do not support spaces)
 	querySelectorAndId: function(root, selector, id)
 	{
+		//TODO: what about escaping spaces and dots?
 		var nodes = root.querySelectorAll(selector);
 		for(var i = 0; i < nodes.length; i++)
 		{
@@ -771,6 +817,8 @@ global.Collada = {
 		if(!xmlphong) 
 			return null;
 
+		material.type = xmlphong.localName;
+
 		//for every tag of properties
 		for(var i = 0; i < xmlphong.childNodes.length; ++i)
 		{
@@ -792,7 +840,10 @@ global.Collada = {
 			if(xmlparam_value.localName.toString() == "color")
 			{
 				var value = this.readContentAsFloats( xmlparam_value );
-				if( xmlparam.getAttribute("opaque") == "RGB_ZERO")
+				var opaque_value = xmlparam.getAttribute("opaque");
+				if(opaque_value)
+					material.opaque_info = opaque_value;
+				if( opaque_value == "RGB_ZERO")
 					material[ param_name ] = value.subarray(0,4);
 				else
 					material[ param_name ] = value.subarray(0,3);
@@ -1175,7 +1226,7 @@ global.Collada = {
 	},
 
 	//for help read this: https://www.khronos.org/collada/wiki/Using_accessors
-	readGeometry: function(id, flip, scene)
+	readGeometry: function( id, flip, scene )
 	{
 		//already read, could happend if several controllers point to the same mesh
 		if( this._geometries_found[ id ] !== undefined )
@@ -1215,12 +1266,13 @@ global.Collada = {
 		}
 		
 		//get data sources
-		var sources = {};
+		var sources = xmlgeometry.sources = {};
 		var xmlsources = xmlmesh.querySelectorAll("source");
 		for(var i = 0; i < xmlsources.length; i++)
 		{
 			var xmlsource = xmlsources.item(i);
-			if(!xmlsource.querySelector) continue;
+			if(!xmlsource.querySelector)
+				continue;
 			var float_array = xmlsource.querySelector("float_array");
 			if(!float_array)
 				continue;
@@ -1228,8 +1280,9 @@ global.Collada = {
 
 			var xmlaccessor = xmlsource.querySelector("accessor");
 			var stride = parseInt( xmlaccessor.getAttribute("stride") );
-
-			sources[ xmlsource.getAttribute("id") ] = {stride: stride, data: floats};
+			//here we are not reading the <param> order to know if they are in X,Y,Z order, because we assume they are, this could lead to wrong meshes
+			var xmlparams = xmlaccessor.querySelector("param");
+			sources[ xmlsource.getAttribute("id") ] = { stride: stride, data: floats, params: xmlparams.length };
 		}
 
 		//get streams
@@ -1240,7 +1293,7 @@ global.Collada = {
 		var mesh = null;
 		var xmlpolygons = xmlmesh.querySelector("polygons");
 		if( xmlpolygons )
-			mesh = this.readTriangles( xmlpolygons, sources );
+			mesh = this.readPolygons( xmlpolygons, sources );
 
 		if(!mesh)
 		{
@@ -1316,6 +1369,153 @@ global.Collada = {
 		return mesh;
 	},
 
+	readPolygons: function( xmlpolygons, sources )
+	{
+		var use_indices = false;
+
+		var groups = [];
+		var last_index = 0;
+		var facemap = {};
+		var vertex_remap = []; //maps DAE vertex index to Mesh vertex index (because when meshes are triangulated indices are changed
+		var indicesArray = [];
+		var last_start = 0;
+		var group_name = "";
+		var material_name = xmlpolygons.getAttribute("material");
+		var buffers = [];
+
+		var xmlp_array = [];
+		var split_to_triangles = true;
+
+		//for every triangles set (warning, some times they are repeated...)
+		for(var i = 0; i < xmlpolygons.childNodes.length; i++)
+		{
+			var xml_elem = xmlpolygons.childNodes.item(i);
+
+			if(xml_elem.localName == "input")
+			{
+				var buffer = this.readInput( xml_elem, sources );
+				if(buffer)
+					buffers.push( buffer );
+			}
+			else if( xml_elem.localName == "p")
+			{
+				xmlp_array.push( xml_elem );
+			}
+			else if(xml_elem.localName)
+				console.warn("unknown xml tag in <polygons>: " + xml_elem.localName);
+		}
+
+		//assuming buffers are ordered by offset
+		//iterate data
+		var num_data_vertex = buffers.length; //one value per input buffer
+
+		//compute data to read per vertex
+		var num_values_per_vertex = 1;
+		var buffers_length = buffers.length;
+		for(var b = 0; b < buffers_length; ++b)
+			num_values_per_vertex = Math.max( num_values_per_vertex, buffers[b][4] + 1);
+
+		//for every polygon (could be one with all the indices, could be several, depends on the program)
+		for(var i = 0; i < xmlp_array.length; i++)
+		{
+			var xmlp = xmlp_array[i];
+			if(!xmlp || !xmlp.textContent) 
+				break;
+
+			var data = xmlp.textContent.trim().split(" ");
+
+			//used for triangulate polys
+			var first_index = -1;
+			var current_index = -1;
+			var prev_index = -1;
+
+			//discomment to force 16bits indices
+			//if(use_indices && last_index >= 256*256)
+			//	break;
+
+			//for every pack of indices in the polygon (vertex, normal, uv, ... )
+			for(var k = 0, l = data.length; k < l; k += num_values_per_vertex)
+			{
+				var vertex_id = data.slice(k,k+num_values_per_vertex).join(" "); //generate unique id
+
+				prev_index = current_index;
+				if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
+					current_index = facemap[vertex_id];
+				else
+				{
+					//for every data buffer associated to this vertex
+					for(var j = 0; j < buffers_length; ++j)
+					{
+						var buffer = buffers[j];
+						var array = buffer[1]; //array where we accumulate the final data as we extract if from sources
+						var source = buffer[3]; //where to read the data from
+						
+						//compute the index inside the data source array
+						var index = parseInt( data[ k + buffer[4] ] );
+
+						//remember this index in case we need to remap
+						if(j == 0)
+							vertex_remap[ array.length / buffer[2] ] = index; //not sure if buffer[2], it should be number of floats per vertex (usually 3)
+
+						//compute the position inside the source buffer where the final data is located
+						index *= buffer[2]; //this works in most DAEs (not all)
+
+						//extract every value of this element and store it in its final array (every x,y,z, etc)
+						for(var x = 0; x < buffer[2]; ++x)
+						{
+							//if(source[index+x] === undefined) throw("UNDEFINED!"); //DEBUG
+							array.push( source[index+x] );
+						}
+					}
+					
+					current_index = last_index;
+					last_index += 1;
+					facemap[vertex_id] = current_index;
+				}
+
+				if(split_to_triangles) //the xml element is not triangles? then split polygons in triangles
+				{
+					if(k == 0)
+						first_index = current_index;
+					//if(k > 2 * num_data_vertex) //not sure if use this or the next line, the next one works in some DAEs but not sure if it works in all
+					if( (k/num_values_per_vertex) > 2) //triangulate polygons: k is the float, but is divided by num_values_per_vertex because every vertex could have several indices (for normals, etc)
+					{
+						indicesArray.push( first_index );
+						indicesArray.push( prev_index );
+					}
+				}
+
+				indicesArray.push( current_index );
+			}//per vertex
+		}//per polygon
+
+		var group = {
+			name: group_name || ("group"),
+			start: last_start,
+			length: indicesArray.length - last_start,
+			material: material_name || ""
+		};
+		last_start = indicesArray.length;
+		groups.push( group );
+
+		if(!buffers.length)
+		{
+			console.warn("collada: <polygon> without buffers");
+			return null;
+		}
+
+		var mesh = {
+			vertices: new Float32Array( buffers[0][1] ),
+			info: { groups: groups },
+			_remap: new Uint32Array(vertex_remap)
+		};
+
+		this.transformMeshInfo( mesh, buffers, indicesArray );
+
+		return mesh;
+	},
+
+	//receives an array of <triangles>
 	readTriangles: function( xmltriangles, sources )
 	{
 		var use_indices = false;
@@ -1329,15 +1529,15 @@ global.Collada = {
 		var last_start = 0;
 		var group_name = "";
 		var material_name = "";
+		var count = -1;
 
 		//for every triangles set (warning, some times they are repeated...)
 		for(var tris = 0; tris < xmltriangles.length; tris++)
 		{
 			var xml_shape_root = xmltriangles.item(tris);
-			var triangles = xml_shape_root.localName == "triangles";
 
 			material_name = xml_shape_root.getAttribute("material");
-
+			count = parseFloat( xml_shape_root.getAttribute("count") );
 			//for each buffer (input) build the structure info
 			if(tris == 0)
 				buffers = this.readShapeInputs( xml_shape_root, sources );
@@ -1367,10 +1567,6 @@ global.Collada = {
 				var first_index = -1;
 				var current_index = -1;
 				var prev_index = -1;
-
-				//discomment to force 16bits indices
-				//if(use_indices && last_index >= 256*256)
-				//	break;
 
 				//for every pack of indices in the polygon (vertex, normal, uv, ... )
 				for(var k = 0, l = data.length; k < l; k += num_values_per_vertex)
@@ -1412,21 +1608,9 @@ global.Collada = {
 						facemap[vertex_id] = current_index;
 					}
 
-					if(!triangles) //the xml element is not triangles? then split polygons in triangles
-					{
-						if(k == 0)
-							first_index = current_index;
-						//if(k > 2 * num_data_vertex) //not sure if use this or the next line, the next one works in some DAEs but not sure if it works in all
-						if(k > 2) //triangulate polygons: ensure this works
-						{
-							indicesArray.push( first_index );
-							indicesArray.push( prev_index );
-						}
-					}
-
 					indicesArray.push( current_index );
 				}//per vertex
-			}//per polygon
+			}//per triangle
 
 			var group = {
 				name: group_name || ("group" + tris),
@@ -1437,6 +1621,9 @@ global.Collada = {
 			last_start = indicesArray.length;
 			groups.push( group );
 		}//per triangles group
+
+		if(!buffers.length)
+			return null;
 
 		var mesh = {
 			vertices: new Float32Array( buffers[0][1] ),
@@ -1507,16 +1694,23 @@ global.Collada = {
 			var current_index = -1;
 			var prev_index = -1;
 
+			if( pos >= data.length )
+			{
+				console.warn("DAE has wrong number of polygons in polylist");
+				break;
+			}
+
 			//iterate vertices of this polygon
 			for(var k = 0; k < num_vertices; ++k)
 			{
 				var vertex_id = data.slice( pos, pos + num_values_per_vertex).join(" "); //generate unique id
 
 				prev_index = current_index;
-				if(facemap.hasOwnProperty(vertex_id)) //add to arrays, keep the index
-					current_index = facemap[vertex_id];
+				if( facemap.hasOwnProperty( vertex_id ) ) //add to arrays, keep the index
+					current_index = facemap[ vertex_id ];
 				else
 				{
+					//for vertex, normal, uv
 					for(var j = 0; j < buffers_length; ++j)
 					{
 						var buffer = buffers[j];
@@ -1580,21 +1774,51 @@ global.Collada = {
 		var xmlinputs = xml_shape_root.querySelectorAll("input");
 		for(var i = 0; i < xmlinputs.length; i++)
 		{
-			var xmlinput = xmlinputs.item(i);
-			if(!xmlinput.getAttribute) 
+			var xml_input = xmlinputs.item(i);
+			if(!xml_input.getAttribute) 
 				continue;
-			var semantic = xmlinput.getAttribute("semantic").toUpperCase();
-			var stream_source = sources[ xmlinput.getAttribute("source").substr(1) ];
-			var offset = parseInt( xmlinput.getAttribute("offset") );
-			var data_set = 0;
-			if(xmlinput.getAttribute("set"))
-				data_set = parseInt( xmlinput.getAttribute("set") );
-			buffers.push([semantic, [], stream_source.stride, stream_source.data, offset, data_set ]);
+			var buffer = this.readInput( xml_input, sources );
+			if(buffer)
+				buffers.push(buffer);
+			else
+				console.warn("no buffer in collada");
 		}
 
 		return buffers;
 	},
 
+	readInput: function( xml_input, sources )
+	{
+		if(!xml_input.getAttribute) 
+			return null;
+		var source_name = xml_input.getAttribute("source").substr(1);
+		var stream_source  = null;
+		if(source_name.indexOf("/") != -1)
+		{
+			//the source name uses ierarchical name
+			var path = source_name.split("/");
+			var geometry_node = this._xmlroot.getElementById(path[0]);
+			if(geometry_node && geometry_node.sources) //little hack, we have already parsed vertices probably...
+				stream_source = geometry_node.sources[ path[1] ];
+		}
+		else
+			stream_source = sources[ source_name ];
+
+		if(!stream_source)
+		{
+			console.warn("<input> source not found: " + source_name );
+			return null;
+		}
+
+		var semantic = xml_input.getAttribute("semantic").toUpperCase();
+		var offset = parseInt( xml_input.getAttribute("offset") );
+		var data_set = 0;
+		if(xml_input.getAttribute("set"))
+			data_set = parseInt( xml_input.getAttribute("set") );
+		return [ semantic, [], stream_source.stride, stream_source.data, offset, data_set ];
+	},
+
+	//renames buffers to they match an standard imposed by the library
 	transformMeshInfo: function( mesh, buffers, indicesArray )
 	{
 		//rename buffers (DAE has other names)
@@ -1947,8 +2171,13 @@ global.Collada = {
 		var path = target.split("/");
 
 		var anim = {};
-		var nodename = path[0]; //safeString ?
+		var nodename = this.safeString( path[0] ); //safeString ?
 		var node = this._nodes_by_id[ nodename ];
+		if(!node)
+		{
+			console.warn("Node target '" + nodename + "' not found reading animation channel");
+			return null;
+		}
 		var locator = node.id + "/" + path[1];
 		//anim.nodename = this.safeString( path[0] ); //where it goes
 		anim.name = path[1];
@@ -2137,6 +2366,9 @@ global.Collada = {
 			}
 		}
 
+		var too_many_bones = 0;
+		var all_bones = [];
+
 		//weights
 		var xmlvertexweights = xmlskin.querySelector("vertex_weights");
 		if(xmlvertexweights)
@@ -2170,29 +2402,38 @@ global.Collada = {
 				throw("no remap info found in mesh");
 			var max_bone = 0; //max bone affected
 
+			//for every bone affecting this vertex
 			for(var i = 0, l = vcount.length; i < l; ++i)
 			{
 				var num_bones = vcount[i]; //num bones influencing this vertex
-
-				//find 4 with more influence
-				//var v_tuplets = v.subarray(offset, offset + num_bones*2);
-
 				var offset = pos;
+
+				//get 4 most important bones
+				all_bones.length = num_bones;
+				for(var j = 0; j < num_bones; ++j)
+					all_bones[j] = [ weights_indexed_array[ v[offset + j*2 + 1] ], v[offset + j*2] ]; //[weight,bone_index]
+				all_bones.sort( this._bones_sort_func );
+				if( all_bones.length > 4 )
+				{
+					all_bones.length = 4; //remove extra bones
+					too_many_bones += 1;
+				}
+
 				var b = bone_index_array.subarray(i*4, i*4 + 4);
 				var w = weights_array.subarray(i*4, i*4 + 4);
 
-				var sum = 0;
-				for(var j = 0; j < num_bones && j < 4; ++j)
+				var sum = 0; //check total weight of selected bones (after skipping some because of the 4 bones limit)
+				for(var j = 0; j < all_bones.length; ++j)
 				{
-					b[j] = v[offset + j*2];
-					if(b[j] > max_bone) max_bone = b[j];
-
-					w[j] = weights_indexed_array[ v[offset + j*2 + 1] ];
+					b[j] = all_bones[j][1];
+					if(b[j] > max_bone)
+						max_bone = b[j];
+					w[j] = all_bones[j][0];
 					sum += w[j];
 				}
 
-				//normalize weights
-				if(num_bones > 4 && sum < 1.0)
+				//normalize weights after removing some
+				if(sum < 1.0)
 				{
 					var inv_sum = 1/sum;
 					for(var j = 0; j < 4; ++j)
@@ -2201,6 +2442,9 @@ global.Collada = {
 
 				pos += num_bones * 2;
 			}
+
+			if(too_many_bones)
+				console.warn("This mesh has "+too_many_bones+" vertices with more than 4 bones, skipping extra bones. This could cause errors in the skinning.");
 
 
 			//remap: because vertices order is now changed after parsing the mesh
@@ -2275,6 +2519,17 @@ global.Collada = {
 				//console.log("Bones: ", joints.length, " used:", num_used_joints );
 			}
 
+			//check bone names are correct
+			for(var i = 0; i < joints.length; ++i)
+			{
+				var joint = joints[i];
+				var bone_node = this._nodes_by_id[ joint[0] ] || this._nodes_by_sid[ joint[0] ];
+				if(bone_node)
+					joint[0] = bone_node.id || bone_node.name;
+				else
+					console.warn("Bone not found");
+			}
+
 			//console.log("Bones: ", joints.length, "Max bone: ", max_bone);
 
 			mesh.weights = final_weights;
@@ -2286,6 +2541,11 @@ global.Collada = {
 		}
 
 		return mesh;
+	},
+
+	_bones_sort_func: function(a,b)
+	{
+		return b[0] - a[0];
 	},
 
 	//NOT TESTED
@@ -2408,9 +2668,11 @@ global.Collada = {
 		if(!xmlnode) return null;
 		var text = xmlnode.textContent;
 		text = text.replace(/\n/gi, " "); //remove line breaks
+		text = text.replace(/\s\s+/gi, " "); //remove double spaces
 		text = text.trim(); //remove empty spaces
 		if(text.length == 0) return null;
 		var numbers = text.split(" "); //create array
+		//numbers.filter(function(v){ return v != ""; }); //remove break lines that become empty values
 		var floats = new Uint32Array( numbers.length );
 		for(var k = 0; k < numbers.length; k++)
 			floats[k] = parseInt( numbers[k] );
@@ -2422,12 +2684,13 @@ global.Collada = {
 		if(!xmlnode) return null;
 		var text = xmlnode.textContent;
 		text = text.replace(/\n/gi, " "); //remove line breaks
-		text = text.replace(/\s\s+/gi, " ");
+		text = text.replace(/\s\s+/gi, " "); //remove double spaces
 		text = text.replace(/\t/gi, "");
 		text = text.trim(); //remove empty spaces
 		var numbers = text.split(" "); //create array
-		var count = xmlnode.getAttribute("count");
-		var length = count ? parseInt( count  ) : numbers.length;
+		//numbers.filter(function(v){ return v != ""; }); //remove break lines that become empty values
+		var count = xmlnode.getAttribute("count"); //WARNING: this is misleading, count is not the number of floats, in an array [1,0,0]  if could say 1 because its 1 vertex
+		var length = numbers.length; //count ? parseInt( count  ) : numbers.length;
 		var floats = new Float32Array( length );
 		for(var k = 0; k < numbers.length; k++)
 			floats[k] = parseFloat( numbers[k] );

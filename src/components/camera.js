@@ -1285,6 +1285,9 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 {
 	result = result || vec3.create();
 
+	if(!vec)
+		throw("camera project parameter 'vec' cannot be null");
+
 	viewport = this.getLocalViewport(viewport);
 
 	if( this._must_update_view_matrix || this._must_update_projection_matrix )
@@ -1300,15 +1303,6 @@ Camera.prototype.project = function( vec, viewport, result, skip_reverse )
 }
 
 /**
-* Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
-* @method unproject
-* @param {vec3} vec 2D position we want to proyect to 3D
-* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
-* @param {vec3} result where to store the result, if omited it is created
-* @return {vec3} the coordinates in 2D
-*/
-
-/**
 * It tells you the 2D position of a node center in the screen
 * @method projectNodeCenter
 * @param {vec3} vec 3D position we want to proyect to 2D
@@ -1322,6 +1316,14 @@ Camera.prototype.projectNodeCenter = function( node, viewport, result, skip_reve
 	return this.project( center, viewport, result, skip_reverse );
 }
 
+/**
+* Converts a screen space 2D vector (with a Z value) to its 3D equivalent position
+* @method unproject
+* @param {vec3} vec 2D position we want to proyect to 3D
+* @param {vec4} [viewport=null] viewport info (if omited full canvas viewport is used)
+* @param {vec3} result where to store the result, if omited it is created
+* @return {vec3} the coordinates in 2D
+*/
 Camera.prototype.unproject = function( vec, viewport, result )
 {
 	viewport = this.getLocalViewport(viewport);
@@ -1361,14 +1363,14 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 
 /**
 * given an x and y position, returns the ray {start, dir}
-* @method getRayInPixel
+* @method getRay
 * @param {number} x
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {Object} {origin:vec3, direction:vec3} or null is values are undefined or NaN
+* @return {GL.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
-Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
+Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport )
 {
 	//apply camera viewport
 	if(!skip_local_viewport)
@@ -1386,8 +1388,10 @@ Camera.prototype.getRayInPixel = function(x,y, viewport, skip_local_viewport )
 
 	var dir = vec3.subtract( pos, pos, eye );
 	vec3.normalize(dir, dir);
-	return { origin: eye, direction: dir };
+	return new GL.Ray( eye, dir );
 }
+
+Camera.prototype.getRayInPixel = Camera.prototype.getRay; //LEGACY
 
 /**
 * Returns true if the 2D point (in screen space coordinates) is inside the camera viewport area

@@ -778,30 +778,70 @@ SceneNode.prototype.load = function( url, on_complete )
 	LS.ResourcesManager.load( url, inner );
 	function inner( resource )
 	{
-		if( resource.constructor === LS.SceneNode )
-			that.addChild( resource );
-		else if( resource.constructor === LS.SceneTree )
-		{
-			//warn: here we are missing all the global and external scripts of the scene
-			that.addChild( resource.root.clone() );
-		}
-		else if( resource.constructor === LS.Prefab )
-			that.prefab = resource.fullpath || resource.filename;
-		else if( resource.constructor === GL.Mesh )
-			that.setMesh( resource.fullpath || resource.filename );
-		else if( resource.constructor === GL.Texture )
-		{
-			console.error("feature not supported loading a texture as a node",resource);
-			//create a sprite and assign?
-		}
-		else if( resource.constructor === Object )
-		{
-			console.error("feature not supported loading an object as a node",resource);
-			//check info about the node?
-		}
-
+		if(!resource)
+			return;
+		that.assign( resource );
 		if(on_complete)
 			on_complete();
+	}
+}
+
+/**
+* Assign a resource/element inteligently to a node: if it is a mesh it creates a MeshRenderer, if it is a Material it assigns it, if it is an animation creates a PlayAnimation, if it is a prefab assigns the prefab. etc
+* @method assign
+* @param {*} resource the resource to assign (it also accepts a resource filename that has been previously loaded).
+* @param {Function} on_complete
+**/
+SceneNode.prototype.assign = function( item, extra )
+{
+	if(!item)
+	{
+		console.error("assignResource cannot have null as resource");
+		return;
+	}
+
+	//assume is the filename of a resource
+	if(item.constructor === String)
+		item = LS.ResourcesManager.getResource( item );
+
+	if(!item)
+		return;
+
+	switch( item.constructor )
+	{
+		case LS.SceneNode: 
+			this.addChild( item );
+			break;
+		case LS.SceneTree: 	
+			this.addChild( item.root.clone() );
+			break; //warn: here we are missing all the global and external scripts of the scene
+		case LS.Prefab: 
+			this.prefab = item.fullpath || item.filename; break;
+		case GL.Mesh: 
+			var component = this.getComponent( LS.Components.MeshRenderer );
+			if(component)
+				component.configure({ mesh: item.fullpath || item.filename });
+			else
+				this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
+			break;
+		case LS.Animation: 
+			var comp = this.getComponent( LS.Components.PlayAnimation );
+			if(!comp)
+				comp = this.addComponent( new LS.Components.PlayAnimation() );
+			comp.animation = item.fullpath || item.filename;
+			break;
+		case LS.Resource: //generic resource
+			var ext = LS.ResourcesManager.getExtension( item.filename );
+			if(ext == "js") //scripts
+			{
+				var comp = this.getComponent( LS.Components.ScriptFromFile );
+				if(!comp)
+					comp = this.addComponent( new LS.Components.ScriptFromFile() );
+				comp.src = item.fullpath || item.filename;
+			}
+			break;
+		default:
+			console.error("feature not supported loading this type of resource" , item );
 	}
 }
 
@@ -818,11 +858,6 @@ SceneNode.prototype.setMesh = function(mesh_name, submesh_id)
 		component.configure({ mesh: mesh_name, submesh_id: submesh_id });
 	else
 		this.addComponent( new LS.MeshRenderer({ mesh: mesh_name, submesh_id: submesh_id }) );
-}
-
-SceneNode.prototype.loadAndSetMesh = function(mesh_filename, options)
-{
-	this.load( mesh_filename );
 }
 
 SceneNode.prototype.getMaterial = function()
@@ -1016,7 +1051,7 @@ SceneNode.prototype.configure = function(info)
 	if(info.node_type)
 	{
 		this.node_type = info.node_type;
-		if(info.node_type == "JOINT")
+		if(info.node_type == "JOINT") //used in editor
 			this._is_bone = true;
 	}
 
@@ -1066,10 +1101,10 @@ SceneNode.prototype.configure = function(info)
 			this.flags[i] = info.flags[i];
 	
 	//add animation tracks player
-	if(info.animations)
+	if(info.animation)
 	{
-		this.animations = info.animations;
-		this.addComponent( new LS.Components.PlayAnimation({animation:this.animations}) );
+		this.animation = info.animation;
+		this.addComponent( new LS.Components.PlayAnimation({ animation: this.animation }) );
 	}
 
 	//extra user info
@@ -1096,6 +1131,7 @@ SceneNode.prototype.configure = function(info)
 }
 
 //adds components according to a mesh
+//used mostly to addapt a node to a collada mesh info
 SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 {
 	extra_info = extra_info || {};
@@ -1146,7 +1182,7 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	//skinning
 	if(mesh && mesh.bones)
 	{
-		compo = new LS.Components.SkinDeformer();
+		compo = new LS.Components.SkinDeformer({ search_bones_in_parent: false }); //search_bones_in_parent is false because usually DAEs come that way
 		this.addComponent( compo );
 	}
 
@@ -1231,7 +1267,11 @@ SceneNode.prototype._onChildAdded = function( child_node, recompute_transform )
 	}
 	//link transform
 	if(this.transform)
+	{
+		if(!child_node.transform)
+			child_node.transform.addComponent( new LS.Transform() );
 		child_node.transform._parent = this.transform;
+	}
 }
 
 SceneNode.prototype._onChangeParent = function( future_parent, recompute_transform )

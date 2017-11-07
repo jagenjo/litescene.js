@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -188,7 +189,9 @@ function PlayAnimation(o)
 	this.blend_time = 0;
 	this.range = null;
 
-	this.onPreApply = null;
+	//coding callbacks
+	this.onPreApply = null; //configurable callback to check if this track must be applied
+	this.onApplySample = null; //configurable callback to check if this sample must be applied
 
 	this._last_time = 0;
 
@@ -211,6 +214,8 @@ PlayAnimation.ONCE = 3;
 PlayAnimation.PAUSED = 4;
 
 PlayAnimation.MODES = {&quot;loop&quot;:PlayAnimation.LOOP, &quot;pingpong&quot;:PlayAnimation.PINGPONG, &quot;once&quot;:PlayAnimation.ONCE, &quot;paused&quot;:PlayAnimation.PAUSED };
+
+PlayAnimation.properties_order = [&quot;animation&quot;,&quot;take&quot;]; //this ones should be the first ones to show in the inspector
 
 PlayAnimation[&quot;@animation&quot;] = { widget: &quot;animation&quot; };
 PlayAnimation[&quot;@root_node&quot;] = { type: &quot;node&quot; };
@@ -601,9 +606,10 @@ PlayAnimation.prototype.applyAnimation = function( take, time, last_time, weight
 		else
 			root_node = this._root.scene.getNode( this.root_node );
 	}
-	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply );
+	take.applyTracks( time, last_time, undefined, root_node, this._root.scene, weight, this.onPreApply, this.onApplySample );
 }
 
+//not in use
 PlayAnimation.prototype._processSample = function(nodename, property, value, options)
 {
 	var scene = this._root.scene;
@@ -620,12 +626,6 @@ PlayAnimation.prototype._processSample = function(nodename, property, value, opt
 		case &quot;translate.X&quot;: if(trans) trans.position[0] = value; break;
 		case &quot;translate.Y&quot;: if(trans) trans.position[1] = value; break;
 		case &quot;translate.Z&quot;: if(trans) trans.position[2] = value; break;
-		//NOT TESTED
-		/*
-		case &quot;rotateX.ANGLE&quot;: if(trans) trans.rotation[0] = value * DEG2RAD; break;
-		case &quot;rotateY.ANGLE&quot;: if(trans) trans.rotation[1] = value * DEG2RAD; break;
-		case &quot;rotateZ.ANGLE&quot;: if(trans) trans.rotation[2] = value * DEG2RAD; break;
-		*/
 		case &quot;matrix&quot;: if(trans) trans.fromMatrix(value); break;
 		default: break;
 	}

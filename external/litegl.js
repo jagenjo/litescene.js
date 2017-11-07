@@ -399,6 +399,11 @@ if(!String.prototype.hasOwnProperty("hashCode"))
 if(!Array.prototype.hasOwnProperty("subarray"))
 	Object.defineProperty(Array.prototype, "subarray", { value: Array.prototype.slice, enumerable: false });
 
+if(!Array.prototype.hasOwnProperty("clone"))
+	Object.defineProperty(Array.prototype, "clone", { value: Array.prototype.concat, enumerable: false });
+if(!Float32Array.prototype.hasOwnProperty("clone"))
+	Object.defineProperty(Float32Array.prototype, "clone", { value: function() { return new Float32Array(this); }, enumerable: false });
+
 
 // remove all properties on obj, effectively reverting it to a new object (to reduce garbage)
 global.wipeObject = function wipeObject(obj)
@@ -2200,8 +2205,11 @@ global.Mesh = GL.Mesh = function Mesh( vertexbuffers, indexbuffers, options, gl 
 	this.vertexBuffers = {};
 	this.indexBuffers = {};
 
-	this.info = null; //here you can store extra info, like groups, which is an array of { name, start, length, material }
-	this.bounding = null; //here you can store a AABB in BBox format
+	//here you can store extra info, like groups, which is an array of { name, start, length, material }
+	this.info = {
+		groups: []
+	}; 
+	this._bounding = BBox.create(); //here you can store a AABB in BBox format
 
 	if(vertexbuffers || indexbuffers)
 		this.addBuffers( vertexbuffers, indexbuffers, options ? options.stream_type : null );
@@ -2230,6 +2238,20 @@ Mesh.common_buffers = {
 
 Mesh.default_datatype = Float32Array;
 
+Object.defineProperty( Mesh.prototype, "bounding", {
+	set: function(v)
+	{
+		if(!v)
+			return;
+		if(v.length < 13)
+			throw("Bounding must use the BBox bounding format of 13 floats: center, halfsize, min, max, radius");
+		this._bounding.set(v);
+	},
+	get: function()
+	{
+		return this._bounding;
+	}
+});
 
 /**
 * Adds buffer to mesh
@@ -2647,7 +2669,7 @@ Mesh.prototype.toObject = function()
 		vertexBuffers: vbs, 
 		indexBuffers: ibs,
 		info: this.info ? cloneObject( this.info ) : null,
-		bounding: this.bounding ? this.bounding.toJSON() : null
+		bounding: this._bounding.toJSON()
 	};
 }
 
@@ -2658,7 +2680,7 @@ Mesh.prototype.toJSON = function()
 		vertexBuffers: {},
 		indexBuffers: {},
 		info: this.info ? cloneObject( this.info ) : null,
-		bounding: this.bounding ? this.bounding.toJSON() : null
+		bounding: this._bounding.toJSON() 
 	};
 
 	for(var i in this.vertexBuffers)
@@ -2698,7 +2720,7 @@ Mesh.prototype.fromJSON = function(o)
 	if(o.info)
 		this.info = cloneObject( o.info );
 	if(o.bounding)
-		this.bounding = new Float32Array(o.bounding);
+		this.bounding = o.bounding; //setter does the job
 }
 
 
@@ -3322,7 +3344,7 @@ Mesh.prototype.computeTextureCoordinates = function( stream_type )
 
 
 /**
-* Computes bounding information
+* Computes the number of vertices
 * @method getVertexNumber
 * @param {typed Array} vertices array containing all the vertices
 */
@@ -3335,19 +3357,41 @@ Mesh.prototype.getNumVertices = function() {
 
 /**
 * Computes bounding information
-* @method Mesh.computeBounding
+* @method Mesh.computeBoundingBox
 * @param {typed Array} vertices array containing all the vertices
+* @param {BBox} bb where to store the bounding box
+* @param {Array} mask [optional] to specify which vertices must be considered when creating the bbox, used to create BBox of a submesh
 */
-Mesh.computeBounding = function( vertices, bb ) {
+Mesh.computeBoundingBox = function( vertices, bb, mask ) {
 
 	if(!vertices)
 		return;
 
-	var min = vec3.clone( vertices.subarray(0,3) );
-	var max = vec3.clone( vertices.subarray(0,3) );
-	var v;
-	for(var i = 3; i < vertices.length; i+=3)
+	var start = 0;
+
+	if(mask)
 	{
+		for(var i = 0; i < mask.length; ++i)
+			if( mask[i] )
+			{
+				start = i;
+				break;
+			}
+		if(start == mask.length)
+		{
+			console.warn("mask contains only zeros, no vertices marked");
+			return;
+		}
+	}
+
+	var min = vec3.clone( vertices.subarray( start*3, start*3 + 3) );
+	var max = vec3.clone( vertices.subarray( start*3, start*3 + 3) );
+	var v;
+
+	for(var i = start*3; i < vertices.length; i+=3)
+	{
+		if( mask && !mask[i/3] )
+			continue;
 		v = vertices.subarray(i,i+3);
 		vec3.min( min,v, min);
 		vec3.max( max,v, max);
@@ -3375,31 +3419,79 @@ Mesh.computeBounding = function( vertices, bb ) {
 */
 Mesh.prototype.getBoundingBox = function()
 {
-	if(!this.bounding)
-		this.updateBounding();
-	return this.bounding;
+	this.updateBoundingBox();
+	return this._bounding;
 }
 
 /**
 * Update bounding information of this mesh
-* @method updateBounding
+* @method updateBoundingBox
 */
-Mesh.prototype.updateBounding = function() {
+Mesh.prototype.updateBoundingBox = function() {
 	var vertices = this.vertexBuffers["vertices"];
 	if(!vertices)
 		return;
-	this.bounding = GL.Mesh.computeBounding( vertices.data, this.bounding );
+	GL.Mesh.computeBoundingBox( vertices.data, this._bounding );
+
+	if(this.info && this.info.groups && this.info.groups.length)
+		this.computeGroupsBoundingBoxes();
 }
+
+/**
+* Update bounding information for every group submesh
+* @method computeGroupsBoundingBoxes
+*/
+Mesh.prototype.computeGroupsBoundingBoxes = function()
+{
+	var indices = null;
+	var indices_buffer = this.getIndexBuffer("triangles");
+	if( indices_buffer )
+		indices = indices_buffer.data;
+
+	var vertices_buffer = this.getVertexBuffer("vertices");
+	if(!vertices_buffer)
+		return false;
+	var vertices = vertices_buffer.data;
+	if(!vertices.length)
+		return false;
+
+	var groups = this.info.groups;
+	for(var i = 0; i < groups.length; ++i)
+	{
+		var group = groups[i];
+		group.bounding = group.bounding || BBox.create();
+		var submesh_vertices = null;
+		if( indices )
+		{
+			var mask = new Uint8Array( vertices.length / 3 );
+			var s = group.start;
+			for( var j = 0, l = group.length; j < l; j += 3 )
+			{
+				mask[ indices[s+j] ] = 1;
+				mask[ indices[s+j+1] ] = 1;
+				mask[ indices[s+j+2] ] = 1;
+			}
+			GL.Mesh.computeBoundingBox( vertices, group.bounding, mask );
+		}
+		else
+		{
+			submesh_vertices = vertices.subarray( group.start * 3, ( group.start + group.length) * 3 );
+			GL.Mesh.computeBoundingBox( submesh_vertices, group.bounding );
+		}
+	}
+	return true;
+}
+
 
 
 /**
 * forces a bounding box to be set
-* @method setBounding
+* @method setBoundingBox
 * @param {vec3} center center of the bounding box
 * @param {vec3} half_size vector from the center to positive corner
 */
-Mesh.prototype.setBounding = function(center, half_size) {
-	this.bounding = BBox.setCenterHalfsize( this.bounding || BBox.create(), center, half_size );	
+Mesh.prototype.setBoundingBox = function( center, half_size ) {
+	BBox.setCenterHalfsize( this._bounding, center, half_size );	
 }
 
 
@@ -3461,8 +3553,8 @@ Mesh.prototype.configure = function( o, options )
 	for(var i in options)
 		this[i] = options[i];		
 
-	if(!this.bounding)
-		this.updateBounding();
+	if(!options.bounding)
+		this.updateBoundingBox();
 }
 
 /**
@@ -4144,10 +4236,12 @@ Mesh.cylinder = function( options, gl ) {
 
 	var pos = i*6*3;
 	var pos_uv = i*6*2;
+	var caps_start = pos;
 
 	//caps
 	if( options.caps === false )
 	{
+		//finalize arrays
 		vertices = vertices.subarray(0,pos);
 		normals = normals.subarray(0,pos);
 		coords = coords.subarray(0,pos_uv);
@@ -4198,6 +4292,13 @@ Mesh.cylinder = function( options, gl ) {
 		coords: coords
 	}
 	options.bounding = BBox.fromCenterHalfsize( [0,0,0], [radius,height*0.5,radius] );
+	options.info = { groups: [] };
+
+	if(options.caps !== false)
+	{
+		options.info.groups.push({ name:"side", start: 0, length: caps_start / 3});
+		options.info.groups.push({ name:"caps", start: caps_start / 3, length: (vertices.length - caps_start) / 3});
+	}
 
 	return Mesh.load( buffers, options, gl );
 }
@@ -4915,10 +5016,11 @@ Texture.prototype.uploadImage = function( image, options )
 * Uploads data to the GPU (data must have the appropiate size)
 * @method uploadData
 * @param {ArrayBuffer} data
-* @param {Object} options [optional] upload options (premultiply_alpha, no_flip)
+* @param {Object} options [optional] upload options (premultiply_alpha, no_flip, cubemap_face)
 */
-Texture.prototype.uploadData = function(data, options )
+Texture.prototype.uploadData = function( data, options, skip_mipmaps )
 {
+	options = options || {};
 	var gl = this.gl;
 	this.bind();
 	Texture.setUploadOptions(options, gl);
@@ -4927,12 +5029,14 @@ Texture.prototype.uploadData = function(data, options )
 		gl.texImage2D(this.texture_type, 0, this.format, this.width, this.height, 0, this.format, this.type, data);
 	else if( this.texture_type == GL.TEXTURE_3D )
 		gl.texImage3D(this.texture_type, 0, this.format, this.width, this.height, this.depth, 0, this.format, this.type, data);
+	else if( this.texture_type == GL.TEXTURE_CUBE_MAP )
+		gl.texImage2D( gl.TEXTURE_CUBE_MAP_POSITIVE_X + (options.cubemap_face || 0), 0, this.format, this.width, this.height, 0, this.format, this.type, data);
 	else
 		throw("cannot uploadData for this texture type");
 
 	this.data = data; //should I clone it?
 
-	if (this.minFilter && this.minFilter != gl.NEAREST && this.minFilter != gl.LINEAR) {
+	if (!skip_mipmaps && this.minFilter && this.minFilter != gl.NEAREST && this.minFilter != gl.LINEAR) {
 		gl.generateMipmap(texture.texture_type);
 		this.has_mipmaps = true;
 	}
@@ -5605,6 +5709,8 @@ Texture.fromURL = function( url, options, on_complete, gl ) {
 			if(!img_data)
 				return;
 			options.texture = texture;
+			if(img_data.format == "RGB")
+				texture.format = gl.RGB;
 			texture = GL.Texture.fromMemory( img_data.width, img_data.height, img_data.pixels, options );
 			delete texture["ready"]; //texture.ready = true;
 			if(on_complete)
@@ -6087,6 +6193,17 @@ Texture.prototype.getPixels = function( type, force_rgba, cubemap_face )
 	return buffer;
 }
 
+/**
+* uploads some pixels to the texture (see uploadData method for more options)
+* @method setPixels
+* @param {ArrayBuffer} data gl.UNSIGNED_BYTE or gl.FLOAT data
+* @param {Number} cubemap_face if the texture is a cubemap, which face
+* @param {Boolean} skip_mipmaps do not update mipmaps when possible
+*/
+Texture.prototype.setPixels = function( data, cubemap_face, skip_mipmaps )
+{
+	this.uploadData( data, cubemap_face ? { cubemap_face: cubemap_face } : null, skip_mipmaps );
+}
 
 /**
 * Copy texture content to a canvas
@@ -6170,6 +6287,7 @@ Texture.prototype.toCanvas = function( canvas, flip_y, max_size )
 /**
 * returns the texture file in binary format 
 * @method toBinary
+* @param {Boolean} flip_y
 * @return {ArrayBuffer} the arraybuffer of the file containing the image
 */
 Texture.binary_extension = "png";
@@ -7543,6 +7661,24 @@ Shader.validateValue = function( value, uniform_info )
 
 //**************** SHADERS ***********************************
 
+Shader.DEFAULT_VERTEX_SHADER = "\n\
+			precision highp float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec3 a_normal;\n\
+			attribute vec2 a_coord;\n\
+			varying vec3 v_position;\n\
+			varying vec3 v_normal;\n\
+			varying vec2 v_coord;\n\
+			uniform mat4 u_model;\n\
+			uniform mat4 u_mvp;\n\
+			void main() {\n\
+				v_position = (u_model * vec4(a_vertex,1.0)).xyz;\n\
+				v_normal = (u_model * vec4(a_normal,0.0)).xyz;\n\
+				v_coord = a_coord;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\n\
+			";
+
 Shader.SCREEN_VERTEX_SHADER = "\n\
 			precision highp float;\n\
 			attribute vec3 a_vertex;\n\
@@ -7871,6 +8007,25 @@ Shader.getCopyDepthShader = function(gl)
 			}\n\
 			");
 	return gl.shaders[":copy_depth"] = shader;
+}
+
+Shader.getCubemapShowShader = function(gl)
+{
+	gl = gl || global.gl;
+	var shader = gl.shaders[":show_cubemap"];
+	if(shader)
+		return shader;
+
+	var shader = new GL.Shader( Shader.DEFAULT_VERTEX_SHADER,"\n\
+			precision highp float;\n\
+			varying vec3 v_normal;\n\
+			uniform samplerCube u_texture;\n\
+			void main() {\n\
+			   gl_FragColor = textureCube( u_texture, v_normal );\n\
+			}\n\
+			");
+	shader.uniforms({u_texture:0});
+	return gl.shaders[":show_cubemap"] = shader;
 }
 
 //shader to copy a cubemap into another 
@@ -9262,13 +9417,16 @@ var LEvent = global.LEvent = GL.LEvent = {
 
 	/**
 	* Triggers and event in an instance
+	* If the callback returns true then it will stop the propagation and return true
 	* @method LEvent.trigger
 	* @param {Object} instance that triggers the event
 	* @param {String} event_name string defining the event name
 	* @param {*} parameters that will be received by the binded function
 	* @param {bool} reverse_order trigger in reverse order (binded last get called first)
+	* @param {bool} expand_parameters parameters are passed not as one single parameter, but as many
+	* return {bool} true if the event passed was blocked by any binded callback
 	**/
-	trigger: function( instance, event_type, params, reverse_order )
+	trigger: function( instance, event_type, params, reverse_order, expand_parameters )
 	{
 		if(!instance) 
 			throw("cannot trigger event from null");
@@ -9277,7 +9435,7 @@ var LEvent = global.LEvent = GL.LEvent = {
 
 		var events = instance.__levents;
 		if( !events || !events.hasOwnProperty(event_type) )
-			return true;
+			return false;
 
 		var inst = events[event_type];
 		if( reverse_order )
@@ -9285,8 +9443,16 @@ var LEvent = global.LEvent = GL.LEvent = {
 			for(var i = inst.length - 1; i >= 0; --i)
 			{
 				var v = inst[i];
-				if( v && v[0].call(v[1], event_type, params) == false)// || event.stop)
-					return false; //stopPropagation
+				if(expand_parameters)
+				{
+					if( v && v[0].apply( v[1], params ) === true)// || event.stop)
+						return true; //stopPropagation
+				}
+				else
+				{
+					if( v && v[0].call( v[1], event_type, params) === true)// || event.stop)
+						return true; //stopPropagation
+				}
 			}
 		}
 		else
@@ -9294,24 +9460,36 @@ var LEvent = global.LEvent = GL.LEvent = {
 			for(var i = 0, l = inst.length; i < l; ++i)
 			{
 				var v = inst[i];
-				if( v && v[0].call(v[1], event_type, params) == false)// || event.stop)
-					return false; //stopPropagation
+				if( expand_parameters )
+				{
+					if( v && v[0].apply( v[1], params ) === true)// || event.stop)
+						return true; //stopPropagation
+				}
+				else
+				{
+					if( v && v[0].call(v[1], event_type, params) === true)// || event.stop)
+						return true; //stopPropagation
+				}
 			}
 		}
 
-		return true;
+		return false;
 	},
 
 	/**
-	* Triggers and event to every element in an array
+	* Triggers and event to every element in an array.
+	* If the event returns true, it must be intercepted
 	* @method LEvent.triggerArray
 	* @param {Array} array contains all instances to triggers the event
 	* @param {String} event_name string defining the event name
 	* @param {*} parameters that will be received by the binded function
 	* @param {bool} reverse_order trigger in reverse order (binded last get called first)
+	* @param {bool} expand_parameters parameters are passed not as one single parameter, but as many
+	* return {bool} false 
 	**/
-	triggerArray: function( instances, event_type, params, reverse_order )
+	triggerArray: function( instances, event_type, params, reverse_order, expand_parameters )
 	{
+		var blocked = false;
 		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
@@ -9329,8 +9507,22 @@ var LEvent = global.LEvent = GL.LEvent = {
 				for(var j = events[event_type].length - 1; j >= 0; --j)
 				{
 					var v = events[event_type][j];
-					if( v[0].call(v[1], event_type, params) == false)// || event.stop)
-						break; //stopPropagation
+					if(expand_parameters)
+					{
+						if( v[0].apply(v[1], params ) === true)// || event.stop)
+						{
+							blocked = true;
+							break; //stopPropagation
+						}
+					}
+					else
+					{
+						if( v[0].call(v[1], event_type, params) === true)// || event.stop)
+						{
+							blocked = true;
+							break; //stopPropagation
+						}
+					}
 				}
 			}
 			else
@@ -9338,13 +9530,27 @@ var LEvent = global.LEvent = GL.LEvent = {
 				for(var j = 0, ll = events[event_type].length; j < ll; ++j)
 				{
 					var v = events[event_type][j];
-					if( v[0].call(v[1], event_type, params) == false)// || event.stop)
-						break; //stopPropagation
+					if(expand_parameters)
+					{
+						if( v[0].apply(v[1], params ) === true)// || event.stop)
+						{
+							blocked = true;
+							break; //stopPropagation
+						}
+					}
+					else
+					{
+						if( v[0].call(v[1], event_type, params) === true)// || event.stop)
+						{
+							blocked = true;
+							break; //stopPropagation
+						}
+					}
 				}
 			}
 		}
 
-		return true;
+		return blocked;
 	},
 
 	extendObject: function( object )
@@ -10271,15 +10477,15 @@ global.BBox = GL.BBox = {
 
 	/**
 	* Apply a matrix transformation to the BBox (applies to every corner and recomputes the BB)
-	* @method setCenterHalfsize
+	* @method transformMat4
 	* @param {BBox} out where to store the result
 	* @param {BBox} bb bbox you want to transform
 	* @param {mat4} mat transformation
 	* @return {BBox} returns out
 	*/
-	transformMat4: function(out, bb, mat)
+	transformMat4: function( out, bb, mat )
 	{
-		var center = bb; //.subarray(0,3); AVOID GC
+		var center = bb; //.subarray(0,3); hack to avoid garbage
 		var halfsize = bb.subarray(3,6);
 		var corners = this.tmp_corners;
 		corners.set( this.corners );
@@ -10292,7 +10498,7 @@ global.BBox = GL.BBox = {
 			mat4.multiplyVec3(corner, mat, corner);
 		}
 
-		return this.setFromPoints(out, corners);
+		return this.setFromPoints( out, corners );
 	},
 
 
@@ -10622,7 +10828,7 @@ Octree.prototype.testRay = (function(){
 	var min_temp = vec3.create();
 	var max_temp = vec3.create();
 
-	return function(origin, direction, dist_min, dist_max)
+	return function(origin, direction, dist_min, dist_max, test_backfaces )
 	{
 		octree_tested_boxes = 0;
 		octree_tested_triangles = 0;
@@ -10641,7 +10847,7 @@ Octree.prototype.testRay = (function(){
 		if(!test) //no collision with mesh bounding box
 			return null;
 
-		var test = Octree.testRayInNode( this.root, origin_temp, direction_temp );
+		var test = Octree.testRayInNode( this.root, origin_temp, direction_temp, test_backfaces );
 		if(test != null)
 		{
 			var pos = vec3.scale( vec3.create(), direction, test.t );
@@ -10680,7 +10886,7 @@ Octree.prototype.testSphere = function( origin, radius )
 }
 
 //WARNING: cannot use static here, it uses recursion
-Octree.testRayInNode = function( node, origin, direction )
+Octree.testRayInNode = function( node, origin, direction, test_backfaces )
 {
 	var test = null;
 	var prev_test = null;
@@ -10692,7 +10898,7 @@ Octree.testRayInNode = function( node, origin, direction )
 		{
 			var face = node.faces[i];
 			octree_tested_triangles += 1;
-			test = Octree.hitTestTriangle( origin, direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9) );
+			test = Octree.hitTestTriangle( origin, direction, face.subarray(0,3) , face.subarray(3,6), face.subarray(6,9), test_backfaces );
 			if (test==null)
 				continue;
 			test.face = face;
@@ -10725,7 +10931,7 @@ Octree.testRayInNode = function( node, origin, direction )
 				continue;
 
 			//test collision with node
-			test = Octree.testRayInNode( child, origin, direction );
+			test = Octree.testRayInNode( child, origin, direction, test_backfaces );
 			if(test == null)
 				continue;
 
@@ -10836,12 +11042,12 @@ Octree.hitTestTriangle = (function(){
 	var toHit = vec3.create();
 	var tmp = vec3.create();
 	
-	return function(origin, ray, A, B, C) {
+	return function( origin, ray, A, B, C, test_backfaces ) {
 		vec3.subtract( AB, B, A );
 		vec3.subtract( AC, C, A );
 		var normal = vec3.cross( vec3.create(), AB, AC ); //returned
 		vec3.normalize( normal, normal );
-		if( vec3.dot(normal,ray) > 0)
+		if( !test_backfaces && vec3.dot(normal,ray) > 0)
 			return null; //ignore backface
 
 		var t = vec3.dot(normal, vec3.subtract( tmp, A, origin )) / vec3.dot(normal,ray);
@@ -10995,6 +11201,29 @@ HitTest.prototype = {
   }
 };
 
+// ### new GL.Ray( origin, direction )
+global.Ray = GL.Ray = function Ray( origin, direction )
+{
+	this.origin = vec3.create();
+	this.direction = vec3.create();
+	this.collision_point = vec3.create();
+
+	if(origin)
+		this.origin.set( origin );
+	if(direction)
+		this.direction.set( direction );
+}
+
+Ray.prototype.testPlane = function( P, N )
+{
+	return geo.testRayPlane( this.origin, this.direction, P, N, this.collision_point );
+}
+
+Ray.prototype.testSphere = function( center, radius, max_dist )
+{
+	return geo.testRaySphere( this.origin, this.direction, center, radius, this.collision_point, max_dist );
+}
+
 // ### new GL.Raytracer()
 // 
 // This will read the current modelview matrix, projection matrix, and viewport,
@@ -11046,7 +11275,7 @@ Raytracer.prototype.setup = function( viewprojection_matrix, viewport )
 
   // ### .getRayForPixel(x, y)
   // 
-  // Returns the ray originating from the camera and traveling through the pixel `x, y`.
+  // Returns the ray direction originating from the camera and traveling through the pixel `x, y`.
 Raytracer.prototype.getRayForPixel = (function(){ 
 	var ray0 = vec3.create();
 	var ray1 = vec3.create();
@@ -11482,7 +11711,7 @@ Mesh.parseOBJ = function( text, options )
 	//creates and returns a GL.Mesh
 	var final_mesh = null;
 	final_mesh = Mesh.load( mesh, null, options.mesh );
-	final_mesh.updateBounding();
+	final_mesh.updateBoundingBox();
 	return final_mesh;
 }
 
@@ -11610,6 +11839,9 @@ Mesh.parsers["wbin"] = Mesh.fromBinary = function( data_array, options )
 			mesh.bind_matrix = mat4.clone( o.bind_matrix );		
 	}
 
+	if(o.morph_targets)
+		mesh.morph_targets = o.morph_targets;
+
 	if(options.only_data)
 		return mesh;
 
@@ -11652,7 +11884,7 @@ Mesh.prototype.toBinary = function( options )
 
 	//bounding box
 	if(!this.bounding)	
-		this.updateBounding();
+		this.updateBoundingBox();
 	o.bounding = this.bounding;
 
 	var vertex_buffers = [];

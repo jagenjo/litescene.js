@@ -106,6 +106,7 @@
                                 <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
                                 <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
                                 <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
                                 <li><a href="../classes/LSQ.html">LSQ</a></li>
@@ -162,6 +163,8 @@
 
 function Knob(o)
 {
+	this.enabled = true;
+
 	this.value = 0;
 	this.delta = 0.01;
 
@@ -196,7 +199,7 @@ Knob.prototype.onRemovedFromScene = function(scene)
 
 Knob.prototype.updateKnob = function()
 {
-	if(!this._root)
+	if(!this._root || !this.enabled)
 		return;
 
 	var f = this.value / (this.max_value - this.min_value);
@@ -207,6 +210,9 @@ Knob.prototype.updateKnob = function()
 
 Knob.prototype.onMouse = function(e, mouse_event)
 { 
+	if(!this.enabled)
+		return;
+
 	if( e == &quot;mousedown&quot;)
 	{
 		if(!this._root || !this._root._instances || !this._root._instances.length)

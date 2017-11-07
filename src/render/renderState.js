@@ -41,11 +41,12 @@
 22:	stencil_op_dpfail: GL.KEEP,
 23:	stencil_op_dppass: GL.KEEP
 
+24: flags
 */
 
 function RenderState( o )
 {
-	this._data = new Uint32Array(24);
+	this._data = new Uint32Array(25);
 	this.init();
 
 	if(o)
@@ -57,6 +58,10 @@ Object.defineProperty( RenderState.prototype, "front_face", {
 	get: function() { return this._data[0];	},
 	enumerable: true
 });
+
+RenderState.SKIP_BLEND = 1;
+RenderState.SKIP_DEPTH = 2;
+RenderState.SKIP_STENCIL = 4;
 
 RenderState["@front_face"] = { widget: "combo", values: { CW: GL.CW, CCW: GL.CCW } };
 
@@ -206,6 +211,25 @@ Object.defineProperty( RenderState.prototype, "stencil_mask", {
 	enumerable: true
 });
 
+Object.defineProperty( RenderState.prototype, "skip_blend", {
+	set: function(v) { this._data[25] = v ? (this._data[25] | RenderState.SKIP_BLEND) : (this._data[25] & ~(RenderState.SKIP_BLEND)); },
+	get: function() { return Boolean(this._data[25] & RenderState.SKIP_BLEND); },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "skip_depth", {
+	set: function(v) { this._data[25] = v ? (this._data[25] | RenderState.SKIP_DEPTH) : (this._data[25] & ~(RenderState.SKIP_DEPTH)); },
+	get: function() { return Boolean(this._data[25] & RenderState.SKIP_DEPTH); },
+	enumerable: true
+});
+
+Object.defineProperty( RenderState.prototype, "skip_stencil", {
+	set: function(v) { this._data[25] = v ? (this._data[25] | RenderState.SKIP_STENCIL) : (this._data[25] & ~(RenderState.SKIP_STENCIL)); },
+	get: function() { return Boolean(this._data[25] & RenderState.SKIP_STENCIL); },
+	enumerable: true
+});
+
+
 RenderState["@stencil_mask"] = { widget: "number", min: 0, max: 256, step: 1, precision: 0 };
 
 Object.defineProperty( RenderState.prototype, "stencil_func", {
@@ -278,6 +302,12 @@ Object.defineProperty( RenderState.prototype, "stencil_op_dppass", {
 	enumerable: true
 });
 
+Object.defineProperty( RenderState.prototype, "flags", {
+	set: function(v) { this._data[24] = v; },
+	get: function() { return this._data[24]; },
+	enumerable: true
+});
+
 RenderState["@stencil_op_dppass"] = { widget: "combo", values: { KEEP: GL.KEEP, ZERO: GL.ZERO, REPLACE: GL.REPLACE, INCR: GL.INCR, INCR_WRAP: GL.INCR_WRAP, DECR: GL.DECR_WRAP, INVERT: GL.INVERT } };
 
 RenderState.default_state = {
@@ -339,6 +369,8 @@ RenderState.prototype.init = function()
 	this.stencil_op_sfail = GL.KEEP;
 	this.stencil_op_dpfail = GL.KEEP;
 	this.stencil_op_dppass = GL.KEEP;
+
+	this.flags = 0;
 }
 
 //helper, allows to set the blend mode from a string
@@ -363,6 +395,8 @@ RenderState.prototype.enable = function()
 
 RenderState.enable = function( state, prev )
 {
+	var flags = state.flags;
+
 	if(!prev)
 	{
 		//faces
@@ -371,34 +405,44 @@ RenderState.enable = function( state, prev )
 			gl.enable( gl.CULL_FACE );
 		else
 			gl.disable( gl.CULL_FACE );
+
 		//depth
-		if(state.depth_test)
-			gl.enable( gl.DEPTH_TEST );
-		else
-			gl.disable( gl.DEPTH_TEST );
-		gl.depthMask( state.depth_mask );
-		gl.depthFunc( state.depth_func );
+		if( !(flags & RenderState.SKIP_DEPTH) )
+		{
+			if(state.depth_test)
+				gl.enable( gl.DEPTH_TEST );
+			else
+				gl.disable( gl.DEPTH_TEST );
+			gl.depthMask( state.depth_mask );
+			gl.depthFunc( state.depth_func );
+		}
 
 		//blend
-		if(state.blend)
-			gl.enable( gl.BLEND );
-		else
-			gl.disable( gl.BLEND );
-		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
+		if( !(flags & RenderState.SKIP_BLEND) )
+		{
+			if(state.blend)
+				gl.enable( gl.BLEND );
+			else
+				gl.disable( gl.BLEND );
+			gl.blendFunc( state.blendFunc0, state.blendFunc1 );
+		}
 
 		//color
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 		//stencil
-		if(state.stencil_test)
+		if( !(flags & RenderState.SKIP_STENCIL) )
 		{
-			gl.enable( gl.STENCIL_TEST );
-			gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
-			gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
-			gl.stencilMask( state.stencil_mask );
+			if(state.stencil_test)
+			{
+				gl.enable( gl.STENCIL_TEST );
+				gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+				gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
+				gl.stencilMask( state.stencil_mask );
+			}
+			else
+				gl.disable( gl.STENCIL_TEST );
 		}
-		else
-			gl.disable( gl.STENCIL_TEST );
 
 		this.last_state = state;
 		return;
@@ -416,52 +460,61 @@ RenderState.enable = function( state, prev )
 	}
 
 	//depth
-	if(prev.depth_test !== state.depth_test)
+	if( !(flags & RenderState.SKIP_DEPTH) )
 	{
-		if(state.depth_test)
-			gl.enable( gl.DEPTH_TEST );
-		else
-			gl.disable( gl.DEPTH_TEST );
+		if(prev.depth_test !== state.depth_test)
+		{
+			if(state.depth_test)
+				gl.enable( gl.DEPTH_TEST );
+			else
+				gl.disable( gl.DEPTH_TEST );
+		}
+		if(prev.depth_mask !== state.depth_mask)
+			gl.depthMask( state.depth_mask );
+		if(prev.depth_func !== state.depth_func)
+			gl.depthFunc( state.depth_func );
 	}
-	if(prev.depth_mask !== state.depth_mask)
-		gl.depthMask( state.depth_mask );
-	if(prev.depth_func !== state.depth_func)
-		gl.depthFunc( state.depth_func );
 
 	//blend
-	if(prev.blend !== state.blend)
+	if( !(flags & RenderState.SKIP_BLEND) )
 	{
-		if(state.blend)
-			gl.enable( gl.BLEND );
-		else
-			gl.disable( gl.BLEND );
+		if(prev.blend !== state.blend)
+		{
+			if(state.blend)
+				gl.enable( gl.BLEND );
+			else
+				gl.disable( gl.BLEND );
+		}
+		if(prev.blendFunc0 !== state.blendFunc0 || prev.blendFunc1 !== state.blendFunc1)
+			gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 	}
-	if(prev.blendFunc0 !== state.blendFunc0 || prev.blendFunc1 !== state.blendFunc1)
-		gl.blendFunc( state.blendFunc0, state.blendFunc1 );
 
 	//color
 	if(prev.colorMask0 !== state.colorMask0 || prev.colorMask1 !== state.colorMask1 || prev.colorMask2 !== state.colorMask2 || prev.colorMask3 !== state.colorMask3 )
 		gl.colorMask( state.colorMask0, state.colorMask1, state.colorMask2, state.colorMask3 );
 
 	//stencil
-	if(prev.stencil_test != state.stencil_test )
+	if( !(flags & RenderState.SKIP_STENCIL) )
 	{
+		if(prev.stencil_test != state.stencil_test )
+		{
+			if(state.stencil_test)
+				gl.enable( gl.STENCIL_TEST);
+			else
+				gl.disable( gl.STENCIL_TEST );
+		}
+
 		if(state.stencil_test)
-			gl.enable( gl.STENCIL_TEST);
-		else
-			gl.disable( gl.STENCIL_TEST );
-	}
+		{
+			if( state.stencil_func_func !== prev.stencil_func_func || state.stencil_func_ref !== prev.stencil_func_ref || state.stencil_func_mask !== prev.stencil_func_mask )
+				gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
 
-	if(state.stencil_test)
-	{
-		if( state.stencil_func_func !== prev.stencil_func_func || state.stencil_func_ref !== prev.stencil_func_ref || state.stencil_func_mask !== prev.stencil_func_mask )
-			gl.stencilFunc( state.stencil_func_func, state.stencil_func_ref, state.stencil_func_mask );
+			if(state.stencil_op_sfail !== prev.stencil_op_sfail || state.stencil_op_dpfail !== stencil_op_dpfail || state.stencil_op_dppass !== stencil_op_dppass )
+				gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
 
-		if(state.stencil_op_sfail !== prev.stencil_op_sfail || state.stencil_op_dpfail !== stencil_op_dpfail || state.stencil_op_dppass !== stencil_op_dppass )
-			gl.stencilOp( state.stencil_op_sfail, state.stencil_op_dpfail, state.stencil_op_dppass );
-
-		if(state.stencil_mask !== prev.stencil_mask)
-			gl.stencilMask( prev.stencil_mask );
+			if(state.stencil_mask !== prev.stencil_mask)
+				gl.stencilMask( prev.stencil_mask );
+		}
 	}
 
 	//save state

@@ -1,3 +1,11 @@
+/**
+* Allows to launch tweening 
+*
+* @class Tween
+* @namespace LS
+* @constructor
+*/
+
 LS.Tween = {
 	MAX_EASINGS: 256, //to avoid problems
 
@@ -39,6 +47,13 @@ LS.Tween = {
 		this.current_easings = [];
 		this._alife = [];
 	},
+
+	/*
+	ease: function()
+	{
+		this.easeProperty(
+	},
+	*/
 
 	easeProperty: function( object, property, target, time, easing_function, on_complete, on_progress )
 	{
@@ -96,7 +111,8 @@ LS.Tween = {
 			on_complete: on_complete, 
 			on_progress: on_progress, 
 			size: size, 
-			type: type
+			type: type,
+			running: true
 		};
 
 		for(var i = 0; i < this.current_easings.length; ++i)
@@ -154,6 +170,7 @@ LS.Tween = {
 		return data;
 	},
 
+	//updates all the active tweens
 	update: function( dt )
 	{
 		if( !this.current_easings.length )
@@ -164,6 +181,7 @@ LS.Tween = {
 		alive.length = easings.length;
 		var pos = 0;
 
+		//for every pending easing method
 		for(var i = 0, l = easings.length; i < l; ++i)
 		{
 			var item = easings[i];
@@ -184,7 +202,7 @@ LS.Tween = {
 			{
 				if(item.size == -1) //number
 					item.object[ item.property ] = item.target * f + item.origin * ( 1.0 - f );
-				else
+				else //array
 				{
 					var property = item.object[ item.property ];
 
@@ -204,8 +222,12 @@ LS.Tween = {
 			if(item.on_progress)
 				item.on_progress( item );
 
-			if(t == 1 && item.on_complete)
-				item.on_complete( item );
+			if(t >= 1)
+			{
+				if(item.on_complete)
+					item.on_complete( item );
+				item.running = false;
+			}
 		}
 
 		alive.length = pos; //trim

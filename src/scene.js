@@ -260,6 +260,7 @@ SceneTree.prototype.configure = function( scene_info )
 	 * @param {Object} scene_info contains all the info to do the configuration
 	 */
 	LEvent.trigger(this,"configure",scene_info);
+	LEvent.trigger(this,"awake");
 	/**
 	 * Fired when something changes in the scene
 	 * @event change
@@ -497,10 +498,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 			on_complete(that, url);
 
 		that.loadResources( inner_all_loaded );
-		/**
-		 * Fired when the scene has been loaded but before the resources
-		 * @event load
-		 */
 		LEvent.trigger(that,"load");
 
 		if(!LS.ResourcesManager.isLoading())
@@ -511,10 +508,6 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 	{
 		if(on_resources_loaded)
 			on_resources_loaded(that, url);
-		/**
-		 * Fired after all resources have been loaded
-		 * @event loadCompleted
-		 */
 		LEvent.trigger(that,"loadCompleted");
 	}
 
@@ -1204,6 +1197,16 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, 
 {
 	resources = resources || {};
 
+	//to get the resources as array
+	var array = null;
+	if(resources.constructor === Array)
+	{
+		array = resources;
+		resources = {};
+		as_array = true;
+	}
+
+	//first the preload
 	//resources that must be preloaded (because they will be used in the future)
 	if(this.preloaded_resources)
 		for(var i in this.preloaded_resources)
@@ -1252,7 +1255,7 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, 
 		return resources;
 
 	//return as array
-	var r = [];
+	var r = array || [];
 	for(var i in resources)
 		r.push(i);
 	return r;
@@ -1268,7 +1271,8 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, 
 */
 SceneTree.prototype.loadResources = function( on_complete )
 {
-	var resources = this.getResources();
+	//resources is an object format
+	var resources = this.getResources([]);
 
 	//used for scenes with special repository folders
 	var options = {};
@@ -1298,6 +1302,7 @@ SceneTree.prototype.loadResources = function( on_complete )
 			on_complete();
 	}
 }
+
 
 /**
 * Adds a resource that must be loaded when the scene is loaded
