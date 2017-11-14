@@ -29,7 +29,7 @@ When adding a code snippet you have to pass two snippets, one for when the Shade
 morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 ```
 
-Register the ShaderBlock in the system by calling the register function:
+Register the ```LS.ShaderBlock``` in the system by calling the register function:
 
 ```javascript
 morphing_block.register();
@@ -45,11 +45,19 @@ void main() {
   applyMorphing( vertex4, v_normal ); //this function is defined inside the shader block
 ```
 
-To activate the ShaderBlock from your javascript component you have to get the RenderInstance and add it there:
+To activate the ShaderBlock from your javascript component there are different ways:
+
+Inside the ```LS.RenderInstance```:
 
 ```javascript
    var RI = node._instances[0];
    RI.addShaderBlock( morphing_block );
+```
+
+Globally for the next frame:
+
+```js
+  LS.Renderer.enableFrameShaderBlock( shader_block, uniforms );
 ```
 
 
