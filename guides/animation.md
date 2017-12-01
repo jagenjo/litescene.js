@@ -2,7 +2,7 @@
 
 LiteScene allows to animate any property of any component or node in the scene.
 
-This is used for the skeletal animation but it can be used to animate other properties like camera position, material properties or any field that the user wants.
+This is used for the skeletal animation but it can be used to animate other properties like camera position, material properties or any field that the user wants (including public properties in your scripts).
 
 The animation system works by storing tracks with keyframes that contain the time and the values to apply.
 
