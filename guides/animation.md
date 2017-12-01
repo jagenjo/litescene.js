@@ -12,7 +12,7 @@ You can use the WebGLStudio timeline editor to edit any animation in the scene.
 
 ## The LS.Animation and LS.Animation.Take ##
 
-Animations are stored in a big container called ```js LS.Animation``` that behaves like a Resource.
+Animations are stored in a big container called ```LS.Animation``` that behaves like a Resource.
 
 Instead of storing the tracks per animation, we store them in another container called ```LS.Animation.Take```, this way one animation could contain several subanimations (takes).
 
