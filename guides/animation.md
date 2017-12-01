@@ -12,18 +12,19 @@ You can use the WebGLStudio timeline editor to edit any animation in the scene.
 
 ## The LS.Animation and LS.Animation.Take ##
 
-Animations are stored in a big container called LS.Animation that behaves like a resource.
+Animations are stored in a big container called ```LS.Animation``` that behaves like a Resource.
 
-Instead of storing the tracks per animation, we store them in another container called Take, this way one animation could contain several subanimations (takes).
-By we usually use the default take.
+Instead of storing the tracks per animation, we store them in another container called ```LS.Animation.Take```, this way one animation could contain several subanimations (takes).
 
-Every Take contains a list of tracks, and the total duration of the take.
+By default we usually use the take named 'default'.
 
-Because every scene usually needs to have an animation track, to make it easier, you can have one global animation track stored in the scene itself.
+Every ```LS.Animation.Take``` contains a list of ```LS.Animation.Track```, and the total duration of the take.
+
+Because every scene usually needs to have an animation track, to make it easier, you can have one global animation track stored in the scene itself (it is referenced as ```"@scene"``` animation).
 
 To create it you can call ```LS.GlobalScene.createAnimation()``` and this track will be saved with the scene.
 
-## LS.Animation.Track ##
+## LS.Animation.Track
 
 Every track contains all the info to modify one property of the scene as time goes.
 
@@ -33,7 +34,7 @@ There are two types of track:
 - Property tracks: every keyframe represents a value to assign to the property specified in the track locator.
 - Event tracks: every keyframe contain info about an event or a function call that should be performed 
 
-## Locators ##
+## Locators
 
 Every track has a string called the locator which identifies the property in the scene affected by the animation track.
 
@@ -52,10 +53,39 @@ To get the locator of a property you can call the method getLocator of the conta
 node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
 ```
 
-## PlayAnimation ##
+## Applying animations
 
-To play an animation you must use the PlayAnimation component.
+There are different ways to play an animation, through the ```LS.Components.PlayAnimation``` component, or programatically calling the ```applyTracks``` methods in the ```LS.Animation.Take```.
 
-This component allows to select the animation, choose the take, the playback speed, and different modes.
+
+## PlayAnimation
+
+This component is in charge or loading and playing an animation.
+
+It allows to select the animation (container with the data), choose the take, the playback speed, and different play modes (once, loop, pingpong).
 
 If you want to use the global scene animation leave the animation field blank (or use "@scene").
+
+This component also triggers events when the animation starts or ends.
+
+Also to avoid sudden changes when switching from one animation to another, it allows to blend the outter animation with the incomming one.
+
+## applyTracks
+
+The ```LS.Animation.Take``` contains a method called ```applyTracks```. This method receives several parameters:
+
+```js
+var animation = LS.ResourcesManager.getResource("myanim.wbin"); //assuming is already loaded
+var mytake = animation.getTake("default");
+mytake.applyTracks( current_time, last_time, ignore_interpolation, root_node, scene, weight )
+```
+
+Where:
+- **current_time**: is the time in the animation to sample all the tracks.
+- **last_time**: the last current_time played. Used in event tracks to determine if there was an event between time intervals. You can pass the current_time as last_time if you don't care about event tracks.
+- **ignore_interpolation**: to ignore interpolation.
+- **root_node**: the node where the locators will start searching, if null the scene root node is used.
+- **scene**: the scene where you want to apply the tracks.
+- **weight**: how much do you want to interpolate this tracks with the current state of the scene, 1 means no interpolation.
+
+Remember that if you use applyTracks you must keep track manually of the current_time using the update event (or onUpdate method if you are in a script).
