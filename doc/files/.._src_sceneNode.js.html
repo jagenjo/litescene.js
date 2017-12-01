@@ -967,10 +967,16 @@ SceneNode.prototype.assign = function( item, extra )
 			this.addChild( item );
 			break;
 		case LS.SceneTree: 	
-			this.addChild( item.root.clone() );
-			break; //warn: here we are missing all the global and external scripts of the scene
+			var node = this;
+			item.loadScripts( null, function(){
+				item.loadResources( function(){ 
+					node.addChild( item.root.clone() );
+				});
+			});
+			break;
 		case LS.Prefab: 
-			this.prefab = item.fullpath || item.filename; break;
+			this.prefab = item.fullpath || item.filename; 
+			break;
 		case GL.Mesh: 
 			var component = this.getComponent( LS.Components.MeshRenderer );
 			if(component)

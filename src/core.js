@@ -537,7 +537,10 @@ var LS = {
 		if( obj.constructor == LS.SceneTree)
 			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
 		if( obj.serialize || obj.toJSON )
+		{
+			//return obj.serialize ? obj.serialize() : obj.toJSON(); //why not this?
 			return [ "@ENC", LS.TYPES.OBJECT, obj.serialize ? obj.serialize() : obj.toJSON(), LS.getObjectClassName( obj ) ];
+		}
 		console.warn("Cannot clone internal classes:", LS.getObjectClassName( obj )," When serializing an object I found a property with a class that doesnt support serialization. If this property shouldn't be serialized start the name with underscore.'");
 		return null;
 	},
@@ -554,7 +557,10 @@ var LS = {
 				var obj = LSQ.get( data[2] );
 				if( obj )
 					return obj;
-				return data[2]; break;
+				if(!obj)
+					console.warn( "Object UID referencing object not found in the scene:", data[2] );
+				return data[2];
+				break;
 				//return  break;
 			case LS.TYPES.SCENE: return null; break; //weird case
 			case LS.TYPES.OBJECT: 
@@ -578,14 +584,22 @@ var LS = {
 	* @method clearUIds
 	* @param {Object} root could be a node or an object from a node serialization
 	*/
-	clearUIds: function(root)
+	clearUIds: function( root, uids_removed )
 	{
+		uids_removed = uids_removed || {};
+
 		if(root.uid)
+		{
+			uids_removed[ root.uid ] = root;
 			delete root.uid;
+		}
 
 		//remove for embeded materials
 		if(root.material && root.material.uid)
+		{
+			uids_removed[ root.material.uid ] = root.material;
 			delete root.material.uid;
+		}
 
 		var components = root.components;
 		if(!components && root.getComponents)
@@ -600,9 +614,15 @@ var LS = {
 			{
 				var comp = components[i];
 				if(comp[1].uid)
+				{
+					uids_removed[ comp[1].uid ] = comp[1];
 					delete comp[1].uid;
+				}
 				if(comp[1]._uid)
+				{
+					uids_removed[ comp[1]._uid ] = comp[1];
 					delete comp[1]._uid;
+				}
 			}
 		}
 
@@ -612,8 +632,11 @@ var LS = {
 
 		if(!children)
 			return;
+
 		for(var i in children)
-			LS.clearUIds(children[i]);
+			LS.clearUIds( children[i], uids_removed );
+
+		return uids_removed;
 	},
 
 

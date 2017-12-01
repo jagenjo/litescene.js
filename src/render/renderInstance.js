@@ -126,6 +126,11 @@ RenderInstance.prototype.applyTransform = function( matrix, normal_matrix )
 //set the material and apply material flags to render instance
 RenderInstance.prototype.setMaterial = function(material)
 {
+	if(material && !material.constructor.is_material)
+	{
+		//console.error("Material in RenderInstance is not a material class:",material);
+		return;
+	}
 	this.material = material;
 	if(material && material.applyToRenderInstance)
 		material.applyToRenderInstance(this);

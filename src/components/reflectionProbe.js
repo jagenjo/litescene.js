@@ -314,7 +314,7 @@ ReflectionProbe.objectToCubemap = function( data, out )
 	if(!out)
 		out = new GL.Texture( data.size, data.size, { texture_type: gl.TEXTURE_CUBE_MAP, format: GL.RGBA });
 	for(var i = 0; i < data.faces.length; ++i )
-		out.setPixels( new Uint8Array( data.faces[i] ), i, i == 5 );
+		out.setPixels( new Uint8Array( data.faces[i] ), true, i == 5, i );
 	return out;
 }
 

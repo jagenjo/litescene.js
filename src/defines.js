@@ -57,6 +57,7 @@ LS.TYPES = {
 	VEC4 : "vec3",
 	COLOR : "color",
 	COLOR4 : "color4",
+	EVENT : "event",
 	RESOURCE: "resource",
 	TEXTURE : "texture",
 	MESH: "mesh",
@@ -68,8 +69,16 @@ LS.TYPES = {
 	COMPONENT_ID: "component_id",
 	MATERIAL: "material",
 	ANIMATION: "animation",
-	ARRAY: "array"
+	ARRAY: "array",
+	QUAT : "quat",
+	TRANS10 : "trans10",
+	POSITION : "position"
 };
+
+LS.TYPES_INDEX = {};
+var index = 0;
+for(var i in LS.TYPES)
+	LS.TYPES_INDEX[ LS.TYPES[i] ] = index++;
 
 LS.RESOURCE_TYPES = {};
 LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;

@@ -27,6 +27,7 @@ LS.ShadersManager.registerSnippet("surface","\n\
 		o.Ambient = vec3(1.0);\n\
 		o.Emission = vec3(0.0);\n\
 		o.Reflectivity = 0.0;\n\
+		o.Extra = vec4(0.0);\n\
 		return o;\n\
 	}\n\
 ");
@@ -87,6 +88,7 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 		vec3 Emission;\n\
 		vec3 Reflection;\n\
 		float Attenuation;\n\
+		vec3 Vector; //light vector\n\
 		float Shadow; //1.0 means fully lit\n\
 	};\n\
 	#endif\n\
@@ -103,24 +105,17 @@ Light._enabled_fs_shaderblock_code = "\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
 	#pragma snippet \"spotFalloff\"\n\
+	#pragma shaderblock \"applyIrradiance\"\n\
 	#pragma shaderblock \"attenuation\"\n\
 	#pragma shaderblock SHADOWBLOCK \"testShadow\"\n\
 	\n\
 	//Light is separated in two functions, computeLight (how much light receives the object) and applyLight (compute resulting final color)\n\
 	// FINAL LIGHT EQUATION, takes all the info from FinalLight and computes the final color \n\
-	vec3 applyLight( in SurfaceOutput o, in FinalLight LIGHT )\n\
-	{\n\
-		vec3 total_light = LIGHT.Ambient * o.Ambient + LIGHT.Color * LIGHT.Diffuse * LIGHT.Attenuation * LIGHT.Shadow;\n\
-		vec3 final_color = o.Albedo * total_light;\n\
-		if(u_light_info.z == 0.0)\n\
-			final_color += o.Emission;\n\
-		final_color	+= o.Albedo * (LIGHT.Color * LIGHT.Specular * LIGHT.Attenuation * LIGHT.Shadow);\n\
-		return max( final_color, vec3(0.0) );\n\
-	}\n\
 	\n\
 	// HERE we fill FinalLight structure with all the info (colors,NdotL,diffuse,specular,etc) \n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT, out FinalLight FINALLIGHT)\n\
+	FinalLight computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT )\n\
 	{\n\
+		FinalLight FINALLIGHT;\n\
 		// INIT\n\
 		FINALLIGHT.Color = LIGHT.Color;\n\
 		FINALLIGHT.Ambient = LIGHT.Ambient;\n\
@@ -136,8 +131,11 @@ Light._enabled_fs_shaderblock_code = "\n\
 		if( LIGHT.Info.x == 3.0 )\n\
 			L = -LIGHT.Front;\n\
 		\n\
+		FINALLIGHT.Vector = L;\n\
 		vec3 R = reflect(E,N);\n\
 		\n\
+		// IRRADIANCE\n\
+		applyIrradiance( o, FINALLIGHT );\n\
 		// PHONG FORMULA\n\
 		float NdotL = 1.0;\n\
 		NdotL = dot(N,L);\n\
@@ -165,13 +163,24 @@ Light._enabled_fs_shaderblock_code = "\n\
 		#ifdef LIGHT_MODIFIER\n\
 		#endif\n\
 		// FINAL LIGHT FORMULA ************************* \n\
-		return applyLight(o,FINALLIGHT);\n\
+		return FINALLIGHT;\n\
+	}\n\
+	//here we apply the FINALLIGHT to the SurfaceOutput\n\
+	vec3 applyLight( in SurfaceOutput o, in FinalLight FINALLIGHT )\n\
+	{\n\
+		vec3 total_light = FINALLIGHT.Ambient * o.Ambient + FINALLIGHT.Color * FINALLIGHT.Diffuse * FINALLIGHT.Attenuation * FINALLIGHT.Shadow;\n\
+		vec3 final_color = o.Albedo * total_light;\n\
+		if(u_light_info.z == 0.0)\n\
+			final_color += o.Emission;\n\
+		final_color	+= o.Albedo * (FINALLIGHT.Color * FINALLIGHT.Specular * FINALLIGHT.Attenuation * FINALLIGHT.Shadow);\n\
+		return max( final_color, vec3(0.0) );\n\
 	}\n\
 	\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT)\n\
+	//all done in one single step\n\
+	vec3 processLight(in SurfaceOutput o, in Input IN, in Light LIGHT)\n\
 	{\n\
-		FinalLight FINALLIGHT;\n\
-		return computeLight(o,IN,LIGHT,FINALLIGHT);\n\
+		FinalLight FINALLIGHT = computeLight( o, IN,LIGHT );\n\
+		return applyLight(o,FINALLIGHT);\n\
 	}\n\
 	\n\
 ";
@@ -180,22 +189,33 @@ Light._disabled_shaderblock_code = "\n\
 	#pragma snippet \"input\"\n\
 	#pragma snippet \"surface\"\n\
 	#pragma snippet \"light_structs\"\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT, inout FinalLight FINALLIGHT)\n\
+	#pragma shaderblock \"applyIrradiance\"\n\
+	FinalLight computeLight( in SurfaceOutput o, in Input IN, in Light LIGHT )\n\
 	{\n\
+		FinalLight FINALLIGHT;\n\
+		FINALLIGHT.Ambient = LIGHT.Ambient;\n\
 		FINALLIGHT.Diffuse = 0.0;\n\
 		FINALLIGHT.Specular = 0.0;\n\
 		FINALLIGHT.Attenuation = 0.0;\n\
 		FINALLIGHT.Shadow = 0.0;\n\
-		vec3 final_color = o.Albedo * LIGHT.Ambient;\n\
+		applyIrradiance( o, FINALLIGHT );\n\
+		return FINALLIGHT;\n\
+	}\n\
+	vec3 applyLight( in SurfaceOutput o, in FinalLight FINALLIGHT )\n\
+	{\n\
+		vec3 final_color = o.Albedo * FINALLIGHT.Ambient;\n\
 		if(u_light_info.z == 0.0)\n\
 			final_color += o.Emission;\n\
 		return final_color;\n\
 	}\n\
-	vec3 computeLight(in SurfaceOutput o, in Input IN, in Light LIGHT)\n\
+	\n\
+	//all done in one single step\n\
+	vec3 processLight(in SurfaceOutput o, in Input IN, in Light LIGHT)\n\
 	{\n\
-		FinalLight FINALLIGHT;\n\
-		return computeLight(o,IN,LIGHT,FINALLIGHT);\n\
+		FinalLight FINALLIGHT = computeLight( o, IN,LIGHT );\n\
+		return applyLight(o,FINALLIGHT);\n\
 	}\n\
+	\n\
 ";
 
 var light_block = new LS.ShaderBlock("light");

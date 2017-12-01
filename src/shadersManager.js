@@ -50,8 +50,10 @@ var ShadersManager = {
 
 		//base intro code for shaders
 		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
-		if( gl.extensions.OES_standard_derivatives )
+		if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
 			this.global_extra_code = "#define STANDARD_DERIVATIVES" + String.fromCharCode(10);
+		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
+			this.global_extra_code = "#define DRAW_BUFFERS" + String.fromCharCode(10);
 
 		//compile some shaders
 		this.createDefaultShaders();
@@ -1105,7 +1107,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
 		if(!shader_block)
 		{
-			console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
+			//console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
 			return null;
 		}
 

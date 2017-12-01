@@ -16,7 +16,7 @@ var PICKING_PASS = 3;
 var Renderer = {
 
 	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
-	default_material: new LS.StandardMaterial(), //used for objects without material
+	default_material: new LS.newStandardMaterial(), //used for objects without material
 
 	render_passes: {}, //used to specify the render function for every kind of render pass (color, shadow, picking, etc)
 	renderPassFunction: null, //function to call when rendering instances
@@ -35,6 +35,8 @@ var Renderer = {
 	_current_target: null, //texture where the image is being rendered
 	_current_pass: null,
 	_global_textures: {}, //used to speed up fetching global textures
+	_global_shader_blocks: [], //used to add extra shaderblocks to all objects in the scene (it gets reseted every frame)
+	_global_shader_blocks_flags: 0, 
 
 	_queues: [], //render queues in order
 
@@ -63,9 +65,10 @@ var Renderer = {
 	_2Dviewprojection_matrix: mat4.create(),
 
 	_temp_matrix: mat4.create(),
+	_temp_cameye: vec3.create(),
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
-
+	_instancing_data: [],
 	_reflection_probes: [],
 
 	//safety
@@ -90,7 +93,7 @@ var Renderer = {
 	//called from...
 	init: function()
 	{
-		//this is used in case a texture is missing
+		//create some useful textures: this is used in case a texture is missing
 		this._black_texture = new GL.Texture(1,1, { pixel_data: [0,0,0,255] });
 		this._gray_texture = new GL.Texture(1,1, { pixel_data: [128,128,128,255] });
 		this._white_texture = new GL.Texture(1,1, { pixel_data: [255,255,255,255] });
@@ -98,13 +101,13 @@ var Renderer = {
 		this._missing_texture = this._gray_texture;
 		var internal_textures = [ this._black_texture, this._gray_texture, this._white_texture, this._normal_texture, this._missing_texture ];
 		internal_textures.forEach(function(t){ t._is_internal = true; });
-
-		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
-
 		LS.ResourcesManager.textures[":black"] = this._black_texture;
 		LS.ResourcesManager.textures[":gray"] = this._gray_texture;
 		LS.ResourcesManager.textures[":white"] = this._white_texture;
 		LS.ResourcesManager.textures[":flatnormal"] = this._normal_texture;
+
+		//some global meshes could be helpful: used for irradiance probes
+		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
 
 		//draw helps rendering debug stuff
 		LS.Draw.init();
@@ -210,6 +213,10 @@ var Renderer = {
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 		this._rendered_passes = 0;
+		this._global_block_flags = 0;
+		for(var i in this._global_textures)
+			this._global_textures[i] = null;
+
 
 		//to restore from a possible exception (not fully tested, remove if problem)
 		if(!render_settings.ignore_reset)
@@ -416,7 +423,7 @@ var Renderer = {
 
 		//Draw allows to render debug info easily
 		Draw.reset(); //clear 
-		Draw.setCameraPosition( camera.getEye() );
+		Draw.setCameraPosition( camera.getEye( Draw.camera_position ) );
 		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
@@ -473,7 +480,7 @@ var Renderer = {
 		var instances = this._visible_instances;
 
 		//compute distance to camera
-		var camera_eye = camera.getEye();
+		var camera_eye = camera.getEye( this._temp_cameye );
 		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
@@ -546,6 +553,7 @@ var Renderer = {
 		var apply_frustum_culling = render_settings.frustum_culling;
 		var frustum_planes = camera.updateFrustumPlanes();
 		var layers_filter = camera.layers & render_settings.layers;
+		var instancing_supported = gl.webgl_version > 1 || gl.extensions["ANGLE_instanced_arrays"];
 
 		LEvent.trigger( scene, "beforeRenderInstances", render_settings );
 		//scene.triggerInNodes( "beforeRenderInstances", render_settings );
@@ -571,8 +579,10 @@ var Renderer = {
 
 		this.bindSamplers( scene._samplers );
 
+		var instancing_data = this._instancing_data;
 
-		//compute visibility pass
+
+		//compute visibility pass: checks which RIs are visible from this camera
 		for(var i = 0, l = render_instances.length; i < l; ++i)
 		{
 			//render instance
@@ -596,11 +606,13 @@ var Renderer = {
 			if(!instance.material) //somethinig went wrong
 				continue;
 
-			if(instance.material.opacity <= 0) //TODO: remove this, do it somewhere else
+			var material = instance.material;
+
+			if(material.opacity <= 0) //TODO: remove this, do it somewhere else
 				continue;
 
 			//test visibility against camera frustum
-			if( apply_frustum_culling && instance.use_bounding && !instance.material.flags.ignore_frustum )
+			if( apply_frustum_culling && instance.use_bounding && !material.flags.ignore_frustum )
 			{
 				if(geo.frustumTestBox( frustum_planes, instance.aabb ) == CLIP_OUTSIDE )
 					continue;
@@ -610,6 +622,17 @@ var Renderer = {
 			instance._is_visible = true;
 			if(camera_index_flag) //shadowmap cameras dont have an index
 				instance._camera_visibility |= camera_index_flag;
+
+			//if material supports instancing
+			/*
+			if( instancing_supported && material._allows_instancing && !instance._shader_blocks.length )
+			{
+				var instancing_ri_info = null;
+				if(!instancing_data[ material._index ] )
+					instancing_data[ material._index ] = instancing_ri_info = [];
+				instancing_ri_info.push( instance );
+			}
+			*/
 		}
 
 		var start = this._rendered_instances;
@@ -640,6 +663,7 @@ var Renderer = {
 				this._rendered_instances += 1;
 
 				//choose the appropiate render pass
+				//TODO: KILL THIS AND REPLACE BY CALLING MATERIAL.renderInstance
 				render_instance_func.call( this, instance, render_settings, pass ); //by default calls renderColorInstance but it could call renderShadowPassInstance
 
 				//some instances do a post render action
@@ -1145,6 +1169,7 @@ var Renderer = {
 
 		//clear globals
 		this._global_textures.environment = null;
+		this._global_textures.irradiance = null;
 
 		//fetch globals
 		for(var i in scene.info.textures)
@@ -1174,6 +1199,8 @@ var Renderer = {
 
 			if( i == "environment" )
 				this._global_textures.environment = texture;
+			else if( i == "irradiance" )
+				this._global_textures.irradiance = texture;
 		}
 
 		LEvent.trigger( scene, "fillSceneUniforms", scene._uniforms );
@@ -1229,7 +1256,7 @@ var Renderer = {
 
 		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
-		var camera_eye = camera.getEye();
+		var camera_eye = camera.getEye( this._temp_cameye );
 
 		//clear render queues
 		for(var i = 0; i < this._queues.length; ++i)
@@ -1255,7 +1282,7 @@ var Renderer = {
 			if(!instance.material)
 				instance.material = this.default_material;
 			if( materials[ instance.material.uid ] && instance.material !== materials[ instance.material.uid ] )
-				console.warn("Different Materials with same UID");
+				console.warn( "Different Materials with same UID: ", instance.material.uid );
 			materials[ instance.material.uid ] = instance.material;
 
 			//add extra info
@@ -1349,9 +1376,11 @@ var Renderer = {
 	//outside of processVisibleData to allow optimizations in processVisibleData
 	_prepareMaterials: function( materials, scene )
 	{
+		var index = 0;
 		for(var i in materials)
 		{
 			var material = materials[i];
+			material._index = index++;
 			material._last_frame_update = this._frame;
 			if( material.prepare )
 				material.prepare( scene );
@@ -1610,6 +1639,28 @@ var Renderer = {
 		if(options)
 			for(var i in options)
 				queue[i] = options[i];
+	},
+	
+	
+	/**
+	* Enables a ShaderBlock ONLY DURING THIS FRAME
+	*
+	* @method enableFrameShaderBlock
+	* @param {String} shader_block_name
+	*/
+	enableFrameShaderBlock: function( shader_block_name, uniforms )
+	{
+		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
+
+		if( !shader_block || this._global_shader_blocks_flags | shader_block.flag_mask )
+			return; //already added
+		this._global_shader_blocks.push( shader_block );
+		this._global_shader_blocks_flags |= shader_block.flag_mask;
+
+		//add uniforms to renderer uniforms?
+		if(uniforms)
+			for(var i in uniforms)
+				this._renderer_uniforms[i] = uniforms[i];
 	}
 };
 

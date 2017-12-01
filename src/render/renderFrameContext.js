@@ -160,6 +160,11 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 
 	//extra color texture (multibuffer rendering)
 	var total_extra = Math.min( this.num_extra_textures, 4 );
+	
+	//extra buffers not supported in this webgl context
+	if(gl.webgl_version == 1 && !gl.extensions["WEBGL_draw_buffers"])
+		total_extra = 0;
+
 	for(var i = 0; i < total_extra; ++i) //MAX is 4
 	{
 		var extra_texture = textures[1 + i];

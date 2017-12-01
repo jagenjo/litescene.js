@@ -13,6 +13,7 @@ var Network = {
     *			dataType: result type {text,xml,json,binary,arraybuffer,image},
 				data: object with form fields,
 				method: "POST","GET","DELETE","PUT", if omited if will use post or get depending on the parameters,
+				mimeType: to overwrite,
 				use_proxy: if true it will use LiteScene proxy if available
 				callbacks supported: {success, error, progress}
 	* @return {XMLHttpRequest} the XMLHttpRequest of the petition

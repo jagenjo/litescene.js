@@ -744,6 +744,10 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	final_texture.setParameter( gl.TEXTURE_MAG_FILTER, this.filter ? gl.LINEAR : gl.NEAREST );
 	final_texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR );
 
+	gl.disable( gl.DEPTH_TEST );
+	gl.disable( gl.BLEND );
+	gl.disable( gl.CULL_FACE );
+
 	//to screen
 	if( this.apply_fxaa )
 	{
@@ -910,6 +914,10 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	}
 
 	shader = this._last_shader;
+
+	gl.disable( gl.DEPTH_TEST );
+	gl.disable( gl.BLEND );
+	gl.disable( gl.CULL_FACE );
 
 	//error compiling shader
 	if(!shader)

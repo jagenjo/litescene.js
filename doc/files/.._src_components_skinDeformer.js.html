@@ -454,7 +454,7 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	}
 	else
 		this._root.transform.getGlobalMatrix( RI.matrix );
-	mat4.multiplyVec3( RI.center, RI.matrix, vec3.create() );
+	mat4.multiplyVec3( RI.center, RI.matrix, LS.ZEROS );
 
 	RI.use_bounding = false;
 }

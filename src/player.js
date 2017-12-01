@@ -461,7 +461,7 @@ Player.prototype._ondraw = function()
 
 		if(scene._must_redraw || this.force_redraw )
 		{
-			scene.render( scene.info ? scene.info.render_settings : this.render_settings );
+			scene.render( scene.info && scene.info.render_settings ? scene.info.render_settings : this.render_settings );
 		}
 
 		if(this.onDraw)
