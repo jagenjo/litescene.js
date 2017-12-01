@@ -401,7 +401,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			continue;
 
 		//events are an special kind of tracks, they execute actions
-		if( track.type == "events" )
+		if( track._type_index == Track.EVENT )
 		{
 			var keyframe = track.getKeyframeByTime( current_time );
 			if( !keyframe || keyframe[0] < last_time || keyframe[0] > current_time )
@@ -438,7 +438,7 @@ Take.prototype.applyTracks = function( current_time, last_time, ignore_interpola
 			if(weight !== 1)
 			{
 				var current_value = scene.getPropertyValueFromPath( track._property_path, sample, root_node, 0 );
-				sample = LS.Animation.interpolateLinear( sample, current_value, weight, null, track.type, track.value_size, track );
+				sample = LS.Animation.interpolateLinear( sample, current_value, weight, null, track._type, track.value_size, track );
 			}
 
 			//apply the value to the property specified by the locator
@@ -508,7 +508,7 @@ Take.prototype.loadResources = function()
 	for(var i = 0; i < this.tracks.length; ++i)
 	{
 		var track = this.tracks[i];
-		if(track.type == "texture")
+		if(track._type == "texture")
 		{
 			var l = track.getNumberOfKeyframes();
 			for(var j = 0; j < l; ++j)
@@ -589,7 +589,7 @@ Take.prototype.matchTranslation = function( root )
 	{
 		var track = this.tracks[i];
 
-		if(track.type != "trans10" && track.type != "mat4")
+		if(track._type != "trans10" && track._type != "mat4")
 			continue;
 
 		if( !track._property_path || !track._property_path.length )
@@ -604,12 +604,12 @@ Take.prototype.matchTranslation = function( root )
 
 		var data = track.data;
 		var num_samples = data.length / offset;
-		if(track.type == "trans10")
+		if(track._type == "trans10")
 		{
 			for(var j = 0; j < num_samples; ++j)
 				data.set( position, j*offset + 1 );
 		}
-		else if(track.type == "mat4")
+		else if(track._type == "mat4")
 		{
 			for(var j = 0; j < num_samples; ++j)
 				data.set( position, j*offset + 1 + 12 ); //12,13,14 contain translation
@@ -722,7 +722,8 @@ function Track(o)
 	/** 
 	* @property type {String} if the data is number, vec2, color, etc
 	**/
-	this.type = null; //type of data (number, vec2, color, texture, etc)
+	this._type = null; //type of data (number, vec2, color, texture, etc)
+	this._type_index = null; //type in number format (to optimize)
 	/** 
 	* @property interpolation {Number} type of interpolation LS.NONE, LS.LINEAR, LS.TRIGONOMETRIC, LS.BEZIER, LS.SPLICE
 	**/
@@ -760,6 +761,12 @@ function Track(o)
 
 Track.FRAMERATE = 30;
 
+//for optimization
+Track.QUAT = LS.TYPES_INDEX["quat"];
+Track.TRANS10 = LS.TYPES_INDEX["trans10"];
+Track.EVENT = LS.TYPES_INDEX["event"];
+
+
 /** 
 * @property property {String} the locator to the property this track should modify ( "node/component_uid/property" )
 **/
@@ -771,6 +778,18 @@ Object.defineProperty( Track.prototype, 'property', {
 	},
 	get: function(){
 		return this._property;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( Track.prototype, 'type', {
+	set: function( t )
+	{
+		this._type = t;
+		this._type_index = LS.TYPES_INDEX[t];
+	},
+	get: function(){
+		return this._type;
 	},
 	enumerable: true
 });
@@ -824,7 +843,7 @@ Track.prototype.serialize = function()
 		enabled: this.enabled,
 		name: this.name,
 		property: this.property, 
-		type: this.type,
+		type: this._type,
 		interpolation: this.interpolation,
 		looped: this.looped,
 		value_size: this.value_size,
@@ -1108,7 +1127,7 @@ Track.prototype.computeDuration = function()
 
 Track.prototype.isInterpolable = function()
 {
-	if( this.value_size > 0 || LS.Interpolators[ this.type ] )
+	if( this.value_size > 0 || LS.Interpolators[ this._type ] )
 		return true;
 	return false;
 }
@@ -1335,7 +1354,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	var index_b = index + 1;
 	var data = this.data;
 
-	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this.type ] );
+	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this._type ] );
 
 	if(!interpolate || (data.length == 1) || index_b == data.length || (index_a == 0 && this.data[0][0] > time)) //(index_b == this.data.length && !this.looped)
 		return this.data[ index ][1];
@@ -1348,7 +1367,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	if(this.interpolation === LS.LINEAR)
 	{
 		/*
-		if(this.value_size === 0 && LS.Interpolators[ this.type ] )
+		if(this.value_size === 0 && LS.Interpolators[ this._type ] )
 		{
 			var func = LS.Interpolators[ this.type ];
 			var r = func( a[1], b[1], t, this._last_value );
@@ -1360,7 +1379,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		if(this.value_size == 1)
 			return a[1] * t + b[1] * (1-t);
 
-		return LS.Animation.interpolateLinear( a[1], b[1], t, null, this.type, this.value_size, this );
+		return LS.Animation.interpolateLinear( a[1], b[1], t, null, this._type, this.value_size, this );
 
 		/*
 
@@ -1369,7 +1388,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		if(!result || result.length != this.value_size)
 			result = this._result = new Float32Array( this.value_size );
 
-		switch(this.type)
+		switch(this._type)
 		{
 			case "quat": 
 				quat.slerp( result, a[1], b[1], t );
@@ -1395,9 +1414,9 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	else if(this.interpolation === LS.BEZIER)
 	{
 		//bezier not implemented for interpolators
-		if(this.value_size === 0 && LS.Interpolators[ this.type ] )
+		if(this.value_size === 0 && LS.Interpolators[ this._type ] )
 		{
-			var func = LS.Interpolators[ this.type ];
+			var func = LS.Interpolators[ this._type ];
 			var r = func( a[1], b[1], t, this._last_value );
 			this._last_value = r;
 			return r;
@@ -1418,12 +1437,12 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		result = result || this._result;
 		result = Animation.EvaluateHermiteSplineVector( a[1], b[1], pre_a[1], post_b[1], 1 - t, result );
 
-		if(this.type == "quat")
+		if(this._type_index == Track.QUAT)
 		{
 			quat.slerp( result, b[1], a[1], t ); //force quats without bezier interpolation
 			quat.normalize( result, result );
 		}
-		else if(this.type == "trans10")
+		else if(this._type_index == Track.TRANS10)
 		{
 			var rotR = result.subarray(3,7);
 			var rotA = a[1].subarray(3,7);
@@ -1452,7 +1471,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 	var data = this.data;
 	var num_keyframes = data.length / offset;
 
-	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this.type ] );
+	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this._type ] );
 
 	if( !interpolate || num_keyframes == 1 || index_b == num_keyframes || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
 		return this.getKeyframe( index )[1];
@@ -1469,46 +1488,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 		var a_data = a.subarray(1, this.value_size+1 );
 		var b_data = b.subarray(1, this.value_size+1 );
-		return LS.Animation.interpolateLinear( a_data, b_data, t, null, this.type, this.value_size, this );
-
-		/*
-		if(this.value_size == 1)
-			return a[1] * t + b[1] * (1-t);
-		else if( LS.Interpolators[ this.type ] )
-		{
-			var func = LS.Interpolators[ this.type ];
-			var r = func( a[1], b[1], t, this._last_v );
-			this._last_v = r;
-			return r;
-		}
-
-		result = result || this._result;
-
-		if(!result || result.length != this.value_size)
-			result = this._result = new Float32Array( this.value_size );
-
-		switch(this.type)
-		{
-			case "quat": 
-				quat.slerp( result, b.subarray(1,5), a.subarray(1,5), t );
-				quat.normalize( result, result );
-				break;
-			case "trans10": 
-				for(var i = 0; i < 10; i++) //this.value_size should be 10
-					result[i] = a[1+i] * t + b[1+i] * (1-t);
-				var rotA = a.subarray(4,8);
-				var rotB = b.subarray(4,8);
-				var rotR = result.subarray(3,7);
-				quat.slerp( rotR, rotB, rotA, t );
-				quat.normalize( rotR, rotR );
-				break;
-			default:
-				for(var i = 0; i < this.value_size; i++)
-					result[i] = a[1+i] * t + b[1+i] * (1-t);
-		}
-
-		return result;
-		*/
+		return LS.Animation.interpolateLinear( a_data, b_data, t, null, this._type, this.value_size, this );
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
@@ -1533,12 +1513,12 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 		result = Animation.EvaluateHermiteSplineVector( a_value, b_value, pre_a.subarray(1,offset), post_b.subarray(1,offset), 1 - t, result );
 
-		if(this.type == "quat")
+		if(this._type_index == Track.QUAT )
 		{
 			quat.slerp( result, a_value, b_value, t );
 			quat.normalize(result, result);
 		}
-		else if(this.type == "trans10")
+		else if(this._type_index == Track.TRANS10 )
 		{
 			var rotR = result.subarray(3,7);
 			var rotA = a_value.subarray(3,7);
@@ -1732,7 +1712,7 @@ Track.prototype.onlyRotations = (function()
 			this.packData();
 
 		this.property = path.join("/");
-		var old_type = this.type;
+		var old_type = this._type;
 		this.type = "quat";
 		this.value_size = 4;
 
@@ -1786,13 +1766,15 @@ Animation.interpolateLinear = function( a, b, t, result, type, value_size, track
 	if(!result || result.length != value_size)
 		result = track._result = new Float32Array( value_size );
 
-	switch( type )
+	var type_index = LS.TYPES_INDEX[ type ];
+
+	switch( type_index )
 	{
-		case "quat": 
+		case Track.QUAT:
 			quat.slerp( result, b, a, t );
 			quat.normalize( result, result );
 			break;
-		case "trans10": 
+		case Track.TRANS10: 
 			for(var i = 0; i < 10; i++) //this.value_size should be 10
 				result[i] = a[i] * t + b[i] * (1-t);
 			var rotA = a.subarray(3,7);

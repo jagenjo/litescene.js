@@ -17,7 +17,7 @@
 
 function newStandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the data object, it is called later
+	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
 
 	this.blend_mode = LS.Blend.NORMAL;
 
@@ -44,10 +44,13 @@ function newStandardMaterial(o)
 
 	this.normalmap_factor = 1.0;
 	this.normalmap_tangent = true;
+	this.bumpmap_factor = 1.0;
 
 	this.displacementmap_factor = 0.1;
 
 	this.use_scene_ambient = true;
+
+	this.createProperty( "extra", new Float32Array([1,1,1,1]), "color" ); //used in special situations
 
 	//used to change the render state
 	this.flags = {
@@ -74,11 +77,13 @@ function newStandardMaterial(o)
 		u_velvet_info: vec4.create(),
 		u_normal_info: vec2.create(),
 		u_detail_info: this._detail,
-		u_texture_matrix: this.uvs_matrix
+		u_texture_matrix: this.uvs_matrix,
+		u_extra_color: this._extra
 	};
 
 	this._samplers = [];
 
+	this._allows_instancing = true;
 	this.needsUpdate = true;
 
 	if(o) 
@@ -120,12 +125,14 @@ Object.defineProperty( newStandardMaterial.prototype, 'specular_gloss', {
 });
 
 newStandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
+newStandardMaterial.actions = {};
 
 newStandardMaterial.DETAIL_TEXTURE = "detail";
 newStandardMaterial.NORMAL_TEXTURE = "normal";
 newStandardMaterial.DISPLACEMENT_TEXTURE = "displacement";
 newStandardMaterial.BUMP_TEXTURE = "bump";
 newStandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
+newStandardMaterial.EXTRA_TEXTURE = "extra";
 newStandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 
 newStandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
@@ -168,16 +175,30 @@ newStandardMaterial.FLAGS = {
 	DETAIL_TEXTURE: 1<<7,
 	NORMAL_TEXTURE: 1<<8,
 	DISPLACEMENT_TEXTURE: 1<<9,
+	EXTRA_TEXTURE: 1<<10,
+	ENVIRONMENT_TEXTURE: 1<<11,
+	ENVIRONMENT_CUBEMAP: 1<<12,
+	IRRADIANCE_CUBEMAP: 1<<13,
 
-	ALPHA_TEST: 1<<16,
+	COLOR_TEXTURE_OPTIONS: 1<<16,
+	OPACITY_TEXTURE_OPTIONS: 1<<17,
+	SPECULAR_TEXTURE_OPTIONS: 1<<18,
+	REFLECTIVITY_TEXTURE_OPTIONS: 1<<19,
+	AMBIENT_TEXTURE_OPTIONS: 1<<20,
+	EMISSIVE_TEXTURE_OPTIONS: 1<<21,
+	NORMAL_TEXTURE_OPTIONS: 1<<22,
+	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
+	EXTRA_TEXTURE_OPTIONS: 1<<24,
 
-	ENVIRONMENT_TEXTURE: 1<<18,
-	ENVIRONMENT_CUBEMAP: 1<<19
+	DEGAMMA_COLOR: 1<<31,
+	SPEC_ON_ALPHA: 1<<32,
+	ALPHA_TEST: 1<<33
 };	
 
 newStandardMaterial.shader_codes = {};
 
-
+//returns the LS.ShaderCode required to render
+//here we cannot filter by light pass because this is done before applying shaderblocks
 newStandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
 	var FLAGS = newStandardMaterial.FLAGS;
@@ -188,37 +209,44 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 
 	//TEXTURES
 	if( this.textures.color )
+	{
 		code_flags |= FLAGS.COLOR_TEXTURE;
+		if( this.textures.color.degamma )
+			code_flags |= FLAGS.DEGAMMA_COLOR;
+	}
 	if( this.textures.opacity )
 		code_flags |= FLAGS.OPACITY_TEXTURE;
 
+	if( this.textures.displacement )
+		code_flags |= FLAGS.DISPLACEMENT_TEXTURE;
+
 	//color textures are not necessary 
-	if( pass.id == COLOR_PASS )
+	if( this.textures.normal )
+		code_flags |= FLAGS.NORMAL_TEXTURE;
+	if( this.textures.specular )
+		code_flags |= FLAGS.SPECULAR_TEXTURE;
+	if( this.reflection_factor > 0 )
 	{
-		if( this.textures.normal )
-			code_flags |= FLAGS.NORMAL_TEXTURE;
-		if( this.textures.specular )
-			code_flags |= FLAGS.SPECULAR_TEXTURE;
-		if( this.reflection_factor > 0 )
-		{
-			//code_flags |= FLAGS.REFLECTION;
-			if( this.textures.reflectivity )
-				code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
-		}
-		if( this.textures.emissive )
-			code_flags |= FLAGS.EMISSIVE_TEXTURE;
-		if( this.textures.ambient )
-			code_flags |= FLAGS.AMBIENT_TEXTURE;
-		if( this.textures.detail )
-			code_flags |= FLAGS.DETAIL_TEXTURE;
+		//code_flags |= FLAGS.REFLECTION;
+		if( this.textures.reflectivity )
+			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
 	}
+	if( this.textures.emissive )
+		code_flags |= FLAGS.EMISSIVE_TEXTURE;
+	if( this.textures.ambient )
+		code_flags |= FLAGS.AMBIENT_TEXTURE;
+	if( this.textures.detail )
+		code_flags |= FLAGS.DETAIL_TEXTURE;
+	if( this.textures.extra )
+		code_flags |= FLAGS.EXTRA_TEXTURE;
+	if( this.specular_on_alpha )
+		code_flags |= FLAGS.SPEC_ON_ALPHA;
 
 	//flags
-	if( (this.flags.alpha_test && pass.id == COLOR_PASS) ||
-		(this.flags.alpha_test_shadows && pass.id == SHADOW_PASS) )
+	if( this.flags.alpha_test )
 		code_flags |= FLAGS.ALPHA_TEST;
 
-	//check if we already have this shader created
+	//check if we already have this ShaderCode created
 	var shader_code = LS.newStandardMaterial.shader_codes[ code_flags ];
 
 	//reuse shader codes when possible
@@ -226,11 +254,18 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 		return shader_code;
 
 	//generate code
-	var fs_code = "";
+	var code = {
+		vs: "",
+		fs: "",
+		fs_shadows: ""
+	};
+
+	if( code_flags & FLAGS.DISPLACEMENT_TEXTURE )
+		code.vs += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
 
 	if( code_flags & FLAGS.NORMAL_TEXTURE )
 	{
-		fs_code += "	vec3 normal_pixel = texture2D( normal_texture, IN.uv ).xyz;\n\
+		code.fs += "	vec3 normal_pixel = texture2D( normal_texture, IN.uv ).xyz;\n\
 		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
 		if( u_normal_info.y > 0.0 )\n\
 			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, IN.uv, normal_pixel ));\n\
@@ -239,38 +274,63 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 
 	if( code_flags & FLAGS.COLOR_TEXTURE )
 	{
-		fs_code += "	vec4 tex_color = texture2D( color_texture, IN.uv );\n\
-	o.Albedo *= tex_color.xyz;\n\
+		var str = "	vec4 tex_color = texture2D( color_texture, IN.uv );\n";
+		code.fs += str;
+		code.fs_shadows += str;
+
+		if( code_flags & FLAGS.DEGAMMA_COLOR )
+			code.fs += "	tex_color.xyz = pow( tex_color.xyz, vec3(2.0) );\n";
+		str = "	o.Albedo *= tex_color.xyz;\n\
 	o.Alpha *= tex_color.w;\n";
+		code.fs += str;
+		code.fs_shadows += str;
 	}
 	if( code_flags & FLAGS.OPACITY_TEXTURE )
-		fs_code += "	o.Alpha *= texture2D( opacity_texture, IN.uv ).x;\n";
+	{
+		var str =  "	o.Alpha *= texture2D( opacity_texture, IN.uv ).x;\n";
+		code.fs += str;
+		code.fs_shadows += str;
+	}
 	if( code_flags & FLAGS.SPECULAR_TEXTURE )
 	{
-		fs_code += "	vec4 spec_info = texture2D( specular_texture, IN.uv );\n\
+		code.fs += "	vec4 spec_info = texture2D( specular_texture, IN.uv );\n\
 	o.Specular *= spec_info.x;\n\
 	o.Gloss *= spec_info.y;\n";
 	}
 	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
-		fs_code += "	o.Reflectivity *= texture2D( reflectivity_texture, IN.uv ).x;\n";
+		code.fs += "	o.Reflectivity *= texture2D( reflectivity_texture, IN.uv ).x;\n";
 	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
-		fs_code += "	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n";
+		code.fs += "	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n";
 	if( code_flags & FLAGS.AMBIENT_TEXTURE )
-		fs_code += "	o.Ambient *= texture2D( ambient_texture, IN.uv ).xyz;\n";
+		code.fs += "	o.Ambient *= texture2D( ambient_texture, IN.uv ).xyz;\n";
 	if( code_flags & FLAGS.DETAIL_TEXTURE )
-		fs_code += "	o.Albedo += (texture2D( detail_texture, IN.uv * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
+		code.fs += "	o.Albedo += (texture2D( detail_texture, IN.uv * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
+	if( code_flags & FLAGS.EXTRA_TEXTURE )
+		code.fs += "	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, IN.uv );\n";
 
 	//flags
 	if( code_flags & FLAGS.ALPHA_TEST )
-		fs_code += "	if(o.Alpha < 0.5) discard;\n";
+	{
+		var str = "	if(o.Alpha < 0.01) discard;\n";
+		code.fs += str;
+		code.fs_shadows += str;
+	}
+
+	if( code_flags & FLAGS.SPEC_ON_ALPHA )
+		code.fs += "	#define SPEC_ON_ALPHA\n";
 
 	//if( code_flags & FLAGS.FLAT_NORMALS )
 	//	flat_normals += "";
 
 	//compile shader and cache
 	shader_code = new LS.ShaderCode();
-	var code = newStandardMaterial.code_template.replace( /{{}}/gi, fs_code );
-	shader_code.code = code;
+	var final_code = newStandardMaterial.code_template;
+
+	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
+		v = v.replace( /[\{\}]/g, "" );
+		return code[v] || "";
+	});
+
 	LS.newStandardMaterial.shader_codes[ code_flags ] = shader_code;
 	return shader_code;
 }
@@ -326,7 +386,7 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 
 newStandardMaterial.prototype.getTextureChannels = function()
 {
-	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE ];
+	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, newStandardMaterial.EXTRA_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE ];
 }
 
 /**
@@ -355,6 +415,7 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case "velvet_additive":
 		case "normalmap_tangent":
 		case "normalmap_factor":
+		case "bumpmap_factor":
 		case "displacementmap_factor":
 		case "detail_factor":
 		case "emissive_extra":
@@ -381,6 +442,7 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case "ambient":	
 		case "emissive": 
 		case "velvet":
+		case "extra":
 		case "detail_scale":
 			if(this[name].length == value.length)
 				this[name].set(value);
@@ -414,12 +476,14 @@ newStandardMaterial.prototype.getPropertiesInfo = function()
 		velvet_exp: LS.TYPES.NUMBER,
 
 		normalmap_factor: LS.TYPES.NUMBER,
+		bumpmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
 		emissive_extra: LS.TYPES.NUMBER,
 
 		ambient: LS.TYPES.VEC3,
 		emissive: LS.TYPES.VEC3,
 		velvet: LS.TYPES.VEC3,
+		extra: LS.TYPES.VEC4,
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
@@ -453,10 +517,13 @@ newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "reflection_fresnel":
 		case "velvet_exp":
 		case "normalmap_factor":
+		case "bumpmap_factor":
 		case "displacementmap_factor":
 		case "emissive_extra":
 		case "detail_factor":
 			type = LS.TYPES.NUMBER; break;
+		case "extra":
+			type = LS.TYPES.VEC4; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
@@ -505,10 +572,17 @@ varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 \n\
 //matrices\n\
-uniform mat4 u_model;\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
 uniform mat4 u_normal_model;\n\
 uniform mat4 u_view;\n\
 uniform mat4 u_viewprojection;\n\
+//material\n\
+uniform float u_displacementmap_factor;\n\
+uniform sampler2D displacement_texture;\n\
 \n\
 //globals\n\
 uniform float u_time;\n\
@@ -526,22 +600,33 @@ void main() {\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
-  \n\
-  //deforms\n\
-  applyMorphing( vertex4, v_normal );\n\
-  applySkinning( vertex4, v_normal );\n\
+	\n\
+	{{vs}}\n\
+	//deforms\n\
+	applyMorphing( vertex4, v_normal );\n\
+	applySkinning( vertex4, v_normal );\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
-  \n\
-  applyLight(v_pos);\n\
-  \n\
+	\n\
+	applyLight(v_pos);\n\
+	\n\
 	//normal\n\
-	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#ifdef SHADERBLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+	gl_PointSize = u_point_size;\n\
+	#pragma shaderblock \"modifyFinalVertexPosition\"\n\
 }\n\
 \n\
 \\color.fs\n\
+\n\
+#ifdef DRAW_BUFFERS\n\
+	#extension GL_EXT_draw_buffers : require \n\
+#endif\n\
 \n\
 precision mediump float;\n\
 \n\
@@ -564,6 +649,8 @@ uniform vec4 u_velvet_info;\n\
 uniform vec2 u_normal_info;\n\
 uniform vec3 u_detail_info;\n\
 uniform mat3 u_texture_matrix;\n\
+uniform vec4 u_extra_color;\n\
+uniform float u_backlight_factor;\n\
 \n\
 uniform sampler2D color_texture;\n\
 uniform sampler2D opacity_texture;\n\
@@ -573,6 +660,7 @@ uniform sampler2D emissive_texture;\n\
 uniform sampler2D reflectivity_texture;\n\
 uniform sampler2D detail_texture;\n\
 uniform sampler2D normal_texture;\n\
+uniform sampler2D extra_texture;\n\
 \n\
 uniform vec4 u_color_texture_settings;\n\
 uniform vec4 u_opacity_texture_settings;\n\
@@ -588,6 +676,8 @@ uniform vec4 u_normal_texture_settings;\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
 \n\
+#pragma shaderblock \"extraBuffers\"\n\
+\n\
 void surf(in Input IN, out SurfaceOutput o)\n\
 {\n\
 	o.Albedo = u_material_color.xyz;\n\
@@ -598,8 +688,9 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Ambient = u_ambient_color;\n\
 	o.Emission = u_emissive_color.xyz;\n\
 	o.Reflectivity = u_reflection_info.x;\n\
+	o.Extra = u_extra_color;\n\
 	\n\
-	{{}}\n\
+	{{fs}}\n\
 	\n\
 	if(u_velvet_info.w > 0.0)\n\
 		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
@@ -612,15 +703,25 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 \n\
 \n\
 void main() {\n\
-  Input IN = getInput();\n\
-  SurfaceOutput o = getSurfaceOutput();\n\
-  surf(IN,o);\n\
-  vec4 final_color = vec4(0.0);\n\
-  Light LIGHT = getLight();\n\
-  final_color.xyz = computeLight( o, IN, LIGHT );\n\
-  final_color.a = o.Alpha;\n\
-  final_color = applyReflection( IN, o, final_color );\n\
-  gl_FragColor = final_color;\n\
+	Input IN = getInput();\n\
+	SurfaceOutput o = getSurfaceOutput();\n\
+	surf(IN,o);\n\
+	Light LIGHT = getLight();\n\
+	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
+	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
+	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
+	#ifdef SPEC_ON_ALPHA\n\
+		final_color.a += FINALLIGHT.Specular;\n\
+	#endif\n\
+	final_color.xyz = applyLight( o, FINALLIGHT );\n\
+	final_color = applyReflection( IN, o, final_color );\n\
+	#ifdef DRAW_BUFFERS\n\
+	  gl_FragData[0] = final_color;\n\
+	  if(u_light_info.z == 0.0)\n\
+		  gl_FragData[1] = o.Extra;\n\
+	#else\n\
+	  gl_FragColor = final_color;\n\
+	#endif\n\
 }\n\
 \\shadow.vs\n\
 \n\
@@ -638,10 +739,17 @@ varying vec3 v_normal;\n\
 varying vec2 v_uvs;\n\
 \n\
 //matrices\n\
-uniform mat4 u_model;\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
 uniform mat4 u_normal_model;\n\
 uniform mat4 u_view;\n\
 uniform mat4 u_viewprojection;\n\
+//material\n\
+uniform float u_displacementmap_factor;\n\
+uniform sampler2D displacement_texture;\n\
 \n\
 //globals\n\
 uniform float u_time;\n\
@@ -660,6 +768,7 @@ void main() {\n\
 	v_normal = a_normal;\n\
 	v_uvs = a_coord;\n\
   \n\
+	{{vs}}\n\
   //deforms\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
@@ -670,7 +779,11 @@ void main() {\n\
   applyLight(v_pos);\n\
   \n\
 	//normal\n\
-	v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#ifdef SHADERBLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \\shadow.fs\n\
@@ -700,7 +813,7 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Albedo = u_material_color.xyz;\n\
 	o.Alpha = u_material_color.a;\n\
 	\n\
-	{{}}\n\
+	{{fs_shadows}}\n\
 }\n\
 \n\
 void main() {\n\

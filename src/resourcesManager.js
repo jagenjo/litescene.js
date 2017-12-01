@@ -665,8 +665,13 @@ var ResourcesManager = {
 
 		//in case we need to force a response format 
 		var format_info = LS.Formats.supported[ extension ];
-		if( format_info && format_info.dataType ) //force dataType, otherwise it will be set by http server
-			settings.dataType = format_info.dataType;
+		if( format_info )
+		{
+			if( format_info.dataType ) //force dataType, otherwise it will be set by http server
+				settings.dataType = format_info.dataType;
+			if( format_info.mimeType ) //force mimeType
+				settings.mimeType = format_info.mimeType;
+		}
 
 		//send the REQUEST
 		LS.Network.request( settings ); //ajax call
@@ -891,7 +896,10 @@ var ResourcesManager = {
 
 		//test filename is valid (alphanumeric with spaces, dot or underscore and dash and slash
 		if( filename[0] != ":" && this.valid_resource_name_reg.test( filename ) == false )
-			console.warn( "invalid filename for resource: ", filename );
+		{
+			if( filename.substr(0,4) != "http" )
+				console.warn( "invalid filename for resource: ", filename );
+		}
 
 		//clean up the filename (to avoid problems with //)
 		filename = this.cleanFullpath( filename );
@@ -1269,6 +1277,8 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 	}
 
 	var class_name = data.object_class || data.object_type; //object_type for LEGACY
+	if(!class_name && data.material_class)
+		class_name = data.material_class; //HACK to fix one error
 
 	if( class_name && !data.is_data )
 	{

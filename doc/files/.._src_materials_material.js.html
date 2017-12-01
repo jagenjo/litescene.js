@@ -171,6 +171,11 @@ function Material( o )
 	this.uid = LS.generateUId(&quot;MAT-&quot;);
 	this._must_update = true;
 
+	//used locally during rendering
+	this._index = -1;
+	this._local_id = Material.last_index++;
+	this._last_frame_update = -1;
+
 	/**
 	* materials have at least a basic color property and opacity
 	* @property color
@@ -291,7 +296,7 @@ function Material( o )
 Material[&quot;@color&quot;] = { type:&quot;color&quot; };
 
 Material.icon = &quot;mini-icon-material.png&quot;;
-
+Material.last_index = 0;
 
 Material.NO_LIGHTS = 0;
 Material.ONE_LIGHT = 1;
@@ -329,6 +334,7 @@ Material.AMBIENT_TEXTURE = &quot;ambient&quot;;
 Material.SPECULAR_TEXTURE = &quot;specular&quot;; //defines specular factor and glossiness per pixel
 Material.EMISSIVE_TEXTURE = &quot;emissive&quot;;
 Material.ENVIRONMENT_TEXTURE = &quot;environment&quot;;
+Material.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;
 
 Material.COORDS_UV0 = &quot;0&quot;;
 Material.COORDS_UV1 = &quot;1&quot;;
@@ -440,6 +446,9 @@ Material.prototype.configure = function(o)
 Material.prototype.serialize = function()
 {
 	 var o = LS.cloneObject(this);
+	 delete o.filename;
+ 	 delete o.fullpath;
+ 	 delete o.remotepath;
 	 o.material_class = LS.getObjectClassName(this);
 	 return o;
 }

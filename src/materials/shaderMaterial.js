@@ -22,6 +22,7 @@ function ShaderMaterial( o )
 	this._passes = {};
 	this._light_mode = 0;
 	this._primitive = -1;
+	this._allows_instancing = false;
 
 	this._version = -1;
 	this._shader_version = -1;
@@ -319,6 +320,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	//compute flags: checks the ShaderBlocks attached to this instance and resolves the flags
 	var block_flags = instance.computeShaderBlockFlags();
+	block_flags |= LS.Renderer._global_block_flags; //apply global block_flags
 
 	//global stuff
 	this.render_state.enable();
@@ -335,6 +337,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 			else
 				global_flags |= environment_cubemap_block.flag_mask;
 		}
+		if( LS.Renderer._global_textures.irradiance )
+		{
+			global_flags |= irradiance_block.flag_mask;
+		}
 	}
 
 	if(this.onRenderInstance)
@@ -343,7 +349,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//add flags related to lights
 	var lights = null;
 
-	//ignore lights renders the object with illumination
+	//ignore lights renders the object with flat illumination
 	var ignore_lights = pass.id != COLOR_PASS || render_settings.lights_disabled || this._light_mode === Material.NO_LIGHTS;
 
 	if( !ignore_lights )
@@ -372,11 +378,13 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		return true;
 	}
 
+	var base_block_flags = block_flags;
+
 	var prev_shader = null;
 	for(var i = 0; i < lights.length; ++i)
 	{
 		var light = lights[i];
-		block_flags = light.applyShaderBlockFlags( block_flags, pass, render_settings );
+		block_flags = light.applyShaderBlockFlags( base_block_flags, pass, render_settings );
 
 		//global
 		block_flags |= global_flags;
@@ -904,3 +912,25 @@ var reflection_block = new LS.ShaderBlock("applyReflection");
 ShaderMaterial.reflection_block = reflection_block;
 reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
 reflection_block.register();
+
+
+var irradiance_code = "\n\
+	uniform samplerCube irradiance_texture;\n\
+	\n\
+	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+		FINALLIGHT.Ambient *= textureCube( irradiance_texture, o.Normal ).xyz;\n\
+	}\n\
+";
+
+var irradiance_disabled_code = "\n\
+	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+	}\n\
+";
+
+var irradiance_block = new LS.ShaderBlock("applyIrradiance");
+ShaderMaterial.irradiance_block = irradiance_block;
+irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
+irradiance_block.register();
+

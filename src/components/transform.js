@@ -86,6 +86,8 @@ Transform.prototype.onRemovedFromNode = function(node)
 Object.defineProperty( Transform.prototype, 'position', {
 	get: function() { return this._position; },
 	set: function(v) { 
+		if(!v || !v.length)
+			return;
 		this._position.set(v); 
 		this._must_update = true; 
 	},

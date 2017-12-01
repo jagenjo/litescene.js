@@ -2,9 +2,7 @@
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
-
-	//this._render_settings = new LS.RenderSettings();
-
+	this._render_settings = null;
 	this._textures = {};
 
 	if(o)
@@ -26,20 +24,30 @@ Object.defineProperty( GlobalInfo.prototype, 'textures', {
 	enumerable: true
 });
 
-/*
+
 Object.defineProperty( GlobalInfo.prototype, 'render_settings', {
 	set: function( v )
 	{
+		if( !v )
+		{
+			this._render_settings = null;
+			return;
+		}
 		if(typeof(v) != "object")
 			return;
-		this._render_settings.configure(v);
+		if(!this._render_settings)
+			this._render_settings = new LS.RenderSettings();
+		if(v.constructor === Array && v[3] == "RenderSettings") //encoded object ["@ENC","object",data,"RenderSettings"]
+			this._render_settings.configure( v[2] );
+		else
+			this._render_settings.configure(v);
 	},
 	get: function(){
 		return this._render_settings;
 	},
 	enumerable: true
 });
-*/
+
 
 GlobalInfo.icon = "mini-icon-bg.png";
 GlobalInfo.DEFAULT_AMBIENT_COLOR = vec3.fromValues(0.2, 0.2, 0.2);

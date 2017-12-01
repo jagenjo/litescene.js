@@ -435,7 +435,8 @@ Light.prototype.getUp = function( out )
 Light.prototype.getFront = function( out ) 
 {
 	var front = out || vec3.create();
-	vec3.subtract(front, this.getPosition(), this.getTarget() ); //front is reversed?
+	this.getPosition( front );
+	vec3.subtract( front, front, this.getTarget( Light._temp_position ) ); //front is reversed?
 	//vec3.subtract(front, this.getTarget(), this.getPosition() ); //front is reversed?
 	vec3.normalize(front, front);
 	return front;
@@ -566,7 +567,7 @@ Light.prototype.prepare = function( render_settings )
 	uniforms.u_light_offset = this.offset;
 
 	//generate shadowmaps
-	var must_update_shadowmap = render_settings.update_shadowmaps && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
+	var must_update_shadowmap = (render_settings.update_shadowmaps || (!this._shadowmap && !LS.ResourcesManager.isLoading())) && render_settings.shadows_enabled && !render_settings.lights_disabled && !render_settings.low_quality;
 
 	if(must_update_shadowmap)
 	{
