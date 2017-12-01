@@ -41,13 +41,13 @@ Every track has a string called the locator which identifies the property in the
 Some examples: ```root/transform/x```,```mynode/MeshRenderer/enabled``` or ```@NODE-f7cac-865-1ecf644-5\@COMP-f7cac-865-1ecf644-3\size```.
 
 The locator is usually (but not always) divided in three parts:
- * node: could be the UID or the name of the node
- * componentt: to specify which component, could be the UID or the name of the component
- * property: to specify the name of the property
+ * **node**: could be the UID or the name of the node
+ * **component**: to specify which component, could be the UID or the class name of the component (in case of multiple only the first found is used)
+ * **property**: to specify the name of the property
 
 Some components handle the locators by themselves (like script components) because they allow more parts in the locator.
 
-To get the locator of a property you can call the method getLocator of the container (the component) passing the name of the property as a parameter:
+To get the locator of a property you can call the method ```getLocator``` of the container (the component) passing the name of the property as a parameter:
 
 ```javascript
 node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
@@ -55,8 +55,9 @@ node.transform.getLocator("x"); //returns "@NODE_uid/@COMP-uid/x"
 
 ## Applying animations
 
-There are different ways to play an animation, through the ```LS.Components.PlayAnimation``` component, or programatically calling the ```applyTracks``` methods in the ```LS.Animation.Take```.
+There are two ways to play an animation track, through the ```LS.Components.PlayAnimation``` component, or programatically calling the ```applyTracks``` methods in the ```LS.Animation.Take```.
 
+Use the PlayAnimation if you just want to launch an animation. If you want to play several an interpolate then we recommend calling the applyTracks manually.
 
 ## PlayAnimation
 
