@@ -10,8 +10,9 @@ In this guide we will cover all of them, from easier to more complex, and explai
 The easiest way to render stuff on the scene is to create nodes attached to the scene and use some of the Components that render geometry like 
 ```MeshRenderer``` or ```GeometricPrimitive```. To define how this objects should be rendered you use the materials system of the engine.
 
-This is easy to use and interacts perfectly with the rest of the engine, but in this case you cannot control the render calls, it is all 
-controlled by the Material class.
+This is easy to use and interacts perfectly with the rest of the engine, but in this case you cannot control the render calls, it is all controlled by the Material class.
+
+This is the better method when you just one to render a mesh with some material applied.
 
 You can use the editor or do it by code:
 
@@ -25,12 +26,17 @@ node.addComponent( comp ); //add to the node
 ## RenderInstances
 
 The second option is to generate manually from a Script the RenderInstance, instead of using the components that do that for yourself.
+
 A RenderInstance is the object containing all the info required to render one mesh on the screen. To know more check the [RenderInstance guide](render_pipeline.md#lsrenderinstance).
+
+This is the appropiate method to render when you want to render some strange mesh (particles, point clouds) from your own Component, and you expect this mesh to be fully integrated into the render pipeline (the object can cast shadows, accepts mouse picking, is seen from reflections, etc).
 
 ```js
 this.onCollectRenderInstances = function( RIs )
 {
-  var RI = new LS.RenderInstance();
+  var RI = this._RI;
+  if(!RI)
+    RI = this._RI = new LS.RenderInstance();
   
   var mesh = LS.ResourcesManager.load("my_mesh.obj");
   var material = LS.ResourcesManager.load("mymaterial.json");
@@ -44,9 +50,9 @@ this.onCollectRenderInstances = function( RIs )
 
 ## LS.Draw
 
-If you want to render some basic shapes for debugging purposes sometimes is easier to skip all the nodes and render instances and just do the basic calls.
+If all that you want is to render some basic shapes for debugging purposes sometimes is easier to skip all the nodes and render instances and just do the basic calls to the GPU.
 
-For that purpose you can use the ```LS.Draw``` class. It behaves similar to old school fixed pipeline rendering method.
+For that purpose you can use the ```LS.Draw``` class. It behaves similar to old school fixed pipeline rendering methods.
 
 To know more check the [guide for LS.Draw](draw.md)
 
@@ -79,8 +85,7 @@ this.onRenderGUI = function(ctx)
 
 ## LiteGL
 
-If you have experience coding directly to the GPU but you dont want to waste time with the inners of WebGL, LiteScene uses LiteGL as 
-its low-level layer, which wraps most of the common calls to the GPU. This way it is very simple to do your own draw calls.
+If you have experience coding directly to the GPU but you dont want to waste time with the inners of WebGL, LiteScene uses LiteGL as its low-level layer, which wraps most of the common calls to the GPU. This way it is very simple to do your own draw calls.
 
 For more info about LiteGL check the [LiteGL repository guide](https://github.com/jagenjo/litegl.js/tree/master/guides).
 
@@ -90,19 +95,19 @@ var shader = new GL.Shader( vertex_shader_code, fragment_shader_code );
 
 this.onRender = function()
 {
-   shader.uniforms({ u_color: [1,1,1,1]});
+   camera = LS.Renderer._current_camera;
+   shader.uniforms( camera._uniforms );
+   shader.uniforms({u_color: [1,1,1,1]});
    shader.draw( mesh, GL.TRIANGLES );
 }
 ```
 
 ## WebGL calls
 
-Or if you dont want to use LiteGL and you feel more confortable doing your own WebGL calls manually, you have total freedom to do them
-from any script.
+Or if you dont want to use LiteGL and you feel more confortable doing your own WebGL calls manually, you have total freedom to do them from any function in your scripts.
 
 ## Custom Engine
 
-The last option is to integrate and existing 3D engine inside LiteScene. Just be sure to pass all the info to the engine (like the
-canvas used).
+The last option is to integrate and existing 3D engine inside LiteScene. Just be sure to pass all the info to the engine (like the canvas used). Check the ThreeJS component.
 
 
