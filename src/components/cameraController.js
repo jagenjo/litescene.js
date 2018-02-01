@@ -1,5 +1,6 @@
 /**
 * Camera controller
+* Allows to move a camera with the user input. It uses the first camera attached to the same node
 * @class CameraController
 * @constructor
 * @param {String} object to configure from
@@ -27,10 +28,11 @@ function CameraController(o)
 CameraController.ORBIT = 1; //orbits around the center
 CameraController.FIRSTPERSON = 2; //moves relative to the camera
 CameraController.PLANE = 3; //moves paralel to a plane
+CameraController.HORIZONTALY = 4; //like first person but only yaw
 
 CameraController.icon = "mini-icon-cameracontroller.png";
 
-CameraController["@mode"] = { type:"enum", values: { "Orbit": CameraController.ORBIT, "FirstPerson": CameraController.FIRSTPERSON, "Plane": CameraController.PLANE }};
+CameraController["@mode"] = { type:"enum", values: { "Orbit": CameraController.ORBIT, "FirstPerson": CameraController.FIRSTPERSON, "Plane": CameraController.PLANE, "Horizontaly": CameraController.HORIZONTALY  }};
 
 CameraController.prototype.onAddedToScene = function( scene )
 {
@@ -55,12 +57,18 @@ CameraController.prototype.onUpdate = function(e)
 	if(!this._root || !this.enabled) 
 		return;
 
+	//get first camera attached to this node
+	var cam = this._root.camera;
+
+	//no camera or disabled, then nothing to do
+	if(!cam || !cam.enabled)
+		return;
+
 	if(this._root.transform)
 	{
 	}
-	else if(this._root.camera)
+	else 
 	{
-		var cam = this._root.camera;
 		if(this.mode == CameraController.FIRSTPERSON)
 		{
 			//move using the delta vector
@@ -87,7 +95,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	
 	var node = this._root;
 	var cam = node.camera;
-	if(!cam)
+	if(!cam || !cam.enabled)
 		return;
 
 	var is_global_camera = node._is_root;
@@ -123,21 +131,25 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	var changed = false;
 
-	if(this.mode == CameraController.FIRSTPERSON)
+	if(this.mode == CameraController.FIRSTPERSON || this.mode == CameraController.HORIZONTALY)
 	{
-		cam.rotate(-mouse_event.deltax * this.rot_speed,LS.TOP);
+		var top = LS.TOP; //cam.getLocalVector(LS.TOP);
+		cam.rotate(-mouse_event.deltax * this.rot_speed,top);
 		cam.updateMatrices();
-		var right = cam.getLocalVector(LS.RIGHT);
 
-		if(is_global_camera)
+		if( this.mode == CameraController.FIRSTPERSON )
 		{
-			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
-			cam.updateMatrices();
-		}
-		else
-		{
-			node.transform.rotate(-mouse_event.deltay * this.rot_speed,right);
-			cam.updateMatrices();
+			var right = cam.getLocalVector(LS.RIGHT);
+			if(is_global_camera)
+			{
+				cam.rotate(-mouse_event.deltay * this.rot_speed,right);
+				cam.updateMatrices();
+			}
+			else
+			{
+				node.transform.rotate(-mouse_event.deltay * this.rot_speed,LS.RIGHT);
+				cam.updateMatrices();
+			}
 		}
 
 		changed = true;
@@ -240,6 +252,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		this._root.scene.requestFrame();
 }
 
+//manage pinching and dragging two fingers in a touch pad
 CameraController.prototype.onTouch = function( e, touch_event)
 {
 	if(!this._root || !this.enabled) 
@@ -247,7 +260,7 @@ CameraController.prototype.onTouch = function( e, touch_event)
 	
 	var node = this._root;
 	var cam = node.camera;
-	if(!cam)
+	if(!cam || !cam.enabled)
 		return;
 
 	var is_global_camera = node._is_root;

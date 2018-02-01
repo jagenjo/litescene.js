@@ -92,7 +92,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 * @method serializeComponents
 * @param {Object} o container where the components will be stored
 */
-ComponentContainer.prototype.serializeComponents = function( o )
+ComponentContainer.prototype.serializeComponents = function( o, simplified )
 {
 	if(!this._components)
 		return;
@@ -103,7 +103,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		var comp = this._components[i];
 		if( !comp.serialize || comp.skip_serialize )
 			continue;
-		var obj = comp.serialize();
+		var obj = comp.serialize( simplified );
 
 		//check for bad stuff inside the component
 		/*
@@ -116,7 +116,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		}
 		*/
 
-		if(comp._editor)
+		if(comp._editor && !simplified )
 			obj.editor = comp._editor;
 
 		//enforce uid storage
@@ -407,6 +407,35 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 	if(!this._components)
 		return null;
 	return this._components[index];
+}
+
+/**
+* Returns a list of components matching the search, it search in the node and child nodes
+* @method findComponent
+* @param {Class|String} component the component class or the class name
+* @return {Array} an array with all the components of the same class
+*/
+ComponentContainer.prototype.findComponents = function( comp_name, out )
+{
+	out = out || [];
+	if(!comp_name)
+		return out;
+	if( comp_name.constructor === String )
+		comp_name = LS.Components[ comp_name ];
+	if(!comp_name)
+		return out;
+
+	for(var i = 0; i < this._components.length; ++i )
+	{
+		var comp = this._components[i];
+		if( comp && comp.constructor === comp_name )
+			out.push( comp );
+	}
+
+	if(this._children)
+		for(var i = 0; i < this._children.length; ++i )
+			this._children[i].findComponents( comp_name, out );
+	return out;
 }
 
 /**

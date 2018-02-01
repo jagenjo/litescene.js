@@ -194,12 +194,12 @@ CompositePattern.prototype.removeAllChildren = function( param1, param2 )
 * @method serializeChildren
 * @return {Array} array containing all serialized data from every children
 */
-CompositePattern.prototype.serializeChildren = function()
+CompositePattern.prototype.serializeChildren = function( simplified )
 {
 	var r = [];
 	if(this._children)
 		for(var i in this._children)
-			r.push( this._children[i].serialize() ); //serialize calls serializeChildren
+			r.push( this._children[i].serialize( false, simplified ) ); //serialize calls serializeChildren
 	return r;
 }
 
@@ -438,7 +438,12 @@ CompositePattern.prototype.moveAfter = function( sibling )
 }
 
 
-//search for a node using a string that could be a name, a fullname or a uid
+/**
+* Search for a node using a string that could be a name, a fullname or a uid
+* @method findNode
+* @param {String} name_or_uid
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNode = function( name_or_uid )
 {
 	if(name_or_uid == "")
@@ -450,7 +455,13 @@ CompositePattern.prototype.findNode = function( name_or_uid )
 	return this.findNodeByUId( name_or_uid );
 }
 
-//this function gets called a lot when using animations
+/**
+* search a node by its name
+* this function gets called a lot when using animations
+* @method findNodeByName
+* @param {String} name
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNodeByName = function( name )
 {
 	if(!name)
@@ -479,6 +490,12 @@ CompositePattern.prototype.findNodeByName = function( name )
 	return null;
 }
 
+/**
+* search a node by its uid
+* @method findNodeByUId
+* @param {String} id
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNodeByUId = function( uid )
 {
 	if(!uid)
@@ -505,5 +522,14 @@ CompositePattern.prototype.findNodeByUId = function( uid )
 	return null;
 }
 
-
-
+/**
+* returns how many levels deep is the node in the hierarchy
+* @method getHierarchyLevel
+* @return {Number} the level, 0 if it is the root
+**/
+CompositePattern.prototype.getHierarchyLevel = function()
+{
+	if(!this._parentNode)
+		return 0;
+	return this._parentNode.getHierarchyLevel() + 1;
+}

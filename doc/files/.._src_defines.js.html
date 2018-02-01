@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/customData.js</title>
+    <title>../src/defines.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -149,138 +149,109 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/components/customData.js</h1>
+<h1 class="file-heading">File: ../src/defines.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-/** 
-* This module allows to store custom data inside a node
-* properties have the form of:
-* - name:
-* - value:
-* - type:
-* @class CustomData
+
+if(typeof(GL) == &quot;undefined&quot;)
+	throw(&quot;LiteSCENE requires to have litegl.js included before litescene.js&quot;);
+
+//blending mode
+var Blend = {
+	AUTOMATIC: &quot;automatic&quot;,
+	NORMAL: &quot;normal&quot;,
+	ALPHA: &quot;alpha&quot;,
+	ADD: &quot;add&quot;,
+	MULTIPLY: &quot;multiply&quot;,
+	SCREEN: &quot;screen&quot;,
+	CUSTOM: &quot;custom&quot;
+}
+
+LS.Blend = Blend;
+
+LS.BlendFunctions = {};
+
+LS.BlendFunctions[ Blend.AUTOMATIC ] = [GL.ONE, GL.ZERO];
+LS.BlendFunctions[ Blend.NORMAL ] = [GL.ONE, GL.ZERO];
+LS.BlendFunctions[ Blend.ALPHA ] = [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
+LS.BlendFunctions[ Blend.ADD ] = [GL.SRC_ALPHA, GL.ONE];
+LS.BlendFunctions[ Blend.MULTIPLY ] = [GL.DST_COLOR, GL.ONE_MINUS_SRC_ALPHA];
+LS.BlendFunctions[ Blend.SCREEN ] =	[GL.SRC_ALPHA, GL.ONE];
+LS.BlendFunctions[ Blend.CUSTOM ] =	[GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA];
+
+//used to know the state of the application
+LS.STOPPED = 0;
+LS.PLAYING = 1; 
+LS.PAUSED = 2;
+LS.LOADING = 3;
+
+LS.RUNNING = 1; //LEGACY
+
+//helpful consts
+LS.ZEROS = vec3.create();
+LS.ZEROS4 = vec4.create();
+LS.ONES = vec3.fromValues(1,1,1);
+LS.TOP = vec3.fromValues(0,1,0);
+LS.BOTTOM = vec3.fromValues(0,-1,0);
+LS.RIGHT = vec3.fromValues(1,0,0);
+LS.LEFT = vec3.fromValues(-1,0,0);
+LS.FRONT = vec3.fromValues(0,0,-1);
+LS.BACK = vec3.fromValues(0,0,1);
+LS.IDENTITY = mat4.create();
+LS.WHITE = LS.ONES;
+LS.BLACK = LS.ZEROS;
+
+//types
+LS.TYPES = {
+	BOOLEAN: &quot;boolean&quot;,
+	NUMBER : &quot;number&quot;,
+	STRING : &quot;string&quot;,
+	VEC2 : &quot;vec2&quot;,
+	VEC3 : &quot;vec3&quot;,
+	VEC4 : &quot;vec3&quot;,
+	COLOR : &quot;color&quot;,
+	COLOR4 : &quot;color4&quot;,
+	EVENT : &quot;event&quot;,
+	RESOURCE: &quot;resource&quot;,
+	TEXTURE : &quot;texture&quot;,
+	MESH: &quot;mesh&quot;,
+	OBJECT: &quot;object&quot;,
+	SCENE: &quot;scene&quot;,
+	SCENENODE: &quot;node&quot;,
+	SCENENODE_ID: &quot;node_id&quot;,
+	COMPONENT: &quot;component&quot;,
+	COMPONENT_ID: &quot;component_id&quot;,
+	MATERIAL: &quot;material&quot;,
+	ANIMATION: &quot;animation&quot;,
+	ARRAY: &quot;array&quot;,
+	QUAT : &quot;quat&quot;,
+	TRANS10 : &quot;trans10&quot;,
+	POSITION : &quot;position&quot;
+};
+
+LS.TYPES_INDEX = {};
+var index = 0;
+for(var i in LS.TYPES)
+	LS.TYPES_INDEX[ LS.TYPES[i] ] = index++;
+
+LS.RESOURCE_TYPES = {};
+LS.RESOURCE_TYPES[ LS.TYPES.RESOURCE ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.TEXTURE ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.MESH ] = true;
+LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
+//audio and video?
+
+/**
+* A Ray that contains an origin and a direction (it uses the Ray class from litegl, so to check documentation go to litegl doc
+* @class Ray
+* @namespace LS
 * @constructor
-* @param {Object} object to configure from
+* @param {vec3} origin
+* @param {vec3} direction
 */
+LS.Ray = GL.Ray;
 
-function CustomData(o)
-{
-	this._properties = [];
-	this._properties_by_name = {};
-
-	if(o)
-		this.configure(o);
-}
-
-Object.defineProperty( CustomData.prototype, &quot;properties&quot;, {
-	set: function(v){
-		if(!v || v.constructor !== Array)
-			return;
-		this._properties.length = v.length;
-		this._properties_by_name = {};
-		for(var i = 0; i &lt; v.length; ++i)
-		{
-			var p = v[i];
-			this._properties[i] = p;
-			this._properties_by_name[ p.name ] = p;
-		}
-	},
-	get: function()
-	{
-		return this._properties;
-	},
-	enumerable: true
-});
-
-CustomData.icon = &quot;mini-icon-bg.png&quot;;
-
-CustomData.prototype.onAddedToNode = function(node)
-{
-	if(!node.custom)
-		node.custom = this;
-}
-
-CustomData.prototype.onRemovedFromNode = function(node)
-{
-	if(node.custom == this)
-		delete node.custom;
-}
-
-CustomData.prototype.getResources = function(res)
-{
-	return res;
-}
-
-CustomData.prototype.addProperty = function( property )
-{
-	this._properties.push( property );
-	if( this._properties_by_name[ property.name ] )
-		console.warn(&quot;CustomData: there is a property with the same name&quot;);
-	this._properties_by_name[ property.name ] = property;
-}
-
-CustomData.prototype.getProperty = function( name )
-{
-	return this._properties_by_name[ name ];
-}
-
-CustomData.prototype.getPropertiesInfo = function()
-{
-	return this._properties;
-}
-
-CustomData.prototype.updateProperty = function( property )
-{
-	this._properties_by_name[ property.name ] = property;
-}
-
-//used for animation tracks
-CustomData.prototype.getPropertyInfoFromPath = function( path )
-{
-	var varname = path[0];
-	var property = this._properties_by_name[ varname ];
-	if(!property)
-		return null;
-	return {
-		node: this._root,
-		target: property, //no this
-		name: &quot;value&quot;,
-		value: property.value,
-		type: property.type
-	};
-}
-
-CustomData.prototype.setPropertyValueFromPath = function( path, value, offset )
-{
-	offset = offset || 0;
-
-	var varname = path[offset];
-	var property = this._properties_by_name[ varname ];
-	if(!property)
-		return;
-
-	//assign
-	if(property.value &amp;&amp; property.value.set)
-		property.value.set( value ); //typed arrays
-	else
-		property.value = value;
-}
-
-CustomData.prototype.get = function(name)
-{
-	var p = this._properties_by_name[ name ];
-	if(p)
-		return p.value;
-}
-
-
-CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-}
-
-LS.registerComponent( CustomData );
-LS.CustomData = CustomData;
     </pre>
 </div>
                     </div>

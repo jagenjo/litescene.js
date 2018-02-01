@@ -141,7 +141,7 @@ var Draw = {
 			uniform sampler2D u_texture;\n\
 			void main() {\n\
 			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
-			  if(tex.a < 0.1)\n\
+			  if(tex.a < 0.01)\n\
 				discard;\n\
 			  gl_FragColor = u_color * tex;\n\
 			}\
@@ -332,6 +332,15 @@ var Draw = {
 	*/
 	setColor: function(color)
 	{
+		if( arguments.length >= 3 )
+		{
+			this.color[0] = arguments[0];
+			this.color[1] = arguments[1];
+			this.color[2] = arguments[2];
+			if( arguments.length == 3 )
+				this.color[3] = arguments[3];
+		}
+		else
 		for(var i = 0; i < color.length; i++)
 			this.color[i] = color[i];
 	},

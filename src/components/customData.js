@@ -112,6 +112,13 @@ CustomData.prototype.setPropertyValueFromPath = function( path, value, offset )
 		property.value = value;
 }
 
+CustomData.prototype.get = function(name)
+{
+	var p = this._properties_by_name[ name ];
+	if(p)
+		return p.value;
+}
+
 
 CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
 {

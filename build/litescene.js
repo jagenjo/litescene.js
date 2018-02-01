@@ -2013,6 +2013,15 @@ LS.RESOURCE_TYPES[ LS.TYPES.MESH ] = true;
 LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
 //audio and video?
 
+/**
+* A Ray that contains an origin and a direction (it uses the Ray class from litegl, so to check documentation go to litegl doc
+* @class Ray
+* @namespace LS
+* @constructor
+* @param {vec3} origin
+* @param {vec3} direction
+*/
+LS.Ray = GL.Ray;
 
 var Network = {
 
@@ -5321,11 +5330,11 @@ var ShadersManager = {
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
-		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
+		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL\n";
 		if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
-			this.global_extra_code = "#define STANDARD_DERIVATIVES" + String.fromCharCode(10);
+			this.global_extra_code += "#define STANDARD_DERIVATIVES\n";
 		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
-			this.global_extra_code = "#define DRAW_BUFFERS" + String.fromCharCode(10);
+			this.global_extra_code += "#define DRAW_BUFFERS\n";
 
 		//compile some shaders
 		this.createDefaultShaders();
@@ -6794,14 +6803,23 @@ Material.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialization info
 */
-Material.prototype.serialize = function()
+Material.prototype.serialize = function( simplified )
 {
-	 var o = LS.cloneObject(this);
-	 delete o.filename;
- 	 delete o.fullpath;
- 	 delete o.remotepath;
-	 o.material_class = LS.getObjectClassName(this);
-	 return o;
+	var o = LS.cloneObject(this);
+	delete o.filename;
+	delete o.fullpath;
+	delete o.remotepath;
+	o.material_class = LS.getObjectClassName(this);
+
+	if( simplified )
+	{
+		delete o.render_state;
+		delete o.flags;
+		if( o.uvs_matrix && o.uvs_matrix.equal([1,0,0, 0,1,0, 0,0,1]) )
+			delete o.uvs_matrix;
+	}
+
+	return o;
 }
 
 
@@ -7575,14 +7593,15 @@ ShaderMaterial.prototype.processShaderCode = function()
 		this.createUniform( global.name, global.uniform, global.type, global.value, global.options );
 	}
 
+	//set version before asssignOldProperties
+	this._shader_version = shader_code._version;
+	this._version++;
+
 	//restore old values
 	this.assignOldProperties( old_properties );
 
 	//set stuff
 	//TODO
-
-	this._shader_version = shader_code._version;
-	this._version++;
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
@@ -9522,9 +9541,9 @@ newStandardMaterial.FLAGS = {
 	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
 	EXTRA_TEXTURE_OPTIONS: 1<<24,
 
-	DEGAMMA_COLOR: 1<<31,
-	SPEC_ON_ALPHA: 1<<32,
-	ALPHA_TEST: 1<<33
+	DEGAMMA_COLOR: 1<<26,
+	SPEC_ON_ALPHA: 1<<27,
+	ALPHA_TEST: 1<<28
 };	
 
 newStandardMaterial.shader_codes = {};
@@ -10249,7 +10268,7 @@ ComponentContainer.prototype.configureComponents = function( info )
 * @method serializeComponents
 * @param {Object} o container where the components will be stored
 */
-ComponentContainer.prototype.serializeComponents = function( o )
+ComponentContainer.prototype.serializeComponents = function( o, simplified )
 {
 	if(!this._components)
 		return;
@@ -10260,7 +10279,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		var comp = this._components[i];
 		if( !comp.serialize || comp.skip_serialize )
 			continue;
-		var obj = comp.serialize();
+		var obj = comp.serialize( simplified );
 
 		//check for bad stuff inside the component
 		/*
@@ -10273,7 +10292,7 @@ ComponentContainer.prototype.serializeComponents = function( o )
 		}
 		*/
 
-		if(comp._editor)
+		if(comp._editor && !simplified )
 			obj.editor = comp._editor;
 
 		//enforce uid storage
@@ -10564,6 +10583,35 @@ ComponentContainer.prototype.getComponentByIndex = function(index)
 	if(!this._components)
 		return null;
 	return this._components[index];
+}
+
+/**
+* Returns a list of components matching the search, it search in the node and child nodes
+* @method findComponent
+* @param {Class|String} component the component class or the class name
+* @return {Array} an array with all the components of the same class
+*/
+ComponentContainer.prototype.findComponents = function( comp_name, out )
+{
+	out = out || [];
+	if(!comp_name)
+		return out;
+	if( comp_name.constructor === String )
+		comp_name = LS.Components[ comp_name ];
+	if(!comp_name)
+		return out;
+
+	for(var i = 0; i < this._components.length; ++i )
+	{
+		var comp = this._components[i];
+		if( comp && comp.constructor === comp_name )
+			out.push( comp );
+	}
+
+	if(this._children)
+		for(var i = 0; i < this._children.length; ++i )
+			this._children[i].findComponents( comp_name, out );
+	return out;
 }
 
 /**
@@ -10906,12 +10954,12 @@ CompositePattern.prototype.removeAllChildren = function( param1, param2 )
 * @method serializeChildren
 * @return {Array} array containing all serialized data from every children
 */
-CompositePattern.prototype.serializeChildren = function()
+CompositePattern.prototype.serializeChildren = function( simplified )
 {
 	var r = [];
 	if(this._children)
 		for(var i in this._children)
-			r.push( this._children[i].serialize() ); //serialize calls serializeChildren
+			r.push( this._children[i].serialize( false, simplified ) ); //serialize calls serializeChildren
 	return r;
 }
 
@@ -11150,7 +11198,12 @@ CompositePattern.prototype.moveAfter = function( sibling )
 }
 
 
-//search for a node using a string that could be a name, a fullname or a uid
+/**
+* Search for a node using a string that could be a name, a fullname or a uid
+* @method findNode
+* @param {String} name_or_uid
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNode = function( name_or_uid )
 {
 	if(name_or_uid == "")
@@ -11162,7 +11215,13 @@ CompositePattern.prototype.findNode = function( name_or_uid )
 	return this.findNodeByUId( name_or_uid );
 }
 
-//this function gets called a lot when using animations
+/**
+* search a node by its name
+* this function gets called a lot when using animations
+* @method findNodeByName
+* @param {String} name
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNodeByName = function( name )
 {
 	if(!name)
@@ -11191,6 +11250,12 @@ CompositePattern.prototype.findNodeByName = function( name )
 	return null;
 }
 
+/**
+* search a node by its uid
+* @method findNodeByUId
+* @param {String} id
+* @return {SceneNode} the node or null
+**/
 CompositePattern.prototype.findNodeByUId = function( uid )
 {
 	if(!uid)
@@ -11217,8 +11282,17 @@ CompositePattern.prototype.findNodeByUId = function( uid )
 	return null;
 }
 
-
-
+/**
+* returns how many levels deep is the node in the hierarchy
+* @method getHierarchyLevel
+* @return {Number} the level, 0 if it is the root
+**/
+CompositePattern.prototype.getHierarchyLevel = function()
+{
+	if(!this._parentNode)
+		return 0;
+	return this._parentNode.getHierarchyLevel() + 1;
+}
 
 /*
 *  Components are elements that attach to Nodes or other objects to add functionality
@@ -13708,7 +13782,9 @@ Animation.interpolateLinear = function( a, b, t, result, type, value_size, track
 			quat.normalize( result, result );
 			break;
 		case Track.TRANS10: 
-			for(var i = 0; i < 10; i++) //this.value_size should be 10
+			for(var i = 0; i < 3; i++) //this.value_size should be 10
+				result[i] = a[i] * t + b[i] * (1-t);
+			for(var i = 7; i < 10; i++) //this.value_size should be 10
 				result[i] = a[i] * t + b[i] * (1-t);
 			var rotA = a.subarray(3,7);
 			var rotB = b.subarray(3,7);
@@ -22036,7 +22112,7 @@ var Draw = {
 			uniform sampler2D u_texture;\n\
 			void main() {\n\
 			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
-			  if(tex.a < 0.1)\n\
+			  if(tex.a < 0.01)\n\
 				discard;\n\
 			  gl_FragColor = u_color * tex;\n\
 			}\
@@ -22227,6 +22303,15 @@ var Draw = {
 	*/
 	setColor: function(color)
 	{
+		if( arguments.length >= 3 )
+		{
+			this.color[0] = arguments[0];
+			this.color[1] = arguments[1];
+			this.color[2] = arguments[2];
+			if( arguments.length == 3 )
+				this.color[3] = arguments[3];
+		}
+		else
 		for(var i = 0; i < color.length; i++)
 			this.color[i] = color[i];
 	},
@@ -23963,14 +24048,14 @@ function Transform( o )
 	//packed data (helpful for animation stuff)
 	this._data = new Float32Array( 3 + 4 + 3 ); //pos, rot, scale, also known as trans10
 
+	//TSR
 	this._position = this._data.subarray(0,3);
-
 	this._rotation = this._data.subarray(3,7);
 	quat.identity(this._rotation);
-
 	this._scaling = this._data.subarray(7,10);
 	this._scaling[0] = this._scaling[1] = this._scaling[2] = 1;
 
+	//matrices
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
@@ -23996,8 +24081,6 @@ function Transform( o )
 
 	if(o)
 		this.configure(o);
-
-	//Object.seal(this);
 }
 
 Transform.temp_matrix = mat4.create();
@@ -24294,7 +24377,7 @@ Transform.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialized info
 */
-Transform.prototype.serialize = function()
+Transform.prototype.serialize = function( simplified )
 {
 	
 	var o = {
@@ -24305,7 +24388,7 @@ Transform.prototype.serialize = function()
 		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ]
 	};
 
-	if( !this.isIdentity() )
+	if( !this.isIdentity() && !simplified )
 		o.matrix = toArray( this._local_matrix );; //could be useful
 
 	return o;
@@ -24746,6 +24829,16 @@ Transform.prototype.fromMatrix = (function() {
 	}
 })();
 
+/**
+* Configure the transform from a global Matrix (do not tested carefully)
+* @method fromGlobalMatrix
+* @param {mat4} matrix the matrix in array format
+*/
+Transform.prototype.fromGlobalMatrix = function(m)
+{
+	this.fromMatrix(m,true);	
+}
+
 Transform.fromMatrix4ToTransformData = (function() { 
 
 	var global_temp = mat4.create();
@@ -25003,11 +25096,11 @@ Transform.prototype.scale = function(x,y,z)
 * @param {number} factor from 0 to 1 
 * @param {Transform} the destination
 */
-Transform.interpolate = function(a,b,factor, result)
+Transform.interpolate = function( a, b, factor, result )
 {
-	vec3.lerp(result._scaling, a._scaling, b._scaling, factor); //scale
-	vec3.lerp(result._position, a._position, b._position, factor); //position
-	quat.slerp(result._rotation, a._rotation, b._rotation, factor); //rotation
+	vec3.lerp( result._scaling, a._scaling, b._scaling, factor); //scale
+	vec3.lerp( result._position, a._position, b._position, factor); //position
+	quat.slerp( result._rotation, a._rotation, b._rotation, factor); //rotation
 	this._must_update = true;
 	this._on_change();
 }
@@ -26497,8 +26590,13 @@ Camera.prototype.orbit = (function() {
 
 	return function( angle_in_deg, axis, center )
 	{
+		angle_in_deg = angle_in_deg || 0;
+
 		if(angle_in_deg == 0)
 			return;
+
+		if(!axis)
+			throw("axis missing");
 
 		if(this._root && this._root.transform)
 		{
@@ -26780,9 +26878,10 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {GL.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
+* @param {LS.Ray} result [optional] to reuse ray
+* @return {LS.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
-Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport )
+Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport, result )
 {
 	//apply camera viewport
 	if(!skip_local_viewport)
@@ -26800,7 +26899,11 @@ Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport )
 
 	var dir = vec3.subtract( pos, pos, eye );
 	vec3.normalize(dir, dir);
-	return new GL.Ray( eye, dir );
+
+	result = result || new LS.Ray();
+	result.origin.set(eye);
+	result.direction.set(dir);
+	return result;
 }
 
 Camera.prototype.getRayInPixel = Camera.prototype.getRay; //LEGACY
@@ -29578,7 +29681,7 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if( !morph_RI || !morph_RI.mesh)
 		return;
 
-	this._valid_morphs = this.computeValidMorphs( this._valid_morphs );
+	this._valid_morphs = this.computeValidMorphs( this._valid_morphs, morph_RI.mesh );
 
 	//grab the RI created previously and modified
 	//this.applyMorphTargets( last_RI );
@@ -29610,10 +29713,13 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 }
 
 //gather morph targets data
-MorphDeformer.prototype.computeValidMorphs = function( valid_morphs )
+MorphDeformer.prototype.computeValidMorphs = function( valid_morphs, base_mesh )
 {
 	valid_morphs = valid_morphs || [];
 	valid_morphs.length = 0;
+
+	if(!base_mesh)
+		return valid_morphs;
 
 	//sort by weight
 	var morph_targets = this.morph_targets.concat();
@@ -29628,6 +29734,9 @@ MorphDeformer.prototype.computeValidMorphs = function( valid_morphs )
 		var morph_mesh = LS.ResourcesManager.resources[ morph.mesh ];
 		if(!morph_mesh || morph_mesh.constructor !== GL.Mesh)
 			continue;
+		if(!morph_mesh.info)
+			morph_mesh.info = {};
+		morph_mesh.info.morph_target_from = base_mesh.filename;
 		valid_morphs.push( { name: morph.mesh, weight: morph.weight, mesh: morph_mesh } );
 	}
 
@@ -30230,6 +30339,7 @@ function SkinDeformer( o )
 
 	this._mesh = null;
 	this._last_bones = null;
+	this._ris_skinned = [];
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
@@ -30352,6 +30462,8 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 
 	var last_RI;
 
+	//TODO: fix this, allow multiple mesh renderers with one single deformer
+
 	//get index
 	var index = this.root.getIndexOfComponent(this);
 	var prev_comp = this.root.getComponentByIndex( index - 1);
@@ -30360,6 +30472,8 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 
 	if(!last_RI)
 		return;
+
+	this._ris_skinned.length = 0;
 
 	//take last one (although maybe using this._root.instances ...)
 	//last_RI = render_instances[ render_instances.length - 1];
@@ -30406,9 +30520,10 @@ SkinDeformer.prototype.applySkinning = function(RI)
 {
 	var mesh = RI.mesh;
 	this._mesh = mesh;
+	this._ris_skinned.push( RI );
 
 	//this mesh doesnt have skinning info
-	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
+	if(!mesh || !mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
 	
@@ -30626,6 +30741,41 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 SkinDeformer.prototype.extractSkeleton = function()
 {
 	//TODO
+}
+
+
+//extracts the matrices from the bind pose and applies it to the bones
+SkinDeformer.prototype.applyBindPose = function()
+{
+	var mesh = this._mesh;
+
+	//this mesh doesnt have skinning info
+	if( !mesh || !mesh.bones )
+		return;
+
+	var imat = mat4.create();
+
+	var bone_nodes = this.getBones();
+	for(var i = 0; i < bone_nodes.length; ++i)
+	{
+		var node = bone_nodes[i];
+		node._level = node.getHierarchyLevel();
+	}
+
+	/*
+	for(var i = 0; i < bones.length; ++i)
+	{
+		var joint = bones[i];
+		var bone_name = joint[0];
+		var bind_matrix = joint[1];
+		var bone_node = this.getBoneNode( bone_name );
+		if( !bone_node || !bone_node.transform )
+			continue;
+
+		mat4.invert( imat, bind_matrix, bind_matrix );
+		bone_node.transform.fromGlobalMatrix( imat );
+	}
+	*/
 }
 
 //returns an array with all the bone nodes affecting this mesh
@@ -31451,6 +31601,13 @@ CustomData.prototype.setPropertyValueFromPath = function( path, value, offset )
 		property.value.set( value ); //typed arrays
 	else
 		property.value = value;
+}
+
+CustomData.prototype.get = function(name)
+{
+	var p = this._properties_by_name[ name ];
+	if(p)
+		return p.value;
 }
 
 
@@ -32460,6 +32617,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 LS.registerComponent( Rotator );
 /**
 * Camera controller
+* Allows to move a camera with the user input. It uses the first camera attached to the same node
 * @class CameraController
 * @constructor
 * @param {String} object to configure from
@@ -32487,10 +32645,11 @@ function CameraController(o)
 CameraController.ORBIT = 1; //orbits around the center
 CameraController.FIRSTPERSON = 2; //moves relative to the camera
 CameraController.PLANE = 3; //moves paralel to a plane
+CameraController.HORIZONTALY = 4; //like first person but only yaw
 
 CameraController.icon = "mini-icon-cameracontroller.png";
 
-CameraController["@mode"] = { type:"enum", values: { "Orbit": CameraController.ORBIT, "FirstPerson": CameraController.FIRSTPERSON, "Plane": CameraController.PLANE }};
+CameraController["@mode"] = { type:"enum", values: { "Orbit": CameraController.ORBIT, "FirstPerson": CameraController.FIRSTPERSON, "Plane": CameraController.PLANE, "Horizontaly": CameraController.HORIZONTALY  }};
 
 CameraController.prototype.onAddedToScene = function( scene )
 {
@@ -32515,12 +32674,18 @@ CameraController.prototype.onUpdate = function(e)
 	if(!this._root || !this.enabled) 
 		return;
 
+	//get first camera attached to this node
+	var cam = this._root.camera;
+
+	//no camera or disabled, then nothing to do
+	if(!cam || !cam.enabled)
+		return;
+
 	if(this._root.transform)
 	{
 	}
-	else if(this._root.camera)
+	else 
 	{
-		var cam = this._root.camera;
 		if(this.mode == CameraController.FIRSTPERSON)
 		{
 			//move using the delta vector
@@ -32547,7 +32712,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	
 	var node = this._root;
 	var cam = node.camera;
-	if(!cam)
+	if(!cam || !cam.enabled)
 		return;
 
 	var is_global_camera = node._is_root;
@@ -32583,21 +32748,25 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 
 	var changed = false;
 
-	if(this.mode == CameraController.FIRSTPERSON)
+	if(this.mode == CameraController.FIRSTPERSON || this.mode == CameraController.HORIZONTALY)
 	{
-		cam.rotate(-mouse_event.deltax * this.rot_speed,LS.TOP);
+		var top = LS.TOP; //cam.getLocalVector(LS.TOP);
+		cam.rotate(-mouse_event.deltax * this.rot_speed,top);
 		cam.updateMatrices();
-		var right = cam.getLocalVector(LS.RIGHT);
 
-		if(is_global_camera)
+		if( this.mode == CameraController.FIRSTPERSON )
 		{
-			cam.rotate(-mouse_event.deltay * this.rot_speed,right);
-			cam.updateMatrices();
-		}
-		else
-		{
-			node.transform.rotate(-mouse_event.deltay * this.rot_speed,right);
-			cam.updateMatrices();
+			var right = cam.getLocalVector(LS.RIGHT);
+			if(is_global_camera)
+			{
+				cam.rotate(-mouse_event.deltay * this.rot_speed,right);
+				cam.updateMatrices();
+			}
+			else
+			{
+				node.transform.rotate(-mouse_event.deltay * this.rot_speed,LS.RIGHT);
+				cam.updateMatrices();
+			}
 		}
 
 		changed = true;
@@ -32700,6 +32869,7 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 		this._root.scene.requestFrame();
 }
 
+//manage pinching and dragging two fingers in a touch pad
 CameraController.prototype.onTouch = function( e, touch_event)
 {
 	if(!this._root || !this.enabled) 
@@ -32707,7 +32877,7 @@ CameraController.prototype.onTouch = function( e, touch_event)
 	
 	var node = this._root;
 	var cam = node.camera;
-	if(!cam)
+	if(!cam || !cam.enabled)
 		return;
 
 	var is_global_camera = node._is_root;
@@ -38277,22 +38447,25 @@ Poser.icon = "mini-icon-clock.png";
 
 Poser.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind(scene,"update",this.onUpdate, this);
+	//LEvent.bind(scene,"update",this.onUpdate, this);
 }
+
 
 Poser.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(scene,"update",this.onUpdate, this);
+	//LEvent.unbind(scene,"update",this.onUpdate, this);
 }
 
+/*
 Poser.prototype.onUpdate = function(e, dt)
 {
-	this.applyPoses();
+	this.applyPose();
 
 	var scene = this._root.scene;
 	if(!scene)
 		scene.requestFrame();
 }
+*/
 
 Poser.prototype.addBaseNode = function( node )
 {
@@ -38375,9 +38548,12 @@ Poser.prototype.removePose = function( name )
 	delete this.poses[ name ];
 }
 
-
+//call to update the value of a pose using the current nodes transform
 Poser.prototype.updatePose = function( name )
 {
+	if(!this._root || !this._root.scene) //could happen
+		return;
+
 	var pose = this.poses[ name ];
 	if(!pose)
 		return null;
@@ -38407,8 +38583,17 @@ Poser.prototype.updatePose = function( name )
 	return pose;
 }
 
-Poser.prototype.applyPose = function( name )
+//call to apply one pose to the nodes
+Poser.prototype.applyPose = function( name, weight )
 {
+	if(!name || !this._root || !this._root.scene)
+		return;
+
+	if(weight === undefined)
+		weight = 1;
+	if(weight <= 0)
+		return;
+
 	var pose = this.poses[ name ];
 	if(!pose)
 		return null;
@@ -38423,13 +38608,29 @@ Poser.prototype.applyPose = function( name )
 		var node = scene.getNode( info.node_uid );
 		if(!node || !node.transform)
 			continue; //maybe the node was removed from the scene
-		node.transform.data = info.data;
+
+		//overwrite
+		if(weight >= 1)		
+		{
+			node.transform.data = info.data;
+			continue;
+		}
+
+		var a = node.transform;
+		var b = info.data;
+
+		//interpolate
+		vec3.lerp( a._position, a._position, b, weight ); //position
+		vec3.lerp( a._scaling, a._scaling, b.subarray(7,10), weight ); //scale
+		quat.slerp( a._rotation, a._rotation, b.subarray(3,7), weight ); //rotation
+		node.transform._must_update = true;
 	}
 
 	this.poses[ name ] = pose;
 	return pose;
 }
 
+//remove nodes from poses if they are not used
 Poser.prototype.purgePoses = function()
 {
 	var valid_nodes = {};
@@ -40032,7 +40233,7 @@ SceneTree.prototype.configure = function( scene_info )
 * @return {Object} return a JS Object with all the scene info
 */
 
-SceneTree.prototype.serialize = function()
+SceneTree.prototype.serialize = function( simplified  )
 {
 	var o = {};
 
@@ -40045,7 +40246,7 @@ SceneTree.prototype.serialize = function()
 	o.extra = this.extra || {};
 
 	//add nodes
-	o.root = this.root.serialize();
+	o.root = this.root.serialize( false, simplified );
 
 	if(this.animation)
 		o.animation = this.animation.serialize();
@@ -41700,7 +41901,8 @@ function SceneNode( name )
 	this.flags = {
 		visible: true,
 		is_static: false,
-		selectable: true
+		selectable: true,
+		locked: false
 	};
 
 	this.init(false,true);
@@ -42224,7 +42426,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 	}
 
 	//to know the value of a property of the given target
-	if( target.getPropertyValue )
+	if( target.getPropertyValue && target != this )
 		v = target.getPropertyValue( varname );
 
 	//special case when the component doesnt specify any locator info but the property referenced does
@@ -42266,6 +42468,9 @@ SceneNode.prototype.setPropertyValue = function( locator, value )
 SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
 	offset = offset || 0;
+
+	if(this.flags && this.flags.locked)
+		return; //lock ignores changes from animations or graphs
 
 	var target = null;
 	var varname = path[offset];
@@ -42867,7 +43072,7 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 * @param {bool} ignore_prefab serializing wont returns children if it is a prefab, if you set this to ignore_prefab it will return all the info
 * @return {Object} returns the object with the info
 */
-SceneNode.prototype.serialize = function( ignore_prefab )
+SceneNode.prototype.serialize = function( ignore_prefab, simplified )
 {
 	var o = {
 		object_class: "SceneNode"
@@ -42891,7 +43096,7 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 	if(this.submesh_id != null) 
 		o.submesh_id = this.submesh_id;
 	if(this.material) 
-		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize( simplified );
 	if(this.prefab && !ignore_prefab && !this._is_root ) 
 		o.prefab = this.prefab;
 
@@ -42905,13 +43110,13 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 		o.comments = this.comments;
 
 	if(this._children && (!this.prefab || ignore_prefab) )
-		o.children = this.serializeChildren();
+		o.children = this.serializeChildren( simplified );
 
 	if(this._editor)
 		o.editor = this._editor;
 
 	//save components
-	this.serializeComponents(o);
+	this.serializeComponents( o, simplified );
 
 	//extra serializing info
 	LEvent.trigger(this,"serialize",o);
@@ -47112,6 +47317,8 @@ var parserDAE = {
 	format: "text",
 	dataType:'text',
 
+	convert_filenames_to_lowercase: true,
+
 	parse: function( data, options, filename )
 	{
 		if(!data || data.constructor !== String)
@@ -47431,6 +47638,11 @@ var parserDAE = {
 
 	processMaterial: function(material)
 	{
+		var rename_channels = {
+			specular_factor: "specular",
+			transparent: "opacity"
+		};
+
 		material.object_class = "StandardMaterial";
 		if(material.id)
 			material.id = material.id.replace(/[^a-z0-9\.\-]/gi,"_") + ".json";
@@ -47453,18 +47665,29 @@ var parserDAE = {
 
 		if(material.textures)
 		{
+			var textures = {};
 			for(var i in material.textures)
 			{
 				var tex_info = material.textures[i];
+				//channel name must be renamed because there is no consistency between programs
+				var channel_name = i;
+				if( rename_channels[ channel_name ] )
+					channel_name = rename_channels[ channel_name ];
+				var filename = tex_info.map_id;
+				//convert to lowercase because webglstudio also converts them to lowercase
+				if(this.convert_filenames_to_lowercase)
+					filename = filename.toLowerCase(); 
+				//we allow two sets of texture coordinates
 				var coords = LS.Material.COORDS_UV0;
 				if( tex_info.uvs == "TEX1")
 					coords = LS.Material.COORDS_UV1;
 				tex_info = { 
-					texture: tex_info.map_id,
+					texture: filename,
 					uvs: coords
 				};
-				material.textures[i] = tex_info;
+				textures[ channel_name ] = tex_info;
 			}
+			material.textures = textures;
 		}
 	}
 };
@@ -49239,6 +49462,34 @@ Object.equals = function( x, y ) {
       // allows x[ p ] to be set to undefined
   }
   return true;
+}
+
+
+//used for on simplified serializations
+if( !Array.prototype.hasOwnProperty( "equal" ) )
+{
+	Object.defineProperty( Array.prototype, "equal", {
+		value: function(v){
+			for(var i = 0; i < this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
+}
+
+if( !Float32Array.prototype.hasOwnProperty( "equal" ) )
+{
+	Object.defineProperty( Float32Array.prototype, "equal", {
+		value: function(v){
+			for(var i = 0; i < this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
 }
 //here goes the ending of commonjs stuff
 

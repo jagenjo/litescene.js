@@ -278,7 +278,7 @@ SceneTree.prototype.configure = function( scene_info )
 * @return {Object} return a JS Object with all the scene info
 */
 
-SceneTree.prototype.serialize = function()
+SceneTree.prototype.serialize = function( simplified  )
 {
 	var o = {};
 
@@ -291,7 +291,7 @@ SceneTree.prototype.serialize = function()
 	o.extra = this.extra || {};
 
 	//add nodes
-	o.root = this.root.serialize();
+	o.root = this.root.serialize( false, simplified );
 
 	if(this.animation)
 		o.animation = this.animation.serialize();

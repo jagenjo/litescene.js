@@ -190,9 +190,9 @@ newStandardMaterial.FLAGS = {
 	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
 	EXTRA_TEXTURE_OPTIONS: 1<<24,
 
-	DEGAMMA_COLOR: 1<<31,
-	SPEC_ON_ALPHA: 1<<32,
-	ALPHA_TEST: 1<<33
+	DEGAMMA_COLOR: 1<<26,
+	SPEC_ON_ALPHA: 1<<27,
+	ALPHA_TEST: 1<<28
 };	
 
 newStandardMaterial.shader_codes = {};

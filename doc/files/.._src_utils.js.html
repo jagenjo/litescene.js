@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -317,6 +318,34 @@ Object.equals = function( x, y ) {
       // allows x[ p ] to be set to undefined
   }
   return true;
+}
+
+
+//used for on simplified serializations
+if( !Array.prototype.hasOwnProperty( &quot;equal&quot; ) )
+{
+	Object.defineProperty( Array.prototype, &quot;equal&quot;, {
+		value: function(v){
+			for(var i = 0; i &lt; this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
+}
+
+if( !Float32Array.prototype.hasOwnProperty( &quot;equal&quot; ) )
+{
+	Object.defineProperty( Float32Array.prototype, &quot;equal&quot;, {
+		value: function(v){
+			for(var i = 0; i &lt; this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
 }
     </pre>
 </div>

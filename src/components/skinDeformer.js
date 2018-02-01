@@ -18,6 +18,7 @@ function SkinDeformer( o )
 
 	this._mesh = null;
 	this._last_bones = null;
+	this._ris_skinned = [];
 	//this._skinning_mode = 0;
 
 	//check how many floats can we put in a uniform
@@ -140,6 +141,8 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 
 	var last_RI;
 
+	//TODO: fix this, allow multiple mesh renderers with one single deformer
+
 	//get index
 	var index = this.root.getIndexOfComponent(this);
 	var prev_comp = this.root.getComponentByIndex( index - 1);
@@ -148,6 +151,8 @@ SkinDeformer.prototype.onCollectInstances = function( e, render_instances )
 
 	if(!last_RI)
 		return;
+
+	this._ris_skinned.length = 0;
 
 	//take last one (although maybe using this._root.instances ...)
 	//last_RI = render_instances[ render_instances.length - 1];
@@ -194,9 +199,10 @@ SkinDeformer.prototype.applySkinning = function(RI)
 {
 	var mesh = RI.mesh;
 	this._mesh = mesh;
+	this._ris_skinned.push( RI );
 
 	//this mesh doesnt have skinning info
-	if(!mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
+	if(!mesh || !mesh.getBuffer("vertices") || !mesh.getBuffer("bone_indices"))
 		return;
 
 	
@@ -414,6 +420,41 @@ SkinDeformer.prototype.applySoftwareSkinning = function(ref_mesh, skin_mesh)
 SkinDeformer.prototype.extractSkeleton = function()
 {
 	//TODO
+}
+
+
+//extracts the matrices from the bind pose and applies it to the bones
+SkinDeformer.prototype.applyBindPose = function()
+{
+	var mesh = this._mesh;
+
+	//this mesh doesnt have skinning info
+	if( !mesh || !mesh.bones )
+		return;
+
+	var imat = mat4.create();
+
+	var bone_nodes = this.getBones();
+	for(var i = 0; i < bone_nodes.length; ++i)
+	{
+		var node = bone_nodes[i];
+		node._level = node.getHierarchyLevel();
+	}
+
+	/*
+	for(var i = 0; i < bones.length; ++i)
+	{
+		var joint = bones[i];
+		var bone_name = joint[0];
+		var bind_matrix = joint[1];
+		var bone_node = this.getBoneNode( bone_name );
+		if( !bone_node || !bone_node.transform )
+			continue;
+
+		mat4.invert( imat, bind_matrix, bind_matrix );
+		bone_node.transform.fromGlobalMatrix( imat );
+	}
+	*/
 }
 
 //returns an array with all the bone nodes affecting this mesh

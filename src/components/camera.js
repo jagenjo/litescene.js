@@ -1085,8 +1085,13 @@ Camera.prototype.orbit = (function() {
 
 	return function( angle_in_deg, axis, center )
 	{
+		angle_in_deg = angle_in_deg || 0;
+
 		if(angle_in_deg == 0)
 			return;
+
+		if(!axis)
+			throw("axis missing");
 
 		if(this._root && this._root.transform)
 		{
@@ -1368,9 +1373,10 @@ Camera.prototype.getLocalViewport = function( viewport, result )
 * @param {number} y
 * @param {vec4} viewport viewport coordinates (if omited full viewport is used using the camera viewport)
 * @param {boolean} skip_local_viewport ignore the local camera viewport configuration when computing the viewport
-* @return {GL.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
+* @param {LS.Ray} result [optional] to reuse ray
+* @return {LS.Ray} {origin:vec3, direction:vec3} or null is values are undefined or NaN
 */
-Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport )
+Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport, result )
 {
 	//apply camera viewport
 	if(!skip_local_viewport)
@@ -1388,7 +1394,11 @@ Camera.prototype.getRay = function(x,y, viewport, skip_local_viewport )
 
 	var dir = vec3.subtract( pos, pos, eye );
 	vec3.normalize(dir, dir);
-	return new GL.Ray( eye, dir );
+
+	result = result || new LS.Ray();
+	result.origin.set(eye);
+	result.direction.set(dir);
+	return result;
 }
 
 Camera.prototype.getRayInPixel = Camera.prototype.getRay; //LEGACY

@@ -49,11 +49,11 @@ var ShadersManager = {
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
-		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL" + String.fromCharCode(10);
+		this.global_extra_code = String.fromCharCode(10) + "#define WEBGL\n";
 		if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
-			this.global_extra_code = "#define STANDARD_DERIVATIVES" + String.fromCharCode(10);
+			this.global_extra_code += "#define STANDARD_DERIVATIVES\n";
 		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
-			this.global_extra_code = "#define DRAW_BUFFERS" + String.fromCharCode(10);
+			this.global_extra_code += "#define DRAW_BUFFERS\n";
 
 		//compile some shaders
 		this.createDefaultShaders();

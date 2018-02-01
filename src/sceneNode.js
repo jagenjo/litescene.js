@@ -41,7 +41,8 @@ function SceneNode( name )
 	this.flags = {
 		visible: true,
 		is_static: false,
-		selectable: true
+		selectable: true,
+		locked: false
 	};
 
 	this.init(false,true);
@@ -565,7 +566,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 	}
 
 	//to know the value of a property of the given target
-	if( target.getPropertyValue )
+	if( target.getPropertyValue && target != this )
 		v = target.getPropertyValue( varname );
 
 	//special case when the component doesnt specify any locator info but the property referenced does
@@ -607,6 +608,9 @@ SceneNode.prototype.setPropertyValue = function( locator, value )
 SceneNode.prototype.setPropertyValueFromPath = function( path, value, offset )
 {
 	offset = offset || 0;
+
+	if(this.flags && this.flags.locked)
+		return; //lock ignores changes from animations or graphs
 
 	var target = null;
 	var varname = path[offset];
@@ -1208,7 +1212,7 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 * @param {bool} ignore_prefab serializing wont returns children if it is a prefab, if you set this to ignore_prefab it will return all the info
 * @return {Object} returns the object with the info
 */
-SceneNode.prototype.serialize = function( ignore_prefab )
+SceneNode.prototype.serialize = function( ignore_prefab, simplified )
 {
 	var o = {
 		object_class: "SceneNode"
@@ -1232,7 +1236,7 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 	if(this.submesh_id != null) 
 		o.submesh_id = this.submesh_id;
 	if(this.material) 
-		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize();
+		o.material = typeof(this.material) == "string" ? this.material : this.material.serialize( simplified );
 	if(this.prefab && !ignore_prefab && !this._is_root ) 
 		o.prefab = this.prefab;
 
@@ -1246,13 +1250,13 @@ SceneNode.prototype.serialize = function( ignore_prefab )
 		o.comments = this.comments;
 
 	if(this._children && (!this.prefab || ignore_prefab) )
-		o.children = this.serializeChildren();
+		o.children = this.serializeChildren( simplified );
 
 	if(this._editor)
 		o.editor = this._editor;
 
 	//save components
-	this.serializeComponents(o);
+	this.serializeComponents( o, simplified );
 
 	//extra serializing info
 	LEvent.trigger(this,"serialize",o);
