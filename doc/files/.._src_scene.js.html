@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -432,7 +433,7 @@ SceneTree.prototype.configure = function( scene_info )
 * @return {Object} return a JS Object with all the scene info
 */
 
-SceneTree.prototype.serialize = function()
+SceneTree.prototype.serialize = function( simplified  )
 {
 	var o = {};
 
@@ -445,7 +446,7 @@ SceneTree.prototype.serialize = function()
 	o.extra = this.extra || {};
 
 	//add nodes
-	o.root = this.root.serialize();
+	o.root = this.root.serialize( false, simplified );
 
 	if(this.animation)
 		o.animation = this.animation.serialize();

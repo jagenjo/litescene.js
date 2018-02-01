@@ -71,7 +71,7 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 	if( !morph_RI || !morph_RI.mesh)
 		return;
 
-	this._valid_morphs = this.computeValidMorphs( this._valid_morphs );
+	this._valid_morphs = this.computeValidMorphs( this._valid_morphs, morph_RI.mesh );
 
 	//grab the RI created previously and modified
 	//this.applyMorphTargets( last_RI );
@@ -103,10 +103,13 @@ MorphDeformer.prototype.onCollectInstances = function( e, render_instances )
 }
 
 //gather morph targets data
-MorphDeformer.prototype.computeValidMorphs = function( valid_morphs )
+MorphDeformer.prototype.computeValidMorphs = function( valid_morphs, base_mesh )
 {
 	valid_morphs = valid_morphs || [];
 	valid_morphs.length = 0;
+
+	if(!base_mesh)
+		return valid_morphs;
 
 	//sort by weight
 	var morph_targets = this.morph_targets.concat();
@@ -121,6 +124,9 @@ MorphDeformer.prototype.computeValidMorphs = function( valid_morphs )
 		var morph_mesh = LS.ResourcesManager.resources[ morph.mesh ];
 		if(!morph_mesh || morph_mesh.constructor !== GL.Mesh)
 			continue;
+		if(!morph_mesh.info)
+			morph_mesh.info = {};
+		morph_mesh.info.morph_target_from = base_mesh.filename;
 		valid_morphs.push( { name: morph.mesh, weight: morph.weight, mesh: morph_mesh } );
 	}
 

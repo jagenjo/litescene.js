@@ -231,14 +231,15 @@ ShaderMaterial.prototype.processShaderCode = function()
 		this.createUniform( global.name, global.uniform, global.type, global.value, global.options );
 	}
 
+	//set version before asssignOldProperties
+	this._shader_version = shader_code._version;
+	this._version++;
+
 	//restore old values
 	this.assignOldProperties( old_properties );
 
 	//set stuff
 	//TODO
-
-	this._shader_version = shader_code._version;
-	this._version++;
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties

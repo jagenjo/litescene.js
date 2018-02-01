@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -1929,7 +1930,9 @@ Animation.interpolateLinear = function( a, b, t, result, type, value_size, track
 			quat.normalize( result, result );
 			break;
 		case Track.TRANS10: 
-			for(var i = 0; i &lt; 10; i++) //this.value_size should be 10
+			for(var i = 0; i &lt; 3; i++) //this.value_size should be 10
+				result[i] = a[i] * t + b[i] * (1-t);
+			for(var i = 7; i &lt; 10; i++) //this.value_size should be 10
 				result[i] = a[i] * t + b[i] * (1-t);
 			var rotA = a.subarray(3,7);
 			var rotB = b.subarray(3,7);

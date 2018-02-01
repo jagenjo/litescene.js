@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -183,22 +184,25 @@ Poser.icon = &quot;mini-icon-clock.png&quot;;
 
 Poser.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind(scene,&quot;update&quot;,this.onUpdate, this);
+	//LEvent.bind(scene,&quot;update&quot;,this.onUpdate, this);
 }
+
 
 Poser.prototype.onRemovedFromScene = function(scene)
 {
-	LEvent.unbind(scene,&quot;update&quot;,this.onUpdate, this);
+	//LEvent.unbind(scene,&quot;update&quot;,this.onUpdate, this);
 }
 
+/*
 Poser.prototype.onUpdate = function(e, dt)
 {
-	this.applyPoses();
+	this.applyPose();
 
 	var scene = this._root.scene;
 	if(!scene)
 		scene.requestFrame();
 }
+*/
 
 Poser.prototype.addBaseNode = function( node )
 {
@@ -281,9 +285,12 @@ Poser.prototype.removePose = function( name )
 	delete this.poses[ name ];
 }
 
-
+//call to update the value of a pose using the current nodes transform
 Poser.prototype.updatePose = function( name )
 {
+	if(!this._root || !this._root.scene) //could happen
+		return;
+
 	var pose = this.poses[ name ];
 	if(!pose)
 		return null;
@@ -313,8 +320,17 @@ Poser.prototype.updatePose = function( name )
 	return pose;
 }
 
-Poser.prototype.applyPose = function( name )
+//call to apply one pose to the nodes
+Poser.prototype.applyPose = function( name, weight )
 {
+	if(!name || !this._root || !this._root.scene)
+		return;
+
+	if(weight === undefined)
+		weight = 1;
+	if(weight &lt;= 0)
+		return;
+
 	var pose = this.poses[ name ];
 	if(!pose)
 		return null;
@@ -329,13 +345,29 @@ Poser.prototype.applyPose = function( name )
 		var node = scene.getNode( info.node_uid );
 		if(!node || !node.transform)
 			continue; //maybe the node was removed from the scene
-		node.transform.data = info.data;
+
+		//overwrite
+		if(weight &gt;= 1)		
+		{
+			node.transform.data = info.data;
+			continue;
+		}
+
+		var a = node.transform;
+		var b = info.data;
+
+		//interpolate
+		vec3.lerp( a._position, a._position, b, weight ); //position
+		vec3.lerp( a._scaling, a._scaling, b.subarray(7,10), weight ); //scale
+		quat.slerp( a._rotation, a._rotation, b.subarray(3,7), weight ); //rotation
+		node.transform._must_update = true;
 	}
 
 	this.poses[ name ] = pose;
 	return pose;
 }
 
+//remove nodes from poses if they are not used
 Poser.prototype.purgePoses = function()
 {
 	var valid_nodes = {};

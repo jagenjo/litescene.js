@@ -289,14 +289,23 @@ Material.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialization info
 */
-Material.prototype.serialize = function()
+Material.prototype.serialize = function( simplified )
 {
-	 var o = LS.cloneObject(this);
-	 delete o.filename;
- 	 delete o.fullpath;
- 	 delete o.remotepath;
-	 o.material_class = LS.getObjectClassName(this);
-	 return o;
+	var o = LS.cloneObject(this);
+	delete o.filename;
+	delete o.fullpath;
+	delete o.remotepath;
+	o.material_class = LS.getObjectClassName(this);
+
+	if( simplified )
+	{
+		delete o.render_state;
+		delete o.flags;
+		if( o.uvs_matrix && o.uvs_matrix.equal([1,0,0, 0,1,0, 0,0,1]) )
+			delete o.uvs_matrix;
+	}
+
+	return o;
 }
 
 

@@ -11,14 +11,14 @@ function Transform( o )
 	//packed data (helpful for animation stuff)
 	this._data = new Float32Array( 3 + 4 + 3 ); //pos, rot, scale, also known as trans10
 
+	//TSR
 	this._position = this._data.subarray(0,3);
-
 	this._rotation = this._data.subarray(3,7);
 	quat.identity(this._rotation);
-
 	this._scaling = this._data.subarray(7,10);
 	this._scaling[0] = this._scaling[1] = this._scaling[2] = 1;
 
+	//matrices
 	this._local_matrix = mat4.create();
 	this._global_matrix = mat4.create();
 
@@ -44,8 +44,6 @@ function Transform( o )
 
 	if(o)
 		this.configure(o);
-
-	//Object.seal(this);
 }
 
 Transform.temp_matrix = mat4.create();
@@ -342,7 +340,7 @@ Transform.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialized info
 */
-Transform.prototype.serialize = function()
+Transform.prototype.serialize = function( simplified )
 {
 	
 	var o = {
@@ -353,7 +351,7 @@ Transform.prototype.serialize = function()
 		scaling: [ this._scaling[0],this._scaling[1],this._scaling[2] ]
 	};
 
-	if( !this.isIdentity() )
+	if( !this.isIdentity() && !simplified )
 		o.matrix = toArray( this._local_matrix );; //could be useful
 
 	return o;
@@ -794,6 +792,16 @@ Transform.prototype.fromMatrix = (function() {
 	}
 })();
 
+/**
+* Configure the transform from a global Matrix (do not tested carefully)
+* @method fromGlobalMatrix
+* @param {mat4} matrix the matrix in array format
+*/
+Transform.prototype.fromGlobalMatrix = function(m)
+{
+	this.fromMatrix(m,true);	
+}
+
 Transform.fromMatrix4ToTransformData = (function() { 
 
 	var global_temp = mat4.create();
@@ -1051,11 +1059,11 @@ Transform.prototype.scale = function(x,y,z)
 * @param {number} factor from 0 to 1 
 * @param {Transform} the destination
 */
-Transform.interpolate = function(a,b,factor, result)
+Transform.interpolate = function( a, b, factor, result )
 {
-	vec3.lerp(result._scaling, a._scaling, b._scaling, factor); //scale
-	vec3.lerp(result._position, a._position, b._position, factor); //position
-	quat.slerp(result._rotation, a._rotation, b._rotation, factor); //rotation
+	vec3.lerp( result._scaling, a._scaling, b._scaling, factor); //scale
+	vec3.lerp( result._position, a._position, b._position, factor); //position
+	quat.slerp( result._rotation, a._rotation, b._rotation, factor); //rotation
 	this._must_update = true;
 	this._on_change();
 }

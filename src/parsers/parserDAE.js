@@ -6,6 +6,8 @@ var parserDAE = {
 	format: "text",
 	dataType:'text',
 
+	convert_filenames_to_lowercase: true,
+
 	parse: function( data, options, filename )
 	{
 		if(!data || data.constructor !== String)
@@ -325,6 +327,11 @@ var parserDAE = {
 
 	processMaterial: function(material)
 	{
+		var rename_channels = {
+			specular_factor: "specular",
+			transparent: "opacity"
+		};
+
 		material.object_class = "StandardMaterial";
 		if(material.id)
 			material.id = material.id.replace(/[^a-z0-9\.\-]/gi,"_") + ".json";
@@ -347,18 +354,29 @@ var parserDAE = {
 
 		if(material.textures)
 		{
+			var textures = {};
 			for(var i in material.textures)
 			{
 				var tex_info = material.textures[i];
+				//channel name must be renamed because there is no consistency between programs
+				var channel_name = i;
+				if( rename_channels[ channel_name ] )
+					channel_name = rename_channels[ channel_name ];
+				var filename = tex_info.map_id;
+				//convert to lowercase because webglstudio also converts them to lowercase
+				if(this.convert_filenames_to_lowercase)
+					filename = filename.toLowerCase(); 
+				//we allow two sets of texture coordinates
 				var coords = LS.Material.COORDS_UV0;
 				if( tex_info.uvs == "TEX1")
 					coords = LS.Material.COORDS_UV1;
 				tex_info = { 
-					texture: tex_info.map_id,
+					texture: filename,
 					uvs: coords
 				};
-				material.textures[i] = tex_info;
+				textures[ channel_name ] = tex_info;
 			}
+			material.textures = textures;
 		}
 	}
 };

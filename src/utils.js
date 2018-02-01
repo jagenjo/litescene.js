@@ -164,3 +164,31 @@ Object.equals = function( x, y ) {
   }
   return true;
 }
+
+
+//used for on simplified serializations
+if( !Array.prototype.hasOwnProperty( "equal" ) )
+{
+	Object.defineProperty( Array.prototype, "equal", {
+		value: function(v){
+			for(var i = 0; i < this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
+}
+
+if( !Float32Array.prototype.hasOwnProperty( "equal" ) )
+{
+	Object.defineProperty( Float32Array.prototype, "equal", {
+		value: function(v){
+			for(var i = 0; i < this.length; ++i)
+				if( this[i] != v[i] )
+					return false;
+			return true;
+		},
+		enumerable: false
+	});
+}

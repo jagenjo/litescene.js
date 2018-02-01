@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -225,6 +226,18 @@ creating a tree-like structure.</p>
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_findNode">findNode</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_findNodeByName">findNodeByName</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_findNodeByUId">findNodeByUId</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_getChildByIndex">getChildByIndex</a>
 
                             </li>
@@ -242,6 +255,10 @@ creating a tree-like structure.</p>
                             </li>
                             <li class="index-item method">
                                 <a href="#method_getDescendants">getDescendants</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getHierarchyLevel">getHierarchyLevel</a>
 
                             </li>
                             <li class="index-item method">
@@ -400,6 +417,202 @@ creating a tree-like structure.</p>
             <div class="returns-description">
                         <span class="type">Array</span>:
                     <p>o array containing all serialized data</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_findNode" class="method item">
+    <h3 class="name"><code>findNode</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name_or_uid</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">SceneNode</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l441"><code>..&#x2F;src&#x2F;compositePattern.js:441</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Search for a node using a string that could be a name, a fullname or a uid</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name_or_uid</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">SceneNode</span>:
+                    <p>the node or null</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_findNodeByName" class="method item">
+    <h3 class="name"><code>findNodeByName</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>name</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">SceneNode</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l458"><code>..&#x2F;src&#x2F;compositePattern.js:458</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>search a node by its name
+this function gets called a lot when using animations</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">name</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">SceneNode</span>:
+                    <p>the node or null</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_findNodeByUId" class="method item">
+    <h3 class="name"><code>findNodeByUId</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>id</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">SceneNode</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l493"><code>..&#x2F;src&#x2F;compositePattern.js:493</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>search a node by its uid</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">id</code>
+                        <span class="type">String</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">SceneNode</span>:
+                    <p>the node or null</p>
 
             </div>
         </div>
@@ -694,6 +907,49 @@ creating a tree-like structure.</p>
             <div class="returns-description">
                         <span class="type">Array</span>:
                     <p>array containing all descendants</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getHierarchyLevel" class="method item">
+    <h3 class="name"><code>getHierarchyLevel</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">Number</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_compositePattern.js.html#l525"><code>..&#x2F;src&#x2F;compositePattern.js:525</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns how many levels deep is the node in the hierarchy</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Number</span>:
+                    <p>the level, 0 if it is the root</p>
 
             </div>
         </div>

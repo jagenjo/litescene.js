@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -508,7 +509,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1215"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1215</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1220"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1220</code></a>
         </p>
 
 
@@ -928,7 +929,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1335"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1335</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1340"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1340</code></a>
         </p>
 
 
@@ -1212,11 +1213,14 @@ The result of this function wont match the _eye property if the camera is a node
                 <li class="arg">
                         <code>skip_local_viewport</code>
                 </li>
+                <li class="arg">
+                        <code>result</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
         <span class="returns-inline">
-            <span class="type">GL.Ray</span>
+            <span class="type"><a href="../classes/LS.Ray.html" class="crosslink">LS.Ray</a></span>
         </span>
 
 
@@ -1228,7 +1232,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1364"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1364</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1369"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1369</code></a>
         </p>
 
 
@@ -1286,6 +1290,17 @@ The result of this function wont match the _eye property if the camera is a node
                     </div>
 
                 </li>
+                <li class="param">
+                        <code class="param-name">result</code>
+                        <span class="type"><a href="../classes/LS.Ray.html" class="crosslink">LS.Ray</a></span>
+
+
+                    <div class="param-description">
+                        <p>[optional] to reuse ray</p>
+
+                    </div>
+
+                </li>
             </ul>
         </div>
 
@@ -1293,7 +1308,7 @@ The result of this function wont match the _eye property if the camera is a node
             <h4>Returns:</h4>
 
             <div class="returns-description">
-                        <span class="type">GL.Ray</span>:
+                        <span class="type"><a href="../classes/LS.Ray.html" class="crosslink">LS.Ray</a></span>:
                     <p>{origin:vec3, direction:vec3} or null is values are undefined or NaN</p>
 
             </div>
@@ -1675,7 +1690,7 @@ The result of this function wont match the _eye property if the camera is a node
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1396"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1396</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1406"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1406</code></a>
         </p>
 
 
@@ -2040,7 +2055,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1117"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1117</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1122"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1122</code></a>
         </p>
 
 
@@ -2112,7 +2127,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1275"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1275</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1280"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1280</code></a>
         </p>
 
 
@@ -2207,7 +2222,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1305"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1305</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1310"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1310</code></a>
         </p>
 
 
@@ -2427,7 +2442,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1236"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1236</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1241"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1241</code></a>
         </p>
 
 
@@ -2484,7 +2499,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1140"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1140</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1145"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1145</code></a>
         </p>
 
 
@@ -2554,7 +2569,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1201"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1201</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1206"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1206</code></a>
         </p>
 
 
@@ -2627,7 +2642,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1163"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1163</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1168"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1168</code></a>
         </p>
 
 
@@ -2903,7 +2918,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1258"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1258</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1263"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1263</code></a>
         </p>
 
 
@@ -2995,7 +3010,7 @@ If the camera is a node camera, then the node transform is modified (plus the ce
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_components_camera.js.html#l1319"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1319</code></a>
+        <a href="../files/.._src_components_camera.js.html#l1324"><code>..&#x2F;src&#x2F;components&#x2F;camera.js:1324</code></a>
         </p>
 
 

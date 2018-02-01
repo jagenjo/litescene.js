@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/components/customData.js</title>
+    <title>LS.Ray</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -149,139 +149,112 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/components/customData.js</h1>
-
-<div class="file">
-    <pre class="code prettyprint linenums">
-/** 
-* This module allows to store custom data inside a node
-* properties have the form of:
-* - name:
-* - value:
-* - type:
-* @class CustomData
-* @constructor
-* @param {Object} object to configure from
-*/
-
-function CustomData(o)
-{
-	this._properties = [];
-	this._properties_by_name = {};
-
-	if(o)
-		this.configure(o);
-}
-
-Object.defineProperty( CustomData.prototype, &quot;properties&quot;, {
-	set: function(v){
-		if(!v || v.constructor !== Array)
-			return;
-		this._properties.length = v.length;
-		this._properties_by_name = {};
-		for(var i = 0; i &lt; v.length; ++i)
-		{
-			var p = v[i];
-			this._properties[i] = p;
-			this._properties_by_name[ p.name ] = p;
-		}
-	},
-	get: function()
-	{
-		return this._properties;
-	},
-	enumerable: true
-});
-
-CustomData.icon = &quot;mini-icon-bg.png&quot;;
-
-CustomData.prototype.onAddedToNode = function(node)
-{
-	if(!node.custom)
-		node.custom = this;
-}
-
-CustomData.prototype.onRemovedFromNode = function(node)
-{
-	if(node.custom == this)
-		delete node.custom;
-}
-
-CustomData.prototype.getResources = function(res)
-{
-	return res;
-}
-
-CustomData.prototype.addProperty = function( property )
-{
-	this._properties.push( property );
-	if( this._properties_by_name[ property.name ] )
-		console.warn(&quot;CustomData: there is a property with the same name&quot;);
-	this._properties_by_name[ property.name ] = property;
-}
-
-CustomData.prototype.getProperty = function( name )
-{
-	return this._properties_by_name[ name ];
-}
-
-CustomData.prototype.getPropertiesInfo = function()
-{
-	return this._properties;
-}
-
-CustomData.prototype.updateProperty = function( property )
-{
-	this._properties_by_name[ property.name ] = property;
-}
-
-//used for animation tracks
-CustomData.prototype.getPropertyInfoFromPath = function( path )
-{
-	var varname = path[0];
-	var property = this._properties_by_name[ varname ];
-	if(!property)
-		return null;
-	return {
-		node: this._root,
-		target: property, //no this
-		name: &quot;value&quot;,
-		value: property.value,
-		type: property.type
-	};
-}
-
-CustomData.prototype.setPropertyValueFromPath = function( path, value, offset )
-{
-	offset = offset || 0;
-
-	var varname = path[offset];
-	var property = this._properties_by_name[ varname ];
-	if(!property)
-		return;
-
-	//assign
-	if(property.value &amp;&amp; property.value.set)
-		property.value.set( value ); //typed arrays
-	else
-		property.value = value;
-}
-
-CustomData.prototype.get = function(name)
-{
-	var p = this._properties_by_name[ name ];
-	if(p)
-		return p.value;
-}
+<h1>LS.Ray Class</h1>
+<div class="box meta">
 
 
-CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
-{
-}
+        <div class="foundat">
+            Defined in: <a href="../files/.._src_defines.js.html#l90"><code>..&#x2F;src&#x2F;defines.js:90</code></a>
+        </div>
 
-LS.registerComponent( CustomData );
-LS.CustomData = CustomData;
-    </pre>
+            Module: <a href="../modules/LS.html">LS</a>
+
+</div>
+
+
+<div class="box intro">
+    <p>A Ray that contains an origin and a direction (it uses the Ray class from litegl, so to check documentation go to litegl doc</p>
+
+</div>
+
+    <div class="constructor">
+        <h2>Constructor</h2>
+<div id="method_LS.Ray" class="method item">
+    <h3 class="name"><code>LS.Ray</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>origin</code>
+                </li>
+                <li class="arg">
+                        <code>direction</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_defines.js.html#l90"><code>..&#x2F;src&#x2F;defines.js:90</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">origin</code>
+                        <span class="type">Vec3</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">direction</code>
+                        <span class="type">Vec3</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+
+
+</div>
+    </div>
+
+<div id="classdocs" class="tabview">
+    <ul class="api-class-tabs">
+        <li class="api-class-tab index"><a href="#index">Index</a></li>
+
+    </ul>
+
+    <div>
+        <div id="index" class="api-class-tabpanel index">
+            <h2 class="off-left">Item Index</h2>
+
+
+
+
+        </div>
+
+
+
+
+    </div>
 </div>
                     </div>
                 </div>

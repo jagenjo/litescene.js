@@ -53,6 +53,7 @@ YUI.add("yuidoc-meta", function(Y) {
         "LS.Player",
         "LS.Prefab",
         "LS.Project",
+        "LS.Ray",
         "LS.RenderFrameContext",
         "LS.RenderInstance",
         "LS.RenderSettings",

@@ -90,6 +90,7 @@
                                 <li><a href="../classes/LS.Player.html">LS.Player</a></li>
                                 <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
                                 <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
                                 <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
                                 <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
                                 <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
@@ -203,11 +204,11 @@ var ShadersManager = {
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
-		this.global_extra_code = String.fromCharCode(10) + &quot;#define WEBGL&quot; + String.fromCharCode(10);
+		this.global_extra_code = String.fromCharCode(10) + &quot;#define WEBGL\n&quot;;
 		if( gl.webgl_version == 2 || gl.extensions.OES_standard_derivatives )
-			this.global_extra_code = &quot;#define STANDARD_DERIVATIVES&quot; + String.fromCharCode(10);
+			this.global_extra_code += &quot;#define STANDARD_DERIVATIVES\n&quot;;
 		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
-			this.global_extra_code = &quot;#define DRAW_BUFFERS&quot; + String.fromCharCode(10);
+			this.global_extra_code += &quot;#define DRAW_BUFFERS\n&quot;;
 
 		//compile some shaders
 		this.createDefaultShaders();
