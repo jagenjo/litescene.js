@@ -13,7 +13,7 @@ To do the ray cast we first need the ray. To create a ray:
 var ray = GL.Ray( [0,0,0], [0,0,-1] ); //front ray
 ```
 
-or if we want to cast a ray from a point in the camera we can use the getRay method from Camera:
+or if we want to cast a ray from a point in the camera we can use the ```getRayInPixel``` method from ```Camera```:
 
 ```js
 var ray = camera.getRayInPixel( x, y );
