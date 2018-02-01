@@ -9,29 +9,29 @@ To solve those issues LiteScene comes with some classes meant to make the proces
 
 To do the ray cast we first need the ray. To create a ray:
 
-´´´js
+```js
 var ray = GL.Ray( [0,0,0], [0,0,-1] ); //front ray
-´´´
+```
 
 or if we want to cast a ray from a point in the camera we can use the getRay method from Camera:
 
-´´´js
+```js
 var ray = camera.getRayInPixel( x, y );
-´´´
+```
 
-To test collisions of this ray with the scene we use the static class ´´´LS.Physics´´´:
+To test collisions of this ray with the scene we use the static class ```LS.Physics```:
 
-´´´js
+```js
 var collided = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
-´´´
+```
 
-This will test the ray against the bounding boxes of all ´´´LS.RenderInstances´´´ of the scene.
+This will test the ray against the bounding boxes of all ```LS.RenderInstances``` of the scene.
 
-If you want to get the specific position of the intersection you can pass the parameters ´´´triangle_collision´´´:
+If you want to get the specific position of the intersection you can pass the parameters ```triangle_collision```:
 
-´´´js
+```js
 var collided = LS.Physics.raycastRenderInstances( ray.origin, ray.direction, { triangle_collision: true} );
-´´´
+```
 
 Other available options are:
 - layers: a mask specifiying which layers to test collision with ( p.e. 0b1010 to test the second and the foruth layer)
@@ -46,8 +46,8 @@ Picking is the process of obtaining which object is right below the mouse cursor
 
 The algorithm used to solve this is by rendering every object to a different color and checking the final color under the pixel, this approach **is quite slow** (it requires to render the whole scene) but is pixel perfect.
 
-To use it you must call the static class ´´´LS.Picking´´´:
+To use it you must call the static class ```LS.Picking```:
 
-´´´js
+```js
 var node = LS.Picking.getNodeAtCanvasPosition(x,y);
-´´´
+```
