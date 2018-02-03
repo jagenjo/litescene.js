@@ -34,18 +34,18 @@ this.onStart = function()
 
 this.onCreateParticle = function(p)
 {
-  p.pos = [Math.random()*50, 0, 0];
+  p.pos = [Math.random()*10-5, 0, 0];
 }
 
 this.onUpdateParticle = function(p,dt)
 {
-  p._pos[0] += (Math.sin(p.life) - 0.5) * 10;
-  p._pos[2] += (Math.cos(p.life) - 0.5) * 10;
+  p._pos[0] = (Math.sin(p.life) - 0.5) * 10.1;
+  p._pos[2] = (Math.cos(p.life) - 0.5) * 10.1;
 }
 
 
 this.onUpdate = function(dt)
 {
-	node.scene.refresh();
+	//node.scene.refresh();
 }
 ```
