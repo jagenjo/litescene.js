@@ -56,14 +56,20 @@
                                 <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
+                                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+                                <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+                                <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
                                 <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
                                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+                                <li><a href="../classes/LS.Components.SceneInclude.html">LS.Components.SceneInclude</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
+                                <li><a href="../classes/LS.Components.Skybox.html">LS.Components.Skybox</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -78,12 +84,11 @@
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
-                                <li><a href="../classes/LS.Light.html">LS.Light</a></li>
-                                <li><a href="../classes/LS.LightFX.html">LS.LightFX</a></li>
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
+                                <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
                                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
                                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
@@ -163,7 +168,8 @@
 
 
 <div class="box intro">
-    <p>LSQ allows to set or get values easily from the global scene, using short strings as identifiers</p>
+    <p>LSQ allows to set or get values easily from the global scene, using short strings as identifiers
+similar to jQuery and the DOM:  LSQ(&quot;nod_name&quot;).material = ...</p>
 
 </div>
 
@@ -233,7 +239,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l992"><code>..&#x2F;src&#x2F;core.js:992</code></a>
+        <a href="../files/.._src_core.js.html#l997"><code>..&#x2F;src&#x2F;core.js:997</code></a>
         </p>
 
 
@@ -300,7 +306,7 @@ Example: var value = LSQ.get(&quot;mynode|a_child/MeshRenderer/enabled&quot;);</
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l964"><code>..&#x2F;src&#x2F;core.js:964</code></a>
+        <a href="../files/.._src_core.js.html#l969"><code>..&#x2F;src&#x2F;core.js:969</code></a>
         </p>
 
 
@@ -369,7 +375,7 @@ Example:  LSQ.set(&quot;mynode|a_child/MeshRenderer/enabled&quot;,false);</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l1063"><code>..&#x2F;src&#x2F;core.js:1063</code></a>
+        <a href="../files/.._src_core.js.html#l1068"><code>..&#x2F;src&#x2F;core.js:1068</code></a>
         </p>
 
 
@@ -438,7 +444,7 @@ This is faster but if the locator points to a different object it wont work.</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l1024"><code>..&#x2F;src&#x2F;core.js:1024</code></a>
+        <a href="../files/.._src_core.js.html#l1029"><code>..&#x2F;src&#x2F;core.js:1029</code></a>
         </p>
 
 

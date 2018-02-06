@@ -6,6 +6,7 @@
 * It also allow to limit the bone search to specific nodes.
 *
 * @class SkinDeformer
+* @namespace LS.Components
 * @constructor
 */
 function SkinDeformer( o )

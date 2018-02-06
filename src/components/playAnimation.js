@@ -1,6 +1,7 @@
 /**
-* Reads animation tracks from an Animation resource and applies the properties to the objects referenced
+* Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */

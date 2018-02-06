@@ -1,6 +1,7 @@
 /**
 * Transitions between different poses
 * @class Poser
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */

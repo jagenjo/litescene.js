@@ -1,6 +1,7 @@
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */

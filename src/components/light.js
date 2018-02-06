@@ -3,6 +3,7 @@
 /**
 * Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)
 * @class Light
+* @namespace LS.Components
 * @constructor
 * @param {Object} object to configure from
 */

@@ -7,7 +7,17 @@ function CameraFX( o )
 {
 	this.enabled = true;
 
+	/**
+	* The FX Stack
+	* @property fx {LS.FXStack}
+	*/
 	this.fx = new LS.FXStack( o ? o.fx : null );
+
+	/**
+	* The position of the camera (in local space, node space)
+	* @property eye {vec3}
+	* @default [0,100,100]
+	*/
 	this.frame = new LS.RenderFrameContext();
 	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;
@@ -21,6 +31,10 @@ function CameraFX( o )
 CameraFX.icon = "mini-icon-fx.png";
 CameraFX["@camera_uid"] = { type: "String" };
 
+/**
+* Apply antialiasing post-processing shader
+* @property use_antialiasing {Boolean}
+*/
 Object.defineProperty( CameraFX.prototype, "use_antialiasing", { 
 	set: function(v) { this.fx.apply_fxaa = v; },
 	get: function() { return this.fx.apply_fxaa; },
