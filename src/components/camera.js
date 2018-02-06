@@ -5,7 +5,7 @@
 * @class Camera
 * @namespace LS.Components
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Camera(o)
@@ -343,7 +343,8 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 
 /**
 * The frustum size when working in pure ORTHOGRAPHIC 
-* @property orthographic {vec4} left,right,bottom,top (near and far are in the near,far properties)
+* left,right,bottom,top (near and far are in the near,far properties)
+* @property orthographic {vec4} 
 * @default 50
 */
 
@@ -430,6 +431,7 @@ Object.defineProperty( Camera.prototype, "viewport_size", {
 });
 
 /**
+* the clear color
 * @property background_color {vec4}
 */
 Object.defineProperty( Camera.prototype, "background_color", {
@@ -441,6 +443,11 @@ Object.defineProperty( Camera.prototype, "background_color", {
 	},
 	enumerable: true
 });
+
+/**
+* returns the texture from the render frame context
+* @property render_to_texture {GL.Texture} 
+*/
 
 Object.defineProperty( Camera.prototype, "render_to_texture", {
 	get: function() {
@@ -459,7 +466,8 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 });
 
 /**
-* @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
+* contains the RenderFrameContext where the scene was stored
+* @property frame {LS.RenderFrameContext} 
 */
 Object.defineProperty( Camera.prototype, "frame", {
 	set: function(v) {
@@ -472,7 +480,8 @@ Object.defineProperty( Camera.prototype, "frame", {
 });
 
 /**
-* @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
+* contains the color texture used by the RenderFrameContext
+* @property frame_color_texture {GL.Texture} 
 */
 Object.defineProperty( Camera.prototype, "frame_color_texture", {
 	set: function(v) {
@@ -487,7 +496,8 @@ Object.defineProperty( Camera.prototype, "frame_color_texture", {
 });
 
 /**
-* @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
+* contains the depth texture used by the RenderFrameContext
+* @property frame_depth_texture {GL.Texture} 
 */
 Object.defineProperty( Camera.prototype, "frame_depth_texture", {
 	set: function(v) {
@@ -503,6 +513,7 @@ Object.defineProperty( Camera.prototype, "frame_depth_texture", {
 
 
 /**
+* to force updating projection and view matrix
 * @property mustUpdate {Boolean}
 */
 Object.defineProperty( Camera.prototype, "mustUpdate", {

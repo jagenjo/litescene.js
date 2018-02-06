@@ -4,7 +4,7 @@
 * @class MeshRenderer
 * @namespace LS.Components
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 function MeshRenderer(o)
 {

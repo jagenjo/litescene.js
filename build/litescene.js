@@ -1769,144 +1769,148 @@ LS.Classes.WBin = LS.WBin = global.WBin = WBin;
 
 /**
 * LSQ allows to set or get values easily from the global scene, using short strings as identifiers
+* similar to jQuery and the DOM:  LSQ("nod_name").material = ...
 *
 * @class  LSQ
 */
-var LSQ = {
-	/**
-	* Assigns a value to a property of one node in the scene, just by using a string identifier
-	* Example:  LSQ.set("mynode|a_child/MeshRenderer/enabled",false);
-	*
-	* @method set
-	* @param {String} locator the locator string identifying the property
-	* @param {*} value value to assign to property
-	*/
-	set: function( locator, value, root, scene )
+function LSQ(v)
+{
+	return LSQ.get(v);
+}
+
+/**
+* Assigns a value to a property of one node in the scene, just by using a string identifier
+* Example:  LSQ.set("mynode|a_child/MeshRenderer/enabled",false);
+*
+* @method set
+* @param {String} locator the locator string identifying the property
+* @param {*} value value to assign to property
+*/
+LSQ.set = function( locator, value, root, scene )
+{
+	scene = scene || LS.GlobalScene;
+	if(!root)
+		scene.setPropertyValue( locator, value );
+	else
 	{
-		scene = scene || LS.GlobalScene;
-		if(!root)
-			scene.setPropertyValue( locator, value );
-		else
+		if(root.constructor === LS.SceneNode)
 		{
-			if(root.constructor === LS.SceneNode)
-			{
-				var path = locator.split("/");
-				var node = root.findNodeByUId( path[0] );
-				if(!node)
-					return null;
-				return node.setPropertyValueFromPath( path.slice(1), value );
-			}
+			var path = locator.split("/");
+			var node = root.findNodeByUId( path[0] );
+			if(!node)
+				return null;
+			return node.setPropertyValueFromPath( path.slice(1), value );
 		}
-
-		scene.requestFrame();
-	},
-
-	/**
-	* Retrieves the value of a property of one node in the scene, just by using a string identifier
-	* Example: var value = LSQ.get("mynode|a_child/MeshRenderer/enabled");
-	*
-	* @method get
-	* @param {String} locator the locator string identifying the property
-	* @return {*} value of the property
-	*/
-	get: function( locator, root, scene )
-	{
-		if(!locator) //sometimes we have a var with a locator that is null
-			return null;
-		scene = scene || LS.GlobalScene;
-		var info;
-		if(!root)
-			info = scene.getPropertyInfo( locator );
-		else
-		{
-			if(root.constructor === LS.SceneNode)
-			{
-				var path = locator.split("/");
-				var node = root.findNodeByUId( path[0] );
-				if(!node)
-					return null;
-				info = node.getPropertyInfoFromPath( path.slice(1) );
-			}
-		}
-		if(info)
-			return info.value;
-		return null;
-	},
-
-	/**
-	* Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property
-	* Example: "@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size" -> "node|child/Collider/size"
-	*
-	* @method shortify
-	* @param {String} locator the locator string to shortify
-	* @return {String} the locator using names instead of UIDs
-	*/
-	shortify: function( locator, scene )
-	{
-		if(!locator)
-			return;
-
-		var t = locator.split("/");
-		var node = null;
-
-		//already short
-		if( t[0][0] != LS._uid_prefix )
-			return locator;
-
-		scene = scene || LS.GlobalScene;
-
-		node = scene._nodes_by_uid[ t[0] ];
-		if(!node) //node not found
-			return locator;
-
-		t[0] = node.getPathName();
-		if(t[1])
-		{
-			if( t[1][0] == LS._uid_prefix )
-			{
-				var compo = node.getComponentByUId(t[1]);
-				if(compo)
-					t[1] = LS.getObjectClassName( compo );
-			}
-		}
-		return t.join("/");
-	},
-
-	/**
-	* Assigns a value using the getLocatorInfo object instead of searching it again
-	* This is faster but if the locator points to a different object it wont work.
-	*
-	* @method setFromInfo
-	* @param {Object} info information of a location (obtain using scene.getLocatorInfo
-	* @param {*} value to assign
-	*/
-	setFromInfo: function( info, value )
-	{
-		if(!info || !info.target)
-			return;
-		var target = info.target;
-		if( target.setPropertyValue  )
-			if( target.setPropertyValue( info.name, value ) === true )
-				return target;
-		if( target[ info.name ] === undefined )
-			return;
-		target[ info.name ] = value;	
-	},
-
-	getFromInfo: function( info )
-	{
-		if(!info || !info.target)
-			return;
-		var target = info.target;
-		var varname = info.name;
-		var v = undefined;
-		if( target.getPropertyValue )
-			v = target.getPropertyValue( varname );
-		if( v === undefined && target[ varname ] === undefined )
-			return null;
-		return v !== undefined ? v : target[ varname ];
 	}
-};
+
+	scene.requestFrame();
+}
+
+/**
+* Retrieves the value of a property of one node in the scene, just by using a string identifier
+* Example: var value = LSQ.get("mynode|a_child/MeshRenderer/enabled");
+*
+* @method get
+* @param {String} locator the locator string identifying the property
+* @return {*} value of the property
+*/
+LSQ.get = function( locator, root, scene )
+{
+	if(!locator) //sometimes we have a var with a locator that is null
+		return null;
+	scene = scene || LS.GlobalScene;
+	var info;
+	if(!root)
+		info = scene.getPropertyInfo( locator );
+	else
+	{
+		if(root.constructor === LS.SceneNode)
+		{
+			var path = locator.split("/");
+			var node = root.findNodeByUId( path[0] );
+			if(!node)
+				return null;
+			info = node.getPropertyInfoFromPath( path.slice(1) );
+		}
+	}
+	if(info)
+		return info.value;
+	return null;
+}
+
+/**
+* Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property
+* Example: "@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size" -> "node|child/Collider/size"
+*
+* @method shortify
+* @param {String} locator the locator string to shortify
+* @return {String} the locator using names instead of UIDs
+*/
+LSQ.shortify = function( locator, scene )
+{
+	if(!locator)
+		return;
+
+	var t = locator.split("/");
+	var node = null;
+
+	//already short
+	if( t[0][0] != LS._uid_prefix )
+		return locator;
+
+	scene = scene || LS.GlobalScene;
+
+	node = scene._nodes_by_uid[ t[0] ];
+	if(!node) //node not found
+		return locator;
+
+	t[0] = node.getPathName();
+	if(t[1])
+	{
+		if( t[1][0] == LS._uid_prefix )
+		{
+			var compo = node.getComponentByUId(t[1]);
+			if(compo)
+				t[1] = LS.getObjectClassName( compo );
+		}
+	}
+	return t.join("/");
+}
+
+/**
+* Assigns a value using the getLocatorInfo object instead of searching it again
+* This is faster but if the locator points to a different object it wont work.
+*
+* @method setFromInfo
+* @param {Object} info information of a location (obtain using scene.getLocatorInfo
+* @param {*} value to assign
+*/
+LSQ.setFromInfo = function( info, value )
+{
+	if(!info || !info.target)
+		return;
+	var target = info.target;
+	if( target.setPropertyValue  )
+		if( target.setPropertyValue( info.name, value ) === true )
+			return target;
+	if( target[ info.name ] === undefined )
+		return;
+	target[ info.name ] = value;	
+}
+
+LSQ.getFromInfo = function( info )
+{
+	if(!info || !info.target)
+		return;
+	var target = info.target;
+	var varname = info.name;
+	var v = undefined;
+	if( target.getPropertyValue )
+		v = target.getPropertyValue( varname );
+	if( v === undefined && target[ varname ] === undefined )
+		return null;
+	return v !== undefined ? v : target[ varname ];
+}
 
 //register resource classes
 if(global.GL)
@@ -8662,6 +8666,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "emissive_extra":
 		//strings
 		//bools
+		case "shader_name":
 		case "specular_on_top":
 		case "specular_on_alpha":
 		case "normalmap_tangent":
@@ -21125,6 +21130,7 @@ var Renderer = {
 			queue.add( instance );
 
 			//node & mesh constant information
+			//DEPRECATED
 			var query = instance.query;
 
 			/* deprecated
@@ -21135,11 +21141,14 @@ var Renderer = {
 				query.macros.NO_COORDS = "";
 			if(("coords1" in buffers))
 				query.macros.USE_COORDS1_STREAM = "";
-			if(("colors" in buffers))
+			if(("colors" in buffers)) //particles
 				query.macros.USE_COLOR_STREAM = "";
 			if(("tangents" in buffers))
 				query.macros.USE_TANGENT_STREAM = "";
 			*/
+			//deprecated?
+			if(("colors" in instance.mesh.vertexBuffers)) //particles
+				query.macros.USE_COLOR_STREAM = "";
 
 			instance._camera_visibility = 0|0;
 		}
@@ -25935,6 +25944,7 @@ Object.defineProperty( Camera.prototype, "viewport_size", {
 });
 
 /**
+* the clear color
 * @property background_color {vec4}
 */
 Object.defineProperty( Camera.prototype, "background_color", {
@@ -25946,6 +25956,11 @@ Object.defineProperty( Camera.prototype, "background_color", {
 	},
 	enumerable: true
 });
+
+/**
+* returns the texture from the render frame context
+* @property render_to_texture {GL.Texture} 
+*/
 
 Object.defineProperty( Camera.prototype, "render_to_texture", {
 	get: function() {
@@ -25964,7 +25979,8 @@ Object.defineProperty( Camera.prototype, "render_to_texture", {
 });
 
 /**
-* @property frame {LS.RenderFrameContext} contains the RenderFrameContext where the scene was stored
+* contains the RenderFrameContext where the scene was stored
+* @property frame {LS.RenderFrameContext} 
 */
 Object.defineProperty( Camera.prototype, "frame", {
 	set: function(v) {
@@ -25977,7 +25993,8 @@ Object.defineProperty( Camera.prototype, "frame", {
 });
 
 /**
-* @property frame_color_texture {GL.Texture} contains the color texture used by the RenderFrameContext
+* contains the color texture used by the RenderFrameContext
+* @property frame_color_texture {GL.Texture} 
 */
 Object.defineProperty( Camera.prototype, "frame_color_texture", {
 	set: function(v) {
@@ -25992,7 +26009,8 @@ Object.defineProperty( Camera.prototype, "frame_color_texture", {
 });
 
 /**
-* @property frame_depth_texture {GL.Texture} contains the depth texture used by the RenderFrameContext
+* contains the depth texture used by the RenderFrameContext
+* @property frame_depth_texture {GL.Texture} 
 */
 Object.defineProperty( Camera.prototype, "frame_depth_texture", {
 	set: function(v) {
@@ -26008,6 +26026,7 @@ Object.defineProperty( Camera.prototype, "frame_depth_texture", {
 
 
 /**
+* to force updating projection and view matrix
 * @property mustUpdate {Boolean}
 */
 Object.defineProperty( Camera.prototype, "mustUpdate", {
@@ -34452,9 +34471,6 @@ function ParticleEmissor(o)
 
 	this.texture_grid_size = 1;
 
-	this._custom_emissor_code = null;
-	this._custom_update_code = null;
-
 	//physics
 	this.physics_gravity = [0,0,0];
 	this.physics_friction = 0;
@@ -34477,6 +34493,9 @@ function ParticleEmissor(o)
 	this.sort_in_z = true; //slower
 	this.stop_update = false; //do not move particles
 	this.ignore_lights = false; 
+
+	this.onCreateParticle = null;
+	this.onUpdateParticle = null;
 
 	if(o)
 		this.configure(o);
@@ -34527,47 +34546,6 @@ Object.defineProperty( ParticleEmissor.prototype, 'particle_end_color', {
 	set: function(v) { 
 		if(v)
 			this._particle_end_color.set(v); 
-	},
-	enumerable: true
-});
-
-
-Object.defineProperty( ParticleEmissor.prototype , 'custom_emissor_code', {
-	get: function() { return this._custom_emissor_code; },
-	set: function(v) { 
-		v = LScript.cleanCode(v);
-		this._custom_emissor_code = v;
-		try
-		{
-			if(v && v.length)
-				this._custom_emissor_func = new Function("p",v);
-			else
-				this._custom_emissor_func = null;
-		}
-		catch (err)
-		{
-			console.error("Error in ParticleEmissor custom emissor code: ", err);
-		}
-	},
-	enumerable: true
-});
-
-Object.defineProperty( ParticleEmissor.prototype , 'custom_update_code', {
-	get: function() { return this._custom_update_code; },
-	set: function(v) { 
-		v = LScript.cleanCode(v);
-		this._custom_update_code = v;
-		try
-		{
-			if(v && v.length)
-				this._custom_update_func = new Function("p","dt",v);
-			else
-				this._custom_update_func = null;
-		}
-		catch (err)
-		{
-			console.error("Error in ParticleEmissor custom emissor code: ", err);
-		}
 	},
 	enumerable: true
 });
@@ -34656,8 +34634,8 @@ ParticleEmissor.prototype.createParticle = function(p)
 	vec3.scale(p._vel, p._vel, this.particle_speed);
 
 	//after everything so the user can edit whatever he wants
-	if(this.emissor_type == ParticleEmissor.CUSTOM_EMISSOR && this._custom_emissor_func)
-		this._custom_emissor_func.call( this, p );
+	if(this.emissor_type == ParticleEmissor.CUSTOM_EMISSOR && this.onCreateParticle)
+		this.onCreateParticle( p, this );
 
 	//this._root.transform.transformPoint(p.pos, p.pos);
 	if(!this.follow_emitter) //the transform will be applyed in the matrix
@@ -34721,8 +34699,8 @@ ParticleEmissor.prototype.onUpdate = function(e, dt, do_not_updatemesh )
 			p.angle += p.rot * dt;
 			p.life -= dt;
 
-			if(this._custom_update_func)
-				this._custom_update_func.call(this,p,dt);
+			if(this.onUpdateParticle)
+				this.onUpdateParticle(p,dt,this);
 
 			if(p.life > 0) //keep alive
 				particles.push(p);
@@ -34789,6 +34767,8 @@ ParticleEmissor.prototype.createMesh = function ()
 	this._mesh_maxparticles = this.max_particles;
 }
 
+ParticleEmissor._tmp_quat = quat.create();
+
 ParticleEmissor.prototype.updateMesh = function (camera)
 {
 	if(!camera) //no main camera specified (happens at early updates)
@@ -34848,7 +34828,8 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	}
 
 	//avoid errors
-	if(this.particle_life == 0) this.particle_life = 0.0001;
+	if(this.particle_life == 0)
+		this.particle_life = 0.0001;
 
 	var color = new Float32Array([1,1,1,1]);
 	var particle_start_color = this._particle_start_color;
@@ -34891,7 +34872,7 @@ ParticleEmissor.prototype.updateMesh = function (camera)
 	var coords = this._coords;
 
 	//used for rotations
-	var rot = quat.create();
+	var rot = ParticleEmissor._tmp_quat;
 
 	//generate quads
 	var i = 0, f = 0;

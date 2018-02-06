@@ -1,3 +1,10 @@
+/**
+* Skybox allows to render a cubemap or polar image as a background for the 3D scene
+* @class Skybox
+* @namespace LS.Components
+* @constructor
+* @param {Object} object [optional] to configure from
+*/
 
 function Skybox(o)
 {

@@ -106,7 +106,9 @@
                 "LS.Components.GeometricPrimitive": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/graphComponents.js": {
             "name": "../src/components/graphComponents.js",
@@ -116,7 +118,9 @@
                 "LS.Components.FXGraphComponent": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/interactiveController.js": {
             "name": "../src/components/interactiveController.js",
@@ -142,19 +146,32 @@
             "name": "../src/components/light.js",
             "modules": {},
             "classes": {
-                "LS.Light": 1
+                "LS.Components.Light": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/lightFX.js": {
             "name": "../src/components/lightFX.js",
             "modules": {},
             "classes": {
-                "LS.LightFX": 1
+                "LS.Components.LightFX": 1
             },
             "fors": {},
             "namespaces": {}
+        },
+        "../src/components/linesRenderer.js": {
+            "name": "../src/components/linesRenderer.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.LinesRenderer": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/meshRenderer.js": {
             "name": "../src/components/meshRenderer.js",
@@ -176,6 +193,19 @@
             "fors": {},
             "namespaces": {}
         },
+        "../src/components/particles.js": {
+            "name": "../src/components/particles.js",
+            "modules": {},
+            "classes": {
+                "LS.Particle": 1,
+                "LS.Components.ParticlesEmissor": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS": 1,
+                "LS.Components": 1
+            }
+        },
         "../src/components/playAnimation.js": {
             "name": "../src/components/playAnimation.js",
             "modules": {},
@@ -183,7 +213,9 @@
                 "LS.Components.PlayAnimation": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/poser.js": {
             "name": "../src/components/poser.js",
@@ -192,7 +224,9 @@
                 "LS.Components.Poser": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/realtimeReflector.js": {
             "name": "../src/components/realtimeReflector.js",
@@ -208,7 +242,20 @@
                 "LS.Components.RealtimeReflector": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
+        },
+        "../src/components/sceneInclude.js": {
+            "name": "../src/components/sceneInclude.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.SceneInclude": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/script.js": {
             "name": "../src/components/script.js",
@@ -217,7 +264,9 @@
                 "LS.Components.Script": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/skinDeformer.js": {
             "name": "../src/components/skinDeformer.js",
@@ -226,7 +275,9 @@
                 "LS.Components.SkinDeformer": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/skinnedMeshRenderer.js": {
             "name": "../src/components/skinnedMeshRenderer.js",
@@ -234,6 +285,17 @@
             "classes": {},
             "fors": {},
             "namespaces": {}
+        },
+        "../src/components/skybox.js": {
+            "name": "../src/components/skybox.js",
+            "modules": {},
+            "classes": {
+                "LS.Components.Skybox": 1
+            },
+            "fors": {},
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/components/spline.js": {
             "name": "../src/components/spline.js",
@@ -271,7 +333,9 @@
                 "LS.Components.Transform": 1
             },
             "fors": {},
-            "namespaces": {}
+            "namespaces": {
+                "LS.Components": 1
+            }
         },
         "../src/helpers/FXstack.js": {
             "name": "../src/helpers/FXstack.js",
@@ -733,15 +797,20 @@
                 "LS.Components.FXGraphComponent": 1,
                 "LS.InteractiveController": 1,
                 "LS.Knob": 1,
-                "LS.Light": 1,
-                "LS.LightFX": 1,
+                "LS.Components.Light": 1,
+                "LS.Components.LightFX": 1,
+                "LS.Components.LinesRenderer": 1,
                 "LS.Components.MeshRenderer": 1,
                 "LS.Components.NodeManipulator": 1,
+                "LS.Particle": 1,
+                "LS.Components.ParticlesEmissor": 1,
                 "LS.Components.PlayAnimation": 1,
                 "LS.Components.Poser": 1,
                 "LS.Components.RealtimeReflector": 1,
+                "LS.Components.SceneInclude": 1,
                 "LS.Components.Script": 1,
                 "LS.Components.SkinDeformer": 1,
+                "LS.Components.Skybox": 1,
                 "LS.Components.Spline": 1,
                 "LS.Components.SVGRenderer": 1,
                 "LS.Components.Target": 1,
@@ -864,7 +933,7 @@
                 {
                     "name": "object",
                     "description": "to configure from",
-                    "type": "String"
+                    "type": "Object"
                 }
             ]
         },
@@ -1022,7 +1091,7 @@
         },
         "LS.Components.GeometricPrimitive": {
             "name": "LS.Components.GeometricPrimitive",
-            "shortname": "GeometricPrimitive",
+            "shortname": "LS.Components.GeometricPrimitive",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1032,7 +1101,7 @@
             "namespace": "LS.Components",
             "file": "../src/components/geometricPrimitive.js",
             "line": 1,
-            "description": "GeometricPrimitive renders a primitive",
+            "description": "GeometricPrimitive renders a primitive like a Cube, Sphere, Plane, etc",
             "is_constructor": 1,
             "params": [
                 {
@@ -1044,7 +1113,7 @@
         },
         "LS.Components.GraphComponent": {
             "name": "LS.Components.GraphComponent",
-            "shortname": "GraphComponent",
+            "shortname": "LS.Components.GraphComponent",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1074,7 +1143,7 @@
             "module": "LS",
             "namespace": "LS.Components",
             "file": "../src/components/graphComponents.js",
-            "line": 255,
+            "line": 256,
             "description": "This component allow to integrate a rendering post FX using a graph",
             "params": [
                 {
@@ -1128,16 +1197,16 @@
                 }
             ]
         },
-        "LS.Light": {
-            "name": "LS.Light",
-            "shortname": "Light",
+        "LS.Components.Light": {
+            "name": "LS.Components.Light",
+            "shortname": "LS.Components.Light",
             "classitems": [],
             "plugins": [],
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
             "module": "LS",
-            "namespace": "LS",
+            "namespace": "LS.Components",
             "file": "../src/components/light.js",
             "line": 3,
             "description": "Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)",
@@ -1150,8 +1219,8 @@
                 }
             ]
         },
-        "LS.LightFX": {
-            "name": "LS.LightFX",
+        "LS.Components.LightFX": {
+            "name": "LS.Components.LightFX",
             "shortname": "LightFX",
             "classitems": [],
             "plugins": [],
@@ -1159,10 +1228,32 @@
             "plugin_for": [],
             "extension_for": [],
             "module": "LS",
-            "namespace": "LS",
+            "namespace": "LS.Components",
             "file": "../src/components/lightFX.js",
             "line": 3,
             "description": "LightFX create volumetric and flare effects to the light",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ]
+        },
+        "LS.Components.LinesRenderer": {
+            "name": "LS.Components.LinesRenderer",
+            "shortname": "LS.Components.LinesRenderer",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS.Components",
+            "file": "../src/components/linesRenderer.js",
+            "line": 1,
+            "description": "Helps rendering several lines",
             "is_constructor": 1,
             "params": [
                 {
@@ -1190,7 +1281,7 @@
                 {
                     "name": "object",
                     "description": "to configure from",
-                    "type": "String"
+                    "type": "Object"
                 }
             ]
         },
@@ -1216,9 +1307,53 @@
                 }
             ]
         },
+        "LS.Particle": {
+            "name": "LS.Particle",
+            "shortname": "LS.Particle",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS",
+            "file": "../src/components/particles.js",
+            "line": 2,
+            "description": "The base class used by the ParticlesEmissor",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ]
+        },
+        "LS.Components.ParticlesEmissor": {
+            "name": "LS.Components.ParticlesEmissor",
+            "shortname": "LS.Components.ParticlesEmissor",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS.Components",
+            "file": "../src/components/particles.js",
+            "line": 32,
+            "description": "ParticlesEmissor allow to render a particle system, meant to render things like smoke or fire",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ]
+        },
         "LS.Components.PlayAnimation": {
             "name": "LS.Components.PlayAnimation",
-            "shortname": "PlayAnimation",
+            "shortname": "LS.Components.PlayAnimation",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1228,7 +1363,7 @@
             "namespace": "LS.Components",
             "file": "../src/components/playAnimation.js",
             "line": 1,
-            "description": "Reads animation tracks from an Animation resource and applies the properties to the objects referenced",
+            "description": "Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced",
             "is_constructor": 1,
             "params": [
                 {
@@ -1240,7 +1375,7 @@
         },
         "LS.Components.Poser": {
             "name": "LS.Components.Poser",
-            "shortname": "Poser",
+            "shortname": "LS.Components.Poser",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1282,9 +1417,31 @@
                 }
             ]
         },
+        "LS.Components.SceneInclude": {
+            "name": "LS.Components.SceneInclude",
+            "shortname": "LS.Components.SceneInclude",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS.Components",
+            "file": "../src/components/sceneInclude.js",
+            "line": 2,
+            "description": "Allows to include a secondary scene inside this scene (with some limitations)",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "to configure from",
+                    "type": "Object"
+                }
+            ]
+        },
         "LS.Components.Script": {
             "name": "LS.Components.Script",
-            "shortname": "Script",
+            "shortname": "LS.Components.Script",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1306,7 +1463,7 @@
         },
         "LS.Components.SkinDeformer": {
             "name": "LS.Components.SkinDeformer",
-            "shortname": "SkinDeformer",
+            "shortname": "LS.Components.SkinDeformer",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1318,6 +1475,28 @@
             "line": 2,
             "description": "It applyes skinning to a RenderInstance created by another component (usually MeshRenderer)\nIs in charge of gathering the bone nodes and adding to the RenderInstance the information needed to perform the skinning\nIt can do it using shader uniforms (simple way), a matrices texture (complex way), or by directly applying skinning by software (slow but well supported way)\nIt also allow to limit the bone search to specific nodes.",
             "is_constructor": 1
+        },
+        "LS.Components.Skybox": {
+            "name": "LS.Components.Skybox",
+            "shortname": "LS.Components.Skybox",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "module": "LS",
+            "namespace": "LS.Components",
+            "file": "../src/components/skybox.js",
+            "line": 1,
+            "description": "Skybox allows to render a cubemap or polar image as a background for the 3D scene",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "object",
+                    "description": "[optional] to configure from",
+                    "type": "Object"
+                }
+            ]
         },
         "LS.Components.Spline": {
             "name": "LS.Components.Spline",
@@ -1387,7 +1566,7 @@
         },
         "LS.Components.Transform": {
             "name": "LS.Components.Transform",
-            "shortname": "Transform",
+            "shortname": "LS.Components.Transform",
             "classitems": [],
             "plugins": [],
             "extensions": [],
@@ -1862,7 +2041,7 @@
             "namespace": "",
             "file": "../src/core.js",
             "line": 958,
-            "description": "LSQ allows to set or get values easily from the global scene, using short strings as identifiers"
+            "description": "LSQ allows to set or get values easily from the global scene, using short strings as identifiers\nsimilar to jQuery and the DOM:  LSQ(\"nod_name\").material = ..."
         },
         "LS.Ray": {
             "name": "LS.Ray",
@@ -2282,9 +2461,9 @@
         {
             "file": "../src/components/camera.js",
             "line": 344,
-            "description": "The frustum size when working in pure ORTHOGRAPHIC",
+            "description": "The frustum size when working in pure ORTHOGRAPHIC \nleft,right,bottom,top (near and far are in the near,far properties)",
             "itemtype": "property",
-            "name": "orthographic  left,right,bottom,top (near and far are in the near,far properties)",
+            "name": "orthographic",
             "type": "Vec4",
             "default": "50",
             "class": "LS.Components.Camera",
@@ -2292,7 +2471,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 363,
+            "line": 364,
             "description": "The view matrix of the camera",
             "itemtype": "property",
             "name": "view_matrix",
@@ -2302,7 +2481,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 377,
+            "line": 378,
             "description": "The projection matrix of the camera (cannot be set manually, use setCustomProjectionMatrix instead)",
             "itemtype": "property",
             "name": "projection_matrix",
@@ -2312,7 +2491,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 392,
+            "line": 393,
             "description": "The viewport in normalized coordinates (left,bottom, width, height)",
             "itemtype": "property",
             "name": "viewport",
@@ -2322,7 +2501,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 406,
+            "line": 407,
             "itemtype": "property",
             "name": "viewport_offset",
             "type": "Vec2",
@@ -2331,7 +2510,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 419,
+            "line": 420,
             "itemtype": "property",
             "name": "viewport_size",
             "type": "Vec2",
@@ -2340,7 +2519,8 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 432,
+            "line": 433,
+            "description": "the clear color",
             "itemtype": "property",
             "name": "background_color",
             "type": "Vec4",
@@ -2349,34 +2529,48 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 461,
+            "line": 447,
+            "description": "returns the texture from the render frame context",
             "itemtype": "property",
-            "name": "frame  contains the RenderFrameContext where the scene was stored",
+            "name": "render_to_texture",
+            "type": "GL.Texture",
+            "class": "LS.Components.Camera",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/camera.js",
+            "line": 468,
+            "description": "contains the RenderFrameContext where the scene was stored",
+            "itemtype": "property",
+            "name": "frame",
             "type": "LS.RenderFrameContext",
             "class": "LS.Components.Camera",
             "namespace": "LS.Components"
         },
         {
             "file": "../src/components/camera.js",
-            "line": 474,
+            "line": 482,
+            "description": "contains the color texture used by the RenderFrameContext",
             "itemtype": "property",
-            "name": "frame_color_texture  contains the color texture used by the RenderFrameContext",
+            "name": "frame_color_texture",
             "type": "GL.Texture",
             "class": "LS.Components.Camera",
             "namespace": "LS.Components"
         },
         {
             "file": "../src/components/camera.js",
-            "line": 489,
+            "line": 498,
+            "description": "contains the depth texture used by the RenderFrameContext",
             "itemtype": "property",
-            "name": "frame_depth_texture  contains the depth texture used by the RenderFrameContext",
+            "name": "frame_depth_texture",
             "type": "GL.Texture",
             "class": "LS.Components.Camera",
             "namespace": "LS.Components"
         },
         {
             "file": "../src/components/camera.js",
-            "line": 505,
+            "line": 515,
+            "description": "to force updating projection and view matrix",
             "itemtype": "property",
             "name": "mustUpdate",
             "type": "Boolean",
@@ -2385,7 +2579,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 592,
+            "line": 603,
             "description": "Positions the camera at eye, pointing at center, and facing up as vertical.\nIf the camera is a node camera, then the node transform is modified (plus the center to match the focalLength)",
             "itemtype": "method",
             "name": "lookAt",
@@ -2411,7 +2605,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 618,
+            "line": 629,
             "description": "Positions the camera using a matrix that contains the position an orientation (NOT FULLY TESTED)\nIf the camera is a node camera, then the node transform is modified (plus the center to match the focalLength)",
             "itemtype": "method",
             "name": "lookAtFromMatrix",
@@ -2432,7 +2626,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 654,
+            "line": 665,
             "description": "resets eye, center and up, so they are in [0,0,0],[0,0,-focalDist] and [0,1,0]",
             "itemtype": "method",
             "name": "resetVectors",
@@ -2448,7 +2642,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 668,
+            "line": 679,
             "description": "Update matrices according to the eye,center,up,fov,aspect,...",
             "itemtype": "method",
             "name": "updateMatrices",
@@ -2457,7 +2651,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 716,
+            "line": 727,
             "description": "Update the frustum planes according to viewprojection_matrix, used for visibility testing",
             "itemtype": "method",
             "name": "updateFrustumPlanes",
@@ -2470,7 +2664,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 727,
+            "line": 738,
             "description": "returns the inverse of the viewmatrix",
             "itemtype": "method",
             "name": "getModelMatrix",
@@ -2490,7 +2684,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 741,
+            "line": 752,
             "description": "returns the viewmatrix",
             "itemtype": "method",
             "name": "getViewMatrix",
@@ -2510,7 +2704,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 755,
+            "line": 766,
             "description": "returns the projection matrix",
             "itemtype": "method",
             "name": "getProjectionMatrix",
@@ -2530,7 +2724,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 769,
+            "line": 780,
             "description": "returns the view projection matrix",
             "itemtype": "method",
             "name": "getViewProjectionMatrix",
@@ -2555,7 +2749,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 784,
+            "line": 795,
             "description": "returns the model view projection matrix computed from a passed model",
             "itemtype": "method",
             "name": "getModelViewProjectionMatrix",
@@ -2580,7 +2774,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 799,
+            "line": 810,
             "description": "apply a transform to all the vectors (eye,center,up) using a matrix",
             "itemtype": "method",
             "name": "updateVectors",
@@ -2596,7 +2790,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 814,
+            "line": 825,
             "description": "transform a local coordinate to global coordinates",
             "itemtype": "method",
             "name": "getLocalPoint",
@@ -2621,7 +2815,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 834,
+            "line": 845,
             "description": "rotate a local coordinate to global coordinates (skipping translation)",
             "itemtype": "method",
             "name": "getLocalVector",
@@ -2646,7 +2840,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 855,
+            "line": 866,
             "description": "Returns the eye (position of the camera) in global coordinates\nTakes into account if it is a camera attached to a node\nThe result of this function wont match the _eye property if the camera is a node camera",
             "itemtype": "method",
             "name": "getEye",
@@ -2666,7 +2860,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 875,
+            "line": 886,
             "description": "returns the center of the camera (position where the camera is pointing) in global coordinates",
             "itemtype": "method",
             "name": "getCenter",
@@ -2686,7 +2880,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 893,
+            "line": 904,
             "description": "returns the front vector of the camera",
             "itemtype": "method",
             "name": "getFront",
@@ -2706,7 +2900,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 913,
+            "line": 924,
             "description": "returns the up vector of the camera",
             "itemtype": "method",
             "name": "getUp",
@@ -2726,7 +2920,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 933,
+            "line": 944,
             "description": "returns the top vector of the camera (different from up, this one is perpendicular to front and right)",
             "itemtype": "method",
             "name": "getTop",
@@ -2746,7 +2940,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 951,
+            "line": 962,
             "description": "returns the right vector of the camera",
             "itemtype": "method",
             "name": "getRight",
@@ -2766,7 +2960,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 982,
+            "line": 993,
             "description": "set camera in perspective mode and sets the properties",
             "itemtype": "method",
             "name": "setPerspective",
@@ -2797,7 +2991,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1000,
+            "line": 1011,
             "description": "set camera in orthographic mode and sets the planes",
             "itemtype": "method",
             "name": "setOrthographic",
@@ -2838,7 +3032,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1019,
+            "line": 1030,
             "description": "moves the camera by adding the delta vector to center and eye",
             "itemtype": "method",
             "name": "move",
@@ -2854,7 +3048,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1038,
+            "line": 1049,
             "description": "rotate the camera around its center",
             "itemtype": "method",
             "name": "rotate",
@@ -2880,7 +3074,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1075,
+            "line": 1086,
             "description": "Rotates the camera eye around a center",
             "itemtype": "method",
             "name": "orbit",
@@ -2906,7 +3100,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1122,
+            "line": 1133,
             "description": "Pans the camera (move acording to view)",
             "itemtype": "method",
             "name": "panning",
@@ -2927,7 +3121,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1145,
+            "line": 1156,
             "description": "changes the distance between eye and center ( it could move the center or the eye, depending on the parameters )",
             "itemtype": "method",
             "name": "setDistanceToCenter",
@@ -2948,7 +3142,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1168,
+            "line": 1179,
             "description": "orients the camera (changes where is facing) according to the rotation supplied",
             "itemtype": "method",
             "name": "setOrientation",
@@ -2964,7 +3158,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1206,
+            "line": 1217,
             "description": "orients the camera (changes where is facing) using euler angles (yaw,pitch,roll)",
             "itemtype": "method",
             "name": "setEulerAngles",
@@ -2990,7 +3184,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1220,
+            "line": 1231,
             "description": "uses a view matrix to compute the eye,center,up vectors",
             "itemtype": "method",
             "name": "fromViewMatrix",
@@ -3006,7 +3200,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1241,
+            "line": 1252,
             "description": "overwrites the current projection matrix with a given one (it also blocks the camera from modifying the projection matrix)",
             "itemtype": "method",
             "name": "setCustomProjectionMatrix",
@@ -3022,7 +3216,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1263,
+            "line": 1274,
             "description": "Sets the viewport in pixels (using the gl.canvas as reference)",
             "itemtype": "method",
             "name": "setViewportInPixels",
@@ -3053,7 +3247,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1280,
+            "line": 1291,
             "description": "Converts a 3D point to its 2D position in canvas space",
             "itemtype": "method",
             "name": "project",
@@ -3085,7 +3279,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1310,
+            "line": 1321,
             "description": "It tells you the 2D position of a node center in the screen",
             "itemtype": "method",
             "name": "projectNodeCenter",
@@ -3117,7 +3311,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1324,
+            "line": 1335,
             "description": "Converts a screen space 2D vector (with a Z value) to its 3D equivalent position",
             "itemtype": "method",
             "name": "unproject",
@@ -3149,7 +3343,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1340,
+            "line": 1351,
             "description": "returns the viewport in pixels applying the local camera viewport to the full viewport of the canvas",
             "itemtype": "method",
             "name": "getLocalViewport",
@@ -3178,7 +3372,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1369,
+            "line": 1380,
             "description": "given an x and y position, returns the ray {start, dir}",
             "itemtype": "method",
             "name": "getRay",
@@ -3218,7 +3412,7 @@
         },
         {
             "file": "../src/components/camera.js",
-            "line": 1406,
+            "line": 1417,
             "description": "Returns true if the 2D point (in screen space coordinates) is inside the camera viewport area",
             "itemtype": "method",
             "name": "isPointInCamera",
@@ -3247,8 +3441,72 @@
             "namespace": "LS.Components"
         },
         {
+            "file": "../src/components/cameraFX.js",
+            "line": 10,
+            "description": "The FX Stack",
+            "itemtype": "property",
+            "name": "fx",
+            "type": "LS.FXStack",
+            "class": "LS.Components.CameraFX",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/cameraFX.js",
+            "line": 16,
+            "description": "The position of the camera (in local space, node space)",
+            "itemtype": "property",
+            "name": "eye",
+            "type": "Vec3",
+            "default": "[0,100,100]",
+            "class": "LS.Components.CameraFX",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/cameraFX.js",
+            "line": 34,
+            "description": "Apply antialiasing post-processing shader",
+            "itemtype": "property",
+            "name": "use_antialiasing",
+            "type": "Boolean",
+            "class": "LS.Components.CameraFX",
+            "namespace": "LS.Components"
+        },
+        {
             "file": "../src/components/geometricPrimitive.js",
-            "line": 197,
+            "line": 28,
+            "description": "The shape to render, valid values are: LS.Components.GeometricPrimitive.CUBE,PLANE,CYLINDER,SPHERE,CIRCLE,HEMISPHERE,ICOSAHEDRON,CONE,QUAD",
+            "itemtype": "property",
+            "name": "geometry",
+            "type": "Enum",
+            "default": "LS.Components.GeometricPrimitive.CUBE",
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/geometricPrimitive.js",
+            "line": 47,
+            "description": "The size of the primitive (the global scale)",
+            "itemtype": "property",
+            "name": "size",
+            "type": "Number",
+            "default": "10",
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/geometricPrimitive.js",
+            "line": 74,
+            "description": "The GL primitive to use (LINES,LINE_STRIP,TRIANGLES,TRIANGLE_FAN",
+            "itemtype": "property",
+            "name": "primitive",
+            "type": "Enum",
+            "default": "10",
+            "class": "LS.Components.GeometricPrimitive",
+            "namespace": "LS.Components"
+        },
+        {
+            "file": "../src/components/geometricPrimitive.js",
+            "line": 214,
             "description": "Assigns a mesh as custom mesh and sets the geometry to CUSTOM",
             "itemtype": "method",
             "name": "setCustomMesh",
@@ -3264,7 +3522,7 @@
         },
         {
             "file": "../src/components/graphComponents.js",
-            "line": 63,
+            "line": 64,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -3280,7 +3538,7 @@
         },
         {
             "file": "../src/components/graphComponents.js",
-            "line": 306,
+            "line": 307,
             "description": "Returns the first component of this container that is of the same class",
             "itemtype": "method",
             "name": "configure",
@@ -3296,150 +3554,150 @@
         },
         {
             "file": "../src/components/light.js",
-            "line": 11,
+            "line": 12,
             "description": "Position of the light in world space",
             "itemtype": "property",
             "name": "position",
             "type": "{[[x,y,z]]}",
             "default": "[0,0,0]",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 18,
+            "line": 19,
             "description": "Position where the light is pointing at (in world space)",
             "itemtype": "property",
             "name": "target",
             "type": "{[[x,y,z]]}",
             "default": "[0,0,1]",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 25,
+            "line": 26,
             "description": "Up vector (in world coordinates)",
             "itemtype": "property",
             "name": "up",
             "type": "{[[x,y,z]]}",
             "default": "[0,1,0]",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 33,
+            "line": 34,
             "description": "Enabled",
             "itemtype": "property",
             "name": "enabled",
             "type": "{Boolean}",
             "default": "true",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 41,
+            "line": 42,
             "description": "Layers mask, this layers define which objects are iluminated by this light",
             "itemtype": "property",
             "name": "layers",
             "type": "{Number}",
             "default": "true",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 50,
+            "line": 51,
             "description": "Near distance",
             "itemtype": "property",
             "name": "near",
             "type": "{Number}",
             "default": "1",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 57,
+            "line": 58,
             "description": "Far distance",
             "itemtype": "property",
             "name": "far",
             "type": "{Number}",
             "default": "1000",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 65,
+            "line": 66,
             "description": "Angle for the spot light inner apperture",
             "itemtype": "property",
             "name": "angle",
             "type": "{Number}",
             "default": "45",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 72,
+            "line": 73,
             "description": "Angle for the spot light outer apperture",
             "itemtype": "property",
             "name": "angle_end",
             "type": "{Number}",
             "default": "60",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 85,
+            "line": 86,
             "description": "type of attenuation: Light.NO_ATTENUATION, Light.LINEAR_ATTENUATION, Light.RANGE_ATTENUATION",
             "itemtype": "property",
             "name": "attenuation_type",
             "type": "{Number}",
             "default": "[1,1,1]",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 102,
+            "line": 103,
             "description": "The color of the light",
             "itemtype": "property",
             "name": "color",
             "type": "{vec3}",
             "default": "[1,1,1]",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 109,
+            "line": 110,
             "description": "The intensity of the light",
             "itemtype": "property",
             "name": "intensity",
             "type": "{Number}",
             "default": "1",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 120,
+            "line": 121,
             "description": "If the light cast shadows",
             "itemtype": "property",
             "name": "cast_shadows",
             "type": "{Boolean}",
             "default": "false",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 329,
+            "line": 330,
             "description": "Returns the camera that will match the light orientation (taking into account fov, etc), useful for shadowmaps",
             "itemtype": "method",
             "name": "getLightCamera",
@@ -3447,21 +3705,21 @@
                 "description": "the camera",
                 "type": "Camera"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 341,
+            "line": 342,
             "description": "updates all the important vectors (target, position, etc) according to the node parent of the light",
             "itemtype": "method",
             "name": "updateVectors",
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 382,
+            "line": 383,
             "description": "returns a copy of the light position (in global coordinates), if you want local you can access the position property",
             "itemtype": "method",
             "name": "getPosition",
@@ -3476,12 +3734,12 @@
                 "description": "the position",
                 "type": "Vec3"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 398,
+            "line": 399,
             "description": "returns a copy of the light target (in global coordinates), if you want local you can access the target property",
             "itemtype": "method",
             "name": "getTarget",
@@ -3496,12 +3754,12 @@
                 "description": "the target",
                 "type": "Vec3"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 413,
+            "line": 414,
             "description": "returns a copy of the light up vector (in global coordinates), if you want local you can access the up property",
             "itemtype": "method",
             "name": "getUp",
@@ -3516,12 +3774,12 @@
                 "description": "the up vector",
                 "type": "Vec3"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 429,
+            "line": 430,
             "description": "returns a copy of the front vector (in global coordinates)",
             "itemtype": "method",
             "name": "getFront",
@@ -3536,12 +3794,12 @@
                 "description": "the front vector",
                 "type": "Vec3"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 480,
+            "line": 481,
             "description": "This method is called by the LS.Renderer when the light needs to be prepared to be used during render (compute light camera, create shadowmaps, prepare macros, etc)",
             "itemtype": "method",
             "name": "prepare",
@@ -3552,12 +3810,12 @@
                     "type": "Object"
                 }
             ],
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 659,
+            "line": 660,
             "description": "Collects and returns the shader query of the light (some macros have to be computed now because they depend not only on the light, also on the node or material)",
             "itemtype": "method",
             "name": "getQuery",
@@ -3577,12 +3835,12 @@
                 "description": "the macros",
                 "type": "ShaderQuery"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 699,
+            "line": 700,
             "description": "Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach",
             "itemtype": "method",
             "name": "computeShadowmapFar",
@@ -3590,12 +3848,12 @@
                 "description": "distance",
                 "type": "Number"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 725,
+            "line": 726,
             "description": "Computes the max amount of light this object can produce (taking into account every color channel)",
             "itemtype": "method",
             "name": "computeLightIntensity",
@@ -3603,12 +3861,12 @@
                 "description": "intensity",
                 "type": "Number"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 736,
+            "line": 737,
             "description": "Computes the light radius according to the attenuation",
             "itemtype": "method",
             "name": "computeLightRadius",
@@ -3616,12 +3874,12 @@
                 "description": "radius",
                 "type": "Number"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 753,
+            "line": 754,
             "description": "Generates the shadowmap for this light",
             "itemtype": "method",
             "name": "generateShadowmap",
@@ -3629,12 +3887,12 @@
                 "description": "render_settings",
                 "type": "Object"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 832,
+            "line": 833,
             "description": "It returns the global matrix",
             "itemtype": "method",
             "name": "getGlobalMatrix",
@@ -3649,12 +3907,12 @@
                 "description": "mat4",
                 "type": "Mat4"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 849,
+            "line": 850,
             "description": "It returns a matrix in the position of the given light property (target, position), mostly used for gizmos",
             "itemtype": "method",
             "name": "getTransformMatrix",
@@ -3674,12 +3932,12 @@
                 "description": "mat4",
                 "type": "Mat4"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/light.js",
-            "line": 874,
+            "line": 875,
             "description": "apply a transformation to a given light property, this is done in a function to allow more complex gizmos",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -3704,8 +3962,8 @@
                 "description": "mat4",
                 "type": "Mat4"
             },
-            "class": "LS.Light",
-            "namespace": "LS"
+            "class": "LS.Components.Light",
+            "namespace": "LS.Components"
         },
         {
             "file": "../src/components/meshRenderer.js",
@@ -3782,7 +4040,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 16,
+            "line": 17,
             "description": "the root node locator where to apply the animation, is none is specified it is applied using the scene root node\nif a \"@\" is set, then only to this node and its children",
             "itemtype": "property",
             "name": "root_node",
@@ -3792,7 +4050,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 24,
+            "line": 25,
             "description": "how to play the animation, options are:\n  PlayAnimation.LOOP\n\tPlayAnimation.PINGPONG\n\tPlayAnimation.ONCE\n\tPlayAnimation.PAUSED",
             "itemtype": "property",
             "name": "mode",
@@ -3802,7 +4060,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 82,
+            "line": 83,
             "description": "the name of the LS.Animation resource where the takes and tracks are stored",
             "itemtype": "property",
             "name": "animation",
@@ -3812,7 +4070,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 113,
+            "line": 114,
             "description": "the name of the LS.Animation.Take to play from the LS.Animation\nA take representes a set of tracks",
             "itemtype": "property",
             "name": "take",
@@ -3822,7 +4080,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 322,
+            "line": 323,
             "description": "returns the current animation or an animation with a given name",
             "itemtype": "method",
             "name": "getAnimation",
@@ -3842,7 +4100,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 340,
+            "line": 341,
             "description": "returns the current animation or an animation with a given name",
             "itemtype": "method",
             "name": "getTake",
@@ -3862,7 +4120,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 358,
+            "line": 359,
             "description": "Gets the duration of the current take in the current animation",
             "itemtype": "method",
             "name": "getDuration",
@@ -3875,7 +4133,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 371,
+            "line": 372,
             "description": "Resets the time to zero and starts playing the current take of the animation\nIt also triggers a \"start_animation\" event",
             "itemtype": "method",
             "name": "play",
@@ -3884,7 +4142,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 392,
+            "line": 393,
             "description": "Pauses the animation",
             "itemtype": "method",
             "name": "pause",
@@ -3893,7 +4151,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 401,
+            "line": 402,
             "description": "Stops the animation and sets the time to zero",
             "itemtype": "method",
             "name": "stop",
@@ -3902,7 +4160,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 416,
+            "line": 417,
             "description": "Starts playing the animation but only using a range of it",
             "itemtype": "method",
             "name": "playRange",
@@ -3923,7 +4181,7 @@
         },
         {
             "file": "../src/components/playAnimation.js",
-            "line": 430,
+            "line": 431,
             "description": "applys the animation to the scene nodes",
             "itemtype": "method",
             "name": "applyAnimation",
@@ -3954,7 +4212,7 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 185,
+            "line": 186,
             "description": "Force to reevaluate the code (only for special situations)",
             "itemtype": "method",
             "name": "reload",
@@ -3963,7 +4221,7 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 194,
+            "line": 195,
             "description": "This is the method in charge of compiling the code and executing the constructor, which also creates the context.\nIt is called everytime the code is modified, that implies that the context is created when the component is configured.",
             "itemtype": "method",
             "name": "processCode",
@@ -3972,7 +4230,7 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 436,
+            "line": 437,
             "description": "This check if the context binds engine events to the methods in the context with an specific name.\nThis way we dont have to bind manually all the methods.",
             "itemtype": "method",
             "name": "hookEvents",
@@ -3981,7 +4239,7 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 481,
+            "line": 482,
             "description": "Called every time an event should be redirected to one function in the script context",
             "itemtype": "method",
             "name": "onScriptEvent",
@@ -3990,7 +4248,7 @@
         },
         {
             "file": "../src/components/script.js",
-            "line": 786,
+            "line": 787,
             "description": "Force to reevaluate the code (only for special situations like remove codes)",
             "itemtype": "method",
             "name": "reload",
@@ -4019,7 +4277,7 @@
                     "type": "Object"
                 }
             ],
-            "class": "LS.Components.Spline",
+            "class": "LS.Components.Skybox",
             "namespace": "LS.Components"
         },
         {
@@ -4032,7 +4290,7 @@
                 "description": "object with the serialized info",
                 "type": "Object"
             },
-            "class": "LS.Components.Spline",
+            "class": "LS.Components.Skybox",
             "namespace": "LS.Components"
         },
         {
@@ -4066,7 +4324,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 80,
+            "line": 81,
             "description": "The position relative to its parent in vec3 format",
             "itemtype": "property",
             "name": "position",
@@ -4076,7 +4334,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 133,
+            "line": 134,
             "description": "The orientation relative to its parent in quaternion format",
             "itemtype": "property",
             "name": "rotation",
@@ -4086,7 +4344,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 146,
+            "line": 147,
             "description": "The scaling relative to its parent in vec3 format (default is [1,1,1])",
             "itemtype": "property",
             "name": "scaling",
@@ -4096,7 +4354,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 162,
+            "line": 163,
             "description": "The local matrix transform relative to its parent in mat4 format",
             "itemtype": "property",
             "name": "matrix",
@@ -4106,7 +4364,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 219,
+            "line": 220,
             "description": "The position relative to its parent in vec3 format",
             "itemtype": "property",
             "name": "position",
@@ -4116,7 +4374,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 230,
+            "line": 231,
             "description": "The matrix transform relative to world coordinates",
             "itemtype": "property",
             "name": "globalMatrix",
@@ -4126,7 +4384,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 245,
+            "line": 246,
             "description": "The forward vector in global coordinates",
             "itemtype": "property",
             "name": "forward",
@@ -4136,7 +4394,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 260,
+            "line": 261,
             "description": "Force object to update matrices in case they were modified",
             "itemtype": "property",
             "name": "mustUpdate",
@@ -4146,7 +4404,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 299,
+            "line": 300,
             "description": "Copy the transform from another Transform",
             "itemtype": "method",
             "name": "copyFrom",
@@ -4162,7 +4420,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 309,
+            "line": 310,
             "description": "Configure from a serialized object",
             "itemtype": "method",
             "name": "configure",
@@ -4178,7 +4436,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 338,
+            "line": 339,
             "description": "Serialize the object",
             "itemtype": "method",
             "name": "serialize",
@@ -4191,7 +4449,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 368,
+            "line": 369,
             "description": "Reset this transform",
             "itemtype": "method",
             "name": "identity",
@@ -4200,7 +4458,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 385,
+            "line": 386,
             "description": "Sets the rotation to identity",
             "itemtype": "method",
             "name": "resetRotation",
@@ -4209,7 +4467,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 397,
+            "line": 398,
             "description": "Sets the position to 0,0,0",
             "itemtype": "method",
             "name": "resetPosition",
@@ -4218,7 +4476,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 409,
+            "line": 410,
             "description": "Sets the scale to 1,1,1",
             "itemtype": "method",
             "name": "resetScale",
@@ -4227,7 +4485,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 422,
+            "line": 423,
             "description": "Returns a copy of the local position",
             "itemtype": "method",
             "name": "getPosition",
@@ -4247,7 +4505,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 435,
+            "line": 436,
             "description": "Returns a copy of the global position",
             "itemtype": "method",
             "name": "getGlobalPosition",
@@ -4267,7 +4525,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 449,
+            "line": 450,
             "description": "Returns the rotation in quaternion array (a copy)",
             "itemtype": "method",
             "name": "getRotation",
@@ -4287,7 +4545,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 461,
+            "line": 462,
             "description": "Returns the global rotation in quaternion array (a copy)",
             "itemtype": "method",
             "name": "getRotation",
@@ -4307,7 +4565,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 487,
+            "line": 488,
             "description": "Returns the scale (its a copy)",
             "itemtype": "method",
             "name": "getScale",
@@ -4327,7 +4585,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 499,
+            "line": 500,
             "description": "Returns a copy of the global scale (this is not correct, there is no global_scale factor, because due to rotations the axis could change)",
             "itemtype": "method",
             "name": "getGlobalScale",
@@ -4347,7 +4605,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 522,
+            "line": 523,
             "description": "update the local Matrix to match the position,scale and rotation",
             "itemtype": "method",
             "name": "updateMatrix",
@@ -4356,7 +4614,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 536,
+            "line": 537,
             "description": "updates the global matrix using the parents transformation",
             "itemtype": "method",
             "name": "updateGlobalMatrix",
@@ -4372,7 +4630,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 551,
+            "line": 552,
             "description": "Returns a copy of the local matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getMatrix",
@@ -4392,7 +4650,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 566,
+            "line": 567,
             "description": "Returns the original local matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getLocalMatrixRef",
@@ -4405,7 +4663,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 579,
+            "line": 580,
             "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getGlobalMatrix",
@@ -4430,7 +4688,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 598,
+            "line": 599,
             "description": "Returns a copy of the global matrix of this transform (it updates the matrix automatically)",
             "itemtype": "method",
             "name": "getGlobalMatrix",
@@ -4443,7 +4701,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 611,
+            "line": 612,
             "description": "Returns an array with all the ancestors",
             "itemtype": "method",
             "name": "getAncestors",
@@ -4456,7 +4714,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 625,
+            "line": 626,
             "description": "Returns a quaternion with all parents rotations",
             "itemtype": "method",
             "name": "getGlobalRotation",
@@ -4469,7 +4727,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 646,
+            "line": 647,
             "description": "Returns a Matrix with all parents rotations",
             "itemtype": "method",
             "name": "getGlobalRotationMatrix",
@@ -4482,7 +4740,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 669,
+            "line": 670,
             "description": "Returns the local matrix of this transform without the rotation or scale",
             "itemtype": "method",
             "name": "getGlobalTranslationMatrix",
@@ -4495,7 +4753,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 680,
+            "line": 681,
             "description": "Returns the global rotation in quaternion array (a copy)",
             "itemtype": "method",
             "name": "getGlobalRotationMatrix",
@@ -4508,7 +4766,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 703,
+            "line": 704,
             "description": "Returns the local matrix of this transform without the scale",
             "itemtype": "method",
             "name": "getGlobalTranslationRotationMatrix",
@@ -4521,7 +4779,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 717,
+            "line": 718,
             "description": "Returns the matrix for the normals in the shader",
             "itemtype": "method",
             "name": "getNormalMatrix",
@@ -4534,7 +4792,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 735,
+            "line": 736,
             "description": "Configure the transform from a local Matrix (do not tested carefully)",
             "itemtype": "method",
             "name": "fromMatrix",
@@ -4555,7 +4813,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 795,
+            "line": 796,
             "description": "Configure the transform from a global Matrix (do not tested carefully)",
             "itemtype": "method",
             "name": "fromGlobalMatrix",
@@ -4571,7 +4829,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 847,
+            "line": 848,
             "description": "Configure the transform rotation from a vec3 Euler angles (heading,attitude,bank)",
             "itemtype": "method",
             "name": "setRotationFromEuler",
@@ -4587,7 +4845,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 859,
+            "line": 860,
             "description": "sets the position",
             "itemtype": "method",
             "name": "setPosition",
@@ -4613,7 +4871,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 876,
+            "line": 877,
             "description": "sets the rotation from a quaternion or from an angle(rad) and axis",
             "itemtype": "method",
             "name": "setRotation",
@@ -4629,7 +4887,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 891,
+            "line": 892,
             "description": "sets the scale",
             "itemtype": "method",
             "name": "setScale",
@@ -4655,7 +4913,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 908,
+            "line": 909,
             "description": "translates object in local coordinates (using the rotation and the scale)",
             "itemtype": "method",
             "name": "translate",
@@ -4681,7 +4939,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 925,
+            "line": 926,
             "description": "translates object in local coordinates (adds to the position)",
             "itemtype": "method",
             "name": "translateGlobal",
@@ -4707,7 +4965,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 942,
+            "line": 943,
             "description": "rotate object in local space (axis is in local space)",
             "itemtype": "method",
             "name": "rotate",
@@ -4728,7 +4986,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 961,
+            "line": 962,
             "description": "rotate object in local space in local X axis",
             "itemtype": "method",
             "name": "rotateX",
@@ -4744,7 +5002,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 973,
+            "line": 974,
             "description": "rotate object in local space in local Y axis",
             "itemtype": "method",
             "name": "rotateY",
@@ -4760,7 +5018,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 985,
+            "line": 986,
             "description": "rotate object in local space in local Z axis",
             "itemtype": "method",
             "name": "rotateZ",
@@ -4776,7 +5034,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 998,
+            "line": 999,
             "description": "rotate object in global space (axis is in global space)",
             "itemtype": "method",
             "name": "rotateGlobal",
@@ -4797,7 +5055,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1012,
+            "line": 1013,
             "description": "rotate object in local space using a quat",
             "itemtype": "method",
             "name": "rotateQuat",
@@ -4813,7 +5071,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1024,
+            "line": 1025,
             "description": "rotate object in global space using a quat",
             "itemtype": "method",
             "name": "rotateQuatGlobal",
@@ -4829,7 +5087,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1036,
+            "line": 1037,
             "description": "scale the object",
             "itemtype": "method",
             "name": "scale",
@@ -4855,7 +5113,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1053,
+            "line": 1054,
             "description": "This method is static (call it from Transform.interpolate)\ninterpolate the transform between two transforms and stores the result in another Transform",
             "itemtype": "method",
             "name": "interpolate",
@@ -4886,7 +5144,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1071,
+            "line": 1072,
             "description": "Orbits around a point",
             "itemtype": "method",
             "name": "orbit",
@@ -4912,7 +5170,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1098,
+            "line": 1099,
             "description": "Orients the transform to look from one position to another",
             "itemtype": "method",
             "name": "lookAt",
@@ -4943,7 +5201,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1158,
+            "line": 1159,
             "description": "Fired when the node has changed its transform",
             "itemtype": "event",
             "name": "changed",
@@ -4952,7 +5210,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1169,
+            "line": 1170,
             "description": "returns the [0,0,-1] vector in global space",
             "itemtype": "method",
             "name": "getFront",
@@ -4965,7 +5223,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1178,
+            "line": 1179,
             "description": "returns the [0,1,0] vector in global space",
             "itemtype": "method",
             "name": "getTop",
@@ -4978,7 +5236,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1187,
+            "line": 1188,
             "description": "returns the [1,0,0] vector in global space",
             "itemtype": "method",
             "name": "getRight",
@@ -4991,7 +5249,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1196,
+            "line": 1197,
             "description": "Multiplies a point by the local matrix (not global)\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "transformPoint",
@@ -5012,7 +5270,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1211,
+            "line": 1212,
             "description": "convert from local coordinates to global coordinates\nIf no destination is specified a new vector is created",
             "itemtype": "method",
             "name": "localToGlobal",
@@ -5033,7 +5291,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1225,
+            "line": 1226,
             "description": "same as localToGlobal",
             "itemtype": "method",
             "name": "transformPointGlobal",
@@ -5054,7 +5312,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1233,
+            "line": 1234,
             "description": "convert from global coordinates to local coordinates",
             "itemtype": "method",
             "name": "globalToLocal",
@@ -5075,7 +5333,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1251,
+            "line": 1252,
             "description": "Applies the transformation to a vector (rotate but not translate)",
             "itemtype": "method",
             "name": "transformVector",
@@ -5096,7 +5354,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1261,
+            "line": 1262,
             "description": "Applies the transformation to a vector (rotate but not translate)",
             "itemtype": "method",
             "name": "localVectorToGlobal",
@@ -5117,7 +5375,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1279,
+            "line": 1280,
             "description": "Apply a transform to this transform",
             "itemtype": "method",
             "name": "applyTransform",
@@ -5126,7 +5384,7 @@
         },
         {
             "file": "../src/components/transform.js",
-            "line": 1301,
+            "line": 1302,
             "description": "Applies the transformation using a matrix",
             "itemtype": "method",
             "name": "applyTransformMatrix",
@@ -5990,7 +6248,7 @@
         },
         {
             "file": "../src/materials/standardMaterial.js",
-            "line": 401,
+            "line": 402,
             "description": "gets all the properties and its types",
             "itemtype": "method",
             "name": "getPropertiesInfo",
@@ -7675,7 +7933,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1392,
+            "line": 1396,
             "description": "Renders a frame into a texture (could be a cubemap, in which case does the six passes)",
             "itemtype": "method",
             "name": "renderInstancesToRT",
@@ -7701,7 +7959,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1430,
+            "line": 1434,
             "description": "Renders the current scene to a cubemap centered in the given position",
             "itemtype": "method",
             "name": "renderToCubemap",
@@ -7746,7 +8004,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1483,
+            "line": 1487,
             "description": "Renders the material preview to an image (or to the screen)",
             "itemtype": "method",
             "name": "renderMaterialPreview",
@@ -7781,7 +8039,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1568,
+            "line": 1572,
             "description": "Returns the last camera that falls into a given screen position",
             "itemtype": "method",
             "name": "getCameraAtPosition",
@@ -7811,7 +8069,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1595,
+            "line": 1599,
             "description": "Sets the render pass to use, this allow to change between \"color\",\"shadow\",\"picking\",etc",
             "itemtype": "method",
             "name": "setRenderPass",
@@ -7827,7 +8085,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1606,
+            "line": 1610,
             "description": "Register a render pass to be used during the rendering",
             "itemtype": "method",
             "name": "registerRenderPass",
@@ -7848,7 +8106,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1621,
+            "line": 1625,
             "description": "Adds a new RenderQueue to the Renderer.",
             "itemtype": "method",
             "name": "addRenderQueue",
@@ -7878,7 +8136,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1645,
+            "line": 1649,
             "description": "Enables a ShaderBlock ONLY DURING THIS FRAME",
             "itemtype": "method",
             "name": "enableFrameShaderBlock",
@@ -10072,7 +10330,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 964,
+            "line": 969,
             "description": "Assigns a value to a property of one node in the scene, just by using a string identifier\nExample:  LSQ.set(\"mynode|a_child/MeshRenderer/enabled\",false);",
             "itemtype": "method",
             "name": "set",
@@ -10093,7 +10351,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 992,
+            "line": 997,
             "description": "Retrieves the value of a property of one node in the scene, just by using a string identifier\nExample: var value = LSQ.get(\"mynode|a_child/MeshRenderer/enabled\");",
             "itemtype": "method",
             "name": "get",
@@ -10113,7 +10371,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 1024,
+            "line": 1029,
             "description": "Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property\nExample: \"@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size\" -> \"node|child/Collider/size\"",
             "itemtype": "method",
             "name": "shortify",
@@ -10133,7 +10391,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 1063,
+            "line": 1068,
             "description": "Assigns a value using the getLocatorInfo object instead of searching it again\nThis is faster but if the locator points to a different object it wont work.",
             "itemtype": "method",
             "name": "setFromInfo",

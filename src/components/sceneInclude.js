@@ -1,3 +1,12 @@
+
+/**
+* Allows to include a secondary scene inside this scene (with some limitations)
+* @class SceneInclude
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
+
 function SceneInclude( o )
 {
 	this.enabled = true;

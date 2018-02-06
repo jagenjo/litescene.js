@@ -1322,6 +1322,7 @@ var Renderer = {
 			queue.add( instance );
 
 			//node & mesh constant information
+			//DEPRECATED
 			var query = instance.query;
 
 			/* deprecated
@@ -1332,11 +1333,14 @@ var Renderer = {
 				query.macros.NO_COORDS = "";
 			if(("coords1" in buffers))
 				query.macros.USE_COORDS1_STREAM = "";
-			if(("colors" in buffers))
+			if(("colors" in buffers)) //particles
 				query.macros.USE_COLOR_STREAM = "";
 			if(("tangents" in buffers))
 				query.macros.USE_TANGENT_STREAM = "";
 			*/
+			//deprecated?
+			if(("colors" in instance.mesh.vertexBuffers)) //particles
+				query.macros.USE_COLOR_STREAM = "";
 
 			instance._camera_visibility = 0|0;
 		}

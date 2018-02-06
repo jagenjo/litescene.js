@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>../src/components/skybox.js</title>
+    <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
+    <link rel="icon" href="../assets/favicon.ico">
+    <script src="http://yui.yahooapis.com/combo?3.9.1/build/yui/yui-min.js"></script>
+</head>
+<body class="yui3-skin-sam">
+
+<div id="doc">
+    <div id="hd" class="yui3-g header">
+        <div class="yui3-u-3-4">
+                <h1><img src="../assets/css/logo.png" title="" width="117" height="52"></h1>
+        </div>
+        <div class="yui3-u-1-4 version">
+            <em>API Docs for: </em>
+        </div>
+    </div>
+    <div id="bd" class="yui3-g">
+
+        <div class="yui3-u-1-4">
+            <div id="docs-sidebar" class="sidebar apidocs">
+                <div id="api-list">
+                    <h2 class="off-left">APIs</h2>
+                    <div id="api-tabview" class="tabview">
+                        <ul class="tabs">
+                            <li><a href="#api-classes">Classes</a></li>
+                            <li><a href="#api-modules">Modules</a></li>
+                        </ul>
+                
+                        <div id="api-tabview-filter">
+                            <input type="search" id="api-filter" placeholder="Type to filter APIs">
+                        </div>
+                
+                        <div id="api-tabview-panel">
+                            <ul id="api-classes" class="apis classes">
+                                <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
+                                <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
+                                <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
+                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
+                                <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
+                                <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
+                                <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
+                                <li><a href="../classes/LS.Components.CameraDirector.html">LS.Components.CameraDirector</a></li>
+                                <li><a href="../classes/LS.Components.CameraFX.html">LS.Components.CameraFX</a></li>
+                                <li><a href="../classes/LS.Components.Canvas3D.html">LS.Components.Canvas3D</a></li>
+                                <li><a href="../classes/LS.Components.CustomData.html">LS.Components.CustomData</a></li>
+                                <li><a href="../classes/LS.Components.FollowNode.html">LS.Components.FollowNode</a></li>
+                                <li><a href="../classes/LS.Components.FrameFX.html">LS.Components.FrameFX</a></li>
+                                <li><a href="../classes/LS.Components.FXGraphComponent.html">LS.Components.FXGraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
+                                <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
+                                <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
+                                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+                                <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
+                                <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
+                                <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+                                <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
+                                <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
+                                <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
+                                <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
+                                <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+                                <li><a href="../classes/LS.Components.SceneInclude.html">LS.Components.SceneInclude</a></li>
+                                <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
+                                <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
+                                <li><a href="../classes/LS.Components.Skybox.html">LS.Components.Skybox</a></li>
+                                <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
+                                <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
+                                <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
+                                <li><a href="../classes/LS.Components.Transform.html">LS.Components.Transform</a></li>
+                                <li><a href="../classes/LS.Components.VRCameraController.html">LS.Components.VRCameraController</a></li>
+                                <li><a href="../classes/LS.CompositePattern.html">LS.CompositePattern</a></li>
+                                <li><a href="../classes/LS.DebugRender.html">LS.DebugRender</a></li>
+                                <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
+                                <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
+                                <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
+                                <li><a href="../classes/LS.Input.html">LS.Input</a></li>
+                                <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
+                                <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
+                                <li><a href="../classes/LS.LS.html">LS.LS</a></li>
+                                <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
+                                <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
+                                <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
+                                <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
+                                <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
+                                <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
+                                <li><a href="../classes/LS.Player.html">LS.Player</a></li>
+                                <li><a href="../classes/LS.Prefab.html">LS.Prefab</a></li>
+                                <li><a href="../classes/LS.Project.html">LS.Project</a></li>
+                                <li><a href="../classes/LS.Ray.html">LS.Ray</a></li>
+                                <li><a href="../classes/LS.Renderer.html">LS.Renderer</a></li>
+                                <li><a href="../classes/LS.RenderFrameContext.html">LS.RenderFrameContext</a></li>
+                                <li><a href="../classes/LS.RenderInstance.html">LS.RenderInstance</a></li>
+                                <li><a href="../classes/LS.RenderSettings.html">LS.RenderSettings</a></li>
+                                <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
+                                <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
+                                <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
+                                <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
+                                <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
+                                <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
+                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
+                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
+                                <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
+                                <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
+                                <li><a href="../classes/LS.UnityMaterial.html">LS.UnityMaterial</a></li>
+                                <li><a href="../classes/LS.WBin.html">LS.WBin</a></li>
+                                <li><a href="../classes/LSQ.html">LSQ</a></li>
+                            </ul>
+                
+                
+                            <ul id="api-modules" class="apis modules">
+                                <li><a href="../modules/LS.html">LS</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="yui3-u-3-4">
+                <div id="api-options">
+                    Show:
+                    <label for="api-show-inherited">
+                        <input type="checkbox" id="api-show-inherited" checked>
+                        Inherited
+                    </label>
+            
+                    <label for="api-show-protected">
+                        <input type="checkbox" id="api-show-protected">
+                        Protected
+                    </label>
+            
+                    <label for="api-show-private">
+                        <input type="checkbox" id="api-show-private">
+                        Private
+                    </label>
+                    <label for="api-show-deprecated">
+                        <input type="checkbox" id="api-show-deprecated">
+                        Deprecated
+                    </label>
+            
+                </div>
+            
+            <div class="apidocs">
+                <div id="docs-main">
+                    <div class="content">
+<h1 class="file-heading">File: ../src/components/skybox.js</h1>
+
+<div class="file">
+    <pre class="code prettyprint linenums">
+/**
+* Skybox allows to render a cubemap or polar image as a background for the 3D scene
+* @class Skybox
+* @namespace LS.Components
+* @constructor
+* @param {Object} object [optional] to configure from
+*/
+
+function Skybox(o)
+{
+	this.enabled = true;
+	this.texture = null;
+	this.material = null;
+	this._intensity = 1;
+	this.use_environment = true;
+	this._bake_to_cubemap = false;
+	if(o)
+		this.configure(o);
+}
+
+Skybox.icon = &quot;mini-icon-dome.png&quot;;
+
+//vars
+Skybox[&quot;@material&quot;] = { type: LS.TYPES.MATERIAL };
+Skybox[&quot;@texture&quot;] = { type: LS.TYPES.TEXTURE };
+
+Skybox.prototype.onAddedToNode = function(node)
+{
+	LEvent.bind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+}
+
+Skybox.prototype.onRemovedFromNode = function(node)
+{
+	LEvent.unbind(node, &quot;collectRenderInstances&quot;, this.onCollectInstances, this);
+}
+
+Skybox.prototype.onAddedToScene = function(scene)
+{
+	LEvent.bind(scene, &quot;start&quot;, this.onStart, this);
+}
+
+Skybox.prototype.onRemovedFromScene = function(scene)
+{
+	LEvent.unbind(scene, &quot;start&quot;, this.onStart, this);
+}
+
+
+Object.defineProperty( Skybox.prototype, &quot;intensity&quot;, {
+	set: function(v){
+		this._intensity = v;
+		if(this._material)
+			this._material._color.set([v,v,v,1]);
+	},
+	get: function()
+	{
+		return this._intensity;
+	},
+	enumerable: true
+});
+
+Object.defineProperty( Skybox.prototype, &quot;bake_to_cubemap&quot;, {
+	set: function(v){
+		this._bake_to_cubemap = v;
+		if(v)
+			this.bakeToCubemap();
+	},
+	get: function()
+	{
+		return this._bake_to_cubemap;
+	},
+	enumerable: true
+});
+
+
+Skybox.prototype.getResources = function(res)
+{
+	if(this.texture &amp;&amp; this.texture.constructor === String)
+		res[this.texture] = GL.Texture;
+	if(this.material &amp;&amp; this.material.constructor === String)
+		res[this.material] = LS.Material;
+	return res;
+}
+
+Skybox.prototype.onResourceRenamed = function (old_name, new_name, resource)
+{
+	if(this.texture == old_name)
+		this.texture = new_name;
+}
+
+Skybox.prototype.onCollectInstances = function(e, instances)
+{
+	if(!this._root || !this.enabled)
+		return;
+
+	var mesh = this._mesh;
+	if(!mesh)
+		mesh = this._mesh = GL.Mesh.cube({size: 10});
+
+	var node = this._root;
+
+	var RI = this._render_instance;
+	if(!RI)
+	{
+		this._render_instance = RI = new LS.RenderInstance(this._root, this);
+		RI.priority = 100;
+
+		//to position the skybox on top of the camera
+		RI.onPreRender = function(render_settings) { 
+			var camera = LS.Renderer._current_camera;
+			var cam_pos = camera.getEye();
+			mat4.identity(this.matrix);
+			mat4.setTranslation( this.matrix, cam_pos );
+			var size = (camera.near + camera.far) * 0.5;
+			//mat4.scale( this.matrix, this.matrix, [ size, size, size ]);
+			if(this.node.transform)
+			{
+				var R = this.node.transform.getGlobalRotationMatrix();
+				mat4.multiply( this.matrix, this.matrix, R );
+			}
+
+			//this.updateAABB(); this node doesnt have AABB (its always visible)
+			vec3.copy( this.center, cam_pos );
+		};
+	}
+
+	var mat = null;
+	if(this.material)
+	{
+		mat = LS.ResourcesManager.getResource( this.material );
+	}
+	else
+	{
+		var texture_name = null;
+		if (this.use_environment)
+			texture_name = LS.Renderer._current_scene.info.textures[&quot;environment&quot;];
+		else
+			texture_name = this.texture;
+
+		if(!texture_name)
+			return;
+
+		var texture = LS.ResourcesManager.textures[ texture_name ];
+		if(!texture)
+			return;
+
+		mat = this._material;
+		if(!mat)
+			mat = this._material = new LS.StandardMaterial({ 
+				flags: { 
+					two_sided: true, 
+					cast_shadows: false, 
+					receive_shadows: false,
+					ignore_frustum: true,
+					ignore_lights: true,
+					depth_test: false 
+					},
+				use_scene_ambient:false,
+				color: [ this.intensity, this.intensity, this.intensity, 1 ]
+			});
+		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
+
+		if(texture &amp;&amp; texture.texture_type == gl.TEXTURE_2D)
+		{
+			sampler.uvs = &quot;polar_vertex&quot;;
+			texture.bind(0);
+			texture.setParameter( gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE ); //to avoid going up
+			texture.setParameter( gl.TEXTURE_MIN_FILTER, gl.LINEAR ); //avoid ugly error in atan2 edges
+		}
+		else
+			sampler.uvs = &quot;0&quot;;
+	}
+
+	//render first
+	if(mat)
+	{
+		mat.queue = LS.RenderQueue.BACKGROUND;
+		mat.render_state.cull_face = false;
+		mat.render_state.front_face = GL.CW;
+		mat.render_state.depth_test = false;
+		mat.flags.ignore_frustum = true;
+		mat.flags.ignore_lights = true;
+		mat.flags.cast_shadows = false;
+		mat.flags.receive_shadows = false;
+		mat.flags.flip_normals = true;
+		mat.flags.depth_test = false;
+		mat.use_scene_ambient = false;
+	}
+
+	RI.setMesh( mesh );
+	RI.setMaterial( mat );
+	instances.push(RI);
+
+	//if we have a material we can bake and it has changed...
+	if( this.material &amp;&amp; mat &amp;&amp; this._bake_to_cubemap &amp;&amp; (this._prev_mat != mat || this._mat_version != mat.version ) )
+	{
+		this._prev_mat = mat;
+		this._mat_version = mat.version;
+		this.bakeToCubemap();
+	}
+}
+
+Skybox.prototype.onStart = function(e)
+{
+	if( this._bake_to_cubemap )
+		this.bakeToCubemap();
+}
+
+Skybox.prototype.bakeToCubemap = function( size, render_settings )
+{
+	var that = this;
+	size = size || 512;
+	render_settings = render_settings || new LS.RenderSettings();
+
+	if( !this.root || !this.root.scene )
+		return;
+
+	var scene = this.root.scene;
+
+	if( !this._render_instance || !this._render_instance.material ) //generate the skybox render instance
+	{
+		//wait till we have the material loaded
+		setTimeout( function(){ that.bakeToCubemap.bind( that ); },500 );
+		return;
+	}
+
+	//this will ensure the materials and instances are in the queues
+	var instances = [];
+	this.onCollectInstances(null, instances);
+	LS.Renderer.processVisibleData( scene, render_settings, null, instances, true );
+
+	render_settings.render_helpers = false;
+
+	this._baked_texture = LS.Renderer.renderToCubemap( vec3.create(), size, this._baked_texture, render_settings, 0.001, 100, vec4.create(), instances);
+	LS.ResourcesManager.registerResource( &quot;:baked_skybox&quot;, this._baked_texture );
+	if( this.root.scene.info )
+		this.root.scene.info.textures[ &quot;environment&quot; ] = &quot;:baked_skybox&quot;;
+}
+
+
+
+LS.registerComponent(Skybox);
+LS.Skybox = Skybox;
+    </pre>
+</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+<script src="../assets/js/yui-prettify.js"></script>
+<script src="../assets/../api.js"></script>
+<script src="../assets/js/api-filter.js"></script>
+<script src="../assets/js/api-list.js"></script>
+<script src="../assets/js/api-search.js"></script>
+<script src="../assets/js/apidocs.js"></script>
+</body>
+</html>

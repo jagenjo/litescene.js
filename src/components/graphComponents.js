@@ -22,6 +22,7 @@ if( typeof(LGAudio) != "undefined" )
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent
+* @namespace LS.Components
 * @param {Object} o object with the serialized info
 */
 function GraphComponent(o)

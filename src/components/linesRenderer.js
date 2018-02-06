@@ -1,5 +1,10 @@
-/* lineCloud.js */
-
+/**
+* Helps rendering several lines
+* @class LinesRenderer
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
 function LinesRenderer(o)
 {
 	this.enabled = true;

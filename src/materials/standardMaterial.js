@@ -362,6 +362,7 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "emissive_extra":
 		//strings
 		//bools
+		case "shader_name":
 		case "specular_on_top":
 		case "specular_on_alpha":
 		case "normalmap_tangent":

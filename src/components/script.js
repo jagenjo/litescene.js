@@ -4,6 +4,7 @@
 * Scripts are executed inside their own context, the context is local to the script so any variable defined in the context that is not attached to the context wont be accessible from other parts of the engine.
 * To interact with the engine Scripts must bind callback to events so the callbacks will be called when those events are triggered, however, there are some generic methods that will be called
 * @class Script
+* @namespace LS.Components
 * @constructor
 * @param {Object} object to configure from
 */

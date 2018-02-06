@@ -1,6 +1,7 @@
 /**
-* GeometricPrimitive renders a primitive
+* GeometricPrimitive renders a primitive like a Cube, Sphere, Plane, etc
 * @class GeometricPrimitive
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -23,6 +24,12 @@ function GeometricPrimitive( o )
 		this.configure(o);
 }
 
+
+/**
+* The shape to render, valid values are: LS.Components.GeometricPrimitive.CUBE,PLANE,CYLINDER,SPHERE,CIRCLE,HEMISPHERE,ICOSAHEDRON,CONE,QUAD
+* @property geometry {enum}
+* @default LS.Components.GeometricPrimitive.CUBE
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	get: function() { return this._geometry; },
 	set: function(v) { 
@@ -37,6 +44,11 @@ Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	enumerable: true
 });
 
+/**
+* The size of the primitive (the global scale)
+* @property size {Number}
+* @default 10
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'size', {
 	get: function() { return this._size; },
 	set: function(v) { 
@@ -59,6 +71,11 @@ Object.defineProperty( GeometricPrimitive.prototype, 'subdivisions', {
 	enumerable: true
 });
 
+/**
+* The GL primitive to use (LINES,LINE_STRIP,TRIANGLES,TRIANGLE_FAN
+* @property primitive {enum}
+* @default 10
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'primitive', {
 	get: function() { return this._primitive; },
 	set: function(v) { 

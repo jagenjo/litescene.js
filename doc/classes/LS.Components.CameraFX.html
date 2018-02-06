@@ -56,14 +56,20 @@
                                 <li><a href="../classes/LS.Components.FXStack.html">LS.Components.FXStack</a></li>
                                 <li><a href="../classes/LS.Components.GeometricPrimitive.html">LS.Components.GeometricPrimitive</a></li>
                                 <li><a href="../classes/LS.Components.GraphComponent.html">LS.Components.GraphComponent</a></li>
+                                <li><a href="../classes/LS.Components.Light.html">LS.Components.Light</a></li>
+                                <li><a href="../classes/LS.Components.LightFX.html">LS.Components.LightFX</a></li>
+                                <li><a href="../classes/LS.Components.LinesRenderer.html">LS.Components.LinesRenderer</a></li>
                                 <li><a href="../classes/LS.Components.MeshRenderer.html">LS.Components.MeshRenderer</a></li>
                                 <li><a href="../classes/LS.Components.NodeManipulator.html">LS.Components.NodeManipulator</a></li>
+                                <li><a href="../classes/LS.Components.ParticlesEmissor.html">LS.Components.ParticlesEmissor</a></li>
                                 <li><a href="../classes/LS.Components.PlayAnimation.html">LS.Components.PlayAnimation</a></li>
                                 <li><a href="../classes/LS.Components.Poser.html">LS.Components.Poser</a></li>
                                 <li><a href="../classes/LS.Components.RealtimeReflector.html">LS.Components.RealtimeReflector</a></li>
                                 <li><a href="../classes/LS.Components.Rotator.html">LS.Components.Rotator</a></li>
+                                <li><a href="../classes/LS.Components.SceneInclude.html">LS.Components.SceneInclude</a></li>
                                 <li><a href="../classes/LS.Components.Script.html">LS.Components.Script</a></li>
                                 <li><a href="../classes/LS.Components.SkinDeformer.html">LS.Components.SkinDeformer</a></li>
+                                <li><a href="../classes/LS.Components.Skybox.html">LS.Components.Skybox</a></li>
                                 <li><a href="../classes/LS.Components.Spline.html">LS.Components.Spline</a></li>
                                 <li><a href="../classes/LS.Components.SVGRenderer.html">LS.Components.SVGRenderer</a></li>
                                 <li><a href="../classes/LS.Components.Target.html">LS.Components.Target</a></li>
@@ -78,12 +84,11 @@
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
                                 <li><a href="../classes/LS.Knob.html">LS.Knob</a></li>
-                                <li><a href="../classes/LS.Light.html">LS.Light</a></li>
-                                <li><a href="../classes/LS.LightFX.html">LS.LightFX</a></li>
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
+                                <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
                                 <li><a href="../classes/LS.PhysicsInstance.html">LS.PhysicsInstance</a></li>
                                 <li><a href="../classes/LS.Picking.html">LS.Picking</a></li>
@@ -172,6 +177,7 @@
     <ul class="api-class-tabs">
         <li class="api-class-tab index"><a href="#index">Index</a></li>
 
+            <li class="api-class-tab properties"><a href="#properties">Properties</a></li>
     </ul>
 
     <div>
@@ -179,11 +185,109 @@
             <h2 class="off-left">Item Index</h2>
 
 
+                <div class="index-section properties">
+                    <h3>Properties</h3>
+
+                    <ul class="index-list properties">
+                            <li class="index-item property">
+                                <a href="#property_eye">eye</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_fx">fx</a>
+
+                            </li>
+                            <li class="index-item property">
+                                <a href="#property_use_antialiasing">use_antialiasing</a>
+
+                            </li>
+                    </ul>
+                </div>
 
 
         </div>
 
 
+            <div id="properties" class="api-class-tabpanel">
+                <h2 class="off-left">Properties</h2>
+
+<div id="property_eye" class="property item">
+    <h3 class="name"><code>eye</code></h3>
+    <span class="type">Vec3</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_cameraFX.js.html#l16"><code>..&#x2F;src&#x2F;components&#x2F;cameraFX.js:16</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>The position of the camera (in local space, node space)</p>
+
+    </div>
+
+        <p><strong>Default:</strong> [0,100,100]</p>
+
+
+</div>
+<div id="property_fx" class="property item">
+    <h3 class="name"><code>fx</code></h3>
+    <span class="type">LS.FXStack</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_cameraFX.js.html#l10"><code>..&#x2F;src&#x2F;components&#x2F;cameraFX.js:10</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>The FX Stack</p>
+
+    </div>
+
+
+
+</div>
+<div id="property_use_antialiasing" class="property item">
+    <h3 class="name"><code>use_antialiasing</code></h3>
+    <span class="type">Boolean</span>
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_components_cameraFX.js.html#l34"><code>..&#x2F;src&#x2F;components&#x2F;cameraFX.js:34</code></a>
+        </p>
+
+
+    </div>
+
+    <div class="description">
+        <p>Apply antialiasing post-processing shader</p>
+
+    </div>
+
+
+
+</div>
+            </div>
 
 
     </div>
