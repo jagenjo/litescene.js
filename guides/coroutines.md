@@ -1,7 +1,7 @@
 # Coroutines
 
-Sometimes you need to freeze the execution of a function for some time, 
-or till the next frame, but you do not want to rely on setTimeout or Promises that makes your code harder to read.
+Sometimes you need to freeze the execution of a function for some time, or till the next frame, 
+and resume it afterwards, but you do not want to rely on setTimeout or Promises that makes your code harder to read.
 
 Thanks to Javascript ES6 the language supports coroutines using the keyword ```await```.
 You just execute an async funtion to start the coroutine, this will returns a Promise that you can use to define what happens when the function finishes.
@@ -13,7 +13,7 @@ LiteScene allows to easily create two very common Promises:
 - ```LS.sleep( ms )```  waits ```ms``` milliseconds and then resolves the Promise.
 - ```LS.nextFrame()```  returns a promise that will be resolved when the next frame ends being rendered
 
-Example of function that will print a message every second till the time expires:
+Example of function that will print a message every second till the time expires without using any callback:
 
 ```js
 this.showMessageDuring = async function( time )
@@ -21,9 +21,15 @@ this.showMessageDuring = async function( time )
   var end_time = scene.time + time;
   while( scene.time < end_time )
   {
-		console.log( "time", scene.time );
+    console.log( "time", scene.time );
     scene.requestFrame();
-  	await LS.sleep(1000); //here we wait till the promise is resolved after 1000 ms
+    await LS.sleep(1000); //here we wait till the promise is resolved after 1000 ms
   }
 }
+```
+
+If you want to execute something once the async function has finished, you can use the returned promise:
+
+```js
+this.showMessageDuring( 10 ).then( function(){ console.log("done!"} );
 ```
