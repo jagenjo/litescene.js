@@ -12,6 +12,7 @@ LiteScene allows to easily create two very common Promises:
 
 - ```LS.sleep( ms )```  waits ```ms``` milliseconds and then resolves the Promise.
 - ```LS.nextFrame()```  returns a promise that will be resolved when the next frame ends being rendered
+- ```LS.Input.mouseClick()```  returns a promise that will be resolved when the user clicks the screen
 
 Example of function that will print a message every second till the time expires without using any callback:
 
