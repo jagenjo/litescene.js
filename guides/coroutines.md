@@ -8,7 +8,7 @@ First, you need to define a function as ```async function```. When you call this
 
 It sounds tricky but once you get used it helps creating simpler function that have several actions chained.
 
-LiteScene allows to easily create some very common Promises:
+LiteScene allows to easily create some very common Promises that we can use with ```await``` (although you can create your own ones):
 
 - ```LS.sleep( ms )```  waits ```ms``` milliseconds and then resolves the Promise.
 - ```LS.nextFrame()```  returns a promise that will be resolved when the next frame ends being rendered
@@ -48,3 +48,9 @@ this.changeColors = async function()
   }
 }
 ```
+
+## Custom Coroutines
+
+Sometimes you want to create your own Promises attached to events, to do that you just need to use the next methods:
+- ```LS.createCoroutine( event )```: it returns a Promise associated to an event
+- ```LS.triggerCoroutines( event, data )```: this will resolve all the Promises associated to that event and wipe the list.
