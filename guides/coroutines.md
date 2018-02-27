@@ -40,7 +40,7 @@ Another example that changes the color when we click:
 ```js
 this.changeColors = async function()
 {
-	while( 1 )
+  while( 1 )
   {
     vec3.random( material.color );
     var event = await LS.Input.mouseClick();
