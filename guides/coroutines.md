@@ -34,3 +34,17 @@ If you want to execute something once the async function has finished, you can u
 ```js
 this.showMessageDuring( 10 ).then( function(){ console.log("done!"} );
 ```
+
+Another example that changes the color when we click:
+
+```js
+this.changeColors = async function()
+{
+	while( 1 )
+  {
+    vec3.random( material.color );
+  	var event = await LS.Input.mouseClick();
+    scene.requestFrame();
+  }
+}
+```
