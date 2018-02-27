@@ -1,14 +1,14 @@
 # Coroutines
 
-Sometimes you need to freeze the execution of a function for some time, or till the next frame, 
+Sometimes you need to halt the execution of a function for some time, or till the next frame, or till the user clicks the mouse,
 and resume it afterwards, but you do not want to rely on setTimeout or Promises that makes your code harder to read.
 
 Thanks to Javascript ES6 the language supports coroutines using the keyword ```await```.
-You just execute an async funtion to start the coroutine, this will returns a Promise that you can use to define what happens when the function finishes.
+First, you need to define a function as ```async function```. When you call this function, it will be executed till it find the keyword ```await```, then it will halt till the Promise next to await is resolved, meanwhile the function will return another Promise. You can use that promise to control what to do once the async function finalizes.
 
-An async function can freeze execution and resume it once a Promise is resolved.
+It sounds tricky but once you get used it helps creating simpler function that have several actions chained.
 
-LiteScene allows to easily create two very common Promises:
+LiteScene allows to easily create some very common Promises:
 
 - ```LS.sleep( ms )```  waits ```ms``` milliseconds and then resolves the Promise.
 - ```LS.nextFrame()```  returns a promise that will be resolved when the next frame ends being rendered
