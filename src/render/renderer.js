@@ -282,12 +282,16 @@ var Renderer = {
 		//renderGUI
 		this.renderGUI( render_settings );
 
-		//profiling
+		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
+		this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
 
 		//Event: afterRender to give closure to some actions
-		LEvent.trigger( scene, "afterRender", render_settings );
+		LEvent.trigger( scene, "afterRender", render_settings ); 
 		this._is_rendering_frame = false;
+
+		//coroutines
+		LS.triggerCoroutines("render");
 	},
 
 	/**

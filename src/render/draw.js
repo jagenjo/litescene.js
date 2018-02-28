@@ -16,6 +16,7 @@ var Draw = {
 
 	onRequestFrame: null,
 	reset_stack_on_reset: true,
+	_rendercalls: 0,
 
 	/**
 	* Sets up everything (prepare meshes, shaders, and so)
@@ -48,6 +49,16 @@ var Draw = {
 
 		this.camera_stack = []; //not used yet
 
+		this.uniforms = {
+				u_model: this.model_matrix,
+				u_viewprojection: this.viewprojection_matrix,
+				u_mvp: this.mvp_matrix,
+				u_color: this.color,
+				u_camera_position: this.camera_position,
+				u_point_size: this.point_size,
+				u_texture: 0
+		};
+
 		//temp containers
 		this._temp = vec3.create();
 
@@ -70,7 +81,12 @@ var Draw = {
 			#ifdef USE_SIZE\n\
 				attribute float a_extra;\n\
 			#endif\n\
-			uniform mat4 u_mvp;\n\
+			#ifdef USE_INSTANCING\n\
+				attribute mat4 u_model;\n\
+			#else\n\
+				uniform mat4 u_model;\n\
+			#endif\n\
+			uniform mat4 u_viewprojection;\n\
 			uniform float u_point_size;\n\
 			void main() {\n\
 				gl_PointSize = u_point_size;\n\
@@ -83,7 +99,8 @@ var Draw = {
 				#ifdef USE_COLOR\n\
 					v_color = a_color;\n\
 				#endif\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+				vec3 vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
+				gl_Position = u_viewprojection * vec4(vertex,1.0);\n\
 			}\
 			';
 
@@ -118,9 +135,11 @@ var Draw = {
 
 		//create shaders
 		this.shader = new Shader( vertex_shader, pixel_shader );
-
+		this.shader_instancing = new Shader(vertex_shader,pixel_shader,{"USE_INSTANCING":""});
 		this.shader_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":""});
+		this.shader_color_instancing = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_INSTANCING":""});
 		this.shader_texture = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":""});
+		this.shader_texture_instancing = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":"","USE_INSTANCING":""});
 		this.shader_points = new Shader(vertex_shader,pixel_shader,{"USE_POINTS":""});
 		this.shader_points_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_POINTS":""});
 		this.shader_points_color_size = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_SIZE":"","USE_POINTS":""});
@@ -177,20 +196,25 @@ var Draw = {
 		');
 
 		//create shaders
-		this.shader_phong = new Shader('\
+		var phong_vertex_code = "\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			attribute vec3 a_normal;\n\
 			varying vec3 v_pos;\n\
 			varying vec3 v_normal;\n\
-			uniform mat4 u_model;\n\
-			uniform mat4 u_mvp;\n\
+			#ifdef USE_INSTANCING\n\
+				attribute mat4 u_model;\n\
+			#else\n\
+				uniform mat4 u_model;\n\
+			#endif\n\
+			uniform mat4 u_viewprojection;\n\
 			void main() {\n\
-				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;\n\
-				v_normal = (u_model * vec4(a_vertex + a_normal,1.0)).xyz - v_pos;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
-			}\
-			','\
+				v_pos = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
+				v_normal = (u_model * vec4(a_normal,0.0)).xyz;\n\
+				gl_Position = u_viewprojection * vec4( v_pos, 1.0 );\n\
+			}\n";
+		
+		var phong_pixel_shader = "\n\
 			precision mediump float;\n\
 			uniform vec3 u_ambient_color;\n\
 			uniform vec3 u_light_color;\n\
@@ -202,10 +226,13 @@ var Draw = {
 				vec3 N = normalize(v_normal);\n\
 				float NdotL = max(0.0, dot(N,u_light_dir));\n\
 				gl_FragColor = u_color * vec4(u_ambient_color + u_light_color * NdotL, 1.0);\n\
-			}\
-		');
+			}\n";
 
-		this.shader_phong.uniforms({u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] });
+		this.shader_phong = new Shader( phong_vertex_code, phong_pixel_shader);
+		this.shader_phong_instanced = new Shader( phong_vertex_code, phong_pixel_shader, { "USE_INSTANCING":"" } );
+		var phong_uniforms = {u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] };
+		this.shader_phong.uniforms( phong_uniforms );
+		this.shader_phong_instanced.uniforms( phong_uniforms );
 
 		//create shaders
 		this.shader_depth = new Shader('\
@@ -321,6 +348,7 @@ var Draw = {
 		if(this.reset_stack_on_reset)
 		{
 			this.model_matrix = new Float32Array(this.stack.buffer,0,16);
+			this.uniforms.u_model = this.model_matrix;
 			mat4.identity( this.model_matrix );
 		}
 	},
@@ -389,9 +417,9 @@ var Draw = {
 		this.camera = camera;
 		camera.updateMatrices();
 		vec3.copy( this.camera_position, camera.getEye() );	
-		mat4.copy( this.view_matrix, camera._view_matrix );
-		mat4.copy( this.projection_matrix, camera._projection_matrix );
-		mat4.copy( this.viewprojection_matrix, camera._viewprojection_matrix );
+		this.view_matrix.set( camera._view_matrix );
+		this.projection_matrix.set( camera._projection_matrix );
+		this.viewprojection_matrix.set( camera._viewprojection_matrix );
 	},
 
 	/**
@@ -1032,14 +1060,7 @@ var Draw = {
 
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
-		shader.uniforms({
-				u_model: this.model_matrix,
-				u_mvp: this.mvp_matrix,
-				u_color: this.color,
-				u_camera_position: this.camera_position,
-				u_point_size: this.point_size,
-				u_texture: 0
-		});
+		shader.uniforms( this.uniforms );
 				
 		if( range_start === undefined )
 			shader.draw(mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices );
@@ -1053,10 +1074,43 @@ var Draw = {
 		this._last_indices = indices;
 		this._last_range_start = range_start;
 		this._last_range_length = range_length;
+		this._rendercalls += 1;
 
 		this.last_mesh = mesh;
 		return mesh;
 	},
+
+	/**
+	* Renders several meshes in one draw call, keep in mind the shader and the browser should support instancing
+	* @method renderMeshesInstanced
+	* @param {GL.Mesh} mesh
+	* @param {Array} matrices an array containing all the matrices
+	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
+	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
+	*/
+	renderMeshesInstanced: function( mesh, matrices, primitive, shader, indices )
+	{
+		if(!this.ready)
+			throw ("Draw.js not initialized, call Draw.init()");
+		if(!mesh)
+			throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
+
+		if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
+			return null; //instancing not supported
+
+		if(!shader)
+			shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
+
+		if( !shader.attributes.u_model )
+			throw("Shader does not support instancing, it must have a attribute u_model");
+
+		shader.uniforms( this.uniforms );
+		shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, { u_model: matrices } );
+		this._rendercalls += 1;
+
+		return mesh;
+	},
+
 
 	//used in some special cases
 	repeatLastRender: function()
@@ -1185,6 +1239,7 @@ var Draw = {
 
 		var old = this.model_matrix;
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset + 16*4,16);
+		this.uniforms.u_model = this.model_matrix;
 		mat4.copy(this.model_matrix, old);
 	},
 
@@ -1197,6 +1252,7 @@ var Draw = {
 		if(this.model_matrix.byteOffset == 0)
 			throw("too many pops");
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16);
+		this.uniforms.u_model = this.model_matrix;
 	},
 
 	/**
@@ -1310,10 +1366,12 @@ var Draw = {
 		return mat4.multiplyVec3(dest, this.mvp_matrix, position);
 	},
 
-	getPhongShader: function( ambient_color, light_color, light_dir )
+	getPhongShader: function( ambient_color, light_color, light_dir, instanced )
 	{
-		this.shader_phong.uniforms({ u_ambient_color: ambient_color, u_light_color: light_color, u_light_dir: light_dir });
-		return this.shader_phong;
+		var shader = instanced ? this.shader_phong_instanced : this.shader_phong;
+		vec3.normalize( light_dir, light_dir );
+		shader.uniforms({ u_ambient_color: ambient_color, u_light_color: light_color, u_light_dir: light_dir });
+		return shader;
 	},
 
 	getDepthShader: function()

@@ -203,6 +203,12 @@ function LinesRenderer(o)
 LinesRenderer.icon = &quot;mini-icon-lines.png&quot;;
 LinesRenderer[&quot;@color&quot;] = { widget: &quot;color&quot; };
 
+Object.defineProperty( LinesRenderer.prototype, &quot;lines&quot;, {
+	set: function(v) { this.lines = v; },
+	get: function() { return this.lines; },
+	enumerable: true
+});
+
 Object.defineProperty( LinesRenderer.prototype, &quot;num_lines&quot;, {
 	set: function(v) {},
 	get: function() { return this._lines.length; },
@@ -284,14 +290,14 @@ LinesRenderer.prototype.removeLine = function(id)
 }
 
 
-LinesRenderer.prototype.onAddedToNode = function(node)
+LinesRenderer.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind(node, &quot;afterRenderScene&quot;, this.onAfterRender, this);
+	LEvent.bind( scene, &quot;afterRenderScene&quot;, this.onAfterRender, this);
 }
 
-LinesRenderer.prototype.onRemovedFromNode = function(node)
+LinesRenderer.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind(node, &quot;afterRenderScene&quot;, this.onAfterRender, this);
+	LEvent.unbind( scene, &quot;afterRenderScene&quot;, this.onAfterRender, this);
 }
 
 LinesRenderer.prototype.createMesh = function ()
@@ -337,8 +343,6 @@ LinesRenderer.prototype.updateMesh = function ()
 	this._mesh.vertexBuffers[&quot;colors&quot;].upload();
 }
 
-LinesRenderer._identity = mat4.create();
-
 LinesRenderer.prototype.onAfterRender = function(e)
 {
 	if( !this._root )
@@ -346,6 +350,9 @@ LinesRenderer.prototype.onAfterRender = function(e)
 
 	if( this._lines.length == 0 || !this.enabled )
 		return;
+
+	if( this._must_update )
+		this.updateMesh();
 
 	LS.Draw.setLineWidth( this.line_width );
 	LS.Draw.renderMesh( this._mesh, GL.LINES );

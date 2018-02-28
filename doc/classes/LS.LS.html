@@ -226,6 +226,10 @@
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_nextFrame">nextFrame</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_registerComponent">registerComponent</a>
 
                             </li>
@@ -255,6 +259,10 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_setTimeout">setTimeout</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_sleep">sleep</a>
 
                             </li>
                             <li class="index-item method">
@@ -310,7 +318,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l582"><code>..&#x2F;src&#x2F;core.js:582</code></a>
+        <a href="../files/.._src_core.js.html#l639"><code>..&#x2F;src&#x2F;core.js:639</code></a>
         </p>
 
 
@@ -370,7 +378,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l383"><code>..&#x2F;src&#x2F;core.js:383</code></a>
+        <a href="../files/.._src_core.js.html#l440"><code>..&#x2F;src&#x2F;core.js:440</code></a>
         </p>
 
 
@@ -453,7 +461,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l348"><code>..&#x2F;src&#x2F;core.js:348</code></a>
+        <a href="../files/.._src_core.js.html#l405"><code>..&#x2F;src&#x2F;core.js:405</code></a>
         </p>
 
 
@@ -562,7 +570,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l668"><code>..&#x2F;src&#x2F;core.js:668</code></a>
+        <a href="../files/.._src_core.js.html#l725"><code>..&#x2F;src&#x2F;core.js:725</code></a>
         </p>
 
 
@@ -628,7 +636,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l643"><code>..&#x2F;src&#x2F;core.js:643</code></a>
+        <a href="../files/.._src_core.js.html#l700"><code>..&#x2F;src&#x2F;core.js:700</code></a>
         </p>
 
 
@@ -694,7 +702,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l693"><code>..&#x2F;src&#x2F;core.js:693</code></a>
+        <a href="../files/.._src_core.js.html#l750"><code>..&#x2F;src&#x2F;core.js:750</code></a>
         </p>
 
 
@@ -759,7 +767,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l799"><code>..&#x2F;src&#x2F;core.js:799</code></a>
+        <a href="../files/.._src_core.js.html#l856"><code>..&#x2F;src&#x2F;core.js:856</code></a>
         </p>
 
 
@@ -867,6 +875,47 @@
 
 
 </div>
+<div id="method_nextFrame" class="method item">
+    <h3 class="name"><code>nextFrame</code></h3>
+
+        <span class="paren">()</span>
+
+        <span class="returns-inline">
+            <span class="type">Promise</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_core.js.html#l318"><code>..&#x2F;src&#x2F;core.js:318</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns a Promise that will be fulfilled when the next frame is rendered</p>
+
+    </div>
+
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Promise</span>:
+            </div>
+        </div>
+
+
+</div>
 <div id="method_registerComponent" class="method item">
     <h3 class="name"><code>registerComponent</code></h3>
 
@@ -956,7 +1005,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l776"><code>..&#x2F;src&#x2F;core.js:776</code></a>
+        <a href="../files/.._src_core.js.html#l833"><code>..&#x2F;src&#x2F;core.js:833</code></a>
         </p>
 
 
@@ -1152,7 +1201,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l835"><code>..&#x2F;src&#x2F;core.js:835</code></a>
+        <a href="../files/.._src_core.js.html#l892"><code>..&#x2F;src&#x2F;core.js:892</code></a>
         </p>
 
 
@@ -1195,7 +1244,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l279"><code>..&#x2F;src&#x2F;core.js:279</code></a>
+        <a href="../files/.._src_core.js.html#l332"><code>..&#x2F;src&#x2F;core.js:332</code></a>
         </p>
 
 
@@ -1203,7 +1252,7 @@
     </div>
 
     <div class="description">
-        <p>Is a wrapper for callbacks that throws an LS &quot;code_error&quot; in case something goes wrong (needed to catch the error from the system)</p>
+        <p>Is a wrapper for callbacks that throws an LS &quot;exception&quot; in case something goes wrong (needed to catch the error from the system and editor)</p>
 
     </div>
 
@@ -1274,7 +1323,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l326"><code>..&#x2F;src&#x2F;core.js:326</code></a>
+        <a href="../files/.._src_core.js.html#l383"><code>..&#x2F;src&#x2F;core.js:383</code></a>
         </p>
 
 
@@ -1354,7 +1403,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l304"><code>..&#x2F;src&#x2F;core.js:304</code></a>
+        <a href="../files/.._src_core.js.html#l361"><code>..&#x2F;src&#x2F;core.js:361</code></a>
         </p>
 
 
@@ -1404,6 +1453,70 @@
             </ul>
         </div>
 
+
+
+</div>
+<div id="method_sleep" class="method item">
+    <h3 class="name"><code>sleep</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>ms</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type">Promise</span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_core.js.html#l308"><code>..&#x2F;src&#x2F;core.js:308</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Returns a Promise that will be fulfilled once the time has passed</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">ms</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>time in milliseconds</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type">Promise</span>:
+            </div>
+        </div>
 
 
 </div>
@@ -1567,7 +1680,7 @@ valid characters are letters, numbers, spaces, dash, underscore and dot</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_core.js.html#l767"><code>..&#x2F;src&#x2F;core.js:767</code></a>
+        <a href="../files/.._src_core.js.html#l824"><code>..&#x2F;src&#x2F;core.js:824</code></a>
         </p>
 
 
