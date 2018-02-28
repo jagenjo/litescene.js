@@ -30,31 +30,8 @@ Some advanced topics:
 - [Custom editor interfaces](custom_editor_interfaces.md): configuring the interface in the editor
 - [Tweening](tweening.md): how to interpolate values easily
 - [Draw](draw.md): how to draw in immediate mode
+- [Coroutines](coroutines.md): how to use coroutines to make your code simpler
 
-
-
-## Index ##
-* Features
-* Limitations
-* LS Namespace
-* SceneTree and SceneNode
-* Components
- * Scripts
- * Graphs
-* Renderer
-* ResourcesManager
-* Player
-* Network
-* Formats
-* Physics
-* Picking
-* Helpers
- * Animation
- * Prefab
-* Other
- * LScript
- * WBin
- 
 ## Features ##
 LiteScene is an engine meant to work with WebGLStudio although it is not mandatory to do so (you can create full scenes just by accesing the engine directly from code).
 The engine is meant to be very modular and easy to extend.
