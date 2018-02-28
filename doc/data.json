@@ -1759,7 +1759,7 @@
             "namespace": "LS",
             "file": "../src/render/renderFrameContext.js",
             "line": 1,
-            "description": "This class is used when you want to render the scene not to the screen but to some texture for postprocessing\nIt helps to create the textures and bind them easily, add extra buffers or show it on the screen.\nCheck the FrameFX and CameraFX components to see it in action.",
+            "description": "This class is used when you want to render the scene not to the screen but to some texture for postprocessing\nIt helps to create the textures and bind them easily, add extra buffers or show it on the screen.\nCheck the FrameFX and CameraFX components to see it in action.\n   Dependencies: LS.Renderer (writes there only)",
             "is_constructor": 1
         },
         "LS.RenderInstance": {
@@ -2040,7 +2040,7 @@
             "module": "LS",
             "namespace": "",
             "file": "../src/core.js",
-            "line": 958,
+            "line": 1015,
             "description": "LSQ allows to set or get values easily from the global scene, using short strings as identifiers\nsimilar to jQuery and the DOM:  LSQ(\"nod_name\").material = ..."
         },
         "LS.Ray": {
@@ -6503,7 +6503,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 20,
+            "line": 21,
             "description": "Sets up everything (prepare meshes, shaders, and so)",
             "itemtype": "method",
             "name": "init",
@@ -6512,7 +6512,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 244,
+            "line": 271,
             "description": "A helper to create shaders when you only want to specify some basic shading",
             "itemtype": "method",
             "name": "createSurfaceShader",
@@ -6542,7 +6542,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 303,
+            "line": 330,
             "description": "clears the stack",
             "itemtype": "method",
             "name": "reset",
@@ -6551,7 +6551,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 328,
+            "line": 356,
             "description": "Sets the color used to paint primitives",
             "itemtype": "method",
             "name": "setColor",
@@ -6567,7 +6567,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 348,
+            "line": 376,
             "description": "Sets the alpha used to paint primitives",
             "itemtype": "method",
             "name": "setAlpha",
@@ -6583,7 +6583,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 358,
+            "line": 386,
             "description": "Sets the point size",
             "itemtype": "method",
             "name": "setPointSize",
@@ -6599,7 +6599,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 368,
+            "line": 396,
             "description": "Sets the line width",
             "itemtype": "method",
             "name": "setLineWidth",
@@ -6615,7 +6615,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 382,
+            "line": 410,
             "description": "Sets the camera to use during the rendering, this is already done by LS.Renderer",
             "itemtype": "method",
             "name": "setCamera",
@@ -6631,7 +6631,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 397,
+            "line": 425,
             "description": "Specifies the camera position (used to compute point size)",
             "itemtype": "method",
             "name": "setCameraPosition",
@@ -6647,7 +6647,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 419,
+            "line": 447,
             "description": "Specifies the camera view and projection matrices",
             "itemtype": "method",
             "name": "setViewProjectionMatrix",
@@ -6673,7 +6673,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 436,
+            "line": 464,
             "description": "Specifies the transformation matrix to apply to the mesh",
             "itemtype": "method",
             "name": "setMatrix",
@@ -6689,7 +6689,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 446,
+            "line": 474,
             "description": "Multiplies the current matrix by a given one",
             "itemtype": "method",
             "name": "multMatrix",
@@ -6705,7 +6705,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 456,
+            "line": 484,
             "description": "Render lines given a set of points",
             "itemtype": "method",
             "name": "renderLines",
@@ -6736,7 +6736,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 485,
+            "line": 513,
             "description": "Render points given a set of positions (and colors)",
             "itemtype": "method",
             "name": "renderPoints",
@@ -6762,7 +6762,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 521,
+            "line": 549,
             "description": "Render round points given a set of positions (and colors)",
             "itemtype": "method",
             "name": "renderRoundPoints",
@@ -6788,7 +6788,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 551,
+            "line": 579,
             "description": "Render points with color, size, and texture binded in 0",
             "itemtype": "method",
             "name": "renderPointsWithSize",
@@ -6824,7 +6824,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 599,
+            "line": 627,
             "description": "Render a wireframe rectangle of width x height",
             "itemtype": "method",
             "name": "renderRectangle",
@@ -6850,7 +6850,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 646,
+            "line": 674,
             "description": "Renders a circle",
             "itemtype": "method",
             "name": "renderCircle",
@@ -6881,7 +6881,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 660,
+            "line": 688,
             "description": "Render a filled circle",
             "itemtype": "method",
             "name": "renderSolidCircle",
@@ -6907,7 +6907,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 706,
+            "line": 734,
             "description": "Renders three circles to form a simple spherical shape",
             "itemtype": "method",
             "name": "renderWireSphere",
@@ -6928,7 +6928,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 718,
+            "line": 746,
             "description": "Renders an sphere",
             "itemtype": "method",
             "name": "renderSolidSphere",
@@ -6944,7 +6944,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 750,
+            "line": 778,
             "description": "Renders a wire box (box made of lines, not filled)",
             "itemtype": "method",
             "name": "renderWireBox",
@@ -6970,7 +6970,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 776,
+            "line": 804,
             "description": "Renders a solid box",
             "itemtype": "method",
             "name": "renderSolidBox",
@@ -6996,7 +6996,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 789,
+            "line": 817,
             "description": "Renders a wire cube of size size",
             "itemtype": "method",
             "name": "renderWireCube",
@@ -7012,7 +7012,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 799,
+            "line": 827,
             "description": "Renders a solid cube of size size",
             "itemtype": "method",
             "name": "renderSolidCube",
@@ -7028,7 +7028,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 809,
+            "line": 837,
             "description": "Renders a solid plane (could be textured or even with an specific shader)",
             "itemtype": "method",
             "name": "renderPlane",
@@ -7059,7 +7059,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 856,
+            "line": 884,
             "description": "Renders a grid of lines",
             "itemtype": "method",
             "name": "renderGrid",
@@ -7080,7 +7080,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 892,
+            "line": 920,
             "description": "Renders a cone",
             "itemtype": "method",
             "name": "renderCone",
@@ -7111,7 +7111,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 929,
+            "line": 957,
             "description": "Renders a cylinder",
             "itemtype": "method",
             "name": "renderCylinder",
@@ -7142,7 +7142,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 943,
+            "line": 971,
             "description": "Renders an image",
             "itemtype": "method",
             "name": "renderImage",
@@ -7173,7 +7173,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1009,
+            "line": 1037,
             "description": "Renders a given mesh applyting the stack transformations",
             "itemtype": "method",
             "name": "renderMesh",
@@ -7209,7 +7209,38 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1067,
+            "line": 1083,
+            "description": "Renders several meshes in one draw call, keep in mind the shader and the browser should support instancing",
+            "itemtype": "method",
+            "name": "renderMeshesInstanced",
+            "params": [
+                {
+                    "name": "mesh",
+                    "description": "",
+                    "type": "GL.Mesh"
+                },
+                {
+                    "name": "matrices",
+                    "description": "an array containing all the matrices",
+                    "type": "Array"
+                },
+                {
+                    "name": "primitive",
+                    "description": "[optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...",
+                    "type": "Enum"
+                },
+                {
+                    "name": "indices",
+                    "description": "[optional=\"triangles\"] the name of the buffer in the mesh with the indices",
+                    "type": "String"
+                }
+            ],
+            "class": "LS.Draw",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/render/draw.js",
+            "line": 1121,
             "description": "Renders a text in the current matrix position",
             "itemtype": "method",
             "name": "renderText",
@@ -7225,7 +7256,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1177,
+            "line": 1231,
             "description": "pushes the transform matrix into the stack to save the state",
             "itemtype": "method",
             "name": "push",
@@ -7234,7 +7265,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1191,
+            "line": 1246,
             "description": "takes the matrix from the top position of the stack to restore the last saved state",
             "itemtype": "method",
             "name": "push",
@@ -7243,7 +7274,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1202,
+            "line": 1258,
             "description": "clears the transform matrix setting it to an identity",
             "itemtype": "method",
             "name": "identity",
@@ -7252,7 +7283,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1211,
+            "line": 1267,
             "description": "changes the scale of the transform matrix. The parameters could be a vec3, a single number (then the scale is uniform in all axis) or three numbers",
             "itemtype": "method",
             "name": "scale",
@@ -7278,7 +7309,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1236,
+            "line": 1292,
             "description": "applies a translation to the transform matrix",
             "itemtype": "method",
             "name": "translate",
@@ -7304,7 +7335,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1255,
+            "line": 1311,
             "description": "applies a translation to the transform matrix",
             "itemtype": "method",
             "name": "rotate",
@@ -7335,7 +7366,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1275,
+            "line": 1331,
             "description": "moves an object to a given position and forces it to look to another direction\nWarning: it doesnt changes the camera in any way, only the transform matrix",
             "itemtype": "method",
             "name": "lookAt",
@@ -7361,7 +7392,7 @@
         },
         {
             "file": "../src/render/draw.js",
-            "line": 1300,
+            "line": 1356,
             "description": "projects a point from 3D space to 2D space (multiply by MVP)",
             "itemtype": "method",
             "name": "project",
@@ -7386,7 +7417,7 @@
         },
         {
             "file": "../src/render/renderFrameContext.js",
-            "line": 215,
+            "line": 219,
             "description": "Called to bind the rendering to this context, from now on all the render will be stored in the textures inside",
             "itemtype": "method",
             "name": "enable",
@@ -7395,7 +7426,7 @@
         },
         {
             "file": "../src/render/renderFrameContext.js",
-            "line": 287,
+            "line": 291,
             "description": "Called to stop rendering to this context",
             "itemtype": "method",
             "name": "disable",
@@ -7404,7 +7435,7 @@
         },
         {
             "file": "../src/render/renderFrameContext.js",
-            "line": 338,
+            "line": 342,
             "description": "returns the texture containing the data rendered in this context",
             "itemtype": "method",
             "name": "getColorTexture",
@@ -7424,7 +7455,7 @@
         },
         {
             "file": "../src/render/renderFrameContext.js",
-            "line": 350,
+            "line": 354,
             "description": "returns the depth texture containing the depth data rendered in this context (in case the use_depth_texture is set to true)",
             "itemtype": "method",
             "name": "getDepthTexture",
@@ -7437,7 +7468,7 @@
         },
         {
             "file": "../src/render/renderFrameContext.js",
-            "line": 385,
+            "line": 389,
             "description": "Render the context of the context to the viewport (allows to apply FXAA)",
             "itemtype": "method",
             "name": "show",
@@ -7654,7 +7685,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 293,
+            "line": 297,
             "description": "Calls renderFrame of every camera in the cameras list (triggering the appropiate events)",
             "itemtype": "method",
             "name": "renderFrameCameras",
@@ -7675,7 +7706,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 322,
+            "line": 326,
             "description": "renders the view from one camera to the current viewport (could be the screen or a texture)",
             "itemtype": "method",
             "name": "renderFrame",
@@ -7701,7 +7732,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 371,
+            "line": 375,
             "description": "Sets camera as the current camera, sets the viewport according to camera info, updates matrices, and prepares LS.Draw",
             "itemtype": "method",
             "name": "enableCamera",
@@ -7722,7 +7753,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 433,
+            "line": 437,
             "description": "Returns the camera active",
             "itemtype": "method",
             "name": "getCurrentCamera",
@@ -7735,7 +7766,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 444,
+            "line": 448,
             "description": "clear color using camera info ( background color, viewport scissors, clear depth, etc )",
             "itemtype": "method",
             "name": "clearBuffer",
@@ -7756,7 +7787,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 501,
+            "line": 505,
             "description": "To set gl state to a known and constant state in every render pass",
             "itemtype": "method",
             "name": "resetGLState",
@@ -7772,7 +7803,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 532,
+            "line": 536,
             "description": "Calls the render method for every RenderInstance (it also takes into account events and frustrum culling)",
             "itemtype": "method",
             "name": "renderInstances",
@@ -7793,7 +7824,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 709,
+            "line": 713,
             "description": "returns a list of all the lights overlapping this instance (it uses sperical bounding so it could returns lights that are not really overlapping)\nIt is used by the multipass lighting to iterate",
             "itemtype": "method",
             "name": "getNearLights",
@@ -7818,7 +7849,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 792,
+            "line": 796,
             "description": "Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light\nThis function it is not as fast as I would like but enables lots of interesting features",
             "itemtype": "method",
             "name": "renderColorMultiPassLightingInstance",
@@ -7844,7 +7875,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 920,
+            "line": 924,
             "description": "Renders this RenderInstance into the shadowmap",
             "itemtype": "method",
             "name": "renderShadowPassInstance",
@@ -7865,7 +7896,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 964,
+            "line": 968,
             "description": "Render instance into the picking buffer",
             "itemtype": "method",
             "name": "renderPickingInstance",
@@ -7886,7 +7917,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1120,
+            "line": 1124,
             "description": "Update the scene shader query according to the render pass\nDo not reuse the query, they change between rendering passes (shadows, reflections, etc)",
             "itemtype": "method",
             "name": "fillSceneShaderQuery",
@@ -7907,7 +7938,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1209,
+            "line": 1213,
             "description": "Collects and process the rendering instances, cameras and lights that are visible\nIts a prepass shared among all rendering passes\nWarning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)",
             "itemtype": "method",
             "name": "processVisibleData",
@@ -7933,7 +7964,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1396,
+            "line": 1400,
             "description": "Renders a frame into a texture (could be a cubemap, in which case does the six passes)",
             "itemtype": "method",
             "name": "renderInstancesToRT",
@@ -7959,7 +7990,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1434,
+            "line": 1438,
             "description": "Renders the current scene to a cubemap centered in the given position",
             "itemtype": "method",
             "name": "renderToCubemap",
@@ -8004,7 +8035,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1487,
+            "line": 1491,
             "description": "Renders the material preview to an image (or to the screen)",
             "itemtype": "method",
             "name": "renderMaterialPreview",
@@ -8039,7 +8070,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1572,
+            "line": 1576,
             "description": "Returns the last camera that falls into a given screen position",
             "itemtype": "method",
             "name": "getCameraAtPosition",
@@ -8069,7 +8100,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1599,
+            "line": 1603,
             "description": "Sets the render pass to use, this allow to change between \"color\",\"shadow\",\"picking\",etc",
             "itemtype": "method",
             "name": "setRenderPass",
@@ -8085,7 +8116,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1610,
+            "line": 1614,
             "description": "Register a render pass to be used during the rendering",
             "itemtype": "method",
             "name": "registerRenderPass",
@@ -8106,7 +8137,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1625,
+            "line": 1629,
             "description": "Adds a new RenderQueue to the Renderer.",
             "itemtype": "method",
             "name": "addRenderQueue",
@@ -8136,7 +8167,7 @@
         },
         {
             "file": "../src/render/renderer.js",
-            "line": 1649,
+            "line": 1653,
             "description": "Enables a ShaderBlock ONLY DURING THIS FRAME",
             "itemtype": "method",
             "name": "enableFrameShaderBlock",
@@ -10074,8 +10105,41 @@
         },
         {
             "file": "../src/core.js",
-            "line": 279,
-            "description": "Is a wrapper for callbacks that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
+            "line": 308,
+            "description": "Returns a Promise that will be fulfilled once the time has passed",
+            "itemtype": "method",
+            "name": "sleep",
+            "params": [
+                {
+                    "name": "ms",
+                    "description": "time in milliseconds",
+                    "type": "Number"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Promise"
+            },
+            "class": "LS.LS",
+            "module": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 318,
+            "description": "Returns a Promise that will be fulfilled when the next frame is rendered",
+            "itemtype": "method",
+            "name": "nextFrame",
+            "return": {
+                "description": "",
+                "type": "Promise"
+            },
+            "class": "LS.LS",
+            "module": "LS"
+        },
+        {
+            "file": "../src/core.js",
+            "line": 332,
+            "description": "Is a wrapper for callbacks that throws an LS \"exception\" in case something goes wrong (needed to catch the error from the system and editor)",
             "itemtype": "method",
             "name": "safeCall",
             "params": [
@@ -10100,7 +10164,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 304,
+            "line": 361,
             "description": "Is a wrapper for setTimeout that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setTimeout",
@@ -10126,7 +10190,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 326,
+            "line": 383,
             "description": "Is a wrapper for setInterval that throws an LS \"code_error\" in case something goes wrong (needed to catch the error from the system)",
             "itemtype": "method",
             "name": "setInterval",
@@ -10152,7 +10216,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 348,
+            "line": 405,
             "description": "copy the properties (methods and properties) of origin class into target class",
             "itemtype": "method",
             "name": "extendClass",
@@ -10173,7 +10237,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 383,
+            "line": 440,
             "description": "Clones an object (no matter where the object came from)\n- It skip attributes starting with \"_\" or \"jQuery\" or functions\n- it tryes to see which is the best copy to perform\n- to the rest it applies JSON.parse( JSON.stringify ( obj ) )\n- use it carefully",
             "itemtype": "method",
             "name": "cloneObject",
@@ -10198,7 +10262,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 582,
+            "line": 639,
             "description": "Clears all the uids inside this object and children (it also works with serialized object)",
             "itemtype": "method",
             "name": "clearUIds",
@@ -10214,7 +10278,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 643,
+            "line": 700,
             "description": "Returns an object class name (uses the constructor toString)",
             "itemtype": "method",
             "name": "getObjectClassName",
@@ -10234,7 +10298,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 668,
+            "line": 725,
             "description": "Returns an string with the class name",
             "itemtype": "method",
             "name": "getClassName",
@@ -10254,7 +10318,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 693,
+            "line": 750,
             "description": "Returns the public properties of one object and the type (not the values)",
             "itemtype": "method",
             "name": "getObjectProperties",
@@ -10274,7 +10338,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 767,
+            "line": 824,
             "description": "Contains all the registered material classes",
             "itemtype": "property",
             "name": "MaterialClasses",
@@ -10285,7 +10349,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 776,
+            "line": 833,
             "description": "Register a Material class so it is listed when searching for new materials to attach",
             "itemtype": "method",
             "name": "registerMaterialClass",
@@ -10301,7 +10365,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 799,
+            "line": 856,
             "description": "Returns an script context using the script name (not the node name), usefull to pass data between scripts.",
             "itemtype": "method",
             "name": "getScript",
@@ -10321,7 +10385,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 835,
+            "line": 892,
             "description": "clears the global scene and the resources manager",
             "itemtype": "method",
             "name": "reset",
@@ -10330,7 +10394,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 969,
+            "line": 1026,
             "description": "Assigns a value to a property of one node in the scene, just by using a string identifier\nExample:  LSQ.set(\"mynode|a_child/MeshRenderer/enabled\",false);",
             "itemtype": "method",
             "name": "set",
@@ -10351,7 +10415,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 997,
+            "line": 1054,
             "description": "Retrieves the value of a property of one node in the scene, just by using a string identifier\nExample: var value = LSQ.get(\"mynode|a_child/MeshRenderer/enabled\");",
             "itemtype": "method",
             "name": "get",
@@ -10371,7 +10435,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 1029,
+            "line": 1086,
             "description": "Shortens a locator that uses unique identifiers to a simpler one, but be careful, because it uses names instead of UIDs it could point to the wrong property\nExample: \"@NODE--a40661-1e8a33-1f05e42-56/@COMP--a40661-1e8a34-1209e28-57/size\" -> \"node|child/Collider/size\"",
             "itemtype": "method",
             "name": "shortify",
@@ -10391,7 +10455,7 @@
         },
         {
             "file": "../src/core.js",
-            "line": 1068,
+            "line": 1125,
             "description": "Assigns a value using the getLocatorInfo object instead of searching it again\nThis is faster but if the locator points to a different object it wont work.",
             "itemtype": "method",
             "name": "setFromInfo",
@@ -10895,7 +10959,7 @@
         },
         {
             "file": "../src/input.js",
-            "line": 115,
+            "line": 118,
             "description": "returns if the mouse is inside the rect defined by x,y, width,height",
             "itemtype": "method",
             "name": "isMouseInRect",
@@ -10936,7 +11000,7 @@
         },
         {
             "file": "../src/input.js",
-            "line": 143,
+            "line": 146,
             "description": "Returns a gamepad snapshot if it is connected",
             "itemtype": "method",
             "name": "getGamepad",
@@ -10957,7 +11021,7 @@
         },
         {
             "file": "../src/input.js",
-            "line": 156,
+            "line": 159,
             "description": "Returns a gamepad snapshot if it is connected",
             "itemtype": "method",
             "name": "getGamepadAxis",
@@ -10988,7 +11052,7 @@
         },
         {
             "file": "../src/input.js",
-            "line": 184,
+            "line": 187,
             "description": "Returns if the given button of the specified gamepad is pressed",
             "itemtype": "method",
             "name": "isGamepadButtonPressed",
@@ -11014,7 +11078,7 @@
         },
         {
             "file": "../src/input.js",
-            "line": 209,
+            "line": 212,
             "description": "Returns if the given mouse button is pressed",
             "itemtype": "method",
             "name": "isMouseButtonPressed",
@@ -11028,6 +11092,20 @@
             "return": {
                 "description": "if the button is pressed",
                 "type": "Boolean"
+            },
+            "class": "LS.Input",
+            "module": "LS",
+            "namespace": "LS"
+        },
+        {
+            "file": "../src/input.js",
+            "line": 231,
+            "description": "Returns a Promise that will be fulfilled when the user clicks the screen",
+            "itemtype": "method",
+            "name": "mouseClick",
+            "return": {
+                "description": "",
+                "type": "Promise"
             },
             "class": "LS.Input",
             "module": "LS",

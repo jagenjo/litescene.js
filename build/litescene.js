@@ -1087,9 +1087,62 @@ var LS = {
 		//some validation here? maybe...
 	},
 
+	//Coroutines that allow to work with async functions
+	coroutines: {},
+
+	addWaitingCoroutine: function( resolve, event )
+	{
+		event = event || "render";
+		var coroutines = this.coroutines[ event ];
+		if(!coroutines)
+			coroutines = this.coroutines[ event ] = [];
+		coroutines.push( resolve );
+	},
+
+	triggerCoroutines: function( event, data )
+	{
+		event = event || "render";
+		var coroutines = this.coroutines[ event ];
+		if(!coroutines)
+			return;
+		for(var i = 0; i < coroutines.length; ++i)
+			LS.safeCall( coroutines[i], data ); //call resolves
+		coroutines.length = 0;
+	},
+
+	createCoroutine: function( event )
+	{
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, event );
+		});
+	},
 
 	/**
-	* Is a wrapper for callbacks that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
+	* Returns a Promise that will be fulfilled once the time has passed
+	* @method sleep
+	* @param {Number} ms time in milliseconds
+	* @return {Promise} 
+	*/
+	sleep: function(ms) {
+	  return new Promise( function(resolve){ setTimeout(resolve, ms); });
+	},
+
+	/**
+	* Returns a Promise that will be fulfilled when the next frame is rendered
+	* @method nextFrame
+	* @return {Promise} 
+	*/
+	nextFrame: function( skip_request )
+	{
+		if(!skip_request)
+			LS.GlobalScene.requestFrame();
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, "render" );
+		});
+	},
+
+	/**
+	* Is a wrapper for callbacks that throws an LS "exception" in case something goes wrong (needed to catch the error from the system and editor)
 	* @method safeCall
 	* @param {function} callback
 	* @param {array} params
@@ -1098,7 +1151,11 @@ var LS = {
 	safeCall: function(callback, params, instance)
 	{
 		if(!LS.catch_exceptions)
-			return callback.apply( instance, params );
+		{
+			if(instance)
+				return callback.apply( instance, params );
+			return callback( params );
+		}
 
 		try
 		{
@@ -2461,7 +2518,10 @@ var Input = {
 
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")
+		{
 			this.current_click = e;
+			LS.triggerCoroutines( "click", e );
+		}
 		else if(e.type == "mouseup")
 			this.current_click = null;
 
@@ -2598,6 +2658,18 @@ var Input = {
 		if(num === undefined)
 			return false;
 		return (this.Mouse.buttons & (1<<num)) !== 0;
+	},
+
+	/**
+	* Returns a Promise that will be fulfilled when the user clicks the screen
+	* @method mouseClick
+	* @return {Promise} 
+	*/
+	mouseClick: function()
+	{
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, "click" );
+		});
 	}
 };
 
@@ -4989,6 +5061,9 @@ LS.ResourcesManager.processDataResource = function( url, data, options, callback
 	//WBIN?
 	if(data.constructor == ArrayBuffer)
 	{
+		if(!data.length) //empty file?
+			return null;
+
 		resource = WBin.load(data);
 		if(callback)
 			callback(url, resource, options);
@@ -7628,8 +7703,8 @@ ShaderMaterial.prototype.assignOldProperties = function( old_properties )
 			continue;
 
 
-		//validate
-		if( !old.internal && shader )
+		//validate (avoids error if we change the type of a uniform and try to reassign a value)
+		if( !old.internal && shader && !new_prop.is_texture ) //textures are not validated (because they are samplers, not values)
 		{
 			var uniform_info = shader.uniformInfo[ new_prop.uniform ];
 			if(!uniform_info)
@@ -19341,6 +19416,7 @@ LS.RenderInstance = RenderInstance;
 *	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
 *	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
 *	Check the FrameFX and CameraFX components to see it in action.
+*   Dependencies: LS.Renderer (writes there only)
 *
 * @class RenderFrameContext
 * @namespace LS
@@ -19350,9 +19426,9 @@ function RenderFrameContext( o )
 {
 	this.width = 0; //0 means the same size as the viewport, negative numbers mean reducing the texture in half N times
 	this.height = 0; //0 means the same size as the viewport
-	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float
+	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
-	this.format = GL.RGBA; //how many color channels
+	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
 	this.use_depth_texture = false; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
@@ -19386,6 +19462,8 @@ RenderFrameContext.DEFAULT_PRECISION_WEBGL_TYPE = GL.UNSIGNED_BYTE;
 
 RenderFrameContext["@width"] = { type: "number", step: 1, precision: 0 };
 RenderFrameContext["@height"] = { type: "number", step: 1, precision: 0 };
+
+//definitions for the GUI
 RenderFrameContext["@precision"] = { widget: "combo", values: { 
 	"default": RenderFrameContext.DEFAULT_PRECISION, 
 	"low": RenderFrameContext.LOW_PRECISION,
@@ -19395,8 +19473,8 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 };
 
 RenderFrameContext["@format"] = { widget: "combo", values: { 
-	"RGB": GL.RGB,
-	"RGBA": GL.RGBA
+		"RGB": GL.RGB,
+		"RGBA": GL.RGBA
 	}
 };
 
@@ -19482,8 +19560,9 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		case RenderFrameContext.HIGH_PRECISION:
 			type = gl.FLOAT; break;
 		case RenderFrameContext.DEFAULT_PRECISION:
-		default:
 			type = RenderFrameContext.DEFAULT_PRECISION_WEBGL_TYPE; break;
+		default:
+			type = this.precision; break; //used for custom formats
 	}
 
 	var textures = this._textures;
@@ -19558,7 +19637,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 */
 RenderFrameContext.prototype.enable = function( render_settings, viewport )
 {
-	var camera = LS.Renderer._current_camera;
 	viewport = viewport || gl.viewport_data;
 
 	//create FBO and textures (pass width and height of current viewport)
@@ -19575,6 +19653,7 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
+	var camera = LS.Renderer._current_camera;
 	if(this._depth_texture && camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;
@@ -20090,12 +20169,16 @@ var Renderer = {
 		//renderGUI
 		this.renderGUI( render_settings );
 
-		//profiling
+		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
+		this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
 
 		//Event: afterRender to give closure to some actions
-		LEvent.trigger( scene, "afterRender", render_settings );
+		LEvent.trigger( scene, "afterRender", render_settings ); 
 		this._is_rendering_frame = false;
+
+		//coroutines
+		LS.triggerCoroutines("render");
 	},
 
 	/**
@@ -21996,6 +22079,7 @@ var Draw = {
 
 	onRequestFrame: null,
 	reset_stack_on_reset: true,
+	_rendercalls: 0,
 
 	/**
 	* Sets up everything (prepare meshes, shaders, and so)
@@ -22028,6 +22112,16 @@ var Draw = {
 
 		this.camera_stack = []; //not used yet
 
+		this.uniforms = {
+				u_model: this.model_matrix,
+				u_viewprojection: this.viewprojection_matrix,
+				u_mvp: this.mvp_matrix,
+				u_color: this.color,
+				u_camera_position: this.camera_position,
+				u_point_size: this.point_size,
+				u_texture: 0
+		};
+
 		//temp containers
 		this._temp = vec3.create();
 
@@ -22050,7 +22144,12 @@ var Draw = {
 			#ifdef USE_SIZE\n\
 				attribute float a_extra;\n\
 			#endif\n\
-			uniform mat4 u_mvp;\n\
+			#ifdef USE_INSTANCING\n\
+				attribute mat4 u_model;\n\
+			#else\n\
+				uniform mat4 u_model;\n\
+			#endif\n\
+			uniform mat4 u_viewprojection;\n\
 			uniform float u_point_size;\n\
 			void main() {\n\
 				gl_PointSize = u_point_size;\n\
@@ -22063,7 +22162,8 @@ var Draw = {
 				#ifdef USE_COLOR\n\
 					v_color = a_color;\n\
 				#endif\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+				vec3 vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
+				gl_Position = u_viewprojection * vec4(vertex,1.0);\n\
 			}\
 			';
 
@@ -22098,9 +22198,11 @@ var Draw = {
 
 		//create shaders
 		this.shader = new Shader( vertex_shader, pixel_shader );
-
+		this.shader_instancing = new Shader(vertex_shader,pixel_shader,{"USE_INSTANCING":""});
 		this.shader_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":""});
+		this.shader_color_instancing = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_INSTANCING":""});
 		this.shader_texture = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":""});
+		this.shader_texture_instancing = new Shader(vertex_shader,pixel_shader,{"USE_TEXTURE":"","USE_INSTANCING":""});
 		this.shader_points = new Shader(vertex_shader,pixel_shader,{"USE_POINTS":""});
 		this.shader_points_color = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_POINTS":""});
 		this.shader_points_color_size = new Shader(vertex_shader,pixel_shader,{"USE_COLOR":"","USE_SIZE":"","USE_POINTS":""});
@@ -22157,20 +22259,25 @@ var Draw = {
 		');
 
 		//create shaders
-		this.shader_phong = new Shader('\
+		var phong_vertex_code = "\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
 			attribute vec3 a_normal;\n\
 			varying vec3 v_pos;\n\
 			varying vec3 v_normal;\n\
-			uniform mat4 u_model;\n\
-			uniform mat4 u_mvp;\n\
+			#ifdef USE_INSTANCING\n\
+				attribute mat4 u_model;\n\
+			#else\n\
+				uniform mat4 u_model;\n\
+			#endif\n\
+			uniform mat4 u_viewprojection;\n\
 			void main() {\n\
-				v_pos = (u_model * vec4(a_vertex,1.0)).xyz;\n\
-				v_normal = (u_model * vec4(a_vertex + a_normal,1.0)).xyz - v_pos;\n\
-				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
-			}\
-			','\
+				v_pos = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
+				v_normal = (u_model * vec4(a_normal,0.0)).xyz;\n\
+				gl_Position = u_viewprojection * vec4( v_pos, 1.0 );\n\
+			}\n";
+		
+		var phong_pixel_shader = "\n\
 			precision mediump float;\n\
 			uniform vec3 u_ambient_color;\n\
 			uniform vec3 u_light_color;\n\
@@ -22182,10 +22289,13 @@ var Draw = {
 				vec3 N = normalize(v_normal);\n\
 				float NdotL = max(0.0, dot(N,u_light_dir));\n\
 				gl_FragColor = u_color * vec4(u_ambient_color + u_light_color * NdotL, 1.0);\n\
-			}\
-		');
+			}\n";
 
-		this.shader_phong.uniforms({u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] });
+		this.shader_phong = new Shader( phong_vertex_code, phong_pixel_shader);
+		this.shader_phong_instanced = new Shader( phong_vertex_code, phong_pixel_shader, { "USE_INSTANCING":"" } );
+		var phong_uniforms = {u_ambient_color:[0.1,0.1,0.1], u_light_color:[0.8,0.8,0.8], u_light_dir: [0,1,0] };
+		this.shader_phong.uniforms( phong_uniforms );
+		this.shader_phong_instanced.uniforms( phong_uniforms );
 
 		//create shaders
 		this.shader_depth = new Shader('\
@@ -22301,6 +22411,7 @@ var Draw = {
 		if(this.reset_stack_on_reset)
 		{
 			this.model_matrix = new Float32Array(this.stack.buffer,0,16);
+			this.uniforms.u_model = this.model_matrix;
 			mat4.identity( this.model_matrix );
 		}
 	},
@@ -22369,9 +22480,9 @@ var Draw = {
 		this.camera = camera;
 		camera.updateMatrices();
 		vec3.copy( this.camera_position, camera.getEye() );	
-		mat4.copy( this.view_matrix, camera._view_matrix );
-		mat4.copy( this.projection_matrix, camera._projection_matrix );
-		mat4.copy( this.viewprojection_matrix, camera._viewprojection_matrix );
+		this.view_matrix.set( camera._view_matrix );
+		this.projection_matrix.set( camera._projection_matrix );
+		this.viewprojection_matrix.set( camera._viewprojection_matrix );
 	},
 
 	/**
@@ -23012,14 +23123,7 @@ var Draw = {
 
 		mat4.multiply(this.mvp_matrix, this.viewprojection_matrix, this.model_matrix );
 
-		shader.uniforms({
-				u_model: this.model_matrix,
-				u_mvp: this.mvp_matrix,
-				u_color: this.color,
-				u_camera_position: this.camera_position,
-				u_point_size: this.point_size,
-				u_texture: 0
-		});
+		shader.uniforms( this.uniforms );
 				
 		if( range_start === undefined )
 			shader.draw(mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices );
@@ -23033,10 +23137,43 @@ var Draw = {
 		this._last_indices = indices;
 		this._last_range_start = range_start;
 		this._last_range_length = range_length;
+		this._rendercalls += 1;
 
 		this.last_mesh = mesh;
 		return mesh;
 	},
+
+	/**
+	* Renders several meshes in one draw call, keep in mind the shader and the browser should support instancing
+	* @method renderMeshesInstanced
+	* @param {GL.Mesh} mesh
+	* @param {Array} matrices an array containing all the matrices
+	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
+	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
+	*/
+	renderMeshesInstanced: function( mesh, matrices, primitive, shader, indices )
+	{
+		if(!this.ready)
+			throw ("Draw.js not initialized, call Draw.init()");
+		if(!mesh)
+			throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
+
+		if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
+			return null; //instancing not supported
+
+		if(!shader)
+			shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
+
+		if( !shader.attributes.u_model )
+			throw("Shader does not support instancing, it must have a attribute u_model");
+
+		shader.uniforms( this.uniforms );
+		shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, { u_model: matrices } );
+		this._rendercalls += 1;
+
+		return mesh;
+	},
+
 
 	//used in some special cases
 	repeatLastRender: function()
@@ -23165,6 +23302,7 @@ var Draw = {
 
 		var old = this.model_matrix;
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset + 16*4,16);
+		this.uniforms.u_model = this.model_matrix;
 		mat4.copy(this.model_matrix, old);
 	},
 
@@ -23177,6 +23315,7 @@ var Draw = {
 		if(this.model_matrix.byteOffset == 0)
 			throw("too many pops");
 		this.model_matrix = new Float32Array(this.stack.buffer,this.model_matrix.byteOffset - 16*4,16);
+		this.uniforms.u_model = this.model_matrix;
 	},
 
 	/**
@@ -23290,10 +23429,12 @@ var Draw = {
 		return mat4.multiplyVec3(dest, this.mvp_matrix, position);
 	},
 
-	getPhongShader: function( ambient_color, light_color, light_dir )
+	getPhongShader: function( ambient_color, light_color, light_dir, instanced )
 	{
-		this.shader_phong.uniforms({ u_ambient_color: ambient_color, u_light_color: light_color, u_light_dir: light_dir });
-		return this.shader_phong;
+		var shader = instanced ? this.shader_phong_instanced : this.shader_phong;
+		vec3.normalize( light_dir, light_dir );
+		shader.uniforms({ u_ambient_color: ambient_color, u_light_color: light_color, u_light_dir: light_dir });
+		return shader;
 	},
 
 	getDepthShader: function()
@@ -24048,6 +24189,7 @@ LS.Physics = Physics;
 * Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * It uses lazy update to recompute the matrices.
 * @class Transform
+* @namespace LS.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -25519,7 +25661,7 @@ LS.Transform = Transform;
 * @class Camera
 * @namespace LS.Components
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 
 function Camera(o)
@@ -25857,7 +25999,8 @@ Object.defineProperty( Camera.prototype, "frustum_size", {
 
 /**
 * The frustum size when working in pure ORTHOGRAPHIC 
-* @property orthographic {vec4} left,right,bottom,top (near and far are in the near,far properties)
+* left,right,bottom,top (near and far are in the near,far properties)
+* @property orthographic {vec4} 
 * @default 50
 */
 
@@ -27136,7 +27279,17 @@ function CameraFX( o )
 {
 	this.enabled = true;
 
+	/**
+	* The FX Stack
+	* @property fx {LS.FXStack}
+	*/
 	this.fx = new LS.FXStack( o ? o.fx : null );
+
+	/**
+	* The position of the camera (in local space, node space)
+	* @property eye {vec3}
+	* @default [0,100,100]
+	*/
 	this.frame = new LS.RenderFrameContext();
 	this.frame.use_depth_texture = true;
 	this.use_antialiasing = false;
@@ -27150,6 +27303,10 @@ function CameraFX( o )
 CameraFX.icon = "mini-icon-fx.png";
 CameraFX["@camera_uid"] = { type: "String" };
 
+/**
+* Apply antialiasing post-processing shader
+* @property use_antialiasing {Boolean}
+*/
 Object.defineProperty( CameraFX.prototype, "use_antialiasing", { 
 	set: function(v) { this.fx.apply_fxaa = v; },
 	get: function() { return this.fx.apply_fxaa; },
@@ -27511,6 +27668,7 @@ LS.registerComponent( FrameFX );
 /**
 * Light contains all the info about the light (type: SPOT, OMNI, DIRECTIONAL, attenuations, shadows, etc)
 * @class Light
+* @namespace LS.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -28658,7 +28816,7 @@ LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
 * @class MeshRenderer
 * @namespace LS.Components
 * @constructor
-* @param {String} object to configure from
+* @param {Object} object to configure from
 */
 function MeshRenderer(o)
 {
@@ -30346,6 +30504,7 @@ MorphDeformer.morphing_texture_block = morphing_texture_block;
 * It also allow to limit the bone search to specific nodes.
 *
 * @class SkinDeformer
+* @namespace LS.Components
 * @constructor
 */
 function SkinDeformer( o )
@@ -31030,6 +31189,13 @@ SVGRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource
 
 //LS.registerComponent( SVGRenderer );
 
+/**
+* Skybox allows to render a cubemap or polar image as a background for the 3D scene
+* @class Skybox
+* @namespace LS.Components
+* @constructor
+* @param {Object} object [optional] to configure from
+*/
 
 function Skybox(o)
 {
@@ -32010,6 +32176,15 @@ SpriteAtlas.Area = function SpriteAtlasArea()
 	this._start = vec2.create();
 	this._size = vec2.create();
 }
+
+/**
+* Allows to include a secondary scene inside this scene (with some limitations)
+* @class SceneInclude
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
+
 function SceneInclude( o )
 {
 	this.enabled = true;
@@ -33329,8 +33504,9 @@ FollowNode.prototype.updatePosition = function(e,info)
 
 LS.registerComponent( FollowNode );
 /**
-* GeometricPrimitive renders a primitive
+* GeometricPrimitive renders a primitive like a Cube, Sphere, Plane, etc
 * @class GeometricPrimitive
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -33353,6 +33529,12 @@ function GeometricPrimitive( o )
 		this.configure(o);
 }
 
+
+/**
+* The shape to render, valid values are: LS.Components.GeometricPrimitive.CUBE,PLANE,CYLINDER,SPHERE,CIRCLE,HEMISPHERE,ICOSAHEDRON,CONE,QUAD
+* @property geometry {enum}
+* @default LS.Components.GeometricPrimitive.CUBE
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	get: function() { return this._geometry; },
 	set: function(v) { 
@@ -33367,6 +33549,11 @@ Object.defineProperty( GeometricPrimitive.prototype, 'geometry', {
 	enumerable: true
 });
 
+/**
+* The size of the primitive (the global scale)
+* @property size {Number}
+* @default 10
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'size', {
 	get: function() { return this._size; },
 	set: function(v) { 
@@ -33389,6 +33576,11 @@ Object.defineProperty( GeometricPrimitive.prototype, 'subdivisions', {
 	enumerable: true
 });
 
+/**
+* The GL primitive to use (LINES,LINE_STRIP,TRIANGLES,TRIANGLE_FAN
+* @property primitive {enum}
+* @default 10
+*/
 Object.defineProperty( GeometricPrimitive.prototype, 'primitive', {
 	get: function() { return this._primitive; },
 	set: function(v) { 
@@ -33741,6 +33933,7 @@ if( typeof(LGAudio) != "undefined" )
 /**
 * This component allow to integrate a behaviour graph on any object
 * @class GraphComponent
+* @namespace LS.Components
 * @param {Object} o object with the serialized info
 */
 function GraphComponent(o)
@@ -34421,6 +34614,14 @@ Knob.prototype.onMouse = function(e, mouse_event)
 LS.registerComponent( Knob );
 
 })();
+
+/**
+* The base class used by the ParticlesEmissor
+* @class Particle
+* @namespace LS
+* @constructor
+* @param {Object} object to configure from
+*/
 function Particle()
 {
 	this.id = 0;
@@ -34444,7 +34645,13 @@ Object.defineProperty( Particle.prototype, 'vel', {
 	enumerable: true
 });
 
-
+/**
+* ParticlesEmissor allow to render a particle system, meant to render things like smoke or fire
+* @class ParticlesEmissor
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
 function ParticleEmissor(o)
 {
 	this.enabled = true;
@@ -35022,8 +35229,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture( "color", this.texture );
-	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
-	this._material.soft_particles = this.soft_particles;
+	this._material.blend_mode = this.additive_blending ? LS.Blend.ADD : LS.Blend.ALPHA;
 	this._material.constant_diffuse = true;
 	this._material.uvs_matrix[0] = this._material.uvs_matrix[4] = 1 / this.texture_grid_size;
 	this._material.flags.depth_write = false;
@@ -35069,11 +35275,20 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		delete RI.uniforms["u_point_size"];
 	}
 
+	RI.use_bounding = false; //bounding is not valid
 	instances.push( RI );
 }
 
 LS.Particle = Particle;
 LS.registerComponent(ParticleEmissor);
+
+
+
+
+//shader
+// - apply light per vertex before expanding
+// - inflate with camera vectors
+
 
 function Label(o)
 {
@@ -35528,8 +35743,13 @@ PointCloud.prototype.configure = function(o)
 
 
 LS.registerComponent( PointCloud );
-/* lineCloud.js */
-
+/**
+* Helps rendering several lines
+* @class LinesRenderer
+* @namespace LS.Components
+* @constructor
+* @param {Object} object to configure from
+*/
 function LinesRenderer(o)
 {
 	this.enabled = true;
@@ -35567,6 +35787,12 @@ function LinesRenderer(o)
 }
 LinesRenderer.icon = "mini-icon-lines.png";
 LinesRenderer["@color"] = { widget: "color" };
+
+Object.defineProperty( LinesRenderer.prototype, "lines", {
+	set: function(v) { this.lines = v; },
+	get: function() { return this.lines; },
+	enumerable: true
+});
 
 Object.defineProperty( LinesRenderer.prototype, "num_lines", {
 	set: function(v) {},
@@ -35649,14 +35875,14 @@ LinesRenderer.prototype.removeLine = function(id)
 }
 
 
-LinesRenderer.prototype.onAddedToNode = function(node)
+LinesRenderer.prototype.onAddedToScene = function( scene )
 {
-	LEvent.bind(node, "afterRenderScene", this.onAfterRender, this);
+	LEvent.bind( scene, "afterRenderScene", this.onAfterRender, this);
 }
 
-LinesRenderer.prototype.onRemovedFromNode = function(node)
+LinesRenderer.prototype.onRemovedFromScene = function( scene )
 {
-	LEvent.unbind(node, "afterRenderScene", this.onAfterRender, this);
+	LEvent.unbind( scene, "afterRenderScene", this.onAfterRender, this);
 }
 
 LinesRenderer.prototype.createMesh = function ()
@@ -35702,8 +35928,6 @@ LinesRenderer.prototype.updateMesh = function ()
 	this._mesh.vertexBuffers["colors"].upload();
 }
 
-LinesRenderer._identity = mat4.create();
-
 LinesRenderer.prototype.onAfterRender = function(e)
 {
 	if( !this._root )
@@ -35712,6 +35936,9 @@ LinesRenderer.prototype.onAfterRender = function(e)
 	if( this._lines.length == 0 || !this.enabled )
 		return;
 
+	if( this._must_update )
+		this.updateMesh();
+
 	LS.Draw.setLineWidth( this.line_width );
 	LS.Draw.renderMesh( this._mesh, GL.LINES );
 }
@@ -35719,8 +35946,9 @@ LinesRenderer.prototype.onAfterRender = function(e)
 
 LS.registerComponent( LinesRenderer );
 /**
-* Reads animation tracks from an Animation resource and applies the properties to the objects referenced
+* Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -36463,6 +36691,7 @@ LS.registerComponent( RealtimeReflector );
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */
@@ -36790,6 +37019,7 @@ LS.registerComponent( ReflectionProbe );
 * Scripts are executed inside their own context, the context is local to the script so any variable defined in the context that is not attached to the context wont be accessible from other parts of the engine.
 * To interact with the engine Scripts must bind callback to events so the callbacks will be called when those events are triggered, however, there are some generic methods that will be called
 * @class Script
+* @namespace LS.Components
 * @constructor
 * @param {Object} object to configure from
 */
@@ -38400,6 +38630,7 @@ window.VRCameraController = VRCameraController;
 /**
 * Transitions between different poses
 * @class Poser
+* @namespace LS.Components
 * @constructor
 * @param {String} object to configure from
 */

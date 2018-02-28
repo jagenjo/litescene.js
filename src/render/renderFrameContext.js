@@ -2,6 +2,7 @@
 *	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
 *	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
 *	Check the FrameFX and CameraFX components to see it in action.
+*   Dependencies: LS.Renderer (writes there only)
 *
 * @class RenderFrameContext
 * @namespace LS
@@ -11,9 +12,9 @@ function RenderFrameContext( o )
 {
 	this.width = 0; //0 means the same size as the viewport, negative numbers mean reducing the texture in half N times
 	this.height = 0; //0 means the same size as the viewport
-	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float
+	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
-	this.format = GL.RGBA; //how many color channels
+	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
 	this.use_depth_texture = false; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
@@ -47,6 +48,8 @@ RenderFrameContext.DEFAULT_PRECISION_WEBGL_TYPE = GL.UNSIGNED_BYTE;
 
 RenderFrameContext["@width"] = { type: "number", step: 1, precision: 0 };
 RenderFrameContext["@height"] = { type: "number", step: 1, precision: 0 };
+
+//definitions for the GUI
 RenderFrameContext["@precision"] = { widget: "combo", values: { 
 	"default": RenderFrameContext.DEFAULT_PRECISION, 
 	"low": RenderFrameContext.LOW_PRECISION,
@@ -56,8 +59,8 @@ RenderFrameContext["@precision"] = { widget: "combo", values: {
 };
 
 RenderFrameContext["@format"] = { widget: "combo", values: { 
-	"RGB": GL.RGB,
-	"RGBA": GL.RGBA
+		"RGB": GL.RGB,
+		"RGBA": GL.RGBA
 	}
 };
 
@@ -143,8 +146,9 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 		case RenderFrameContext.HIGH_PRECISION:
 			type = gl.FLOAT; break;
 		case RenderFrameContext.DEFAULT_PRECISION:
-		default:
 			type = RenderFrameContext.DEFAULT_PRECISION_WEBGL_TYPE; break;
+		default:
+			type = this.precision; break; //used for custom formats
 	}
 
 	var textures = this._textures;
@@ -219,7 +223,6 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 */
 RenderFrameContext.prototype.enable = function( render_settings, viewport )
 {
-	var camera = LS.Renderer._current_camera;
 	viewport = viewport || gl.viewport_data;
 
 	//create FBO and textures (pass width and height of current viewport)
@@ -236,6 +239,7 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
+	var camera = LS.Renderer._current_camera;
 	if(this._depth_texture && camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;

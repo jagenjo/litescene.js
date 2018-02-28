@@ -86,7 +86,10 @@ var Input = {
 
 		//save it in case we need to know where was the last click
 		if(e.type == "mousedown")
+		{
 			this.current_click = e;
+			LS.triggerCoroutines( "click", e );
+		}
 		else if(e.type == "mouseup")
 			this.current_click = null;
 
@@ -223,6 +226,18 @@ var Input = {
 		if(num === undefined)
 			return false;
 		return (this.Mouse.buttons & (1<<num)) !== 0;
+	},
+
+	/**
+	* Returns a Promise that will be fulfilled when the user clicks the screen
+	* @method mouseClick
+	* @return {Promise} 
+	*/
+	mouseClick: function()
+	{
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, "click" );
+		});
 	}
 };
 

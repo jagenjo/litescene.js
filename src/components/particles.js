@@ -613,8 +613,7 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 
 	this._material.opacity = this.opacity - 0.01; //try to keep it under 1
 	this._material.setTexture( "color", this.texture );
-	this._material.blend_mode = this.additive_blending ? Blend.ADD : Blend.ALPHA;
-	this._material.soft_particles = this.soft_particles;
+	this._material.blend_mode = this.additive_blending ? LS.Blend.ADD : LS.Blend.ALPHA;
 	this._material.constant_diffuse = true;
 	this._material.uvs_matrix[0] = this._material.uvs_matrix[4] = 1 / this.texture_grid_size;
 	this._material.flags.depth_write = false;
@@ -660,8 +659,16 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 		delete RI.uniforms["u_point_size"];
 	}
 
+	RI.use_bounding = false; //bounding is not valid
 	instances.push( RI );
 }
 
 LS.Particle = Particle;
 LS.registerComponent(ParticleEmissor);
+
+
+
+
+//shader
+// - apply light per vertex before expanding
+// - inflate with camera vectors

@@ -275,9 +275,62 @@ var LS = {
 		//some validation here? maybe...
 	},
 
+	//Coroutines that allow to work with async functions
+	coroutines: {},
+
+	addWaitingCoroutine: function( resolve, event )
+	{
+		event = event || "render";
+		var coroutines = this.coroutines[ event ];
+		if(!coroutines)
+			coroutines = this.coroutines[ event ] = [];
+		coroutines.push( resolve );
+	},
+
+	triggerCoroutines: function( event, data )
+	{
+		event = event || "render";
+		var coroutines = this.coroutines[ event ];
+		if(!coroutines)
+			return;
+		for(var i = 0; i < coroutines.length; ++i)
+			LS.safeCall( coroutines[i], data ); //call resolves
+		coroutines.length = 0;
+	},
+
+	createCoroutine: function( event )
+	{
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, event );
+		});
+	},
 
 	/**
-	* Is a wrapper for callbacks that throws an LS "code_error" in case something goes wrong (needed to catch the error from the system)
+	* Returns a Promise that will be fulfilled once the time has passed
+	* @method sleep
+	* @param {Number} ms time in milliseconds
+	* @return {Promise} 
+	*/
+	sleep: function(ms) {
+	  return new Promise( function(resolve){ setTimeout(resolve, ms); });
+	},
+
+	/**
+	* Returns a Promise that will be fulfilled when the next frame is rendered
+	* @method nextFrame
+	* @return {Promise} 
+	*/
+	nextFrame: function( skip_request )
+	{
+		if(!skip_request)
+			LS.GlobalScene.requestFrame();
+		return new Promise(function(resolve){
+			LS.addWaitingCoroutine( resolve, "render" );
+		});
+	},
+
+	/**
+	* Is a wrapper for callbacks that throws an LS "exception" in case something goes wrong (needed to catch the error from the system and editor)
 	* @method safeCall
 	* @param {function} callback
 	* @param {array} params
@@ -286,7 +339,11 @@ var LS = {
 	safeCall: function(callback, params, instance)
 	{
 		if(!LS.catch_exceptions)
-			return callback.apply( instance, params );
+		{
+			if(instance)
+				return callback.apply( instance, params );
+			return callback( params );
+		}
 
 		try
 		{
