@@ -784,6 +784,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	var fxs = this.fx;
 
 	var update_shader = this._must_update_passes;
+	this._must_update_passes = false;
 
 	var uniforms = this._uniforms;
 	uniforms.u_viewport[0] = color_texture.width;
