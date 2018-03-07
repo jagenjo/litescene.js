@@ -34,6 +34,9 @@ To change the mode you must set the ```on_event``` property. Here are the possib
 
 To add a node to the graph you can use the editor, open the graph and drag the component in the graph canvas (you must drag the icon in the title of the component).
 
+![Graph node creation](imgs/create-graphnode-from-component.gif "Creating a graph node")
+
+
 Or you can right click in the graph canvas and add any of the nodes in the list.
 
 ## Using events
