@@ -62,7 +62,7 @@ Now they will appear as a possible output of your graph node in the context menu
 
 Then we must define the function that will be triggered when the action is executed.
 
-```
+```js
 MyComponent.prototype.onAction = function( action, params )
 {
   console.log( action, params);
