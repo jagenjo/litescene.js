@@ -82,6 +82,9 @@ MyComponent.prototype.onAction = function( action, params )
 }
 ```
 
+![Graph event](imgs/graph-events.gif "graph event being triggered")
+
+
 ## Documentation
 
 To know more about graphs check [LiteGraph.js](https://github.com/jagenjo/litegraph.js)
