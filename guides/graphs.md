@@ -44,7 +44,9 @@ You can connect node events to node actions to create an event triggered system,
 
 ## Creating your component actions
 
-To create actions that could be called from events, you must define them manually in your component:
+To create actions that could be called from events triggered by nodes, you must define them manually in your component.
+
+First by creating the function ```getEventActions``` that returns an array with all the actions that this node could perform.
 
 ```js
 MyComponent.prototype.getEventActions = function()
@@ -54,6 +56,18 @@ MyComponent.prototype.getEventActions = function()
 ```
 
 Now they will appear if your graph when creating inputs.
+
+And then defining the function that will be triggered when the action is executed.
+
+```
+MyComponent.prototype.onAction = function( action, params )
+{
+  console.log( action, params);
+}
+```
+
+If no ```onAction``` method is found in the component but the component has a method with the same name as the action, then that method will be called.
+
 
 ## Documentation
 
