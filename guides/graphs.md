@@ -72,6 +72,10 @@ MyComponent.prototype.onAction = function( action, params )
 
 If no ```onAction``` method is found in the component but the component has a method with the same name as the action, then that method will be called.
 
+Once created, you can expose them in the graph as slots:
+
+![Graph events](imgs/graph-event-slots.gif "Graph event slots")
+
 To trigger events from our component, just call the trigger function from LEvent:
 
 ```js
