@@ -81,6 +81,7 @@ To trigger events from our component, just call the trigger function from LEvent
 ```js
 MyComponent.prototype.onAction = function( action, params )
 {
+  var component = this;
   setTimeout(function(){
   	LEvent.trigger( component, "finished" );
   },1000);
