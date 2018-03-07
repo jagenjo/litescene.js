@@ -74,7 +74,12 @@ If no ```onAction``` method is found in the component but the component has a me
 To trigger events from our component, just call the trigger function from LEvent:
 
 ```js
-LEvent.trigger( this, "finished", data );
+MyComponent.prototype.onAction = function( action, params )
+{
+  setTimeout(function(){
+  	LEvent.trigger( component, "finished" );
+  },1000);
+}
 ```
 
 ## Documentation
