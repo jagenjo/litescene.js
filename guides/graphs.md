@@ -38,26 +38,26 @@ Or you can right click in the graph canvas and add any of the nodes in the list.
 
 ## Using events
 
-Graphs can also send or receive events.
+Graph nodes allow to define events dispatched by the graph nodes, and actions that we could connect to those events.
 
-You can connect node events to node actions to create an event triggered system, instead of the regular data flow between nodes.
+This way by connection events to actions we can make a event-oriented graph, instead of the regular data flow graph.
 
-## Creating your component actions
+## Creating your own component events/actions
 
-To create actions that could be called from events triggered by nodes, you must define them manually in your component.
+To create actions that could be called from events triggered by graph nodes, you must define them manually in your component.
 
-First by creating the function ```getEventActions``` that returns an array with all the actions that this node could perform.
+First by creating the function ```getActions``` that returns an array with all the actions that this node could perform.
 
 ```js
-MyComponent.prototype.getEventActions = function()
+MyComponent.prototype.getActions = function()
 {
   return ["Play","Stop"];
 }
 ```
 
-Now they will appear if your graph when creating inputs.
+Now they will appear as a possible output of your graph node in the context menu.
 
-And then defining the function that will be triggered when the action is executed.
+Then we must define the function that will be triggered when the action is executed.
 
 ```
 MyComponent.prototype.onAction = function( action, params )
@@ -68,6 +68,11 @@ MyComponent.prototype.onAction = function( action, params )
 
 If no ```onAction``` method is found in the component but the component has a method with the same name as the action, then that method will be called.
 
+To trigger events from our component, just call the trigger function from LEvent:
+
+```js
+LEvent.trigger( this, "finished", data );
+```
 
 ## Documentation
 
