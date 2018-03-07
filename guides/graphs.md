@@ -36,8 +36,9 @@ To add a node to the graph you can use the editor, open the graph and drag the c
 
 ![Graph node creation](imgs/create-graphnode-from-component.gif "Creating a graph node")
 
+Or if you want to link specific properties from components, then drag the animation circle next to the property:
 
-Or you can right click in the graph canvas and add any of the nodes in the list.
+![Graph property creation](imgs/graph-component-properties.gif "Graph property creation")
 
 ## Using events
 
