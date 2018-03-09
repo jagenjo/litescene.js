@@ -106,7 +106,7 @@ but keep in mind that this is just a trick that is replaced by the syntax you ha
 
 ### Private vars ###
 
-Private vars are vars that you don't want to appear in the inspector.
+Private vars are vars that you don't want to appear in the inspector (but they will be serialized as the public ones).
 
 You can define them passing the widget null, like this:
 
@@ -121,6 +121,10 @@ private var myvar : Number = 10;
 ```
 
 but keep in mind that this is just a trick that is replaced by the syntax you have seen before, this means that if you want to access the vars **you still need to specify the scope of the var using ```this```**.
+
+```js
+   this.myvar = 10;
+```
 
 ### Events ###
 
