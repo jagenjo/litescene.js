@@ -56,6 +56,8 @@ But there are also some basic shapes that you can render without the need to cre
 - ```renderSolidCircle ( radius,  segments,  in_z )```
 - ```renderWireBox ( sizex,  sizey,  sizez )```
 - ```renderWireSphere ( radius,  segments )```
+- ```renderMesh ( mesh, primitive, shader, indices_name, range_start, range_length )```: to render a mesh with the current transformation
+- ```renderMeshesInstanced( mesh, model_matrices, primitive, shader, indices_name )```: to render lots of meshes in one single drawcall (keep in mind that the shader must support instancing (attribute mat4 u_model)
 
 Other useful functions are:
 

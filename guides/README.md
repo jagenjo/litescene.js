@@ -15,6 +15,7 @@ Here there is a list with the most commont topics to master LiteScene:
 - [Resources](resources.md): How to handle resources (textures, meshes, etc)
 - [Player](player.md): how to use the player to embed your scene in any website
 - [Custom components](programming_components.md): How to create your own components
+- [Graphs](graphs.md): How to create behaviour using graphs
 - [Particles](particles.md): How to create your own particles system
 - [Raycasting and Picking](raycasting%20and%20picking.md): How to check if an object intersects with the mouse or the a ray
 
