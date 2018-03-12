@@ -55,6 +55,12 @@ This contains a root SceneNode where all the nodes of the scene are located.
 
 To access the root node you can go to ```LS.GlobalScene.root```
 
+To add a node to the current scene:
+
+```js
+LS.GlobalScene.root.addChild( my_node );
+```
+
 ## Scene information ##
 
 You can access several information from the Scene like:
