@@ -1,4 +1,4 @@
-# Guide to develop for LiteScene #
+# Guide to develop for LiteScene (WebGLStudio engine) #
 This guide intends to help people understand the engine so they can take full advantage of it from the WebGLStudio platform.
 
 The most important thing to understand is that the engine is separated in several layers, every one of them is independent, so to better understand everything about LiteScene please first go to [LiteGL.js](https://github.com/jagenjo/litegl.js) which is the low-level layer in charge of accesing WebGL, and the one LiteScene uses to simplify the GPU calls.
