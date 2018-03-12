@@ -6,7 +6,7 @@ To familiarize with LiteScene first you need to understand how the scene is comp
 
 A LS.SceneNode represents an object in your scene (similar to how a GameObject works in Unity).
 
-It can have a name, a transform to define where it is, and a list of components to add behaviour and visual properties.
+It can have a name, a transform to define where it is, and a list of [Components.md](components) to add behaviour and visual properties.
 
 Everything visible or that react to our scene must be inside a LS.SceneNode.
 
