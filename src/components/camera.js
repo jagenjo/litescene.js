@@ -55,9 +55,7 @@ function Camera(o)
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
 	this._model_matrix = mat4.create(); //inverse of viewmatrix (used for local vectors)
-	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame
-
-	//this._previous_viewprojection_matrix = mat4.create(); //used for motion blur
+	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame, used in some algorithms
 
 	//lazy upload
 	this._must_update_view_matrix = true;
@@ -1577,10 +1575,8 @@ Camera.prototype.disableRenderFrameContext = function()
 
 Camera.prototype.prepare = function()
 {
-	this.updateMatrices(); 
-
 	this._previous_viewprojection_matrix.set( this._viewprojection_matrix );
-
+	this.updateMatrices(); 
 	this.fillShaderQuery();
 	this.fillShaderUniforms();
 }

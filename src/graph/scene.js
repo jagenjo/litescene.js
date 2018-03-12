@@ -525,8 +525,10 @@ if(typeof(LiteGraph) != "undefined")
 		var compo = this.getComponent();
 		if(!compo)
 			return;
-		if(compo[action_name])
-			compo[action_name](); //params will be mostly MouseEvent, so for now I wont pass it
+		if(compo.onAction)
+			compo.onAction( action_name, params );
+		else if( compo[ action_name ] )
+			compo[ action_name ](); //params will be mostly MouseEvent, so for now I wont pass it
 	}
 
 	//used by the LGraphSetValue node
@@ -583,12 +585,18 @@ if(typeof(LiteGraph) != "undefined")
 		this.getComponentProperties("input", inputs);
 
 		var compo = this.getComponent();
-		if(compo && compo.getEventActions)
+		if(compo && compo.getActions)
 		{
-			var actions = compo.getEventActions();
+			var actions = compo.getActions();
 			if(actions)
-				for(var i in actions)
-					inputs.push( [i, LiteGraph.ACTION ] );
+			{
+				if(actions.constructor === Array)
+					for(var i = 0; i < actions.length; ++i)
+						inputs.push( [ actions[i], LiteGraph.ACTION ] );
+				else
+					for(var i in actions)
+						inputs.push( [i, LiteGraph.ACTION ] );
+			}
 		}
 
 		return inputs;
@@ -606,8 +614,14 @@ if(typeof(LiteGraph) != "undefined")
 		{
 			var events = compo.getEvents();
 			if(events)
-				for(var i in events)
-					outputs.push( ["on_" + i, LiteGraph.EVENT ] );
+			{
+				if(events.constructor === Array)
+					for(var i = 0; i < events.length; ++i)
+						outputs.push( ["on_" + events[i], LiteGraph.EVENT ] );
+				else
+					for(var i in events)
+						outputs.push( ["on_" + i, LiteGraph.EVENT ] );
+			}
 		}
 		return outputs;
 	}
@@ -679,6 +693,7 @@ if(typeof(LiteGraph) != "undefined")
 				case "Matrix": transform.fromMatrix(v); break;
 				case "Translate": transform.translate(v); break;
 				case "Translate Global": transform.translateGlobal(v); break;
+				case "Rotate": quat.multiply( transform._rotation, transform._rotation, v ); transform._must_update = true; break;
 				case "RotateY": transform.rotateY(v); break;
 			}
 		}
@@ -714,7 +729,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Local","vec3"],["RotateY","number"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Global","vec3"],["Rotate","quat"],["RotateY","number"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()
@@ -923,7 +938,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphGlobal.title = "Global";
 	LGraphGlobal.desc = "Global var for the graph";
-	LGraphGlobal["@type"] = { type:"enum", values:["number","string","node","vec2","vec3","vec4","color","texture"]};
+	LGraphGlobal["@type"] = { type:"enum", values:["number","boolean","string","node","vec2","vec3","vec4","color","texture"]};
 	LGraphGlobal["@widget"] = { type:"enum", values:[ "default", "slider", "pad" ]};
 
 	LGraphGlobal.prototype.onExecute = function()
@@ -1017,6 +1032,13 @@ if(typeof(LiteGraph) != "undefined")
 		return this._locator_info = scene.getPropertyInfo( locator );
 	}
 
+	LGraphLocatorProperty.prototype.onAction = function( action, param )
+	{
+		//toggle
+		var info = this.getLocatorInfo();
+		LSQ.setFromInfo( info, !LSQ.getFromInfo( info ) );
+	}
+
 	LGraphLocatorProperty.prototype.onExecute = function()
 	{
 		var info = this.getLocatorInfo();
@@ -1029,6 +1051,11 @@ if(typeof(LiteGraph) != "undefined")
 			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
 				this.setOutputData( 0, LSQ.getFromInfo( info ));
 		}
+	}
+
+	LGraphLocatorProperty.prototype.onGetInputs = function()
+	{
+		return [["Toggle",LiteGraph.ACTION]];
 	}
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
@@ -1061,7 +1088,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	global.LGraphFrame = function()
+	global.LGraphFrame = function LGraphFrame()
 	{
 		this.addOutput("Color","Texture");
 		this.addOutput("Depth","Texture");

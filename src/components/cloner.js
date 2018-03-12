@@ -12,6 +12,8 @@ function Cloner(o)
 	this.lod_mesh = null;
 	this.material = null;
 
+	this._custom_matrices = [];
+
 	if(o)
 		this.configure(o);
 
@@ -23,13 +25,14 @@ Cloner.GRID_MODE = 1;
 Cloner.RADIAL_MODE = 2;
 Cloner.MESH_MODE = 3;
 Cloner.CHILDREN_MODE = 4;
+Cloner.CUSTOM_MODE = 5;
 
 Cloner.icon = "mini-icon-cloner.png";
 
 //vars
 Cloner["@mesh"] = { type: "mesh" };
 Cloner["@lod_mesh"] = { type: "mesh" };
-Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE } };
+Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE, "Custom": Cloner.CUSTOM_MODE } };
 Cloner["@count"] = { type:"vec3", min:1, step:1, precision: 0 };
 
 Cloner.prototype.onAddedToScene = function(scene)

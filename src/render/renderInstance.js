@@ -50,6 +50,8 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 
+	this.instanced_models = [];
+
 	this.shader_block_flags = 0;
 	this.shader_blocks = [];
 
@@ -70,6 +72,8 @@ function RenderInstance( node, component )
 RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
+
+RenderInstance.fast_normalmatrix = false; //avoid doint the inverse transpose for normal matrix, and just copies the model
 
 RenderInstance.prototype.fromNode = function(node)
 {
@@ -102,6 +106,13 @@ RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 */
 RenderInstance.prototype.computeNormalMatrix = function()
 {
+	if(RenderInstance.fast_normalmatrix)
+	{
+		this.normal_matrix.set( this.matrix );
+		mat4.setTranslation( this.normal_matrix, LS.ZEROS );
+		return;
+	}
+
 	var m = mat4.invert(this.normal_matrix, this.matrix);
 	if(m)
 		mat4.transpose(this.normal_matrix, m);

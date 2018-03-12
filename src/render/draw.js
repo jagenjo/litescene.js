@@ -391,6 +391,7 @@ var Draw = {
 	setPointSize: function(v)
 	{
 		this.point_size = v;
+		this.uniforms.u_point_size = v;
 	},
 
 	/**
@@ -1088,29 +1089,40 @@ var Draw = {
 	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
 	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
 	*/
-	renderMeshesInstanced: function( mesh, matrices, primitive, shader, indices )
-	{
-		if(!this.ready)
-			throw ("Draw.js not initialized, call Draw.init()");
-		if(!mesh)
-			throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
+	renderMeshesInstanced: (function(){ 
+		
+		var tmp = { u_model: null };
+		var tmp_matrix = mat4.create();
 
-		if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
-			return null; //instancing not supported
+		return function( mesh, matrices, primitive, shader, indices )
+		{
+			if(!this.ready)
+				throw ("Draw.js not initialized, call Draw.init()");
+			if(!mesh)
+				throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
 
-		if(!shader)
-			shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
+			if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
+				return null; //instancing not supported
 
-		if( !shader.attributes.u_model )
-			throw("Shader does not support instancing, it must have a attribute u_model");
+			if(!shader)
+				shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
 
-		shader.uniforms( this.uniforms );
-		shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, { u_model: matrices } );
-		this._rendercalls += 1;
+			if( !shader.attributes.u_model )
+				throw("Shader does not support instancing, it must have a attribute u_model");
 
-		return mesh;
-	},
+			tmp.u_model = matrices;
+			//this hack is done so we dont have to multiply the global model for every matrix, the VP is in reality a MVP
+			tmp_matrix.set( this.viewprojection_matrix );
+			mat4.multiply( this.viewprojection_matrix, this.viewprojection_matrix, this.model_matrix );
 
+			shader.uniforms( this.uniforms );
+			shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, tmp );
+
+			this.viewprojection_matrix.set( tmp_matrix );
+			this._rendercalls += 1;
+			return mesh;
+		};
+	})(),
 
 	//used in some special cases
 	repeatLastRender: function()
@@ -1220,6 +1232,10 @@ var Draw = {
 
 	linearize: function(array)
 	{
+		if(!array.length)
+			return [];
+		if(array[0].constructor === Number) //array of numbers
+			return new Float32Array(array);
 		var n = array[0].length;
 		var result = new Float32Array(array.length * n);
 		var l = array.length;

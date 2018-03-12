@@ -103,6 +103,8 @@ Script.defineAPIFunction( "onGamepadConnected", Script.BIND_TO_SCENE, "gamepadco
 Script.defineAPIFunction( "onGamepadDisconnected", Script.BIND_TO_SCENE, "gamepaddisconnected" );
 Script.defineAPIFunction( "onButtonDown", Script.BIND_TO_SCENE, "buttondown" );
 Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
+Script.defineAPIFunction( "onDragStart", Script.BIND_TO_SCENE, "dragstart" );
+
 //global
 Script.defineAPIFunction( "onFileDrop", Script.BIND_TO_SCENE, "fileDrop" );
 //editor stuff
@@ -321,6 +323,27 @@ Script.prototype.getPropertiesInfo = function()
 	return attrs;
 }
 
+Script.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+Script.prototype.getActions = function()
+{
+	var ctx = this.getContext();
+	if(ctx.getActions)
+		return ctx.getActions();
+}
+
+Script.prototype.getEvents = function()
+{
+	var ctx = this.getContext();
+	if(ctx.getEvents)
+		return ctx.getEvents();
+}
+
 /*
 Script.prototype.getPropertyValue = function( property )
 {
@@ -513,7 +536,10 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	}
 
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+	{
+		console.warn("Script: blocked function trying to be executed, skipping: " + event_info.name );
 		return;
+	}
 
 	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
@@ -633,6 +659,8 @@ Script.prototype.onError = function(e)
 
 	e.script = this;
 	e.node = this._root;
+
+	console.warn("Script: blocking function on script due to error: " + e.method_name );
 	this._blocked_functions.add( e.method_name );
 
 	LEvent.trigger( this, "code_error",e);
@@ -640,7 +668,7 @@ Script.prototype.onError = function(e)
 	LEvent.trigger( LS, "code_error",e);
 
 	//conditional this?
-	console.log("app finishing due to error in script");
+	console.log("app finishing due to error in script, scene state is keep as it was during the error.");
 	scene.finish();
 }
 
@@ -924,6 +952,26 @@ ScriptFromFile.prototype.serialize = function()
 	};
 }
 
+ScriptFromFile.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+ScriptFromFile.prototype.getActions = function()
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.getActions)
+		return ctx.getActions();
+}
+
+ScriptFromFile.prototype.getEvents = function()
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.getEvents)
+		return ctx.getEvents();
+}
 
 ScriptFromFile.prototype.getResources = function(res)
 {
@@ -981,6 +1029,7 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 			compo.processCode(skip_events);
 	}
 }
+
 
 LS.extendClass( ScriptFromFile, Script );
 

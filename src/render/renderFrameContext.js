@@ -15,7 +15,7 @@ function RenderFrameContext( o )
 	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
 	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
-	this.use_depth_texture = false; //store the depth in a texture
+	this.use_depth_texture = true; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored in the LS.ResourcesManager
@@ -221,7 +221,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 *
 * @method enable
 */
-RenderFrameContext.prototype.enable = function( render_settings, viewport )
+RenderFrameContext.prototype.enable = function( render_settings, viewport, camera )
 {
 	viewport = viewport || gl.viewport_data;
 
@@ -239,7 +239,7 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
-	var camera = LS.Renderer._current_camera;
+	camera = camera || LS.Renderer._current_camera;
 	if(this._depth_texture && camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;

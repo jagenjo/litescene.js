@@ -913,15 +913,23 @@ Transform.prototype.setScale = function(x,y,z)
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translate = function(x,y,z)
-{
-	if(arguments.length == 3)
-		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
-	else
-		vec3.add( this._position, this._position, this.transformVector(x) );
-	this._must_update = true;
-	this._on_change(true);
-}
+Transform.prototype.translate = (function(){
+	var tmp = vec3.create();
+	var tmp2 = vec3.create();
+	
+	return function(x,y,z)
+	{
+		if(arguments.length == 3)
+		{
+			tmp2[0] = x; tmp2[1] = y; tmp2[2] = z;
+			vec3.add( this._position, this._position, this.transformVector(tmp2, tmp) );
+		}
+		else
+			vec3.add( this._position, this._position, this.transformVector(x, tmp) );
+		this._must_update = true;
+		this._on_change(true);
+	};
+})();
 
 /**
 * translates object in local coordinates (adds to the position)

@@ -461,7 +461,8 @@ void main() {\n\
 	surf(IN,o);\n\
 	vec4 final_color = vec4(0.0);\n\
 	Light LIGHT = getLight();\n\
-	final_color.xyz = computeLight( o, IN, LIGHT );\n\
+	FinalLight final_light = computeLight( o, IN, LIGHT );\n\
+	final_color.xyz = applyLight( o, final_light );\n\
 	final_color.a = o.Alpha;\n\
 	if( o.Reflectivity > 0.0 )\n\
 		final_color = applyReflection( IN, o, final_color );\n\

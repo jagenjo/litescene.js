@@ -9340,7 +9340,8 @@ void main() {\n\
 	surf(IN,o);\n\
 	vec4 final_color = vec4(0.0);\n\
 	Light LIGHT = getLight();\n\
-	final_color.xyz = computeLight( o, IN, LIGHT );\n\
+	FinalLight final_light = computeLight( o, IN, LIGHT );\n\
+	final_color.xyz = applyLight( o, final_light );\n\
 	final_color.a = o.Alpha;\n\
 	if( o.Reflectivity > 0.0 )\n\
 		final_color = applyReflection( IN, o, final_color );\n\
@@ -15738,8 +15739,10 @@ if(typeof(LiteGraph) != "undefined")
 		var compo = this.getComponent();
 		if(!compo)
 			return;
-		if(compo[action_name])
-			compo[action_name](); //params will be mostly MouseEvent, so for now I wont pass it
+		if(compo.onAction)
+			compo.onAction( action_name, params );
+		else if( compo[ action_name ] )
+			compo[ action_name ](); //params will be mostly MouseEvent, so for now I wont pass it
 	}
 
 	//used by the LGraphSetValue node
@@ -15796,12 +15799,18 @@ if(typeof(LiteGraph) != "undefined")
 		this.getComponentProperties("input", inputs);
 
 		var compo = this.getComponent();
-		if(compo && compo.getEventActions)
+		if(compo && compo.getActions)
 		{
-			var actions = compo.getEventActions();
+			var actions = compo.getActions();
 			if(actions)
-				for(var i in actions)
-					inputs.push( [i, LiteGraph.ACTION ] );
+			{
+				if(actions.constructor === Array)
+					for(var i = 0; i < actions.length; ++i)
+						inputs.push( [ actions[i], LiteGraph.ACTION ] );
+				else
+					for(var i in actions)
+						inputs.push( [i, LiteGraph.ACTION ] );
+			}
 		}
 
 		return inputs;
@@ -15819,8 +15828,14 @@ if(typeof(LiteGraph) != "undefined")
 		{
 			var events = compo.getEvents();
 			if(events)
-				for(var i in events)
-					outputs.push( ["on_" + i, LiteGraph.EVENT ] );
+			{
+				if(events.constructor === Array)
+					for(var i = 0; i < events.length; ++i)
+						outputs.push( ["on_" + events[i], LiteGraph.EVENT ] );
+				else
+					for(var i in events)
+						outputs.push( ["on_" + i, LiteGraph.EVENT ] );
+			}
 		}
 		return outputs;
 	}
@@ -15892,6 +15907,7 @@ if(typeof(LiteGraph) != "undefined")
 				case "Matrix": transform.fromMatrix(v); break;
 				case "Translate": transform.translate(v); break;
 				case "Translate Global": transform.translateGlobal(v); break;
+				case "Rotate": quat.multiply( transform._rotation, transform._rotation, v ); transform._must_update = true; break;
 				case "RotateY": transform.rotateY(v); break;
 			}
 		}
@@ -15927,7 +15943,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphTransform.prototype.onGetInputs = function()
 	{
-		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Local","vec3"],["RotateY","number"]];
+		return [["Position","vec3"],["Rotation","quat"],["Scale","number"],["x","number"],["y","number"],["z","number"],["Global Position","vec3"],["Global Rotation","quat"],["Matrix","mat4"],["Translate","vec3"],["Translate Global","vec3"],["Rotate","quat"],["RotateY","number"]];
 	}
 
 	LGraphTransform.prototype.onGetOutputs = function()
@@ -16136,7 +16152,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	LGraphGlobal.title = "Global";
 	LGraphGlobal.desc = "Global var for the graph";
-	LGraphGlobal["@type"] = { type:"enum", values:["number","string","node","vec2","vec3","vec4","color","texture"]};
+	LGraphGlobal["@type"] = { type:"enum", values:["number","boolean","string","node","vec2","vec3","vec4","color","texture"]};
 	LGraphGlobal["@widget"] = { type:"enum", values:[ "default", "slider", "pad" ]};
 
 	LGraphGlobal.prototype.onExecute = function()
@@ -16230,6 +16246,13 @@ if(typeof(LiteGraph) != "undefined")
 		return this._locator_info = scene.getPropertyInfo( locator );
 	}
 
+	LGraphLocatorProperty.prototype.onAction = function( action, param )
+	{
+		//toggle
+		var info = this.getLocatorInfo();
+		LSQ.setFromInfo( info, !LSQ.getFromInfo( info ) );
+	}
+
 	LGraphLocatorProperty.prototype.onExecute = function()
 	{
 		var info = this.getLocatorInfo();
@@ -16242,6 +16265,11 @@ if(typeof(LiteGraph) != "undefined")
 			if( this.outputs.length && this.outputs[0].links && this.outputs[0].links.length )
 				this.setOutputData( 0, LSQ.getFromInfo( info ));
 		}
+	}
+
+	LGraphLocatorProperty.prototype.onGetInputs = function()
+	{
+		return [["Toggle",LiteGraph.ACTION]];
 	}
 
 	LiteGraph.registerNodeType("scene/property", LGraphLocatorProperty );
@@ -16274,7 +16302,7 @@ if(typeof(LiteGraph) != "undefined")
 
 	//************************************
 
-	global.LGraphFrame = function()
+	global.LGraphFrame = function LGraphFrame()
 	{
 		this.addOutput("Color","Texture");
 		this.addOutput("Depth","Texture");
@@ -16430,6 +16458,9 @@ LGraphFXStack.prototype.onExecute = function()
 		this._final_texture = new GL.Texture( tex.width, tex.height, { type: tex.type, format: gl.RGBA, filter: gl.LINEAR });
 	}
 
+	if( this.isInputConnected(1) )
+		this._fx_options.depth_texture = this.getInputData(1);
+
 	var intensity = this.properties.intensity;
 	if( this.isInputConnected(2) )
 	{
@@ -16474,6 +16505,175 @@ LGraphFXStack.prototype.onConfigure = function( o )
 LiteGraph.registerNodeType("texture/fxstack", LGraphFXStack );
 
 
+
+
+function LGraphCameraMotionBlur()
+{
+	this.addInput("color","Texture");
+	this.addInput("depth","Texture");
+	this.addInput("camera","Camera");
+	this.addOutput("out","Texture");
+	this.properties = { enabled: true, intensity: 1, ghosting_mitigation: true, ghosting_threshold: 0.4, freeze_camera: false, precision: LGraphTexture.DEFAULT };
+
+	this._inv_matrix = mat4.create();
+	this._previous_viewprojection_matrix = mat4.create();
+
+	this._uniforms = { 
+		u_color_texture:0,
+		u_depth_texture:1,
+		u_inv_vp: this._inv_matrix,
+		u_intensity: 1,
+		u_camera_planes: null,
+		u_viewprojection_matrix: null,
+		u_previous_viewprojection_matrix: this._previous_viewprojection_matrix
+	};
+}
+
+LGraphCameraMotionBlur.widgets_info = {
+	"precision": { widget:"combo", values: LGraphTexture.MODE_VALUES }
+};
+
+LGraphCameraMotionBlur.title = "Camera Motion Blur";
+LGraphCameraMotionBlur.desc = "A motion blur but only for camera movement";
+
+LGraphCameraMotionBlur.prototype.onExecute = function()
+{
+	var tex = this.getInputData(0);
+	var depth = this.getInputData(1);
+	var camera = this.getInputData(2);
+
+	if( !this.isOutputConnected(0) || !tex || !depth || !camera)
+		return; //saves work
+
+	var enabled = this.getInputData(3);
+	if(enabled != null)
+		this.properties.enabled = Boolean( enabled );
+
+	if(this.properties.precision === LGraphTexture.PASS_THROUGH || this.properties.enabled === false )
+	{
+		this.setOutputData(0, tex);
+		return;
+	}
+
+	var width = tex.width;
+	var height = tex.height;
+	var type = this.precision === LGraphTexture.LOW ? gl.UNSIGNED_BYTE : gl.HIGH_PRECISION_FORMAT;
+	if (this.precision === LGraphTexture.DEFAULT)
+		type = tex.type;
+	if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
+		this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
+
+	if(!LGraphCameraMotionBlur._shader)
+	{
+		LGraphCameraMotionBlur._shader = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader );
+		LGraphCameraMotionBlur._shader_no_ghosting = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphCameraMotionBlur.pixel_shader, { GHOST_CORRECTION: "" } );
+	}
+
+	var shader = this.properties.ghosting_mitigation ? LGraphCameraMotionBlur._shader_no_ghosting : LGraphCameraMotionBlur._shader;
+
+	var inv = this._inv_matrix;
+	var vp = camera._viewprojection_matrix;
+	var prev = this._previous_viewprojection_matrix;
+	var optimize = false; //skip algorithm when camera hasnt moved
+	var intensity = this.properties.intensity;
+
+	var uniforms = this._uniforms;
+	uniforms.u_intensity = intensity;
+	uniforms.u_viewprojection_matrix =  camera._viewprojection_matrix;
+	uniforms.u_camera_planes =  camera._uniforms.u_camera_planes;
+	uniforms.u_ghosting_threshold = this.properties.ghosting_threshold || 0.4;
+
+	var diff = 0;
+	for(var i = 0; i < prev.length; ++i)
+		diff += Math.abs( vp[i] - prev[i] );
+	if(diff < 0.0001 && optimize) //no camera movement, skip process
+	{
+		tex.copyTo( this._tex );
+	}
+	else
+	{
+		mat4.invert( inv, camera._viewprojection_matrix );
+		this._tex.drawTo(function() {
+			gl.disable( gl.DEPTH_TEST );
+			gl.disable( gl.CULL_FACE );
+			gl.disable( gl.BLEND );
+			tex.bind(0);
+			depth.bind(1);
+			var mesh = Mesh.getScreenQuad();
+			shader.uniforms( uniforms ).draw( mesh );
+		});
+	}
+
+	if(!this.properties.freeze_camera)
+		prev.set( camera._viewprojection_matrix );
+
+	this.setOutputData( 0, this._tex );
+}
+
+LGraphCameraMotionBlur.prototype.onGetInputs = function()
+{
+	return [["enabled","boolean"]];
+}
+
+LGraphCameraMotionBlur.pixel_shader = "precision highp float;\n\
+		\n\
+		uniform sampler2D u_color_texture;\n\
+		uniform sampler2D u_depth_texture;\n\
+		varying vec2 v_coord;\n\
+		uniform mat4 u_inv_vp;\n\
+		uniform mat4 u_viewprojection_matrix;\n\
+		uniform mat4 u_previous_viewprojection_matrix;\n\
+		uniform vec2 u_camera_planes;\n\
+		uniform float u_intensity;\n\
+		uniform float u_ghosting_threshold;\n\
+		#define SAMPLES 16\n\
+		\n\
+		void main() {\n\
+			vec2 uv = v_coord;\n\
+			float depth = texture2D(u_depth_texture, uv).x;\n\
+			float zNear = u_camera_planes.x;\n\
+			float zFar = u_camera_planes.y;\n\
+			//float z = (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));\n\
+			depth = depth * 2.0 - 1.0;\n\
+			float z = zNear * (depth + 1.0) / (zFar + zNear - depth * (zFar - zNear));\n\
+			vec4 screenpos = vec4( uv * 2.0 - vec2(1.0), depth, 1.0 );\n\
+			vec4 pos = u_inv_vp * screenpos;\n\
+			pos /= pos.w;\n\
+			vec4 old_screenpos = u_previous_viewprojection_matrix * pos;\n\
+			old_screenpos /= old_screenpos.w;\n\
+			vec2 uv_final = old_screenpos.xy * 0.5 + vec2(0.5);\n\
+			vec2 uv_delta = (uv_final - uv);\n\
+			uv -= uv_delta * 0.5;\n\
+			//uv_delta *= 1.0 - z;\n\
+			uv_delta *= u_intensity / float(SAMPLES);\n\
+			vec4 color = vec4(0.0);\n\
+			float total = 0.0;\n\
+			float amount = 1.0;\n\
+			for(int i = 0; i < SAMPLES; ++i)\n\
+			{\n\
+				#ifdef GHOST_CORRECTION\n\
+					float old_depth = texture2D(u_depth_texture, uv).x;\n\
+					old_depth = old_depth * 2.0 - 1.0;\n\
+					float old_z = zNear * (old_depth + 1.0) / (zFar + zNear - old_depth * (zFar - zNear));\n\
+					if( abs(old_z - z) > u_ghosting_threshold )\n\
+					{\n\
+						uv += uv_delta;\n\
+						continue;\n\
+					}\n\
+				#endif\n\
+				color += texture2D( u_color_texture, uv );\n\
+				uv += uv_delta;\n\
+				total += amount;\n\
+			}\n\
+			gl_FragColor = color / total;\n\
+			//gl_FragColor = vec4( abs( old_screenpos.xy ), 1.0, 1.0 );\n\
+			//gl_FragColor = texture2D( u_color_texture, uv_final );\n\
+			//gl_FragColor = vec4( abs( pos.xyz * 0.001 ), 1.0 );\n\
+			//gl_FragColor = vec4( vec3( abs(old_z - z) ), 1.0);\n\
+		}\n\
+		";
+
+LiteGraph.registerNodeType("texture/motionBlur", LGraphCameraMotionBlur );
 
 }
 
@@ -17417,7 +17617,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 		}
 
 		//set the depth texture for some FXs like fog or depth
-		if(shader.hasUniform("u_depth_texture"))
+		if(depth_texture && shader.hasUniform("u_depth_texture"))
 		{
 			depth_texture.bind(1);
 			if(depth_texture.near_far_planes)
@@ -17623,7 +17823,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	}
 
 	//set the depth texture for some FXs like fog or depth
-	if(shader.hasUniform("u_depth_texture"))
+	if(shader.hasUniform("u_depth_texture") && depth_texture )
 	{
 		depth_texture.bind(1);
 		if(depth_texture.near_far_planes)
@@ -19017,6 +19217,8 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 
+	this.instanced_models = [];
+
 	this.shader_block_flags = 0;
 	this.shader_blocks = [];
 
@@ -19037,6 +19239,8 @@ function RenderInstance( node, component )
 RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
+
+RenderInstance.fast_normalmatrix = false; //avoid doint the inverse transpose for normal matrix, and just copies the model
 
 RenderInstance.prototype.fromNode = function(node)
 {
@@ -19069,6 +19273,13 @@ RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 */
 RenderInstance.prototype.computeNormalMatrix = function()
 {
+	if(RenderInstance.fast_normalmatrix)
+	{
+		this.normal_matrix.set( this.matrix );
+		mat4.setTranslation( this.normal_matrix, LS.ZEROS );
+		return;
+	}
+
 	var m = mat4.invert(this.normal_matrix, this.matrix);
 	if(m)
 		mat4.transpose(this.normal_matrix, m);
@@ -19430,7 +19641,7 @@ function RenderFrameContext( o )
 	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
 	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
-	this.use_depth_texture = false; //store the depth in a texture
+	this.use_depth_texture = true; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored in the LS.ResourcesManager
@@ -19636,7 +19847,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 *
 * @method enable
 */
-RenderFrameContext.prototype.enable = function( render_settings, viewport )
+RenderFrameContext.prototype.enable = function( render_settings, viewport, camera )
 {
 	viewport = viewport || gl.viewport_data;
 
@@ -19654,7 +19865,7 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
-	var camera = LS.Renderer._current_camera;
+	camera = camera || LS.Renderer._current_camera;
 	if(this._depth_texture && camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;
@@ -22455,6 +22666,7 @@ var Draw = {
 	setPointSize: function(v)
 	{
 		this.point_size = v;
+		this.uniforms.u_point_size = v;
 	},
 
 	/**
@@ -23152,29 +23364,40 @@ var Draw = {
 	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
 	* @param {string} indices [optional="triangles"] the name of the buffer in the mesh with the indices
 	*/
-	renderMeshesInstanced: function( mesh, matrices, primitive, shader, indices )
-	{
-		if(!this.ready)
-			throw ("Draw.js not initialized, call Draw.init()");
-		if(!mesh)
-			throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
+	renderMeshesInstanced: (function(){ 
+		
+		var tmp = { u_model: null };
+		var tmp_matrix = mat4.create();
 
-		if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
-			return null; //instancing not supported
+		return function( mesh, matrices, primitive, shader, indices )
+		{
+			if(!this.ready)
+				throw ("Draw.js not initialized, call Draw.init()");
+			if(!mesh)
+				throw ("LS.Draw.renderMeshesInstanced mesh cannot be null");
 
-		if(!shader)
-			shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
+			if( gl.webgl_version == 1 && !gl.extensions.ANGLE_instanced_arrays )
+				return null; //instancing not supported
 
-		if( !shader.attributes.u_model )
-			throw("Shader does not support instancing, it must have a attribute u_model");
+			if(!shader)
+				shader = mesh.vertexBuffers["colors"] ? this.shader_color_instancing : this.shader_instancing;
 
-		shader.uniforms( this.uniforms );
-		shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, { u_model: matrices } );
-		this._rendercalls += 1;
+			if( !shader.attributes.u_model )
+				throw("Shader does not support instancing, it must have a attribute u_model");
 
-		return mesh;
-	},
+			tmp.u_model = matrices;
+			//this hack is done so we dont have to multiply the global model for every matrix, the VP is in reality a MVP
+			tmp_matrix.set( this.viewprojection_matrix );
+			mat4.multiply( this.viewprojection_matrix, this.viewprojection_matrix, this.model_matrix );
 
+			shader.uniforms( this.uniforms );
+			shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, tmp );
+
+			this.viewprojection_matrix.set( tmp_matrix );
+			this._rendercalls += 1;
+			return mesh;
+		};
+	})(),
 
 	//used in some special cases
 	repeatLastRender: function()
@@ -23284,6 +23507,10 @@ var Draw = {
 
 	linearize: function(array)
 	{
+		if(!array.length)
+			return [];
+		if(array[0].constructor === Number) //array of numbers
+			return new Float32Array(array);
 		var n = array[0].length;
 		var result = new Float32Array(array.length * n);
 		var l = array.length;
@@ -25101,15 +25328,23 @@ Transform.prototype.setScale = function(x,y,z)
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translate = function(x,y,z)
-{
-	if(arguments.length == 3)
-		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
-	else
-		vec3.add( this._position, this._position, this.transformVector(x) );
-	this._must_update = true;
-	this._on_change(true);
-}
+Transform.prototype.translate = (function(){
+	var tmp = vec3.create();
+	var tmp2 = vec3.create();
+	
+	return function(x,y,z)
+	{
+		if(arguments.length == 3)
+		{
+			tmp2[0] = x; tmp2[1] = y; tmp2[2] = z;
+			vec3.add( this._position, this._position, this.transformVector(tmp2, tmp) );
+		}
+		else
+			vec3.add( this._position, this._position, this.transformVector(x, tmp) );
+		this._must_update = true;
+		this._on_change(true);
+	};
+})();
 
 /**
 * translates object in local coordinates (adds to the position)
@@ -25712,9 +25947,7 @@ function Camera(o)
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
 	this._model_matrix = mat4.create(); //inverse of viewmatrix (used for local vectors)
-	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame
-
-	//this._previous_viewprojection_matrix = mat4.create(); //used for motion blur
+	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame, used in some algorithms
 
 	//lazy upload
 	this._must_update_view_matrix = true;
@@ -27234,10 +27467,8 @@ Camera.prototype.disableRenderFrameContext = function()
 
 Camera.prototype.prepare = function()
 {
-	this.updateMatrices(); 
-
 	this._previous_viewprojection_matrix.set( this._viewprojection_matrix );
-
+	this.updateMatrices(); 
 	this.fillShaderQuery();
 	this.fillShaderUniforms();
 }
@@ -32448,7 +32679,7 @@ SceneInclude.prototype.getEvents = function()
 }
 
 //returns which actions can be triggered in this component
-SceneInclude.prototype.getEventActions = function()
+SceneInclude.prototype.getActions = function()
 {
 	return { "load": "function", "unload": "function" };
 }
@@ -34374,7 +34605,7 @@ FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 
 FXGraphComponent.prototype.onBeforeRender = function(e, render_settings)
 {
-	this._last_camera = LS.Renderer._current_camera;
+	this._last_camera = LS.Renderer._main_camera; //LS.Renderer._current_camera;
 
 	if(!this.enabled)
 	{
@@ -34447,7 +34678,7 @@ FXGraphComponent.prototype.enableGlobalFBO = function( render_settings )
 		return;
 
 	//configure
-	this.frame.enable( render_settings );
+	this.frame.enable( render_settings, null, LS.Renderer._main_camera );
 }
 
 FXGraphComponent.prototype.showFBO = function()
@@ -36448,7 +36679,7 @@ PlayAnimation.prototype.getEvents = function()
 }
 
 //returns which actions can be triggered in this component
-PlayAnimation.prototype.getEventActions = function()
+PlayAnimation.prototype.getActions = function()
 {
 	return { "play": "function","pause": "function","stop": "function" };
 }
@@ -37119,6 +37350,8 @@ Script.defineAPIFunction( "onGamepadConnected", Script.BIND_TO_SCENE, "gamepadco
 Script.defineAPIFunction( "onGamepadDisconnected", Script.BIND_TO_SCENE, "gamepaddisconnected" );
 Script.defineAPIFunction( "onButtonDown", Script.BIND_TO_SCENE, "buttondown" );
 Script.defineAPIFunction( "onButtonUp", Script.BIND_TO_SCENE, "buttonup" );
+Script.defineAPIFunction( "onDragStart", Script.BIND_TO_SCENE, "dragstart" );
+
 //global
 Script.defineAPIFunction( "onFileDrop", Script.BIND_TO_SCENE, "fileDrop" );
 //editor stuff
@@ -37337,6 +37570,27 @@ Script.prototype.getPropertiesInfo = function()
 	return attrs;
 }
 
+Script.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+Script.prototype.getActions = function()
+{
+	var ctx = this.getContext();
+	if(ctx.getActions)
+		return ctx.getActions();
+}
+
+Script.prototype.getEvents = function()
+{
+	var ctx = this.getContext();
+	if(ctx.getEvents)
+		return ctx.getEvents();
+}
+
 /*
 Script.prototype.getPropertyValue = function( property )
 {
@@ -37529,7 +37783,10 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	}
 
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+	{
+		console.warn("Script: blocked function trying to be executed, skipping: " + event_info.name );
 		return;
+	}
 
 	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
@@ -37649,6 +37906,8 @@ Script.prototype.onError = function(e)
 
 	e.script = this;
 	e.node = this._root;
+
+	console.warn("Script: blocking function on script due to error: " + e.method_name );
 	this._blocked_functions.add( e.method_name );
 
 	LEvent.trigger( this, "code_error",e);
@@ -37656,7 +37915,7 @@ Script.prototype.onError = function(e)
 	LEvent.trigger( LS, "code_error",e);
 
 	//conditional this?
-	console.log("app finishing due to error in script");
+	console.log("app finishing due to error in script, scene state is keep as it was during the error.");
 	scene.finish();
 }
 
@@ -37940,6 +38199,26 @@ ScriptFromFile.prototype.serialize = function()
 	};
 }
 
+ScriptFromFile.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+ScriptFromFile.prototype.getActions = function()
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.getActions)
+		return ctx.getActions();
+}
+
+ScriptFromFile.prototype.getEvents = function()
+{
+	var ctx = this.getContext();
+	if(ctx && ctx.getEvents)
+		return ctx.getEvents();
+}
 
 ScriptFromFile.prototype.getResources = function(res)
 {
@@ -37997,6 +38276,7 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 			compo.processCode(skip_events);
 	}
 }
+
 
 LS.extendClass( ScriptFromFile, Script );
 
@@ -38213,6 +38493,8 @@ function Cloner(o)
 	this.lod_mesh = null;
 	this.material = null;
 
+	this._custom_matrices = [];
+
 	if(o)
 		this.configure(o);
 
@@ -38224,13 +38506,14 @@ Cloner.GRID_MODE = 1;
 Cloner.RADIAL_MODE = 2;
 Cloner.MESH_MODE = 3;
 Cloner.CHILDREN_MODE = 4;
+Cloner.CUSTOM_MODE = 5;
 
 Cloner.icon = "mini-icon-cloner.png";
 
 //vars
 Cloner["@mesh"] = { type: "mesh" };
 Cloner["@lod_mesh"] = { type: "mesh" };
-Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE } };
+Cloner["@mode"] = { type:"enum", values: { "Grid": Cloner.GRID_MODE, "Radial": Cloner.RADIAL_MODE, /* "Mesh": Cloner.MESH_MODE ,*/ "Children": Cloner.CHILDREN_MODE, "Custom": Cloner.CUSTOM_MODE } };
 Cloner["@count"] = { type:"vec3", min:1, step:1, precision: 0 };
 
 Cloner.prototype.onAddedToScene = function(scene)
@@ -38663,7 +38946,6 @@ Poser.prototype.onAddedToScene = function( scene )
 	//LEvent.bind(scene,"update",this.onUpdate, this);
 }
 
-
 Poser.prototype.onRemovedFromScene = function(scene)
 {
 	//LEvent.unbind(scene,"update",this.onUpdate, this);
@@ -38846,6 +39128,7 @@ Poser.prototype.applyPose = function( name, weight )
 //remove nodes from poses if they are not used
 Poser.prototype.purgePoses = function()
 {
+	//mark which nodes in the pose exist in the scene
 	var valid_nodes = {};
 	var scene = this._root.scene;
 	if(!scene)
@@ -38859,7 +39142,7 @@ Poser.prototype.purgePoses = function()
 			valid_nodes[ node.uid ] = true;
 	}
 
-
+	//now check all the poses, if they use a node that doesnt exist in the scene, remove it from the pose
 	for(var i in this.poses)
 	{
 		var pose = this.poses[i];
@@ -38875,6 +39158,8 @@ Poser.prototype.purgePoses = function()
 		}
 	}
 }
+
+
 
 LS.registerComponent( Poser );
 /**
@@ -42311,7 +42596,11 @@ SceneNode.prototype.setName = function(new_name)
 
 	//check that the name is valid (doesnt have invalid characters)
 	if(!LS.validateName(new_name))
+	{
+		console.warn("invalid name for node: " + new_name );
+		//new_name = new_name.replace(/[^a-z0-9\.\-]/gi,"_");
 		return false;
+	}
 
 	var scene = this._in_tree;
 	if(!scene)
@@ -44246,12 +44535,16 @@ var parserBVH = {
 				switch(cmd)
 				{
 					case "ROOT":
-						root = node = { name: tokens[1], node_type: "JOINT" };
+						var name = tokens[1];
+						name = name.replace(/[^a-z0-9\.\-]/gi,"_");
+						root = node = { name: name, node_type: "JOINT" };
 						break;
 					case "JOINT":
 						parent = node;
 						stack.push(parent);
-						node = { name: tokens[1], node_type: "JOINT" };
+						var name = tokens[1];
+						name = name.replace(/[^a-z0-9\.\-]/gi,"_");
+						node = { name: name, node_type: "JOINT" };
 						if(!parent.children)
 							parent.children = [];
 						parent.children.push(node);
@@ -44260,7 +44553,9 @@ var parserBVH = {
 						//ignore = true;
 						parent = node;
 						stack.push(parent);
-						node = { name: parent.name + "_end", node_type: "JOINT" };
+						node = { 
+							name: parent.name + "_end", node_type: "JOINT"
+						};
 						if(!parent.children)
 							parent.children = [];
 						parent.children.push(node);
@@ -44350,7 +44645,11 @@ var parserBVH = {
 			track.duration = duration;
 		}
 		var basename = LS.ResourcesManager.getBasename( filename );
-		var animation = { name: basename + "_animation.wbin", object_class: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
+		var animation = { 
+			name: basename + "_animation.wbin",
+			object_class: "Animation",
+			takes: { "default": { name: "default", duration: duration, tracks: tracks } }
+		};
 		root.animation = animation.name;
 		scene.resources[ animation["name"] ] = animation;
 

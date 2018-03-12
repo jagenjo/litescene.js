@@ -722,7 +722,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 		}
 
 		//set the depth texture for some FXs like fog or depth
-		if(shader.hasUniform("u_depth_texture"))
+		if(depth_texture && shader.hasUniform("u_depth_texture"))
 		{
 			depth_texture.bind(1);
 			if(depth_texture.near_far_planes)
@@ -928,7 +928,7 @@ FXStack.prototype.applyFX = function( input_texture, output_texture, options )
 	}
 
 	//set the depth texture for some FXs like fog or depth
-	if(shader.hasUniform("u_depth_texture"))
+	if(shader.hasUniform("u_depth_texture") && depth_texture )
 	{
 		depth_texture.bind(1);
 		if(depth_texture.near_far_planes)
