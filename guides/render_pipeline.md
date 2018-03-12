@@ -17,6 +17,20 @@ To know more about LiteGL [check the repository of LiteGL](https://github.com/ja
 
 Although you are more prone to interact with LiteScene than with LiteGL. LiteScene rendering methods are in charge of creating the final frame, and those are the ones that you will have to tweak to change how the render pipeline works.
 
+## Frame Analysis ##
+
+This is an example of the functions involved in the rendering of a single frame, taken from Chrome Profile tools:
+
+![FX Graph](imgs/frame-analysis.png "Frame Analysis")
+
+You can see clearly the three stages of rendering:
+
+- collecting render data
+- render shadowmaps
+- render views
+- apply postFX
+
+
 ## LS.RenderInstance ##
 
 First we need to understand the atomic class to render geometry that uses LiteScene, it is called ```LS.RenderInstance```.
