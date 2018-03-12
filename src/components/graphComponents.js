@@ -462,7 +462,7 @@ FXGraphComponent.prototype.onRemovedFromScene = function( scene )
 
 FXGraphComponent.prototype.onBeforeRender = function(e, render_settings)
 {
-	this._last_camera = LS.Renderer._current_camera;
+	this._last_camera = LS.Renderer._main_camera; //LS.Renderer._current_camera;
 
 	if(!this.enabled)
 	{
@@ -535,7 +535,7 @@ FXGraphComponent.prototype.enableGlobalFBO = function( render_settings )
 		return;
 
 	//configure
-	this.frame.enable( render_settings );
+	this.frame.enable( render_settings, null, LS.Renderer._main_camera );
 }
 
 FXGraphComponent.prototype.showFBO = function()

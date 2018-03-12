@@ -238,7 +238,11 @@ SceneNode.prototype.setName = function(new_name)
 
 	//check that the name is valid (doesnt have invalid characters)
 	if(!LS.validateName(new_name))
+	{
+		console.warn("invalid name for node: " + new_name );
+		//new_name = new_name.replace(/[^a-z0-9\.\-]/gi,"_");
 		return false;
+	}
 
 	var scene = this._in_tree;
 	if(!scene)

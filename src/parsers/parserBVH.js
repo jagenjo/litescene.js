@@ -60,12 +60,16 @@ var parserBVH = {
 				switch(cmd)
 				{
 					case "ROOT":
-						root = node = { name: tokens[1], node_type: "JOINT" };
+						var name = tokens[1];
+						name = name.replace(/[^a-z0-9\.\-]/gi,"_");
+						root = node = { name: name, node_type: "JOINT" };
 						break;
 					case "JOINT":
 						parent = node;
 						stack.push(parent);
-						node = { name: tokens[1], node_type: "JOINT" };
+						var name = tokens[1];
+						name = name.replace(/[^a-z0-9\.\-]/gi,"_");
+						node = { name: name, node_type: "JOINT" };
 						if(!parent.children)
 							parent.children = [];
 						parent.children.push(node);
@@ -74,7 +78,9 @@ var parserBVH = {
 						//ignore = true;
 						parent = node;
 						stack.push(parent);
-						node = { name: parent.name + "_end", node_type: "JOINT" };
+						node = { 
+							name: parent.name + "_end", node_type: "JOINT"
+						};
 						if(!parent.children)
 							parent.children = [];
 						parent.children.push(node);
@@ -164,7 +170,11 @@ var parserBVH = {
 			track.duration = duration;
 		}
 		var basename = LS.ResourcesManager.getBasename( filename );
-		var animation = { name: basename + "_animation.wbin", object_class: "Animation", takes: { "default": { name: "default", duration: duration, tracks: tracks } } };
+		var animation = { 
+			name: basename + "_animation.wbin",
+			object_class: "Animation",
+			takes: { "default": { name: "default", duration: duration, tracks: tracks } }
+		};
 		root.animation = animation.name;
 		scene.resources[ animation["name"] ] = animation;
 

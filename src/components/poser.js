@@ -33,7 +33,6 @@ Poser.prototype.onAddedToScene = function( scene )
 	//LEvent.bind(scene,"update",this.onUpdate, this);
 }
 
-
 Poser.prototype.onRemovedFromScene = function(scene)
 {
 	//LEvent.unbind(scene,"update",this.onUpdate, this);
@@ -216,6 +215,7 @@ Poser.prototype.applyPose = function( name, weight )
 //remove nodes from poses if they are not used
 Poser.prototype.purgePoses = function()
 {
+	//mark which nodes in the pose exist in the scene
 	var valid_nodes = {};
 	var scene = this._root.scene;
 	if(!scene)
@@ -229,7 +229,7 @@ Poser.prototype.purgePoses = function()
 			valid_nodes[ node.uid ] = true;
 	}
 
-
+	//now check all the poses, if they use a node that doesnt exist in the scene, remove it from the pose
 	for(var i in this.poses)
 	{
 		var pose = this.poses[i];
@@ -245,5 +245,7 @@ Poser.prototype.purgePoses = function()
 		}
 	}
 }
+
+
 
 LS.registerComponent( Poser );

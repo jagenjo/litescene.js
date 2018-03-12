@@ -269,7 +269,7 @@ SceneInclude.prototype.getEvents = function()
 }
 
 //returns which actions can be triggered in this component
-SceneInclude.prototype.getEventActions = function()
+SceneInclude.prototype.getActions = function()
 {
 	return { "load": "function", "unload": "function" };
 }
