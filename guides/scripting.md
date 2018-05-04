@@ -157,7 +157,10 @@ Here is a list of the automatically binded events, all of them are optional:
 - **onStart**: triggered by scene "start" event, remember that if your script is created after the scene starting you wont receive this.
 - **onFinish**: triggered by scene "finish" event, used in the editor when the user stops the play mode.
 - **onPrefabReady**: triggered by the node "prefabReady", used to access components or node that come from the prefab
+- **onBeforeUpdate**: triggered by scene "beforeUpdate" event. executed before triggering the onUpdate.
 - **onUpdate**: triggered by scene "update" event. it receives the delta time in seconds.
+- **onFixedUpdate**: triggered by scene "fixedUpdate" event (between update and afterUpdate). Like update but the time step is fixed (defined in ```scene._fixed_update_timestep```) so it can be called multiple times per frame or none.
+- **onAfterUpdate**: triggered by scene "afterUpdate" event. executed after triggering the onUpdate.
 - **onClicked**: triggered by the node "clicked" event. Remember that you need an ```InteractiveController``` in the scene to dispatch this events.
 - **onCollectRenderInstances**: triggered by node "collectRenderInstances" event. To pass RenderInstasnces
 - **onSceneRender**: triggered by scene "beforeRender" event. Used to prepare stuff before any rendering is done.
