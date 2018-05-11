@@ -15,7 +15,7 @@ It comes with a realistic rendering pipeline and some interesting components to 
 
 ### WebGLStudio ###
 
-Litescene has been created to work together with WebGLStudio, an open source online 3D editor.
+Litescene has been created to work together with [WebGLStudio](https://webglstudio.org), an open source online 3D editor.
 From WebGLStudio you can export the JSON file containing all the info and use it in your LiteScene.
 
 ### Usage ###
