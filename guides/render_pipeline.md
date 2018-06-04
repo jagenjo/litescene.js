@@ -62,6 +62,11 @@ The ```LS.Renderer``` also keeps tracks of the current state of the rendering in
 ### Renderer.render(...) ###
 
 This is the most important method from the ```Renderer```, is the one that generates the final frame.
+
+Here you can see the functions involved in the rendering of a single frame, taken from Chrome Profile tools:
+
+![FX Graph](imgs/frame-analysis.png "Frame Analysis")
+
 Here is a list of the steps performed by the render pipeline when calling the render function:
 
 1. **Collect visible data** 
