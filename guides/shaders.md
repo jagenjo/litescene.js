@@ -2,13 +2,15 @@
 
 You can create your own shaders for your materials. This way the rendering is much faster (the pipeline doesnt have to guess the best shader for your material) and you have more control.
 
-Shaders are stored in the ```LS.ShaderCode``` class and used by some classes, mainly ```LS.ShaderMaterial``` and some FX components.
+The base clase for a Shader compiled in the GPU (a WebGLProgram) is the litegl class ```GL.Shader```, but because we want our shaders to be more dynamic (can have conditional options that pre-cache compiled versions), LiteScene uses the class ```LS.ShaderCode```.
+
+```LS.ShaderCode``` class can be used by any class in the system that requires shaders, and right now is mainly used by ```LS.ShaderMaterial``` and some FX components.
 
 Because shaders are usually defined by several parts (vertex shader, fragment shader, definition of external variables) they are written in a text file where every part is defined by the backlash character and the name of the part, like  ```\default.vs```, this blocks are called subfiles.
 
 ## GLSL ##
 
-Remember that shaders in WebGL are made using the GLSL programming language, not javascript. The shaders code will be sent to the GPU to be compiled to low level assembly code so it can be executed very fast. Also keep in mind that WebGL is based in OpenGL ES 2.0, it means some GLSL features may be missing.
+Remember that shaders in WebGL are made using the GLSL programming language, not javascript. The shaders code will be sent to the GPU to be compiled to low-level assembly code so it can be executed very fast. Also keep in mind that WebGL is based in OpenGL ES 2.0, it means some GLSL features may be missing.
 
 If you want a reference about GLSL [check this website](http://www.shaderific.com/glsl/).
 

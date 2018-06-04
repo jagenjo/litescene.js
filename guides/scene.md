@@ -6,7 +6,7 @@ To familiarize with LiteScene first you need to understand how the scene is comp
 
 A LS.SceneNode represents an object in your scene (similar to how a GameObject works in Unity).
 
-It can have a name, a transform to define where it is, and a list of components to add behaviour and visual properties.
+It can have a name, a transform to define where it is, and a list of [Components](Components.md) to add behaviour and visual properties.
 
 Everything visible or that react to our scene must be inside a LS.SceneNode.
 
@@ -54,6 +54,12 @@ To acess the current active scene you can use  ```LS.GlobalScene```
 This contains a root SceneNode where all the nodes of the scene are located.
 
 To access the root node you can go to ```LS.GlobalScene.root```
+
+To add a node to the current scene:
+
+```js
+LS.GlobalScene.root.addChild( my_node );
+```
 
 ## Scene information ##
 
