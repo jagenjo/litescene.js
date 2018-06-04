@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.SceneTree</title>
+    <title>LS.Scene</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -154,7 +154,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.SceneTree Class</h1>
+<h1>LS.Scene Class</h1>
 <div class="box meta">
 
 
@@ -168,14 +168,14 @@
 
 
 <div class="box intro">
-    <p>The SceneTree contains all the info about the Scene and nodes</p>
+    <p>The Scene contains all the info about the Scene and nodes</p>
 
 </div>
 
     <div class="constructor">
         <h2>Constructor</h2>
-<div id="method_LS.SceneTree" class="method item">
-    <h3 class="name"><code>LS.SceneTree</code></h3>
+<div id="method_LS.Scene" class="method item">
+    <h3 class="name"><code>LS.Scene</code></h3>
 
         <span class="paren">()</span>
 
@@ -363,7 +363,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_SceneTree.getScriptsList">SceneTree.getScriptsList</a>
+                                <a href="#method_Scene.getScriptsList">Scene.getScriptsList</a>
 
                             </li>
                             <li class="index-item method">
@@ -396,6 +396,10 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_unpause">unpause</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_update">update</a>
 
                             </li>
                     </ul>
@@ -433,6 +437,10 @@
                             </li>
                             <li class="index-item event">
                                 <a href="#event_finish">finish</a>
+
+                            </li>
+                            <li class="index-item event">
+                                <a href="#event_fixedUpdate">fixedUpdate</a>
 
                             </li>
                             <li class="index-item event">
@@ -503,7 +511,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1307"><code>..&#x2F;src&#x2F;scene.js:1307</code></a>
+        <a href="../files/.._src_scene.js.html#l1329"><code>..&#x2F;src&#x2F;scene.js:1329</code></a>
         </p>
 
 
@@ -551,7 +559,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l170"><code>..&#x2F;src&#x2F;scene.js:170</code></a>
+        <a href="../files/.._src_scene.js.html#l174"><code>..&#x2F;src&#x2F;scene.js:174</code></a>
         </p>
 
 
@@ -571,7 +579,13 @@ and trigger a &quot;clear&quot; LEvent</p>
 <div id="method_collectData" class="method item">
     <h3 class="name"><code>collectData</code></h3>
 
-        <span class="paren">()</span>
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>cameras</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
 
 
 
@@ -583,7 +597,7 @@ and trigger a &quot;clear&quot; LEvent</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1440"><code>..&#x2F;src&#x2F;scene.js:1440</code></a>
+        <a href="../files/.._src_scene.js.html#l1462"><code>..&#x2F;src&#x2F;scene.js:1462</code></a>
         </p>
 
 
@@ -597,6 +611,23 @@ TO DO: refactor this so it doesnt redo the same task in every frame, only if cha
 
     </div>
 
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">cameras</code>
+                        <span class="type">Array</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] an array of cameras in case we want to force some viewpoint</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
 
 
 
@@ -622,7 +653,7 @@ TO DO: refactor this so it doesnt redo the same task in every frame, only if cha
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l196"><code>..&#x2F;src&#x2F;scene.js:196</code></a>
+        <a href="../files/.._src_scene.js.html#l200"><code>..&#x2F;src&#x2F;scene.js:200</code></a>
         </p>
 
 
@@ -675,7 +706,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1886"><code>..&#x2F;src&#x2F;scene.js:1886</code></a>
+        <a href="../files/.._src_scene.js.html#l1898"><code>..&#x2F;src&#x2F;scene.js:1898</code></a>
         </p>
 
 
@@ -724,7 +755,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l961"><code>..&#x2F;src&#x2F;scene.js:961</code></a>
+        <a href="../files/.._src_scene.js.html#l980"><code>..&#x2F;src&#x2F;scene.js:980</code></a>
         </p>
 
 
@@ -790,7 +821,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l977"><code>..&#x2F;src&#x2F;scene.js:977</code></a>
+        <a href="../files/.._src_scene.js.html#l996"><code>..&#x2F;src&#x2F;scene.js:996</code></a>
         </p>
 
 
@@ -856,7 +887,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l995"><code>..&#x2F;src&#x2F;scene.js:995</code></a>
+        <a href="../files/.._src_scene.js.html#l1014"><code>..&#x2F;src&#x2F;scene.js:1014</code></a>
         </p>
 
 
@@ -922,7 +953,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1716"><code>..&#x2F;src&#x2F;scene.js:1716</code></a>
+        <a href="../files/.._src_scene.js.html#l1717"><code>..&#x2F;src&#x2F;scene.js:1717</code></a>
         </p>
 
 
@@ -985,7 +1016,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1406"><code>..&#x2F;src&#x2F;scene.js:1406</code></a>
+        <a href="../files/.._src_scene.js.html#l1428"><code>..&#x2F;src&#x2F;scene.js:1428</code></a>
         </p>
 
 
@@ -1042,7 +1073,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1612"><code>..&#x2F;src&#x2F;scene.js:1612</code></a>
+        <a href="../files/.._src_scene.js.html#l1613"><code>..&#x2F;src&#x2F;scene.js:1613</code></a>
         </p>
 
 
@@ -1108,7 +1139,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l718"><code>..&#x2F;src&#x2F;scene.js:718</code></a>
+        <a href="../files/.._src_scene.js.html#l737"><code>..&#x2F;src&#x2F;scene.js:737</code></a>
         </p>
 
 
@@ -1174,7 +1205,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l756"><code>..&#x2F;src&#x2F;scene.js:756</code></a>
+        <a href="../files/.._src_scene.js.html#l775"><code>..&#x2F;src&#x2F;scene.js:775</code></a>
         </p>
 
 
@@ -1234,7 +1265,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l732"><code>..&#x2F;src&#x2F;scene.js:732</code></a>
+        <a href="../files/.._src_scene.js.html#l751"><code>..&#x2F;src&#x2F;scene.js:751</code></a>
         </p>
 
 
@@ -1283,7 +1314,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1697"><code>..&#x2F;src&#x2F;scene.js:1697</code></a>
+        <a href="../files/.._src_scene.js.html#l1698"><code>..&#x2F;src&#x2F;scene.js:1698</code></a>
         </p>
 
 
@@ -1349,7 +1380,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l892"><code>..&#x2F;src&#x2F;scene.js:892</code></a>
+        <a href="../files/.._src_scene.js.html#l911"><code>..&#x2F;src&#x2F;scene.js:911</code></a>
         </p>
 
 
@@ -1415,7 +1446,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l946"><code>..&#x2F;src&#x2F;scene.js:946</code></a>
+        <a href="../files/.._src_scene.js.html#l965"><code>..&#x2F;src&#x2F;scene.js:965</code></a>
         </p>
 
 
@@ -1481,7 +1512,7 @@ ATTENTION: Destroys all previously existing info</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l921"><code>..&#x2F;src&#x2F;scene.js:921</code></a>
+        <a href="../files/.._src_scene.js.html#l940"><code>..&#x2F;src&#x2F;scene.js:940</code></a>
         </p>
 
 
@@ -1548,7 +1579,7 @@ If more than one object has the same name, the first one added to the tree is re
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l934"><code>..&#x2F;src&#x2F;scene.js:934</code></a>
+        <a href="../files/.._src_scene.js.html#l953"><code>..&#x2F;src&#x2F;scene.js:953</code></a>
         </p>
 
 
@@ -1614,7 +1645,7 @@ If more than one object has the same name, the first one added to the tree is re
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l878"><code>..&#x2F;src&#x2F;scene.js:878</code></a>
+        <a href="../files/.._src_scene.js.html#l897"><code>..&#x2F;src&#x2F;scene.js:897</code></a>
         </p>
 
 
@@ -1680,7 +1711,7 @@ If more than one object has the same name, the first one added to the tree is re
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1018"><code>..&#x2F;src&#x2F;scene.js:1018</code></a>
+        <a href="../files/.._src_scene.js.html#l1037"><code>..&#x2F;src&#x2F;scene.js:1037</code></a>
         </p>
 
 
@@ -1747,7 +1778,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1066"><code>..&#x2F;src&#x2F;scene.js:1066</code></a>
+        <a href="../files/.._src_scene.js.html#l1085"><code>..&#x2F;src&#x2F;scene.js:1085</code></a>
         </p>
 
 
@@ -1819,7 +1850,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1091"><code>..&#x2F;src&#x2F;scene.js:1091</code></a>
+        <a href="../files/.._src_scene.js.html#l1110"><code>..&#x2F;src&#x2F;scene.js:1110</code></a>
         </p>
 
 
@@ -1917,7 +1948,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1184"><code>..&#x2F;src&#x2F;scene.js:1184</code></a>
+        <a href="../files/.._src_scene.js.html#l1203"><code>..&#x2F;src&#x2F;scene.js:1203</code></a>
         </p>
 
 
@@ -2012,7 +2043,7 @@ doesn't include external_scripts</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1654"><code>..&#x2F;src&#x2F;scene.js:1654</code></a>
+        <a href="../files/.._src_scene.js.html#l1655"><code>..&#x2F;src&#x2F;scene.js:1655</code></a>
         </p>
 
 
@@ -2055,7 +2086,7 @@ doesn't include external_scripts</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l114"><code>..&#x2F;src&#x2F;scene.js:114</code></a>
+        <a href="../files/.._src_scene.js.html#l115"><code>..&#x2F;src&#x2F;scene.js:115</code></a>
         </p>
 
 
@@ -2114,7 +2145,7 @@ Call it to clear the scene content</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1749"><code>..&#x2F;src&#x2F;scene.js:1749</code></a>
+        <a href="../files/.._src_scene.js.html#l1750"><code>..&#x2F;src&#x2F;scene.js:1750</code></a>
         </p>
 
 
@@ -2222,7 +2253,7 @@ Call it to clear the scene content</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l402"><code>..&#x2F;src&#x2F;scene.js:402</code></a>
+        <a href="../files/.._src_scene.js.html#l419"><code>..&#x2F;src&#x2F;scene.js:419</code></a>
         </p>
 
 
@@ -2337,7 +2368,7 @@ Warning: this url is not passed through the LS.ResourcesManager so the url is ab
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l524"><code>..&#x2F;src&#x2F;scene.js:524</code></a>
+        <a href="../files/.._src_scene.js.html#l543"><code>..&#x2F;src&#x2F;scene.js:543</code></a>
         </p>
 
 
@@ -2440,7 +2471,7 @@ It uses the resources folder as the root folder (in comparison with the regular 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1264"><code>..&#x2F;src&#x2F;scene.js:1264</code></a>
+        <a href="../files/.._src_scene.js.html#l1286"><code>..&#x2F;src&#x2F;scene.js:1286</code></a>
         </p>
 
 
@@ -2490,7 +2521,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1361"><code>..&#x2F;src&#x2F;scene.js:1361</code></a>
+        <a href="../files/.._src_scene.js.html#l1383"><code>..&#x2F;src&#x2F;scene.js:1383</code></a>
         </p>
 
 
@@ -2521,7 +2552,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l844"><code>..&#x2F;src&#x2F;scene.js:844</code></a>
+        <a href="../files/.._src_scene.js.html#l863"><code>..&#x2F;src&#x2F;scene.js:863</code></a>
         </p>
 
 
@@ -2558,7 +2589,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1318"><code>..&#x2F;src&#x2F;scene.js:1318</code></a>
+        <a href="../files/.._src_scene.js.html#l1340"><code>..&#x2F;src&#x2F;scene.js:1340</code></a>
         </p>
 
 
@@ -2606,7 +2637,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1430"><code>..&#x2F;src&#x2F;scene.js:1430</code></a>
+        <a href="../files/.._src_scene.js.html#l1452"><code>..&#x2F;src&#x2F;scene.js:1452</code></a>
         </p>
 
 
@@ -2637,7 +2668,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1641"><code>..&#x2F;src&#x2F;scene.js:1641</code></a>
+        <a href="../files/.._src_scene.js.html#l1642"><code>..&#x2F;src&#x2F;scene.js:1642</code></a>
         </p>
 
 
@@ -2653,8 +2684,8 @@ and load them in bulk using the ResourceManager</p>
 
 
 </div>
-<div id="method_SceneTree.getScriptsList" class="method item">
-    <h3 class="name"><code>SceneTree.getScriptsList</code></h3>
+<div id="method_Scene.getScriptsList" class="method item">
+    <h3 class="name"><code>Scene.getScriptsList</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
@@ -2680,7 +2711,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l543"><code>..&#x2F;src&#x2F;scene.js:543</code></a>
+        <a href="../files/.._src_scene.js.html#l562"><code>..&#x2F;src&#x2F;scene.js:562</code></a>
         </p>
 
 
@@ -2698,7 +2729,7 @@ and load them in bulk using the ResourceManager</p>
             <ul class="params-list">
                 <li class="param">
                         <code class="param-name">scene</code>
-                        <span class="type">SceneTree | Object</span>
+                        <span class="type">Scene | Object</span>
 
 
                     <div class="param-description">
@@ -2753,7 +2784,7 @@ and load them in bulk using the ResourceManager</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l272"><code>..&#x2F;src&#x2F;scene.js:272</code></a>
+        <a href="../files/.._src_scene.js.html#l279"><code>..&#x2F;src&#x2F;scene.js:279</code></a>
         </p>
 
 
@@ -2816,7 +2847,7 @@ It calls the serialize method in every node</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l320"><code>..&#x2F;src&#x2F;scene.js:320</code></a>
+        <a href="../files/.._src_scene.js.html#l328"><code>..&#x2F;src&#x2F;scene.js:328</code></a>
         </p>
 
 
@@ -2939,7 +2970,7 @@ It calls the serialize method in every node</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1134"><code>..&#x2F;src&#x2F;scene.js:1134</code></a>
+        <a href="../files/.._src_scene.js.html#l1153"><code>..&#x2F;src&#x2F;scene.js:1153</code></a>
         </p>
 
 
@@ -3037,7 +3068,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1150"><code>..&#x2F;src&#x2F;scene.js:1150</code></a>
+        <a href="../files/.._src_scene.js.html#l1169"><code>..&#x2F;src&#x2F;scene.js:1169</code></a>
         </p>
 
 
@@ -3134,7 +3165,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1330"><code>..&#x2F;src&#x2F;scene.js:1330</code></a>
+        <a href="../files/.._src_scene.js.html#l1352"><code>..&#x2F;src&#x2F;scene.js:1352</code></a>
         </p>
 
 
@@ -3194,7 +3225,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1778"><code>..&#x2F;src&#x2F;scene.js:1778</code></a>
+        <a href="../files/.._src_scene.js.html#l1779"><code>..&#x2F;src&#x2F;scene.js:1779</code></a>
         </p>
 
 
@@ -3271,7 +3302,7 @@ Locators are in the form of &quot;{NODE_UID}/{COMPONENT_UID}/{property_name}&quo
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1598"><code>..&#x2F;src&#x2F;scene.js:1598</code></a>
+        <a href="../files/.._src_scene.js.html#l1599"><code>..&#x2F;src&#x2F;scene.js:1599</code></a>
         </p>
 
 
@@ -3331,7 +3362,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_scene.js.html#l1383"><code>..&#x2F;src&#x2F;scene.js:1383</code></a>
+        <a href="../files/.._src_scene.js.html#l1405"><code>..&#x2F;src&#x2F;scene.js:1405</code></a>
         </p>
 
 
@@ -3343,6 +3374,60 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
 
     </div>
 
+
+
+
+</div>
+<div id="method_update" class="method item">
+    <h3 class="name"><code>update</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>dt</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_scene.js.html#l1543"><code>..&#x2F;src&#x2F;scene.js:1543</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>updates the scene (it handles variable update and fixedUpdate)</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">dt</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>delta time in seconds</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
 
 
 
@@ -3365,7 +3450,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1590"><code>..&#x2F;src&#x2F;scene.js:1590</code></a>
+                            <a href="../files/.._src_scene.js.html#l1591"><code>..&#x2F;src&#x2F;scene.js:1591</code></a>
                             </p>
                     
                     
@@ -3390,7 +3475,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l434"><code>..&#x2F;src&#x2F;scene.js:434</code></a>
+                            <a href="../files/.._src_scene.js.html#l453"><code>..&#x2F;src&#x2F;scene.js:453</code></a>
                             </p>
                     
                     
@@ -3415,7 +3500,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1568"><code>..&#x2F;src&#x2F;scene.js:1568</code></a>
+                            <a href="../files/.._src_scene.js.html#l1551"><code>..&#x2F;src&#x2F;scene.js:1551</code></a>
                             </p>
                     
                     
@@ -3432,7 +3517,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
                     
                     
                                         <div class="param-description">
@@ -3456,7 +3541,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l264"><code>..&#x2F;src&#x2F;scene.js:264</code></a>
+                            <a href="../files/.._src_scene.js.html#l271"><code>..&#x2F;src&#x2F;scene.js:271</code></a>
                             </p>
                     
                     
@@ -3498,7 +3583,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l187"><code>..&#x2F;src&#x2F;scene.js:187</code></a>
+                            <a href="../files/.._src_scene.js.html#l191"><code>..&#x2F;src&#x2F;scene.js:191</code></a>
                             </p>
                     
                     
@@ -3523,7 +3608,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l257"><code>..&#x2F;src&#x2F;scene.js:257</code></a>
+                            <a href="../files/.._src_scene.js.html#l264"><code>..&#x2F;src&#x2F;scene.js:264</code></a>
                             </p>
                     
                     
@@ -3565,7 +3650,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1418"><code>..&#x2F;src&#x2F;scene.js:1418</code></a>
+                            <a href="../files/.._src_scene.js.html#l1440"><code>..&#x2F;src&#x2F;scene.js:1440</code></a>
                             </p>
                     
                     
@@ -3582,7 +3667,48 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
+                    
+                    
+                                        <div class="param-description">
+                                             
+                                        </div>
+                    
+                                    </li>
+                                </ul>
+                            </div>
+                    
+                    
+                    </div>
+                    <div id="event_fixedUpdate" class="events item">
+                        <h3 class="name"><code>fixedUpdate</code></h3>
+                        <span class="type"></span>
+                    
+                    
+                    
+                    
+                    
+                        <div class="meta">
+                                    <p>
+                                    Defined in
+                            <a href="../files/.._src_scene.js.html#l1572"><code>..&#x2F;src&#x2F;scene.js:1572</code></a>
+                            </p>
+                    
+                    
+                        </div>
+                    
+                        <div class="description">
+                            <p>Fired while updating but using a fixed timestep (1/60)</p>
+                    
+                        </div>
+                    
+                            <div class="params">
+                                <h4>Event Payload:</h4>
+                    
+                                <ul class="params-list">
+                                    <li class="param">
+                                            <code class="param-name">dt</code>
+                                            <span class="type">Number</span>
                     
                     
                                         <div class="param-description">
@@ -3606,7 +3732,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1343"><code>..&#x2F;src&#x2F;scene.js:1343</code></a>
+                            <a href="../files/.._src_scene.js.html#l1365"><code>..&#x2F;src&#x2F;scene.js:1365</code></a>
                             </p>
                     
                     
@@ -3623,7 +3749,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
                     
                     
                                         <div class="param-description">
@@ -3647,7 +3773,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l369"><code>..&#x2F;src&#x2F;scene.js:369</code></a>
+                            <a href="../files/.._src_scene.js.html#l386"><code>..&#x2F;src&#x2F;scene.js:386</code></a>
                             </p>
                     
                     
@@ -3672,7 +3798,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l386"><code>..&#x2F;src&#x2F;scene.js:386</code></a>
+                            <a href="../files/.._src_scene.js.html#l403"><code>..&#x2F;src&#x2F;scene.js:403</code></a>
                             </p>
                     
                     
@@ -3697,7 +3823,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l806"><code>..&#x2F;src&#x2F;scene.js:806</code></a>
+                            <a href="../files/.._src_scene.js.html#l825"><code>..&#x2F;src&#x2F;scene.js:825</code></a>
                             </p>
                     
                     
@@ -3738,7 +3864,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l833"><code>..&#x2F;src&#x2F;scene.js:833</code></a>
+                            <a href="../files/.._src_scene.js.html#l852"><code>..&#x2F;src&#x2F;scene.js:852</code></a>
                             </p>
                     
                     
@@ -3779,7 +3905,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1372"><code>..&#x2F;src&#x2F;scene.js:1372</code></a>
+                            <a href="../files/.._src_scene.js.html#l1394"><code>..&#x2F;src&#x2F;scene.js:1394</code></a>
                             </p>
                     
                     
@@ -3796,7 +3922,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
                     
                     
                                         <div class="param-description">
@@ -3820,7 +3946,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l309"><code>..&#x2F;src&#x2F;scene.js:309</code></a>
+                            <a href="../files/.._src_scene.js.html#l317"><code>..&#x2F;src&#x2F;scene.js:317</code></a>
                             </p>
                     
                     
@@ -3862,7 +3988,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1351"><code>..&#x2F;src&#x2F;scene.js:1351</code></a>
+                            <a href="../files/.._src_scene.js.html#l1373"><code>..&#x2F;src&#x2F;scene.js:1373</code></a>
                             </p>
                     
                     
@@ -3879,7 +4005,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
                     
                     
                                         <div class="param-description">
@@ -3903,7 +4029,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1394"><code>..&#x2F;src&#x2F;scene.js:1394</code></a>
+                            <a href="../files/.._src_scene.js.html#l1416"><code>..&#x2F;src&#x2F;scene.js:1416</code></a>
                             </p>
                     
                     
@@ -3920,7 +4046,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                                 <ul class="params-list">
                                     <li class="param">
                                             <code class="param-name">scene</code>
-                                            <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                                            <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
                     
                     
                                         <div class="param-description">
@@ -3944,7 +4070,7 @@ this is slow if the scene has too many nodes, thats why we use bindings</p>
                         <div class="meta">
                                     <p>
                                     Defined in
-                            <a href="../files/.._src_scene.js.html#l1581"><code>..&#x2F;src&#x2F;scene.js:1581</code></a>
+                            <a href="../files/.._src_scene.js.html#l1564"><code>..&#x2F;src&#x2F;scene.js:1564</code></a>
                             </p>
                     
                     

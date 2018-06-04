@@ -109,6 +109,12 @@ GraphComponent.prototype.serialize = function()
 	};
 }
 
+GraphComponent.prototype.getResources = function(res)
+{
+	this._graph.sendEventToAllNodes("getResources",res);
+	return res;
+}
+
 GraphComponent.prototype.onAddedToNode = function(node)
 {
 	this._graph._scenenode = node;

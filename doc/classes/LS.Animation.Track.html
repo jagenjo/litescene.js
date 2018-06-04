@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -248,7 +248,15 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
 
                             </li>
                             <li class="index-item method">
+                                <a href="#method_getNumberOfKeyframes">getNumberOfKeyframes</a>
+
+                            </li>
+                            <li class="index-item method">
                                 <a href="#method_getPropertyInfo">getPropertyInfo</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_getSample">getSample</a>
 
                             </li>
                             <li class="index-item method">
@@ -269,6 +277,10 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
                             </li>
                             <li class="index-item method">
                                 <a href="#method_removeScaling">removeScaling</a>
+
+                            </li>
+                            <li class="index-item method">
+                                <a href="#method_sortKeyframes">sortKeyframes</a>
 
                             </li>
                             <li class="index-item method">
@@ -436,7 +448,7 @@ Data could be stored in two forms, or an array containing arrays of [time,data] 
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1622"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1622</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1549"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1549</code></a>
         </p>
 
 
@@ -477,7 +489,7 @@ this makes working with animations faster</p>
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1190"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1190</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1197"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1197</code></a>
         </p>
 
 
@@ -485,7 +497,7 @@ this makes working with animations faster</p>
     </div>
 
     <div class="description">
-        <p>returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)</p>
+        <p>Returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)</p>
 
     </div>
 
@@ -511,7 +523,7 @@ this makes working with animations faster</p>
 
             <div class="returns-description">
                         <span class="type">Number</span>:
-                    <p>index</p>
+                    <p>the nearest index (lower-bound)</p>
 
             </div>
         </div>
@@ -728,6 +740,37 @@ this is used when you want to apply the same animation to different nodes in the
 
 
 </div>
+<div id="method_getNumberOfKeyframes" class="method item">
+    <h3 class="name"><code>getNumberOfKeyframes</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1100"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1100</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>returns the number of keyframes</p>
+
+    </div>
+
+
+
+
+</div>
 <div id="method_getPropertyInfo" class="method item">
     <h3 class="name"><code>getPropertyInfo</code></h3>
 
@@ -752,7 +795,7 @@ this is used when you want to apply the same animation to different nodes in the
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1536"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1536</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1463"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1463</code></a>
         </p>
 
 
@@ -771,7 +814,7 @@ the object contains a reference to the object, the property name, the type of th
             <ul class="params-list">
                 <li class="param">
                         <code class="param-name">scene</code>
-                        <span class="type"><a href="../classes/LS.SceneTree.html" class="crosslink">LS.SceneTree</a></span>
+                        <span class="type"><a href="../classes/LS.Scene.html" class="crosslink">LS.Scene</a></span>
 
 
                     <div class="param-description">
@@ -789,6 +832,100 @@ the object contains a reference to the object, the property name, the type of th
             <div class="returns-description">
                         <span class="type">Object</span>:
                     <p>an object with the info { target, name, type, value }</p>
+
+            </div>
+        </div>
+
+
+</div>
+<div id="method_getSample" class="method item">
+    <h3 class="name"><code>getSample</code></h3>
+
+        <div class="args">
+            <span class="paren">(</span><ul class="args-list inline commas">
+                <li class="arg">
+                        <code>time</code>
+                </li>
+                <li class="arg">
+                        <code>interpolation</code>
+                </li>
+                <li class="arg">
+                        <code>result</code>
+                </li>
+            </ul><span class="paren">)</span>
+        </div>
+
+        <span class="returns-inline">
+            <span class="type"></span>
+        </span>
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1287"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1287</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Samples the data in one time, taking into account interpolation.
+Warning: if no result container is provided the same container is reused between samples to avoid garbage, be careful.</p>
+
+    </div>
+
+        <div class="params">
+            <h4>Parameters:</h4>
+
+            <ul class="params-list">
+                <li class="param">
+                        <code class="param-name">time</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                         
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">interpolation</code>
+                        <span class="type">Number</span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the interpolation method could be LS.NONE, LS.LINEAR, LS.BEZIER</p>
+
+                    </div>
+
+                </li>
+                <li class="param">
+                        <code class="param-name">result</code>
+                        <span class="type"></span>
+
+
+                    <div class="param-description">
+                        <p>[optional] the container where to store the data (in case is an array). IF NOT CONTAINER IS PROVIDED THE SAME ONE IS RETURNED EVERY TIME!</p>
+
+                    </div>
+
+                </li>
+            </ul>
+        </div>
+
+        <div class="returns">
+            <h4>Returns:</h4>
+
+            <div class="returns-description">
+                        <span class="type"></span>:
+                    <p>data</p>
 
             </div>
         </div>
@@ -825,7 +962,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1550"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1550</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1477"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1477</code></a>
         </p>
 
 
@@ -982,7 +1119,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1135"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1135</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1142"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1142</code></a>
         </p>
 
 
@@ -1019,7 +1156,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1078"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1078</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1081"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1081</code></a>
         </p>
 
 
@@ -1066,7 +1203,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1661"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1661</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1588"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1588</code></a>
         </p>
 
 
@@ -1075,6 +1212,37 @@ the object contains a reference to the object, the property name, the type of th
 
     <div class="description">
         <p>If this track changes the scale, it forces it to be 1,1,1</p>
+
+    </div>
+
+
+
+
+</div>
+<div id="method_sortKeyframes" class="method item">
+    <h3 class="name"><code>sortKeyframes</code></h3>
+
+        <span class="paren">()</span>
+
+
+
+
+
+
+
+
+    <div class="meta">
+                <p>
+                Defined in
+        <a href="../files/.._src_resources_animation.js.html#l1066"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1066</code></a>
+        </p>
+
+
+
+    </div>
+
+    <div class="description">
+        <p>Sometimes when moving keyframes they could end up not sorted by timestamp, which will cause problems when sampling, to avoid it, we can force to sort all keyframes</p>
 
     </div>
 
@@ -1103,7 +1271,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1607"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1607</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1534"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1534</code></a>
         </p>
 
 
@@ -1160,7 +1328,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1577"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1577</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1504"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1504</code></a>
         </p>
 
 
@@ -1219,7 +1387,7 @@ the object contains a reference to the object, the property name, the type of th
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_resources_animation.js.html#l1167"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1167</code></a>
+        <a href="../files/.._src_resources_animation.js.html#l1174"><code>..&#x2F;src&#x2F;resources&#x2F;animation.js:1174</code></a>
         </p>
 
 

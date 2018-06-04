@@ -21,9 +21,9 @@ function SceneInclude( o )
 	this._scene_path = null;
 	this._scene_is_ready = false;
 
-	if( LS.SceneTree ) //this is because in some cases (debug mode) this component will be registered before the SceneTree exists
+	if( LS.Scene ) //this is because in some cases (debug mode) this component will be registered before the Scene exists
 	{
-		this._scene = new LS.SceneTree();
+		this._scene = new LS.Scene();
 		this._scene.root.removeAllComponents();
 		LEvent.bind( this._scene, "requestFrame", function(){ 
 			if(this._root.scene)
@@ -277,7 +277,7 @@ SceneInclude.prototype.getActions = function()
 SceneInclude.prototype.getResources = function(res)
 {
 	if(this._scene_path)
-		res[ this._scene_path ] = LS.SceneTree;
+		res[ this._scene_path ] = LS.Scene;
 	return res;
 }
 

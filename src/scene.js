@@ -1,11 +1,11 @@
 /**
-* The SceneTree contains all the info about the Scene and nodes
+* The Scene contains all the info about the Scene and nodes
 *
-* @class SceneTree
+* @class Scene
 * @constructor
 */
 
-function SceneTree()
+function Scene()
 {
 	this.uid = LS.generateUId("TREE-");
 
@@ -30,7 +30,7 @@ function SceneTree()
 	//in case the resources base path are located somewhere else, if null the default is used
 	this.external_repository = null;
 
-	//work in progress, not finished yet. This will contain all the objects
+	//work in progress, not finished yet. This will contain all the objects in cells
 	this._spatial_container = new LS.SpatialContainer();
 
 	this.external_scripts = []; //external scripts that must be loaded before initializing the scene (mostly libraries used by this scene)
@@ -43,6 +43,7 @@ function SceneTree()
 	//FEATURES NOT YET FULLY IMPLEMENTED
 	this._paths = []; //FUTURE FEATURE: to store splines I think
 	this._local_resources = {}; //used to store resources that go with the scene
+	this.texture_atlas = null;
 
 	this.layer_names = ["main","secondary"];
 
@@ -54,9 +55,9 @@ function SceneTree()
 	this.init();
 }
 
-//LS.extendClass( SceneTree, ComponentContainer ); //scene could also have components
+//LS.extendClass( Scene, ComponentContainer ); //scene could also have components
 
-Object.defineProperty( SceneTree.prototype, "root", {
+Object.defineProperty( Scene.prototype, "root", {
 	enumerable: true,
 	get: function() {
 		return this._root;
@@ -66,7 +67,7 @@ Object.defineProperty( SceneTree.prototype, "root", {
 	}
 });
 
-Object.defineProperty( SceneTree.prototype, "time", {
+Object.defineProperty( Scene.prototype, "time", {
 	enumerable: true,
 	get: function() {
 		return this._time;
@@ -76,7 +77,7 @@ Object.defineProperty( SceneTree.prototype, "time", {
 	}
 });
 
-Object.defineProperty( SceneTree.prototype, "state", {
+Object.defineProperty( Scene.prototype, "state", {
 	enumerable: true,
 	get: function() {
 		return this._state;
@@ -86,7 +87,7 @@ Object.defineProperty( SceneTree.prototype, "state", {
 	}
 });
 
-Object.defineProperty( SceneTree.prototype, "globalTime", {
+Object.defineProperty( Scene.prototype, "globalTime", {
 	enumerable: true,
 	get: function() {
 		return this._global_time;
@@ -96,7 +97,7 @@ Object.defineProperty( SceneTree.prototype, "globalTime", {
 	}
 });
 
-Object.defineProperty( SceneTree.prototype, "frame", {
+Object.defineProperty( Scene.prototype, "frame", {
 	enumerable: true,
 	get: function() {
 		return this._frame;
@@ -107,7 +108,7 @@ Object.defineProperty( SceneTree.prototype, "frame", {
 });
 
 //Some useful events
-SceneTree.supported_events = ["start","update","finish","clear","beforeReload","change","afterRender","configure","nodeAdded","nodeChangeParent","nodeComponentRemoved","reload","renderPicking","scene_loaded","serialize"];
+Scene.supported_events = ["start","update","finish","clear","beforeReload","change","afterRender","configure","nodeAdded","nodeChangeParent","nodeComponentRemoved","reload","renderPicking","scene_loaded","serialize"];
 
 //methods
 
@@ -118,7 +119,7 @@ SceneTree.supported_events = ["start","update","finish","clear","beforeReload","
 * @method init
 * @return {Boolean} Returns true on success
 */
-SceneTree.prototype.init = function()
+Scene.prototype.init = function()
 {
 	this.id = "";
 	//this.materials = {}; //shared materials cache: moved to LS.RM.resources
@@ -127,6 +128,7 @@ SceneTree.prototype.init = function()
 	this.global_scripts = [];
 	this.external_scripts = [];
 	this.preloaded_resources = {};
+	this.texture_atlas = null;
 
 	this._root.removeAllComponents();
 	this._root.uid = LS.generateUId("NODE-");
@@ -155,6 +157,8 @@ SceneTree.prototype.init = function()
 	this._start_time = 0; //in seconds
 	this._last_dt = 1/60; //in seconds
 	this._must_redraw = true;
+	this._fixed_update_timestep = 1/60;
+	this._remaining_fixed_update_time = 0;
 
 	if(this.selected_node) 
 		delete this.selected_node;
@@ -173,7 +177,7 @@ SceneTree.prototype.init = function()
 *
 * @method clear
 */
-SceneTree.prototype.clear = function()
+Scene.prototype.clear = function()
 {
 	//remove all nodes to ensure no lose callbacks are left
 	while(this._root._children && this._root._children.length)
@@ -201,10 +205,10 @@ SceneTree.prototype.clear = function()
 * @method configure
 * @param {Object} scene_info the object containing all the info about the nodes and config of the scene
 */
-SceneTree.prototype.configure = function( scene_info )
+Scene.prototype.configure = function( scene_info )
 {
 	if(!scene_info || scene_info.constructor === String)
-		throw("SceneTree configure requires object");
+		throw("Scene configure requires object");
 
 	LEvent.trigger(this,"preConfigure",scene_info);
 
@@ -216,7 +220,7 @@ SceneTree.prototype.configure = function( scene_info )
 	if(scene_info.uid)
 		this.uid = scene_info.uid;
 
-	if((scene_info.object_class || scene_info.object_type) != "SceneTree") //legacy
+	if((scene_info.object_class || scene_info.object_type) != "Scene") //legacy
 		console.warn("Warning: object set to scene doesnt look like a propper one.", scene_info);
 
 	if(scene_info.external_repository)
@@ -245,14 +249,17 @@ SceneTree.prototype.configure = function( scene_info )
 	if( scene_info.layer_names )
 		this.layer_names = scene_info.layer_names.concat();
 
-	if(scene_info.animation)
+	if( scene_info.animation )
 		this.animation = new LS.Animation( scene_info.animation );
 
 	//if(scene_info.components)
 	//	this.configureComponents( scene_info );
 
-	if(scene_info.editor)
+	if( scene_info.editor )
 		this._editor = scene_info.editor;
+
+	if( scene_info.texture_atlas )
+		this.texture_atlas = scene_info.texture_atlas;
 
 	/**
 	 * Fired after the scene has been configured
@@ -278,7 +285,7 @@ SceneTree.prototype.configure = function( scene_info )
 * @return {Object} return a JS Object with all the scene info
 */
 
-SceneTree.prototype.serialize = function( simplified  )
+Scene.prototype.serialize = function( simplified  )
 {
 	var o = {};
 
@@ -300,6 +307,7 @@ SceneTree.prototype.serialize = function( simplified  )
 	o.global_scripts = this.global_scripts.concat();
 	o.external_scripts = this.external_scripts.concat();
 	o.preloaded_resources = LS.cloneObject( this.preloaded_resources );
+	o.texture_atlas = LS.cloneObject( this.texture_atlas );
 
 	if( this._editor )
 		o.editor = this._editor;
@@ -329,7 +337,7 @@ SceneTree.prototype.serialize = function( simplified  )
 * @param {Function}[on_scripts_loaded=null] the callback to call when the loading is complete but before assigning the scene
 */
 
-SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded, on_scripts_loaded )
+Scene.prototype.setFromJSON = function( data, on_complete, on_error, on_progress, on_resources_loaded, on_scripts_loaded )
 {
 	if(!data)
 		return;
@@ -349,7 +357,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 		}
 	}
 
-	var scripts = LS.SceneTree.getScriptsList( data, true );
+	var scripts = LS.Scene.getScriptsList( data, true );
 
 	//check JSON for special scripts
 	if ( scripts.length )
@@ -365,6 +373,15 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 
 		that.init();
 		that.configure(response);
+
+		if( that.texture_atlas )
+			LS.RM.loadTextureAtlas( that.texture_atlas, inner_preloaded_all );
+		else
+			inner_preloaded_all();
+	}
+
+	function inner_preloaded_all()
+	{
 		that.loadResources( inner_all_loaded );
 		/**
 		 * Fired when the scene has been loaded but before the resources
@@ -411,7 +428,7 @@ SceneTree.prototype.setFromJSON = function( data, on_complete, on_error, on_prog
 * @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
 */
 
-SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on_resources_loaded, on_loaded )
+Scene.prototype.load = function( url, on_complete, on_error, on_progress, on_resources_loaded, on_loaded )
 {
 	if(!url)
 		return;
@@ -431,6 +448,8 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		error: inner_error
 	});
 
+	this._state = LS.LOADING;
+
 	/**
 	 * Fired before loading scene
 	 * @event beforeLoad
@@ -449,7 +468,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 			return;
 
 		//for DAEs
-		if( pack.object_class == "SceneTree")
+		if( pack.object_class == "Scene")
 		{
 			inner_json_loaded( pack );
 			return;
@@ -457,7 +476,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		else if( pack.object_class == "SceneNode") 
 		{
 			var root = pack.serialize();
-			inner_json_loaded( { object_class: "SceneTree", root: root } );
+			inner_json_loaded( { object_class: "Scene", root: root } );
 			return;
 		}
 
@@ -477,7 +496,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 		if( response.constructor !== Object )
 			throw("response must be object");
 
-		var scripts = LS.SceneTree.getScriptsList( response, true );
+		var scripts = LS.Scene.getScriptsList( response, true );
 
 		//check JSON for special scripts
 		if ( scripts.length )
@@ -532,7 +551,7 @@ SceneTree.prototype.load = function( url, on_complete, on_error, on_progress, on
 * @param {Function}[on_progress=null] it is called while loading the scene info (not the associated resources)
 * @param {Function}[on_resources_loaded=null] it is called when all the resources had been loaded
 */
-SceneTree.prototype.loadFromResources = function( url, on_complete, on_error, on_progress, on_resources_loaded )
+Scene.prototype.loadFromResources = function( url, on_complete, on_error, on_progress, on_resources_loaded )
 {
 	url = LS.ResourcesManager.getFullURL( url );
 	this.load( url, on_complete, on_error, on_progress, on_resources_loaded );
@@ -543,15 +562,15 @@ SceneTree.prototype.loadFromResources = function( url, on_complete, on_error, on
 /**
 * Static method, returns a list of all the scripts that must be loaded, in order and with the full path
 *
-* @method SceneTree.getScriptsList
-* @param {SceneTree|Object} scene the object containing info about the scripts (could be a scene or a JSON object)
+* @method Scene.getScriptsList
+* @param {Scene|Object} scene the object containing info about the scripts (could be a scene or a JSON object)
 * @param {Boolean} allow_local if we allow local resources
 * @param {Boolean} full_paths if true it will return the full path to every resource
 */
-SceneTree.getScriptsList = function( scene, allow_local, full_paths )
+Scene.getScriptsList = function( scene, allow_local, full_paths )
 {
 	if(!scene)
-		throw("SceneTree.getScriptsList: scene cannot be null");
+		throw("Scene.getScriptsList: scene cannot be null");
 
 	var scripts = [];
 	if ( scene.external_scripts && scene.external_scripts.length )
@@ -581,10 +600,10 @@ SceneTree.getScriptsList = function( scene, allow_local, full_paths )
 }
 
 //reloads external and global scripts taking into account if they come from wbins
-SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
+Scene.prototype.loadScripts = function( scripts, on_complete, on_error, force_reload )
 {
 	//get a list of scripts (they cannot be fullpaths)
-	scripts = scripts || LS.SceneTree.getScriptsList( this, true );
+	scripts = scripts || LS.Scene.getScriptsList( this, true );
 
 	if(!scripts.length)
 	{
@@ -633,7 +652,7 @@ SceneTree.prototype.loadScripts = function( scripts, on_complete, on_error, forc
 }
 
 //used to ensure that components use the right class when the class comes from a global script
-SceneTree.prototype.checkComponentsCodeModification = function()
+Scene.prototype.checkComponentsCodeModification = function()
 {
 	for(var i = 0; i < this._nodes.length; ++i )
 	{
@@ -681,7 +700,7 @@ SceneTree.prototype.checkComponentsCodeModification = function()
 	}
 }
 
-SceneTree.prototype.appendScene = function(scene)
+Scene.prototype.appendScene = function(scene)
 {
 	//clone: because addNode removes it from scene.nodes array
 	var nodes = scene.root.childNodes;
@@ -702,7 +721,7 @@ SceneTree.prototype.appendScene = function(scene)
 	}
 }
 
-SceneTree.prototype.getCamera = function()
+Scene.prototype.getCamera = function()
 {
 	var camera = this._root.camera;
 	if(camera) 
@@ -722,7 +741,7 @@ SceneTree.prototype.getCamera = function()
 * @param {boolean} force [optional] if you want to collect the cameras again, otherwise it returns the last ones collected
 * @return {Array} cameras
 */
-SceneTree.prototype.getActiveCameras = function( force )
+Scene.prototype.getActiveCameras = function( force )
 {
 	if(force)
 		LEvent.trigger(this, "collectCameras", this._cameras );
@@ -735,7 +754,7 @@ SceneTree.prototype.getActiveCameras = function( force )
 * @method getAllCameras
 * @return {Array} cameras
 */
-SceneTree.prototype.getAllCameras = function()
+Scene.prototype.getAllCameras = function()
 {
 	var cameras = [];
 	for(var i = 0; i < this._nodes.length; ++i)
@@ -748,7 +767,7 @@ SceneTree.prototype.getAllCameras = function()
 	return cameras;
 }
 
-SceneTree.prototype.getLight = function()
+Scene.prototype.getLight = function()
 {
 	return this._root.light;
 }
@@ -760,14 +779,14 @@ SceneTree.prototype.getLight = function()
 * @param {boolean} force [optional] if you want to collect the lights again, otherwise it returns the last ones collected
 * @return {Array} lights
 */
-SceneTree.prototype.getActiveLights = function( force )
+Scene.prototype.getActiveLights = function( force )
 {
 	if(force)
 		LEvent.trigger(this, "collectLights", this._lights );
 	return this._lights;
 }
 
-SceneTree.prototype.onNodeAdded = function(e,node)
+Scene.prototype.onNodeAdded = function(e,node)
 {
 	//remove from old scene
 	if(node._in_tree && node._in_tree != this)
@@ -813,7 +832,7 @@ SceneTree.prototype.onNodeAdded = function(e,node)
 	LEvent.trigger(this,"change");
 }
 
-SceneTree.prototype.onNodeRemoved = function(e,node)
+Scene.prototype.onNodeRemoved = function(e,node)
 {
 	var pos = this._nodes.indexOf(node);
 	if(pos == -1) 
@@ -846,7 +865,7 @@ SceneTree.prototype.onNodeRemoved = function(e,node)
 *
 * @method recomputeNodesArray
 */
-SceneTree.prototype.recomputeNodesArray = function()
+Scene.prototype.recomputeNodesArray = function()
 {
 	var nodes = this._nodes;
 	var pos = 0;
@@ -864,12 +883,12 @@ SceneTree.prototype.recomputeNodesArray = function()
 }
 
 //WIP
-SceneTree.prototype.attachSceneElement = function( element )
+Scene.prototype.attachSceneElement = function( element )
 {
 	this._spatial_container.add( element );
 }
 
-SceneTree.prototype.detachSceneElement = function( element )
+Scene.prototype.detachSceneElement = function( element )
 {
 	this._spatial_container.remove( element );
 }
@@ -882,7 +901,7 @@ SceneTree.prototype.detachSceneElement = function( element )
 * @param {bool} recompute [optional] in case you want to rearrange the nodes
 * @return {Array} array containing every SceneNode in the scene
 */
-SceneTree.prototype.getNodes = function( recompute )
+Scene.prototype.getNodes = function( recompute )
 {
 	if(recompute)
 		this.recomputeNodesArray();
@@ -896,7 +915,7 @@ SceneTree.prototype.getNodes = function( recompute )
 * @param {String} name node name to search
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNode = function( name )
+Scene.prototype.getNode = function( name )
 {
 	if(name == "")
 		return this.root;
@@ -926,7 +945,7 @@ SceneTree.prototype.getNode = function( name )
 * @param {String} name name of the node
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNodeByName = function( name )
+Scene.prototype.getNodeByName = function( name )
 {
 	return this._nodes_by_name[ name ];
 }
@@ -938,7 +957,7 @@ SceneTree.prototype.getNodeByName = function( name )
 * @param {String} uid uid of the node
 * @return {Object} the node or null if it didnt find it
 */
-SceneTree.prototype.getNodeByUId = function( uid )
+Scene.prototype.getNodeByUId = function( uid )
 {
 	return this._nodes_by_uid[ uid ];
 }
@@ -950,13 +969,13 @@ SceneTree.prototype.getNodeByUId = function( uid )
 * @param {Number} node index
 * @return {Object} returns the node at the 'index' position in the nodes array
 */
-SceneTree.prototype.getNodeByIndex = function(index)
+Scene.prototype.getNodeByIndex = function(index)
 {
 	return this._nodes[ index ];
 }
 
 //for those who are more traditional
-SceneTree.prototype.getElementById = SceneTree.prototype.getNode;
+Scene.prototype.getElementById = Scene.prototype.getNode;
 
 /**
 * retrieves a node array filtered by the filter function
@@ -965,7 +984,7 @@ SceneTree.prototype.getElementById = SceneTree.prototype.getNode;
 * @param {function} filter a callback function that receives every node and must return true or false
 * @return {Array} array containing the nodes that passes the filter
 */
-SceneTree.prototype.filterNodes = function( filter )
+Scene.prototype.filterNodes = function( filter )
 {
 	var r = [];
 	for(var i = 0; i < this._nodes.length; ++i)
@@ -981,7 +1000,7 @@ SceneTree.prototype.filterNodes = function( filter )
 * @param {String} uid uid of the node
 * @return {Object} component or null
 */
-SceneTree.prototype.findComponentByUId = function(uid)
+Scene.prototype.findComponentByUId = function(uid)
 {
 	for(var i = 0; i < this._nodes.length; ++i)
 	{
@@ -999,7 +1018,7 @@ SceneTree.prototype.findComponentByUId = function(uid)
 * @param {String} uid uid of the material
 * @return {Object} Material or null
 */
-SceneTree.prototype.findMaterialByUId = function(uid)
+Scene.prototype.findMaterialByUId = function(uid)
 {
 	if(LS.RM.materials[uid])
 		return LS.RM.materials[uid];
@@ -1023,7 +1042,7 @@ SceneTree.prototype.findMaterialByUId = function(uid)
 * @param {String} locator locator of the property
 * @return {Object} object with node, component, name, and value
 */
-SceneTree.prototype.getPropertyInfo = function( property_uid )
+Scene.prototype.getPropertyInfo = function( property_uid )
 {
 	var path = property_uid.split("/");
 
@@ -1071,7 +1090,7 @@ SceneTree.prototype.getPropertyInfo = function( property_uid )
 * @param {Array} path
 * @return {Object} object with node, component, name, and value
 */
-SceneTree.prototype.getPropertyInfoFromPath = function( path )
+Scene.prototype.getPropertyInfoFromPath = function( path )
 {
 	if(path[0].substr(0,5) == "@MAT-")
 	{
@@ -1098,7 +1117,7 @@ SceneTree.prototype.getPropertyInfoFromPath = function( path )
 * @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.getPropertyValue = function( locator, root_node )
+Scene.prototype.getPropertyValue = function( locator, root_node )
 {
 	var path = property_uid.split("/");
 
@@ -1116,7 +1135,7 @@ SceneTree.prototype.getPropertyValue = function( locator, root_node )
 	return node.getPropertyValueFromPath( path.slice(1) );
 }
 
-SceneTree.prototype.getPropertyValueFromPath = function( path )
+Scene.prototype.getPropertyValueFromPath = function( path )
 {
 	if(path[0].substr(0,5) == "@MAT-")
 	{
@@ -1141,7 +1160,7 @@ SceneTree.prototype.getPropertyValueFromPath = function( path )
 * @param {SceneNode} root [Optional] if you want to limit the locator to search inside a node
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
+Scene.prototype.setPropertyValue = function( locator, value, root_node )
 {
 	var path = locator.split("/");
 	this.setPropertyValueFromPath( path, value, root_node, 0 );
@@ -1158,7 +1177,7 @@ SceneTree.prototype.setPropertyValue = function( locator, value, root_node )
 * @param {Number} offset [optional] used to avoir generating garbage, instead of slicing the array every time, we pass the array index
 * @return {Component} the target where the action was performed
 */
-SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node, offset )
+Scene.prototype.setPropertyValueFromPath = function( path, value, root_node, offset )
 {
 	offset = offset || 0;
 	if(path.length < (offset+1))
@@ -1193,7 +1212,7 @@ SceneTree.prototype.setPropertyValueFromPath = function( path, value, root_node,
 * @param {Boolean} skip_local [optional] skips resources whose name starts with ":" (considered local resources)
 * @return {Object|Array} the resources in object format (or if as_array is true, then an array)
 */
-SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, skip_local )
+Scene.prototype.getResources = function( resources, as_array, skip_in_pack, skip_local )
 {
 	resources = resources || {};
 
@@ -1211,6 +1230,9 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, 
 	if(this.preloaded_resources)
 		for(var i in this.preloaded_resources)
 			resources[ i ] = true;
+
+	if(this.texture_atlas)
+		resources[ this.texture_atlas.filename ] = true;
 
 	//global scripts
 	for(var i = 0; i < this.global_scripts.length; ++i)
@@ -1269,7 +1291,7 @@ SceneTree.prototype.getResources = function( resources, as_array, skip_in_pack, 
 * @method loadResources
 * @param {Function} on_complete called when the load of all the resources is complete
 */
-SceneTree.prototype.loadResources = function( on_complete )
+Scene.prototype.loadResources = function( on_complete )
 {
 	//resources is an object format
 	var resources = this.getResources([]);
@@ -1310,7 +1332,7 @@ SceneTree.prototype.loadResources = function( on_complete )
 * @method addPreloadResource
 * @param {String} fullpath the name of the resource
 */
-SceneTree.prototype.addPreloadResource = function( fullpath )
+Scene.prototype.addPreloadResource = function( fullpath )
 {
 	this.preloaded_resources[ fullpath ] = true;
 }
@@ -1321,7 +1343,7 @@ SceneTree.prototype.addPreloadResource = function( fullpath )
 * @method removePreloadResource
 * @param {String} fullpath the name of the resource
 */
-SceneTree.prototype.removePreloadResource = function( fullpath )
+Scene.prototype.removePreloadResource = function( fullpath )
 {
 	delete this.preloaded_resources[ fullpath ];
 }
@@ -1333,7 +1355,7 @@ SceneTree.prototype.removePreloadResource = function( fullpath )
 * @method start
 * @param {Number} dt delta time
 */
-SceneTree.prototype.start = function()
+Scene.prototype.start = function()
 {
 	if(this._state == LS.PLAYING)
 		return;
@@ -1344,7 +1366,7 @@ SceneTree.prototype.start = function()
 	 * Fired when the nodes need to be initialized
 	 *
 	 * @event init
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"init",this);
 	this.triggerInNodes("init");
@@ -1352,7 +1374,7 @@ SceneTree.prototype.start = function()
 	 * Fired when the scene is starting to play
 	 *
 	 * @event start
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"start",this);
 	this.triggerInNodes("start");
@@ -1363,7 +1385,7 @@ SceneTree.prototype.start = function()
 *
 * @method pause
 */
-SceneTree.prototype.pause = function()
+Scene.prototype.pause = function()
 {
 	if( this._state != LS.PLAYING )
 		return;
@@ -1373,7 +1395,7 @@ SceneTree.prototype.pause = function()
 	 * Fired when the scene pauses (mostly in the editor)
 	 *
 	 * @event pause
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"pause",this);
 	this.triggerInNodes("pause");
@@ -1385,7 +1407,7 @@ SceneTree.prototype.pause = function()
 *
 * @method unpause
 */
-SceneTree.prototype.unpause = function()
+Scene.prototype.unpause = function()
 {
 	if(this._state != LS.PAUSED)
 		return;
@@ -1395,7 +1417,7 @@ SceneTree.prototype.unpause = function()
 	 * Fired when the scene unpauses (mostly in the editor)
 	 *
 	 * @event unpause
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"unpause",this);
 	this.triggerInNodes("unpause");
@@ -1409,7 +1431,7 @@ SceneTree.prototype.unpause = function()
 * @method finish
 * @param {Number} dt delta time
 */
-SceneTree.prototype.finish = function()
+Scene.prototype.finish = function()
 {
 	if(this._state == LS.STOPPED)
 		return;
@@ -1419,7 +1441,7 @@ SceneTree.prototype.finish = function()
 	 * Fired when the scene stops playing
 	 *
 	 * @event finish
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"finish",this);
 	this.triggerInNodes("finish");
@@ -1432,7 +1454,7 @@ SceneTree.prototype.finish = function()
 *
 * @method render
 */
-SceneTree.prototype.render = function(options)
+Scene.prototype.render = function(options)
 {
 	this._renderer.render(this, options);
 }
@@ -1441,27 +1463,32 @@ SceneTree.prototype.render = function(options)
 * This methods crawls the whole tree and collects all the useful info (cameras, lights, render instances, colliders, etc)
 * Mostly rendering stuff but also some collision info.
 * TO DO: refactor this so it doesnt redo the same task in every frame, only if changes are made
+* @param {Array} cameras [optional] an array of cameras in case we want to force some viewpoint
 * @method collectData
 */
-SceneTree.prototype.collectData = function()
+Scene.prototype.collectData = function( cameras )
 {
-	//var nodes = scene.nodes;
-	var nodes = this.getNodes();
-
 	var instances = this._instances;
 	var lights = this._lights;
-	var cameras = this._cameras;
 	var colliders = this._colliders;
 
 	//empty containers
 	instances.length = 0;
 	lights.length = 0;
-	cameras.length = 0;
 	colliders.length = 0;
 
-	//TODO: move some of the node events to scene events
+	//first collect cameras (in case we want to filter nodes by proximity to camera
+	if(!cameras || cameras.length == 0)
+	{
+		cameras = this._cameras;
+		cameras.length = 0;
+		LEvent.trigger( this, "collectCameras", cameras );
+	}
 
-	//collect render instances, lights and cameras
+	//get nodes: TODO find nodes close to the active cameras
+	var nodes = this.getNodes();
+
+	//collect render instances and lights
 	for(var i = 0, l = nodes.length; i < l; ++i)
 	{
 		var node = nodes[i];
@@ -1474,23 +1501,21 @@ SceneTree.prototype.collectData = function()
 		if(node.transform)
 			node.transform.updateGlobalMatrix();
 
-		if(!node._instances)
-			node._instances = [];
-		else
-			node._instances.length = 0;
+		//clear instances per node: TODO: if static maybe just leave it as it is
+		node._instances.length = 0;
 
 		//get render instances: remember, triggers only support one parameter
-		LEvent.trigger( node,"collectRenderInstances", node._instances );
-		LEvent.trigger( node,"collectPhysicInstances", colliders );
+		LEvent.trigger( node, "collectRenderInstances", node._instances );
+		LEvent.trigger( node, "collectPhysicInstances", colliders );
 
-		instances.push.apply(instances, node._instances); //push inside
+		//concatenate all instances in a single array
+		instances.push.apply(instances, node._instances);
 	}
 
-	//we also collect from the scene itself 
+	//we also collect from the scene itself (used for lights, skybox, etc)
 	LEvent.trigger( this, "collectRenderInstances", instances );
 	LEvent.trigger( this, "collectPhysicInstances", colliders );
 	LEvent.trigger( this, "collectLights", lights );
-	LEvent.trigger( this, "collectCameras", cameras );
 
 	//before processing (in case somebody wants to add some data to the containers)
 	LEvent.trigger( this, "collectData" );
@@ -1500,7 +1525,7 @@ SceneTree.prototype.collectData = function()
 	{
 		var instance = instances[i];
 		//compute the axis aligned bounding box
-		if(instance.use_bounding) //no test if render_settings?
+		if(instance.use_bounding)
 			instance.updateAABB();
 	}
 
@@ -1515,61 +1540,19 @@ SceneTree.prototype.collectData = function()
 	this._last_collect_frame = this._frame;
 }
 
-//instead of recollect everything, we can reuse the info from previous frame, but objects need to be updated
-//WIP: NOT USED YET
-SceneTree.prototype.updateCollectedData = function()
-{
-	var nodes = this._nodes;
-	var instances = this._instances;
-	var lights = this._lights;
-	var cameras = this._cameras;
-	var colliders = this._colliders;
-
-	//update matrices
-	for(var i = 0, l = nodes.length; i < l; ++i)
-		if(nodes[i].transform)
-			nodes[i].transform.updateGlobalMatrix();
-	
-	//render instances: just update them
-	for(var i = 0, l = instances.length; i < l; ++i)
-	{
-		var instance = instances[i];
-		if(instance.flags & RI_IGNORE_AUTOUPDATE)
-			instance.update();
-		//compute the axis aligned bounding box
-		if(!(instance.flags & RI_IGNORE_FRUSTUM))
-			instance.updateAABB();
-	}
-
-	//before processing (in case somebody wants to add some data to the containers)
-	LEvent.trigger( this, "updateCollectData" );
-
-	//lights
-	for(var i = 0, l = lights.length; i < l; ++i)
-	{
-	}
-
-	//cameras
-	for(var i = 0, l = cameras.length; i < l; ++i)
-	{
-	}
-
-	//colliders
-	for(var i = 0, l = colliders.length; i < l; ++i)
-	{
-		var collider = colliders[i];
-		collider.updateAABB();
-	}
-
-}
-
-SceneTree.prototype.update = function(dt)
+/**
+* updates the scene (it handles variable update and fixedUpdate)
+*
+* @method update
+* @param {Number} dt delta time in seconds
+*/
+Scene.prototype.update = function(dt)
 {
 	/**
 	 * Fired before doing an update
 	 *
 	 * @event beforeUpdate
-	 * @param {LS.SceneTree} scene
+	 * @param {LS.Scene} scene
 	 */
 	LEvent.trigger(this,"beforeUpdate", this);
 
@@ -1585,7 +1568,25 @@ SceneTree.prototype.update = function(dt)
 	 * @param {number} dt
 	 */
 	LEvent.trigger(this,"update", dt);
-	//this.triggerInNodes("update",dt, true); //REMOVED
+
+	/**
+	 * Fired while updating but using a fixed timestep (1/60)
+	 *
+	 * @event fixedUpdate
+	 * @param {number} dt
+	 */
+	if(this._fixed_update_timestep > 0)
+	{
+		this._remaining_fixed_update_time += dt;
+		if(LEvent.hasBind(this,"fixedUpdate"))
+			while( this._remaining_fixed_update_time > this._fixed_update_timestep )
+			{
+				LEvent.trigger(this, "fixedUpdate", this._fixed_update_timestep );
+				this._remaining_fixed_update_time -= this._fixed_update_timestep;
+			}
+		else
+			this._remaining_fixed_update_time = this._remaining_fixed_update_time % this._fixed_update_timestep;
+	}
 
 	/**
 	 * Fired after updating the scene
@@ -1604,7 +1605,7 @@ SceneTree.prototype.update = function(dt)
 * @param {Object} data data to send associated to the event
 */
 
-SceneTree.prototype.triggerInNodes = function(event_type, data)
+Scene.prototype.triggerInNodes = function(event_type, data)
 {
 	LEvent.triggerArray( this._nodes, event_type, data);
 }
@@ -1616,7 +1617,7 @@ SceneTree.prototype.triggerInNodes = function(event_type, data)
 * @param {String} prefix the prefix, if not given then "node" is used
 * @return {String} a node name that it is not in the scene
 */
-SceneTree.prototype.generateUniqueNodeName = function(prefix)
+Scene.prototype.generateUniqueNodeName = function(prefix)
 {
 	prefix = prefix || "node";
 	var i = 1;
@@ -1643,13 +1644,13 @@ SceneTree.prototype.generateUniqueNodeName = function(prefix)
 *
 * @method requestFrame
 */
-SceneTree.prototype.requestFrame = function()
+Scene.prototype.requestFrame = function()
 {
 	this._must_redraw = true;
 	LEvent.trigger( this, "requestFrame" );
 }
 
-SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
+Scene.prototype.refresh = Scene.prototype.requestFrame; //DEPRECATED
 
 /**
 * returns current scene time (remember that scene time remains freezed if the scene is not playing)
@@ -1657,14 +1658,14 @@ SceneTree.prototype.refresh = SceneTree.prototype.requestFrame; //DEPRECATED
 * @method getTime
 * @return {Number} scene time in seconds
 */
-SceneTree.prototype.getTime = function()
+Scene.prototype.getTime = function()
 {
 	return this._time;
 }
 
 //This is ugly but sometimes if scripts fail there is a change the could get hooked to the scene forever
 //so this way we remove any event that belongs to a component thats doesnt belong to this scene tree
-SceneTree.prototype.purgeResidualEvents = function()
+Scene.prototype.purgeResidualEvents = function()
 {
 	if(!this.__events)
 		return;
@@ -1701,7 +1702,7 @@ SceneTree.prototype.purgeResidualEvents = function()
 * @param {Number} layers a number with the enabled layers in bit mask format, if ommited all layers are returned
 * @return {Array} array of strings with the layer names
 */
-SceneTree.prototype.getLayerNames = function(layers)
+Scene.prototype.getLayerNames = function(layers)
 {
 	var r = [];
 
@@ -1720,7 +1721,7 @@ SceneTree.prototype.getLayerNames = function(layers)
 * @param {String||Component} type the type of the components to search (could be a string with the name or the class itself)
 * @return {Array} array with the components found
 */
-SceneTree.prototype.findNodeComponents = function( type )
+Scene.prototype.findNodeComponents = function( type )
 {
 	if(!type)
 		return;
@@ -1756,7 +1757,7 @@ SceneTree.prototype.findNodeComponents = function( type )
 * @param {SceneNode} parent [optional] if no parent then scene.root will be used
 * @return {SceneNode} the resulting prefab node
 */
-SceneTree.prototype.instantiate = function( prefab_url, position, rotation, parent )
+Scene.prototype.instantiate = function( prefab_url, position, rotation, parent )
 {
 	if(!prefab_url || prefab_url.constructor !== String)
 		throw("prefab must be the url to the prefab");
@@ -1783,7 +1784,7 @@ SceneTree.prototype.instantiate = function( prefab_url, position, rotation, pare
 * @param {Array} resources [optional] array with all the resources to add, if no array is given it will get the active resources in this scene
 * @return {LS.Pack} the pack
 */
-SceneTree.prototype.toPack = function( fullpath, resources )
+Scene.prototype.toPack = function( fullpath, resources )
 {
 	fullpath = fullpath || "unnamed_scene";
 
@@ -1801,13 +1802,13 @@ SceneTree.prototype.toPack = function( fullpath, resources )
 	//create pack
 	var pack = LS.Pack.createPack( LS.RM.getFilename( final_fullpath ), resources, { "scene.json": scene_json } );
 	pack.fullpath = final_fullpath;
-	pack.category = "SceneTree";
+	pack.category = "Scene";
 
 	return pack;
 }
 
 //WIP: this is in case we have static nodes in the scene
-SceneTree.prototype.updateStaticObjects = function()
+Scene.prototype.updateStaticObjects = function()
 {
 	var old = LS.allow_static;
 	LS.allow_static = false;
@@ -1816,7 +1817,7 @@ SceneTree.prototype.updateStaticObjects = function()
 }
 
 //tells to all the components, nodes, materials, etc, that one resource has changed its name so they can update it inside
-SceneTree.prototype.sendResourceRenamedEvent = function( old_name, new_name, resource )
+Scene.prototype.sendResourceRenamedEvent = function( old_name, new_name, resource )
 {
 	//scene globals that use resources
 	for(var i = 0; i < this.external_scripts.length; i++)
@@ -1839,6 +1840,9 @@ SceneTree.prototype.sendResourceRenamedEvent = function( old_name, new_name, res
 			this.preloaded_resources[ new_name ] = true;
 		}
 	}
+
+	if( this.texture_atlas && this.texture_atlas.filename == old_name )
+		this.texture_atlas.filename = new_name;
 
 	//to nodes
 	var nodes = this._nodes.concat();
@@ -1882,6 +1886,14 @@ SceneTree.prototype.sendResourceRenamedEvent = function( old_name, new_name, res
 	}
 }
 
+//used to search a resource according to the data path of this scene
+Scene.prototype.getDataPath = function( path )
+{
+	path = path || "";
+	var folder = this.extra.data_folder || this.extra.folder;
+	return LS.RM.cleanFullpath( folder + "/" + path );
+}
+
 
 /**
 * Creates and returns an scene animation track
@@ -1889,7 +1901,7 @@ SceneTree.prototype.sendResourceRenamedEvent = function( old_name, new_name, res
 * @method createAnimation
 * @return {LS.Animation} the animation track
 */
-SceneTree.prototype.createAnimation = function()
+Scene.prototype.createAnimation = function()
 {
 	if(this.animation)
 		return this.animation;
@@ -1899,6 +1911,7 @@ SceneTree.prototype.createAnimation = function()
 	return this.animation;
 }
 
-LS.SceneTree = SceneTree;
-LS.Classes.SceneTree = SceneTree;
+LS.Scene = Scene;
+LS.Classes.Scene = Scene;
+LS.Classes.SceneTree = Scene; //LEGACY
 

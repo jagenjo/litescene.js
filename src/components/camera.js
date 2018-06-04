@@ -49,7 +49,11 @@ function Camera(o)
 
 	this._background_color = vec4.fromValues(0,0,0,1);
 
-	this._use_custom_projection_matrix = false;
+	//in case we want to overwrite the view matrix manually
+	this._use_custom_projection_matrix = false; 
+
+	//in case we want to overwrite the view matrix manually
+	this.overwrite_material = null;
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
@@ -60,7 +64,6 @@ function Camera(o)
 	//lazy upload
 	this._must_update_view_matrix = true;
 	this._must_update_projection_matrix = true;
-
 	this._rendering_index = -1; //tells the number of this camera in the rendering process
 
 	//used for render to texture
@@ -205,14 +208,20 @@ Object.defineProperty( Camera.prototype, "center", {
 * @property focalLength {Number}
 * @default (depends)
 */
+var tmp = vec3.create();
+
 Object.defineProperty( Camera.prototype, "focalLength", {
 	get: function() {
 		return vec3.distance( this._eye, this._center );
 	},
 	set: function(v) {
-		var tmp = vec3.create();
+		v = Math.max(0.001,v); //avoid 0
 		vec3.sub( tmp, this._center, this._eye );
-		vec3.normalize( tmp, tmp );
+		var length = vec3.length(tmp);
+		if(length < 0.0001)
+			tmp.set([0,0,-1]);
+		else
+			v /= length;
 		vec3.scaleAndAdd( tmp, this._eye, tmp, v );
 		this._center.set( tmp );
 		this._must_update_view_matrix = true;

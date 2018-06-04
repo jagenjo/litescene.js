@@ -203,15 +203,15 @@ var Network = {
 	* @param {object} params form params
 	* @param {function} callback( file )
 	*/
-	requestFile: function( url, data, callback, callback_error )
+	requestFile: function( url, form_data, callback, callback_error )
 	{
-		if(typeof(data) == "function")
+		if(typeof(form_data) == "function")
 		{
 			callback_error = callback;
-			callback = data;
-			data = null;
+			callback = form_data;
+			form_data = null;
 		}
-		return LS.Network.request({url:url, data:data, success: callback, error: callback_error });
+		return LS.Network.request({url:url, data: form_data, success: callback, error: callback_error });
 	},
 
 	/**

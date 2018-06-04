@@ -261,7 +261,7 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 	if(scene_info && scene_info.constructor === String )
 		scene_info = JSON.parse(scene_info);
 
-	var scripts = LS.SceneTree.getScriptsList( scene_info );
+	var scripts = LS.Scene.getScriptsList( scene_info );
 
 	if( scripts && scripts.length )
 	{

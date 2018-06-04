@@ -27,17 +27,17 @@ function Script(o)
 			return this._root.getComponent(type,index)
 			}).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
-		createProperty: LS.Component.prototype.createProperty,
-		createAction: LS.Component.prototype.createAction,
-		bind: LS.Component.prototype.bind,
-		unbind: LS.Component.prototype.unbind,
-		unbindAll: LS.Component.prototype.unbindAll
+		createProperty: LS.BaseComponent.prototype.createProperty,
+		createAction: LS.BaseComponent.prototype.createAction,
+		bind: LS.BaseComponent.prototype.bind,
+		unbind: LS.BaseComponent.prototype.unbind,
+		unbindAll: LS.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_functions = [];
 	this._last_error = null;
-	this._breakpoint_on_call = false;
+	this._breakpoints = null;
 
 	if(o)
 		this.configure(o);
@@ -80,6 +80,7 @@ Script.defineAPIFunction( "onFinish", Script.BIND_TO_SCENE, "finish" );
 Script.defineAPIFunction( "onPrefabReady", Script.BIND_TO_NODE, "prefabReady" );
 //behaviour
 Script.defineAPIFunction( "onUpdate", Script.BIND_TO_SCENE, "update" );
+Script.defineAPIFunction( "onFixedUpdate", Script.BIND_TO_SCENE, "fixedUpdate" );
 Script.defineAPIFunction( "onNodeClicked", Script.BIND_TO_NODE, "node_clicked" );
 Script.defineAPIFunction( "onClicked", Script.BIND_TO_NODE, "clicked" );
 //rendering
@@ -195,6 +196,44 @@ Script.prototype.reload = function()
 }
 
 /**
+* It will stop the execution when this method is called, but only if the console is open and the method is an event related method (onRender, onUpdate, etc)
+* @method setBreakpoint
+* @param {String} method_name name of the method to add breakpoint
+* @param {Boolean} value true to set, false to remove
+*/
+Script.prototype.setBreakpoint = function( method_name, value )
+{
+	if(!this._breakpoints && !value)
+		return;
+
+	if(!this._breakpoints)
+		this._breakpoints = {};
+
+	if(value)
+		this._breakpoints[ method_name ] = true;
+	else
+	{
+		delete this._breakpoints[ method_name ];
+		if( Object.keys(this._breakpoints).length == 0 )
+			this._breakpoints = null;
+	}
+}
+
+/**
+* tells if there is a breakpoint set (using addBreakpoint) in this method
+* @method hasBreakpoint
+* @param {String} method_name name of the method to check if it has a breakpoint
+* @return {Boolean} true if there is a breakpoint
+*/
+Script.prototype.hasBreakpoint = function( method_name )
+{
+	if(!this._breakpoints)
+		return false;
+	return this._breakpoints[ method_name ];
+}
+
+
+/**
 * This is the method in charge of compiling the code and executing the constructor, which also creates the context.
 * It is called everytime the code is modified, that implies that the context is created when the component is configured.
 * @method processCode
@@ -261,6 +300,8 @@ Script.prototype.processCode = function( skip_events, reset_state )
 
 	if( this._name && this._root && this._root.scene )
 		LS.Script.active_scripts[ this._name ] = this;
+
+	console.log(" + Script: " + this._name + " CTX: ", this._script._context );
 
 	return ret;
 }
@@ -330,18 +371,33 @@ Script.prototype.onAction = function( action, params )
 		return ctx.onAction( action, params );
 }
 
-Script.prototype.getActions = function()
+/**
+* get actions that could be performed from graphs or animations
+* @method getActions
+*/
+Script.prototype.getActions = function(actions)
 {
 	var ctx = this.getContext();
-	if(ctx.getActions)
-		return ctx.getActions();
+	if(!ctx || !ctx.getActions)
+		return actions;
+
+	var new_actions = ctx.getActions();
+	if(new_actions)
+		for(var i in new_actions)
+			actions[i] = new_actions[i];
+	return actions;
 }
 
+/**
+* get events that could be triggered by this component
+* @method getEvents
+*/
 Script.prototype.getEvents = function()
 {
 	var ctx = this.getContext();
-	if(ctx.getEvents)
-		return ctx.getEvents();
+	if(!ctx || !ctx.getEvents)
+		return null;
+	return ctx.getEvents();
 }
 
 /*
@@ -529,10 +585,15 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	var event_info = LS.Script.API_events_to_function[ type ];
 	if(!event_info)
 		return; //????
-	if(this._breakpoint_on_call)
+
+	var has_breakpoint = false;
+	if( this._breakpoints )
 	{
-		this._breakpoint_on_call = false;
-		{{debugger}} //stops the execution if the console is open
+		if( this._breakpoints[ event_info.name ] )
+		{
+			has_breakpoint = true;
+			this.setBreakpoint( event_info.name, false );
+		}
 	}
 
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
@@ -540,6 +601,9 @@ Script.prototype.onScriptEvent = function( event_type, params )
 		console.warn("Script: blocked function trying to be executed, skipping: " + event_info.name );
 		return;
 	}
+
+	if(has_breakpoint)
+		{{debugger}}; //stops the execution if the console is open
 
 	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
@@ -729,11 +793,11 @@ function ScriptFromFile(o)
 	this._script.extra_methods = {
 		getComponent: (function() { return this; }).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + "/context"; },
-		createProperty: LS.Component.prototype.createProperty,
-		createAction: LS.Component.prototype.createAction,
-		bind: LS.Component.prototype.bind,
-		unbind: LS.Component.prototype.unbind,
-		unbindAll: LS.Component.prototype.unbindAll
+		createProperty: LS.BaseComponent.prototype.createProperty,
+		createAction: LS.BaseComponent.prototype.createAction,
+		bind: LS.BaseComponent.prototype.bind,
+		unbind: LS.BaseComponent.prototype.unbind,
+		unbindAll: LS.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
@@ -923,6 +987,8 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 	if(on_complete)
 		on_complete(this);
 
+	console.log(" + Script: " + this._name + " CTX: ", this._script._context );
+
 	return ret;
 }
 
@@ -959,19 +1025,8 @@ ScriptFromFile.prototype.onAction = function( action, params )
 		return ctx.onAction( action, params );
 }
 
-ScriptFromFile.prototype.getActions = function()
-{
-	var ctx = this.getContext();
-	if(ctx && ctx.getActions)
-		return ctx.getActions();
-}
-
-ScriptFromFile.prototype.getEvents = function()
-{
-	var ctx = this.getContext();
-	if(ctx && ctx.getEvents)
-		return ctx.getEvents();
-}
+ScriptFromFile.prototype.getActions = Script.prototype.getActions();
+ScriptFromFile.prototype.getEvents = Script.prototype.getEvents();
 
 ScriptFromFile.prototype.getResources = function(res)
 {

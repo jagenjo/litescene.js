@@ -325,7 +325,7 @@ var ResourcesManager = {
 		}
 
 		if( proxy_url.indexOf("@") != -1 )
-			this.proxy = "http://" + proxy_url.replace("@", window.location.host );
+			this.proxy = location.protocol + "//" + proxy_url.replace("@", window.location.host );
 		else
 			this.proxy = proxy_url;
 	},
@@ -602,13 +602,15 @@ var ResourcesManager = {
 			return false;
 		}
 
+		//we already tryed to load it and we couldnt find it, better not try again
 		if( this.resources_not_found[url] )
 			return;
 
 		//if it is already being loaded, then add the callback and wait
 		if(this.resources_being_loaded[url])
 		{
-			this.resources_being_loaded[url].push( {options: options, callback: on_complete} );
+			if(on_complete)
+				this.resources_being_loaded[url].push( { options: options, callback: on_complete } );
 			return;
 		}
 
@@ -865,7 +867,7 @@ var ResourcesManager = {
 		if( LS.ResourcesManager.resources_being_processed[ fullpath ] )
 			delete LS.ResourcesManager.resources_being_processed[ fullpath ];
 
-		//Load associated resources (some resources like LS.Prefab or LS.SceneTree have other resources associated that must be loaded too)
+		//Load associated resources (some resources like LS.Prefab or LS.Scene have other resources associated that must be loaded too)
 		if( resource.getResources )
 			LS.ResourcesManager.loadResources( resource.getResources({}) );
 
@@ -1542,8 +1544,8 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 		return null;
 	}
 
-	if( scene_data && scene_data.constructor === LS.SceneTree )
-		throw("processScene must receive object, no SceneTree");
+	if( scene_data && scene_data.constructor === LS.Scene )
+		throw("processScene must receive object, no Scene");
 
 	if(!scene_data.root)
 		throw("this is not an scene, root property missing");
@@ -1584,6 +1586,37 @@ LS.ResourcesManager.processScene = function( filename, data, options ) {
 	LS.ResourcesManager._parsing_local_file = false;
 
 	return node;
+}
+
+LS.ResourcesManager.loadTextureAtlas = function( atlas_info, on_complete, force )
+{
+	var image = new Image();
+	image.src = this.getFullURL( atlas_info.filename );
+	image.onload = inner_process;
+
+	function inner_process()
+	{
+		var size = atlas_info.thumbnail_size;
+		var canvas = document.createElement("canvas");
+		canvas.width = size;
+		canvas.height = size;
+		var ctx = canvas.getContext("2d");
+
+		for(var i in atlas_info.textures )
+		{
+			var info = atlas_info.textures[i];
+			ctx.clearRect(0,0,canvas.width,canvas.height);
+			ctx.drawImage( this, -info.pos[0], -info.pos[1] );
+			var texture = GL.Texture.fromImage( canvas, { format: GL.RGBA, magFilter: gl.LINEAR, minFilter: gl.LINEAR_MIPMAP_LINEAR, wrap: gl.REPEAT } );
+			if(!force)
+				texture.is_preview = true;
+			LS.ResourcesManager.registerResource( info.name, texture );
+		}
+
+		LS.GlobalScene.requestFrame();
+		if(on_complete)
+			on_complete();
+	}
 }
 
 // Post processors **********************************************************************************

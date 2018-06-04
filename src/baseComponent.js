@@ -22,10 +22,10 @@
 * instead components get all the methods from this class attached when the component is registered.
 * Components can overwrite this methods if they want.
 *
-* @class  Component
+* @class  BaseComponent
 * @namespace  LS
 */
-function Component(o)
+function BaseComponent(o)
 {
 	if(o)
 		this.configure(o);
@@ -35,7 +35,7 @@ function Component(o)
 * Returns the node where this components is attached
 * @method getRootNode
 **/
-Component.prototype.getRootNode = function()
+BaseComponent.prototype.getRootNode = function()
 {
 	return this._root;
 }
@@ -45,7 +45,7 @@ Component.prototype.getRootNode = function()
 * @method configure
 * @param {Object} o object with the serialized info
 **/
-Component.prototype.configure = function(o)
+BaseComponent.prototype.configure = function(o)
 { 
 	if( !o )
 		return;
@@ -62,7 +62,7 @@ Component.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialized info
 **/
-Component.prototype.serialize = function()
+BaseComponent.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this,null,false,false,true);
 	if(this.uid) //special case, not enumerable
@@ -81,7 +81,7 @@ Component.prototype.serialize = function()
 * @method clone
 * @return {*} component clone
 **/
-Component.prototype.clone = function()
+BaseComponent.prototype.clone = function()
 {
 	var data = this.serialize();
 	data.uid = null; //remove id when cloning
@@ -98,7 +98,7 @@ Component.prototype.clone = function()
 * @param {Function} setter [optional] setter function, otherwise one will be created
 * @param {Function} getter [optional] getter function, otherwise one will be created
 **/
-Component.prototype.createProperty = function( name, value, type, setter, getter )
+BaseComponent.prototype.createProperty = function( name, value, type, setter, getter )
 {
 	if(this[name] !== undefined)
 		return; //console.warn("createProperty: this component already has a property called " + name );
@@ -206,8 +206,10 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 }
 
 //not finished
-Component.prototype.createAction = function( name, callback, options )
+BaseComponent.prototype.createAction = function( name, callback, options )
 {
+	if(!callback)
+		console.error("action '" + name + "' with no callback associated. Remember to create the action after the callback is defined.");
 	var safe_name = name.replace(/ /gi,"_"); //replace spaces
 	this[ safe_name ] = callback;
 	this.constructor["@" + safe_name ] = options || { type: "function", button_text: name, widget:"button", callback: callback };
@@ -220,7 +222,7 @@ Component.prototype.createAction = function( name, callback, options )
 * @param {string} property_name [optional] you can pass the name of a property in this component
 * @return {String} the locator string of this component
 **/
-Component.prototype.getLocator = function( property_name )
+BaseComponent.prototype.getLocator = function( property_name )
 {
 	if(!this._root)
 		return "";
@@ -233,7 +235,7 @@ Component.prototype.getLocator = function( property_name )
 	return this._root.uid + "/" + this.uid;
 }
 
-Component.prototype.getPropertyInfoFromPath = function( path )
+BaseComponent.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( !path.length )
 		return null;
@@ -294,7 +296,7 @@ Component.prototype.getPropertyInfoFromPath = function( path )
 * @param {String} method_name 
 * @param {*} data
 **/
-Component.prototype.broadcastMessage = function( method_name, data )
+BaseComponent.prototype.broadcastMessage = function( method_name, data )
 {
 	var node = this._root;
 	if(!node)
@@ -308,7 +310,7 @@ Component.prototype.broadcastMessage = function( method_name, data )
 * @param {String|Component} class_name the name of the class in string format or the component class itself
 * @return {*} Component or null
 **/
-Component.prototype.getComponent = function( class_name )
+BaseComponent.prototype.getComponent = function( class_name )
 {
 	if(!this._root)
 		return null;
@@ -325,7 +327,7 @@ Component.prototype.getComponent = function( class_name )
 * @param {Function} setter [optional] setter function, otherwise one will be created
 * @param {Function} getter [optional] getter function, otherwise one will be created
 **/
-Component.prototype.bind = function( object, method, callback )
+BaseComponent.prototype.bind = function( object, method, callback )
 {
 	var instance = this;
 	if(arguments.length > 3 )
@@ -370,7 +372,7 @@ Component.prototype.bind = function( object, method, callback )
 	return LEvent.bind( object, method, callback, instance );
 }
 
-Component.prototype.unbind = function( object, method, callback )
+BaseComponent.prototype.unbind = function( object, method, callback )
 {
 	var instance = this;
 
@@ -392,7 +394,7 @@ Component.prototype.unbind = function( object, method, callback )
 	return r;
 }
 
-Component.prototype.unbindAll = function()
+BaseComponent.prototype.unbindAll = function()
 {
 	if( !this.__targeted_instances )
 		return;
@@ -403,7 +405,7 @@ Component.prototype.unbindAll = function()
 }
 
 //called by register component to add setters and getters to registered Component Classes
-Component.addExtraMethods = function( component )
+BaseComponent.addExtraMethods = function( component )
 {
 	//add uid property
 	Object.defineProperty( component.prototype, 'uid', {
@@ -460,4 +462,4 @@ Component.addExtraMethods = function( component )
 
 
 
-LS.Component = Component;
+LS.BaseComponent = BaseComponent;

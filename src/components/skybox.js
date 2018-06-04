@@ -13,6 +13,7 @@ function Skybox(o)
 	this.material = null;
 	this._intensity = 1;
 	this.use_environment = true;
+	this.gamma = false;
 	this._bake_to_cubemap = false;
 	if(o)
 		this.configure(o);
@@ -131,7 +132,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	else
 	{
 		var texture_name = null;
-		if (this.use_environment)
+		if (this.use_environment && LS.Renderer._current_scene.info)
 			texture_name = LS.Renderer._current_scene.info.textures["environment"];
 		else
 			texture_name = this.texture;
@@ -145,6 +146,10 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 		mat = this._material;
 		if(!mat)
+		{
+			//mat = this._material = new LS.ShaderMaterial({});
+
+
 			mat = this._material = new LS.StandardMaterial({ 
 				flags: { 
 					two_sided: true, 
@@ -155,9 +160,14 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 					depth_test: false 
 					},
 				use_scene_ambient:false,
-				color: [ this.intensity, this.intensity, this.intensity, 1 ]
+				color: [ this.intensity, this.intensity, this.intensity ]
 			});
+		}
+		else
+			mat.color.set([this.intensity, this.intensity, this.intensity]);
+
 		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
+		//sampler.gamma = this.gamma;
 
 		if(texture && texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -236,6 +246,48 @@ Skybox.prototype.bakeToCubemap = function( size, render_settings )
 		this.root.scene.info.textures[ "environment" ] = ":baked_skybox";
 }
 
+Skybox.shader_code = "\\color.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	varying vec3 v_world_position;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = u_model * vec4(a_vertex,1.0);\n\
+		v_world_position = vertex4.xyz;\n\
+		gl_Position = u_viewprojection * vertex4;\n\
+	}\n\
+\\color.fs\n\
+	precision mediump float;\n\
+	varying vec3 v_world_position;\n\
+	uniform vec4 u_material_color;\n\
+	uniform vec3 u_camera_eye;\n\
+	uniform samplerCube u_color_texture;\n\
+	vec2 polarToCartesian(in vec3 V)\n\
+	{\n\
+		return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	void main() {\n\
+		vec3 E = normalize( v_world_position - u_camera_eye);\n\
+		vec4 color = textureCube( u_color_texture, E );\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\picking.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\picking.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+";
 
 
 LS.registerComponent(Skybox);

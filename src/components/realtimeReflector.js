@@ -169,7 +169,7 @@ RealtimeReflector.prototype.onRenderReflection = function( e, render_settings )
 			var blur_texture = this._textures[ "blur_" + camera.uid ];
 			if( blur_texture && ( Texture.compareFormats( texture, blur_texture ) ||  blur_texture.minFilter != texture.minFilter ))
 				blur_texture = null; //remove old one
-			blur_texture = texture.applyBlur( this.blur, this.blur, 1, blur_texture );
+			blur_texture = texture.applyBlur( this.blur, this.blur, 1, null, blur_texture );
 			//this._textures[ "blur_" + camera.uid ] = blur_texture;
 			//LS.ResourcesManager.registerResource(":BLUR" + camera.uid, blur_texture);//debug
 		}

@@ -1,4 +1,4 @@
-//TODO: a class to remove the tree methods from SceneTree and SceneNode
+//TODO: a class to remove the tree methods from Scene and SceneNode
 /**
 * CompositePattern implements the Composite Pattern, which allows to one class to contain instances of its own class
 * creating a tree-like structure.

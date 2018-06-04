@@ -1,6 +1,6 @@
 /*
 	A component container is someone who could have components attached to it.
-	Mostly used for SceneNodes but it could be used for other classes (like SceneTree or Project).
+	Mostly used for SceneNodes but it could be used for other classes (like Scene or Project).
 */
 
 /**
@@ -207,7 +207,7 @@ ComponentContainer.prototype.addComponent = function( component, index )
 		else
 			console.warn("component without uid?", component);
 		if(	component.onAddedToScene )
-			component.onAddedToScene( this.constructor == LS.SceneTree ? this : this._in_tree );
+			component.onAddedToScene( this.constructor == LS.Scene ? this : this._in_tree );
 	}
 
 	//link node with component

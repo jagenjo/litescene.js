@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/component.js</title>
+    <title>../src/baseComponent.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -154,7 +154,7 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/component.js</h1>
+<h1 class="file-heading">File: ../src/baseComponent.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
@@ -182,10 +182,10 @@
 * instead components get all the methods from this class attached when the component is registered.
 * Components can overwrite this methods if they want.
 *
-* @class  Component
+* @class  BaseComponent
 * @namespace  LS
 */
-function Component(o)
+function BaseComponent(o)
 {
 	if(o)
 		this.configure(o);
@@ -195,7 +195,7 @@ function Component(o)
 * Returns the node where this components is attached
 * @method getRootNode
 **/
-Component.prototype.getRootNode = function()
+BaseComponent.prototype.getRootNode = function()
 {
 	return this._root;
 }
@@ -205,7 +205,7 @@ Component.prototype.getRootNode = function()
 * @method configure
 * @param {Object} o object with the serialized info
 **/
-Component.prototype.configure = function(o)
+BaseComponent.prototype.configure = function(o)
 { 
 	if( !o )
 		return;
@@ -222,7 +222,7 @@ Component.prototype.configure = function(o)
 * @method serialize
 * @return {Object} object with the serialized info
 **/
-Component.prototype.serialize = function()
+BaseComponent.prototype.serialize = function()
 {
 	var o = LS.cloneObject(this,null,false,false,true);
 	if(this.uid) //special case, not enumerable
@@ -241,7 +241,7 @@ Component.prototype.serialize = function()
 * @method clone
 * @return {*} component clone
 **/
-Component.prototype.clone = function()
+BaseComponent.prototype.clone = function()
 {
 	var data = this.serialize();
 	data.uid = null; //remove id when cloning
@@ -258,7 +258,7 @@ Component.prototype.clone = function()
 * @param {Function} setter [optional] setter function, otherwise one will be created
 * @param {Function} getter [optional] getter function, otherwise one will be created
 **/
-Component.prototype.createProperty = function( name, value, type, setter, getter )
+BaseComponent.prototype.createProperty = function( name, value, type, setter, getter )
 {
 	if(this[name] !== undefined)
 		return; //console.warn(&quot;createProperty: this component already has a property called &quot; + name );
@@ -366,8 +366,10 @@ Component.prototype.createProperty = function( name, value, type, setter, getter
 }
 
 //not finished
-Component.prototype.createAction = function( name, callback, options )
+BaseComponent.prototype.createAction = function( name, callback, options )
 {
+	if(!callback)
+		console.error(&quot;action &#x27;&quot; + name + &quot;&#x27; with no callback associated. Remember to create the action after the callback is defined.&quot;);
 	var safe_name = name.replace(/ /gi,&quot;_&quot;); //replace spaces
 	this[ safe_name ] = callback;
 	this.constructor[&quot;@&quot; + safe_name ] = options || { type: &quot;function&quot;, button_text: name, widget:&quot;button&quot;, callback: callback };
@@ -380,7 +382,7 @@ Component.prototype.createAction = function( name, callback, options )
 * @param {string} property_name [optional] you can pass the name of a property in this component
 * @return {String} the locator string of this component
 **/
-Component.prototype.getLocator = function( property_name )
+BaseComponent.prototype.getLocator = function( property_name )
 {
 	if(!this._root)
 		return &quot;&quot;;
@@ -393,7 +395,7 @@ Component.prototype.getLocator = function( property_name )
 	return this._root.uid + &quot;/&quot; + this.uid;
 }
 
-Component.prototype.getPropertyInfoFromPath = function( path )
+BaseComponent.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( !path.length )
 		return null;
@@ -454,7 +456,7 @@ Component.prototype.getPropertyInfoFromPath = function( path )
 * @param {String} method_name 
 * @param {*} data
 **/
-Component.prototype.broadcastMessage = function( method_name, data )
+BaseComponent.prototype.broadcastMessage = function( method_name, data )
 {
 	var node = this._root;
 	if(!node)
@@ -468,7 +470,7 @@ Component.prototype.broadcastMessage = function( method_name, data )
 * @param {String|Component} class_name the name of the class in string format or the component class itself
 * @return {*} Component or null
 **/
-Component.prototype.getComponent = function( class_name )
+BaseComponent.prototype.getComponent = function( class_name )
 {
 	if(!this._root)
 		return null;
@@ -485,7 +487,7 @@ Component.prototype.getComponent = function( class_name )
 * @param {Function} setter [optional] setter function, otherwise one will be created
 * @param {Function} getter [optional] getter function, otherwise one will be created
 **/
-Component.prototype.bind = function( object, method, callback )
+BaseComponent.prototype.bind = function( object, method, callback )
 {
 	var instance = this;
 	if(arguments.length &gt; 3 )
@@ -530,7 +532,7 @@ Component.prototype.bind = function( object, method, callback )
 	return LEvent.bind( object, method, callback, instance );
 }
 
-Component.prototype.unbind = function( object, method, callback )
+BaseComponent.prototype.unbind = function( object, method, callback )
 {
 	var instance = this;
 
@@ -552,7 +554,7 @@ Component.prototype.unbind = function( object, method, callback )
 	return r;
 }
 
-Component.prototype.unbindAll = function()
+BaseComponent.prototype.unbindAll = function()
 {
 	if( !this.__targeted_instances )
 		return;
@@ -563,7 +565,7 @@ Component.prototype.unbindAll = function()
 }
 
 //called by register component to add setters and getters to registered Component Classes
-Component.addExtraMethods = function( component )
+BaseComponent.addExtraMethods = function( component )
 {
 	//add uid property
 	Object.defineProperty( component.prototype, &#x27;uid&#x27;, {
@@ -620,7 +622,7 @@ Component.addExtraMethods = function( component )
 
 
 
-LS.Component = Component;
+LS.BaseComponent = BaseComponent;
     </pre>
 </div>
                     </div>

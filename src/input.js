@@ -44,6 +44,8 @@ var Input = {
 	RIGHT_MOUSE_BUTTON: 3,
 
 	Keyboard: [],
+	Keyboard_previous: [],
+
 	Mouse: {},
 	Gamepads: [],
 
@@ -52,7 +54,7 @@ var Input = {
 	last_click: null,
 	current_click: null,
 	current_key: null,
-	keys_buffer: [],
+	keys_buffer: [], //array of keys that have been pressed from the last frame
 
 	//_mouse_event_offset: [0,0],
 	_last_frame: -1, //internal
@@ -71,8 +73,94 @@ var Input = {
 
 	update: function()
 	{
+		//copy prev keys state
+		for(var i = 0, l = this.Keyboard.length; i < l; ++i)
+			this.Keyboard_previous[i] = this.Keyboard[i];
+
+		//copy prev mouse state (this is only necessary if the update is not called from litegl main loop)
+		this.Mouse.last_buttons = this.Mouse.buttons;
+
 		//capture gamepads snapshot
 		this.Gamepads = gl.getGamepads();
+	},
+
+	/**
+	* returns true is the key is pressed now
+	*
+	* @method isKeyPressed
+	* @param {Number} key_code
+	* @return {boolean}
+	*/
+	isKeyPressed: function(key_code)
+	{
+		return !!this.Keyboard[ key_code ];
+	},
+
+	/**
+	* returns true is the key was pressed between previous frame and now
+	*
+	* @method wasKeyPressed
+	* @param {Number} key_code as in https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode#Browser_compatibility
+	* @return {boolean}
+	*/
+	wasKeyPressed: function(key_code)
+	{
+		return this.Keyboard[ key_code ] && !this.Keyboard_previous[ key_code ];
+	},
+
+	/**
+	* returns true is the mouse button is pressed now
+	*
+	* @method isMouseButtonPressed
+	* @param {Number} button could be "left","middle","right" or GL.LEFT_MOUSE_BUTTON, GL.MIDDLE_MOUSE_BUTTON, GL.RIGHT_MOUSE_BUTTON
+	* @return {boolean}
+	*/
+	isMouseButtonPressed: function(button)
+	{
+		var num = 0;
+		if(button && button.constructor === String)
+			num = this.mapping[button];
+		else
+			num = button;
+		if(button === undefined)
+			return false;
+
+		return this.Mouse.isButtonPressed(num);
+	},
+
+	/**
+	* returns true is the mouse button was pressed between previous frame and now
+	*
+	* @method wasMouseButtonPressed
+	* @param {Number} button could be "left","middle","right" or GL.LEFT_MOUSE_BUTTON, GL.MIDDLE_MOUSE_BUTTON, GL.RIGHT_MOUSE_BUTTON
+	* @return {boolean}
+	*/
+	wasMouseButtonPressed: function(button)
+	{
+		var num = 0;
+		if(button && button.constructor === String)
+			num = this.mapping[button];
+		else
+			num = button;
+		if(button === undefined)
+			return false;
+
+		return this.Mouse.wasButtonPressed(num);
+	},
+
+	/**
+	* locks the mouse (to use with first person view cameras) so when the mouse moves, the cameras moves
+	*
+	* @method lockMouse
+	* @param {Boolean} v if true, the camera is locked, otherwise unlocked
+	* @return {boolean}
+	*/
+	lockMouse: function(v)
+	{
+		if(v)
+			gl.canvas.requestPointerLock();
+		else
+			document.exitPointerLock();
 	},
 
 	//called from LS.Player when onmouse
@@ -210,25 +298,6 @@ var Input = {
 	},
 
 	/**
-	* Returns if the given mouse button is pressed
-	*
-	* @method isMouseButtonPressed
-	* @param {String} name the name of the button  "LEFT","MIDDLE,"RIGHT" (also you could specify the number)
-	* @return {Boolean} if the button is pressed
-	*/
-	isMouseButtonPressed: function(name)
-	{
-		var num = 0;
-		if(name && name.constructor === String)
-			num = this.mapping[name];
-		else
-			num = name;
-		if(num === undefined)
-			return false;
-		return (this.Mouse.buttons & (1<<num)) !== 0;
-	},
-
-	/**
 	* Returns a Promise that will be fulfilled when the user clicks the screen
 	* @method mouseClick
 	* @return {Promise} 
@@ -240,5 +309,17 @@ var Input = {
 		});
 	}
 };
+
+
+Object.defineProperty( MouseEvent.prototype, "getRay", { value: function(){
+		//get camera under position
+		var camera = LS.Renderer.getCameraAtPosition( this.mousex, this.mousey, LS.Renderer._visible_cameras );
+		if(!camera)
+			return null;
+		//get ray
+		return camera.getRay( this.mousex, this.mousey );
+	},
+	enumerable: false 
+});
 
 LS.Input = Input;

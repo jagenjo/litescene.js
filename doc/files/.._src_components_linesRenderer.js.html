@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -174,12 +174,7 @@ function LinesRenderer(o)
 	//material
 	this.global_opacity = 1;
 	this.color = vec3.fromValues(1,1,1);
-	this.additive_blending = false;
-
-	this.line_width = 1;
-
 	this.use_node_material = false; 
-	this.premultiplied_alpha = false;
 	this.in_world_coordinates = false;
 
 	if(o)
@@ -202,10 +197,11 @@ function LinesRenderer(o)
 }
 LinesRenderer.icon = &quot;mini-icon-lines.png&quot;;
 LinesRenderer[&quot;@color&quot;] = { widget: &quot;color&quot; };
+LinesRenderer[&quot;@lines&quot;] = { widget: &quot;null&quot; };
 
 Object.defineProperty( LinesRenderer.prototype, &quot;lines&quot;, {
-	set: function(v) { this.lines = v; },
-	get: function() { return this.lines; },
+	set: function(v) { this._lines = v; },
+	get: function() { return this._lines; },
 	enumerable: true
 });
 
@@ -354,7 +350,6 @@ LinesRenderer.prototype.onAfterRender = function(e)
 	if( this._must_update )
 		this.updateMesh();
 
-	LS.Draw.setLineWidth( this.line_width );
 	LS.Draw.renderMesh( this._mesh, GL.LINES );
 }
 

@@ -21,7 +21,7 @@
 
 ../src/componentContainer.js
 ../src/compositePattern.js
-../src/component.js
+../src/baseComponent.js
 
 ../src/resources/resource.js
 ../src/resources/animation.js

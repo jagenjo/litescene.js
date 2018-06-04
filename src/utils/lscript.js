@@ -123,19 +123,24 @@ LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_o
 
 	if(!LScript.catch_exceptions)
 	{
+		//call expanding parameters
 		if(argv && argv.constructor === Array && expand_parameters)
 			return this._context[name].apply(this._context, argv);
+		//call without expanding parameters
 		return this._context[name].call(this._context, argv);
 	}
 
 	try
 	{
+		//call expanding parameters
 		if(argv && argv.constructor === Array && expand_parameters)
 			return this._context[name].apply(this._context, argv);
+		//call without expanding parameters
 		return this._context[name].call(this._context, argv);
 	}
 	catch(err)
 	{
+		//catch error in script, detect line and show console info
 		var error_line = LScript.computeLineFromError(err);
 		var parent_info = ""; 
 		if (parent_object && parent_object.toInfoString )
@@ -151,7 +156,6 @@ LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_o
 			console.error("Error line: " + error_line);
 		if(this.onerror)
 			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code, method_name: name });
-		//throw new Error( err.stack ); //TEST THIS
 	}
 }
 

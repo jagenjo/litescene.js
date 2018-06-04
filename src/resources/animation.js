@@ -1063,7 +1063,10 @@ Track.prototype.moveKeyframe = function(index, new_time)
 	return index;
 }
 
-//solve bugs
+/**
+* Sometimes when moving keyframes they could end up not sorted by timestamp, which will cause problems when sampling, to avoid it, we can force to sort all keyframes
+* @method sortKeyframes
+*/
 Track.prototype.sortKeyframes = function()
 {
 	if(this.packed_data)
@@ -1094,6 +1097,10 @@ Track.prototype.removeKeyframe = function(index)
 	this.data.splice(index, 1);
 }
 
+/**
+* returns the number of keyframes
+* @method getNumberOfKeyframes
+*/
 
 Track.prototype.getNumberOfKeyframes = function()
 {
@@ -1188,10 +1195,10 @@ Track.prototype.unpackData = function()
 }
 
 /**
-* returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)
+* Returns nearest index of keyframe with time equal or less to specified time (Dichotimic search)
 * @method findTimeIndex
 * @param {number} time
-* @return {number} index
+* @return {number} the nearest index (lower-bound)
 */
 Track.prototype.findTimeIndex = function(time)
 {
@@ -1277,71 +1284,26 @@ Track.prototype.findTimeIndex = function(time)
 	return imid;
 }
 
-
-/*
-//Brute force search
-Track.prototype.findTimeIndex = function( time )
-{
-	if(!this.data || this.data.length == 0)
-		return -1;
-
-	var data = this.data;
-	var l = this.data.length;
-	if(!l)
-		return -1;
-	var i = 0;
-	if(this.packed_data)
-	{
-		var offset = this.value_size + 1;
-		var last = -1;
-		for(i = 0; i < l; i += offset)
-		{
-			var current_time = data[i];
-			if(current_time < time) 
-			{
-				last = i;
-				continue;
-			}
-			if(last == -1)
-				return -1;
-			return (last/offset); //prev sample
-		}
-		if(last == -1)
-			return -1;
-		return (last/offset);
-	}
-
-	var last = -1;
-	for(i = 0; i < l; ++i )
-	{
-		if(time > data[i][0]) 
-		{
-			last = i;
-			continue;
-		}
-		if(time == data[i][0]) 
-			return i;
-		if(last == -1)
-			return -1;
-		return last;
-	}
-	if(last == -1)
-		return -1;
-	return last;
-}
+/**
+* Samples the data in one time, taking into account interpolation.
+* Warning: if no result container is provided the same container is reused between samples to avoid garbage, be careful.
+* @method getSample
+* @param {number} time
+* @param {number} interpolation [optional] the interpolation method could be LS.NONE, LS.LINEAR, LS.BEZIER
+* @param {*} result [optional] the container where to store the data (in case is an array). IF NOT CONTAINER IS PROVIDED THE SAME ONE IS RETURNED EVERY TIME!
+* @return {*} data
 */
-
-//Warning: if no result is provided the same result is reused between samples.
 Track.prototype.getSample = function( time, interpolate, result )
 {
 	if(!this.data || this.data.length === 0)
 		return undefined;
 
 	if(this.packed_data)
-		return this.getSamplePacked( time, interpolate, result);
-	return this.getSampleUnpacked( time, interpolate, result);
+		return this.getSamplePacked( time, interpolate, result );
+	return this.getSampleUnpacked( time, interpolate, result );
 }
 
+//used when sampling from a unpacked track (where data is an array of arrays)
 Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 {
 	time = Math.clamp( time, 0, this.duration );
@@ -1353,6 +1315,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	var index_a = index;
 	var index_b = index + 1;
 	var data = this.data;
+	var value_size = this.value_size;
 
 	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this._type ] );
 
@@ -1364,57 +1327,25 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 
 	var t = (b[0] - time) / (b[0] - a[0]);
 
+	//multiple data
+	if( value_size > 1 )
+	{
+		result = result || this._result;
+		if( !result || result.length != value_size )
+			result = this._result = new Float32Array( value_size );
+	}
+
 	if(this.interpolation === LS.LINEAR)
 	{
-		/*
-		if(this.value_size === 0 && LS.Interpolators[ this._type ] )
-		{
-			var func = LS.Interpolators[ this.type ];
-			var r = func( a[1], b[1], t, this._last_value );
-			this._last_value = r;
-			return r;
-		}
-		*/
-
-		if(this.value_size == 1)
+		if( value_size == 1 )
 			return a[1] * t + b[1] * (1-t);
 
-		return LS.Animation.interpolateLinear( a[1], b[1], t, null, this._type, this.value_size, this );
-
-		/*
-
-		result = result || this._result;
-
-		if(!result || result.length != this.value_size)
-			result = this._result = new Float32Array( this.value_size );
-
-		switch(this._type)
-		{
-			case "quat": 
-				quat.slerp( result, a[1], b[1], t );
-				quat.normalize( result, result );
-				break;
-			case "trans10": 
-				for(var i = 0; i < 10; i++) //this.value_size should be 10
-					result[i] = a[1][i] * t + b[1][i] * (1-t);
-				var rotA = a[1].subarray(3,7);
-				var rotB = b[1].subarray(3,7);
-				var rotR = result.subarray(3,7);
-				quat.slerp( rotR, rotB, rotA, t );
-				quat.normalize( rotR, rotR );
-				break;
-			default:
-				for(var i = 0; i < this.value_size; i++)
-					result[i] = a[1][i] * t + b[1][i] * (1-t);
-		}
-
-		return result;
-		*/
+		return LS.Animation.interpolateLinear( a[1], b[1], t, result, this._type, value_size, this );
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
 		//bezier not implemented for interpolators
-		if(this.value_size === 0 && LS.Interpolators[ this._type ] )
+		if(value_size === 0 && LS.Interpolators[ this._type ] )
 		{
 			var func = LS.Interpolators[ this._type ];
 			var r = func( a[1], b[1], t, this._last_value );
@@ -1425,16 +1356,9 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 		var pre_a = index > 0 ? data[ index - 1 ] : a;
 		var post_b = index < data.length - 2 ? data[ index + 2 ] : b;
 
-		if(this.value_size === 1)
+		if(value_size === 1)
 			return Animation.EvaluateHermiteSpline(a[1],b[1],pre_a[1],post_b[1], 1 - t );
 
-		result = result || this._result;
-
-		//multiple data
-		if(!result || result.length != this.value_size)
-			result = this._result = new Float32Array( this.value_size );
-
-		result = result || this._result;
 		result = Animation.EvaluateHermiteSplineVector( a[1], b[1], pre_a[1], post_b[1], 1 - t, result );
 
 		if(this._type_index == Track.QUAT)
@@ -1457,6 +1381,7 @@ Track.prototype.getSampleUnpacked = function( time, interpolate, result )
 	return null;
 }
 
+//used when sampling from a packed track (where data is a typed-array)
 Track.prototype.getSamplePacked = function( time, interpolate, result )
 {
 	time = Math.clamp( time, 0, this.duration );
@@ -1465,16 +1390,25 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 	if(index == -1)
 		index = 0;
 
-	var offset = (this.value_size+1);
+	var value_size = this.value_size;
+	var offset = (value_size+1);
 	var index_a = index;
 	var index_b = index + 1;
 	var data = this.data;
 	var num_keyframes = data.length / offset;
 
-	interpolate = interpolate && this.interpolation && (this.value_size > 0 || LS.Interpolators[ this._type ] );
+	interpolate = interpolate && this.interpolation && (value_size > 0 || LS.Interpolators[ this._type ] );
 
 	if( !interpolate || num_keyframes == 1 || index_b == num_keyframes || (index_a == 0 && this.data[0] > time)) //(index_b == this.data.length && !this.looped)
 		return this.getKeyframe( index )[1];
+
+	//multiple data
+	if( value_size > 1 )
+	{
+		result = result || this._result;
+		if( !result || result.length != value_size )
+			result = this._result = new Float32Array( value_size );
+	}
 
 	var a = data.subarray( index_a * offset, (index_a + 1) * offset );
 	var b = data.subarray( index_b * offset, (index_b + 1) * offset );
@@ -1483,31 +1417,24 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 
 	if(this.interpolation === LS.LINEAR)
 	{
-		if(this.value_size == 1) //simple case
+		if( value_size == 1 ) //simple case
 			return a[1] * t + b[1] * (1-t);
 
-		var a_data = a.subarray(1, this.value_size+1 );
-		var b_data = b.subarray(1, this.value_size+1 );
-		return LS.Animation.interpolateLinear( a_data, b_data, t, null, this._type, this.value_size, this );
+		var a_data = a.subarray(1, value_size + 1 );
+		var b_data = b.subarray(1, value_size + 1 );
+		return LS.Animation.interpolateLinear( a_data, b_data, t, result, this._type, value_size, this );
 	}
 	else if(this.interpolation === LS.BEZIER)
 	{
-		if( this.value_size === 0) //bezier not supported in interpolators
+		if( value_size === 0 ) //bezier not supported in interpolators
 			return a[1];
 
 		var pre_a = index > 0 ? data.subarray( (index-1) * offset, (index) * offset ) : a;
 		var post_b = index_b < (num_keyframes - 1) ? data.subarray( (index_b+1) * offset, (index_b+2) * offset ) : b;
 
-		if(this.value_size === 1)
+		if( value_size === 1 )
 			return Animation.EvaluateHermiteSpline( a[1], b[1], pre_a[1], post_b[1], 1 - t );
 
-		result = result || this._result;
-
-		//multiple data
-		if(!result || result.length != this.value_size)
-			result = this._result = new Float32Array( this.value_size );
-
-		result = result || this._result;
 		var a_value = a.subarray(1,offset);
 		var b_value = b.subarray(1,offset);
 
@@ -1516,7 +1443,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 		if(this._type_index == Track.QUAT )
 		{
 			quat.slerp( result, a_value, b_value, t );
-			quat.normalize(result, result);
+			quat.normalize( result, result ); //is necesary?
 		}
 		else if(this._type_index == Track.TRANS10 )
 		{
@@ -1524,7 +1451,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 			var rotA = a_value.subarray(3,7);
 			var rotB = b_value.subarray(3,7);
 			quat.slerp( rotR, rotB, rotA, t );
-			quat.normalize( rotR, rotR );
+			quat.normalize( rotR, rotR ); //is necesary?
 		}
 
 		return result;
@@ -1537,7 +1464,7 @@ Track.prototype.getSamplePacked = function( time, interpolate, result )
 * returns information about the object being affected by this track based on its locator
 * the object contains a reference to the object, the property name, the type of the data
 * @method getPropertyInfo
-* @param {LS.SceneTree} scene [optional]
+* @param {LS.Scene} scene [optional]
 * @return {Object} an object with the info { target, name, type, value }
 */
 Track.prototype.getPropertyInfo = function( scene )

@@ -1,6 +1,8 @@
 //this file defines the shaderblocks that interact in the render of any standard material
 //the pipeline is quite standard
 
+//for structures like Input go to shaders.xml
+
 //define surface structures
 LS.ShadersManager.registerSnippet("surface","\n\
 	//used to store surface shading properties\n\
@@ -44,7 +46,7 @@ LS.ShadersManager.registerSnippet("light_structs","\n\
 	uniform vec4 u_light_att; //start,end \n\
 	uniform float u_light_offset; //ndotl offset\n\
 	uniform vec4 u_light_extra; //user data\n\
-	uniform mat4 u_light_matrix; //to light space\n\
+	uniform mat4 u_light_matrix; //projection to light screen space\n\
 	uniform vec3 u_ambient_light;\n\
 	struct Light {\n\
 		lowp vec4 Info; //type of light (3: DIRECTIONAL), falloff type, pass index, num passes \n\
@@ -203,7 +205,7 @@ Light._disabled_shaderblock_code = "\n\
 	}\n\
 	vec3 applyLight( in SurfaceOutput o, in FinalLight FINALLIGHT )\n\
 	{\n\
-		vec3 final_color = o.Albedo * FINALLIGHT.Ambient;\n\
+		vec3 final_color = o.Albedo * o.Ambient * FINALLIGHT.Ambient;\n\
 		if(u_light_info.z == 0.0)\n\
 			final_color += o.Emission;\n\
 		return final_color;\n\
@@ -252,8 +254,30 @@ Light._attenuation_enabled_fragment_code = "\n\
 Light._attenuation_disabled_fragment_code = "";
 
 var attenuation_block = Light.attenuation_block = new LS.ShaderBlock("attenuation");
-attenuation_block.addCode( GL.FRAGMENT_SHADER, Light._attenuation_enabled_fragment_code, Light._attenuation_disabled_fragment_code  );
+attenuation_block.addCode( GL.FRAGMENT_SHADER, Light._attenuation_enabled_fragment_code, Light._attenuation_disabled_fragment_code );
 attenuation_block.register();
+
+// LIGHT TEXTURE **********************************************
+Light._light_texture_fragment_enabled_code ="\n\
+uniform sampler2D light_texture;\n\
+void applyLightTexture( in Input IN, inout Light LIGHT )\n\
+{\n\
+	vec4 v = LIGHT.Matrix * vec4( IN.worldPos,1.0 );\n\
+	vec2 uv = v.xy / v.w * 0.5 + vec2(0.5);\n\
+	LIGHT.Color *= texture2D( light_texture, uv ).xyz;\n\
+}\n\
+";
+
+Light._light_texture_fragment_disabled_code ="\n\
+void applyLightTexture( in Input IN, inout Light LIGHT )\n\
+{\n\
+}\n\
+";
+
+var light_texture_block = Light.light_texture_block = new LS.ShaderBlock("light_texture");
+light_texture_block.addCode( GL.FRAGMENT_SHADER, Light._light_texture_fragment_enabled_code, Light._light_texture_fragment_disabled_code );
+light_texture_block.register();
+
 
 // OMNI LIGHT SHADOWMAP *****************************************
 Light._shadowmap_cubemap_code = "\n\
@@ -305,6 +329,7 @@ Light._shadowmap_vertex_enabled_code ="\n\
 Light._shadowmap_vertex_disabled_code ="\n\
 	void applyLight(vec3 pos) {}\n\
 ";
+
 
 // DIRECTIONAL AND SPOTLIGHT SHADOWMAP *****************************************
 Light._shadowmap_2d_enabled_fragment_code = "\n\
@@ -372,3 +397,98 @@ shadowmapping_2D_soft_block.register();
 Light.shadowmapping_2D_soft_block = shadowmapping_2D_soft_block;
 //Light.registerShadowType( "soft", shadowmappingsoft_block );
 
+
+// ENVIRONMENT *************************************
+var environment_code = "\n\
+	#ifdef ENVIRONMENT_TEXTURE\n\
+		uniform sampler2D environment_texture;\n\
+	#endif\n\
+	#ifdef ENVIRONMENT_CUBEMAP\n\
+		uniform samplerCube environment_texture;\n\
+	#endif\n\
+	vec2 polarToCartesian(in vec3 V)\n\
+	{\n\
+		return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		#ifdef ENVIRONMENT_TEXTURE\n\
+			vec2 uvs = polarToCartesian(V);\n\
+			return texture2D( environment_texture, uvs ).xyz;\n\
+		#endif\n\
+		#ifdef ENVIRONMENT_CUBEMAP\n\
+			return textureCube( environment_texture, -V ).xyz;\n\
+		#endif\n\
+		return u_background_color.xyz;\n\
+	}\n\
+";
+var environment_disabled_code = "\n\
+	vec3 getEnvironmentColor( vec3 V, float area )\n\
+	{\n\
+		return u_background_color.xyz;\n\
+	}\n\
+";
+
+var environment_cubemap_block = new LS.ShaderBlock("environment_cubemap");
+environment_cubemap_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_CUBEMAP: "" } );
+environment_cubemap_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_cubemap"});
+environment_cubemap_block.register();
+
+var environment_2d_block = new LS.ShaderBlock("environment_2D");
+environment_2d_block.defineContextMacros({ENVIRONMENTBLOCK:"environment_2D"});
+environment_2d_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code, { ENVIRONMENT_TEXTURE: "" } );
+environment_2d_block.register();
+
+var environment_block = new LS.ShaderBlock("environment");
+environment_block.addCode( GL.FRAGMENT_SHADER, environment_code, environment_disabled_code );
+environment_block.register();
+
+
+var reflection_code = "\n\
+	#pragma shaderblock ENVIRONMENTBLOCK \"environment\"\n\
+	\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		vec3 R = reflect( IN.viewDir, o.Normal );\n\
+		vec3 bg = vec3(0.0);\n\
+		//is last pass for this object?\n\
+		if(u_light_info.w == 0.0 || u_light_info.z == (u_light_info.w - 1.0))\n\
+			bg = getEnvironmentColor( R, 0.0 );\n\
+		final_color.xyz = mix( final_color.xyz, bg, clamp( o.Reflectivity, 0.0, 1.0) );\n\
+		return final_color;\n\
+	}\n\
+";
+
+var reflection_disabled_code = "\n\
+	vec4 applyReflection( Input IN, SurfaceOutput o, vec4 final_color )\n\
+	{\n\
+		return final_color;\n\
+	}\n\
+";
+
+var reflection_block = new LS.ShaderBlock("applyReflection");
+ShaderMaterial.reflection_block = reflection_block;
+reflection_block.addCode( GL.FRAGMENT_SHADER, reflection_code, reflection_disabled_code );
+reflection_block.register();
+
+// IRRADIANCE *************************************
+var irradiance_code = "\n\
+	uniform samplerCube irradiance_texture;\n\
+	\n\
+	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+		FINALLIGHT.Ambient *= textureCube( irradiance_texture, o.Normal ).xyz;\n\
+	}\n\
+";
+
+var irradiance_disabled_code = "\n\
+	void applyIrradiance( in SurfaceOutput o, inout FinalLight FINALLIGHT )\n\
+	{\n\
+	}\n\
+";
+
+var irradiance_block = new LS.ShaderBlock("applyIrradiance");
+ShaderMaterial.irradiance_block = irradiance_block;
+irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
+irradiance_block.register();

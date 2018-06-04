@@ -148,7 +148,7 @@ TerrainRenderer.prototype.updateMesh = function()
 	}
 
 	var mesh = new GL.Mesh({vertices:vertices,normals:normals,coords:coords},{triangles:triangles, wireframe: wireframe});
-	mesh.setBounding( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
+	mesh.setBoundingBox( [0,this.height*0.5,0], [hsize,this.height*0.5,hsize] );
 	this._mesh = mesh;
 	this._info = [ this.heightmap, this.size, this.height, this.subdivisions, this.smooth ];
 }

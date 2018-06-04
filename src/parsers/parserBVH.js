@@ -2,7 +2,7 @@
 var parserBVH = {
 	extension: "bvh",
 	type: "scene",
-	resource: "SceneTree",
+	resource: "Scene",
 	format: 'text',
 	dataType:'text',
 	
