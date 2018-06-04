@@ -3,7 +3,9 @@
 if( !Uint8Array.prototype.toJSON )
 {
 	var typed_arrays = [ Uint8Array, Int8Array, Uint16Array, Int16Array, Uint32Array, Int32Array, Float32Array, Float64Array ];
-	typed_arrays.forEach( function(v) { v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); } } );
+	typed_arrays.forEach( function(v) { 
+		v.prototype.toJSON = function(){ return Array.prototype.slice.call(this); }
+	});
 }
 
 if( typeof(GL) === "undefined" )
@@ -19,15 +21,46 @@ if( typeof(GL) === "undefined" )
 
 var LS = {
 
+	//systems: defined in their own files
+	ResourcesManager: null,
+	Picking: null,
+	Player: null,
+	GUI: null,
+	Network: null,
+	Input: null,
+	Renderer: null,
+	Physics: null,
+	ShadersManager: null,
+	Formats: null,
+
+	//containers
+	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
+	ResourceClasses: {}, //classes that can contain a resource of the system
+	Globals: {}, //global scope to share info among scripts
+
+	/**
+	* Contains all the registered components
+	* 
+	* @property Components
+	* @type {Object}
+	* @default {}
+	*/
+	Components: {},
+
+	/**
+	* Contains all the registered material classes
+	* 
+	* @property MaterialClasses
+	* @type {Object}
+	* @default {}
+	*/
+	MaterialClasses: {},
+
 	//vars used for uuid genereration
 	_last_uid: 1,
 	_uid_prefix: "@", //WARNING: must be one character long
 	debug: false, //enable to see verbose output
 	allow_static: true, //used to disable static instances in the editor
-
-	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
-	ResourceClasses: {}, //classes that can contain a resource of the system
-	Globals: {}, //global scope to share info among scripts
 
 	//for HTML GUI
 	_gui_element: null,
@@ -78,15 +111,6 @@ var LS = {
 	_catch_exceptions: false, //used to try/catch all possible callbacks (used mostly during development inside an editor) It is linked to LScript too
 
 	/**
-	* Contains all the registered components
-	* 
-	* @property Components
-	* @type {Object}
-	* @default {}
-	*/
-	Components: {},
-
-	/**
 	* Register a component (or several) so it is listed when searching for new components to attach
 	*
 	* @method registerComponent
@@ -123,8 +147,8 @@ var LS = {
 			component.actions = {};
 
 		//add default methods
-		LS.extendClass( component, LS.Component );
-		Component.addExtraMethods( component );
+		LS.extendClass( component, LS.BaseComponent );
+		BaseComponent.addExtraMethods( component );
 
 		if( LS.debug )
 		{
@@ -178,7 +202,7 @@ var LS = {
 	* Replaces all components of one class in the scene with components of another class
 	*
 	* @method replaceComponentClass
-	* @param {SceneTree} scene where to apply the replace
+	* @param {Scene} scene where to apply the replace
 	* @param {String} old_class_name name of the class to be replaced
 	* @param {String} new_class_name name of the class that will be used instead
 	* @return {Number} the number of components replaced
@@ -591,7 +615,7 @@ var LS = {
 			return [ "@ENC", LS.TYPES.COMPONENT, obj.getLocator(), LS.getObjectClassName( obj ) ];
 		if( obj.constructor == LS.SceneNode && obj._in_tree) //in case the value of this property is an actual node in the scene
 			return [ "@ENC", LS.TYPES.NODE, obj.uid ];
-		if( obj.constructor == LS.SceneTree)
+		if( obj.constructor == LS.Scene)
 			return [ "@ENC", LS.TYPES.SCENE, obj.fullpath ]; //weird case
 		if( obj.serialize || obj.toJSON )
 		{
@@ -822,15 +846,6 @@ var LS = {
 	},
 
 	/**
-	* Contains all the registered material classes
-	* 
-	* @property MaterialClasses
-	* @type {Object}
-	* @default {}
-	*/
-	MaterialClasses: {},
-
-	/**
 	* Register a Material class so it is listed when searching for new materials to attach
 	*
 	* @method registerMaterialClass
@@ -982,7 +997,40 @@ var LS = {
 		}
 	  } 
 		return query_string;
-	}()
+	}(),
+
+	downloadFile: function( filename, data, dataType )
+	{
+		if(!data)
+		{
+			console.warn("No file provided to download");
+			return;
+		}
+
+		if(!dataType)
+		{
+			if(data.constructor === String )
+				dataType = 'text/plain';
+			else
+				dataType = 'application/octet-stream';
+		}
+
+		var file = null;
+		if(data.constructor !== File && data.constructor !== Blob)
+			file = new Blob( [ data ], {type : dataType});
+		else
+			file = data;
+
+		var url = URL.createObjectURL( file );
+		var element = document.createElement("a");
+		element.setAttribute('href', url);
+		element.setAttribute('download', filename );
+		element.style.display = 'none';
+		document.body.appendChild(element);
+		element.click();
+		document.body.removeChild(element);
+		setTimeout( function(){ URL.revokeObjectURL( url ); }, 1000*60 ); //wait one minute to revoke url
+	}
 }
 
 //ensures no exception is catched by the system (useful for developers)

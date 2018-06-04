@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -216,6 +216,8 @@ var Draw = {
 				u_color: this.color,
 				u_camera_position: this.camera_position,
 				u_point_size: this.point_size,
+				u_point_perspective: 0,
+				u_perspective: 1, //viewport.w * this._projection_matrix[5]
 				u_texture: 0
 		};
 
@@ -248,11 +250,15 @@ var Draw = {
 			#endif\n\
 			uniform mat4 u_viewprojection;\n\
 			uniform float u_point_size;\n\
+			uniform float u_perspective;\n\
+			uniform float u_point_perspective;\n\
+			float computePointSize(float radius, float w)\n\
+			{\n\
+				if(radius &lt; 0.0)\n\
+					return -radius;\n\
+				return u_perspective * radius / w;\n\
+			}\n\
 			void main() {\n\
-				gl_PointSize = u_point_size;\n\
-				#ifdef USE_SIZE\n\
-					gl_PointSize = a_extra;\n\
-				#endif\n\
 				#ifdef USE_TEXTURE\n\
 					v_coord = a_coord;\n\
 				#endif\n\
@@ -261,6 +267,12 @@ var Draw = {
 				#endif\n\
 				vec3 vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
 				gl_Position = u_viewprojection * vec4(vertex,1.0);\n\
+				gl_PointSize = u_point_size;\n\
+				#ifdef USE_SIZE\n\
+					gl_PointSize = a_extra;\n\
+				#endif\n\
+				if(u_point_perspective != 0.0)\n\
+					gl_PointSize = computePointSize( gl_PointSize, gl_Position.w );\n\
 			}\
 			&#x27;;
 
@@ -525,7 +537,7 @@ var Draw = {
 			this.color[0] = arguments[0];
 			this.color[1] = arguments[1];
 			this.color[2] = arguments[2];
-			if( arguments.length == 3 )
+			if( arguments.length == 4 )
 				this.color[3] = arguments[3];
 		}
 		else
@@ -546,11 +558,14 @@ var Draw = {
 	/**
 	* Sets the point size
 	* @method setPointSize
-	* @param {number} v
+	* @param {number} v size of points
+	* @param {number} perspective [optional] if set to true, the points will be affected by perspective
 	*/
-	setPointSize: function(v)
+	setPointSize: function(v, perspective)
 	{
 		this.point_size = v;
+		this.uniforms.u_point_size = v;
+		this.uniforms.u_point_perspective = perspective ? 1 : 0;
 	},
 
 	/**
@@ -580,6 +595,7 @@ var Draw = {
 		this.view_matrix.set( camera._view_matrix );
 		this.projection_matrix.set( camera._projection_matrix );
 		this.viewprojection_matrix.set( camera._viewprojection_matrix );
+		this.uniforms.u_perspective = gl.viewport_data[3] * this.projection_matrix[5];
 	},
 
 	/**
@@ -1248,29 +1264,40 @@ var Draw = {
 	* @param {enum} primitive [optional=gl.TRIANGLES] GL.TRIANGLES, gl.LINES, gl.POINTS, ...
 	* @param {string} indices [optional=&quot;triangles&quot;] the name of the buffer in the mesh with the indices
 	*/
-	renderMeshesInstanced: function( mesh, matrices, primitive, shader, indices )
-	{
-		if(!this.ready)
-			throw (&quot;Draw.js not initialized, call Draw.init()&quot;);
-		if(!mesh)
-			throw (&quot;LS.Draw.renderMeshesInstanced mesh cannot be null&quot;);
+	renderMeshesInstanced: (function(){ 
+		
+		var tmp = { u_model: null };
+		var tmp_matrix = mat4.create();
 
-		if( gl.webgl_version == 1 &amp;&amp; !gl.extensions.ANGLE_instanced_arrays )
-			return null; //instancing not supported
+		return function( mesh, matrices, primitive, shader, indices )
+		{
+			if(!this.ready)
+				throw (&quot;Draw.js not initialized, call Draw.init()&quot;);
+			if(!mesh)
+				throw (&quot;LS.Draw.renderMeshesInstanced mesh cannot be null&quot;);
 
-		if(!shader)
-			shader = mesh.vertexBuffers[&quot;colors&quot;] ? this.shader_color_instancing : this.shader_instancing;
+			if( gl.webgl_version == 1 &amp;&amp; !gl.extensions.ANGLE_instanced_arrays )
+				return null; //instancing not supported
 
-		if( !shader.attributes.u_model )
-			throw(&quot;Shader does not support instancing, it must have a attribute u_model&quot;);
+			if(!shader)
+				shader = mesh.vertexBuffers[&quot;colors&quot;] ? this.shader_color_instancing : this.shader_instancing;
 
-		shader.uniforms( this.uniforms );
-		shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, { u_model: matrices } );
-		this._rendercalls += 1;
+			if( !shader.attributes.u_model )
+				throw(&quot;Shader does not support instancing, it must have a attribute u_model&quot;);
 
-		return mesh;
-	},
+			tmp.u_model = matrices;
+			//this hack is done so we dont have to multiply the global model for every matrix, the VP is in reality a MVP
+			tmp_matrix.set( this.viewprojection_matrix );
+			mat4.multiply( this.viewprojection_matrix, this.viewprojection_matrix, this.model_matrix );
 
+			shader.uniforms( this.uniforms );
+			shader.drawInstanced( mesh, primitive === undefined ? gl.TRIANGLES : primitive, indices, tmp );
+
+			this.viewprojection_matrix.set( tmp_matrix );
+			this._rendercalls += 1;
+			return mesh;
+		};
+	})(),
 
 	//used in some special cases
 	repeatLastRender: function()
@@ -1378,9 +1405,14 @@ var Draw = {
 		this.font_atlas.atlas = atlas;
 	},
 
-	linearize: function(array)
+	linearize: function(array) //fairly optimized
 	{
-		var n = array[0].length;
+		if(!array.length)
+			return [];
+		if(array[0].constructor === Number) //array of numbers
+			return array.constructor === Float32Array ? array : new Float32Array(array);
+		//linearize
+		var n = array[0].length; //assuming all values have the same size!
 		var result = new Float32Array(array.length * n);
 		var l = array.length;
 		for(var i = 0; i &lt; l; ++i)

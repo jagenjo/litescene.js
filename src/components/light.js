@@ -907,6 +907,10 @@ Light.prototype.applyShaderBlockFlags = function( flags, pass, render_settings )
 	if(this.attenuation_type)
 		flags |= Light.attenuation_block.flag_mask;
 
+	//texture
+	if(this.projective_texture)
+		flags |= Light.light_texture_block.flag_mask;
+
 	//disabled now
 	if( this.cast_shadows && render_settings.shadows_enabled )
 	{

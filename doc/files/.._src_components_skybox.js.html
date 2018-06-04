@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -173,6 +173,7 @@ function Skybox(o)
 	this.material = null;
 	this._intensity = 1;
 	this.use_environment = true;
+	this.gamma = false;
 	this._bake_to_cubemap = false;
 	if(o)
 		this.configure(o);
@@ -291,7 +292,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	else
 	{
 		var texture_name = null;
-		if (this.use_environment)
+		if (this.use_environment &amp;&amp; LS.Renderer._current_scene.info)
 			texture_name = LS.Renderer._current_scene.info.textures[&quot;environment&quot;];
 		else
 			texture_name = this.texture;
@@ -305,6 +306,10 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 
 		mat = this._material;
 		if(!mat)
+		{
+			//mat = this._material = new LS.ShaderMaterial({});
+
+
 			mat = this._material = new LS.StandardMaterial({ 
 				flags: { 
 					two_sided: true, 
@@ -315,9 +320,14 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 					depth_test: false 
 					},
 				use_scene_ambient:false,
-				color: [ this.intensity, this.intensity, this.intensity, 1 ]
+				color: [ this.intensity, this.intensity, this.intensity ]
 			});
+		}
+		else
+			mat.color.set([this.intensity, this.intensity, this.intensity]);
+
 		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
+		//sampler.gamma = this.gamma;
 
 		if(texture &amp;&amp; texture.texture_type == gl.TEXTURE_2D)
 		{
@@ -396,6 +406,48 @@ Skybox.prototype.bakeToCubemap = function( size, render_settings )
 		this.root.scene.info.textures[ &quot;environment&quot; ] = &quot;:baked_skybox&quot;;
 }
 
+Skybox.shader_code = &quot;\\color.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	varying vec3 v_world_position;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = u_model * vec4(a_vertex,1.0);\n\
+		v_world_position = vertex4.xyz;\n\
+		gl_Position = u_viewprojection * vertex4;\n\
+	}\n\
+\\color.fs\n\
+	precision mediump float;\n\
+	varying vec3 v_world_position;\n\
+	uniform vec4 u_material_color;\n\
+	uniform vec3 u_camera_eye;\n\
+	uniform samplerCube u_color_texture;\n\
+	vec2 polarToCartesian(in vec3 V)\n\
+	{\n\
+		return vec2( 0.5 - (atan(V.z, V.x) / -6.28318531), asin(V.y) / 1.57079633 * 0.5 + 0.5);\n\
+	}\n\
+	void main() {\n\
+		vec3 E = normalize( v_world_position - u_camera_eye);\n\
+		vec4 color = textureCube( u_color_texture, E );\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+\\picking.vs\n\
+	precision mediump float;\n\
+	attribute vec3 a_vertex;\n\
+	uniform mat4 u_model;\n\
+	uniform mat4 u_viewprojection;\n\
+	void main() {\n\
+		vec4 vertex4 = vec4(a_vertex,1.0);\n\
+		gl_Position = (u_viewprojection * u_model) * vertex4;\n\
+	}\n\
+\\picking.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+&quot;;
 
 
 LS.registerComponent(Skybox);

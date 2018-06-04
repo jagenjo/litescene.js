@@ -93,7 +93,7 @@ ReflectionProbe.prototype.afterConfigure = function(o)
 {
 	if(o.irradiance_info)
 	{
-		this._irradiance_texture = ReflectionProbe.objectToCubemap( o.irradiance_info, this._irradiance_texture );
+		this._irradiance_texture = ReflectionProbe.objectToCubemap( o.irradiance_info, this._irradiance_texture, this.high_precision );
 		this.assignCubemaps();
 	}
 }
@@ -172,7 +172,19 @@ ReflectionProbe.prototype.updateCubemap = function( position, render_settings )
 		LS.Renderer.regenerateShadowmaps( scene, render_settings );
 	}
 
+	//avoid reusing same irradiance from previous pass
+	var tmp = null;
+	if( LS.GlobalScene.info.textures.irradiance == this._irradiance_texture )
+	{
+		tmp = LS.GlobalScene.info.textures.irradiance;
+		LS.GlobalScene.info.textures.irradiance = null;
+	}
+
+	//render all the scene inside the cubemap
 	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+
+	if(tmp)
+		LS.GlobalScene.info.textures.irradiance = tmp;
 
 	texture._in_current_fbo = false;
 
@@ -210,33 +222,33 @@ ReflectionProbe.prototype.updateIrradiance = function()
 		return;
 
 	var cubemap = this._texture;
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 
+	//create textures for high and low
 	if(!ReflectionProbe._downscale_cubemap)
+	{
 		ReflectionProbe._downscale_cubemap = new GL.Texture( 32, 32, { texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
-	var downscale_cubemap = ReflectionProbe._downscale_cubemap;
+		ReflectionProbe._downscale_cubemap_high = new GL.Texture( 32, 32, { type: gl.HIGH_PRECISION_FORMAT, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
+	}
+
+	var downscale_cubemap = this.high_precision ? ReflectionProbe._downscale_cubemap_high : ReflectionProbe._downscale_cubemap;
 
 	//downscale
 	cubemap.copyTo( downscale_cubemap );
 	
 	//blur
 	for(var i = 0; i < 8; ++i)
-	{
-		downscale_cubemap._tmp = downscale_cubemap.applyBlur( i,i,1, null, downscale_cubemap._tmp );
-		downscale_cubemap._tmp.copyTo( downscale_cubemap );
-	}
+		downscale_cubemap.applyBlur( i,i,1 );
 
 	//downscale again
 	var irradiance_cubemap = this._irradiance_texture;
-	if(!irradiance_cubemap)
-		irradiance_cubemap = this._irradiance_texture = new GL.Texture( 4, 4, { texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
+	if(!irradiance_cubemap || irradiance_cubemap.type != type)
+		irradiance_cubemap = this._irradiance_texture = new GL.Texture( 4, 4, { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB, filter: gl.LINEAR } );
 	downscale_cubemap.copyTo( irradiance_cubemap );
 
 	//blur again
 	for(var i = 0; i < 4; ++i)
-	{
-		irradiance_cubemap._tmp = irradiance_cubemap.applyBlur( i,i,1, null, irradiance_cubemap._tmp );
-		irradiance_cubemap._tmp.copyTo( irradiance_cubemap );
-	}
+		irradiance_cubemap.applyBlur( i,i,1 );
 
 	this.assignCubemaps();
 
@@ -252,6 +264,7 @@ ReflectionProbe.prototype.assignCubemaps = function( scene )
 
 	if(this._texture)
 	{
+		var tex = this._texture;
 		LS.ResourcesManager.registerResource( this._texid, this._texture );
 		if( scene.info )
 			scene.info.textures.environment = this._texid;
@@ -267,7 +280,7 @@ ReflectionProbe.prototype.assignCubemaps = function( scene )
 }
 
 
-ReflectionProbe.prototype.renderProbe = function( picking_color )
+ReflectionProbe.prototype.renderProbe = function( visualize_irradiance, picking_color )
 {
 	if( !this._texture || !this._enabled )
 		return;
@@ -279,14 +292,22 @@ ReflectionProbe.prototype.renderProbe = function( picking_color )
 	if(!picking_color) //regular texture
 	{
 		var shader = GL.Shader.getCubemapShowShader();
-		this._texture.bind(0);
+
+        if(visualize_irradiance)
+		    this._irradiance_texture.bind(0);
+        else
+		    this._texture.bind(0);
+            
 		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES, shader );
-		LS.Draw.setColor( LS.WHITE );
-		LS.Draw.scale( 1.1 );
-		gl.enable( gl.CULL_FACE );
-		gl.frontFace( gl.CW );
-		LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
-		gl.frontFace( gl.CCW );
+        if(1) //contour
+        {
+            LS.Draw.setColor( LS.WHITE );
+            LS.Draw.scale( 1.1 );
+            gl.enable( gl.CULL_FACE );
+            gl.frontFace( gl.CW );
+            LS.Draw.renderMesh( LS.Renderer._sphere_mesh, GL.TRIANGLES );
+            gl.frontFace( gl.CCW );
+        }
 	}
 	else
 	{
@@ -301,7 +322,10 @@ ReflectionProbe.cubemapToObject = function( cubemap )
 {
 	var faces = [];
 	for( var i = 0; i < 6; ++i )
-		faces.push( typedArrayToArray( cubemap.getPixels(null,null,i) ) );
+	{
+		var data = typedArrayToArray( cubemap.getPixels(i) );
+		faces.push( data );
+	}
 	return {
 		texture_type: cubemap.texture_type,
 		size: cubemap.width,
@@ -310,16 +334,89 @@ ReflectionProbe.cubemapToObject = function( cubemap )
 	};
 }
 
-ReflectionProbe.objectToCubemap = function( data, out )
+ReflectionProbe.objectToCubemap = function( data, out, high_precision )
 {
+	var type = high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
 	if(!out)
-		out = new GL.Texture( data.size, data.size, { texture_type: gl.TEXTURE_CUBE_MAP, format: GL.RGBA });
+		out = new GL.Texture( data.size, data.size, { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: GL.RGBA });
 	for(var i = 0; i < data.faces.length; ++i )
-		out.setPixels( new Uint8Array( data.faces[i] ), true, i == 5, i );
+	{
+		var data_typed;
+		if(type == gl.FLOAT)
+			data_typed = new Float32Array( data.faces[i] );
+		else if(type == gl.HIGH_PRECISION_FORMAT)
+			data_typed = new Uint16Array( data.faces[i] );
+		else //if(type == gl.UNSIGNED_BYTE)
+			data_typed = new Uint8Array( data.faces[i] );
+		out.setPixels( data_typed, true, i == 5, i );
+	}
 	return out;
 }
 
-ReflectionProbe.render_helpers = true;
+ReflectionProbe.visualize_helpers = true;
+ReflectionProbe.visualize_irradiance = false;
 ReflectionProbe.helper_size = 1;
 
 LS.registerComponent( ReflectionProbe );
+
+
+
+function IrradianceCache( o )
+{
+	this.subdivisions = new Uint8Array(4,4,4);
+
+	this.mode = IrradianceCache.VERTEX_MODE;
+
+	this._irradiance_texture = null;
+
+	if(o)
+		this.configure(o);
+}
+
+IrradianceCache.OBJECT_MODE = 1;
+IrradianceCache.VERTEX_MODE = 2;
+IrradianceCache.FRAGMENT_MODE = 3;
+
+IrradianceCache.prototype.computeCache = function()
+{
+	//compute cache size
+	var num_probes = this.subdivisions[0] * this.subdivisions[1] * this.subdivisions[2];
+
+}
+
+IrradianceCache.prototype.encodeCacheInTexture = function()
+{
+		
+}
+
+IrradianceCache.prototype.renderEditor = function()
+{
+
+	var shader = GL.Shader.getCubemapShowShader();
+	var mesh = LS.Renderer._sphere_mesh;
+	var position = vec3.create();
+
+	var global_matrix = this._root.transform.getGlobalMatrixRef();
+	var center = mat4.multiplyVec3( vec3.create(), global_matrix, LS.ZEROS );
+	var halfsize = mat4.multiplyVec3( vec3.create(), global_matrix, [0.5,0.5,0.5] );
+	
+	var min = vec3.sub( vec3.create(), center, halfsize );
+	var subs = this.subdivisions;
+	var iscale = vec3.fromValues( (2*halfsize[0])/subs[0], (2*halfsize[1])/subs[1], (2*halfsize[2])/subs[2] );
+	   
+	for(var x = 0; x < subs[0]; ++x)
+	for(var y = 0; y < subs[1]; ++y)
+	for(var z = 0; z < subs[2]; ++z)
+	{
+		LS.Draw.push();
+		LS.Draw.translate( x * iscale[0] + min[0], y * iscale[1] + min[1], z * iscale[2] + min[2] );
+		LS.Draw.scale( ReflectionProbe.helper_size );
+		//bind cubemap
+		//...
+		//LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
+		LS.Draw.renderSolidSphere(1);
+		LS.Draw.pop();
+	}
+}
+
+//LS.registerComponent( IrradianceCache );

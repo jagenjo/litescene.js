@@ -192,7 +192,8 @@ newStandardMaterial.FLAGS = {
 
 	DEGAMMA_COLOR: 1<<26,
 	SPEC_ON_ALPHA: 1<<27,
-	ALPHA_TEST: 1<<28
+	SPEC_ON_TOP: 1<<28,
+	ALPHA_TEST: 1<<29
 };	
 
 newStandardMaterial.shader_codes = {};
@@ -241,6 +242,8 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 		code_flags |= FLAGS.EXTRA_TEXTURE;
 	if( this.specular_on_alpha )
 		code_flags |= FLAGS.SPEC_ON_ALPHA;
+	if( this.specular_on_top )
+		code_flags |= FLAGS.SPEC_ON_TOP;
 
 	//flags
 	if( this.flags.alpha_test )
@@ -316,6 +319,9 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 		code.fs_shadows += str;
 	}
 
+	if( code_flags & FLAGS.SPEC_ON_TOP )
+		code.fs += "	#define SPEC_ON_TOP\n";
+
 	if( code_flags & FLAGS.SPEC_ON_ALPHA )
 		code.fs += "	#define SPEC_ON_ALPHA\n";
 
@@ -325,6 +331,9 @@ newStandardMaterial.prototype.getShaderCode = function( instance, render_setting
 	//compile shader and cache
 	shader_code = new LS.ShaderCode();
 	var final_code = newStandardMaterial.code_template;
+
+	if( newStandardMaterial.onShaderCode )
+		newStandardMaterial.onShaderCode( code, this, code_flags );
 
 	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
 		v = v.replace( /[\{\}]/g, "" );
@@ -362,7 +371,7 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 		if(!texture)
 			continue;
 
-		if(texture.constructor === String)
+		if(texture.constructor === String) //name of texture
 			texture = LS.ResourcesManager.textures[texture];
 		else if (texture.constructor != Texture)
 			continue;		
@@ -550,6 +559,12 @@ newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
+newStandardMaterial.clearShadersCache = function()
+{
+	LS.log("newStandardMaterial ShaderCode cache cleared");
+	newStandardMaterial.shader_codes = {};
+}
+
 LS.registerMaterialClass( newStandardMaterial );
 LS.newStandardMaterial = newStandardMaterial;
 
@@ -595,6 +610,10 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+\n\
+//special cases\n\
+{{vs_out}}\n\
+\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
@@ -602,9 +621,10 @@ void main() {\n\
 	v_uvs = a_coord;\n\
 	\n\
 	{{vs}}\n\
-	//deforms\n\
+	//local deforms\n\
 	applyMorphing( vertex4, v_normal );\n\
 	applySkinning( vertex4, v_normal );\n\
+	{{vs_local_deform}}\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
@@ -617,6 +637,9 @@ void main() {\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
+	//world deform\n\
+	{{vs_deform}}\n\
+	\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 	gl_PointSize = u_point_size;\n\
 	#pragma shaderblock \"modifyFinalVertexPosition\"\n\
@@ -672,6 +695,7 @@ uniform vec4 u_normal_texture_settings;\n\
 \n\
 \n\
 #pragma shaderblock \"light\"\n\
+#pragma shaderblock \"light_texture\"\n\
 #pragma shaderblock \"applyReflection\"\n\
 \n\
 #pragma snippet \"perturbNormal\"\n\
@@ -701,20 +725,30 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
 }\n\
 \n\
+{{fs_out}}\n\
 \n\
 void main() {\n\
 	Input IN = getInput();\n\
 	SurfaceOutput o = getSurfaceOutput();\n\
 	surf(IN,o);\n\
 	Light LIGHT = getLight();\n\
+	applyLightTexture( IN, LIGHT );\n\
 	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
 	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
 	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
 	#ifdef SPEC_ON_ALPHA\n\
 		final_color.a += FINALLIGHT.Specular;\n\
 	#endif\n\
+	#ifdef SPEC_ON_TOP\n\
+		float specular = FINALLIGHT.Specular;\n\
+		FINALLIGHT.Specular = 0.0;\n\
+	#endif\n\
 	final_color.xyz = applyLight( o, FINALLIGHT );\n\
+	#ifdef SPEC_ON_TOP\n\
+		final_color.xyz += specular * LIGHT.Color;\n\
+	#endif\n\
 	final_color = applyReflection( IN, o, final_color );\n\
+	{{fs_encode}}\n\
 	#ifdef DRAW_BUFFERS\n\
 	  gl_FragData[0] = final_color;\n\
 	  if(u_light_info.z == 0.0)\n\
@@ -762,6 +796,9 @@ uniform float u_point_size;\n\
 \n\
 //camera\n\
 uniform vec3 u_camera_eye;\n\
+\n\
+{{vs_out}}\n\
+\n\
 void main() {\n\
 	\n\
 	vec4 vertex4 = vec4(a_vertex,1.0);\n\
@@ -772,6 +809,7 @@ void main() {\n\
   //deforms\n\
   applyMorphing( vertex4, v_normal );\n\
   applySkinning( vertex4, v_normal );\n\
+  {{vs_local_deform}}\n\
 	\n\
 	//vertex\n\
 	v_pos = (u_model * vertex4).xyz;\n\
@@ -784,6 +822,7 @@ void main() {\n\
 	#else\n\
 		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
 	#endif\n\
+  {{vs_deform}}\n\
 	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
 }\n\
 \\shadow.fs\n\
@@ -816,10 +855,26 @@ void surf(in Input IN, out SurfaceOutput o)\n\
 	{{fs_shadows}}\n\
 }\n\
 \n\
+{{fs_shadow_out}}\n\
+\n\
 void main() {\n\
   Input IN = getInput();\n\
   SurfaceOutput o = getSurfaceOutput();\n\
   surf(IN,o);\n\
+  {{fs_shadow_encode}}\n\
   gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
 }\n\
 ";
+
+
+/* example to inject code in the standardMaterial without having to edit it
+//hooks are vs_out (out of main), vs_local_deformer (vertex4 to deform vertices localy), vs_deformer (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
+this.onStart = function()
+{
+  LS.newStandardMaterial.onShaderCode = function(code,mat)
+  {
+  	code.fs_encode = "final_color.x = final_color.y;";
+  }
+	LS.newStandardMaterial.clearShadersCache();
+}
+*/

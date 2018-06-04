@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -1073,15 +1073,23 @@ Transform.prototype.setScale = function(x,y,z)
 * @param {number} y
 * @param {number} z 
 */
-Transform.prototype.translate = function(x,y,z)
-{
-	if(arguments.length == 3)
-		vec3.add( this._position, this._position, this.transformVector([x,y,z]) );
-	else
-		vec3.add( this._position, this._position, this.transformVector(x) );
-	this._must_update = true;
-	this._on_change(true);
-}
+Transform.prototype.translate = (function(){
+	var tmp = vec3.create();
+	var tmp2 = vec3.create();
+	
+	return function(x,y,z)
+	{
+		if(arguments.length == 3)
+		{
+			tmp2[0] = x; tmp2[1] = y; tmp2[2] = z;
+			vec3.add( this._position, this._position, this.transformVector(tmp2, tmp) );
+		}
+		else
+			vec3.add( this._position, this._position, this.transformVector(x, tmp) );
+		this._must_update = true;
+		this._on_change(true);
+	};
+})();
 
 /**
 * translates object in local coordinates (adds to the position)

@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -181,9 +181,9 @@ function SceneInclude( o )
 	this._scene_path = null;
 	this._scene_is_ready = false;
 
-	if( LS.SceneTree ) //this is because in some cases (debug mode) this component will be registered before the SceneTree exists
+	if( LS.Scene ) //this is because in some cases (debug mode) this component will be registered before the Scene exists
 	{
-		this._scene = new LS.SceneTree();
+		this._scene = new LS.Scene();
 		this._scene.root.removeAllComponents();
 		LEvent.bind( this._scene, &quot;requestFrame&quot;, function(){ 
 			if(this._root.scene)
@@ -429,7 +429,7 @@ SceneInclude.prototype.getEvents = function()
 }
 
 //returns which actions can be triggered in this component
-SceneInclude.prototype.getEventActions = function()
+SceneInclude.prototype.getActions = function()
 {
 	return { &quot;load&quot;: &quot;function&quot;, &quot;unload&quot;: &quot;function&quot; };
 }
@@ -437,7 +437,7 @@ SceneInclude.prototype.getEventActions = function()
 SceneInclude.prototype.getResources = function(res)
 {
 	if(this._scene_path)
-		res[ this._scene_path ] = LS.SceneTree;
+		res[ this._scene_path ] = LS.Scene;
 	return res;
 }
 

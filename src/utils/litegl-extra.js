@@ -6,7 +6,7 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 		return 0;
 
 	root_node = root_node || LS.GlobalScene;
-	if( root_node.constructor == LS.SceneTree )
+	if( root_node.constructor == LS.Scene  )
 		root_node = root_node.root;
 	if(!root_node.findNode)
 	{

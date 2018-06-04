@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -196,6 +196,7 @@ function SceneNode( name )
 	this._parentNode = null;
 	this._children = null;
 	this._in_tree = null;
+	this._instances = []; //render instances
 
 	//flags
 	this.flags = {
@@ -398,7 +399,11 @@ SceneNode.prototype.setName = function(new_name)
 
 	//check that the name is valid (doesnt have invalid characters)
 	if(!LS.validateName(new_name))
+	{
+		console.warn(&quot;invalid name for node: &quot; + new_name );
+		//new_name = new_name.replace(/[^a-z0-9\.\-]/gi,&quot;_&quot;);
 		return false;
+	}
 
 	var scene = this._in_tree;
 	if(!scene)
@@ -976,7 +981,7 @@ SceneNode.prototype.assign = function( item, extra )
 		case LS.SceneNode: 
 			this.addChild( item );
 			break;
-		case LS.SceneTree: 	
+		case LS.Scene:
 			var node = this;
 			item.loadScripts( null, function(){
 				item.loadResources( function(){ 
@@ -1340,11 +1345,16 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	var compo = new LS.Components.MeshRenderer( mesh_render_config );
 
 	//parsed meshes have info about primitive
-	if( mesh.primitive === &quot;line_strip&quot; )
-	{
-		compo.primitive = 3;
+	if( mesh.primitive )
+    {
+        switch(mesh.primitive)
+        {
+    		case &#x27;points&#x27;: compo.primitive = GL.POINTS; break;
+    		case &#x27;lines&#x27;: compo.primitive = GL.LINES; break;
+    		case &#x27;line_strip&#x27;: compo.primitive = GL.LINE_STRIP; break;
+        }
 		delete mesh.primitive;
-	}
+    }
 
 	//add MeshRenderer
 	this.addComponent( compo );
@@ -1504,6 +1514,7 @@ SceneNode.prototype.getBoundingBox = function( bbox, only_instances )
 	return bbox;
 }
 
+LS.Scene.Node = SceneNode;
 LS.SceneNode = SceneNode;
 LS.Classes.SceneNode = SceneNode;
 

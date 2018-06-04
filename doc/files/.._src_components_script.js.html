@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -187,17 +187,17 @@ function Script(o)
 			return this._root.getComponent(type,index)
 			}).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + &quot;/context&quot;; },
-		createProperty: LS.Component.prototype.createProperty,
-		createAction: LS.Component.prototype.createAction,
-		bind: LS.Component.prototype.bind,
-		unbind: LS.Component.prototype.unbind,
-		unbindAll: LS.Component.prototype.unbindAll
+		createProperty: LS.BaseComponent.prototype.createProperty,
+		createAction: LS.BaseComponent.prototype.createAction,
+		bind: LS.BaseComponent.prototype.bind,
+		unbind: LS.BaseComponent.prototype.unbind,
+		unbindAll: LS.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
 	this._script.exported_functions = [];
 	this._last_error = null;
-	this._breakpoint_on_call = false;
+	this._breakpoints = null;
 
 	if(o)
 		this.configure(o);
@@ -240,6 +240,7 @@ Script.defineAPIFunction( &quot;onFinish&quot;, Script.BIND_TO_SCENE, &quot;fini
 Script.defineAPIFunction( &quot;onPrefabReady&quot;, Script.BIND_TO_NODE, &quot;prefabReady&quot; );
 //behaviour
 Script.defineAPIFunction( &quot;onUpdate&quot;, Script.BIND_TO_SCENE, &quot;update&quot; );
+Script.defineAPIFunction( &quot;onFixedUpdate&quot;, Script.BIND_TO_SCENE, &quot;fixedUpdate&quot; );
 Script.defineAPIFunction( &quot;onNodeClicked&quot;, Script.BIND_TO_NODE, &quot;node_clicked&quot; );
 Script.defineAPIFunction( &quot;onClicked&quot;, Script.BIND_TO_NODE, &quot;clicked&quot; );
 //rendering
@@ -263,6 +264,8 @@ Script.defineAPIFunction( &quot;onGamepadConnected&quot;, Script.BIND_TO_SCENE, 
 Script.defineAPIFunction( &quot;onGamepadDisconnected&quot;, Script.BIND_TO_SCENE, &quot;gamepaddisconnected&quot; );
 Script.defineAPIFunction( &quot;onButtonDown&quot;, Script.BIND_TO_SCENE, &quot;buttondown&quot; );
 Script.defineAPIFunction( &quot;onButtonUp&quot;, Script.BIND_TO_SCENE, &quot;buttonup&quot; );
+Script.defineAPIFunction( &quot;onDragStart&quot;, Script.BIND_TO_SCENE, &quot;dragstart&quot; );
+
 //global
 Script.defineAPIFunction( &quot;onFileDrop&quot;, Script.BIND_TO_SCENE, &quot;fileDrop&quot; );
 //editor stuff
@@ -353,6 +356,44 @@ Script.prototype.reload = function()
 }
 
 /**
+* It will stop the execution when this method is called, but only if the console is open and the method is an event related method (onRender, onUpdate, etc)
+* @method setBreakpoint
+* @param {String} method_name name of the method to add breakpoint
+* @param {Boolean} value true to set, false to remove
+*/
+Script.prototype.setBreakpoint = function( method_name, value )
+{
+	if(!this._breakpoints &amp;&amp; !value)
+		return;
+
+	if(!this._breakpoints)
+		this._breakpoints = {};
+
+	if(value)
+		this._breakpoints[ method_name ] = true;
+	else
+	{
+		delete this._breakpoints[ method_name ];
+		if( Object.keys(this._breakpoints).length == 0 )
+			this._breakpoints = null;
+	}
+}
+
+/**
+* tells if there is a breakpoint set (using addBreakpoint) in this method
+* @method hasBreakpoint
+* @param {String} method_name name of the method to check if it has a breakpoint
+* @return {Boolean} true if there is a breakpoint
+*/
+Script.prototype.hasBreakpoint = function( method_name )
+{
+	if(!this._breakpoints)
+		return false;
+	return this._breakpoints[ method_name ];
+}
+
+
+/**
 * This is the method in charge of compiling the code and executing the constructor, which also creates the context.
 * It is called everytime the code is modified, that implies that the context is created when the component is configured.
 * @method processCode
@@ -420,6 +461,8 @@ Script.prototype.processCode = function( skip_events, reset_state )
 	if( this._name &amp;&amp; this._root &amp;&amp; this._root.scene )
 		LS.Script.active_scripts[ this._name ] = this;
 
+	console.log(&quot; + Script: &quot; + this._name + &quot; CTX: &quot;, this._script._context );
+
 	return ret;
 }
 
@@ -479,6 +522,42 @@ Script.prototype.getPropertiesInfo = function()
 	var attrs = LS.getObjectProperties( ctx );
 	attrs.enabled = &quot;boolean&quot;;
 	return attrs;
+}
+
+Script.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+/**
+* get actions that could be performed from graphs or animations
+* @method getActions
+*/
+Script.prototype.getActions = function(actions)
+{
+	var ctx = this.getContext();
+	if(!ctx || !ctx.getActions)
+		return actions;
+
+	var new_actions = ctx.getActions();
+	if(new_actions)
+		for(var i in new_actions)
+			actions[i] = new_actions[i];
+	return actions;
+}
+
+/**
+* get events that could be triggered by this component
+* @method getEvents
+*/
+Script.prototype.getEvents = function()
+{
+	var ctx = this.getContext();
+	if(!ctx || !ctx.getEvents)
+		return null;
+	return ctx.getEvents();
 }
 
 /*
@@ -666,14 +745,25 @@ Script.prototype.onScriptEvent = function( event_type, params )
 	var event_info = LS.Script.API_events_to_function[ type ];
 	if(!event_info)
 		return; //????
-	if(this._breakpoint_on_call)
+
+	var has_breakpoint = false;
+	if( this._breakpoints )
 	{
-		this._breakpoint_on_call = false;
-		{{debugger}} //stops the execution if the console is open
+		if( this._breakpoints[ event_info.name ] )
+		{
+			has_breakpoint = true;
+			this.setBreakpoint( event_info.name, false );
+		}
 	}
 
 	if( this._blocked_functions.has( event_info.name ) ) //prevent calling code with errors
+	{
+		console.warn(&quot;Script: blocked function trying to be executed, skipping: &quot; + event_info.name );
 		return;
+	}
+
+	if(has_breakpoint)
+		{{debugger}}; //stops the execution if the console is open
 
 	var r = this._script.callMethod( event_info.name, params, expand, this );
 	return r;
@@ -793,6 +883,8 @@ Script.prototype.onError = function(e)
 
 	e.script = this;
 	e.node = this._root;
+
+	console.warn(&quot;Script: blocking function on script due to error: &quot; + e.method_name );
 	this._blocked_functions.add( e.method_name );
 
 	LEvent.trigger( this, &quot;code_error&quot;,e);
@@ -800,7 +892,7 @@ Script.prototype.onError = function(e)
 	LEvent.trigger( LS, &quot;code_error&quot;,e);
 
 	//conditional this?
-	console.log(&quot;app finishing due to error in script&quot;);
+	console.log(&quot;app finishing due to error in script, scene state is keep as it was during the error.&quot;);
 	scene.finish();
 }
 
@@ -861,11 +953,11 @@ function ScriptFromFile(o)
 	this._script.extra_methods = {
 		getComponent: (function() { return this; }).bind(this),
 		getLocator: function() { return this.getComponent().getLocator() + &quot;/context&quot;; },
-		createProperty: LS.Component.prototype.createProperty,
-		createAction: LS.Component.prototype.createAction,
-		bind: LS.Component.prototype.bind,
-		unbind: LS.Component.prototype.unbind,
-		unbindAll: LS.Component.prototype.unbindAll
+		createProperty: LS.BaseComponent.prototype.createProperty,
+		createAction: LS.BaseComponent.prototype.createAction,
+		bind: LS.BaseComponent.prototype.bind,
+		unbind: LS.BaseComponent.prototype.unbind,
+		unbindAll: LS.BaseComponent.prototype.unbindAll
 	};
 
 	this._script.onerror = this.onError.bind(this);
@@ -1055,6 +1147,8 @@ ScriptFromFile.prototype.processCode = function( skip_events, on_complete, reset
 	if(on_complete)
 		on_complete(this);
 
+	console.log(&quot; + Script: &quot; + this._name + &quot; CTX: &quot;, this._script._context );
+
 	return ret;
 }
 
@@ -1084,6 +1178,15 @@ ScriptFromFile.prototype.serialize = function()
 	};
 }
 
+ScriptFromFile.prototype.onAction = function( action, params )
+{
+	var ctx = this.getContext();
+	if(ctx &amp;&amp; ctx.onAction)
+		return ctx.onAction( action, params );
+}
+
+ScriptFromFile.prototype.getActions = Script.prototype.getActions();
+ScriptFromFile.prototype.getEvents = Script.prototype.getEvents();
 
 ScriptFromFile.prototype.getResources = function(res)
 {
@@ -1141,6 +1244,7 @@ ScriptFromFile.updateComponents = function( script, skip_events )
 			compo.processCode(skip_events);
 	}
 }
+
 
 LS.extendClass( ScriptFromFile, Script );
 

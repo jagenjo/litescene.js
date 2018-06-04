@@ -1,7 +1,7 @@
 //here goes the ending of commonjs stuff
 
 //create Global Scene
-var Scene = LS.GlobalScene = new SceneTree();
+var Scene = LS.GlobalScene = new LS.Scene();
 
 LS.newMeshNode = function(id,mesh_name)
 {

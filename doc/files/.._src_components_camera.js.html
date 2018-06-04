@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -209,20 +209,21 @@ function Camera(o)
 
 	this._background_color = vec4.fromValues(0,0,0,1);
 
-	this._use_custom_projection_matrix = false;
+	//in case we want to overwrite the view matrix manually
+	this._use_custom_projection_matrix = false; 
+
+	//in case we want to overwrite the view matrix manually
+	this.overwrite_material = null;
 
 	this._view_matrix = mat4.create();
 	this._projection_matrix = mat4.create();
 	this._viewprojection_matrix = mat4.create();
 	this._model_matrix = mat4.create(); //inverse of viewmatrix (used for local vectors)
-	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame
-
-	//this._previous_viewprojection_matrix = mat4.create(); //used for motion blur
+	this._previous_viewprojection_matrix = mat4.create(); //viewmatrix from previous frame, used in some algorithms
 
 	//lazy upload
 	this._must_update_view_matrix = true;
 	this._must_update_projection_matrix = true;
-
 	this._rendering_index = -1; //tells the number of this camera in the rendering process
 
 	//used for render to texture
@@ -367,14 +368,20 @@ Object.defineProperty( Camera.prototype, &quot;center&quot;, {
 * @property focalLength {Number}
 * @default (depends)
 */
+var tmp = vec3.create();
+
 Object.defineProperty( Camera.prototype, &quot;focalLength&quot;, {
 	get: function() {
 		return vec3.distance( this._eye, this._center );
 	},
 	set: function(v) {
-		var tmp = vec3.create();
+		v = Math.max(0.001,v); //avoid 0
 		vec3.sub( tmp, this._center, this._eye );
-		vec3.normalize( tmp, tmp );
+		var length = vec3.length(tmp);
+		if(length &lt; 0.0001)
+			tmp.set([0,0,-1]);
+		else
+			v /= length;
 		vec3.scaleAndAdd( tmp, this._eye, tmp, v );
 		this._center.set( tmp );
 		this._must_update_view_matrix = true;
@@ -1737,10 +1744,8 @@ Camera.prototype.disableRenderFrameContext = function()
 
 Camera.prototype.prepare = function()
 {
-	this.updateMatrices(); 
-
 	this._previous_viewprojection_matrix.set( this._viewprojection_matrix );
-
+	this.updateMatrices(); 
 	this.fillShaderQuery();
 	this.fillShaderUniforms();
 }

@@ -14,12 +14,7 @@ function LinesRenderer(o)
 	//material
 	this.global_opacity = 1;
 	this.color = vec3.fromValues(1,1,1);
-	this.additive_blending = false;
-
-	this.line_width = 1;
-
 	this.use_node_material = false; 
-	this.premultiplied_alpha = false;
 	this.in_world_coordinates = false;
 
 	if(o)
@@ -42,10 +37,11 @@ function LinesRenderer(o)
 }
 LinesRenderer.icon = "mini-icon-lines.png";
 LinesRenderer["@color"] = { widget: "color" };
+LinesRenderer["@lines"] = { widget: "null" };
 
 Object.defineProperty( LinesRenderer.prototype, "lines", {
-	set: function(v) { this.lines = v; },
-	get: function() { return this.lines; },
+	set: function(v) { this._lines = v; },
+	get: function() { return this._lines; },
 	enumerable: true
 });
 
@@ -194,7 +190,6 @@ LinesRenderer.prototype.onAfterRender = function(e)
 	if( this._must_update )
 		this.updateMesh();
 
-	LS.Draw.setLineWidth( this.line_width );
 	LS.Draw.renderMesh( this._mesh, GL.LINES );
 }
 

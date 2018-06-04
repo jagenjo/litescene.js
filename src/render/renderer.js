@@ -45,6 +45,7 @@ var Renderer = {
 	_visible_cameras: null,
 	_visible_lights: null,
 	_visible_instances: null,
+	_visible_materials: [],
 	_near_lights: [],
 	_active_samples: [],
 
@@ -184,7 +185,7 @@ var Renderer = {
 	* If you want to change the rendering pipeline, do not overwrite this function, try to understand it first, otherwise you will miss lots of features
 	*
 	* @method render
-	* @param {SceneTree} scene
+	* @param {Scene} scene
 	* @param {RenderSettings} render_settings
 	* @param {Array} [cameras=null] if no cameras are specified the cameras are taken from the scene
 	*/
@@ -242,7 +243,9 @@ var Renderer = {
 		this.processVisibleData( scene, render_settings, cameras );
 
 		//Define the main camera, the camera that should be the most important (used for LOD info, or shadowmaps)
-		cameras = cameras || this._visible_cameras;
+		cameras = cameras && cameras.length ? cameras : this._visible_cameras;
+		if(cameras.length == 0)
+			throw("no cameras");
 		this._visible_cameras = cameras; //the cameras being rendered
 		this._main_camera = cameras[0];
 
@@ -329,7 +332,7 @@ var Renderer = {
 	* @method renderFrame
 	* @param {Camera} camera 
 	* @param {Object} render_settings
-	* @param {SceneTree} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
+	* @param {Scene} scene [optional] this can be passed when we are rendering a different scene from LS.GlobalScene (used in renderMaterialPreview)
 	*/
 	renderFrame: function ( camera, render_settings, scene )
 	{
@@ -351,8 +354,11 @@ var Renderer = {
 		LEvent.trigger(scene, "beforeRenderScene", camera );
 		LEvent.trigger(this, "beforeRenderScene", camera );
 
+		//in case the user wants to filter instances
+		LEvent.trigger(this, "computeVisibility", this._visible_instances );
+
 		//here we render all the instances
-		this.renderInstances( render_settings );
+		this.renderInstances( render_settings, this._visible_instances );
 
 		//send after events
 		LEvent.trigger( scene, "afterRenderScene", camera );
@@ -426,9 +432,8 @@ var Renderer = {
 		this._current_camera = camera;
 
 		//Draw allows to render debug info easily
-		Draw.reset(); //clear 
-		Draw.setCameraPosition( camera.getEye( Draw.camera_position ) );
-		Draw.setViewProjectionMatrix( this._view_matrix, this._projection_matrix, this._viewprojection_matrix );
+		LS.Draw.reset(); //clear 
+		LS.Draw.setCamera( camera );
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
@@ -607,7 +612,7 @@ var Renderer = {
 				if( instance.onPreRender( render_settings ) === false)
 					continue;
 
-			if(!instance.material) //somethinig went wrong
+			if(!instance.material) //in case something went wrong...
 				continue;
 
 			var material = instance.material;
@@ -1126,7 +1131,7 @@ var Renderer = {
 	* Do not reuse the query, they change between rendering passes (shadows, reflections, etc)
 	*
 	* @method fillSceneShaderQuery
-	* @param {SceneTree} scene
+	* @param {Scene} scene
 	* @param {RenderSettings} render_settings
 	*/
 	fillSceneShaderQuery: function( scene, render_settings )
@@ -1216,7 +1221,7 @@ var Renderer = {
 	* Warning: rendering order is computed here, so it is shared among all the cameras (TO DO, move somewhere else)
 	*
 	* @method processVisibleData
-	* @param {SceneTree} scene
+	* @param {Scene} scene
 	* @param {RenderSettings} render_settings
 	* @param {Array} cameras in case you dont want to use the scene cameras
 	*/
@@ -1224,6 +1229,7 @@ var Renderer = {
 	{
 		//options = options || {};
 		//options.scene = scene;
+		var frame = scene._frame;
 
 		this._current_scene = scene;
 
@@ -1231,15 +1237,20 @@ var Renderer = {
 		if(!skip_collect_data)
 		{
 			if( this._frame % this._collect_frequency == 0)
-				scene.collectData();
-			else
-				scene.updateCollectedData();
+				scene.collectData( cameras );
 			LEvent.trigger( scene, "afterCollectData", scene );
 		}
 
-		cameras = cameras || scene._cameras;
+		//set cameras: use the parameters ones or the ones found in the scene
+		cameras = (cameras && cameras.length) ? cameras : scene._cameras;
+		if( cameras.length == 0 )
+		{
+			console.error("no cameras found");
+			return;
+		}
+				
 
-		//prepare cameras
+		//prepare cameras: TODO: sort by priority
 		for(var i = 0, l = cameras.length; i < l; ++i)
 		{
 			var camera = cameras[i];
@@ -1247,7 +1258,7 @@ var Renderer = {
 			camera.prepare();
 		}
 
-		//meh!
+		//define the main camera (the camera used for some algorithms)
 		if(!this._main_camera)
 		{
 			if( cameras.length )
@@ -1256,7 +1267,9 @@ var Renderer = {
 				this._main_camera = new LS.Camera(); // ??
 		}
 
-		var materials = {}; //I dont want repeated materials here
+		//find which materials are going to be seen
+		var materials = this._visible_materials; 
+		materials.length = 0;
 
 		instances = instances || scene._instances;
 		var camera = this._main_camera; // || scene.getCamera();
@@ -1267,7 +1280,7 @@ var Renderer = {
 			if(this._queues[i])
 				this._queues[i].clear();
 
-		//process render instances (add stuff if needed)
+		//process render instances (add stuff if needed, gather materials)
 		for(var i = 0, l = instances.length; i < l; ++i)
 		{
 			var instance = instances[i];
@@ -1285,11 +1298,14 @@ var Renderer = {
 			//materials
 			if(!instance.material)
 				instance.material = this.default_material;
-			if( materials[ instance.material.uid ] && instance.material !== materials[ instance.material.uid ] )
-				console.warn( "Different Materials with same UID: ", instance.material.uid );
-			materials[ instance.material.uid ] = instance.material;
 
-			//add extra info
+			if( instance.material._last_frame_update != frame )
+			{
+				instance.material._last_frame_update = frame;
+				materials.push( instance.material );
+			}
+
+			//add extra info: distance to main camera (used for sorting)
 			instance._dist = vec3.dist( instance.center, camera_eye );
 
 			//change conditionaly
@@ -1349,8 +1365,16 @@ var Renderer = {
 			instance._camera_visibility = 0|0;
 		}
 
-		//update materials 
-		this._prepareMaterials( materials, scene );
+		//prepare materials 
+		for(var i = 0; i < materials.length; ++i)
+		{
+			var material = materials[i];
+			material._index = i;
+			if( material.prepare )
+				material.prepare( scene );
+		}
+
+		LEvent.trigger( scene, "prepareMaterials" );
 
 		//pack all macros, uniforms, and samplers relative to this instance in single containers
 		for(var i = 0, l = instances.length; i < l; ++i)
@@ -1372,29 +1396,13 @@ var Renderer = {
 		this._visible_instances = scene._instances;
 		this._visible_lights = scene._lights;
 		this._visible_cameras = cameras; 
-		this._visible_materials = materials;
+		//this._visible_materials = materials;
 
 		//prepare lights (collect data and generate shadowmaps)
 		for(var i = 0, l = this._visible_lights.length; i < l; ++i)
 			this._visible_lights[i].prepare( render_settings );
 
 		LEvent.trigger( scene, "afterCollectData", scene );
-	},
-
-	//outside of processVisibleData to allow optimizations in processVisibleData
-	_prepareMaterials: function( materials, scene )
-	{
-		var index = 0;
-		for(var i in materials)
-		{
-			var material = materials[i];
-			material._index = index++;
-			material._last_frame_update = this._frame;
-			if( material.prepare )
-				material.prepare( scene );
-		}
-
-		LEvent.trigger( scene, "prepareMaterials" );
 	},
 
 	/**
@@ -1512,7 +1520,7 @@ var Renderer = {
 		var scene = this._material_scene;
 		if(!scene)
 		{
-			scene = this._material_scene = new LS.SceneTree();
+			scene = this._material_scene = new LS.Scene();
 			scene.root.camera.background_color.set([0.0,0.0,0.0,0]);
 			if(options.environment_texture)
 				scene.info.textures.environment = options.environment_texture;
@@ -1579,7 +1587,7 @@ var Renderer = {
 	* @method getCameraAtPosition
 	* @param {number} x
 	* @param {number} y
-	* @param {SceneTree} scene if not specified last rendered scene will be used
+	* @param {Scene} scene if not specified last rendered scene will be used
 	* @return {Camera} the camera
 	*/
 	getCameraAtPosition: function(x,y, cameras)
@@ -1649,7 +1657,6 @@ var Renderer = {
 				queue[i] = options[i];
 	},
 	
-	
 	/**
 	* Enables a ShaderBlock ONLY DURING THIS FRAME
 	*
@@ -1669,6 +1676,36 @@ var Renderer = {
 		if(uniforms)
 			for(var i in uniforms)
 				this._renderer_uniforms[i] = uniforms[i];
+	},
+
+	/**
+	* Renders one texture into another texture, it allows to apply a shader
+	*
+	* @method blit
+	* @param {GL.Texture} source
+	* @param {GL.Texture} destination
+	* @param {GL.Shader} shader [optional]
+	*/
+	blit: function( source, destination, shader )
+	{
+		if(!source || !destination)
+			throw("data missing in blit");
+
+		if(source != destination)
+		{
+			destination.drawTo( function(){
+				source.toViewport( shader);
+			});
+			return;
+		}
+
+		if(!shader)
+			throw("blitting texture to the same texture doesnt makes sense unless a shader is specified");
+
+		var temp = GL.Texture.getTemporary( source.width, source.height, source );
+		source.copyTo( temp );
+		temp.copyTo( source, shader );
+		GL.Texture.releaseTemporary( temp );
 	}
 };
 

@@ -251,4 +251,176 @@ LGraphCameraMotionBlur.pixel_shader = "precision highp float;\n\
 
 LiteGraph.registerNodeType("texture/motionBlur", LGraphCameraMotionBlur );
 
+
+/* not finished
+
+function LGraphVolumetricLight()
+{
+	this.addInput("color","Texture");
+	this.addInput("depth","Texture");
+	this.addInput("camera","Camera");
+	this.addInput("light","Light,Component");
+	this.addOutput("out","Texture");
+	this.properties = { enabled: true, intensity: 1, precision: LGraphTexture.DEFAULT };
+
+	this._inv_matrix = mat4.create();
+
+	this._uniforms = { 
+		u_color_texture:0,
+		u_depth_texture:1,
+		u_shadow_texture:2,
+		u_intensity: 1,
+		u_camera_planes: null,
+		u_inv_vp: this._inv_matrix
+	};
+}
+
+LGraphVolumetricLight.widgets_info = {
+	"precision": { widget:"combo", values: LGraphTexture.MODE_VALUES }
+};
+
+LGraphVolumetricLight.title = "Volumetric Light";
+LGraphVolumetricLight.desc = "Adds fog with volumetric light";
+
+LGraphVolumetricLight.prototype.onExecute = function()
+{
+	var tex = this.getInputData(0);
+	var depth = this.getInputData(1);
+	var camera = this.getInputData(2);
+	var light = this.getInputData(3);
+
+	if( !this.isOutputConnected(0) || !tex || !depth || !camera || !light || !light._shadowmap )
+		return; //saves work
+
+	var enabled = this.getInputData(4);
+	if(enabled != null)
+		this.properties.enabled = Boolean( enabled );
+
+	if(this.properties.precision === LGraphTexture.PASS_THROUGH || this.properties.enabled === false )
+	{
+		this.setOutputData(0, tex);
+		return;
+	}
+
+	var width = tex.width;
+	var height = tex.height;
+	var type = this.precision === LGraphTexture.LOW ? gl.UNSIGNED_BYTE : gl.HIGH_PRECISION_FORMAT;
+	if (this.precision === LGraphTexture.DEFAULT)
+		type = tex.type;
+	if(!this._tex || this._tex.width != width || this._tex.height != height || this._tex.type != type )
+		this._tex = new GL.Texture( width, height, { type: type, format: gl.RGBA, filter: gl.LINEAR });
+
+	if(!LGraphVolumetricLight._shader_spot)
+	{
+		LGraphVolumetricLight._shader_spot = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphVolumetricLight.pixel_shader, { USE_SPOT:"" } );
+		LGraphVolumetricLight._shader_directional = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphVolumetricLight.pixel_shader, { USE_DIRECTIONAL:"" } );
+		//LGraphVolumetricLight._shader_omni = new GL.Shader( GL.Shader.SCREEN_VERTEX_SHADER, LGraphVolumetricLight.pixel_shader, { USE_OMNI:"" } );
+	}
+
+	var shader = null;
+
+	switch( light.type )
+	{
+		case LS.Light.SPOT: shader = LGraphVolumetricLight._shader_spot; break;
+		case LS.Light.DIRECTIONAL: shader = LGraphVolumetricLight._shader_directional; break;
+		case LS.Light.OMNI: //shader = LGraphVolumetricLight._shader_omni;
+			//not supported yet
+			console.warn("volumetric light not supported for omni lights");
+			this.properties.enabled = false;
+			return;
+			break;
+		default:
+			return;
+	}
+
+	var vp = camera._viewprojection_matrix;
+	var intensity = this.properties.intensity;
+	var inv = this._inv_matrix;
+	mat4.invert( inv, camera._viewprojection_matrix );
+
+	var shadow = light._shadowmap;
+
+	var uniforms = this._uniforms;
+	uniforms.u_intensity = intensity;
+	uniforms.u_camera_planes = camera._uniforms.u_camera_planes;
+	uniforms.u_light_viewprojection_matrix = light._light_matrix;
+	uniforms.u_shadow_params = light._uniforms.u_shadow_params;
+	uniforms.u_light_color = light._uniforms.u_light_color;
+
+	this._tex.drawTo(function() {
+		gl.disable( gl.DEPTH_TEST );
+		gl.disable( gl.CULL_FACE );
+		gl.disable( gl.BLEND );
+		tex.bind(0);
+		depth.bind(1);
+		shadow.bind(2);
+		var mesh = Mesh.getScreenQuad();
+		shader.uniforms( uniforms ).draw( mesh );
+	});
+
+	this.setOutputData( 0, this._tex );
+}
+
+LGraphVolumetricLight.prototype.onGetInputs = function()
+{
+	return [["enabled","boolean"]];
+}
+
+LGraphVolumetricLight.pixel_shader = "precision highp float;\n\
+		\n\
+		uniform sampler2D u_color_texture;\n\
+		uniform sampler2D u_depth_texture;\n\
+		uniform sampler2D u_shadow_texture;\n\
+		varying vec2 v_coord;\n\
+		uniform mat4 u_inv_vp;\n\
+		uniform mat4 u_light_viewprojection_matrix;\n\
+		uniform vec2 u_camera_planes;\n\
+		uniform vec4 u_shadow_params;\n\
+		uniform vec3 u_light_color;\n\
+		uniform float u_intensity;\n\
+		#define SAMPLES 16\n\
+		\n\
+		void main() {\n\
+			vec2 uv = v_coord;\n\
+			vec4 color = texture2D(u_color_texture, uv);\n\
+			float depth = texture2D(u_depth_texture, uv).x;\n\
+			float zNear = u_camera_planes.x;\n\
+			float zFar = u_camera_planes.y;\n\
+			//float z = (2.0 * zNear) / (zFar + zNear - depth * (zFar - zNear));\n\
+			depth = depth * 2.0 - 1.0;\n\
+			float z = zNear * (depth + 1.0) / (zFar + zNear - depth * (zFar - zNear));\n\
+			vec4 screenpos = vec4( uv * 2.0 - vec2(1.0), depth, 1.0 );\n\
+			vec4 farpos = u_inv_vp * screenpos;\n\
+			farpos /= farpos.w;\n\
+			screenpos.z = 0.0;\n\
+			vec4 nearpos = u_inv_vp * screenpos;\n\
+			nearpos.xyz /= nearpos.w;\n\
+			vec3 delta = (farpos.xyz - nearpos.xyz) / float(SAMPLES);\n\
+			vec4 current_pos = vec4( nearpos.xyz, 1.0 );\n\
+			float brightness = 0.0;\n\
+			float bias = u_shadow_params.y;\n\
+			for(int i = 0; i < SAMPLES; ++i)\n\
+			{\n\
+				vec4 light_uv = u_light_viewprojection_matrix * current_pos;\n\
+				light_uv.xy /= light_uv.w;\n\
+				light_uv.xy = light_uv.xy * 0.5 + vec2(0.5);\n\
+				float shadow_depth = texture2D( u_shadow_texture, light_uv.xy ).x;\n\
+				if (((light_uv.z - bias) / light_uv.w * 0.5 + 0.5) > shadow_depth )\n\
+					brightness += 1.0;\n\
+				current_pos.xyz += delta;\n\
+			}\n\
+			color.xyz += u_light_color * brightness / float(SAMPLES);\n\
+			gl_FragColor = color;\n\
+		}\n\
+		";
+
+LiteGraph.registerNodeType("texture/volumetric_light", LGraphVolumetricLight );
+*/
+
+
+
+
+
+
+
 }

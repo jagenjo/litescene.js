@@ -36,6 +36,7 @@ function SceneNode( name )
 	this._parentNode = null;
 	this._children = null;
 	this._in_tree = null;
+	this._instances = []; //render instances
 
 	//flags
 	this.flags = {
@@ -460,7 +461,7 @@ SceneNode.prototype.getPropertyInfoFromPath = function( path )
 		if(!target)
 			return null;
 	}
-	else //¿?
+	else //ï¿½?
 	{
 	}
 
@@ -556,7 +557,7 @@ SceneNode.prototype.getPropertyValueFromPath = function( path )
 		if(!target)
 			return null;
 	}
-	else //¿?
+	else //ï¿½?
 	{
 	}
 
@@ -820,7 +821,7 @@ SceneNode.prototype.assign = function( item, extra )
 		case LS.SceneNode: 
 			this.addChild( item );
 			break;
-		case LS.SceneTree: 	
+		case LS.Scene:
 			var node = this;
 			item.loadScripts( null, function(){
 				item.loadResources( function(){ 
@@ -1184,11 +1185,16 @@ SceneNode.prototype.addMeshComponents = function( mesh_id, extra_info )
 	var compo = new LS.Components.MeshRenderer( mesh_render_config );
 
 	//parsed meshes have info about primitive
-	if( mesh.primitive === "line_strip" )
-	{
-		compo.primitive = 3;
+	if( mesh.primitive )
+    {
+        switch(mesh.primitive)
+        {
+    		case 'points': compo.primitive = GL.POINTS; break;
+    		case 'lines': compo.primitive = GL.LINES; break;
+    		case 'line_strip': compo.primitive = GL.LINE_STRIP; break;
+        }
 		delete mesh.primitive;
-	}
+    }
 
 	//add MeshRenderer
 	this.addComponent( compo );
@@ -1348,5 +1354,6 @@ SceneNode.prototype.getBoundingBox = function( bbox, only_instances )
 	return bbox;
 }
 
+LS.Scene.Node = SceneNode;
 LS.SceneNode = SceneNode;
 LS.Classes.SceneNode = SceneNode;

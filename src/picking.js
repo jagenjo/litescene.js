@@ -17,7 +17,7 @@ var Picking = {
 	* @param {number} y in canvas coordinates
 	* @param {Camera} camera default is all cameras
 	* @param {number} layers default is 0xFFFF which is all
-	* @param {SceneTree} scene default is GlobalScene
+	* @param {Scene} scene default is GlobalScene
 	*/
 	getNodeAtCanvasPosition: function( x, y, camera, layers, scene )
 	{
@@ -44,7 +44,7 @@ var Picking = {
 	* @param {number} y in canvas coordinates
 	* @param {Camera} camera
 	* @param {number} layers default is 0xFFFF which is all
-	* @param {SceneTree} scene
+	* @param {Scene} scene
 	* @return {Object} the info supplied by the picker (usually a SceneNode)
 	*/
 	getInstanceAtCanvasPosition: function( x, y, camera, layers, scene )

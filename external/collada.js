@@ -290,7 +290,7 @@ global.Collada = {
 
 		//Create a scene tree
 		var scene = { 
-			object_class:"SceneTree", 
+			object_class:"Scene", 
 			light: null,
 			materials: {},
 			meshes: {},
@@ -793,6 +793,11 @@ global.Collada = {
 				parent = init_from.innerHTML;
 			else {
 				var source = xmlnewparams[i].querySelector("source");
+				if(!parent)
+				{
+					console.warn("no source found for material for newparam");
+					continue;
+				}
 				parent = source.innerHTML;
 			}
 

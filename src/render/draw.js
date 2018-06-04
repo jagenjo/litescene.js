@@ -56,6 +56,8 @@ var Draw = {
 				u_color: this.color,
 				u_camera_position: this.camera_position,
 				u_point_size: this.point_size,
+				u_point_perspective: 0,
+				u_perspective: 1, //viewport.w * this._projection_matrix[5]
 				u_texture: 0
 		};
 
@@ -88,11 +90,15 @@ var Draw = {
 			#endif\n\
 			uniform mat4 u_viewprojection;\n\
 			uniform float u_point_size;\n\
+			uniform float u_perspective;\n\
+			uniform float u_point_perspective;\n\
+			float computePointSize(float radius, float w)\n\
+			{\n\
+				if(radius < 0.0)\n\
+					return -radius;\n\
+				return u_perspective * radius / w;\n\
+			}\n\
 			void main() {\n\
-				gl_PointSize = u_point_size;\n\
-				#ifdef USE_SIZE\n\
-					gl_PointSize = a_extra;\n\
-				#endif\n\
 				#ifdef USE_TEXTURE\n\
 					v_coord = a_coord;\n\
 				#endif\n\
@@ -101,6 +107,12 @@ var Draw = {
 				#endif\n\
 				vec3 vertex = ( u_model * vec4( a_vertex, 1.0 )).xyz;\n\
 				gl_Position = u_viewprojection * vec4(vertex,1.0);\n\
+				gl_PointSize = u_point_size;\n\
+				#ifdef USE_SIZE\n\
+					gl_PointSize = a_extra;\n\
+				#endif\n\
+				if(u_point_perspective != 0.0)\n\
+					gl_PointSize = computePointSize( gl_PointSize, gl_Position.w );\n\
 			}\
 			';
 
@@ -365,7 +377,7 @@ var Draw = {
 			this.color[0] = arguments[0];
 			this.color[1] = arguments[1];
 			this.color[2] = arguments[2];
-			if( arguments.length == 3 )
+			if( arguments.length == 4 )
 				this.color[3] = arguments[3];
 		}
 		else
@@ -386,12 +398,14 @@ var Draw = {
 	/**
 	* Sets the point size
 	* @method setPointSize
-	* @param {number} v
+	* @param {number} v size of points
+	* @param {number} perspective [optional] if set to true, the points will be affected by perspective
 	*/
-	setPointSize: function(v)
+	setPointSize: function(v, perspective)
 	{
 		this.point_size = v;
 		this.uniforms.u_point_size = v;
+		this.uniforms.u_point_perspective = perspective ? 1 : 0;
 	},
 
 	/**
@@ -421,6 +435,7 @@ var Draw = {
 		this.view_matrix.set( camera._view_matrix );
 		this.projection_matrix.set( camera._projection_matrix );
 		this.viewprojection_matrix.set( camera._viewprojection_matrix );
+		this.uniforms.u_perspective = gl.viewport_data[3] * this.projection_matrix[5];
 	},
 
 	/**
@@ -1230,13 +1245,14 @@ var Draw = {
 		this.font_atlas.atlas = atlas;
 	},
 
-	linearize: function(array)
+	linearize: function(array) //fairly optimized
 	{
 		if(!array.length)
 			return [];
 		if(array[0].constructor === Number) //array of numbers
-			return new Float32Array(array);
-		var n = array[0].length;
+			return array.constructor === Float32Array ? array : new Float32Array(array);
+		//linearize
+		var n = array[0].length; //assuming all values have the same size!
 		var result = new Float32Array(array.length * n);
 		var l = array.length;
 		for(var i = 0; i < l; ++i)

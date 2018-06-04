@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -210,6 +210,8 @@ function RenderInstance( node, component )
 	this.uniforms = {};
 	this.samplers = [];
 
+	this.instanced_models = [];
+
 	this.shader_block_flags = 0;
 	this.shader_blocks = [];
 
@@ -230,6 +232,8 @@ function RenderInstance( node, component )
 RenderInstance.NO_SORT = 0;
 RenderInstance.SORT_NEAR_FIRST = 1;
 RenderInstance.SORT_FAR_FIRST = 2;
+
+RenderInstance.fast_normalmatrix = false; //avoid doint the inverse transpose for normal matrix, and just copies the model
 
 RenderInstance.prototype.fromNode = function(node)
 {
@@ -262,6 +266,13 @@ RenderInstance.prototype.setMatrix = function(matrix, normal_matrix)
 */
 RenderInstance.prototype.computeNormalMatrix = function()
 {
+	if(RenderInstance.fast_normalmatrix)
+	{
+		this.normal_matrix.set( this.matrix );
+		mat4.setTranslation( this.normal_matrix, LS.ZEROS );
+		return;
+	}
+
 	var m = mat4.invert(this.normal_matrix, this.matrix);
 	if(m)
 		mat4.transpose(this.normal_matrix, m);
@@ -446,11 +457,13 @@ RenderInstance.prototype.render = function(shader, primitive)
 	}
 
 	//in case no coords found but they are required
+	/*
 	if(shader.attributes[&quot;a_coord&quot;] &amp;&amp; !this.vertex_buffers[&quot;coords&quot;])
 	{
 		//this.mesh.computeTextureCoordinates();		
 		//this.vertex_buffers[&quot;coords&quot;] = this.mesh.vertexBuffers[&quot;coords&quot;];
 	}
+	*/
 
 	//in case no tangents found but they are required
 	if(shader.attributes[&quot;a_tangent&quot;] &amp;&amp; !this.vertex_buffers[&quot;tangents&quot;])

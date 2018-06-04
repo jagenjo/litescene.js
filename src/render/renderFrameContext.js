@@ -14,7 +14,7 @@ function RenderFrameContext( o )
 	this.height = 0; //0 means the same size as the viewport
 	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
-	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
+	this.format = GL.RGB; //how many color channels, or directly the texture internalformat 
 	this.use_depth_texture = true; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
@@ -31,6 +31,7 @@ function RenderFrameContext( o )
 	this._cloned_textures = null; //in case we set the clone_after_unbind to true
 
 	this._version = 1; //to detect changes
+	this._minFilter = gl.NEAREST;
 
 	if(o)
 		this.configure(o);
@@ -136,6 +137,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	var minFilter = gl.LINEAR;
 	if(this.generate_mipmaps && GL.isPowerOfTwo(final_width) && GL.isPowerOfTwo(final_height) )
 		minFilter = gl.LINEAR_MIPMAP_LINEAR;
+	this._minFilter = minFilter;
 
 	switch( this.precision )
 	{
@@ -248,12 +250,13 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport, camer
 }
 
 //we cannot read and write in the same buffer, so we need to clone the textures
+//done from... ?
 RenderFrameContext.prototype.cloneBuffers = function()
 {
 	//we do not call this._fbo.unbind because it will set the previous FBO
 	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
 
-	///for color
+	///for every color texture
 	if( this._textures.length )
 	{
 		if(!this._cloned_textures)
@@ -266,7 +269,6 @@ RenderFrameContext.prototype.cloneBuffers = function()
 			var cloned_texture = this._cloned_textures[i];
 			if( !cloned_texture || cloned_texture.hasSameSize( texture[i] ) || !cloned_texture.hasSameProperties( texture ) )
 				cloned_texture = this._cloned_textures[i] = new GL.Texture( texture.width, texture.height, texture.getProperties() );
-
 			texture.copyTo( cloned_texture );
 			if(i == 0)
 				LS.ResourcesManager.textures[":color_buffer" ] = cloned_texture;
@@ -306,22 +308,29 @@ RenderFrameContext.prototype.disable = function()
 		{
 			var name = this.name + (i > 0 ? i : "");
 			textures[i].filename = name;
+			var final_texture = textures[i];
 
 			//only clone main color if requested
 			if( this.clone_after_unbind && i === 0 )
 			{
 				if( !this._cloned_texture || 
-					this._cloned_texture.width !== textures[i].width || 
-					this._cloned_texture.height !== textures[i].height ||
-					this._cloned_texture.type !== textures[i].type )
-					this._cloned_texture = textures[i].clone();
+					this._cloned_texture.width !== final_texture.width || 
+					this._cloned_texture.height !== final_texture.height ||
+					this._cloned_texture.type !== final_texture.type )
+					this._cloned_texture = final_texture.clone();
 				else
-					textures[i].copyTo( this._cloned_texture );
-
-				LS.ResourcesManager.textures[ name ] = this._cloned_texture;
+					final_texture.copyTo( this._cloned_texture );
+				final_texture = this._cloned_texture;
 			}
-			else
-				LS.ResourcesManager.textures[ name ] = textures[i];
+
+			if( this._minFilter == gl.LINEAR_MIPMAP_LINEAR )
+			{
+				final_texture.bind(0);
+				gl.generateMipmap(gl.TEXTURE_2D);
+				final_texture.has_mipmaps = true;
+			}
+
+			LS.ResourcesManager.textures[ name ] = final_texture;
 		}
 
 		if(this._depth_texture)
@@ -360,6 +369,21 @@ RenderFrameContext.prototype.getColorTexture = function(num)
 RenderFrameContext.prototype.getDepthTexture = function()
 {
 	return this._depth_texture || null;
+}
+
+/**
+* Fills the textures with a flat color
+* @method clearTextures
+*/
+RenderFrameContext.prototype.clearTextures = function()
+{
+	for(var i = 0; i < this._textures.length; ++i)
+	{
+		var texture = this._textures[i];
+		if(!texture)
+			continue;
+		texture.fill([0,0,0,0]);
+	}
 }
 
 //enables the FBO and sets every texture with a flag so it cannot be used during the rendering process

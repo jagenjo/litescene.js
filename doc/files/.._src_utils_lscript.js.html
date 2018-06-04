@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -283,19 +283,24 @@ LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_o
 
 	if(!LScript.catch_exceptions)
 	{
+		//call expanding parameters
 		if(argv &amp;&amp; argv.constructor === Array &amp;&amp; expand_parameters)
 			return this._context[name].apply(this._context, argv);
+		//call without expanding parameters
 		return this._context[name].call(this._context, argv);
 	}
 
 	try
 	{
+		//call expanding parameters
 		if(argv &amp;&amp; argv.constructor === Array &amp;&amp; expand_parameters)
 			return this._context[name].apply(this._context, argv);
+		//call without expanding parameters
 		return this._context[name].call(this._context, argv);
 	}
 	catch(err)
 	{
+		//catch error in script, detect line and show console info
 		var error_line = LScript.computeLineFromError(err);
 		var parent_info = &quot;&quot;; 
 		if (parent_object &amp;&amp; parent_object.toInfoString )
@@ -311,7 +316,6 @@ LScript.prototype.callMethod = function( name, argv, expand_parameters, parent_o
 			console.error(&quot;Error line: &quot; + error_line);
 		if(this.onerror)
 			this.onerror({ error: err, msg: err.toString(), line: error_line, lscript: this, code: this._last_executed_code, method_name: name });
-		//throw new Error( err.stack ); //TEST THIS
 	}
 }
 

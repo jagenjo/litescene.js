@@ -297,11 +297,13 @@ RenderInstance.prototype.render = function(shader, primitive)
 	}
 
 	//in case no coords found but they are required
+	/*
 	if(shader.attributes["a_coord"] && !this.vertex_buffers["coords"])
 	{
 		//this.mesh.computeTextureCoordinates();		
 		//this.vertex_buffers["coords"] = this.mesh.vertexBuffers["coords"];
 	}
+	*/
 
 	//in case no tangents found but they are required
 	if(shader.attributes["a_tangent"] && !this.vertex_buffers["tangents"])

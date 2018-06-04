@@ -46,7 +46,7 @@ function enableWebGLCanvas( canvas, options )
 	var white = vec4.fromValues(1,1,1,1);
 
 	//some generic shaders
-	var	flat_shader = new GL.Shader( GL.Shader.QUAD_VERTEX_SHADER, GL.Shader.SCREEN_FLAT_FRAGMENT_SHADER );
+	var	flat_shader = new GL.Shader( GL.Shader.QUAD_VERTEX_SHADER, GL.Shader.FLAT_FRAGMENT_SHADER );
 	var	texture_shader = new GL.Shader( GL.Shader.QUAD_VERTEX_SHADER, GL.Shader.SCREEN_COLORED_FRAGMENT_SHADER );
 	var circle = GL.Mesh.circle({size:1});
 
@@ -192,7 +192,7 @@ function enableWebGLCanvas( canvas, options )
 	var tmp_vec2b = vec2.create();
 	ctx._stack = [];
 	var global_angle = 0;
-	var viewport = vec2.fromValues(1,1);
+	var viewport = ctx.viewport_data.subarray(2,4);
 
 	ctx.translate = function(x,y)
 	{
@@ -919,8 +919,8 @@ function enableWebGLCanvas( canvas, options )
 		window.gl = this;
 		var gl = this;
 
-		viewport[0] = gl.viewport_data[2];
-		viewport[1] = gl.viewport_data[3];
+		//viewport[0] = gl.viewport_data[2];
+		//viewport[1] = gl.viewport_data[3];
 		gl.disable( gl.CULL_FACE );
 		gl.disable( gl.DEPTH_TEST );
 		gl.disable( gl.STENCIL_TEST );
@@ -1271,7 +1271,7 @@ function enableWebGLCanvas( canvas, options )
 
 		//console.log("Font Atlas Generated:", ((getTime() - now)*0.001).toFixed(2),"s");
 
-		texture = GL.Texture.fromImage( canvas, {magFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, minFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, premultiply_alpha: false} );
+		texture = GL.Texture.fromImage( canvas, { magFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, minFilter: imageSmoothingEnabled ? gl.LINEAR : gl.NEAREST, premultiply_alpha: false, anisotropic: 8 } );
 		texture.info = info; //font generation info
 
 		return textures[texture_name] = texture;

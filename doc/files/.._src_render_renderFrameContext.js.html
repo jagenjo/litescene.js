@@ -41,8 +41,8 @@
                                 <li><a href="../classes/LS.Animation.html">LS.Animation</a></li>
                                 <li><a href="../classes/LS.Animation.Take.html">LS.Animation.Take</a></li>
                                 <li><a href="../classes/LS.Animation.Track.html">LS.Animation.Track</a></li>
+                                <li><a href="../classes/LS.BaseComponent.html">LS.BaseComponent</a></li>
                                 <li><a href="../classes/LS.Collision.html">LS.Collision</a></li>
-                                <li><a href="../classes/LS.Component.html">LS.Component</a></li>
                                 <li><a href="../classes/LS.ComponentContainer.html">LS.ComponentContainer</a></li>
                                 <li><a href="../classes/LS.Components.Camera.html">LS.Components.Camera</a></li>
                                 <li><a href="../classes/LS.Components.CameraController.html">LS.Components.CameraController</a></li>
@@ -103,8 +103,8 @@
                                 <li><a href="../classes/LS.RenderState.html">LS.RenderState</a></li>
                                 <li><a href="../classes/LS.Resource.html">LS.Resource</a></li>
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
+                                <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
-                                <li><a href="../classes/LS.SceneTree.html">LS.SceneTree</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
@@ -174,8 +174,8 @@ function RenderFrameContext( o )
 	this.height = 0; //0 means the same size as the viewport
 	this.precision = RenderFrameContext.DEFAULT_PRECISION; //LOW_PRECISION uses a byte, MEDIUM uses a half_float, HIGH uses a float, or directly the texture type (p.e gl.UNSIGNED_SHORT_4_4_4_4 )
 	this.filter_texture = true; //magFilter: in case the texture is shown, do you want to see it pixelated?
-	this.format = GL.RGBA; //how many color channels, or directly the texture internalformat (p.e. gl.RGB10_A2 )
-	this.use_depth_texture = false; //store the depth in a texture
+	this.format = GL.RGB; //how many color channels, or directly the texture internalformat 
+	this.use_depth_texture = true; //store the depth in a texture
 	this.use_stencil_buffer = false; //add an stencil buffer (cannot be read as a texture in webgl)
 	this.num_extra_textures = 0; //number of extra textures in case we want to render to several buffers
 	this.name = null; //if a name is provided all the textures will be stored in the LS.ResourcesManager
@@ -191,6 +191,7 @@ function RenderFrameContext( o )
 	this._cloned_textures = null; //in case we set the clone_after_unbind to true
 
 	this._version = 1; //to detect changes
+	this._minFilter = gl.NEAREST;
 
 	if(o)
 		this.configure(o);
@@ -296,6 +297,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 	var minFilter = gl.LINEAR;
 	if(this.generate_mipmaps &amp;&amp; GL.isPowerOfTwo(final_width) &amp;&amp; GL.isPowerOfTwo(final_height) )
 		minFilter = gl.LINEAR_MIPMAP_LINEAR;
+	this._minFilter = minFilter;
 
 	switch( this.precision )
 	{
@@ -381,7 +383,7 @@ RenderFrameContext.prototype.prepare = function( viewport_width, viewport_height
 *
 * @method enable
 */
-RenderFrameContext.prototype.enable = function( render_settings, viewport )
+RenderFrameContext.prototype.enable = function( render_settings, viewport, camera )
 {
 	viewport = viewport || gl.viewport_data;
 
@@ -399,7 +401,7 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 	LS.RenderFrameContext.current = this;
 
 	//set depth info inside the texture
-	var camera = LS.Renderer._current_camera;
+	camera = camera || LS.Renderer._current_camera;
 	if(this._depth_texture &amp;&amp; camera)
 	{
 		this._depth_texture.near_far_planes[0] = camera.near;
@@ -408,12 +410,13 @@ RenderFrameContext.prototype.enable = function( render_settings, viewport )
 }
 
 //we cannot read and write in the same buffer, so we need to clone the textures
+//done from... ?
 RenderFrameContext.prototype.cloneBuffers = function()
 {
 	//we do not call this._fbo.unbind because it will set the previous FBO
 	gl.bindFramebuffer( gl.FRAMEBUFFER, null );
 
-	///for color
+	///for every color texture
 	if( this._textures.length )
 	{
 		if(!this._cloned_textures)
@@ -426,7 +429,6 @@ RenderFrameContext.prototype.cloneBuffers = function()
 			var cloned_texture = this._cloned_textures[i];
 			if( !cloned_texture || cloned_texture.hasSameSize( texture[i] ) || !cloned_texture.hasSameProperties( texture ) )
 				cloned_texture = this._cloned_textures[i] = new GL.Texture( texture.width, texture.height, texture.getProperties() );
-
 			texture.copyTo( cloned_texture );
 			if(i == 0)
 				LS.ResourcesManager.textures[&quot;:color_buffer&quot; ] = cloned_texture;
@@ -466,22 +468,29 @@ RenderFrameContext.prototype.disable = function()
 		{
 			var name = this.name + (i &gt; 0 ? i : &quot;&quot;);
 			textures[i].filename = name;
+			var final_texture = textures[i];
 
 			//only clone main color if requested
 			if( this.clone_after_unbind &amp;&amp; i === 0 )
 			{
 				if( !this._cloned_texture || 
-					this._cloned_texture.width !== textures[i].width || 
-					this._cloned_texture.height !== textures[i].height ||
-					this._cloned_texture.type !== textures[i].type )
-					this._cloned_texture = textures[i].clone();
+					this._cloned_texture.width !== final_texture.width || 
+					this._cloned_texture.height !== final_texture.height ||
+					this._cloned_texture.type !== final_texture.type )
+					this._cloned_texture = final_texture.clone();
 				else
-					textures[i].copyTo( this._cloned_texture );
-
-				LS.ResourcesManager.textures[ name ] = this._cloned_texture;
+					final_texture.copyTo( this._cloned_texture );
+				final_texture = this._cloned_texture;
 			}
-			else
-				LS.ResourcesManager.textures[ name ] = textures[i];
+
+			if( this._minFilter == gl.LINEAR_MIPMAP_LINEAR )
+			{
+				final_texture.bind(0);
+				gl.generateMipmap(gl.TEXTURE_2D);
+				final_texture.has_mipmaps = true;
+			}
+
+			LS.ResourcesManager.textures[ name ] = final_texture;
 		}
 
 		if(this._depth_texture)
@@ -520,6 +529,21 @@ RenderFrameContext.prototype.getColorTexture = function(num)
 RenderFrameContext.prototype.getDepthTexture = function()
 {
 	return this._depth_texture || null;
+}
+
+/**
+* Fills the textures with a flat color
+* @method clearTextures
+*/
+RenderFrameContext.prototype.clearTextures = function()
+{
+	for(var i = 0; i &lt; this._textures.length; ++i)
+	{
+		var texture = this._textures[i];
+		if(!texture)
+			continue;
+		texture.fill([0,0,0,0]);
+	}
 }
 
 //enables the FBO and sets every texture with a flag so it cannot be used during the rendering process
