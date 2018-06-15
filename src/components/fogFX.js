@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 function FogFX(o)
 {
 	this.enabled = true;

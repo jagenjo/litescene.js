@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 //work in progress
 
 function VideoPlayer(o)

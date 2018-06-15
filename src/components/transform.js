@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * It uses lazy update to recompute the matrices.

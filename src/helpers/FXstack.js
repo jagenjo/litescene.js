@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /** FXStack
 * Helps apply a stack of FXs to a texture with as fewer render calls as possible with low memory footprint
 * Used by CameraFX and FrameFX but also available for any other use

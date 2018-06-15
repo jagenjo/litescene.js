@@ -1,3 +1,4 @@
+///@INFO: BASE
 /* 
 Parser should only be in charge of extracting info from a data chunk (text or binary) and returning in a better way
 It shouldnt have any dependency to allow to be used in workers in the future

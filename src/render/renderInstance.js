@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * RenderInstance contains info of one object to be rendered on the scene.
 * It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)
@@ -46,7 +47,6 @@ function RenderInstance( node, component )
 	this.use_bounding = true; //in case it has vertex shader deformers the bounding box is not usable
 
 	//for extra data for the shader
-	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
 
@@ -66,7 +66,6 @@ function RenderInstance( node, component )
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering (using bit operations)
 	this._is_visible = false; //used during the rendering to mark if it was seen
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
-	this._final_query = new LS.ShaderQuery();
 }
 
 RenderInstance.NO_SORT = 0;

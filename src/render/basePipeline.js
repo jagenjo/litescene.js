@@ -1,10 +1,11 @@
+///@INFO: BASE
 //this file defines the shaderblocks that interact in the render of any standard material
 //the pipeline is quite standard
 
 //for structures like Input go to shaders.xml
 
 //define surface structures
-LS.ShadersManager.registerSnippet("surface","\n\
+LS.Shaders.registerSnippet("surface","\n\
 	//used to store surface shading properties\n\
 	struct SurfaceOutput {\n\
 		vec3 Albedo;\n\
@@ -35,7 +36,7 @@ LS.ShadersManager.registerSnippet("surface","\n\
 ");
 
 // LIGHT STRUCTS AND FUNCTIONS *****************************************
-LS.ShadersManager.registerSnippet("light_structs","\n\
+LS.Shaders.registerSnippet("light_structs","\n\
 	#ifndef SB_LIGHT_STRUCTS\n\
 	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
@@ -349,11 +350,25 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 			return depth.x;\n\
 		#endif\n\
 	}\n\
+	float texsize = 1.0 / u_shadow_params.x;\n\
+	float real_depth = 0.0;\n\
+	\n\
+	float pixelShadow( vec2 uv )\n\
+	{\n\
+		float sampleDepth = UnpackDepth( texture2D(shadowmap, uv) );\n\
+		float depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
+		if (depth > 0.0) \n\
+			return real_depth > depth ? 0.0 : 1.0;\n\
+		return 0.0;\n\
+	}\n\
+	float expFunc(float f)\n\
+	{\n\
+		return f*f*f*(f*(f*6.0-15.0)+10.0);\n\
+	}\n\
 	\n\
 	float testShadow( Light LIGHT )\n\
 	{\n\
 		vec3 offset = vec3(0.0);\n\
-		float shadow = 0.0;\n\
 		float depth = 0.0;\n\
 		float bias = u_shadow_params.y;\n\
 		\n\
@@ -361,11 +376,20 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 		//is inside light frustum\n\
 		if (clamp(sample, 0.0, 1.0) != sample) \n\
 			return LIGHT.Info.x == 3.0 ? 1.0 : 0.0; //outside of shadowmap, no shadow\n\
-		float sampleDepth = UnpackDepth( texture2D(shadowmap, sample) );\n\
-		depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
-		if (depth > 0.0) \n\
-			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 0.0 : 1.0;\n\
-		return shadow;\n\
+		\n\
+		real_depth = (v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5;\n\
+		vec2 topleft_uv = sample * texsize;\n\
+		vec2 offset_uv = fract( topleft_uv );\n\
+		offset_uv.x = expFunc(offset_uv.x);\n\
+		offset_uv.y = expFunc(offset_uv.y);\n\
+		topleft_uv = floor(topleft_uv) * u_shadow_params.x;\n\
+		float topleft = pixelShadow( topleft_uv );\n\
+		float topright = pixelShadow( topleft_uv + vec2(u_shadow_params.x,0.0) );\n\
+		float bottomleft = pixelShadow( topleft_uv + vec2(0.0, u_shadow_params.x) );\n\
+		float bottomright = pixelShadow( topleft_uv + vec2(u_shadow_params.x, u_shadow_params.x) );\n\
+		float top = mix( topleft, topright, offset_uv.x );\n\
+		float bottom = mix( bottomleft, bottomright, offset_uv.x );\n\
+		return mix( top, bottom, offset_uv.y );\n\
 	}\n\
 ";
 

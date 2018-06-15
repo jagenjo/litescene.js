@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //3dcgart format
 
 var parserCGArtMesh = { 

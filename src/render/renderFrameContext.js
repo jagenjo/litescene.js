@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**	RenderFrameContext
 *	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
 *	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.

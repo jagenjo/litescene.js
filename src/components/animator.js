@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Rotator rotate a mesh over time
 * @class Rotator

@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * This component allow to create basic FX applied to the whole scene
 * @class FrameFX

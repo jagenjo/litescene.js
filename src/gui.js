@@ -287,16 +287,17 @@ var GUI = {
 	*
 	* @method ResetImmediateGUI
 	*/
-	ResetImmediateGUI: function()
+	ResetImmediateGUI: function( skip_redraw )
 	{
 		this._is_on_top_of_immediate_widget = false;
 		this.setCursor(null);
-		LS.GlobalScene.requestFrame(); //force redraws
 		this.pressed_enter = false;
 		this._offset[0] = 0;
 		this._offset[1] = 0;
 		this._gui_areas.offset = 0;
 		this._ctx = gl;
+		if(!skip_redraw)
+			LS.GlobalScene.requestFrame(); //force redraws
 	},
 
 	//this is done so when clicking in the area where there is an immediate GUI widget the events are not send to the app

@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
@@ -363,25 +364,115 @@ LS.registerComponent( ReflectionProbe );
 
 function IrradianceCache( o )
 {
-	this.subdivisions = new Uint8Array(4,4,4);
+	this.enabled = true;
+	this.corner = vec3.create();
+	this.size = vec3.fromValues(10,10,10);
+	this.subdivisions = new Uint8Array([4,4,4]);
+	this.layers = 0xFF; //layers that can contribute to the irradiance
+	this.high_precision = false;
+
+	this.near = 0.1;
+	this.far = 1000;
+	this.background_color = vec4.create();
 
 	this.mode = IrradianceCache.VERTEX_MODE;
 
 	this._irradiance_texture = null;
+	this._irradiance_cubemaps = [];
 
 	if(o)
 		this.configure(o);
 }
 
+IrradianceCache.show_probes = false;
+IrradianceCache.probes_size = 1;
+IrradianceCache.capture_cubemap_size = 64;
+IrradianceCache.final_cubemap_size = 8;
+
 IrradianceCache.OBJECT_MODE = 1;
 IrradianceCache.VERTEX_MODE = 2;
-IrradianceCache.FRAGMENT_MODE = 3;
+IrradianceCache.PIXEL_MODE = 3;
 
-IrradianceCache.prototype.computeCache = function()
+IrradianceCache["@mode"] = { type:"enum", values: { "object": IrradianceCache.OBJECT_MODE, "vertex": IrradianceCache.VERTEX_MODE, "pixel": IrradianceCache.PIXEL_MODE } };
+IrradianceCache["@size"] = { type:"vec3", min: 0.1, step: 0.1, precision:3 };
+IrradianceCache["@subdivisions"] = { type:"vec3", min: 1, max: 100, step: 1, precision:0 };
+IrradianceCache["@layers"] = { widget:"layers" };
+IrradianceCache["@background_color"] = { type:"color" };
+
+IrradianceCache.prototype.recompute = function()
 {
+	var subs = this.subdivisions;
+	var corner = this.corner;
+	var size = this.size;
+	var iscale = vec3.fromValues( size[0]/subs[0], size[1]/subs[1], size[2]/subs[2] );
+
+	//cubemap
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	var render_settings = LS.Renderer.default_render_settings;
+	var old_layers = render_settings.layers;
+	render_settings.layers = this.layers;
+	LS.GlobalScene.info.textures.irradiance = null;
+
+	var final_cubemap_size = IrradianceCache.final_cubemap_size;
+	var texture_size = IrradianceCache.capture_cubemap_size;
+	var texture_settings = { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
+	var texture = this._temp_cubemap;
+	if( !texture || texture.width != texture_size || texture.height != texture_size || texture.type != texture_settings.type )
+		this._temp_cubemap = texture = new GL.Texture( texture_size, texture_size, texture_settings );
+
+	//first render
+	if( !LS.Renderer._visible_instances )
+	{
+		var scene = this._root.scene;
+		if(!scene)
+			throw("cannot compute irradiance without scene");
+		LS.Renderer.processVisibleData( scene, render_settings );
+		LS.Renderer.regenerateShadowmaps( scene, render_settings );
+	}
+
 	//compute cache size
 	var num_probes = this.subdivisions[0] * this.subdivisions[1] * this.subdivisions[2];
+	this._irradiance_cubemaps.length = num_probes;
 
+	var global_matrix = this._root.transform ? this._root.transform.getGlobalMatrixRef() : null;
+   	var position = vec3.create();
+
+	var i = 0;
+	for(var x = 0; x < subs[0]; ++x)
+	for(var y = 0; y < subs[1]; ++y)
+	for(var z = 0; z < subs[2]; ++z)
+	{
+		position[0] = x * iscale[0] + corner[0];
+		position[1] = y * iscale[1] + corner[1];
+		position[2] = z * iscale[2] + corner[2];
+
+		if( global_matrix )
+			mat4.multiplyVec3( position, global_matrix, position );
+
+		var cubemap = this._irradiance_cubemaps[ i ];
+		if(!cubemap || cubemap.type != texture_settings.type || cubemap.width != final_cubemap_size )
+			this._irradiance_cubemaps[ i ] = cubemap = new GL.Texture( final_cubemap_size, final_cubemap_size, texture_settings );
+
+		this.captureIrradiance( position, cubemap, render_settings );
+
+		i+=1;
+	}
+
+	//remove flags
+	render_settings.layers = old_layers;
+}
+
+IrradianceCache.prototype.captureIrradiance = function( position, output_cubemap, render_settings )
+{
+	LS.Renderer.clearSamplers();
+
+	var texture = this._temp_cubemap;
+
+	//render all the scene inside the cubemap
+	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+
+	//downsample
+	texture.copyTo( output_cubemap );
 }
 
 IrradianceCache.prototype.encodeCacheInTexture = function()
@@ -391,32 +482,186 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 
 IrradianceCache.prototype.renderEditor = function()
 {
+	if(!this.enabled || !IrradianceCache.show_probes)
+		return;
 
 	var shader = GL.Shader.getCubemapShowShader();
 	var mesh = LS.Renderer._sphere_mesh;
-	var position = vec3.create();
-
-	var global_matrix = this._root.transform.getGlobalMatrixRef();
-	var center = mat4.multiplyVec3( vec3.create(), global_matrix, LS.ZEROS );
-	var halfsize = mat4.multiplyVec3( vec3.create(), global_matrix, [0.5,0.5,0.5] );
-	
-	var min = vec3.sub( vec3.create(), center, halfsize );
 	var subs = this.subdivisions;
-	var iscale = vec3.fromValues( (2*halfsize[0])/subs[0], (2*halfsize[1])/subs[1], (2*halfsize[2])/subs[2] );
+	var corner = this.corner;
+	var size = this.size;
+	var iscale = vec3.fromValues( size[0]/subs[0], size[1]/subs[1], size[2]/subs[2] );
+
+	var shader = GL.Shader.getCubemapShowShader();
+	var mesh = LS.Renderer._sphere_mesh;
+
+	var default_cubemap = IrradianceCache.default_cubemap;
+	if(!default_cubemap)
+		default_cubemap = IrradianceCache.default_cubemap = new GL.Texture(1,1,{ texture_type: GL.TEXTURE_CUBE_MAP, format: GL.RGB, pixel_data:[255,255,255] });
+
+	var position = vec3.create();
+	var global_matrix = this._root.transform ? this._root.transform.getGlobalMatrixRef() : null;
 	   
+	var i = 0;
 	for(var x = 0; x < subs[0]; ++x)
 	for(var y = 0; y < subs[1]; ++y)
 	for(var z = 0; z < subs[2]; ++z)
 	{
+		position[0] = x * iscale[0] + corner[0];
+		position[1] = y * iscale[1] + corner[1];
+		position[2] = z * iscale[2] + corner[2];
+
+		if(global_matrix)
+			mat4.multiplyVec3( position, global_matrix, position );
+
 		LS.Draw.push();
-		LS.Draw.translate( x * iscale[0] + min[0], y * iscale[1] + min[1], z * iscale[2] + min[2] );
-		LS.Draw.scale( ReflectionProbe.helper_size );
-		//bind cubemap
-		//...
-		//LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
-		LS.Draw.renderSolidSphere(1);
+		LS.Draw.translate( position );
+		LS.Draw.scale( IrradianceCache.probes_size );
+
+		var texture = this._irradiance_cubemaps[ i++ ] || default_cubemap;
+		texture.bind(0);
+
+		LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
 		LS.Draw.pop();
 	}
+
 }
 
-//LS.registerComponent( IrradianceCache );
+LS.registerComponent( IrradianceCache );
+
+
+/*
+var cubemapFaceNormals = [
+  [ [0, 0, -1], [0, -1, 0], [1, 0, 0] ],  // posx
+  [ [0, 0, 1], [0, -1, 0], [-1, 0, 0] ],  // negx
+
+  [ [1, 0, 0], [0, 0, 1], [0, 1, 0] ],    // posy
+  [ [1, 0, 0], [0, 0, -1], [0, -1, 0] ],  // negy
+
+  [ [1, 0, 0], [0, -1, 0], [0, 0, 1] ],   // posz
+  [ [-1, 0, 0], [0, -1, 0], [0, 0, -1] ]  // negz
+]
+
+// give me a cubemap, its size and number of channels
+// and i'll give you spherical harmonics
+function computeSH( faces, cubemapSize, ch) {
+  var size = cubemapSize || 128
+  var channels = ch || 4
+  var cubeMapVecs = []
+
+  // generate cube map vectors
+  faces.forEach((face, index) => {
+    var faceVecs = []
+    for (let v = 0; v < size; v++) {
+      for (let u = 0; u < size; u++) {
+        var fU = (2.0 * u / (size - 1.0)) - 1.0
+        var fV = (2.0 * v / (size - 1.0)) - 1.0
+
+        var vecX = []
+        vec3.scale(vecX, cubemapFaceNormals[index][0], fU)
+        var vecY = []
+        vec3.scale(vecY, cubemapFaceNormals[index][1], fV)
+        var vecZ = cubemapFaceNormals[index][2]
+
+        var res = []
+        vec3.add(res, vecX, vecY)
+        vec3.add(res, res, vecZ)
+        vec3.normalize(res, res)
+
+        faceVecs.push(res)
+      }
+    }
+    cubeMapVecs.push(faceVecs)
+  })
+
+  // generate shperical harmonics
+  let sh = [
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3)
+  ]
+  let weightAccum = 0
+
+  faces.forEach((face, index) => {
+    var pixels = face
+    var gammaCorrect = true
+    if (Object.prototype.toString.call(pixels) === '[object Float32Array]') gammaCorrect = false // this is probably HDR image, already in linear space
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        const texelVect = cubeMapVecs[index][y * size + x]
+
+        const weight = texelSolidAngle(x, y, size, size)
+        // forsyths weights
+        const weight1 = weight * 4 / 17
+        const weight2 = weight * 8 / 17
+        const weight3 = weight * 15 / 17
+        const weight4 = weight * 5 / 68
+        const weight5 = weight * 15 / 68
+
+        let dx = texelVect[0]
+        let dy = texelVect[1]
+        let dz = texelVect[2]
+
+        for (let c = 0; c < 3; c++) {
+          let value = pixels[y * size * channels + x * channels + c] / 255
+          if (gammaCorrect) value = Math.pow(value, 2.2)
+
+          // indexed by coeffiecent + color
+          sh[0][c] += value * weight1
+          sh[1][c] += value * weight2 * dx
+          sh[2][c] += value * weight2 * dy
+          sh[3][c] += value * weight2 * dz
+
+          sh[4][c] += value * weight3 * dx * dz
+          sh[5][c] += value * weight3 * dz * dy
+          sh[6][c] += value * weight3 * dy * dx
+
+          sh[7][c] += value * weight4 * (3.0 * dz * dz - 1.0)
+          sh[8][c] += value * weight5 * (dx * dx - dy * dy)
+
+          weightAccum += weight
+        }
+      }
+    }
+  })
+
+  for (let i = 0; i < sh.length; i++) {
+    sh[i][0] *= 4 * Math.PI / weightAccum
+    sh[i][1] *= 4 * Math.PI / weightAccum
+    sh[i][2] *= 4 * Math.PI / weightAccum
+  }
+
+  return sh
+}
+
+function texelSolidAngle (aU, aV, width, height) {
+  // transform from [0..res - 1] to [- (1 - 1 / res) .. (1 - 1 / res)]
+  // ( 0.5 is for texel center addressing)
+  const U = (2.0 * (aU + 0.5) / width) - 1.0
+  const V = (2.0 * (aV + 0.5) / height) - 1.0
+
+  // shift from a demi texel, mean 1.0 / size  with U and V in [-1..1]
+  const invResolutionW = 1.0 / width
+  const invResolutionH = 1.0 / height
+
+  // U and V are the -1..1 texture coordinate on the current face.
+  // get projected area for this texel
+  const x0 = U - invResolutionW
+  const y0 = V - invResolutionH
+  const x1 = U + invResolutionW
+  const y1 = V + invResolutionH
+  const angle = areaElement(x0, y0) - areaElement(x0, y1) - areaElement(x1, y0) + areaElement(x1, y1)
+
+  return angle
+}
+
+function areaElement (x, y) {
+  return Math.atan2(x * y, Math.sqrt(x * x + y * y + 1.0))
+}
+*/

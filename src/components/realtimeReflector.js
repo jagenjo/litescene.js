@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector

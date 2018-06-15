@@ -1,3 +1,4 @@
+///@INFO: BASE
 // ******* CAMERA **************************
 
 /**
@@ -1586,18 +1587,7 @@ Camera.prototype.prepare = function()
 {
 	this._previous_viewprojection_matrix.set( this._viewprojection_matrix );
 	this.updateMatrices(); 
-	this.fillShaderQuery();
 	this.fillShaderUniforms();
-}
-
-Camera.prototype.fillShaderQuery = function()
-{
-	var query = new LS.ShaderQuery();
-
-	if( this.type == Camera.ORTHOGRAPHIC )
-		query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
-
-	this._query = query;
 }
 
 Camera.prototype.fillShaderUniforms = function()

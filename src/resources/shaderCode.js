@@ -230,11 +230,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	var context = {}; //used to store metaprogramming defined vars in the shader
 
 	//compute context defines
-	for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+	for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
 	{
 		if( !(block_flags & 1<<i) ) //is flag enabled
 			continue;
-		var shader_block = LS.ShadersManager.shader_blocks.get(i);
+		var shader_block = LS.Shaders.shader_blocks.get(i);
 		if(!shader_block)
 			continue; //???
 		if(shader_block.context_macros)
@@ -285,11 +285,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	if(LS.debug)
 	{
 		var blocks = [];
-		for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+		for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
 		{
 			if( !(block_flags & 1<<i) ) //is flag enabled
 				continue;
-			var shader_block = LS.ShadersManager.shader_blocks.get(i);
+			var shader_block = LS.Shaders.shader_blocks.get(i);
 			if(!shader_block)
 				continue; //???
 			blocks.push( shader_block );
@@ -338,7 +338,7 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		catch(err)
 		{
 			this._has_error = true;
-			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
+			LS.Shaders.dumpShaderError( this.filename, err, vs_code, fs_code );
 			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
 			var line = error_info.line_number;
 			var lines = this._code.split("\n");

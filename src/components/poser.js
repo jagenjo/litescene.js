@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Transitions between different poses
 * @class Poser

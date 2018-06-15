@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function Collider(o)
 {
 	this.enabled = true;

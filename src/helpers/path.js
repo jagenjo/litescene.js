@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 function Path()
 {
 	this.points = [];

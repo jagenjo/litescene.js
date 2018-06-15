@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 //WORK IN PROGRESS
 
 //Is the class in charge of applying deformations to meshes (skinning and morph targets)

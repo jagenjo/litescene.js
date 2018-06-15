@@ -1,4 +1,4 @@
-
+///@INFO: BASE
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );

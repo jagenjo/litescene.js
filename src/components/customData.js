@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /** 
 * This module allows to store custom data inside a node
 * properties have the form of:

@@ -1,3 +1,4 @@
+///@INFO: BASE
 /*
 	A component container is someone who could have components attached to it.
 	Mostly used for SceneNodes but it could be used for other classes (like Scene or Project).

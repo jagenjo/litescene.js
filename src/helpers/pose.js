@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /* A pose contains the transform or properties of a set of nodes and allows to interpolate between them */
 function Pose(o)
 {

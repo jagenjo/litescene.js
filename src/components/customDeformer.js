@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 function CustomDeformer(o)
 {
 	this.enabled = true;

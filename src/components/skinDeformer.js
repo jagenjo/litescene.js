@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 /**
 * It applyes skinning to a RenderInstance created by another component (usually MeshRenderer)
 * Is in charge of gathering the bone nodes and adding to the RenderInstance the information needed to perform the skinning
@@ -209,9 +209,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	
 	if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
-		//add skinning
-		RI.query.macros["USE_SKINNING"] = "";
-		
 		//retrieve all the bones
 		var bones = this.getBoneMatrices( mesh );
 		var bones_size = bones.length * 12;
@@ -237,8 +234,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
-			if(bones.length > SkinDeformer.MAX_BONES)
-				RI.query.macros["MAX_BONES"] = bones.length.toString();
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 
 			RI.addShaderBlock( LS.SkinDeformer.skinning_uniforms_block, { u_bones: u_bones } );
@@ -258,7 +253,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[":bones_" + this.uid ] = texture; //debug
 			RI.uniforms["u_bones"] = LS.Renderer.BONES_TEXTURE_SLOT;
-			RI.query.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
 
 			RI.addShaderBlock( LS.SkinDeformer.skinning_texture_block, { u_bones: LS.Renderer.BONES_TEXTURE_SLOT } );
@@ -295,8 +289,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 
 		RI.setMesh( this._skinned_mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 	}
 
@@ -316,12 +308,8 @@ SkinDeformer.prototype.disableSkinning = function( RI )
 {
 	this._mesh = null;
 
-	if( RI.query.macros["USE_SKINNING"] !== undefined )
-	{
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
+	if( RI.samplers["u_bones"] )
 		delete RI.samplers["u_bones"];
-	}
 
 	RI.removeShaderBlock( LS.SkinDeformer.skinning_block );
 	RI.removeShaderBlock( LS.SkinDeformer.skinning_uniforms_block );

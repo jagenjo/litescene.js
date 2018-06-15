@@ -1,4 +1,4 @@
-
+///@INFO: BASE
 /**
 * This class contains all the info about a resource and it works as a template for any resource class
 * Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.

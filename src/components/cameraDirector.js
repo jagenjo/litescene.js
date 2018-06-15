@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * CameraDirector allows to switch between scene cameras easily
 * @class CameraDirector

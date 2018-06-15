@@ -1,3 +1,4 @@
+///@INFO: BASE
 //****************************************************************************
 
 /**
@@ -1102,7 +1103,7 @@ SceneNode.prototype.configure = function(info)
 	if(info.material)
 	{
 		var mat_classname = info.material.material_class;
-		if(!mat_classname) 
+		if(!mat_classname || mat_classname == "newStandardMaterial") //legacy
 			mat_classname = "StandardMaterial";
 		var constructor = LS.MaterialClasses[mat_classname];
 		if(constructor)

@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //legacy format
 var parserJSMesh = { 
 	extension: 'jsmesh',

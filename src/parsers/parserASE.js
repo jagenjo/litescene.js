@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //***** ASE Parser *****************
 var parserASE = {
 	extension: "ase",

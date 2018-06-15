@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function BackgroundRenderer(o)
 {
 	this.enabled = true;

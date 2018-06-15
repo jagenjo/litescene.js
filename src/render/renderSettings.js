@@ -1,3 +1,4 @@
+///@INFO: BASE
 /** RenderSettings contains how the scene should be renderer 
 * There could be different renderSettings for different scene quality.
 * @class RenderSettings
@@ -13,7 +14,7 @@ function RenderSettings( o )
 	this.ignore_viewports = false;	//render to full viewport, ignoring the viewport in the cameras
 	this.ignore_clear = false;	//skip global clear, used in case you want to mix LiteScene with another renderer
 	this.keep_viewport = false; //do not force a full canvas viewport at render start (use the current one in WebGL as the full)
-	this.linear_pipeline = false; //tries to degamma all the albedo textures.
+	//this.linear_depth = false; //forces depth to be stored lineally
 
 	this.shadows_enabled = true; //allow shadowmaps
 	this.update_shadowmaps = true; //automatically update shadowmaps in every frame (enable if there are dynamic objects)

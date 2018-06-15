@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //***** OBJ parser adapted from SpiderGL implementation *****************
 var parserOBJ = {
 	extension: 'obj',

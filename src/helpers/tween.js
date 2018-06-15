@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Allows to launch tweening 
 *

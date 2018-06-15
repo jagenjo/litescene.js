@@ -1,3 +1,4 @@
+///@INFO: BASE
 
 //************************************
 /**
@@ -16,7 +17,7 @@ var PICKING_PASS = 3;
 var Renderer = {
 
 	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
-	default_material: new LS.newStandardMaterial(), //used for objects without material
+	default_material: new LS.StandardMaterial(), //used for objects without material
 
 	render_passes: {}, //used to specify the render function for every kind of render pass (color, shadow, picking, etc)
 	renderPassFunction: null, //function to call when rendering instances
@@ -111,8 +112,11 @@ var Renderer = {
 		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
 
 		//draw helps rendering debug stuff
-		LS.Draw.init();
-		LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
+		if(LS.Draw)
+		{
+			LS.Draw.init();
+			LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
+		}
 
 		//enable webglCanvas lib so it is easy to render in 2D
 		if(global.enableWebGLCanvas && !gl.canvas.canvas2DtoWebGL_enabled)
@@ -191,8 +195,8 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		if( !LS.ShadersManager.ready )
-			return; //not ready
+		//if( !LS.ShadersManager.ready )
+		//	return; //not ready
 
 		if( this._is_rendering_frame )
 		{
@@ -287,7 +291,10 @@ var Renderer = {
 
 		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
-		this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
+		if( LS.Draw )
+		{
+			this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
+		}
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger( scene, "afterRender", render_settings ); 
@@ -432,8 +439,11 @@ var Renderer = {
 		this._current_camera = camera;
 
 		//Draw allows to render debug info easily
-		LS.Draw.reset(); //clear 
-		LS.Draw.setCamera( camera );
+		if(LS.Draw)
+		{
+			LS.Draw.reset(); //clear 
+			LS.Draw.setCamera( camera );
+		}
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
@@ -568,7 +578,6 @@ var Renderer = {
 		//scene.triggerInNodes( "beforeRenderInstances", render_settings );
 
 		//compute global scene info
-		this.fillSceneShaderQuery( scene, render_settings );
 		this.fillSceneUniforms( scene, render_settings );
 
 		//reset state of everything!
@@ -632,7 +641,7 @@ var Renderer = {
 			if(camera_index_flag) //shadowmap cameras dont have an index
 				instance._camera_visibility |= camera_index_flag;
 
-			//if material supports instancing
+			//if material supports instancing WIP
 			/*
 			if( instancing_supported && material._allows_instancing && !instance._shader_blocks.length )
 			{
@@ -706,9 +715,15 @@ var Renderer = {
 		gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] ); //assign full viewport always?
 		if(gl.start2D) //in case we have Canvas2DtoWebGL installed (it is optional)
 			gl.start2D();
-		LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
 		if( render_settings.render_gui )
-			LEvent.trigger( this._current_scene, "renderGUI", gl );
+		{
+			if( LEvent.hasBind( this._current_scene, "renderGUI" ) ) //to avoid forcing a redraw if no gui is set
+			{
+				if(LS.GUI)
+					LS.GUI.ResetImmediateGUI(); //mostly to change the cursor (warning, true to avoid forcing redraw)
+				LEvent.trigger( this._current_scene, "renderGUI", gl );
+			}
+		}
 		if( this.on_render_gui ) //used by the editor (here to ignore render_gui flag)
 			this.on_render_gui( render_settings );
 		if( gl.finish2D )
@@ -768,7 +783,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
+			return;
+			//this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -781,7 +797,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardShadowPassInstance( instance, render_settings, pass);
+			return;
+			//this.renderStandardShadowPassInstance( instance, render_settings, pass);
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -794,7 +811,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardPickingPassInstance( instance, render_settings, pass);
+			return;
+			//this.renderStandardPickingPassInstance( instance, render_settings, pass);
 	},
 
 
@@ -807,6 +825,7 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} lights array containing al the lights affecting this RI
 	*/
+	/*
 	renderStandardColorMultiPassLightingInstance: function( instance, render_settings )
 	{
 		var camera = this._current_camera;
@@ -925,6 +944,7 @@ var Renderer = {
 				break; 
 		}
 	},
+	*/
 
 	/**
 	* Renders this RenderInstance into the shadowmap
@@ -933,6 +953,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	renderStandardShadowPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
@@ -969,6 +990,7 @@ var Renderer = {
 		instance.render(shader);
 		this._rendercalls += 1;
 	},
+	*/
 
 	/**
 	* Render instance into the picking buffer
@@ -977,6 +999,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	renderStandardPickingPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
@@ -1002,6 +1025,7 @@ var Renderer = {
 
 		instance.render( shader );
 	},
+	*/
 
 	regenerateShadowmaps: function( scene, render_settings )
 	{
@@ -1134,16 +1158,10 @@ var Renderer = {
 	* @param {Scene} scene
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	fillSceneShaderQuery: function( scene, render_settings )
 	{
 		var query = new LS.ShaderQuery();
-
-		//camera info
-		if( this._current_pass.id == COLOR_PASS )
-		{
-			if(render_settings.linear_pipeline)
-				query.setMacro("USE_LINEAR_PIPELINE");
-		}
 
 		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
 			query.setMacro("USE_DRAW_BUFFERS");
@@ -1153,6 +1171,7 @@ var Renderer = {
 
 		scene._query = query;
 	},
+	*/
 
 	//Called at the beginning of renderInstances (once per renderFrame)
 	//DO NOT CACHE, parameters can change between render passes
@@ -1204,7 +1223,7 @@ var Renderer = {
 			scene._samplers[ slot ] = texture;
 			scene._uniforms[ i + "_texture" ] = slot; 
 			scene._uniforms[ i + type ] = slot; //LEGACY
-			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
+			//scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 
 			if( i == "environment" )
 				this._global_textures.environment = texture;
@@ -1343,7 +1362,7 @@ var Renderer = {
 
 			//node & mesh constant information
 			//DEPRECATED
-			var query = instance.query;
+			//var query = instance.query;
 
 			/* deprecated
 			var buffers = instance.vertex_buffers;
@@ -1359,8 +1378,8 @@ var Renderer = {
 				query.macros.USE_TANGENT_STREAM = "";
 			*/
 			//deprecated?
-			if(("colors" in instance.mesh.vertexBuffers)) //particles
-				query.macros.USE_COLOR_STREAM = "";
+			//if(("colors" in instance.mesh.vertexBuffers)) //particles
+			//	query.macros.USE_COLOR_STREAM = "";
 
 			instance._camera_visibility = 0|0;
 		}
@@ -1384,12 +1403,14 @@ var Renderer = {
 			var material = instance.material;
 			instance.index = i;
 
+			/*
 			var query = instance._final_query;
 			query.clear();
 			query.add( node._query );
 			if(material)
 				query.add( material._query );
 			query.add( instance.query );
+			*/
 		}
 
 		//store all the info
@@ -1479,6 +1500,8 @@ var Renderer = {
 
 		texture = texture || new GL.Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
+		texture._in_current_fbo = true; //block binding this texture during rendering of the reflection
+
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
@@ -1493,6 +1516,7 @@ var Renderer = {
 		});
 
 		this._current_target = null;
+		texture._in_current_fbo = false;
 		return texture;
 	},
 
@@ -1665,7 +1689,7 @@ var Renderer = {
 	*/
 	enableFrameShaderBlock: function( shader_block_name, uniforms )
 	{
-		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
+		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
 
 		if( !shader_block || this._global_shader_blocks_flags | shader_block.flag_mask )
 			return; //already added

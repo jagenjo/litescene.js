@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * Formats is the class where all the info about what is every format, how to parse it, etc, is located
 *

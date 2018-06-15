@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function Cloner(o)
 {
 	this.enabled = true;

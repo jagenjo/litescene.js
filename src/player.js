@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * Player class allows to handle the app context easily without having to glue manually all events
 	There is a list of options
@@ -109,7 +110,8 @@ function Player(options)
 	gl.captureTouch(true);
 	gl.captureGamepads(true);
 
-	LS.Input.init();
+	if(LS.Input)
+		LS.Input.init();
 
 	if(options.enableFileDrop !== false)
 		this.setFileDrop(true);
@@ -318,8 +320,10 @@ Player.prototype.play = function()
 	if(this.debug)
 		console.log("Start");
 	this.state = LS.Player.PLAYING;
-	LS.Input.reset(); //this force some events to be sent
-	LS.GUI.reset(); //clear GUI
+	if(LS.Input)
+		LS.Input.reset(); //this force some events to be sent
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 	this.scene.start();
 }
 
@@ -331,7 +335,8 @@ Player.prototype.stop = function()
 {
 	this.state = LS.Player.STOPPED;
 	this.scene.finish();
-	LS.GUI.reset(); //clear GUI
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 }
 
 /**
@@ -340,8 +345,10 @@ Player.prototype.stop = function()
 */
 Player.prototype.clear = function()
 {
-	LS.Input.reset(); //this force some events to be sent
-	LS.GUI.reset(); //clear GUI
+	if(LS.Input)
+		LS.Input.reset(); //this force some events to be sent
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 	this.scene.clear();
 }
 
@@ -482,8 +489,10 @@ Player.prototype._onupdate = function(dt)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	LS.Tween.update(dt);
-	LS.Input.update(dt);
+	if(LS.Tween)
+		LS.Tween.update(dt);
+	if(LS.Input)
+		LS.Input.update(dt);
 
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
@@ -499,7 +508,7 @@ Player.prototype._onupdate = function(dt)
 Player.prototype._onmouse = function(e)
 {
 	//send to the input system (if blocked ignore it)
-	if( LS.Input.onMouse(e) == true )
+	if( LS.Input && LS.Input.onMouse(e) == true )
 		return;
 
 	//console.log(e);
@@ -531,7 +540,8 @@ Player.prototype._ontouch = function(e)
 Player.prototype._onkey = function(e)
 {
 	//send to the input system
-	LS.Input.onKey(e);
+	if(LS.Input)
+		LS.Input.onKey(e);
 
 	if(this.state != LS.Player.PLAYING)
 		return;

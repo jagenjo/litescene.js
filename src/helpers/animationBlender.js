@@ -1,3 +1,5 @@
+///@INFO: UNCOMMON,ANIMATION
+
 function AnimationBlender()
 {
 	this.active_entries = [];

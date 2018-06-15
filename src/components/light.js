@@ -141,7 +141,6 @@ function Light(o)
 	this._top = vec3.clone( LS.TOP );
 
 	//for StandardMaterial
-	this._query = new LS.ShaderQuery();
 	this._samplers = [];
 
 	//light uniforms
@@ -488,9 +487,6 @@ Light.prototype.prepare = function( render_settings )
 	var uniforms = this._uniforms;
 	var samplers = this._samplers;
 
-	var query = this._query;
-	query.clear(); //delete all properties (I dont like to generate garbage)
-
 	//projective texture needs the light matrix to compute projection
 	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
@@ -507,47 +503,6 @@ Light.prototype.prepare = function( render_settings )
 	{
 		this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.shadow_type ];
 		//this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.hard_shadows ? "hard" : "soft" ];
-	}
-
-	//PREPARE SHADER QUERY
-	if(this.type == Light.DIRECTIONAL)
-		query.macros.USE_DIRECTIONAL_LIGHT = "";
-	else if(this.type == Light.SPOT)
-		query.macros.USE_SPOT_LIGHT = "";
-	else //omni
-		query.macros.USE_OMNI_LIGHT = "";
-
-	if(this._spot_cone)
-		query.macros.USE_SPOT_CONE = "";
-	if(this.attenuation_type == Light.LINEAR_ATTENUATION)
-		query.macros.USE_LINEAR_ATTENUATION = "";
-	if(this.attenuation_type == Light.RANGE_ATTENUATION)
-		query.macros.USE_RANGE_ATTENUATION = "";
-	if(this.offset > 0.001)
-		query.macros.USE_LIGHT_OFFSET = "";
-
-	if(this.projective_texture)
-	{
-		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[this.projective_texture] : this.projective_texture;
-		if(light_projective_texture)
-		{
-			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_LIGHT_CUBEMAP = "";
-			else
-				query.macros.USE_LIGHT_TEXTURE = "";
-		}
-	}
-
-	if(this.extra_texture)
-	{
-		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
-		if(extra_texture)
-		{
-			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_EXTRA_LIGHT_CUBEMAP = "";
-			else
-				query.macros.USE_EXTRA_LIGHT_TEXTURE = "";
-		}
 	}
 
 	//PREPARE UNIFORMS
@@ -664,6 +619,7 @@ Light.prototype.prepare = function( render_settings )
 * @param {Object} render_settings info about how the scene will be rendered
 * @return {ShaderQuery} the macros
 */
+/*
 Light.prototype.getQuery = function(instance, render_settings)
 {
 	var query = this._query;
@@ -696,6 +652,7 @@ Light.prototype.getQuery = function(instance, render_settings)
 
 	return query;
 }
+*/
 
 /**
 * Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach

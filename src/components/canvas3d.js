@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 /**
 * Allows to render 2d canvas primitives, but they are rendered into a plane that can be positioned in 3D space.
 * It also supports to store the texture so it can be used in another material.

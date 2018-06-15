@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 function MorphDeformer(o)
 {
 	this.enabled = true;
@@ -175,11 +176,8 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	for(var i in morphs_buffers)
 		RI.vertex_buffers[i] = morphs_buffers[i];
 
-	RI.query.macros["USE_MORPHING_STREAMS"] = "";
-
-	if(RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined)
+	if(RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ])
 	{
-		delete RI.query.macros["USE_MORPHING_TEXTURE"];
 		delete RI.uniforms["u_morph_vertices_texture"];
 		delete RI.uniforms["u_morph_normals_texture"];
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
@@ -326,10 +324,6 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	//add the ids (the texture with 0,1,2, 3,4,5, ...)
 	RI.vertex_buffers["a_morphing_ids"] = this._ids_buffer;
 
-	//enable the algorithm
-	delete RI.query.macros["USE_MORPHING_STREAMS"];
-	RI.query.macros["USE_MORPHING_TEXTURE"] = "";
-
 	//SHADER BLOCK
 	RI.addShaderBlock( MorphDeformer.shader_block );
 	RI.addShaderBlock( LS.MorphDeformer.morphing_texture_block, { 
@@ -343,18 +337,11 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 
 MorphDeformer.prototype.disableMorphingGPU = function( RI )
 {
-	if( !RI || !RI.query )
+	if( !RI )
 		return;
 	
-	if ( RI.query.macros["USE_MORPHING_STREAMS"] !== undefined )
+	if( RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] )
 	{
-		delete RI.query.macros["USE_MORPHING_STREAMS"];
-		delete RI.uniforms["u_morph_weights"];
-	}
-
-	if( RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined )
-	{
-		delete RI.query.macros["USE_MORPHING_TEXTURE"];
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
 		delete RI.uniforms["u_morph_vertices_texture"];
