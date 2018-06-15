@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 //WIP to allow to bake info per vertex
 
 function VertexInfo(o)

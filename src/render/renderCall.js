@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 //WIP: this is the lowest GPU rendering object, which encapsulates all about a render call
 //by encapsulating every render action into an object we can have materials that produce several render passes in different moments
 //of the rendering process

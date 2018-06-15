@@ -132,7 +132,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	else
 	{
 		var texture_name = null;
-		if (this.use_environment && LS.Renderer._current_scene.info)
+		if (this.use_environment && LS.Renderer._current_scene.info )
 			texture_name = LS.Renderer._current_scene.info.textures["environment"];
 		else
 			texture_name = this.texture;
@@ -147,10 +147,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material;
 		if(!mat)
 		{
-			//mat = this._material = new LS.ShaderMaterial({});
-
-
-			mat = this._material = new LS.StandardMaterial({ 
+			mat = this._material = new LS.ShaderMaterial({ 
 				flags: { 
 					two_sided: true, 
 					cast_shadows: false, 
@@ -162,13 +159,16 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 				use_scene_ambient:false,
 				color: [ this.intensity, this.intensity, this.intensity ]
 			});
+				mat.shader_code = new LS.ShaderCode( Skybox.shader_code );
 		}
 		else
 			mat.color.set([this.intensity, this.intensity, this.intensity]);
 
+		mat.setProperty( "Texture", texture_name );
+
+		/*
 		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
 		//sampler.gamma = this.gamma;
-
 		if(texture && texture.texture_type == gl.TEXTURE_2D)
 		{
 			sampler.uvs = "polar_vertex";
@@ -178,22 +178,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		}
 		else
 			sampler.uvs = "0";
-	}
-
-	//render first
-	if(mat)
-	{
-		mat.queue = LS.RenderQueue.BACKGROUND;
-		mat.render_state.cull_face = false;
-		mat.render_state.front_face = GL.CW;
-		mat.render_state.depth_test = false;
-		mat.flags.ignore_frustum = true;
-		mat.flags.ignore_lights = true;
-		mat.flags.cast_shadows = false;
-		mat.flags.receive_shadows = false;
-		mat.flags.flip_normals = true;
-		mat.flags.depth_test = false;
-		mat.use_scene_ambient = false;
+		*/
 	}
 
 	RI.setMesh( mesh );
@@ -246,7 +231,20 @@ Skybox.prototype.bakeToCubemap = function( size, render_settings )
 		this.root.scene.info.textures[ "environment" ] = ":baked_skybox";
 }
 
-Skybox.shader_code = "\\color.vs\n\
+Skybox.shader_code = "\n\
+\\js\n\
+	this.createSampler(\"Texture\",\"u_color_texture\", { magFilter: GL.LINEAR, missing: \"white\"} );\n\
+	this.queue = LS.RenderQueue.BACKGROUND;\n\
+	this.render_state.cull_face = false;\n\
+	this.render_state.front_face = GL.CW;\n\
+	this.render_state.depth_test = false;\n\
+	this.render_state.front_face = GL.CW;\n\
+	this.flags.ignore_frustum = true;\n\
+	this.flags.ignore_lights = true;\n\
+	this.flags.cast_shadows = false;\n\
+	this.flags.receive_shadows = false;\n\
+\n\
+\\color.vs\n\
 	precision mediump float;\n\
 	attribute vec3 a_vertex;\n\
 	varying vec3 v_world_position;\n\
@@ -270,7 +268,7 @@ Skybox.shader_code = "\\color.vs\n\
 	void main() {\n\
 		vec3 E = normalize( v_world_position - u_camera_eye);\n\
 		vec4 color = textureCube( u_color_texture, E );\n\
-		gl_FragColor = u_material_color;\n\
+		gl_FragColor = u_material_color * color;\n\
 	}\n\
 \\picking.vs\n\
 	precision mediump float;\n\

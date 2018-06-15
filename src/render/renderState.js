@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * RenderState sets the flags for the GPU associated with a rendering action (blending, masking, depth test, etc)
 * It is stored in the material (although defined usually from ShaderCode) so the material can use it.

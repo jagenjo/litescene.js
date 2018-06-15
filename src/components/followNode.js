@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * FollowNode 
 * @class FollowNode

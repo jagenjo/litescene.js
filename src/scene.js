@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * The Scene contains all the info about the Scene and nodes
 *

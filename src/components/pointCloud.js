@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /* pointCloud.js */
 
 function PointCloud(o)
@@ -283,8 +284,6 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.uniforms.u_point_size = this.size;
-	//RI.query.macros["USE_POINTS"] = "";
-
 
 	RI.setMaterial( material );
 	RI.setMesh( this._mesh, gl.POINTS );

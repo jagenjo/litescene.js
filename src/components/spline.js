@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Spline allows to define splines in 3D
 * @class Spline

@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //***** BVH Parser *****************
 var parserBVH = {
 	extension: "bvh",

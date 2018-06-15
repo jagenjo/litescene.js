@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON,ANIMATION
 function AnimationCurve(o)
 {
 	this.samples = [];

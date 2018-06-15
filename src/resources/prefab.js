@@ -1,4 +1,4 @@
-
+///@INFO: PACK
 /**
 * Prefab work in two ways: 
 * - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)

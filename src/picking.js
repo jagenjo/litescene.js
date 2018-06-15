@@ -1,4 +1,4 @@
-//
+///@INFO: UNCOMMON
 /**
 * Picking is used to detect which element is below one pixel (used the GPU) or using raycast
 *
@@ -157,7 +157,7 @@ var Picking = {
 
 		//check instances colliding with cursor using a ray against AABBs
 		var instances = null;
-		if(1) //not tested yet
+		if( mouse_pos ) //not tested yet
 		{
 			var ray = camera.getRayInPixel( mouse_pos[0], mouse_pos[1] );
 			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
@@ -169,6 +169,8 @@ var Picking = {
 			}
 			//console.log("Instances ray collided:", instances_collisions.length);
 		}
+		else
+			instances = scene._instances;
 
 		LS.Renderer.renderInstances( picking_render_settings, instances );
 

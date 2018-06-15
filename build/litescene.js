@@ -1,5 +1,6 @@
 //packer version
-//FILE: ../src/intro.js
+///@FILE:../src/intro.js
+///@INFO: BASE
 //LiteScene by javi.agenjo@gmail.com 2013 @tamats
 // github.com/jagenjo/litescene
 // dependencies: litegl.js glMatrix.js (and litegraph.js)
@@ -10,7 +11,7 @@
 
 (function(global){
 
-//FILE: ../src/utils/wbin.js
+///@FILE:../src/utils/wbin.js
 /* WBin: Javi Agenjo javi.agenjo@gmail.com  Febrary 2014
 
 WBin allows to pack binary information easily
@@ -459,7 +460,8 @@ WBin.readFloat32 = function(buffer, pos)
 global.WBin = WBin;
 
 })( typeof(global) != "undefined" ? global : this );
-//FILE: ../src/utils/lscript.js
+///@FILE:../src/utils/lscript.js
+///@INFO: SCRIPTS
 // ******* LScript  **************************
 
 /**
@@ -650,8 +652,11 @@ LScript.cleanCode = function(code)
 {
 	if(!code)
 		return "";
-
-	var rx = /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/g;
+	/*  this should be removed 
+		I write this to test this func using LScript.cleanCode( LScript.cleanCode.toString() );
+	*/
+	//var rx = /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/g;
+	var rx = /\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/g;
 	var code = code.replace( rx ,"");
 	var lines = code.split("\n");
 	var result = [];
@@ -659,8 +664,8 @@ LScript.cleanCode = function(code)
 	{
 		var line = lines[i]; 
 		var pos = line.indexOf("//");
-		if(pos != -1)
-			line = lines[i].substr(0,pos);
+		if(pos != -1 && line.substr(0,pos).indexOf("\"") == -1) //avoid removing lines with comments inside strings
+			line = line.substr(0,pos);
 		line = line.trim();
 		if(line.length)
 			result.push(line);
@@ -817,7 +822,7 @@ LScript.computeLineFromError = function( err )
 global.LScript = LScript;
 
 
-//FILE: ../src/core.js
+///@FILE:../src/core.js
 //Global Scope
 //better array conversion to string for serializing
 if( !Uint8Array.prototype.toJSON )
@@ -835,6 +840,7 @@ if( typeof(GL) === "undefined" )
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *
+///@INFO: BASE
 * @class  LS
 * @module LS
 */
@@ -852,6 +858,7 @@ var LS = {
 	Physics: null,
 	ShadersManager: null,
 	Formats: null,
+	Tween: null,
 
 	//containers
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
@@ -1082,22 +1089,7 @@ var LS = {
 				j--; 
 				num++;
 			}
-			
-
-			/*
-			//this is a slow way but we dont care, this is used very rarely
-			var info = node.serialize();
-			info = { components: info.components }; //just want the components
-			for(var j = 0; j < info.components.length; ++j)
-			{
-				var compo_info = info.components[j];
-				if(compo_info[0] == old_class_name)
-					compo_info[0] = new_class_name;
-			}
-			//now force the node to be reloaded
-			node.removeAllComponents();
-			node.configure( info );
-			*/
+		
 		}
 
 		return num;
@@ -2041,8 +2033,8 @@ if(global.GL)
 global.LSQ = LSQ;
 
 
-//FILE: ../src/defines.js
-
+///@FILE:../src/defines.js
+///@INFO: BASE
 if(typeof(GL) == "undefined")
 	throw("LiteSCENE requires to have litegl.js included before litescene.js");
 
@@ -2141,7 +2133,8 @@ LS.RESOURCE_TYPES[ LS.TYPES.ANIMATION ] = true;
 */
 LS.Ray = GL.Ray;
 
-//FILE: ../src/network.js
+///@FILE:../src/network.js
+///@INFO: BASE
 var Network = {
 
 	default_dataType: "arraybuffer",
@@ -2488,7 +2481,7 @@ var Network = {
 };
 
 LS.Network = Network;
-//FILE: ../src/input.js
+///@FILE:../src/input.js
 
 /**
 * Input is a static class used to read the input state (keyboard, mouse, gamepad, etc)
@@ -2814,7 +2807,7 @@ Object.defineProperty( MouseEvent.prototype, "getRay", { value: function(){
 });
 
 LS.Input = Input;
-//FILE: ../src/gui.js
+///@FILE:../src/gui.js
 
 /**
 * GUI is a static class used to create two kinds of GUIs: HTML GUIs on top of the 3D Canvas (in a safe way) or Immediate GUI using a Canvas2D (fast gui)
@@ -3104,16 +3097,17 @@ var GUI = {
 	*
 	* @method ResetImmediateGUI
 	*/
-	ResetImmediateGUI: function()
+	ResetImmediateGUI: function( skip_redraw )
 	{
 		this._is_on_top_of_immediate_widget = false;
 		this.setCursor(null);
-		LS.GlobalScene.requestFrame(); //force redraws
 		this.pressed_enter = false;
 		this._offset[0] = 0;
 		this._offset[1] = 0;
 		this._gui_areas.offset = 0;
 		this._ctx = gl;
+		if(!skip_redraw)
+			LS.GlobalScene.requestFrame(); //force redraws
 	},
 
 	//this is done so when clicking in the area where there is an immediate GUI widget the events are not send to the app
@@ -3853,7 +3847,8 @@ GUI.getRoot = function()
 }
 
 LS.GUI = GUI;
-//FILE: ../src/resourcesManager.js
+///@FILE:../src/resourcesManager.js
+///@INFO: BASE
 /**
 * Static class that contains all the resources loaded, parsed and ready to use.
 * It also contains the parsers and methods in charge of processing them
@@ -4184,6 +4179,10 @@ var ResourcesManager = {
 			this.proxy = location.protocol + "//" + proxy_url.replace("@", window.location.host );
 		else
 			this.proxy = proxy_url;
+
+		if(	typeof(LiteGraph) !== "undefined" )
+			LiteGraph.proxy = this.proxy;
+
 	},
 
 	/**
@@ -5533,7 +5532,8 @@ LS.ResourcesManager.registerResourcePostProcessor("ShaderCode", function( filena
 //load priority
 GL.Mesh.load_priority = -10;
 
-//FILE: ../src/shadersManager.js
+///@FILE:../src/shaders.js
+///@INFO: BASE
 /* Basic shader manager 
 	- Allows to load all shaders from XML
 	- Allows to use a global shader
@@ -5541,26 +5541,19 @@ GL.Mesh.load_priority = -10;
 
 //************************************
 /**
-* ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.
+* Shaders is the static class in charge of loading, compiling and storing shaders for reuse.
 *
-* @class ShadersManager
+* @class Shaders
 * @namespace LS
 * @constructor
 */
 
-var ShadersManager = {
-
-	default_xml_url: "data/shaders.xml",
+var Shaders = {
 
 	snippets: {},//to save source snippets
 	shader_blocks: new Map(),//to save shader block
-	compiled_programs: {}, //shaders already compiled and ready to use
-	compiled_shaders: {}, //every vertex and fragment shader compiled
 
-	global_shaders: {}, //shader codes to be compiled using some macros
-	templates: {}, //WIP
-
-	default_shader: null, //a default shader to rely when a shader is not found
+	global_extra_code: null,
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
@@ -5574,14 +5567,6 @@ var ShadersManager = {
 	*/
 	init: function(url, ignore_cache)
 	{
-		//set a default shader 
-		this.default_shader = null;
-
-		//storage
-		this.compiled_programs = {};
-		this.compiled_shaders = {};
-		this.global_shaders = {};
-
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
@@ -5590,16 +5575,6 @@ var ShadersManager = {
 			this.global_extra_code += "#define STANDARD_DERIVATIVES\n";
 		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
 			this.global_extra_code += "#define DRAW_BUFFERS\n";
-
-		//compile some shaders
-		this.createDefaultShaders();
-
-		//if a shader is not found, the default shader is returned, in this case a flat shader
-		this.default_shader = this.get("flat");
-
-		url = url || this.default_xml_url;
-		this.last_shaders_url = url;
-		this.loadFromXML(url, false, ignore_cache);
 	},
 
 	/**
@@ -5610,132 +5585,7 @@ var ShadersManager = {
 	*/
 	reloadShaders: function(on_complete)
 	{
-		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
-	},
-
-	/**
-	* Resolves a shader query, returns the shader
-	*
-	* @method resolve
-	* @param {ShaderQuery} query
-	* @return {GL.Shader} the shader, if not found the default shader is returned
-	*/
-	resolve: function( query )
-	{
-		return this.get( query.name, query.macros );
-	},
-
-	/**
-	* Clears all the compiled shaders
-	*
-	* @method clearCache
-	*/
-	clearCache: function()
-	{
-		this.compiled_programs = {};
-		this.compiled_shaders = {};
-	},
-
-	/**
-	* Returns a compiled shader with this id and this macros
-	*
-	* @method get
-	* @param {string} id
-	* @param {string} macros
-	* @return {GL.Shader} the shader, if not found the default shader is returned
-	*/
-	get: function( id, macros )
-	{
-		if(!id)
-			return this.default_shader;
-
-		//if there is no macros, just get the old one
-		if(!macros)
-		{
-			var shader = this.compiled_programs[id];
-			if (shader)
-				return shader;
-		}
-
-		var global = this.global_shaders[id];
-
-		if (global == null)
-			return this.default_shader;
-
-		var key = id + ":";
-		var extracode = "";
-
-		if(global.num_macros != 0)
-		{
-			//generate unique key
-			for (var macro in macros)
-			{
-				if (global.macros[ macro ])
-				{
-					key += macro + "=" + macros[macro] + ":";
-					extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
-				}
-			}//for macros
-		}
-
-		//hash key
-		var hashkey = key.hashCode();
-
-		//already compiled
-		if (this.compiled_programs[hashkey] != null)
-			return this.compiled_programs[hashkey];
-
-		var start_time = 0;
-		if (this.debug)
-			start_time = getTime();
-
-		//compile and store it
-		var vs_code = extracode + global.vs_code;
-		var fs_code = extracode + global.fs_code;
-
-		//expand code
-		if(global.imports)
-		{
-			var already_imported = {}; //avoid to import two times the same code to avoid collisions
-
-			var replace_import = function(v)
-			{
-				var token = v.split("\"");
-				var id = token[1];
-				if( already_imported[ id ] )
-					return "//already imported: " + id + "\n";
-				var snippet = ShadersManager.snippets[id];
-				already_imported[id] = true;
-				if(snippet)
-					return snippet.code;
-				return "//snippet not found: " + id + "\n";
-			}
-
-			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
-			already_imported = {}; //clear
-			fs_code	= fs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
-		}
-
-		var shader = this.compileShader( vs_code, fs_code, key );
-		if(shader)
-			shader.global = global;
-
-		if(this.debug)
-			console.log("Time creating shader:", (getTime() - start_time).toFixed(3), "ms");
-
-		return this.registerCompiledShader(shader, hashkey, id);
-	},
-
-	/**
-	* Returns the info of a global shader
-	*
-	* @method getGlobalShaderInfo
-	* @param {string} id
-	* @return {Object} shader info (code, macros supported, flags)
-	*/
-	getGlobalShaderInfo: function(id)
-	{
-		return this.global_shaders[id];
+		//TODO: crawl all materials and clear shaders
 	},
 
 	/**
@@ -5747,7 +5597,7 @@ var ShadersManager = {
 	* @param {string} name an unique name that should be associated with this shader
 	* @return {GL.Shader} shader
 	*/
-	compileShader: function( vs_code, fs_code, name )
+	compile: function( vs_code, fs_code, name )
 	{
 		if(!name)
 			throw("compileShader must have a name specified");
@@ -5811,262 +5661,6 @@ var ShadersManager = {
 	},
 
 	/**
-	* Stores a compiled shader program, so it can be reused
-	*
-	* @method registerCompiledShader
-	* @param {GL.Shader} shader the compiled shader
-	* @param {string} key unique id 
-	* @param {string} id the shader name
-	* @return {GL.Shader} shader
-	*/
-	registerCompiledShader: function(shader, key, id)
-	{
-		if(shader == null)
-		{
-			this.compiled_programs[key] = this.default_shader;
-			return this.default_shader;
-		}
-
-		shader.id = id;
-		shader.key = key;
-		this.compiled_programs[key] = shader;
-		return shader;
-	},
-
-	/**
-	* Loads shaders code from an XML file
-	*
-	* @method loadFromXML
-	* @param {string} url to the shaders file
-	* @param {boolean} reset_old to reset all the existing shaders once loaded
-	* @param {boolean} ignore_cache force to ignore web cache 
-	* @param {function} on_complete callback once the file has been loaded and processed
-	*/
-	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
-	{
-		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
-		LS.Network.request({
-		  url: url + nocache,
-		  dataType: 'xml',
-		  success: function(response){
-				console.log("Shaders XML loaded: " + url);
-				if(reset_old)
-				{
-					LS.ShadersManager.global_shaders = {};
-					LS.ShadersManager.compiled_programs = {};
-					LS.ShadersManager.compiled_shaders = {};
-				}
-				LS.ShadersManager.processShadersXML(response);
-				if(on_complete)
-					on_complete();
-		  },
-		  error: function(err){
-			  console.log("Error parsing Shaders XML: " + err);
-			  throw("Error parsing Shaders XML: " + err);
-		  }
-		});	
-	},
-
-	/**
-	* extracts all the shaders from the XML doc
-	*
-	* @method processShadersXML
-	* @param {XMLDocument} xml
-	*/
-	processShadersXML: function(xml)
-	{
-		//get shaders
-		var shaders = xml.querySelectorAll('shader');
-		
-		for(var i in shaders)
-		{
-			var shader_element = shaders[i];
-			if(!shader_element || !shader_element.attributes) continue;
-
-			var id = shader_element.attributes["id"];
-			if(!id) continue;
-			id = id.value;
-
-			var vs_code = "";
-			var fs_code = "";
-
-			//read all the supported macros
-			var macros_str = "";
-			var macros_attr = shader_element.attributes["macros"];
-			if(macros_attr)
-				macros_str += macros_attr.value;
-
-			var macros_xml = shader_element.querySelector("macros");
-			if(macros_xml)
-				macros_str += macros_xml.textContent;
-
-			var macros_array = macros_str.split(",");
-			var macros = {};
-			for(var i in macros_array)
-				macros[ macros_array[i].trim() ] = true;
-
-			//read the shaders code
-			vs_code = shader_element.querySelector("code[type='vertex_shader']").textContent;
-			fs_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
-
-			if(!vs_code || !fs_code)
-			{
-				console.log("no code in shader: " + id);
-				continue;
-			}
-
-			var options = {};
-
-			var multipass = shader_element.getAttribute("multipass");
-			if(multipass)
-				options.multipass = (multipass == "1" || multipass == "true");
-			var imports = shader_element.getAttribute("imports");
-			if(imports)
-				options.imports = (imports == "1" || imports == "true");
-			var events = shader_element.getAttribute("events");
-			if(events)
-				options.events = (events == "1" || events == "true");
-
-			LS.ShadersManager.registerGlobalShader( vs_code, fs_code, id, macros, options );
-		}
-
-		var snippets = xml.querySelectorAll('snippet');
-		for(var i = 0; i < snippets.length; ++i)
-		{
-			var snippet = snippets[i];
-			var id = snippet.getAttribute("id");
-			var code = snippet.textContent;
-			this.registerSnippet( id, code );
-		}
-
-		var templates = xml.querySelectorAll('template');
-		for(var i = 0; i < templates.length; ++i)
-		{
-			var template = templates[i];
-			var id = template.getAttribute("id");
-			var vs_code = template.querySelector("code[type='vertex_shader']").textContent;
-			var fs_code = template.querySelector("code[type='fragment_shader']").textContent;
-
-			var vs_info = this.processTemplateCode( vs_code );
-			var fs_info = this.processTemplateCode( fs_code );
-
-			template[id] = {
-				id: id,
-				vs_info: vs_info,
-				fs_info: fs_info
-			}
-
-			//console.log( template[id] );
-		}
-
-		//we need to notify (LS.Player uses this)
-		this.ready = true;
-		if(this.on_ready)
-			this.on_ready();
-		LEvent.trigger( this, "ready" );
-	},
-	
-	//adds source code of a shader that could be compiled if needed
-	//id: name
-	//macros: supported macros by the shader
-	/**
-	* extracts all the shaders from the XML doc
-	*
-	* @method registerGlobalShader
-	* @param {string} vs_code
-	* @param {string} fs_code
-	*/
-	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
-	{
-		//detect macros
-		var macros_found = {};
-		//TO DO using a regexp
-
-		//count macros
-		var num_macros = 0;
-		for(var i in macros)
-			num_macros += 1;
-
-		//HACK for IE
-		if(gl && !gl.extensions["WEBGL_draw_buffers"])
-			fs_code = fs_code.replace("#extension GL_EXT_draw_buffers : enable", '');
-
-		var global = { 
-			vs_code: vs_code, 
-			fs_code: fs_code,
-			macros: macros,
-			num_macros: num_macros
-		};
-
-		//add options
-		if(options)
-		{
-			for(var i in options)
-				global[i] = options[i];
-
-			//process code
-			if(options.events)
-			{
-				var replace_events = function(v)
-				{
-					var token = v.split("\"");
-					var id = token[1];
-					//console.log("Event: ",id);
-					return "";
-				}
-
-				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
-				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
-			}
-		}
-
-		this.global_shaders[id] = global;
-		LEvent.trigger( LS.ShadersManager, "newShader" );
-		return global;
-	},
-
-	/*
-	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
-	{
-		//detect macros
-		var macros_found = {};
-		//TO DO using a regexp
-
-		//count macros
-		var num_macros = 0;
-		for(var i in macros)
-			num_macros += 1;
-
-		var global = { 
-			vs_code: vs_code, 
-			fs_code: fs_code,
-			macros: macros,
-			num_macros: num_macros
-		};
-
-		//add options
-		if(options)
-		{
-			for(var i in options)
-				global[i] = options[i];
-
-				var vs_areas = vs_code.split("#pragma");
-				var fs_areas = fs_code.split("#pragma");
-				
-
-				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
-				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
-			}
-		}
-
-		this.global_shaders[id] = global;
-		LEvent.trigger(ShadersManager,"newShader");
-		return global;
-	},
-	*/
-
-
-	/**
 	* Register a code snippet ready to be used by the #import clause in the shader
 	*
 	* @method registerSnippet
@@ -6090,6 +5684,13 @@ var ShadersManager = {
 		return this.snippets[ id ];
 	},
 
+	/**
+	* register a shaderblock in the global container so it can be used by shadermaterials
+	*
+	* @method registerShaderBlock
+	* @param {string} id
+	* @param {LS.ShaderBlock} shader_block
+	*/
 	registerShaderBlock: function(id, shader_block)
 	{
 		var block_id = -1;
@@ -6110,6 +5711,13 @@ var ShadersManager = {
 		this.shader_blocks.set( id, shader_block );
 	},
 
+	/**
+	* register a shaderblock with the given id
+	*
+	* @method getShaderBlock
+	* @param {string} id
+	* @return {LS.ShaderBlock} shader_block
+	*/
 	getShaderBlock: function( id )
 	{
 		return this.shader_blocks.get(id);
@@ -6126,183 +5734,22 @@ var ShadersManager = {
 	",
 	common_fscode: "\n\
 		precision mediump float;\n\
-	",
+	"
 
-	/**
-	* Create some default shaders useful for generic situations (flat, texture and screenspace quad)
-	*
-	* @method createDefaultShaders
-	* @param {string} id
-	* @return {string} code
-	*/
-	createDefaultShaders: function()
-	{
-		//flat
-		this.registerGlobalShader(this.common_vscode + '\
-			void main() {\
-				mat4 mvp = u_viewprojection * u_model;\
-				gl_Position = mvp * vec4(a_vertex,1.0);\
-			}\
-			', this.common_fscode + '\
-			uniform vec4 u_material_color;\
-			void main() {\
-			  gl_FragColor = vec4(u_material_color);\
-			}\
-		',"flat");
-
-		//flat texture
-		this.registerGlobalShader(this.common_vscode + '\
-			varying vec2 v_uvs;\
-			void main() {\n\
-				v_uvs = a_coord;\n\
-				mat4 mvp = u_viewprojection * u_model;\
-				gl_Position = mvp * vec4(a_vertex,1.0);\
-			}\
-			', this.common_fscode + '\
-			uniform vec4 u_material_color;\
-			varying vec2 v_uvs;\
-			uniform sampler2D texture;\
-			void main() {\
-				gl_FragColor = u_material_color * texture2D(texture,v_uvs);\
-			}\
-		',"texture_flat");
-
-		this.registerGlobalShader(this.common_vscode + '\
-			varying vec2 coord;\
-			void main() {\
-			coord = a_coord;\
-			gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);\
-		}\
-		', this.common_fscode + '\
-			uniform sampler2D texture;\
-			uniform vec4 color;\
-			varying vec2 coord;\
-			void main() {\
-			gl_FragColor = texture2D(texture, coord) * color;\
-			}\
-		',"screen");
-	},
-
-	processTemplateCode: function( code )
-	{
-		//remove comments
-		code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
-
-		var hooks = {};
-		var parts = [];
-		var current_part = [];
-
-		var lines = code.split("\n");
-		for(var i = 0; i < lines.length; i++)
-		{
-			var line = lines[i].trim();
-			if(!line.length)
-				continue;//empty line
-			if(line[0] != "#")
-			{
-				current_part.push(line);
-				continue;
-			}
-
-			var t = line.split(" ");
-			if(t[0] == "#pragma")
-			{
-				switch(t[1])
-				{
-					case "import":
-						if( current_part.length )
-						{
-							parts.push( [ "code", current_part.join("\n") ] );
-							current_part = [];
-						}
-						parts.push( [ "import", t[3] ] );
-						break;
-					case "hook": 
-						if( current_part.length )
-						{
-							parts.push( [ "code", current_part.join("\n") ] );
-							current_part = [];
-						}
-						if( hooks[ t[3] ] !== undefined )
-							console.warn("Hook already found in shader: " + t[3] );
-						hooks[ t[3] ] = parts.length;
-						parts.push( [ "hook", t[3] ] );
-						break;
-					default:
-						current_part.push(line); //unknown pragma, pass it
-				}
-			}
-			else
-				current_part.push(line); //unknown macro, pass it
-		}
-
-		return {
-			code: code,
-			parts: parts,
-			hooks: hooks
-		};
-	}
 };
 
-LS.SM = LS.ShadersManager = ShadersManager;
-
+LS.Shaders = Shaders;
 
 /**
-* ShaderQuery is in charge of specifying info that must be taken into account when compiling a shader
+* A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
+* SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
+* it will be inserted in the material in the line of the pragma
 *
-* @class ShaderQuery
+* @class ShaderBlock
 * @namespace LS
 * @constructor
 */
-function ShaderQuery( name, macros )
-{
-	this.name = name;
-	this.macros = {}; //macros to add
-	this.hooks = {}; //represent points where this shader want to insert code
 
-	if(macros)
-		for(var i in macros)
-			this.macros[i] = macros[i];
-}
-
-ShaderQuery.prototype.clear = function()
-{
-	this.macros = {};
-	this.hooks = {};
-}
-
-ShaderQuery.prototype.add = function( query )
-{
-	if(!query)
-		return;
-
-	//add macros
-	for(var i in query.macros )
-		this.macros[i] = query.macros[i];
-
-	//add hooks
-}
-
-ShaderQuery.prototype.setMacro = function( name, value )
-{
-	this.macros[name] = value || "";
-}
-
-ShaderQuery.prototype.resolve = function()
-{
-	return LS.ShadersManager.resolve(this);
-}
-
-//ShaderQuery.prototype.addHook = function
-
-LS.ShaderQuery = ShaderQuery;
-
-
-
-// WIP
-// A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
-// SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
-// it will be inserted in the material in the line of the pragma
 function ShaderBlock( name )
 {
 	this.dependency_blocks = []; //blocks referenced by this block
@@ -6322,7 +5769,16 @@ ShaderBlock.prototype.defineContextMacros = function( macros )
 	this.context_macros = macros;
 }
 
-//shader_type: vertex or fragment shader
+/**
+* register a shaderblock with the given id
+* shader_type: vertex or fragment shader
+*
+* @method addCode
+* @param {enum} shader_type could be  GL.VERTEX_SHADER or  GL.FRAGMENT_SHADER
+* @param {string} enabled_code the code to insert if the shaderblock is enabled
+* @param {string} disabled_code the code to insert if the shaderblock is disabled
+* @param {Object} macros [optional] a set of macros to use when compiling this shader codes
+*/
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || "";
@@ -6339,8 +5795,16 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	this.code_map.set( shader_type, info );
 }
 
-//returns the full code of a shaderblock applying all includes, shaderblocks, etc
-//shadertype: GL.VERTEX_SHADER = 35633, GL.FRAGMENT_SHADER = 35632
+/**
+* Returns the full code of a shaderblock resolving all includes, shaderblocks, etc
+* shadertype: GL.VERTEX_SHADER = 35633, GL.FRAGMENT_SHADER = 35632
+*
+* @method getFinalCode
+* @param {enum} shader_type could be GL.VERTEX_SHADER or  GL.FRAGMENT_SHADER
+* @param {number} block_flags a number containing the mask (every bit is a flag for a shaderblock) with all the enabled shader blocks
+* @param {string} context an object with variable that could be fetched by the shaderblocks
+* @return {String} the final code ready to be compiled
+*/
 ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	block_flags = block_flags || 0;
@@ -6360,9 +5824,14 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context
 	return finalcode;
 }
 
+/**
+* Registers this shaderblock in the global LS.Shaders container
+*
+* @method register
+**/
 ShaderBlock.prototype.register = function()
 {
-	LS.ShadersManager.registerShaderBlock(this.name, this);
+	LS.Shaders.registerShaderBlock(this.name, this);
 }
 
 ShaderBlock.prototype.checkDependencies = function( code )
@@ -6568,7 +6037,7 @@ GLSLCode.pragma_methods["include"] = {
 		}
 		else
 		{
-			var snippet_code = LS.ShadersManager.getSnippet( filename );
+			var snippet_code = LS.Shaders.getSnippet( filename );
 			if( !snippet_code )
 				return null; //snippet not found
 			extra_code = "\n" + snippet_code.code + "\n";
@@ -6640,7 +6109,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			}
 		}
 		
-		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
+		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
 		if(!shader_block)
 		{
 			//console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
@@ -6673,7 +6142,7 @@ GLSLCode.pragma_methods["snippet"] = {
 	},
 	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		var snippet = LS.ShadersManager.getSnippet( fragment.snippet );
+		var snippet = LS.Shaders.getSnippet( fragment.snippet );
 		if(!snippet)
 		{
 			console.error("ShaderCode uses unknown Snippet: ", fragment.snippet);
@@ -6711,7 +6180,209 @@ GLSLCode.breakLines = function(lines)
 }
 
 
-//FILE: ../src/utils/litegl-extra.js
+// shaders
+
+LS.Shaders.registerSnippet("input","\n\
+			//used to store topology input information\n\
+			struct Input {\n\
+				vec4 color;\n\
+				vec3 vertex;\n\
+				vec3 normal;\n\
+				vec2 uv;\n\
+				vec2 uv1;\n\
+				\n\
+				vec3 camPos;\n\
+				vec3 viewDir;\n\
+				vec3 worldPos;\n\
+				vec3 worldNormal;\n\
+				vec4 screenPos;\n\
+			};\n\
+			\n\
+			Input getInput()\n\
+			{\n\
+				Input IN;\n\
+				IN.color = vec4(1.0);\n\
+				IN.vertex = v_pos;\n\
+				IN.normal = v_normal;\n\
+				IN.uv = v_uvs;\n\
+				IN.uv1 = IN.uv;\n\
+				\n\
+				IN.camPos = u_camera_eye;\n\
+				IN.viewDir = normalize(u_camera_eye - v_pos);\n\
+				IN.worldPos = v_pos;\n\
+				IN.worldNormal = normalize(v_normal);\n\
+				//IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				IN.screenPos = vec4( (gl_FragCoord.xy / gl_FragCoord.w) * 0.5 + vec2(0.5), gl_FragCoord.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				return IN;\n\
+			}\n\
+	");
+
+LS.Shaders.registerSnippet("structs","\n\
+			//used to store topology input information\n\
+			struct Input {\n\
+				vec4 color;\n\
+				vec3 vertex;\n\
+				vec3 normal;\n\
+				vec2 uv;\n\
+				vec2 uv1;\n\
+				\n\
+				vec3 camPos;\n\
+				vec3 viewDir;\n\
+				vec3 worldPos;\n\
+				vec3 worldNormal;\n\
+				vec4 screenPos;\n\
+			};\n\
+			\n\
+			//used to store surface shading properties\n\
+			struct SurfaceOutput {\n\
+				vec3 Albedo;\n\
+				vec3 Normal; //separated in case there is a normal map\n\
+				vec3 Emission;\n\
+				vec3 Ambient;\n\
+				float Specular;\n\
+				float Gloss;\n\
+				float Alpha;\n\
+				float Reflectivity;\n\
+				vec4 Extra; //for special purposes\n\
+			};\n\
+			\n\
+			//used to store light contribution\n\
+			//CAREFUL: this one is different than \n\
+			struct FinalLight {\n\
+				vec3 Color;\n\
+				vec3 Ambient;\n\
+				float Diffuse; //NdotL\n\
+				float Specular; //RdotL\n\
+				vec3 Emission;\n\
+				vec3 Reflection;\n\
+				float Attenuation;\n\
+				float Shadow; //1.0 means fully lit\n\
+			};\n\
+	");
+
+LS.Shaders.registerSnippet("spotFalloff","\n\
+			float spotFalloff(vec3 spotDir, vec3 lightDir, float angle_phi, float angle_theta)\n\
+			{\n\
+				float sqlen = dot(lightDir,lightDir);\n\
+				float atten = 1.0;\n\
+				\n\
+				vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );\n\
+				spotParams.w = 1.0 / (spotParams.x-spotParams.y);\n\
+				\n\
+				vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized\n\
+				float spotDot = dot(spotDir, -dirUnit);\n\
+				if (spotDot <= spotParams.y)// spotDot <= cos phi/2\n\
+					return 0.0;\n\
+				else if (spotDot > spotParams.x) // spotDot > cos theta/2\n\
+					return 1.0;\n\
+				\n\
+				// vertex lies somewhere beyond the two regions\n\
+				float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );\n\
+				return ifallof;\n\
+			}\n\
+	");
+
+LS.Shaders.registerSnippet("getFlatNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+				vec3 getFlatNormal(vec3 pos)\n\
+				{\n\
+					vec3 A = dFdx( pos );\n\
+					vec3 B = dFdy( pos );\n\
+					return normalize( cross(A,B) );\n\
+				}\n\
+			#else\n\
+				vec3 getFlatNormal(vec3 pos)\n\
+				{\n\
+					return vec3(0.0);\n\
+				}\n\
+			#endif\n\
+	");
+
+LS.Shaders.registerSnippet("perturbNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+			#endif\n\
+			\n\
+				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)\n\
+				{\n\
+					// get edge vectors of the pixel triangle\n\
+					#ifdef STANDARD_DERIVATIVES\n\
+					\n\
+					vec3 dp1 = dFdx( p );\n\
+					vec3 dp2 = dFdy( p );\n\
+					vec2 duv1 = dFdx( uv );\n\
+					vec2 duv2 = dFdy( uv );\n\
+					\n\
+					// solve the linear system\n\
+					vec3 dp2perp = cross( dp2, N );\n\
+					vec3 dp1perp = cross( N, dp1 );\n\
+					vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;\n\
+					vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;\n\
+					#else\n\
+					vec3 T = vec3(1.0,0.0,0.0); //this is wrong but its a fake solution\n\
+					vec3 B = cross(N,T);\n\
+					T = cross(B,N);\n\
+					#endif\n\
+					 \n\
+					// construct a scale-invariant frame \n\
+					float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );\n\
+					return mat3( T * invmax, B * invmax, N );\n\
+				}\n\
+				\n\
+				vec3 perturbNormal( vec3 N, vec3 V, vec2 texcoord, vec3 normal_pixel )\n\
+				{\n\
+					#ifdef USE_POINTS\n\
+						return N;\n\
+					#endif\n\
+					\n\
+					// assume N, the interpolated vertex normal and \n\
+					// V, the view vector (vertex to eye)\n\
+					//vec3 normal_pixel = texture2D(normalmap, texcoord ).xyz;\n\
+					normal_pixel = normal_pixel * 255./127. - 128./127.;\n\
+					mat3 TBN = cotangent_frame(N, V, texcoord);\n\
+					return normalize(TBN * normal_pixel);\n\
+				}\n\
+		");
+
+LS.Shaders.registerSnippet("bumpNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+			#endif\n\
+				\n\
+				// Calculate the surface normal using screen-space partial derivatives of the height field\n\
+				vec3 bumpNormal(vec3 position, vec3 normal, sampler2D texture, vec2 uvs, float factor)\n\
+				{\n\
+				#ifdef STANDARD_DERIVATIVES\n\
+			        vec3 dpdx = dFdx(position);\n\
+			        vec3 dpdy = dFdy(position);\n\
+					vec3 r1 = cross(dpdy, normal);\n\
+					vec3 r2 = cross(normal, dpdx);\n\
+					\n\
+					vec2 dtdx = dFdx(uvs) * factor;\n\
+					vec2 dtdy = dFdy(uvs) * factor;\n\
+					\n\
+			        float h = texture2D( texture,  uvs ).r;\n\
+			        float hdx = texture2D( texture,  uvs + dtdx ).r;\n\
+			        float hdy = texture2D( texture,  uvs + dtdy ).r;\n\
+					\n\
+					return normalize(normal + (r1 * (hdx - h) - r2 * (hdy - h)) / dot(dpdx, r1));\n\
+				#else\n\
+					return normal;\n\
+				#endif\n\
+				}\n\
+		");
+
+LS.Shaders.registerSnippet("computePointSize","\n\
+			float computePointSize(float radius, float w)\n\
+			{\n\
+				if(radius < 0.0)\n\
+					return -radius;\n\
+				return u_viewport.w * u_camera_perspective.z * radius / w;\n\
+			}\n\
+	");
+///@FILE:../src/utils/litegl-extra.js
+///@INFO: BASE
 //when working with animations sometimes you want the bones to be referenced by node name and no node uid, because otherwise you cannot reuse
 //the same animation with different characters in the same scene.
 GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
@@ -6768,9 +6439,8 @@ GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )
 	if(modified)
 		LS.RM.resourceModified( this );
 }
-//FILE: ../src/materials/material.js
-
-
+///@FILE:../src/materials/material.js
+///@INFO: BASE
 
 //Material class **************************
 /**
@@ -6842,7 +6512,7 @@ function Material( o )
 	* @property query
 	* @type {LS.ShaderQuery}
 	*/
-	this._query = new LS.ShaderQuery();
+	//this._query = new LS.ShaderQuery();
 
 	/**
 	* flags to control cast_shadows, receive_shadows or ignore_frustum
@@ -6899,7 +6569,7 @@ function Material( o )
 		set: function(v) { 
 			if(!v)
 				return;
-			for(var i in v)
+			for(var i in v) //copy from JSON object
 				this._render_state[i] = v[i];
 		},
 		enumerable: true
@@ -6970,36 +6640,6 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-
-// RENDERING METHODS
-Material.prototype.fillShaderQuery = function(scene)
-{
-	var query = this._query;
-	query.clear();
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
-	{
-		var sampler = this.getTextureSampler(i);
-		if(!sampler)
-			continue;
-		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "transformed";
-
-		var texture = Material.getTextureFromSampler( sampler );
-		if(!texture) //loading or non-existant
-			continue;
-
-		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + uvs;
-	}
-
-	//if(this.reflection_factor > 0.0) 
-	//	macros.USE_REFLECTION = "";	
-
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			query.macros[im] = this.extra_macros[im];
-}
 
 Material.prototype.fillUniforms = function( scene, options )
 {
@@ -7537,18 +7177,6 @@ Material.prototype.assignToNode = function(node)
 	return true;
 }
 
-//this has been moved to ShaderCode?
-Material.processShaderCode = function(code)
-{
-	var lines = code.split("\n");
-	for(var i in lines)
-		lines[i] = lines[i].split("//")[0]; //remove comments
-	code = lines.join("");
-	if(!code)
-		return null;
-	return code;
-}
-
 /**
 * Creates a new property in this material class. Helps with some special cases
 * like when we have a Float32Array property and we dont want it to be replaced by another array, but setted
@@ -7609,18 +7237,66 @@ Material.prototype.prepare = function( scene )
 	if(this.onPrepare)
 		this.onPrepare(scene);
 
-	this.fillShaderQuery( scene ); //update shader macros on this material
+	//this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms
+}
+
+Material.prototype.getShader = function( pass_name )
+{
+	var shader = Material._shader_color;
+	if(!shader)
+		shader = Material._shader_color = new GL.Shader( LS.Shaders.common_vscode + "void main(){ vec4 vertex = u_model * a_vertex;\ngl_Position = u_viewprojection * vertex;\n }", LS.Shaders.common_vscode + "uniform vec4 u_color;\n\void main(){ gl_FragColor = u_color;\n }");
+	return shader;
+}
+
+Material.prototype.renderInstance = function( instance, render_settings, pass )
+{
+	//some globals
+	var renderer = LS.Renderer;
+	var camera = LS.Renderer._current_camera;
+	var scene = LS.Renderer._current_scene;
+	var model = instance.matrix;
+
+	//node matrix info
+	var instance_final_query = instance._final_query;
+	var instance_final_samplers = instance._final_samplers;
+	var render_uniforms = LS.Renderer._render_uniforms;
+
+	//maybe this two should be somewhere else
+	render_uniforms.u_model = model; 
+	render_uniforms.u_normal_model = instance.normal_matrix; 
+
+	//global stuff
+	this._render_state.enable();
+	LS.Renderer.bindSamplers( this._samplers );
+	var global_flags = 0;
+
+	if(this.onRenderInstance)
+		this.onRenderInstance( instance );
+
+	//extract shader compiled
+	var shader = shader_code.getShader( pass.name );
+	if(!shader)
+		return false;
+
+	//assign
+	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] ); 
+
+	//render
+	instance.render( shader, this._primitive != -1 ? this._primitive : undefined );
+	renderer._rendercalls += 1;
+
+	return true;
 }
 
 
 //LS.registerMaterialClass( Material );
 LS.registerResourceClass( Material );
 LS.Material = Material;
-//FILE: ../src/materials/shaderMaterial.js
+///@FILE:../src/materials/shaderMaterial.js
 
 /**
-* ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS
+* ShaderMaterial allows to use your own shader from scratch
 * @namespace LS
 * @class ShaderMaterial
 * @constructor
@@ -7633,6 +7309,7 @@ function ShaderMaterial( o )
 	this._shader = "";
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
+	this._shader_code = null;
 
 	this._uniforms = {};
 	this._samplers = [];
@@ -7651,6 +7328,7 @@ function ShaderMaterial( o )
 		this.configure(o);
 }
 
+//assign a shader from a filename to a shadercode
 Object.defineProperty( ShaderMaterial.prototype, "shader", {
 	enumerable: true,
 	get: function() {
@@ -7661,7 +7339,21 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 			v = LS.ResourcesManager.cleanFullpath(v);
 		if(this._shader == v)
 			return;
+		this._shader_code = null;
 		this._shader = v;
+		this.processShaderCode();
+	}
+});
+
+//allows to assign a shader code that doesnt come from a resource
+Object.defineProperty( ShaderMaterial.prototype, "shader_code", {
+	enumerable: false,
+	get: function() {
+		return this._shader_code;
+	},
+	set: function(v) {
+		this._shader = null;
+		this._shader_code = v;
 		this.processShaderCode();
 	}
 });
@@ -7777,7 +7469,7 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 	else if( this._properties_by_name[ name ] )
 	{
 		var prop = this._properties_by_name[ name ];
-		if( !prop.value || !prop.value.length)
+		if( !prop.value || prop.value.constructor === String || !prop.value.length )
 			prop.value = value;
 		else
 			prop.value.set( value );
@@ -7790,7 +7482,7 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 //check the ShaderCode associated and applies it to this material (keeping the state of the properties)
 ShaderMaterial.prototype.processShaderCode = function()
 {
-	if(!this._shader)
+	if(!this._shader_code && !this._shader)
 	{
 		this._properties.length = 0;
 		this._properties_by_name = {};
@@ -7800,8 +7492,12 @@ ShaderMaterial.prototype.processShaderCode = function()
 	}
 
 	//get shader code
-	var shader_code = LS.ResourcesManager.getResource( this.shader );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+	var shader_code = this._shader_code;
+	
+	if( !shader_code && this._shader )
+		shader_code = LS.ResourcesManager.getResource( this.shader );
+
+	if( !shader_code || shader_code.constructor !== LS.ShaderCode )
 		return false;
 
 	var old_properties = this._properties_by_name;
@@ -7814,7 +7510,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//reset material properties
 	this._queue = LS.RenderQueue.GEOMETRY;
-	this.render_state.init();
+	this._render_state.init();
 
 	//clear old functions
 	for(var i in this)
@@ -7857,9 +7553,6 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
-
-	//set stuff
-	//TODO
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
@@ -7944,10 +7637,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	block_flags |= LS.Renderer._global_block_flags; //apply global block_flags
 
 	//global stuff
-	this.render_state.enable();
+	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
 	var global_flags = 0;
 
+	//TODO: could this part be precomputed before rendering color pass?
 	if( pass.id == COLOR_PASS ) //allow reflections only in color pass
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
@@ -8021,7 +7715,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
 		if(!shader)
+		{
+			console.warn("material without pass: " + pass.name );
 			continue;
+		}
 
 		//light texture like shadowmap and cookie
 		LS.Renderer.bindSamplers( light._samplers );
@@ -8091,7 +7788,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	var block_flags = instance.computeShaderBlockFlags();
 
 	//global stuff
-	this.render_state.enable();
+	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
 
 	//extract shader compiled
@@ -8200,7 +7897,7 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 //get shader code
 ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	var shader_code = LS.ResourcesManager.getResource( this.shader );
+	var shader_code = this._shader_code || LS.ResourcesManager.getResource( this._shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
 		return null;
 
@@ -8467,9 +8164,12 @@ ShaderMaterial.getDefaultPickingShaderCode = function()
 LS.registerMaterialClass( ShaderMaterial );
 LS.ShaderMaterial = ShaderMaterial;
 
-//FILE: ../src/materials/standardMaterial.js
-
-
+///@FILE:../src/materials/standardMaterial.js
+//modes
+//- per texture
+//- texture coordinates
+//- vertex color and extras
+//- alpha test
 
 //StandardMaterial class **************************
 /* Warning: a material is not a component, because it can be shared by multiple nodes */
@@ -8484,37 +8184,40 @@ LS.ShaderMaterial = ShaderMaterial;
 
 function StandardMaterial(o)
 {
-	Material.call(this,null); //do not pass the data object, it is called later
+	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
 
 	this.blend_mode = LS.Blend.NORMAL;
 
-	this.shader_name = "global";
-
 	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
 	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" );
-	//this.emissive = new Float32Array([0.0,0.0,0.0]);
-	this.backlight_factor = 0;
+	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" ); //fourth component to control if emissive is affected by albedo
 
-	this._specular_data = vec2.fromValues( 0.1, 10.0 );
+	this._specular_data = vec4.fromValues( 0.1, 10.0, 0.0, 0.0 ); //specular factor, glossiness, specular_on_top
 	this.specular_on_top = false;
 	this.specular_on_alpha = false;
+
+	this.backlight_factor = 0;
+
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
-	this.reflection_additive = false;
 	this.reflection_specular = false;
+
 	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
 	this._velvet_info = vec4.create();
+
 	this._detail = new Float32Array([0.0, 10, 10]);
-	this._extra_data = vec4.create();
 
 	this.normalmap_factor = 1.0;
 	this.normalmap_tangent = true;
-	this.displacementmap_factor = 0.1;
 	this.bumpmap_factor = 1.0;
+
+	this.displacementmap_factor = 0.1;
+
 	this.use_scene_ambient = true;
+
+	this.createProperty( "extra", new Float32Array([1,1,1,1]), "color" ); //used in special situations
 
 	//used to change the render state
 	this.flags = {
@@ -8527,20 +8230,33 @@ function StandardMaterial(o)
 		ignore_lights: false,
 		cast_shadows: true,
 		receive_shadows: true,
+//		flat_normals: false,
 		ignore_frustum: false
 	};
 
 	//used for special fx 
-	this.extra_surface_shader_code = "";
+	this._uniforms = {
+		u_material_color: this._color,
+		u_ambient_color: this._ambient,
+		u_emissive_color: this._emissive,
+		u_specular: this._specular_data,
+		u_reflection_info: vec2.create(), //factor and fresnel
+		u_velvet_info: vec4.create(),
+		u_normal_info: vec2.create(),
+		u_detail_info: this._detail,
+		u_texture_matrix: this.uvs_matrix,
+		u_extra_color: this._extra
+	};
 
-	this._uniforms = {};
 	this._samplers = [];
 
-	this.extra_uniforms = {};
+	this._allows_instancing = true;
+	this.needsUpdate = true;
 
 	if(o) 
 		this.configure(o);
 }
+
 
 Object.defineProperty( StandardMaterial.prototype, 'detail_factor', {
 	get: function() { return this._detail[0]; },
@@ -8560,18 +8276,6 @@ Object.defineProperty( StandardMaterial.prototype, 'emissive_extra', {
 	enumerable: true
 });
 
-Object.defineProperty( StandardMaterial.prototype, 'extra_factor', {
-	get: function() { return this._extra_data[3]; },
-	set: function(v) { this._extra_data[3] = v; },
-	enumerable: true
-});
-
-Object.defineProperty( StandardMaterial.prototype, 'extra_color', {
-	get: function() { return this._extra_data.subarray(0,3); },
-	set: function(v) { this._extra_data.set( v ); },
-	enumerable: true
-});
-
 Object.defineProperty( StandardMaterial.prototype, 'specular_factor', {
 	get: function() { return this._specular_data[0]; },
 	set: function(v) { 
@@ -8588,14 +8292,20 @@ Object.defineProperty( StandardMaterial.prototype, 'specular_gloss', {
 });
 
 StandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
+StandardMaterial.actions = {};
 
 StandardMaterial.DETAIL_TEXTURE = "detail";
 StandardMaterial.NORMAL_TEXTURE = "normal";
 StandardMaterial.DISPLACEMENT_TEXTURE = "displacement";
 StandardMaterial.BUMP_TEXTURE = "bump";
 StandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
-StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
 StandardMaterial.EXTRA_TEXTURE = "extra";
+StandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
+
+StandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
+StandardMaterial.prototype.renderShadowInstance = ShaderMaterial.prototype.renderShadowInstance;
+StandardMaterial.prototype.renderPickingInstance = ShaderMaterial.prototype.renderPickingInstance;
+
 
 StandardMaterial.prototype.prepare = function( scene )
 {
@@ -8620,142 +8330,211 @@ StandardMaterial.prototype.prepare = function( scene )
 		}
 	}
 
-	this.fillShaderQuery( scene ); //update shader macros on this material
+	this._light_mode = this.flags.ignore_lights ? Material.NO_LIGHTS : 1;
+
 	this.fillUniforms( scene ); //update uniforms
-
-	//set up macros
-	if( flags.alpha_test )
-		this._query.macros.USE_ALPHA_TEST = "0.5";
-	else if(this._query.macros["USE_ALPHA_TEST"])
-		delete this._query.macros["USE_ALPHA_TEST"];
-
 }
 
-// RENDERING METHODS
-StandardMaterial.prototype.fillShaderQuery = function( scene )
+StandardMaterial.FLAGS = {
+	COLOR_TEXTURE: 1<<1,
+	OPACITY_TEXTURE: 1<<2,
+	SPECULAR_TEXTURE: 1<<3,
+	REFLECTIVITY_TEXTURE: 1<<4,
+	AMBIENT_TEXTURE: 1<<5,
+	EMISSIVE_TEXTURE: 1<<6,
+	DETAIL_TEXTURE: 1<<7,
+	NORMAL_TEXTURE: 1<<8,
+	DISPLACEMENT_TEXTURE: 1<<9,
+	EXTRA_TEXTURE: 1<<10,
+	ENVIRONMENT_TEXTURE: 1<<11,
+	ENVIRONMENT_CUBEMAP: 1<<12,
+	IRRADIANCE_CUBEMAP: 1<<13,
+
+	COLOR_TEXTURE_OPTIONS: 1<<16,
+	OPACITY_TEXTURE_OPTIONS: 1<<17,
+	SPECULAR_TEXTURE_OPTIONS: 1<<18,
+	REFLECTIVITY_TEXTURE_OPTIONS: 1<<19,
+	AMBIENT_TEXTURE_OPTIONS: 1<<20,
+	EMISSIVE_TEXTURE_OPTIONS: 1<<21,
+	NORMAL_TEXTURE_OPTIONS: 1<<22,
+	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
+	EXTRA_TEXTURE_OPTIONS: 1<<24,
+
+	DEGAMMA_COLOR: 1<<26,
+	SPEC_ON_ALPHA: 1<<27,
+	SPEC_ON_TOP: 1<<28,
+	ALPHA_TEST: 1<<29
+}; //max is 32	
+
+StandardMaterial.shader_codes = {};
+
+//returns the LS.ShaderCode required to render
+//here we cannot filter by light pass because this is done before applying shaderblocks
+StandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	var query = this._query;
-	query.clear();
+	var FLAGS = StandardMaterial.FLAGS;
 
-	//iterate through textures in the material
-	for(var i in this.textures) 
+	//lets check which code flags are active according to the configuration of the shader
+	var code_flags = 0;
+	var scene = LS.Renderer._current_scene;
+
+	//TEXTURES
+	if( this.textures.color )
 	{
-		var texture_info = this.getTextureSampler(i);
-		if(!texture_info) continue;
-		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || "0";
+		code_flags |= FLAGS.COLOR_TEXTURE;
+		if( this.textures.color.degamma )
+			code_flags |= FLAGS.DEGAMMA_COLOR;
+	}
+	if( this.textures.opacity )
+		code_flags |= FLAGS.OPACITY_TEXTURE;
 
-		var texture = Material.getTextureFromSampler( texture_info );
-		if(!texture) //loading or non-existant
-			continue;
+	if( this.textures.displacement )
+		code_flags |= FLAGS.DISPLACEMENT_TEXTURE;
 
-		if(i == "normal")
-		{
-			if(this.normalmap_factor != 0.0 && (!this.normalmap_tangent || (this.normalmap_tangent && gl.derivatives_supported)) )
-			{
-				query.macros.USE_NORMAL_TEXTURE = "uvs_" + texture_uvs;
-				if(this.normalmap_factor != 0.0)
-					query.macros.USE_NORMALMAP_FACTOR = "";
-				if(this.normalmap_tangent && gl.derivatives_supported)
-					query.macros.USE_TANGENT_NORMALMAP = "";
-			}
-			continue;
-		}
-		else if(i == "displacement")
-		{
-			if(this.displacementmap_factor != 0.0 && gl.derivatives_supported )
-			{
-				query.macros.USE_DISPLACEMENT_TEXTURE = "uvs_" + texture_uvs;
-				if(this.displacementmap_factor != 1.0)
-					query.macros.USE_DISPLACEMENTMAP_FACTOR = "";
-			}
-			continue;
-		}
-		else if(i == "bump")
-		{
-			if(this.bump_factor != 0.0 && gl.derivatives_supported )
-			{
-				query.macros.USE_BUMP_TEXTURE = "uvs_" + texture_uvs;
-				if(this.bumpmap_factor != 1.0)
-					query.macros.USE_BUMP_FACTOR = "";
-			}
-			continue;
-		}
+	//color textures are not necessary 
+	if( this.textures.normal )
+		code_flags |= FLAGS.NORMAL_TEXTURE;
+	if( this.textures.specular )
+		code_flags |= FLAGS.SPECULAR_TEXTURE;
+	if( this.reflection_factor > 0 )
+	{
+		//code_flags |= FLAGS.REFLECTION;
+		if( this.textures.reflectivity )
+			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
+	}
+	if( this.textures.emissive )
+		code_flags |= FLAGS.EMISSIVE_TEXTURE;
+	if( this.textures.ambient )
+		code_flags |= FLAGS.AMBIENT_TEXTURE;
+	if( this.textures.detail )
+		code_flags |= FLAGS.DETAIL_TEXTURE;
+	if( this.textures.extra )
+		code_flags |= FLAGS.EXTRA_TEXTURE;
+	if( this.specular_on_alpha )
+		code_flags |= FLAGS.SPEC_ON_ALPHA;
+	if( this.specular_on_top )
+		code_flags |= FLAGS.SPEC_ON_TOP;
 
-		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + texture_uvs;
+	//flags
+	if( this.flags.alpha_test )
+		code_flags |= FLAGS.ALPHA_TEST;
+
+	//check if we already have this ShaderCode created
+	var shader_code = LS.StandardMaterial.shader_codes[ code_flags ];
+
+	//reuse shader codes when possible
+	if(shader_code)
+		return shader_code;
+
+	//generate code
+	var code = {
+		vs: "",
+		fs: "",
+		fs_shadows: ""
+	};
+
+	if( code_flags & FLAGS.DISPLACEMENT_TEXTURE )
+		code.vs += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
+
+	//uvs
+	code.fs += "vec2 uv0 = (vec3(IN.uv,1.0) * u_texture_matrix).xy;\n";
+	code.fs_shadows += "vec2 uv0 = (vec3(IN.uv,1.0) * u_texture_matrix).xy;\n";
+
+	if( code_flags & FLAGS.NORMAL_TEXTURE )
+	{
+		code.fs += "	vec3 normal_pixel = texture2D( normal_texture, uv0 ).xyz;\n\
+		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
+		if( u_normal_info.y > 0.0 )\n\
+			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, uv0, normal_pixel ));\n\
+		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n";
 	}
 
-	if(this.velvet && this.velvet_exp) //first light only
-		query.macros.USE_VELVET = "";
-	
-	if(this.emissive_material) //dont know whats this
-		query.macros.USE_EMISSIVE_MATERIAL = "";
-	
-	if(this.specular_on_top)
-		query.macros.USE_SPECULAR_ONTOP = "";
-	if(this.specular_on_alpha)
-		query.macros.USE_SPECULAR_ON_ALPHA = "";
-	if(this.reflection_specular)
-		query.macros.USE_SPECULAR_IN_REFLECTION = "";
-	if(this.backlight_factor > 0.001)
-		query.macros.USE_BACKLIGHT = "";
-
-	if(this.reflection_factor > 0.0) 
-		query.macros.USE_REFLECTION = "";
-
-	//extra code
-	if(this.extra_surface_shader_code)
+	if( code_flags & FLAGS.COLOR_TEXTURE )
 	{
-		var code = null;
-		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
-		{
-			code = Material.processShaderCode( this.extra_surface_shader_code );
-			this._last_processed_extra_surface_shader_code = code;
-		}
-		else
-			code = this._last_processed_extra_surface_shader_code;
-		if(code)
-			query.macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
+		var str = "	vec4 tex_color = texture2D( color_texture, uv0 );\n";
+		code.fs += str;
+		code.fs_shadows += str;
+
+		if( code_flags & FLAGS.DEGAMMA_COLOR )
+			code.fs += "	tex_color.xyz = pow( tex_color.xyz, vec3(2.0) );\n";
+		str = "	o.Albedo *= tex_color.xyz;\n\
+	o.Alpha *= tex_color.w;\n";
+		code.fs += str;
+		code.fs_shadows += str;
+	}
+	if( code_flags & FLAGS.OPACITY_TEXTURE )
+	{
+		var str =  "	o.Alpha *= texture2D( opacity_texture, uv0 ).x;\n";
+		code.fs += str;
+		code.fs_shadows += str;
+	}
+	if( code_flags & FLAGS.SPECULAR_TEXTURE )
+	{
+		code.fs += "	vec4 spec_info = texture2D( specular_texture, uv0 );\n\
+	o.Specular *= spec_info.x;\n\
+	o.Gloss *= spec_info.y;\n";
+	}
+	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
+		code.fs += "	o.Reflectivity *= texture2D( reflectivity_texture, uv0 ).x;\n";
+	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
+		code.fs += "	o.Emission *= texture2D( emissive_texture, uv0 ).xyz;\n";
+	if( code_flags & FLAGS.AMBIENT_TEXTURE )
+		code.fs += "	o.Ambient *= texture2D( ambient_texture, uv0 ).xyz;\n";
+	if( code_flags & FLAGS.DETAIL_TEXTURE )
+		code.fs += "	o.Albedo += (texture2D( detail_texture, uv0 * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
+	if( code_flags & FLAGS.EXTRA_TEXTURE )
+		code.fs += "	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, uv0 );\n";
+
+	//flags
+	if( code_flags & FLAGS.ALPHA_TEST )
+	{
+		var str = "	if(o.Alpha < 0.01) discard;\n";
+		code.fs += str;
+		code.fs_shadows += str;
 	}
 
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			query.macros[im] = this.extra_macros[im];
+	if( code_flags & FLAGS.SPEC_ON_TOP )
+		code.fs += "	#define SPEC_ON_TOP\n";
+
+	if( code_flags & FLAGS.SPEC_ON_ALPHA )
+		code.fs += "	#define SPEC_ON_ALPHA\n";
+
+	//if( code_flags & FLAGS.FLAT_NORMALS )
+	//	flat_normals += "";
+
+	//compile shader and cache
+	shader_code = new LS.ShaderCode();
+	var final_code = StandardMaterial.code_template;
+
+	if( StandardMaterial.onShaderCode )
+		StandardMaterial.onShaderCode( code, this, code_flags );
+
+	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
+		v = v.replace( /[\{\}]/g, "" );
+		return code[v] || "";
+	});
+
+	LS.StandardMaterial.shader_codes[ code_flags ] = shader_code;
+	return shader_code;
 }
 
 StandardMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var uniforms = {};
-	var samplers = []; //array with the samplers in the binding order
+	var uniforms = this._uniforms;
 
-	uniforms.u_material_color = this._color;
-
-	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
-	//if(this.use_scene_ambient && scene.info && !this.textures["ambient"])
-	//	uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
-	//else
-	uniforms.u_ambient_color = this.ambient;
-
-	uniforms.u_emissive_color = this.emissive || vec4.create();
-	uniforms.u_specular = this._specular_data;
-	uniforms.u_reflection_info = vec2.fromValues( (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel );
+	uniforms.u_reflection_info[0] = this.reflection_factor;
+	uniforms.u_reflection_info[1] = this.reflection_fresnel;
 	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normalmap_factor = this.normalmap_factor;
+	uniforms.u_normal_info[0] = this.normalmap_factor;
+	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
-	uniforms.u_bumpmap_factor = this.bumpmap_factor;
-
-	this._velvet_info.set( this.velvet );
-	this._velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
-	uniforms.u_velvet_info = this._velvet_info;
-
-	uniforms.u_detail_info = this._detail;
-
-	uniforms.u_extra_data = this._extra_data;
-
-	uniforms.u_texture_matrix = this.uvs_matrix;
+	uniforms.u_velvet_info.set( this._velvet );
+	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
 
 	//iterate through textures in the material
 	var last_texture_slot = 0;
+	var samplers = this._samplers;
+	samplers.length = 0; //clear
 	for(var i in this.textures) 
 	{
 		var sampler = this.getTextureSampler(i);
@@ -8766,7 +8545,7 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 		if(!texture)
 			continue;
 
-		if(texture.constructor === String)
+		if(texture.constructor === String) //name of texture
 			texture = LS.ResourcesManager.textures[texture];
 		else if (texture.constructor != Texture)
 			continue;		
@@ -8783,21 +8562,14 @@ StandardMaterial.prototype.fillUniforms = function( scene, options )
 			last_texture_slot++;
 
 		samplers[ slot ] = sampler;
-		var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
-		uniforms[ uniform_name ] = slot;
+		//var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
+		uniforms[ i + "_texture" ] = slot;
 	}
-
-	//add extra uniforms
-	for(var i in this.extra_uniforms)
-		uniforms[i] = this.extra_uniforms[i];
-
-	this._uniforms = uniforms;
-	this._samplers = samplers;
 }
 
 StandardMaterial.prototype.getTextureChannels = function()
 {
-	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE, StandardMaterial.EXTRA_TEXTURE ];
+	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, StandardMaterial.DETAIL_TEXTURE, StandardMaterial.NORMAL_TEXTURE, StandardMaterial.DISPLACEMENT_TEXTURE, StandardMaterial.BUMP_TEXTURE, StandardMaterial.REFLECTIVITY_TEXTURE, StandardMaterial.EXTRA_TEXTURE, Material.ENVIRONMENT_TEXTURE, StandardMaterial.IRRADIANCE_TEXTURE ];
 }
 
 /**
@@ -8826,19 +8598,18 @@ StandardMaterial.prototype.setProperty = function(name, value)
 		case "velvet_additive":
 		case "normalmap_tangent":
 		case "normalmap_factor":
+		case "bumpmap_factor":
 		case "displacementmap_factor":
-		case "extra_factor":
 		case "detail_factor":
 		case "emissive_extra":
 		//strings
-		//bools
 		case "shader_name":
+		//bools
 		case "specular_on_top":
 		case "specular_on_alpha":
 		case "normalmap_tangent":
 		case "reflection_specular":
 		case "use_scene_ambient":
-		case "extra_surface_shader_code":
 		case "blend_mode":
 			if(value !== null)
 				this[name] = value; 
@@ -8852,16 +8623,12 @@ StandardMaterial.prototype.setProperty = function(name, value)
 			break;
 		//vectors
 		case "ambient":	
-		case "diffuse": 
 		case "emissive": 
 		case "velvet":
+		case "extra":
 		case "detail_scale":
-		case "extra_color":
 			if(this[name].length == value.length)
 				this[name].set(value);
-			break;
-		case "extra_uniforms":
-			this.extra_uniforms = LS.cloneObject(value);
 			break;
 		default:
 			return false;
@@ -8881,6 +8648,8 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 
 	//add some more
 	o.merge({
+		shader_name:  LS.TYPES.STRING,
+
 		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,
@@ -8890,15 +8659,14 @@ StandardMaterial.prototype.getPropertiesInfo = function()
 		velvet_exp: LS.TYPES.NUMBER,
 
 		normalmap_factor: LS.TYPES.NUMBER,
+		bumpmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
 		emissive_extra: LS.TYPES.NUMBER,
-		extra_factor: LS.TYPES.NUMBER,
-		extra_surface_shader_code: LS.TYPES.STRING,
 
 		ambient: LS.TYPES.VEC3,
 		emissive: LS.TYPES.VEC3,
 		velvet: LS.TYPES.VEC3,
-		extra_color: LS.TYPES.VEC3,
+		extra: LS.TYPES.VEC4,
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
@@ -8932,17 +8700,16 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case "reflection_fresnel":
 		case "velvet_exp":
 		case "normalmap_factor":
+		case "bumpmap_factor":
 		case "displacementmap_factor":
 		case "emissive_extra":
-		case "extra_factor":
 		case "detail_factor":
 			type = LS.TYPES.NUMBER; break;
-		case "extra_surface_shader_code":
-			type = LS.TYPES.STRING; break;
+		case "extra":
+			type = LS.TYPES.VEC4; break;
 		case "ambient":
 		case "emissive":
 		case "velvet":
-		case "extra_color":
 			type = LS.TYPES.VEC3; break;
 		case "detail_scale":
 			type = LS.TYPES.VEC2; break;
@@ -8966,9 +8733,408 @@ StandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
+StandardMaterial.clearShadersCache = function()
+{
+	LS.log("StandardMaterial ShaderCode cache cleared");
+	StandardMaterial.shader_codes = {};
+}
+
 LS.registerMaterialClass( StandardMaterial );
 LS.StandardMaterial = StandardMaterial;
-//FILE: ../src/materials/surfaceMaterial.js
+
+//legacy
+LS.Classes["newStandardMaterial"] = StandardMaterial;
+//LS.newStandardMaterial = StandardMaterial;
+//LS.MaterialClasses.newStandardMaterial = StandardMaterial;
+
+//**********************************************
+
+
+StandardMaterial.code_template = "\n\
+\n\
+\n\
+\\color.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#ifdef USE_COLORS\n\
+attribute vec4 a_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+//material\n\
+uniform float u_displacementmap_factor;\n\
+uniform sampler2D displacement_texture;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+\n\
+//special cases\n\
+{{vs_out}}\n\
+\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+	\n\
+	{{vs}}\n\
+	//local deforms\n\
+	applyMorphing( vertex4, v_normal );\n\
+	applySkinning( vertex4, v_normal );\n\
+	{{vs_local_deform}}\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+	\n\
+	applyLight(v_pos);\n\
+	\n\
+	//normal\n\
+	#ifdef SHADERBLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
+	//world deform\n\
+	{{vs_deform}}\n\
+	\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+	gl_PointSize = u_point_size;\n\
+	#pragma shaderblock \"modifyFinalVertexPosition\"\n\
+}\n\
+\n\
+\\color.fs\n\
+\n\
+#ifdef DRAW_BUFFERS\n\
+	#extension GL_EXT_draw_buffers : require \n\
+#endif\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform vec4 u_background_color;\n\
+uniform vec4 u_material_color;\n\
+\n\
+uniform vec3 u_ambient_color;\n\
+uniform vec4 u_emissive_color;\n\
+uniform vec4 u_specular;\n\
+uniform vec2 u_reflection_info;\n\
+uniform vec4 u_velvet_info;\n\
+uniform vec2 u_normal_info;\n\
+uniform vec3 u_detail_info;\n\
+uniform mat3 u_texture_matrix;\n\
+uniform vec4 u_extra_color;\n\
+uniform float u_backlight_factor;\n\
+\n\
+uniform sampler2D color_texture;\n\
+uniform sampler2D opacity_texture;\n\
+uniform sampler2D specular_texture;\n\
+uniform sampler2D ambient_texture;\n\
+uniform sampler2D emissive_texture;\n\
+uniform sampler2D reflectivity_texture;\n\
+uniform sampler2D detail_texture;\n\
+uniform sampler2D normal_texture;\n\
+uniform sampler2D extra_texture;\n\
+\n\
+uniform vec4 u_color_texture_settings;\n\
+uniform vec4 u_opacity_texture_settings;\n\
+uniform vec4 u_specular_texture_settings;\n\
+uniform vec4 u_ambient_texture_settings;\n\
+uniform vec4 u_emissive_texture_settings;\n\
+uniform vec4 u_reflectivity_texture_settings;\n\
+uniform vec4 u_normal_texture_settings;\n\
+\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"light_texture\"\n\
+#pragma shaderblock \"applyReflection\"\n\
+\n\
+#pragma snippet \"perturbNormal\"\n\
+\n\
+#pragma shaderblock \"extraBuffers\"\n\
+\n\
+void surf(in Input IN, out SurfaceOutput o)\n\
+{\n\
+	o.Albedo = u_material_color.xyz;\n\
+	o.Alpha = u_material_color.a;\n\
+	o.Normal = normalize( v_normal );\n\
+	o.Specular = u_specular.x;\n\
+	o.Gloss = u_specular.y;\n\
+	o.Ambient = u_ambient_color;\n\
+	o.Emission = u_emissive_color.xyz;\n\
+	o.Reflectivity = u_reflection_info.x;\n\
+	o.Extra = u_extra_color;\n\
+	\n\
+	{{fs}}\n\
+	\n\
+	if(u_velvet_info.w > 0.0)\n\
+		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
+	else if(u_velvet_info.w < 0.0)\n\
+		o.Albedo = mix( o.Albedo, u_velvet_info.xyz, 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), abs(u_velvet_info.w) ) );\n\
+	if(u_emissive_color.w > 0.0)\n\
+		o.Emission *= o.Albedo;\n\
+	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
+}\n\
+\n\
+{{fs_out}}\n\
+\n\
+void main() {\n\
+	Input IN = getInput();\n\
+	SurfaceOutput o = getSurfaceOutput();\n\
+	surf(IN,o);\n\
+	Light LIGHT = getLight();\n\
+	applyLightTexture( IN, LIGHT );\n\
+	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
+	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
+	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
+	#ifdef SPEC_ON_ALPHA\n\
+		final_color.a += FINALLIGHT.Specular;\n\
+	#endif\n\
+	#ifdef SPEC_ON_TOP\n\
+		float specular = FINALLIGHT.Specular;\n\
+		FINALLIGHT.Specular = 0.0;\n\
+	#endif\n\
+	final_color.xyz = applyLight( o, FINALLIGHT );\n\
+	#ifdef SPEC_ON_TOP\n\
+		final_color.xyz += specular * LIGHT.Color * FINALLIGHT.Shadow;\n\
+	#endif\n\
+	final_color = applyReflection( IN, o, final_color );\n\
+	{{fs_encode}}\n\
+	#ifdef DRAW_BUFFERS\n\
+	  gl_FragData[0] = final_color;\n\
+	  if(u_light_info.z == 0.0)\n\
+		  gl_FragData[1] = o.Extra;\n\
+	#else\n\
+	  gl_FragColor = final_color;\n\
+	#endif\n\
+}\n\
+\\shadow.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#ifdef USE_COLORS\n\
+attribute vec4 a_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+//material\n\
+uniform float u_displacementmap_factor;\n\
+uniform sampler2D displacement_texture;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+\n\
+{{vs_out}}\n\
+\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+  \n\
+	{{vs}}\n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+  {{vs_local_deform}}\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  applyLight(v_pos);\n\
+  \n\
+	//normal\n\
+	#ifdef SHADERBLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
+  {{vs_deform}}\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\\shadow.fs\n\
+\n\
+precision mediump float;\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//globals\n\
+uniform vec3 u_camera_eye;\n\
+uniform vec4 u_clipping_plane;\n\
+uniform vec4 u_material_color;\n\
+\n\
+uniform mat3 u_texture_matrix;\n\
+\n\
+uniform sampler2D color_texture;\n\
+uniform sampler2D opacity_texture;\n\
+\n\
+#pragma snippet \"input\"\n\
+#pragma snippet \"surface\"\n\
+\n\
+void surf(in Input IN, out SurfaceOutput o)\n\
+{\n\
+	o.Albedo = u_material_color.xyz;\n\
+	o.Alpha = u_material_color.a;\n\
+	\n\
+	{{fs_shadows}}\n\
+}\n\
+\n\
+{{fs_shadow_out}}\n\
+\n\
+void main() {\n\
+  Input IN = getInput();\n\
+  SurfaceOutput o = getSurfaceOutput();\n\
+  surf(IN,o);\n\
+  {{fs_shadow_encode}}\n\
+  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
+}\n\
+\\picking.vs\n\
+\n\
+precision mediump float;\n\
+attribute vec3 a_vertex;\n\
+attribute vec3 a_normal;\n\
+attribute vec2 a_coord;\n\
+#ifdef USE_COLORS\n\
+attribute vec4 a_color;\n\
+#endif\n\
+\n\
+//varyings\n\
+varying vec3 v_pos;\n\
+varying vec3 v_normal;\n\
+varying vec2 v_uvs;\n\
+\n\
+//matrices\n\
+#ifdef BLOCK_INSTANCING\n\
+	attribute mat4 u_model;\n\
+#else\n\
+	uniform mat4 u_model;\n\
+#endif\n\
+uniform mat4 u_normal_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_viewprojection;\n\
+//material\n\
+uniform float u_displacementmap_factor;\n\
+uniform sampler2D displacement_texture;\n\
+\n\
+//globals\n\
+uniform float u_time;\n\
+uniform vec4 u_viewport;\n\
+uniform float u_point_size;\n\
+\n\
+#pragma shaderblock \"light\"\n\
+#pragma shaderblock \"morphing\"\n\
+#pragma shaderblock \"skinning\"\n\
+\n\
+//camera\n\
+uniform vec3 u_camera_eye;\n\
+\n\
+{{vs_out}}\n\
+\n\
+void main() {\n\
+	\n\
+	vec4 vertex4 = vec4(a_vertex,1.0);\n\
+	v_normal = a_normal;\n\
+	v_uvs = a_coord;\n\
+  \n\
+	{{vs}}\n\
+  //deforms\n\
+  applyMorphing( vertex4, v_normal );\n\
+  applySkinning( vertex4, v_normal );\n\
+  {{vs_local_deform}}\n\
+	\n\
+	//vertex\n\
+	v_pos = (u_model * vertex4).xyz;\n\
+  \n\
+  applyLight(v_pos);\n\
+  \n\
+	//normal\n\
+	#ifdef SHADERBLOCK_INSTANCING\n\
+		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
+	#else\n\
+		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
+	#endif\n\
+  {{vs_deform}}\n\
+	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
+}\n\
+\\picking.fs\n\
+	precision mediump float;\n\
+	uniform vec4 u_material_color;\n\
+	void main() {\n\
+		gl_FragColor = u_material_color;\n\
+	}\n\
+";
+
+
+/* example to inject code in the standardMaterial without having to edit it
+//hooks are vs_out (out of main), vs_local_deformer (vertex4 to deform vertices localy), vs_deformer (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
+this.onStart = function()
+{
+  LS.StandardMaterial.onShaderCode = function(code,mat)
+  {
+  	code.fs_encode = "final_color.x = final_color.y;";
+  }
+	LS.StandardMaterial.clearShadersCache();
+}
+*/
+///@FILE:../src/materials/surfaceMaterial.js
 function SurfaceMaterial( o )
 {
 	Material.call( this, null );
@@ -9522,888 +9688,8 @@ void main() {\n\
   gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
 }\n\
 ";
-//FILE: ../src/materials/newStandardMaterial.js
-//modes
-//- per texture
-//- texture coordinates
-//- vertex color and extras
-//- alpha test
-
-//StandardMaterial class **************************
-/* Warning: a material is not a component, because it can be shared by multiple nodes */
-
-/**
-* StandardMaterial class improves the material class
-* @namespace LS
-* @class StandardMaterial
-* @constructor
-* @param {Object} object [optional] to configure from
-*/
-
-function newStandardMaterial(o)
-{
-	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
-
-	this.blend_mode = LS.Blend.NORMAL;
-
-	this.createProperty( "diffuse", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.createProperty( "ambient", new Float32Array([1.0,1.0,1.0]), "color" );
-	this.createProperty( "emissive", new Float32Array([0,0,0,0]), "color" ); //fourth component to control if emissive is affected by albedo
-
-	this._specular_data = vec4.fromValues( 0.1, 10.0, 0.0, 0.0 ); //specular factor, glossiness, specular_on_top
-	this.specular_on_top = false;
-	this.specular_on_alpha = false;
-
-	this.backlight_factor = 0;
-
-	this.reflection_factor = 0.0;
-	this.reflection_fresnel = 1.0;
-	this.reflection_specular = false;
-
-	this.createProperty( "velvet", new Float32Array([0.5,0.5,0.5]), "color" );
-	this.velvet_exp = 0.0;
-	this.velvet_additive = false;
-	this._velvet_info = vec4.create();
-
-	this._detail = new Float32Array([0.0, 10, 10]);
-
-	this.normalmap_factor = 1.0;
-	this.normalmap_tangent = true;
-	this.bumpmap_factor = 1.0;
-
-	this.displacementmap_factor = 0.1;
-
-	this.use_scene_ambient = true;
-
-	this.createProperty( "extra", new Float32Array([1,1,1,1]), "color" ); //used in special situations
-
-	//used to change the render state
-	this.flags = {
-		alpha_test: false,
-		alpha_test_shadows: false,
-		two_sided: false,
-		flip_normals: false,
-		depth_test: true,
-		depth_write: true,
-		ignore_lights: false,
-		cast_shadows: true,
-		receive_shadows: true,
-//		flat_normals: false,
-		ignore_frustum: false
-	};
-
-	//used for special fx 
-	this._uniforms = {
-		u_material_color: this._color,
-		u_ambient_color: this._ambient,
-		u_emissive_color: this._emissive,
-		u_specular: this._specular_data,
-		u_reflection_info: vec2.create(), //factor and fresnel
-		u_velvet_info: vec4.create(),
-		u_normal_info: vec2.create(),
-		u_detail_info: this._detail,
-		u_texture_matrix: this.uvs_matrix,
-		u_extra_color: this._extra
-	};
-
-	this._samplers = [];
-
-	this._allows_instancing = true;
-	this.needsUpdate = true;
-
-	if(o) 
-		this.configure(o);
-}
-
-
-Object.defineProperty( newStandardMaterial.prototype, 'detail_factor', {
-	get: function() { return this._detail[0]; },
-	set: function(v) { this._detail[0] = v; },
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'detail_scale', {
-	get: function() { return this._detail.subarray(1,3); },
-	set: function(v) { this._detail[1] = v[0]; this._detail[2] = v[1]; },
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'emissive_extra', {
-	get: function() { return this._emissive[3]; },
-	set: function(v) { this._emissive[3] = v; },
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'specular_factor', {
-	get: function() { return this._specular_data[0]; },
-	set: function(v) { 
-		if( v != null && v.constructor === Number)
-			this._specular_data[0] = v;
-	},
-	enumerable: true
-});
-
-Object.defineProperty( newStandardMaterial.prototype, 'specular_gloss', {
-	get: function() { return this._specular_data[1]; },
-	set: function(v) { this._specular_data[1] = v; },
-	enumerable: true
-});
-
-newStandardMaterial["@blend_mode"] = { type: "enum", values: LS.Blend };
-newStandardMaterial.actions = {};
-
-newStandardMaterial.DETAIL_TEXTURE = "detail";
-newStandardMaterial.NORMAL_TEXTURE = "normal";
-newStandardMaterial.DISPLACEMENT_TEXTURE = "displacement";
-newStandardMaterial.BUMP_TEXTURE = "bump";
-newStandardMaterial.REFLECTIVITY_TEXTURE = "reflectivity";
-newStandardMaterial.EXTRA_TEXTURE = "extra";
-newStandardMaterial.IRRADIANCE_TEXTURE = "irradiance";
-
-newStandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
-
-newStandardMaterial.prototype.prepare = function( scene )
-{
-	var flags = this.flags;
-
-	var render_state = this._render_state;
-
-	//set flags in render state
-	render_state.cull_face = !flags.two_sided;
-	render_state.front_face = flags.flip_normals ? GL.CW : GL.CCW;
-	render_state.depth_test = flags.depth_test;
-	render_state.depth_mask = flags.depth_write;
-
-	render_state.blend = this.blend_mode != LS.Blend.NORMAL;
-	if( this.blend_mode != LS.Blend.NORMAL )
-	{
-		var func = LS.BlendFunctions[ this.blend_mode ];
-		if(func)
-		{
-			render_state.blendFunc0 = func[0];
-			render_state.blendFunc1 = func[1];
-		}
-	}
-
-	this._light_mode = this.flags.ignore_lights ? Material.NO_LIGHTS : 1;
-
-	this.fillUniforms( scene ); //update uniforms
-}
-
-newStandardMaterial.FLAGS = {
-	COLOR_TEXTURE: 1<<1,
-	OPACITY_TEXTURE: 1<<2,
-	SPECULAR_TEXTURE: 1<<3,
-	REFLECTIVITY_TEXTURE: 1<<4,
-	AMBIENT_TEXTURE: 1<<5,
-	EMISSIVE_TEXTURE: 1<<6,
-	DETAIL_TEXTURE: 1<<7,
-	NORMAL_TEXTURE: 1<<8,
-	DISPLACEMENT_TEXTURE: 1<<9,
-	EXTRA_TEXTURE: 1<<10,
-	ENVIRONMENT_TEXTURE: 1<<11,
-	ENVIRONMENT_CUBEMAP: 1<<12,
-	IRRADIANCE_CUBEMAP: 1<<13,
-
-	COLOR_TEXTURE_OPTIONS: 1<<16,
-	OPACITY_TEXTURE_OPTIONS: 1<<17,
-	SPECULAR_TEXTURE_OPTIONS: 1<<18,
-	REFLECTIVITY_TEXTURE_OPTIONS: 1<<19,
-	AMBIENT_TEXTURE_OPTIONS: 1<<20,
-	EMISSIVE_TEXTURE_OPTIONS: 1<<21,
-	NORMAL_TEXTURE_OPTIONS: 1<<22,
-	DISPLACEMENT_TEXTURE_OPTIONS: 1<<23,
-	EXTRA_TEXTURE_OPTIONS: 1<<24,
-
-	DEGAMMA_COLOR: 1<<26,
-	SPEC_ON_ALPHA: 1<<27,
-	SPEC_ON_TOP: 1<<28,
-	ALPHA_TEST: 1<<29
-};	
-
-newStandardMaterial.shader_codes = {};
-
-//returns the LS.ShaderCode required to render
-//here we cannot filter by light pass because this is done before applying shaderblocks
-newStandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
-{
-	var FLAGS = newStandardMaterial.FLAGS;
-
-	//lets check which code flags are active according to the configuration of the shader
-	var code_flags = 0;
-	var scene = LS.Renderer._current_scene;
-
-	//TEXTURES
-	if( this.textures.color )
-	{
-		code_flags |= FLAGS.COLOR_TEXTURE;
-		if( this.textures.color.degamma )
-			code_flags |= FLAGS.DEGAMMA_COLOR;
-	}
-	if( this.textures.opacity )
-		code_flags |= FLAGS.OPACITY_TEXTURE;
-
-	if( this.textures.displacement )
-		code_flags |= FLAGS.DISPLACEMENT_TEXTURE;
-
-	//color textures are not necessary 
-	if( this.textures.normal )
-		code_flags |= FLAGS.NORMAL_TEXTURE;
-	if( this.textures.specular )
-		code_flags |= FLAGS.SPECULAR_TEXTURE;
-	if( this.reflection_factor > 0 )
-	{
-		//code_flags |= FLAGS.REFLECTION;
-		if( this.textures.reflectivity )
-			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
-	}
-	if( this.textures.emissive )
-		code_flags |= FLAGS.EMISSIVE_TEXTURE;
-	if( this.textures.ambient )
-		code_flags |= FLAGS.AMBIENT_TEXTURE;
-	if( this.textures.detail )
-		code_flags |= FLAGS.DETAIL_TEXTURE;
-	if( this.textures.extra )
-		code_flags |= FLAGS.EXTRA_TEXTURE;
-	if( this.specular_on_alpha )
-		code_flags |= FLAGS.SPEC_ON_ALPHA;
-	if( this.specular_on_top )
-		code_flags |= FLAGS.SPEC_ON_TOP;
-
-	//flags
-	if( this.flags.alpha_test )
-		code_flags |= FLAGS.ALPHA_TEST;
-
-	//check if we already have this ShaderCode created
-	var shader_code = LS.newStandardMaterial.shader_codes[ code_flags ];
-
-	//reuse shader codes when possible
-	if(shader_code)
-		return shader_code;
-
-	//generate code
-	var code = {
-		vs: "",
-		fs: "",
-		fs_shadows: ""
-	};
-
-	if( code_flags & FLAGS.DISPLACEMENT_TEXTURE )
-		code.vs += "	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n";	
-
-	if( code_flags & FLAGS.NORMAL_TEXTURE )
-	{
-		code.fs += "	vec3 normal_pixel = texture2D( normal_texture, IN.uv ).xyz;\n\
-		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
-		if( u_normal_info.y > 0.0 )\n\
-			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, IN.uv, normal_pixel ));\n\
-		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n";
-	}
-
-	if( code_flags & FLAGS.COLOR_TEXTURE )
-	{
-		var str = "	vec4 tex_color = texture2D( color_texture, IN.uv );\n";
-		code.fs += str;
-		code.fs_shadows += str;
-
-		if( code_flags & FLAGS.DEGAMMA_COLOR )
-			code.fs += "	tex_color.xyz = pow( tex_color.xyz, vec3(2.0) );\n";
-		str = "	o.Albedo *= tex_color.xyz;\n\
-	o.Alpha *= tex_color.w;\n";
-		code.fs += str;
-		code.fs_shadows += str;
-	}
-	if( code_flags & FLAGS.OPACITY_TEXTURE )
-	{
-		var str =  "	o.Alpha *= texture2D( opacity_texture, IN.uv ).x;\n";
-		code.fs += str;
-		code.fs_shadows += str;
-	}
-	if( code_flags & FLAGS.SPECULAR_TEXTURE )
-	{
-		code.fs += "	vec4 spec_info = texture2D( specular_texture, IN.uv );\n\
-	o.Specular *= spec_info.x;\n\
-	o.Gloss *= spec_info.y;\n";
-	}
-	if( code_flags & FLAGS.REFLECTIVITY_TEXTURE )
-		code.fs += "	o.Reflectivity *= texture2D( reflectivity_texture, IN.uv ).x;\n";
-	if( code_flags & FLAGS.EMISSIVE_TEXTURE )
-		code.fs += "	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n";
-	if( code_flags & FLAGS.AMBIENT_TEXTURE )
-		code.fs += "	o.Ambient *= texture2D( ambient_texture, IN.uv ).xyz;\n";
-	if( code_flags & FLAGS.DETAIL_TEXTURE )
-		code.fs += "	o.Albedo += (texture2D( detail_texture, IN.uv * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n";
-	if( code_flags & FLAGS.EXTRA_TEXTURE )
-		code.fs += "	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, IN.uv );\n";
-
-	//flags
-	if( code_flags & FLAGS.ALPHA_TEST )
-	{
-		var str = "	if(o.Alpha < 0.01) discard;\n";
-		code.fs += str;
-		code.fs_shadows += str;
-	}
-
-	if( code_flags & FLAGS.SPEC_ON_TOP )
-		code.fs += "	#define SPEC_ON_TOP\n";
-
-	if( code_flags & FLAGS.SPEC_ON_ALPHA )
-		code.fs += "	#define SPEC_ON_ALPHA\n";
-
-	//if( code_flags & FLAGS.FLAT_NORMALS )
-	//	flat_normals += "";
-
-	//compile shader and cache
-	shader_code = new LS.ShaderCode();
-	var final_code = newStandardMaterial.code_template;
-
-	if( newStandardMaterial.onShaderCode )
-		newStandardMaterial.onShaderCode( code, this, code_flags );
-
-	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
-		v = v.replace( /[\{\}]/g, "" );
-		return code[v] || "";
-	});
-
-	LS.newStandardMaterial.shader_codes[ code_flags ] = shader_code;
-	return shader_code;
-}
-
-newStandardMaterial.prototype.fillUniforms = function( scene, options )
-{
-	var uniforms = this._uniforms;
-
-	uniforms.u_reflection_info[0] = this.reflection_factor;
-	uniforms.u_reflection_info[1] = this.reflection_fresnel;
-	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normal_info[0] = this.normalmap_factor;
-	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
-	uniforms.u_displacementmap_factor = this.displacementmap_factor;
-	uniforms.u_velvet_info.set( this._velvet );
-	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
-
-	//iterate through textures in the material
-	var last_texture_slot = 0;
-	var samplers = this._samplers;
-	samplers.length = 0; //clear
-	for(var i in this.textures) 
-	{
-		var sampler = this.getTextureSampler(i);
-		if(!sampler)
-			continue;
-
-		var texture = sampler.texture;
-		if(!texture)
-			continue;
-
-		if(texture.constructor === String) //name of texture
-			texture = LS.ResourcesManager.textures[texture];
-		else if (texture.constructor != Texture)
-			continue;		
-		
-		if(!texture)  //loading or non-existant
-			sampler = { texture: ":missing" };
-
-		var slot = last_texture_slot;
-		if( i == "environment" )
-			slot = LS.Renderer.ENVIRONMENT_TEXTURE_SLOT;
-		else if( i == "irradiance" )
-			slot = LS.Renderer.IRRADIANCE_TEXTURE_SLOT;
-		else
-			last_texture_slot++;
-
-		samplers[ slot ] = sampler;
-		//var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? "_texture" : "_cubemap");
-		uniforms[ i + "_texture" ] = slot;
-	}
-}
-
-newStandardMaterial.prototype.getTextureChannels = function()
-{
-	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, newStandardMaterial.EXTRA_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE ];
-}
-
-/**
-* assign a value to a property in a safe way
-* @method setProperty
-* @param {Object} object to configure from
-*/
-newStandardMaterial.prototype.setProperty = function(name, value)
-{
-	//redirect to base material
-	if( Material.prototype.setProperty.call(this,name,value) )
-		return true;
-
-	//regular
-	switch(name)
-	{
-		//objects
-		case "render_state":
-		//numbers
-		case "specular_factor":
-		case "specular_gloss":
-		case "backlight_factor":
-		case "reflection_factor":
-		case "reflection_fresnel":
-		case "velvet_exp":
-		case "velvet_additive":
-		case "normalmap_tangent":
-		case "normalmap_factor":
-		case "bumpmap_factor":
-		case "displacementmap_factor":
-		case "detail_factor":
-		case "emissive_extra":
-		//strings
-		case "shader_name":
-		//bools
-		case "specular_on_top":
-		case "specular_on_alpha":
-		case "normalmap_tangent":
-		case "reflection_specular":
-		case "use_scene_ambient":
-		case "blend_mode":
-			if(value !== null)
-				this[name] = value; 
-			break;
-		case "flags":
-			if(value)
-			{
-				for(var i in value)
-					this.flags[i] = value[i];
-			}
-			break;
-		//vectors
-		case "ambient":	
-		case "emissive": 
-		case "velvet":
-		case "extra":
-		case "detail_scale":
-			if(this[name].length == value.length)
-				this[name].set(value);
-			break;
-		default:
-			return false;
-	}
-	return true;
-}
-
-/**
-* gets all the properties and its types
-* @method getPropertiesInfo
-* @return {Object} object with name:type
-*/
-newStandardMaterial.prototype.getPropertiesInfo = function()
-{
-	//get from the regular material
-	var o = Material.prototype.getPropertiesInfo.call(this);
-
-	//add some more
-	o.merge({
-		shader_name:  LS.TYPES.STRING,
-
-		blend_mode: LS.TYPES.NUMBER,
-		specular_factor: LS.TYPES.NUMBER,
-		specular_gloss: LS.TYPES.NUMBER,
-		backlight_factor: LS.TYPES.NUMBER,
-		reflection_factor: LS.TYPES.NUMBER,
-		reflection_fresnel: LS.TYPES.NUMBER,
-		velvet_exp: LS.TYPES.NUMBER,
-
-		normalmap_factor: LS.TYPES.NUMBER,
-		bumpmap_factor: LS.TYPES.NUMBER,
-		displacementmap_factor: LS.TYPES.NUMBER,
-		emissive_extra: LS.TYPES.NUMBER,
-
-		ambient: LS.TYPES.VEC3,
-		emissive: LS.TYPES.VEC3,
-		velvet: LS.TYPES.VEC3,
-		extra: LS.TYPES.VEC4,
-		detail_factor: LS.TYPES.NUMBER,
-		detail_scale: LS.TYPES.VEC2,
-
-		specular_on_top: LS.TYPES.BOOLEAN,
-		normalmap_tangent: LS.TYPES.BOOLEAN,
-		reflection_specular: LS.TYPES.BOOLEAN,
-		use_scene_ambient: LS.TYPES.BOOLEAN,
-		velvet_additive: LS.TYPES.BOOLEAN
-	});
-
-	return o;
-}
-
-newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
-{
-	if( path.length < 1)
-		return;
-
-	var info = Material.prototype.getPropertyInfoFromPath.call(this,path);
-	if(info)
-		return info;
-
-	var varname = path[0];
-	var type;
-
-	switch(varname)
-	{
-		case "blend_mode":
-		case "backlight_factor":
-		case "reflection_factor":
-		case "reflection_fresnel":
-		case "velvet_exp":
-		case "normalmap_factor":
-		case "bumpmap_factor":
-		case "displacementmap_factor":
-		case "emissive_extra":
-		case "detail_factor":
-			type = LS.TYPES.NUMBER; break;
-		case "extra":
-			type = LS.TYPES.VEC4; break;
-		case "ambient":
-		case "emissive":
-		case "velvet":
-			type = LS.TYPES.VEC3; break;
-		case "detail_scale":
-			type = LS.TYPES.VEC2; break;
-		case "specular_on_top":
-		case "specular_on_alpha":
-		case "normalmap_tangent":
-		case "reflection_specular":
-		case "use_scene_ambient":
-		case "velvet_additive":
-			type = LS.TYPES.BOOLEAN; break;
-		default:
-			return null;
-	}
-
-	return {
-		node: this._root,
-		target: this,
-		name: varname,
-		value: this[varname],
-		type: type
-	};
-}
-
-newStandardMaterial.clearShadersCache = function()
-{
-	LS.log("newStandardMaterial ShaderCode cache cleared");
-	newStandardMaterial.shader_codes = {};
-}
-
-LS.registerMaterialClass( newStandardMaterial );
-LS.newStandardMaterial = newStandardMaterial;
-
-newStandardMaterial.code_template = "\n\
-\n\
-\n\
-\\color.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
-#endif\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \"light\"\n\
-#pragma shaderblock \"morphing\"\n\
-#pragma shaderblock \"skinning\"\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-\n\
-//special cases\n\
-{{vs_out}}\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-	\n\
-	{{vs}}\n\
-	//local deforms\n\
-	applyMorphing( vertex4, v_normal );\n\
-	applySkinning( vertex4, v_normal );\n\
-	{{vs_local_deform}}\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-	\n\
-	applyLight(v_pos);\n\
-	\n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-	//world deform\n\
-	{{vs_deform}}\n\
-	\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-	gl_PointSize = u_point_size;\n\
-	#pragma shaderblock \"modifyFinalVertexPosition\"\n\
-}\n\
-\n\
-\\color.fs\n\
-\n\
-#ifdef DRAW_BUFFERS\n\
-	#extension GL_EXT_draw_buffers : require \n\
-#endif\n\
-\n\
-precision mediump float;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//globals\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec4 u_clipping_plane;\n\
-uniform vec4 u_background_color;\n\
-uniform vec4 u_material_color;\n\
-\n\
-uniform vec3 u_ambient_color;\n\
-uniform vec4 u_emissive_color;\n\
-uniform vec4 u_specular;\n\
-uniform vec2 u_reflection_info;\n\
-uniform vec4 u_velvet_info;\n\
-uniform vec2 u_normal_info;\n\
-uniform vec3 u_detail_info;\n\
-uniform mat3 u_texture_matrix;\n\
-uniform vec4 u_extra_color;\n\
-uniform float u_backlight_factor;\n\
-\n\
-uniform sampler2D color_texture;\n\
-uniform sampler2D opacity_texture;\n\
-uniform sampler2D specular_texture;\n\
-uniform sampler2D ambient_texture;\n\
-uniform sampler2D emissive_texture;\n\
-uniform sampler2D reflectivity_texture;\n\
-uniform sampler2D detail_texture;\n\
-uniform sampler2D normal_texture;\n\
-uniform sampler2D extra_texture;\n\
-\n\
-uniform vec4 u_color_texture_settings;\n\
-uniform vec4 u_opacity_texture_settings;\n\
-uniform vec4 u_specular_texture_settings;\n\
-uniform vec4 u_ambient_texture_settings;\n\
-uniform vec4 u_emissive_texture_settings;\n\
-uniform vec4 u_reflectivity_texture_settings;\n\
-uniform vec4 u_normal_texture_settings;\n\
-\n\
-\n\
-#pragma shaderblock \"light\"\n\
-#pragma shaderblock \"light_texture\"\n\
-#pragma shaderblock \"applyReflection\"\n\
-\n\
-#pragma snippet \"perturbNormal\"\n\
-\n\
-#pragma shaderblock \"extraBuffers\"\n\
-\n\
-void surf(in Input IN, out SurfaceOutput o)\n\
-{\n\
-	o.Albedo = u_material_color.xyz;\n\
-	o.Alpha = u_material_color.a;\n\
-	o.Normal = normalize( v_normal );\n\
-	o.Specular = u_specular.x;\n\
-	o.Gloss = u_specular.y;\n\
-	o.Ambient = u_ambient_color;\n\
-	o.Emission = u_emissive_color.xyz;\n\
-	o.Reflectivity = u_reflection_info.x;\n\
-	o.Extra = u_extra_color;\n\
-	\n\
-	{{fs}}\n\
-	\n\
-	if(u_velvet_info.w > 0.0)\n\
-		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
-	else if(u_velvet_info.w < 0.0)\n\
-		o.Albedo = mix( o.Albedo, u_velvet_info.xyz, 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), abs(u_velvet_info.w) ) );\n\
-	if(u_emissive_color.w > 0.0)\n\
-		o.Emission *= o.Albedo;\n\
-	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
-}\n\
-\n\
-{{fs_out}}\n\
-\n\
-void main() {\n\
-	Input IN = getInput();\n\
-	SurfaceOutput o = getSurfaceOutput();\n\
-	surf(IN,o);\n\
-	Light LIGHT = getLight();\n\
-	applyLightTexture( IN, LIGHT );\n\
-	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
-	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
-	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
-	#ifdef SPEC_ON_ALPHA\n\
-		final_color.a += FINALLIGHT.Specular;\n\
-	#endif\n\
-	#ifdef SPEC_ON_TOP\n\
-		float specular = FINALLIGHT.Specular;\n\
-		FINALLIGHT.Specular = 0.0;\n\
-	#endif\n\
-	final_color.xyz = applyLight( o, FINALLIGHT );\n\
-	#ifdef SPEC_ON_TOP\n\
-		final_color.xyz += specular * LIGHT.Color;\n\
-	#endif\n\
-	final_color = applyReflection( IN, o, final_color );\n\
-	{{fs_encode}}\n\
-	#ifdef DRAW_BUFFERS\n\
-	  gl_FragData[0] = final_color;\n\
-	  if(u_light_info.z == 0.0)\n\
-		  gl_FragData[1] = o.Extra;\n\
-	#else\n\
-	  gl_FragColor = final_color;\n\
-	#endif\n\
-}\n\
-\\shadow.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
-#endif\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \"light\"\n\
-#pragma shaderblock \"morphing\"\n\
-#pragma shaderblock \"skinning\"\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-\n\
-{{vs_out}}\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-  \n\
-	{{vs}}\n\
-  //deforms\n\
-  applyMorphing( vertex4, v_normal );\n\
-  applySkinning( vertex4, v_normal );\n\
-  {{vs_local_deform}}\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-  \n\
-  applyLight(v_pos);\n\
-  \n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-  {{vs_deform}}\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-}\n\
-\\shadow.fs\n\
-\n\
-precision mediump float;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//globals\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec4 u_clipping_plane;\n\
-uniform vec4 u_material_color;\n\
-\n\
-uniform mat3 u_texture_matrix;\n\
-\n\
-uniform sampler2D color_texture;\n\
-uniform sampler2D opacity_texture;\n\
-\n\
-#pragma snippet \"input\"\n\
-#pragma snippet \"surface\"\n\
-\n\
-void surf(in Input IN, out SurfaceOutput o)\n\
-{\n\
-	o.Albedo = u_material_color.xyz;\n\
-	o.Alpha = u_material_color.a;\n\
-	\n\
-	{{fs_shadows}}\n\
-}\n\
-\n\
-{{fs_shadow_out}}\n\
-\n\
-void main() {\n\
-  Input IN = getInput();\n\
-  SurfaceOutput o = getSurfaceOutput();\n\
-  surf(IN,o);\n\
-  {{fs_shadow_encode}}\n\
-  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
-}\n\
-";
-
-
-/* example to inject code in the standardMaterial without having to edit it
-//hooks are vs_out (out of main), vs_local_deformer (vertex4 to deform vertices localy), vs_deformer (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
-this.onStart = function()
-{
-  LS.newStandardMaterial.onShaderCode = function(code,mat)
-  {
-  	code.fs_encode = "final_color.x = final_color.y;";
-  }
-	LS.newStandardMaterial.clearShadersCache();
-}
-*/
-//FILE: ../src/componentContainer.js
+///@FILE:../src/componentContainer.js
+///@INFO: BASE
 /*
 	A component container is someone who could have components attached to it.
 	Mostly used for SceneNodes but it could be used for other classes (like Scene or Project).
@@ -10988,8 +10274,8 @@ ComponentContainer.prototype.broadcastMessage = function( method_name, params )
 }
 
 
-//FILE: ../src/compositePattern.js
-//TODO: a class to remove the tree methods from Scene and SceneNode
+///@FILE:../src/compositePattern.js
+///@INFO: BASE
 /**
 * CompositePattern implements the Composite Pattern, which allows to one class to contain instances of its own class
 * creating a tree-like structure.
@@ -11525,7 +10811,8 @@ CompositePattern.prototype.getHierarchyLevel = function()
 	return this._parentNode.getHierarchyLevel() + 1;
 }
 
-//FILE: ../src/baseComponent.js
+///@FILE:../src/baseComponent.js
+///@INFO: BASE
 /*
 *  Components are elements that attach to Nodes or other objects to add functionality
 *  Some important components are Transform, Light or Camera
@@ -11991,8 +11278,8 @@ BaseComponent.addExtraMethods = function( component )
 
 
 LS.BaseComponent = BaseComponent;
-//FILE: ../src/resources/resource.js
-
+///@FILE:../src/resources/resource.js
+///@INFO: BASE
 /**
 * This class contains all the info about a resource and it works as a template for any resource class
 * Keep in mind that there are many resource classes like Meshes or Textures that DONT INHERIT FROM THIS CLASS.
@@ -12240,7 +11527,8 @@ Resource.hasPreview = false; //should this resource use a preview image?
 
 LS.Resource = Resource;
 LS.registerResourceClass( Resource );
-//FILE: ../src/resources/animation.js
+///@FILE:../src/resources/animation.js
+///@INFO: ANIMATION
 
 //Interpolation methods
 LS.NONE = 0;
@@ -13988,7 +13276,7 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 	var h3 =   s3 - 2*s2 + s;         // calculate basis function 3
 	var h4 =   s3 -  s2;              // calculate basis function 4
 
-	for(var i = 0; i < result.length; ++i)
+	for(var i = 0, l = result.length; i < l; ++i)
 	{
 		var t0 = p1[i] - pre_p0[i];
 		var t1 = post_p1[i] - p0[i];
@@ -14048,8 +13336,8 @@ LS.Interpolators["texture"] = function( a, b, t, last )
 	return last;
 }
 
-//FILE: ../src/resources/pack.js
-
+///@FILE:../src/resources/pack.js
+///@INFO: PACK
 //defined before Prefab
 
 /**
@@ -14392,8 +13680,8 @@ LS.Pack = Pack;
 LS.registerResourceClass( Pack );
 
 
-//FILE: ../src/resources/prefab.js
-
+///@FILE:../src/resources/prefab.js
+///@INFO: PACK
 /**
 * Prefab work in two ways: 
 * - It can contain a node structure and all the associated resources (textures, meshes, animations, etc)
@@ -14738,7 +14026,7 @@ Prefab.prototype.setResources = Pack.prototype.setResources;
 LS.Prefab = Prefab;
 LS.registerResourceClass( Prefab );
 
-//FILE: ../src/resources/shaderCode.js
+///@FILE:../src/resources/shaderCode.js
 
 /**
 * ShaderCode is a resource containing all the code associated to a shader
@@ -14971,11 +14259,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	var context = {}; //used to store metaprogramming defined vars in the shader
 
 	//compute context defines
-	for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+	for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
 	{
 		if( !(block_flags & 1<<i) ) //is flag enabled
 			continue;
-		var shader_block = LS.ShadersManager.shader_blocks.get(i);
+		var shader_block = LS.Shaders.shader_blocks.get(i);
 		if(!shader_block)
 			continue; //???
 		if(shader_block.context_macros)
@@ -15026,11 +14314,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	if(LS.debug)
 	{
 		var blocks = [];
-		for(var i = 0; i < LS.ShadersManager.num_shaderblocks; ++i)
+		for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
 		{
 			if( !(block_flags & 1<<i) ) //is flag enabled
 				continue;
-			var shader_block = LS.ShadersManager.shader_blocks.get(i);
+			var shader_block = LS.Shaders.shader_blocks.get(i);
 			if(!shader_block)
 				continue; //???
 			blocks.push( shader_block );
@@ -15079,7 +14367,7 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 		catch(err)
 		{
 			this._has_error = true;
-			LS.ShadersManager.dumpShaderError( this.filename, err, vs_code, fs_code );
+			LS.Shaders.dumpShaderError( this.filename, err, vs_code, fs_code );
 			var error_info = GL.Shader.parseError( err, vs_code, fs_code );
 			var line = error_info.line_number;
 			var lines = this._code.split("\n");
@@ -15297,7 +14585,8 @@ ShaderCode.flat_code = "\\color.vs\n\
 LS.ShaderCode = ShaderCode;
 LS.registerResourceClass( ShaderCode );
 
-//FILE: ../src/graph/scene.js
+///@FILE:../src/graph/scene.js
+///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
 	/* Scene LNodes ***********************/
@@ -16464,7 +15753,8 @@ if(typeof(LiteGraph) != "undefined")
 };
 
 
-//FILE: ../src/graph/logic.js
+///@FILE:../src/graph/logic.js
+///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
 	//special kind of node
@@ -16509,7 +15799,8 @@ if(typeof(LiteGraph) != "undefined")
 
 
 
-//FILE: ../src/graph/fx.js
+///@FILE:../src/graph/fx.js
+///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
 
@@ -16936,9 +16227,95 @@ LiteGraph.registerNodeType("texture/volumetric_light", LGraphVolumetricLight );
 
 
 }
-//FILE: ../src/graph/actions.js
+///@FILE:../src/graph/actions.js
 
-//FILE: ../src/helpers/path.js
+///@FILE:../src/graph/helpers.js
+///@INFO: GRAPHS
+if(typeof(LiteGraph) != "undefined")
+{
+	//special kind of node
+	function LGraphGUIText()
+	{
+		this.addInput("text");
+		this.properties = { text: "", font: "", color: [1,1,1,1], position: [20,20], corner: LGraphGUIText.CORNER_TOP_LEFT };
+	}
+
+	LGraphGUIText.title = "GUIText";
+	LGraphGUIText.desc = "renders text on webgl canvas";
+	LGraphGUIText.priority = 2; //render at the end
+
+	LGraphGUIText.CORNER_TOP_LEFT = 0;
+	LGraphGUIText.CORNER_TOP_RIGHT = 1;
+	LGraphGUIText.CORNER_BOTTOM_LEFT = 2;
+	LGraphGUIText.CORNER_BOTTOM_RIGHT = 3;
+	LGraphGUIText.CORNER_TOP_CENTER = 4;
+	LGraphGUIText.CORNER_BOTTOM_CENTER = 5;
+
+	LGraphGUIText["@corner"] = { type:"enum", values:{ 
+		"top-left": LGraphGUIText.CORNER_TOP_LEFT, 
+		"top-right": LGraphGUIText.CORNER_TOP_RIGHT,
+		"bottom-left": LGraphGUIText.CORNER_BOTTOM_LEFT,
+		"bottom-right": LGraphGUIText.CORNER_BOTTOM_RIGHT,
+		"top-center": LGraphGUIText.CORNER_TOP_CENTER,
+		"bottom-center": LGraphGUIText.CORNER_BOTTOM_CENTER
+	}};
+	LGraphGUIText["@color"] = { type:"color" };
+
+	LGraphGUIText.prototype.onGetInputs = function(){
+		return [["enabled","boolean"]];
+	}
+
+	LGraphGUIText.prototype.onExecute = function()
+	{ 
+		var ctx = window.gl;
+		if(!ctx)
+			return;
+
+		if( !window.LS || !LS.Renderer._current_render_settings || !LS.Renderer._current_render_settings.render_gui )
+			return;
+
+		var enabled = this.getInputData(1);
+		if(enabled === false)
+			return;
+
+		var input_text = this.getInputData(0);
+		if( input_text == null )
+			input_text = "";
+
+		if(input_text.constructor === Number )
+			input_text = input_text.toFixed(3);
+
+		var text = (this.properties.text || "") + input_text;
+		if(text === "")
+			return;
+
+		ctx.font = this.properties.font || "20px Arial";
+		ctx.fillColor = this.properties.color || [1,1,1,1];
+		var x = this.properties.position[0];
+		var y = this.properties.position[1];
+
+		switch( this.properties.corner )
+		{
+			case LGraphGUIText.CORNER_TOP_RIGHT: x = gl.canvas.width - x; break;
+			case LGraphGUIText.CORNER_BOTTOM_LEFT: y = gl.canvas.height - y; break;
+			case LGraphGUIText.CORNER_BOTTOM_RIGHT: x = gl.canvas.width - x; y = gl.canvas.height - y; break;
+			case LGraphGUIText.CORNER_TOP_CENTER: x = gl.canvas.width * 0.5; break;
+			case LGraphGUIText.CORNER_BOTTOM_CENTER: x = gl.canvas.width * 0.5; y = gl.canvas.height - y; break;
+			case LGraphGUIText.CORNER_TOP_LEFT:
+			default:
+		}
+
+		gl.disable( gl.DEPTH_TEST );
+		gl.enable( gl.BLEND );
+		gl.blendFunc( gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA );
+		ctx.fillText( text, x, y );
+	}
+
+	LiteGraph.registerNodeType("gui/text", LGraphGUIText );
+}
+
+///@FILE:../src/helpers/path.js
+///@INFO: UNCOMMON
 function Path()
 {
 	this.points = [];
@@ -17155,7 +16532,8 @@ Path.prototype.configure = function(o)
 
 
 LS.Path = Path;
-//FILE: ../src/helpers/FXstack.js
+///@FILE:../src/helpers/FXstack.js
+///@INFO: UNCOMMON
 /** FXStack
 * Helps apply a stack of FXs to a texture with as fewer render calls as possible with low memory footprint
 * Used by CameraFX and FrameFX but also available for any other use
@@ -18212,7 +17590,8 @@ FXStack.registerFunction = function( name, code )
 
 LS.FXStack = FXStack;
 LS.TextureFX = FXStack; //LEGACY
-//FILE: ../src/helpers/tween.js
+///@FILE:../src/helpers/tween.js
+///@INFO: UNCOMMON
 /**
 * Allows to launch tweening 
 *
@@ -18530,7 +17909,9 @@ LS.Tween = {
 	}
 };
 
-//FILE: ../src/helpers/animationBlender.js
+///@FILE:../src/helpers/animationBlender.js
+///@INFO: UNCOMMON,ANIMATION
+
 function AnimationBlender()
 {
 	this.active_entries = [];
@@ -18701,7 +18082,8 @@ Entry.prototype.execute = function( final_weight, ignore_interpolation, root_nod
 AnimationBlender.Entry = Entry;
 
 
-//FILE: ../src/helpers/spatialContainer.js
+///@FILE:../src/helpers/spatialContainer.js
+///@INFO: BASE
 //WORK IN PROGRESS
 
 /** SpatialContainer
@@ -18769,7 +18151,8 @@ SpatialContainer.prototype.clear = function()
 }
 
 LS.SpatialContainer = SpatialContainer;
-//FILE: ../src/render/renderSettings.js
+///@FILE:../src/render/renderSettings.js
+///@INFO: BASE
 /** RenderSettings contains how the scene should be renderer 
 * There could be different renderSettings for different scene quality.
 * @class RenderSettings
@@ -18785,7 +18168,7 @@ function RenderSettings( o )
 	this.ignore_viewports = false;	//render to full viewport, ignoring the viewport in the cameras
 	this.ignore_clear = false;	//skip global clear, used in case you want to mix LiteScene with another renderer
 	this.keep_viewport = false; //do not force a full canvas viewport at render start (use the current one in WebGL as the full)
-	this.linear_pipeline = false; //tries to degamma all the albedo textures.
+	//this.linear_depth = false; //forces depth to be stored lineally
 
 	this.shadows_enabled = true; //allow shadowmaps
 	this.update_shadowmaps = true; //automatically update shadowmaps in every frame (enable if there are dynamic objects)
@@ -18843,7 +18226,8 @@ RenderSettings.prototype.configure = function(o)
 RenderSettings.prototype.toJSON = RenderSettings.prototype.serialize;
 
 LS.RenderSettings = RenderSettings;
-//FILE: ../src/render/renderState.js
+///@FILE:../src/render/renderState.js
+///@INFO: BASE
 /**
 * RenderState sets the flags for the GPU associated with a rendering action (blending, masking, depth test, etc)
 * It is stored in the material (although defined usually from ShaderCode) so the material can use it.
@@ -19391,7 +18775,8 @@ RenderState.prototype.copyFrom = function( rs )
 
 
 LS.RenderState = RenderState;
-//FILE: ../src/render/renderCall.js
+///@FILE:../src/render/renderCall.js
+///@INFO: UNCOMMON
 //WIP: this is the lowest GPU rendering object, which encapsulates all about a render call
 //by encapsulating every render action into an object we can have materials that produce several render passes in different moments
 //of the rendering process
@@ -19434,7 +18819,8 @@ RenderCall.prototype.release = function()
 	RenderCall.pool.push(this);
 }
 
-//FILE: ../src/render/renderInstance.js
+///@FILE:../src/render/renderInstance.js
+///@INFO: BASE
 /**
 * RenderInstance contains info of one object to be rendered on the scene.
 * It shouldnt contain ids to resources (strings), instead if must contain the direct reference (to mesh, material)
@@ -19483,7 +18869,6 @@ function RenderInstance( node, component )
 	this.use_bounding = true; //in case it has vertex shader deformers the bounding box is not usable
 
 	//for extra data for the shader
-	this.query = new LS.ShaderQuery();
 	this.uniforms = {};
 	this.samplers = [];
 
@@ -19503,7 +18888,6 @@ function RenderInstance( node, component )
 	this._camera_visibility = 0; //tells in which camera was visible this instance during the last rendering (using bit operations)
 	this._is_visible = false; //used during the rendering to mark if it was seen
 	this._dist = 0; //computed during rendering, tells the distance to the current camera
-	this._final_query = new LS.ShaderQuery();
 }
 
 RenderInstance.NO_SORT = 0;
@@ -19896,7 +19280,8 @@ RenderInstance.prototype.wasVisibleByCamera = function( camera )
 }
 
 LS.RenderInstance = RenderInstance;
-//FILE: ../src/render/renderFrameContext.js
+///@FILE:../src/render/renderFrameContext.js
+///@INFO: BASE
 /**	RenderFrameContext
 *	This class is used when you want to render the scene not to the screen but to some texture for postprocessing
 *	It helps to create the textures and bind them easily, add extra buffers or show it on the screen.
@@ -20342,7 +19727,8 @@ RenderFrameContext.reset = function()
 
 LS.RenderFrameContext = RenderFrameContext;
 
-//FILE: ../src/render/renderQueue.js
+///@FILE:../src/render/renderQueue.js
+///@INFO: BASE
 //RenderQueue is in charge of storing the RenderInstances that must be rendered
 //There could be several RenderQueue (for opaque, transparent, overlays, etc)
 //It works similar to the one in Unity
@@ -20395,7 +19781,8 @@ RenderQueue.sort_by_priority_and_near_to_far_func = function(a,b) { var r = b.pr
 RenderQueue.sort_by_priority_and_far_to_near_func = function(a,b) { var r = b.priority - a.priority; return r ? r : (b._dist - a._dist) },
 
 LS.RenderQueue = RenderQueue;
-//FILE: ../src/render/renderer.js
+///@FILE:../src/render/renderer.js
+///@INFO: BASE
 
 //************************************
 /**
@@ -20414,7 +19801,7 @@ var PICKING_PASS = 3;
 var Renderer = {
 
 	default_render_settings: new LS.RenderSettings(), //overwritten by the global info or the editor one
-	default_material: new LS.newStandardMaterial(), //used for objects without material
+	default_material: new LS.StandardMaterial(), //used for objects without material
 
 	render_passes: {}, //used to specify the render function for every kind of render pass (color, shadow, picking, etc)
 	renderPassFunction: null, //function to call when rendering instances
@@ -20509,8 +19896,11 @@ var Renderer = {
 		this._sphere_mesh = GL.Mesh.sphere({size:1,detail:32});
 
 		//draw helps rendering debug stuff
-		LS.Draw.init();
-		LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
+		if(LS.Draw)
+		{
+			LS.Draw.init();
+			LS.Draw.onRequestFrame = function() { LS.GlobalScene.requestFrame(); }
+		}
 
 		//enable webglCanvas lib so it is easy to render in 2D
 		if(global.enableWebGLCanvas && !gl.canvas.canvas2DtoWebGL_enabled)
@@ -20589,8 +19979,8 @@ var Renderer = {
 	*/
 	render: function( scene, render_settings, cameras )
 	{
-		if( !LS.ShadersManager.ready )
-			return; //not ready
+		//if( !LS.ShadersManager.ready )
+		//	return; //not ready
 
 		if( this._is_rendering_frame )
 		{
@@ -20685,7 +20075,10 @@ var Renderer = {
 
 		//profiling must go here
 		this._frame_cpu_time = getTime() - start_time;
-		this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
+		if( LS.Draw )
+		{
+			this._rendercalls += LS.Draw._rendercalls; LS.Draw._rendercalls = 0; //stats are not centralized
+		}
 
 		//Event: afterRender to give closure to some actions
 		LEvent.trigger( scene, "afterRender", render_settings ); 
@@ -20830,8 +20223,11 @@ var Renderer = {
 		this._current_camera = camera;
 
 		//Draw allows to render debug info easily
-		LS.Draw.reset(); //clear 
-		LS.Draw.setCamera( camera );
+		if(LS.Draw)
+		{
+			LS.Draw.reset(); //clear 
+			LS.Draw.setCamera( camera );
+		}
 
 		LEvent.trigger( camera, "afterEnabled", render_settings );
 		LEvent.trigger( scene, "afterCameraEnabled", camera ); //used to change stuff according to the current camera (reflection textures)
@@ -20966,7 +20362,6 @@ var Renderer = {
 		//scene.triggerInNodes( "beforeRenderInstances", render_settings );
 
 		//compute global scene info
-		this.fillSceneShaderQuery( scene, render_settings );
 		this.fillSceneUniforms( scene, render_settings );
 
 		//reset state of everything!
@@ -21030,7 +20425,7 @@ var Renderer = {
 			if(camera_index_flag) //shadowmap cameras dont have an index
 				instance._camera_visibility |= camera_index_flag;
 
-			//if material supports instancing
+			//if material supports instancing WIP
 			/*
 			if( instancing_supported && material._allows_instancing && !instance._shader_blocks.length )
 			{
@@ -21104,9 +20499,15 @@ var Renderer = {
 		gl.viewport( this._full_viewport[0], this._full_viewport[1], this._full_viewport[2], this._full_viewport[3] ); //assign full viewport always?
 		if(gl.start2D) //in case we have Canvas2DtoWebGL installed (it is optional)
 			gl.start2D();
-		LS.GUI.ResetImmediateGUI(); //mostly to change the cursor
 		if( render_settings.render_gui )
-			LEvent.trigger( this._current_scene, "renderGUI", gl );
+		{
+			if( LEvent.hasBind( this._current_scene, "renderGUI" ) ) //to avoid forcing a redraw if no gui is set
+			{
+				if(LS.GUI)
+					LS.GUI.ResetImmediateGUI(); //mostly to change the cursor (warning, true to avoid forcing redraw)
+				LEvent.trigger( this._current_scene, "renderGUI", gl );
+			}
+		}
 		if( this.on_render_gui ) //used by the editor (here to ignore render_gui flag)
 			this.on_render_gui( render_settings );
 		if( gl.finish2D )
@@ -21166,7 +20567,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
+			return;
+			//this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -21179,7 +20581,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardShadowPassInstance( instance, render_settings, pass);
+			return;
+			//this.renderStandardShadowPassInstance( instance, render_settings, pass);
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -21192,7 +20595,8 @@ var Renderer = {
 
 		//render using default system (slower but it works)
 		if(!renderered)
-			this.renderStandardPickingPassInstance( instance, render_settings, pass);
+			return;
+			//this.renderStandardPickingPassInstance( instance, render_settings, pass);
 	},
 
 
@@ -21205,6 +20609,7 @@ var Renderer = {
 	* @param {RenderSettings} render_settings
 	* @param {Array} lights array containing al the lights affecting this RI
 	*/
+	/*
 	renderStandardColorMultiPassLightingInstance: function( instance, render_settings )
 	{
 		var camera = this._current_camera;
@@ -21323,6 +20728,7 @@ var Renderer = {
 				break; 
 		}
 	},
+	*/
 
 	/**
 	* Renders this RenderInstance into the shadowmap
@@ -21331,6 +20737,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	renderStandardShadowPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
@@ -21367,6 +20774,7 @@ var Renderer = {
 		instance.render(shader);
 		this._rendercalls += 1;
 	},
+	*/
 
 	/**
 	* Render instance into the picking buffer
@@ -21375,6 +20783,7 @@ var Renderer = {
 	* @param {RenderInstance} instance
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	renderStandardPickingPassInstance: function( instance, render_settings )
 	{
 		var scene = this._current_scene;
@@ -21400,6 +20809,7 @@ var Renderer = {
 
 		instance.render( shader );
 	},
+	*/
 
 	regenerateShadowmaps: function( scene, render_settings )
 	{
@@ -21532,16 +20942,10 @@ var Renderer = {
 	* @param {Scene} scene
 	* @param {RenderSettings} render_settings
 	*/
+	/*
 	fillSceneShaderQuery: function( scene, render_settings )
 	{
 		var query = new LS.ShaderQuery();
-
-		//camera info
-		if( this._current_pass.id == COLOR_PASS )
-		{
-			if(render_settings.linear_pipeline)
-				query.setMacro("USE_LINEAR_PIPELINE");
-		}
 
 		if(this._current_renderframe && this._current_renderframe.use_extra_texture && gl.extensions["WEBGL_draw_buffers"])
 			query.setMacro("USE_DRAW_BUFFERS");
@@ -21551,6 +20955,7 @@ var Renderer = {
 
 		scene._query = query;
 	},
+	*/
 
 	//Called at the beginning of renderInstances (once per renderFrame)
 	//DO NOT CACHE, parameters can change between render passes
@@ -21602,7 +21007,7 @@ var Renderer = {
 			scene._samplers[ slot ] = texture;
 			scene._uniforms[ i + "_texture" ] = slot; 
 			scene._uniforms[ i + type ] = slot; //LEGACY
-			scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
+			//scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 
 			if( i == "environment" )
 				this._global_textures.environment = texture;
@@ -21741,7 +21146,7 @@ var Renderer = {
 
 			//node & mesh constant information
 			//DEPRECATED
-			var query = instance.query;
+			//var query = instance.query;
 
 			/* deprecated
 			var buffers = instance.vertex_buffers;
@@ -21757,8 +21162,8 @@ var Renderer = {
 				query.macros.USE_TANGENT_STREAM = "";
 			*/
 			//deprecated?
-			if(("colors" in instance.mesh.vertexBuffers)) //particles
-				query.macros.USE_COLOR_STREAM = "";
+			//if(("colors" in instance.mesh.vertexBuffers)) //particles
+			//	query.macros.USE_COLOR_STREAM = "";
 
 			instance._camera_visibility = 0|0;
 		}
@@ -21782,12 +21187,14 @@ var Renderer = {
 			var material = instance.material;
 			instance.index = i;
 
+			/*
 			var query = instance._final_query;
 			query.clear();
 			query.add( node._query );
 			if(material)
 				query.add( material._query );
 			query.add( instance.query );
+			*/
 		}
 
 		//store all the info
@@ -21877,6 +21284,8 @@ var Renderer = {
 
 		texture = texture || new GL.Texture(size,size,{texture_type: gl.TEXTURE_CUBE_MAP, minFilter: gl.NEAREST});
 		this._current_target = texture;
+		texture._in_current_fbo = true; //block binding this texture during rendering of the reflection
+
 		texture.drawTo( function(texture, side) {
 
 			var info = LS.Camera.cubemap_camera_parameters[side];
@@ -21891,6 +21300,7 @@ var Renderer = {
 		});
 
 		this._current_target = null;
+		texture._in_current_fbo = false;
 		return texture;
 	},
 
@@ -22063,7 +21473,7 @@ var Renderer = {
 	*/
 	enableFrameShaderBlock: function( shader_block_name, uniforms )
 	{
-		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
+		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
 
 		if( !shader_block || this._global_shader_blocks_flags | shader_block.flag_mask )
 			return; //already added
@@ -22112,7 +21522,8 @@ LS.Renderer = Renderer;
 
 
 
-//FILE: ../src/render/debug.js
+///@FILE:../src/render/debug.js
+///@INFO: UNCOMMON
 /**	DebugRender
 * Used to render debug information like skeletons, a grid, etc
 * I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor
@@ -22610,7 +22021,7 @@ DebugRender.prototype.createMeshes = function()
 }
 
 LS.DebugRender = DebugRender;
-//FILE: ../src/render/draw.js
+///@FILE:../src/render/draw.js
 //this module is in charge of rendering basic objects like lines, points, and primitives
 //it works over litegl (no need of scene)
 //carefull, it is very slow
@@ -22791,8 +22202,6 @@ var Draw = {
 			}\
 		');
 
-
-
 		this.shader_points_color_texture_size = new Shader('\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
@@ -22816,6 +22225,29 @@ var Draw = {
 			  if(tex.a < 0.1)\n\
 				discard;\n\
 			  vec4 color = u_color * v_color * tex;\n\
+			  gl_FragColor = color;\n\
+			}\
+		');
+
+		this.shader_text2D = new Shader('\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec4 a_extra4;\n\
+			uniform mat4 u_mvp;\n\
+			uniform float u_point_size;\n\
+			void main() {\n\
+				gl_PointSize = u_point_size;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			','\
+			precision mediump float;\n\
+			uniform vec4 u_color;\n\
+			uniform sampler2D u_texture;\n\
+			void main() {\n\
+			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
+			  if(tex.a < 0.1)\n\
+				discard;\n\
+			  vec4 color = u_color * tex;\n\
 			  gl_FragColor = color;\n\
 			}\
 		');
@@ -23759,12 +23191,15 @@ var Draw = {
 	},
 
 	/**
-	* Renders a text in the current matrix position
+	* Renders a text in 3D, in the XY plane, using the current matrix position
 	* @method renderText
 	* @param {string} text
+	* @param {vec3} position [optional] 3D coordinate in relation to matrix
 	*/
-	renderText: function( text )
+	renderText: function( text, position )
 	{
+		position = position || LS.ZEROS;
+
 		if(!Draw.font_atlas)
 			this.createFontAtlas();
 		var atlas = this.font_atlas;
@@ -23798,12 +23233,12 @@ var Draw = {
 				continue;
 			}
 
-			vertices.set( [x, y, 0], pos*6*3);
-			vertices.set( [x, y + char_size, 0], pos*6*3+3);
-			vertices.set( [x + char_size, y + char_size, 0], pos*6*3+6);
-			vertices.set( [x + char_size, y, 0], pos*6*3+9);
-			vertices.set( [x, y, 0], pos*6*3+12);
-			vertices.set( [x + char_size, y + char_size, 0], pos*6*3+15);
+			vertices.set( [x + position[0], y + position[1], position[2]], pos*6*3);
+			vertices.set( [x + position[0], y + position[1] + char_size, position[2]], pos*6*3+3);
+			vertices.set( [x + position[0] + char_size, y + position[1] + char_size, position[2]], pos*6*3+6);
+			vertices.set( [x + position[0] + char_size, y + position[1], position[2]], pos*6*3+9);
+			vertices.set( [x + position[0], y + position[1], position[2]], pos*6*3+12);
+			vertices.set( [x + position[0] + char_size, y + position[1] + char_size, position[2]], pos*6*3+15);
 
 			coords.set( [c[0], c[1]], pos*6*2);
 			coords.set( [c[0], c[3]], pos*6*2+2);
@@ -23820,6 +23255,56 @@ var Draw = {
 		return this.renderMesh( mesh, gl.TRIANGLES, this.shader_texture, undefined, 0, vertices.length / 3 );
 	},
 
+	/*
+	renderText2D: function( text, position )
+	{
+		position = position || LS.ZEROS;
+		if(!Draw.font_atlas)
+			this.createFontAtlas();
+		var atlas = this.font_atlas;
+		var l = text.length;
+		var char_size = atlas.atlas.char_size;
+		var i_char_size = 1 / atlas.atlas.char_size;
+		var spacing = atlas.atlas.spacing;
+
+		var num_valid_chars = 0;
+		for(var i = 0; i < l; ++i)
+			if(atlas.atlas[ text.charCodeAt(i) ] != null)
+				num_valid_chars++;
+
+		var vertices = new Float32Array( num_valid_chars * 3 );
+		var extra4 = new Float32Array( num_valid_chars * 4 );
+
+		var pos = 0;
+		var x = 0, y = 0;
+		for(var i = 0; i < l; ++i)
+		{
+			var c = atlas.atlas[ text.charCodeAt(i) ];
+			if(!c)
+			{
+				if(text.charCodeAt(i) == 10) //breakline
+				{
+					x = 0;
+					y += char_size;
+				}
+				else
+					x += char_size;
+				continue;
+			}
+
+			vertices.set( position, i*3 );
+			extra4.set([ c[0], c[1], x,y );
+
+			x+= spacing;
+			++pos;
+		}
+		var mesh = this.toGlobalMesh({ vertices: vertices, extra4: extra4 });
+		this.setPointSize(20);
+		atlas.bind(0);
+		this.shader_text2D.uniforms({ u_char_offset: atlas.offset });
+		return this.renderMesh( mesh, gl.POINTS, this.shader_text2D, undefined, 0, vertices.length / 3 );
+	},
+	*/
 
 	createFontAtlas: function()
 	{
@@ -23836,7 +23321,7 @@ var Draw = {
 		var x = 0;
 		var y = 0;
 		var xoffset = 0.5, yoffset = fontsize * -0.3;
-		var atlas = {char_size: char_size, spacing: char_size * 0.6};
+		var atlas = { char_size: char_size, offset: char_size / canvas.width , spacing: char_size * 0.6 };
 
 		for(var i = 6; i < 100; i++)//valid characters
 		{
@@ -24107,8 +23592,8 @@ var Draw = {
 
 if(typeof(LS) != "undefined")
 	LS.Draw = Draw;
-//FILE: ../src/render/deformer.js
-
+///@FILE:../src/render/deformer.js
+///@INFO: UNCOMMON
 //WORK IN PROGRESS
 
 //Is the class in charge of applying deformations to meshes (skinning and morph targets)
@@ -24130,8 +23615,8 @@ Deformer.prototype.applyByCPU = function( vertex_data, normals_data )
 }
 
 LS.Deformer = Deformer;
-//FILE: ../src/picking.js
-//
+///@FILE:../src/picking.js
+///@INFO: UNCOMMON
 /**
 * Picking is used to detect which element is below one pixel (used the GPU) or using raycast
 *
@@ -24290,7 +23775,7 @@ var Picking = {
 
 		//check instances colliding with cursor using a ray against AABBs
 		var instances = null;
-		if(1) //not tested yet
+		if( mouse_pos ) //not tested yet
 		{
 			var ray = camera.getRayInPixel( mouse_pos[0], mouse_pos[1] );
 			var instances_collisions = LS.Physics.raycastRenderInstances( ray.origin, ray.direction );
@@ -24302,6 +23787,8 @@ var Picking = {
 			}
 			//console.log("Instances ray collided:", instances_collisions.length);
 		}
+		else
+			instances = scene._instances;
 
 		LS.Renderer.renderInstances( picking_render_settings, instances );
 
@@ -24319,7 +23806,8 @@ LS.Picking = Picking;
 //to visualize picking buffer
 //LS.Renderer.registerRenderPass( "color", { id: 1, render_instance: LS.Renderer.renderPickingPassInstance } );
 
-//FILE: ../src/physics.js
+///@FILE:../src/physics.js
+///@INFO: UNCOMMON
 /* This is in charge of basic physics actions like ray tracing against the colliders */
 
 /**
@@ -24770,7 +24258,8 @@ var Physics = {
 
 
 LS.Physics = Physics;
-//FILE: ../src/components/transform.js
+///@FILE:../src/components/transform.js
+///@INFO: BASE
 /**
 * Transform that contains the position (vec3), rotation (quat) and scale (vec3) 
 * It uses lazy update to recompute the matrices.
@@ -26248,7 +25737,8 @@ Transform.prototype.updateDescendants = function()
 LS.registerComponent( Transform );
 LS.Transform = Transform;
 
-//FILE: ../src/components/camera.js
+///@FILE:../src/components/camera.js
+///@INFO: BASE
 // ******* CAMERA **************************
 
 /**
@@ -27837,18 +27327,7 @@ Camera.prototype.prepare = function()
 {
 	this._previous_viewprojection_matrix.set( this._viewprojection_matrix );
 	this.updateMatrices(); 
-	this.fillShaderQuery();
 	this.fillShaderUniforms();
-}
-
-Camera.prototype.fillShaderQuery = function()
-{
-	var query = new LS.ShaderQuery();
-
-	if( this.type == Camera.ORTHOGRAPHIC )
-		query.setMacro("USE_ORTHOGRAPHIC_CAMERA");
-
-	this._query = query;
 }
 
 Camera.prototype.fillShaderUniforms = function()
@@ -27870,7 +27349,8 @@ Camera.prototype.fillShaderUniforms = function()
 
 LS.registerComponent( Camera );
 LS.Camera = Camera;
-//FILE: ../src/components/cameraFX.js
+///@FILE:../src/components/cameraFX.js
+///@INFO: UNCOMMON
 /**
 * This component allow to create basic FX
 * @class CameraFX
@@ -28104,7 +27584,8 @@ CameraFX.prototype.applyFX = function()
 }
 
 LS.registerComponent( CameraFX );
-//FILE: ../src/components/frameFX.js
+///@FILE:../src/components/frameFX.js
+///@INFO: UNCOMMON
 /**
 * This component allow to create basic FX applied to the whole scene
 * @class FrameFX
@@ -28265,7 +27746,7 @@ FrameFX.prototype.applyFX = function()
 }
 
 LS.registerComponent( FrameFX );
-//FILE: ../src/components/light.js
+///@FILE:../src/components/light.js
 //***** LIGHT ***************************
 
 /**
@@ -28409,7 +27890,6 @@ function Light(o)
 	this._top = vec3.clone( LS.TOP );
 
 	//for StandardMaterial
-	this._query = new LS.ShaderQuery();
 	this._samplers = [];
 
 	//light uniforms
@@ -28756,9 +28236,6 @@ Light.prototype.prepare = function( render_settings )
 	var uniforms = this._uniforms;
 	var samplers = this._samplers;
 
-	var query = this._query;
-	query.clear(); //delete all properties (I dont like to generate garbage)
-
 	//projective texture needs the light matrix to compute projection
 	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
@@ -28775,47 +28252,6 @@ Light.prototype.prepare = function( render_settings )
 	{
 		this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.shadow_type ];
 		//this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.hard_shadows ? "hard" : "soft" ];
-	}
-
-	//PREPARE SHADER QUERY
-	if(this.type == Light.DIRECTIONAL)
-		query.macros.USE_DIRECTIONAL_LIGHT = "";
-	else if(this.type == Light.SPOT)
-		query.macros.USE_SPOT_LIGHT = "";
-	else //omni
-		query.macros.USE_OMNI_LIGHT = "";
-
-	if(this._spot_cone)
-		query.macros.USE_SPOT_CONE = "";
-	if(this.attenuation_type == Light.LINEAR_ATTENUATION)
-		query.macros.USE_LINEAR_ATTENUATION = "";
-	if(this.attenuation_type == Light.RANGE_ATTENUATION)
-		query.macros.USE_RANGE_ATTENUATION = "";
-	if(this.offset > 0.001)
-		query.macros.USE_LIGHT_OFFSET = "";
-
-	if(this.projective_texture)
-	{
-		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[this.projective_texture] : this.projective_texture;
-		if(light_projective_texture)
-		{
-			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_LIGHT_CUBEMAP = "";
-			else
-				query.macros.USE_LIGHT_TEXTURE = "";
-		}
-	}
-
-	if(this.extra_texture)
-	{
-		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
-		if(extra_texture)
-		{
-			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_EXTRA_LIGHT_CUBEMAP = "";
-			else
-				query.macros.USE_EXTRA_LIGHT_TEXTURE = "";
-		}
 	}
 
 	//PREPARE UNIFORMS
@@ -28932,6 +28368,7 @@ Light.prototype.prepare = function( render_settings )
 * @param {Object} render_settings info about how the scene will be rendered
 * @return {ShaderQuery} the macros
 */
+/*
 Light.prototype.getQuery = function(instance, render_settings)
 {
 	var query = this._query;
@@ -28964,6 +28401,7 @@ Light.prototype.getQuery = function(instance, render_settings)
 
 	return query;
 }
+*/
 
 /**
 * Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach
@@ -29211,7 +28649,8 @@ LS.registerComponent( Light );
 LS.Light = Light;
 
 //Shader blocks are moved to basePipeline.js
-//FILE: ../src/components/lightFX.js
+///@FILE:../src/components/lightFX.js
+///@INFO: UNCOMMON
 //TODO
 
 /**
@@ -29418,7 +28857,7 @@ LightFX.prototype.onResourceRenamed = function (old_name, new_name, resource)
 //LS.registerComponent(LightFX);
 
 
-//FILE: ../src/components/meshRenderer.js
+///@FILE:../src/components/meshRenderer.js
 
 /**
 * Renders one mesh, it allows to configure the rendering primitive, the submesh (range of mesh) and a level of detail mesh
@@ -29959,8 +29398,8 @@ MeshRenderer.prototype.explodeSubmeshesToChildNodes = function() {
 
 LS.registerComponent( MeshRenderer );
 LS.MeshRenderer = MeshRenderer;
-//FILE: ../src/components/skinnedMeshRenderer.js
-
+///@FILE:../src/components/skinnedMeshRenderer.js
+///@INFO: UNCOMMON
 function SkinnedMeshRenderer(o)
 {
 	this.enabled = true;
@@ -30189,17 +29628,13 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	{
 		RI.setMesh( mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		delete RI.samplers["u_bones"];
 	}
 	else if( SkinnedMeshRenderer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
 		RI.setMesh(mesh, this.primitive);
 
-		//add skinning
-		RI.query.macros["USE_SKINNING"] = "";
-		
+	
 		//retrieve all the bones
 		var bones = this.getBoneMatrices(mesh);
 		var bones_size = bones.length * 12;
@@ -30220,8 +29655,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
-			if(bones.length > SkinnedMeshRenderer.MAX_BONES)
-				RI.query.macros["MAX_BONES"] = bones.length.toString();
 			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
@@ -30236,7 +29669,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[":bones"] = texture; //debug
-			RI.query.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
 			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
@@ -30269,8 +29701,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		this.applySkin( mesh, this._skinned_mesh );
 		RI.setMesh(this._skinned_mesh, this.primitive);
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		delete RI.samplers["u_bones"];
 	}
 
@@ -30297,10 +29727,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		RI.use_bounding = false; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
 
 	if(this.primitive == gl.POINTS)
-	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.query.macros["USE_POINTS"] = "";
-	}
 
 	instances.push(RI);
 	//return RI;
@@ -30395,7 +29822,8 @@ SkinnedMeshRenderer.prototype.extractSkeleton = function()
 
 LS.registerComponent(SkinnedMeshRenderer);
 LS.SkinnedMeshRenderer = SkinnedMeshRenderer;
-//FILE: ../src/components/morphDeformer.js
+///@FILE:../src/components/morphDeformer.js
+///@INFO: UNCOMMON
 function MorphDeformer(o)
 {
 	this.enabled = true;
@@ -30573,11 +30001,8 @@ MorphDeformer.prototype.applyMorphTargetsByGPU = function( RI, valid_morphs )
 	for(var i in morphs_buffers)
 		RI.vertex_buffers[i] = morphs_buffers[i];
 
-	RI.query.macros["USE_MORPHING_STREAMS"] = "";
-
-	if(RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined)
+	if(RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ])
 	{
-		delete RI.query.macros["USE_MORPHING_TEXTURE"];
 		delete RI.uniforms["u_morph_vertices_texture"];
 		delete RI.uniforms["u_morph_normals_texture"];
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
@@ -30724,10 +30149,6 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 	//add the ids (the texture with 0,1,2, 3,4,5, ...)
 	RI.vertex_buffers["a_morphing_ids"] = this._ids_buffer;
 
-	//enable the algorithm
-	delete RI.query.macros["USE_MORPHING_STREAMS"];
-	RI.query.macros["USE_MORPHING_TEXTURE"] = "";
-
 	//SHADER BLOCK
 	RI.addShaderBlock( MorphDeformer.shader_block );
 	RI.addShaderBlock( LS.MorphDeformer.morphing_texture_block, { 
@@ -30741,18 +30162,11 @@ MorphDeformer.prototype.applyMorphUsingTextures = function( RI, valid_morphs )
 
 MorphDeformer.prototype.disableMorphingGPU = function( RI )
 {
-	if( !RI || !RI.query )
+	if( !RI )
 		return;
 	
-	if ( RI.query.macros["USE_MORPHING_STREAMS"] !== undefined )
+	if( RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] )
 	{
-		delete RI.query.macros["USE_MORPHING_STREAMS"];
-		delete RI.uniforms["u_morph_weights"];
-	}
-
-	if( RI.query.macros["USE_MORPHING_TEXTURE"] !== undefined )
-	{
-		delete RI.query.macros["USE_MORPHING_TEXTURE"];
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE_SLOT ] = null;
 		RI.samplers[ LS.Renderer.MORPHS_TEXTURE2_SLOT ] = null;
 		delete RI.uniforms["u_morph_vertices_texture"];
@@ -31107,8 +30521,8 @@ morphing_texture_block.defineContextMacros( { "morphing_mode": "morphing_texture
 morphing_texture_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_texture_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 morphing_texture_block.register();
 MorphDeformer.morphing_texture_block = morphing_texture_block;
-//FILE: ../src/components/skinDeformer.js
-
+///@FILE:../src/components/skinDeformer.js
+///@INFO: UNCOMMON
 /**
 * It applyes skinning to a RenderInstance created by another component (usually MeshRenderer)
 * Is in charge of gathering the bone nodes and adding to the RenderInstance the information needed to perform the skinning
@@ -31319,9 +30733,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 	
 	if( SkinDeformer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
-		//add skinning
-		RI.query.macros["USE_SKINNING"] = "";
-		
 		//retrieve all the bones
 		var bones = this.getBoneMatrices( mesh );
 		var bones_size = bones.length * 12;
@@ -31347,8 +30758,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
-			if(bones.length > SkinDeformer.MAX_BONES)
-				RI.query.macros["MAX_BONES"] = bones.length.toString();
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 
 			RI.addShaderBlock( LS.SkinDeformer.skinning_uniforms_block, { u_bones: u_bones } );
@@ -31368,7 +30777,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[":bones_" + this.uid ] = texture; //debug
 			RI.uniforms["u_bones"] = LS.Renderer.BONES_TEXTURE_SLOT;
-			RI.query.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = texture; //{ texture: texture, magFilter: gl.NEAREST, minFilter: gl.NEAREST, wrap: gl.CLAMP_TO_EDGE };
 
 			RI.addShaderBlock( LS.SkinDeformer.skinning_texture_block, { u_bones: LS.Renderer.BONES_TEXTURE_SLOT } );
@@ -31405,8 +30813,6 @@ SkinDeformer.prototype.applySkinning = function(RI)
 
 		RI.setMesh( this._skinned_mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		RI.samplers[ LS.Renderer.BONES_TEXTURE_SLOT ] = null;
 	}
 
@@ -31426,12 +30832,8 @@ SkinDeformer.prototype.disableSkinning = function( RI )
 {
 	this._mesh = null;
 
-	if( RI.query.macros["USE_SKINNING"] !== undefined )
-	{
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
+	if( RI.samplers["u_bones"] )
 		delete RI.samplers["u_bones"];
-	}
 
 	RI.removeShaderBlock( LS.SkinDeformer.skinning_block );
 	RI.removeShaderBlock( LS.SkinDeformer.skinning_uniforms_block );
@@ -31662,7 +31064,8 @@ skinning_texture_block.defineContextMacros( { "skinning_mode": "skinning_texture
 skinning_texture_block.addCode( GL.VERTEX_SHADER, "\n#define USE_SKINNING_TEXTURE\n" + SkinDeformer.skinning_shader_code, SkinDeformer.skinning_disabled_shader_code );
 skinning_texture_block.register();
 SkinDeformer.skinning_texture_block = skinning_texture_block;
-//FILE: ../src/components/svgRenderer.js
+///@FILE:../src/components/svgRenderer.js
+///@INFO: UNCOMMON
 //WORK IN PROGRESS
 
 
@@ -31802,7 +31205,7 @@ SVGRenderer.prototype.onResourceRenamed = function (old_name, new_name, resource
 
 //LS.registerComponent( SVGRenderer );
 
-//FILE: ../src/components/skybox.js
+///@FILE:../src/components/skybox.js
 /**
 * Skybox allows to render a cubemap or polar image as a background for the 3D scene
 * @class Skybox
@@ -31937,7 +31340,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 	else
 	{
 		var texture_name = null;
-		if (this.use_environment && LS.Renderer._current_scene.info)
+		if (this.use_environment && LS.Renderer._current_scene.info )
 			texture_name = LS.Renderer._current_scene.info.textures["environment"];
 		else
 			texture_name = this.texture;
@@ -31952,10 +31355,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		mat = this._material;
 		if(!mat)
 		{
-			//mat = this._material = new LS.ShaderMaterial({});
-
-
-			mat = this._material = new LS.StandardMaterial({ 
+			mat = this._material = new LS.ShaderMaterial({ 
 				flags: { 
 					two_sided: true, 
 					cast_shadows: false, 
@@ -31967,13 +31367,16 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 				use_scene_ambient:false,
 				color: [ this.intensity, this.intensity, this.intensity ]
 			});
+				mat.shader_code = new LS.ShaderCode( Skybox.shader_code );
 		}
 		else
 			mat.color.set([this.intensity, this.intensity, this.intensity]);
 
+		mat.setProperty( "Texture", texture_name );
+
+		/*
 		var sampler = mat.setTexture( LS.Material.COLOR, texture_name );
 		//sampler.gamma = this.gamma;
-
 		if(texture && texture.texture_type == gl.TEXTURE_2D)
 		{
 			sampler.uvs = "polar_vertex";
@@ -31983,22 +31386,7 @@ Skybox.prototype.onCollectInstances = function(e, instances)
 		}
 		else
 			sampler.uvs = "0";
-	}
-
-	//render first
-	if(mat)
-	{
-		mat.queue = LS.RenderQueue.BACKGROUND;
-		mat.render_state.cull_face = false;
-		mat.render_state.front_face = GL.CW;
-		mat.render_state.depth_test = false;
-		mat.flags.ignore_frustum = true;
-		mat.flags.ignore_lights = true;
-		mat.flags.cast_shadows = false;
-		mat.flags.receive_shadows = false;
-		mat.flags.flip_normals = true;
-		mat.flags.depth_test = false;
-		mat.use_scene_ambient = false;
+		*/
 	}
 
 	RI.setMesh( mesh );
@@ -32051,7 +31439,20 @@ Skybox.prototype.bakeToCubemap = function( size, render_settings )
 		this.root.scene.info.textures[ "environment" ] = ":baked_skybox";
 }
 
-Skybox.shader_code = "\\color.vs\n\
+Skybox.shader_code = "\n\
+\\js\n\
+	this.createSampler(\"Texture\",\"u_color_texture\", { magFilter: GL.LINEAR, missing: \"white\"} );\n\
+	this.queue = LS.RenderQueue.BACKGROUND;\n\
+	this.render_state.cull_face = false;\n\
+	this.render_state.front_face = GL.CW;\n\
+	this.render_state.depth_test = false;\n\
+	this.render_state.front_face = GL.CW;\n\
+	this.flags.ignore_frustum = true;\n\
+	this.flags.ignore_lights = true;\n\
+	this.flags.cast_shadows = false;\n\
+	this.flags.receive_shadows = false;\n\
+\n\
+\\color.vs\n\
 	precision mediump float;\n\
 	attribute vec3 a_vertex;\n\
 	varying vec3 v_world_position;\n\
@@ -32075,7 +31476,7 @@ Skybox.shader_code = "\\color.vs\n\
 	void main() {\n\
 		vec3 E = normalize( v_world_position - u_camera_eye);\n\
 		vec4 color = textureCube( u_color_texture, E );\n\
-		gl_FragColor = u_material_color;\n\
+		gl_FragColor = u_material_color * color;\n\
 	}\n\
 \\picking.vs\n\
 	precision mediump float;\n\
@@ -32097,8 +31498,8 @@ Skybox.shader_code = "\\color.vs\n\
 
 LS.registerComponent(Skybox);
 LS.Skybox = Skybox;
-//FILE: ../src/components/background.js
-
+///@FILE:../src/components/background.js
+///@INFO: UNCOMMON
 function BackgroundRenderer(o)
 {
 	this.enabled = true;
@@ -32207,8 +31608,8 @@ BackgroundRenderer.prototype.onCollectInstances = function(e, instances)
 
 //disabled till the viewprojection matrix issue is fixed
 //LS.registerComponent( BackgroundRenderer );
-//FILE: ../src/components/collider.js
-
+///@FILE:../src/components/collider.js
+///@INFO: UNCOMMON
 function Collider(o)
 {
 	this.enabled = true;
@@ -32342,7 +31743,8 @@ Collider.prototype.onGetColliders = function(e, colliders)
 
 
 LS.registerComponent( Collider );
-//FILE: ../src/components/customData.js
+///@FILE:../src/components/customData.js
+///@INFO: UNCOMMON
 /** 
 * This module allows to store custom data inside a node
 * properties have the form of:
@@ -32471,7 +31873,8 @@ CustomData.prototype.onResourceRenamed = function (old_name, new_name, resource)
 
 LS.registerComponent( CustomData );
 LS.CustomData = CustomData;
-//FILE: ../src/components/sprite.js
+///@FILE:../src/components/sprite.js
+///@INFO: UNCOMMON
 var temp_vec3 = vec3.create();
 
 function Sprite(o)
@@ -32638,7 +32041,8 @@ Sprite.prototype.onResourceRenamed = function( old_name, new_name, resource )
 }
 
 LS.registerComponent( Sprite );
-//FILE: ../src/components/spriteAtlas.js
+///@FILE:../src/components/spriteAtlas.js
+///@INFO: UNCOMMON
 function SpriteAtlas( o )
 {
 	this.enabled = true;
@@ -32847,8 +32251,8 @@ SpriteAtlas.Area = function SpriteAtlasArea()
 	this._start = vec2.create();
 	this._size = vec2.create();
 }
-//FILE: ../src/components/sceneInclude.js
-
+///@FILE:../src/components/sceneInclude.js
+///@INFO: UNCOMMON
 /**
 * Allows to include a secondary scene inside this scene (with some limitations)
 * @class SceneInclude
@@ -33138,7 +32542,8 @@ SceneInclude.prototype.onResourceRenamed = function( old_name, new_name, resourc
 }
 
 LS.registerComponent( SceneInclude );
-//FILE: ../src/components/annotations.js
+///@FILE:../src/components/annotations.js
+///@INFO: UNCOMMON
 function AnnotationComponent(o)
 {
 	this.text = "";
@@ -33417,7 +32822,8 @@ AnnotationComponent.prototype.renderEditor = function( selected )
 
 
 LS.registerComponent( AnnotationComponent );
-//FILE: ../src/components/animator.js
+///@FILE:../src/components/animator.js
+///@INFO: UNCOMMON
 /**
 * Rotator rotate a mesh over time
 * @class Rotator
@@ -33483,7 +32889,7 @@ Rotator.prototype.onUpdate = function(e,dt)
 }
 
 LS.registerComponent( Rotator );
-//FILE: ../src/components/cameraController.js
+///@FILE:../src/components/cameraController.js
 /**
 * Camera controller
 * Allows to move a camera with the user input. It uses the first camera attached to the same node
@@ -34008,7 +33414,8 @@ CameraController.prototype.onKey = function(e, key_event)
 
 LS.registerComponent( CameraController );
 
-//FILE: ../src/components/nodeManipulator.js
+///@FILE:../src/components/nodeManipulator.js
+///@INFO: UNCOMMON
 /**
 * Node manipulator, allows to rotate it
 * @class NodeManipulator
@@ -34069,7 +33476,8 @@ NodeManipulator.prototype.onMouse = function(e, mouse_event)
 }
 
 LS.registerComponent(NodeManipulator);
-//FILE: ../src/components/target.js
+///@FILE:../src/components/target.js
+///@INFO: UNCOMMON
 /**
 * Target rotate a mesh to look at the camera or another object
 * @class Target
@@ -34193,7 +33601,8 @@ Target.prototype.updateOrientation = function()
 }
 
 LS.registerComponent( Target );
-//FILE: ../src/components/fogFX.js
+///@FILE:../src/components/fogFX.js
+///@INFO: UNCOMMON
 function FogFX(o)
 {
 	this.enabled = true;
@@ -34254,7 +33663,8 @@ FogFX.prototype.fillSceneUniforms = function(e, uniforms )
 }
 
 LS.registerComponent(FogFX);
-//FILE: ../src/components/followNode.js
+///@FILE:../src/components/followNode.js
+///@INFO: UNCOMMON
 /**
 * FollowNode 
 * @class FollowNode
@@ -34315,7 +33725,7 @@ FollowNode.prototype.updatePosition = function(e,info)
 }
 
 LS.registerComponent( FollowNode );
-//FILE: ../src/components/geometricPrimitive.js
+///@FILE:../src/components/geometricPrimitive.js
 /**
 * GeometricPrimitive renders a primitive like a Cube, Sphere, Plane, etc
 * @class GeometricPrimitive
@@ -34580,8 +33990,8 @@ GeometricPrimitive.prototype.onCollectInstances = function(e, instances)
 
 LS.registerComponent( GeometricPrimitive );
 
-//FILE: ../src/components/globalInfo.js
-
+///@FILE:../src/components/globalInfo.js
+///@INFO: BASE
 function GlobalInfo(o)
 {
 	this.createProperty( "ambient_color", GlobalInfo.DEFAULT_AMBIENT_COLOR, "color" );
@@ -34723,7 +34133,8 @@ GlobalInfo.prototype.onResourceRenamed = function (old_name, new_name, resource)
 
 LS.registerComponent( GlobalInfo );
 LS.GlobalInfo = GlobalInfo;
-//FILE: ../src/components/graphComponents.js
+///@FILE:../src/components/graphComponents.js
+///@INFO: GRAPHS
 /* Requires LiteGraph.js ******************************/
 
 //on include, link to resources manager
@@ -35329,7 +34740,8 @@ LS.registerComponent( FXGraphComponent );
 
 
 
-//FILE: ../src/components/knob.js
+///@FILE:../src/components/knob.js
+///@INFO: UNCOMMON
 (function(){
 
 /**
@@ -35436,8 +34848,8 @@ Knob.prototype.onMouse = function(e, mouse_event)
 LS.registerComponent( Knob );
 
 })();
-//FILE: ../src/components/particles.js
-
+///@FILE:../src/components/particles.js
+///@INFO: UNCOMMON
 /**
 * The base class used by the ParticlesEmissor
 * @class Particle
@@ -36083,18 +35495,12 @@ ParticleEmissor.prototype.onCollectInstances = function(e, instances, options)
 	{
 		RI.setMesh( this._mesh, gl.POINTS );
 		RI.uniforms.u_point_size = this.particle_size;
-		RI.query.macros["USE_POINTS"] = "";
-		RI.query.macros["USE_POINT_CLOUD"] = "";
-		RI.query.macros["USE_TEXTURED_POINTS"] = "";
 		RI.setRange(0, this._visible_particles);
 	}
 	else
 	{
 		RI.setMesh( this._mesh, gl.TRIANGLES );
 		RI.setRange(0, this._visible_particles * 6); //6 vertex per particle
-		delete RI.query.macros["USE_POINTS"];
-		delete RI.query.macros["USE_POINT_CLOUD"];
-		delete RI.query.macros["USE_TEXTURED_POINTS"];
 		delete RI.uniforms["u_point_size"];
 	}
 
@@ -36112,8 +35518,8 @@ LS.registerComponent(ParticleEmissor);
 // - apply light per vertex before expanding
 // - inflate with camera vectors
 
-//FILE: ../src/components/label.js
-
+///@FILE:../src/components/label.js
+///@INFO: UNCOMMON
 function Label(o)
 {
 	this.text = "";
@@ -36231,7 +35637,8 @@ Label.prototype.render = function(e, render_settings)
 LS.registerComponent(Label);
 
 
-//FILE: ../src/components/pointCloud.js
+///@FILE:../src/components/pointCloud.js
+///@INFO: UNCOMMON
 /* pointCloud.js */
 
 function PointCloud(o)
@@ -36517,8 +35924,6 @@ PointCloud.prototype.onCollectInstances = function(e, instances, options)
 	mat4.multiplyVec3(RI.center, RI.matrix, vec3.create());
 
 	RI.uniforms.u_point_size = this.size;
-	//RI.query.macros["USE_POINTS"] = "";
-
 
 	RI.setMaterial( material );
 	RI.setMesh( this._mesh, gl.POINTS );
@@ -36568,7 +35973,8 @@ PointCloud.prototype.configure = function(o)
 
 
 LS.registerComponent( PointCloud );
-//FILE: ../src/components/linesRenderer.js
+///@FILE:../src/components/linesRenderer.js
+///@INFO: UNCOMMON
 /**
 * Helps rendering several lines
 * @class LinesRenderer
@@ -36766,7 +36172,8 @@ LinesRenderer.prototype.onAfterRender = function(e)
 
 
 LS.registerComponent( LinesRenderer );
-//FILE: ../src/components/playAnimation.js
+///@FILE:../src/components/playAnimation.js
+///@INFO: ANIMATION
 /**
 * Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation
@@ -37276,7 +36683,8 @@ PlayAnimation.prototype.getActions = function()
 
 
 LS.registerComponent( PlayAnimation );
-//FILE: ../src/components/realtimeReflector.js
+///@FILE:../src/components/realtimeReflector.js
+///@INFO: UNCOMMON
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
@@ -37511,7 +36919,8 @@ RealtimeReflector.prototype.onCameraEnabled = function(e, camera)
 }
 
 LS.registerComponent( RealtimeReflector );
-//FILE: ../src/components/reflectionProbe.js
+///@FILE:../src/components/reflectionProbe.js
+///@INFO: UNCOMMON
 /**
 * Realtime Reflective surface
 * @class RealtimeReflector
@@ -37877,25 +37286,115 @@ LS.registerComponent( ReflectionProbe );
 
 function IrradianceCache( o )
 {
-	this.subdivisions = new Uint8Array(4,4,4);
+	this.enabled = true;
+	this.corner = vec3.create();
+	this.size = vec3.fromValues(10,10,10);
+	this.subdivisions = new Uint8Array([4,4,4]);
+	this.layers = 0xFF; //layers that can contribute to the irradiance
+	this.high_precision = false;
+
+	this.near = 0.1;
+	this.far = 1000;
+	this.background_color = vec4.create();
 
 	this.mode = IrradianceCache.VERTEX_MODE;
 
 	this._irradiance_texture = null;
+	this._irradiance_cubemaps = [];
 
 	if(o)
 		this.configure(o);
 }
 
+IrradianceCache.show_probes = false;
+IrradianceCache.probes_size = 1;
+IrradianceCache.capture_cubemap_size = 64;
+IrradianceCache.final_cubemap_size = 8;
+
 IrradianceCache.OBJECT_MODE = 1;
 IrradianceCache.VERTEX_MODE = 2;
-IrradianceCache.FRAGMENT_MODE = 3;
+IrradianceCache.PIXEL_MODE = 3;
 
-IrradianceCache.prototype.computeCache = function()
+IrradianceCache["@mode"] = { type:"enum", values: { "object": IrradianceCache.OBJECT_MODE, "vertex": IrradianceCache.VERTEX_MODE, "pixel": IrradianceCache.PIXEL_MODE } };
+IrradianceCache["@size"] = { type:"vec3", min: 0.1, step: 0.1, precision:3 };
+IrradianceCache["@subdivisions"] = { type:"vec3", min: 1, max: 100, step: 1, precision:0 };
+IrradianceCache["@layers"] = { widget:"layers" };
+IrradianceCache["@background_color"] = { type:"color" };
+
+IrradianceCache.prototype.recompute = function()
 {
+	var subs = this.subdivisions;
+	var corner = this.corner;
+	var size = this.size;
+	var iscale = vec3.fromValues( size[0]/subs[0], size[1]/subs[1], size[2]/subs[2] );
+
+	//cubemap
+	var type = this.high_precision ? gl.HIGH_PRECISION_FORMAT : gl.UNSIGNED_BYTE;
+	var render_settings = LS.Renderer.default_render_settings;
+	var old_layers = render_settings.layers;
+	render_settings.layers = this.layers;
+	LS.GlobalScene.info.textures.irradiance = null;
+
+	var final_cubemap_size = IrradianceCache.final_cubemap_size;
+	var texture_size = IrradianceCache.capture_cubemap_size;
+	var texture_settings = { type: type, texture_type: gl.TEXTURE_CUBE_MAP, format: gl.RGB };
+	var texture = this._temp_cubemap;
+	if( !texture || texture.width != texture_size || texture.height != texture_size || texture.type != texture_settings.type )
+		this._temp_cubemap = texture = new GL.Texture( texture_size, texture_size, texture_settings );
+
+	//first render
+	if( !LS.Renderer._visible_instances )
+	{
+		var scene = this._root.scene;
+		if(!scene)
+			throw("cannot compute irradiance without scene");
+		LS.Renderer.processVisibleData( scene, render_settings );
+		LS.Renderer.regenerateShadowmaps( scene, render_settings );
+	}
+
 	//compute cache size
 	var num_probes = this.subdivisions[0] * this.subdivisions[1] * this.subdivisions[2];
+	this._irradiance_cubemaps.length = num_probes;
 
+	var global_matrix = this._root.transform ? this._root.transform.getGlobalMatrixRef() : null;
+   	var position = vec3.create();
+
+	var i = 0;
+	for(var x = 0; x < subs[0]; ++x)
+	for(var y = 0; y < subs[1]; ++y)
+	for(var z = 0; z < subs[2]; ++z)
+	{
+		position[0] = x * iscale[0] + corner[0];
+		position[1] = y * iscale[1] + corner[1];
+		position[2] = z * iscale[2] + corner[2];
+
+		if( global_matrix )
+			mat4.multiplyVec3( position, global_matrix, position );
+
+		var cubemap = this._irradiance_cubemaps[ i ];
+		if(!cubemap || cubemap.type != texture_settings.type || cubemap.width != final_cubemap_size )
+			this._irradiance_cubemaps[ i ] = cubemap = new GL.Texture( final_cubemap_size, final_cubemap_size, texture_settings );
+
+		this.captureIrradiance( position, cubemap, render_settings );
+
+		i+=1;
+	}
+
+	//remove flags
+	render_settings.layers = old_layers;
+}
+
+IrradianceCache.prototype.captureIrradiance = function( position, output_cubemap, render_settings )
+{
+	LS.Renderer.clearSamplers();
+
+	var texture = this._temp_cubemap;
+
+	//render all the scene inside the cubemap
+	LS.Renderer.renderToCubemap( position, 0, texture, render_settings, this.near, this.far, this.background_color );
+
+	//downsample
+	texture.copyTo( output_cubemap );
 }
 
 IrradianceCache.prototype.encodeCacheInTexture = function()
@@ -37905,38 +37404,191 @@ IrradianceCache.prototype.encodeCacheInTexture = function()
 
 IrradianceCache.prototype.renderEditor = function()
 {
+	if(!this.enabled || !IrradianceCache.show_probes)
+		return;
 
 	var shader = GL.Shader.getCubemapShowShader();
 	var mesh = LS.Renderer._sphere_mesh;
-	var position = vec3.create();
-
-	var global_matrix = this._root.transform.getGlobalMatrixRef();
-	var center = mat4.multiplyVec3( vec3.create(), global_matrix, LS.ZEROS );
-	var halfsize = mat4.multiplyVec3( vec3.create(), global_matrix, [0.5,0.5,0.5] );
-	
-	var min = vec3.sub( vec3.create(), center, halfsize );
 	var subs = this.subdivisions;
-	var iscale = vec3.fromValues( (2*halfsize[0])/subs[0], (2*halfsize[1])/subs[1], (2*halfsize[2])/subs[2] );
+	var corner = this.corner;
+	var size = this.size;
+	var iscale = vec3.fromValues( size[0]/subs[0], size[1]/subs[1], size[2]/subs[2] );
+
+	var shader = GL.Shader.getCubemapShowShader();
+	var mesh = LS.Renderer._sphere_mesh;
+
+	var default_cubemap = IrradianceCache.default_cubemap;
+	if(!default_cubemap)
+		default_cubemap = IrradianceCache.default_cubemap = new GL.Texture(1,1,{ texture_type: GL.TEXTURE_CUBE_MAP, format: GL.RGB, pixel_data:[255,255,255] });
+
+	var position = vec3.create();
+	var global_matrix = this._root.transform ? this._root.transform.getGlobalMatrixRef() : null;
 	   
+	var i = 0;
 	for(var x = 0; x < subs[0]; ++x)
 	for(var y = 0; y < subs[1]; ++y)
 	for(var z = 0; z < subs[2]; ++z)
 	{
+		position[0] = x * iscale[0] + corner[0];
+		position[1] = y * iscale[1] + corner[1];
+		position[2] = z * iscale[2] + corner[2];
+
+		if(global_matrix)
+			mat4.multiplyVec3( position, global_matrix, position );
+
 		LS.Draw.push();
-		LS.Draw.translate( x * iscale[0] + min[0], y * iscale[1] + min[1], z * iscale[2] + min[2] );
-		LS.Draw.scale( ReflectionProbe.helper_size );
-		//bind cubemap
-		//...
-		//LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
-		LS.Draw.renderSolidSphere(1);
+		LS.Draw.translate( position );
+		LS.Draw.scale( IrradianceCache.probes_size );
+
+		var texture = this._irradiance_cubemaps[ i++ ] || default_cubemap;
+		texture.bind(0);
+
+		LS.Draw.renderMesh( mesh, GL.TRIANGLES, shader );
 		LS.Draw.pop();
 	}
+
 }
 
-//LS.registerComponent( IrradianceCache );
+LS.registerComponent( IrradianceCache );
 
-//FILE: ../src/components/script.js
 
+/*
+var cubemapFaceNormals = [
+  [ [0, 0, -1], [0, -1, 0], [1, 0, 0] ],  // posx
+  [ [0, 0, 1], [0, -1, 0], [-1, 0, 0] ],  // negx
+
+  [ [1, 0, 0], [0, 0, 1], [0, 1, 0] ],    // posy
+  [ [1, 0, 0], [0, 0, -1], [0, -1, 0] ],  // negy
+
+  [ [1, 0, 0], [0, -1, 0], [0, 0, 1] ],   // posz
+  [ [-1, 0, 0], [0, -1, 0], [0, 0, -1] ]  // negz
+]
+
+// give me a cubemap, its size and number of channels
+// and i'll give you spherical harmonics
+function computeSH( faces, cubemapSize, ch) {
+  var size = cubemapSize || 128
+  var channels = ch || 4
+  var cubeMapVecs = []
+
+  // generate cube map vectors
+  faces.forEach((face, index) => {
+    var faceVecs = []
+    for (let v = 0; v < size; v++) {
+      for (let u = 0; u < size; u++) {
+        var fU = (2.0 * u / (size - 1.0)) - 1.0
+        var fV = (2.0 * v / (size - 1.0)) - 1.0
+
+        var vecX = []
+        vec3.scale(vecX, cubemapFaceNormals[index][0], fU)
+        var vecY = []
+        vec3.scale(vecY, cubemapFaceNormals[index][1], fV)
+        var vecZ = cubemapFaceNormals[index][2]
+
+        var res = []
+        vec3.add(res, vecX, vecY)
+        vec3.add(res, res, vecZ)
+        vec3.normalize(res, res)
+
+        faceVecs.push(res)
+      }
+    }
+    cubeMapVecs.push(faceVecs)
+  })
+
+  // generate shperical harmonics
+  let sh = [
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3),
+    new Float32Array(3)
+  ]
+  let weightAccum = 0
+
+  faces.forEach((face, index) => {
+    var pixels = face
+    var gammaCorrect = true
+    if (Object.prototype.toString.call(pixels) === '[object Float32Array]') gammaCorrect = false // this is probably HDR image, already in linear space
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        const texelVect = cubeMapVecs[index][y * size + x]
+
+        const weight = texelSolidAngle(x, y, size, size)
+        // forsyths weights
+        const weight1 = weight * 4 / 17
+        const weight2 = weight * 8 / 17
+        const weight3 = weight * 15 / 17
+        const weight4 = weight * 5 / 68
+        const weight5 = weight * 15 / 68
+
+        let dx = texelVect[0]
+        let dy = texelVect[1]
+        let dz = texelVect[2]
+
+        for (let c = 0; c < 3; c++) {
+          let value = pixels[y * size * channels + x * channels + c] / 255
+          if (gammaCorrect) value = Math.pow(value, 2.2)
+
+          // indexed by coeffiecent + color
+          sh[0][c] += value * weight1
+          sh[1][c] += value * weight2 * dx
+          sh[2][c] += value * weight2 * dy
+          sh[3][c] += value * weight2 * dz
+
+          sh[4][c] += value * weight3 * dx * dz
+          sh[5][c] += value * weight3 * dz * dy
+          sh[6][c] += value * weight3 * dy * dx
+
+          sh[7][c] += value * weight4 * (3.0 * dz * dz - 1.0)
+          sh[8][c] += value * weight5 * (dx * dx - dy * dy)
+
+          weightAccum += weight
+        }
+      }
+    }
+  })
+
+  for (let i = 0; i < sh.length; i++) {
+    sh[i][0] *= 4 * Math.PI / weightAccum
+    sh[i][1] *= 4 * Math.PI / weightAccum
+    sh[i][2] *= 4 * Math.PI / weightAccum
+  }
+
+  return sh
+}
+
+function texelSolidAngle (aU, aV, width, height) {
+  // transform from [0..res - 1] to [- (1 - 1 / res) .. (1 - 1 / res)]
+  // ( 0.5 is for texel center addressing)
+  const U = (2.0 * (aU + 0.5) / width) - 1.0
+  const V = (2.0 * (aV + 0.5) / height) - 1.0
+
+  // shift from a demi texel, mean 1.0 / size  with U and V in [-1..1]
+  const invResolutionW = 1.0 / width
+  const invResolutionH = 1.0 / height
+
+  // U and V are the -1..1 texture coordinate on the current face.
+  // get projected area for this texel
+  const x0 = U - invResolutionW
+  const y0 = V - invResolutionH
+  const x1 = U + invResolutionW
+  const y1 = V + invResolutionH
+  const angle = areaElement(x0, y0) - areaElement(x0, y1) - areaElement(x1, y0) + areaElement(x1, y1)
+
+  return angle
+}
+
+function areaElement (x, y) {
+  return Math.atan2(x * y, Math.sqrt(x * x + y * y + 1.0))
+}
+*/
+///@FILE:../src/components/script.js
+///@INFO: SCRIPTS
 /** Script is the component in charge of executing scripts to control the behaviour of the application.
 * Script must be coded in Javascript and they have full access to all the engine, so one script could replace the behaviour of any part of the engine.
 * Scripts are executed inside their own context, the context is local to the script so any variable defined in the context that is not attached to the context wont be accessible from other parts of the engine.
@@ -39030,7 +38682,8 @@ LS.registerComponent( ScriptFromFile );
 LS.ScriptFromFile = ScriptFromFile;
 
 
-//FILE: ../src/components/terrainRenderer.js
+///@FILE:../src/components/terrainRenderer.js
+///@INFO: UNCOMMON
 function TerrainRenderer(o)
 {
 	this.height = 2;
@@ -39226,8 +38879,8 @@ TerrainRenderer.prototype.onCollectInstances = function(e, instances)
 
 LS.registerComponent(TerrainRenderer);
 
-//FILE: ../src/components/cloner.js
-
+///@FILE:../src/components/cloner.js
+///@INFO: UNCOMMON
 function Cloner(o)
 {
 	this.enabled = true;
@@ -39495,7 +39148,8 @@ Cloner.prototype.onUpdateInstances = function(e, dt)
 
 
 LS.registerComponent(Cloner);
-//FILE: ../src/components/VRCameraController.js
+///@FILE:../src/components/VRCameraController.js
+///@INFO: UNCOMMON
 //WORK IN PROGRESS: NOT FINISHED
 
 /**
@@ -39660,7 +39314,8 @@ window.VRCameraController = VRCameraController;
 
 
 
-//FILE: ../src/components/poser.js
+///@FILE:../src/components/poser.js
+///@INFO: UNCOMMON
 /**
 * Transitions between different poses
 * @class Poser
@@ -39912,7 +39567,8 @@ Poser.prototype.purgePoses = function()
 
 
 LS.registerComponent( Poser );
-//FILE: ../src/components/spline.js
+///@FILE:../src/components/spline.js
+///@INFO: UNCOMMON
 /**
 * Spline allows to define splines in 3D
 * @class Spline
@@ -40042,7 +39698,8 @@ Spline.prototype.addPoint = function( point )
 
 //not finished yet
 //LS.registerComponent( Spline );
-//FILE: ../src/components/threeJS.js
+///@FILE:../src/components/threeJS.js
+///@INFO: UNCOMMON
 // This Component shows the possibility of using another Render Engine within WebGLStudio.
 // The idea here is to create a component that calls the other render engine renderer during my rendering method
 function ThreeJS( o )
@@ -40336,8 +39993,8 @@ ThreeJS.prototype.processCode = function( skip_events )
 
 LS.registerComponent( ThreeJS );
 
-//FILE: ../src/components/canvas3d.js
-
+///@FILE:../src/components/canvas3d.js
+///@INFO: UNCOMMON
 /**
 * Allows to render 2d canvas primitives, but they are rendered into a plane that can be positioned in 3D space.
 * It also supports to store the texture so it can be used in another material.
@@ -40659,7 +40316,8 @@ Canvas3D.prototype.onResourceRenamed = function (old_name, new_name, resource)
 */
 
 LS.registerComponent( Canvas3D );
-//FILE: ../src/components/videoPlayer.js
+///@FILE:../src/components/videoPlayer.js
+///@INFO: UNCOMMON
 //work in progress
 
 function VideoPlayer(o)
@@ -41080,7 +40738,8 @@ VideoPlayer.prototype.onCollectInstances = function( e, RIs )
 }
 
 LS.registerComponent( VideoPlayer );
-//FILE: ../src/components/interactiveController.js
+///@FILE:../src/components/interactiveController.js
+///@INFO: UNCOMMON
 /**
 * Allows to easily test interaction between the user and the scene, attach the InteractiveController to the root and the mouse down,move and up events will
 * be processed using a raycast and trigger events.
@@ -41206,7 +40865,8 @@ InteractiveController.prototype._onMouse = function(type, e)
 
 LS.registerComponent( InteractiveController );
 
-//FILE: ../src/scene.js
+///@FILE:../src/scene.js
+///@INFO: BASE
 /**
 * The Scene contains all the info about the Scene and nodes
 *
@@ -43125,7 +42785,8 @@ LS.Classes.Scene = Scene;
 LS.Classes.SceneTree = Scene; //LEGACY
 
 
-//FILE: ../src/sceneNode.js
+///@FILE:../src/sceneNode.js
+///@INFO: BASE
 //****************************************************************************
 
 /**
@@ -44230,7 +43891,7 @@ SceneNode.prototype.configure = function(info)
 	if(info.material)
 	{
 		var mat_classname = info.material.material_class;
-		if(!mat_classname) 
+		if(!mat_classname || mat_classname == "newStandardMaterial") //legacy
 			mat_classname = "StandardMaterial";
 		var constructor = LS.MaterialClasses[mat_classname];
 		if(constructor)
@@ -44486,14 +44147,15 @@ LS.Scene.Node = SceneNode;
 LS.SceneNode = SceneNode;
 LS.Classes.SceneNode = SceneNode;
 
-//FILE: ../src/render/basePipeline.js
+///@FILE:../src/render/basePipeline.js
+///@INFO: BASE
 //this file defines the shaderblocks that interact in the render of any standard material
 //the pipeline is quite standard
 
 //for structures like Input go to shaders.xml
 
 //define surface structures
-LS.ShadersManager.registerSnippet("surface","\n\
+LS.Shaders.registerSnippet("surface","\n\
 	//used to store surface shading properties\n\
 	struct SurfaceOutput {\n\
 		vec3 Albedo;\n\
@@ -44524,7 +44186,7 @@ LS.ShadersManager.registerSnippet("surface","\n\
 ");
 
 // LIGHT STRUCTS AND FUNCTIONS *****************************************
-LS.ShadersManager.registerSnippet("light_structs","\n\
+LS.Shaders.registerSnippet("light_structs","\n\
 	#ifndef SB_LIGHT_STRUCTS\n\
 	#define SB_LIGHT_STRUCTS\n\
 	uniform lowp vec4 u_light_info;\n\
@@ -44838,11 +44500,25 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 			return depth.x;\n\
 		#endif\n\
 	}\n\
+	float texsize = 1.0 / u_shadow_params.x;\n\
+	float real_depth = 0.0;\n\
+	\n\
+	float pixelShadow( vec2 uv )\n\
+	{\n\
+		float sampleDepth = UnpackDepth( texture2D(shadowmap, uv) );\n\
+		float depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
+		if (depth > 0.0) \n\
+			return real_depth > depth ? 0.0 : 1.0;\n\
+		return 0.0;\n\
+	}\n\
+	float expFunc(float f)\n\
+	{\n\
+		return f*f*f*(f*(f*6.0-15.0)+10.0);\n\
+	}\n\
 	\n\
 	float testShadow( Light LIGHT )\n\
 	{\n\
 		vec3 offset = vec3(0.0);\n\
-		float shadow = 0.0;\n\
 		float depth = 0.0;\n\
 		float bias = u_shadow_params.y;\n\
 		\n\
@@ -44850,11 +44526,20 @@ Light._shadowmap_2d_enabled_fragment_code = "\n\
 		//is inside light frustum\n\
 		if (clamp(sample, 0.0, 1.0) != sample) \n\
 			return LIGHT.Info.x == 3.0 ? 1.0 : 0.0; //outside of shadowmap, no shadow\n\
-		float sampleDepth = UnpackDepth( texture2D(shadowmap, sample) );\n\
-		depth = (sampleDepth == 1.0) ? 1.0e9 : sampleDepth; //on empty data send it to far away\n\
-		if (depth > 0.0) \n\
-			shadow = ((v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5) > depth ? 0.0 : 1.0;\n\
-		return shadow;\n\
+		\n\
+		real_depth = (v_light_coord.z - bias) / v_light_coord.w * 0.5 + 0.5;\n\
+		vec2 topleft_uv = sample * texsize;\n\
+		vec2 offset_uv = fract( topleft_uv );\n\
+		offset_uv.x = expFunc(offset_uv.x);\n\
+		offset_uv.y = expFunc(offset_uv.y);\n\
+		topleft_uv = floor(topleft_uv) * u_shadow_params.x;\n\
+		float topleft = pixelShadow( topleft_uv );\n\
+		float topright = pixelShadow( topleft_uv + vec2(u_shadow_params.x,0.0) );\n\
+		float bottomleft = pixelShadow( topleft_uv + vec2(0.0, u_shadow_params.x) );\n\
+		float bottomright = pixelShadow( topleft_uv + vec2(u_shadow_params.x, u_shadow_params.x) );\n\
+		float top = mix( topleft, topright, offset_uv.x );\n\
+		float bottom = mix( bottomleft, bottomright, offset_uv.x );\n\
+		return mix( top, bottom, offset_uv.y );\n\
 	}\n\
 ";
 
@@ -44982,7 +44667,8 @@ ShaderMaterial.irradiance_block = irradiance_block;
 irradiance_block.addCode( GL.FRAGMENT_SHADER, irradiance_code, irradiance_disabled_code );
 irradiance_block.register();
 
-//FILE: ../src/formats.js
+///@FILE:../src/formats.js
+///@INFO: BASE
 /**
 * Formats is the class where all the info about what is every format, how to parse it, etc, is located
 *
@@ -45192,7 +44878,8 @@ function typedArrayToString(typed_array, same_size)
 			r += String.fromCharCode( typed_array[i] );
 	return r;
 }
-//FILE: ../src/parsers/parserASE.js
+///@FILE:../src/parsers/parserASE.js
+///@INFO: PARSER
 //***** ASE Parser *****************
 var parserASE = {
 	extension: "ase",
@@ -45373,7 +45060,8 @@ var parserASE = {
 
 LS.Formats.addSupportedFormat( "ase", parserASE );
 
-//FILE: ../src/parsers/parserBVH.js
+///@FILE:../src/parsers/parserBVH.js
+///@INFO: PARSER
 //***** BVH Parser *****************
 var parserBVH = {
 	extension: "bvh",
@@ -45637,7 +45325,7 @@ var parserBVH = {
 };
 
 LS.Formats.addSupportedFormat( "bvh", parserBVH );
-//FILE: ../src/parsers/collada.js
+///@FILE:../src/parsers/collada.js
 // Collada.js  https://github.com/jagenjo/collada.js
 // Javi Agenjo 2015 
 // Specification from https://www.khronos.org/collada/wiki
@@ -48728,8 +48416,8 @@ if(isWorker)
 }
 
 })( typeof(window) != "undefined" ? window : self );
-//FILE: ../src/parsers/parserDAE.js
-
+///@FILE:../src/parsers/parserDAE.js
+///@INFO: PARSER
 var parserDAE = {
 	extension: "dae",
 	type: "scene",
@@ -49114,7 +48802,8 @@ var parserDAE = {
 
 LS.Formats.addSupportedFormat( "dae", parserDAE );
 
-//FILE: ../src/parsers/parserDDS.js
+///@FILE:../src/parsers/parserDDS.js
+///@INFO: PARSER
 var parserDDS = { 
 	extension: "dds",
 	type: "image",
@@ -49141,7 +48830,8 @@ var parserDDS = {
 };
 
 LS.Formats.addSupportedFormat( "dds", parserDDS );
-//FILE: ../src/parsers/parserJSMESH.js
+///@FILE:../src/parsers/parserJSMESH.js
+///@INFO: PARSER
 //legacy format
 var parserJSMesh = { 
 	extension: 'jsmesh',
@@ -49179,7 +48869,8 @@ var parserJSMesh = {
 
 LS.Formats.addSupportedFormat( "jsmesh", parserJSMesh );
 
-//FILE: ../src/parsers/parserOBJ.js
+///@FILE:../src/parsers/parserOBJ.js
+///@INFO: PARSER
 //***** OBJ parser adapted from SpiderGL implementation *****************
 var parserOBJ = {
 	extension: 'obj',
@@ -49950,7 +49641,8 @@ var parserMTL = {
 };
 
 LS.Formats.addSupportedFormat( "mtl", parserMTL );
-//FILE: ../src/parsers/parserSTL.js
+///@FILE:../src/parsers/parserSTL.js
+///@INFO: PARSER
 //***** STL Parser *****************
 //based on https://github.com/tonylukasavage/jsstl
 var parserSTL = {
@@ -50039,7 +49731,8 @@ var parserSTL = {
 
 LS.Formats.addSupportedFormat( "stl", parserSTL );
 
-//FILE: ../src/parsers/parserTGA.js
+///@FILE:../src/parsers/parserTGA.js
+///@INFO: PARSER
 var parserTGA = { 
 	extension: 'tga',
 	type: 'image',
@@ -50101,7 +49794,8 @@ var parserTGA = {
 };
 
 LS.Formats.addSupportedFormat( "tga", parserTGA );
-//FILE: ../src/player.js
+///@FILE:../src/player.js
+///@INFO: BASE
 /**
 * Player class allows to handle the app context easily without having to glue manually all events
 	There is a list of options
@@ -50213,7 +49907,8 @@ function Player(options)
 	gl.captureTouch(true);
 	gl.captureGamepads(true);
 
-	LS.Input.init();
+	if(LS.Input)
+		LS.Input.init();
 
 	if(options.enableFileDrop !== false)
 		this.setFileDrop(true);
@@ -50422,8 +50117,10 @@ Player.prototype.play = function()
 	if(this.debug)
 		console.log("Start");
 	this.state = LS.Player.PLAYING;
-	LS.Input.reset(); //this force some events to be sent
-	LS.GUI.reset(); //clear GUI
+	if(LS.Input)
+		LS.Input.reset(); //this force some events to be sent
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 	this.scene.start();
 }
 
@@ -50435,7 +50132,8 @@ Player.prototype.stop = function()
 {
 	this.state = LS.Player.STOPPED;
 	this.scene.finish();
-	LS.GUI.reset(); //clear GUI
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 }
 
 /**
@@ -50444,8 +50142,10 @@ Player.prototype.stop = function()
 */
 Player.prototype.clear = function()
 {
-	LS.Input.reset(); //this force some events to be sent
-	LS.GUI.reset(); //clear GUI
+	if(LS.Input)
+		LS.Input.reset(); //this force some events to be sent
+	if(LS.GUI)
+		LS.GUI.reset(); //clear GUI
 	this.scene.clear();
 }
 
@@ -50586,8 +50286,10 @@ Player.prototype._onupdate = function(dt)
 	if(this.state != LS.Player.PLAYING)
 		return;
 
-	LS.Tween.update(dt);
-	LS.Input.update(dt);
+	if(LS.Tween)
+		LS.Tween.update(dt);
+	if(LS.Input)
+		LS.Input.update(dt);
 
 	if(this.onPreUpdate)
 		this.onPreUpdate(dt);
@@ -50603,7 +50305,7 @@ Player.prototype._onupdate = function(dt)
 Player.prototype._onmouse = function(e)
 {
 	//send to the input system (if blocked ignore it)
-	if( LS.Input.onMouse(e) == true )
+	if( LS.Input && LS.Input.onMouse(e) == true )
 		return;
 
 	//console.log(e);
@@ -50635,7 +50337,8 @@ Player.prototype._ontouch = function(e)
 Player.prototype._onkey = function(e)
 {
 	//send to the input system
-	LS.Input.onKey(e);
+	if(LS.Input)
+		LS.Input.onKey(e);
 
 	if(this.state != LS.Player.PLAYING)
 		return;
@@ -50723,7 +50426,8 @@ Player.prototype.setDebugRender = function(v)
 
 LS.Player = Player;
 
-//FILE: ../src/utils.js
+///@FILE:../src/utils.js
+///@INFO: BASE
 /**
 * Samples a curve and returns the resulting value 
 *
@@ -50918,7 +50622,8 @@ if( !Float32Array.prototype.hasOwnProperty( "equal" ) )
 		enumerable: false
 	});
 }
-//FILE: ../src/outro.js
+///@FILE:../src/outro.js
+///@INFO: BASE
 //here goes the ending of commonjs stuff
 
 //create Global Scene

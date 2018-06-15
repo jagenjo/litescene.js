@@ -1,3 +1,4 @@
+///@INFO: BASE
 //here goes the ending of commonjs stuff
 
 //create Global Scene

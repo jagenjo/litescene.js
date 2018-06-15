@@ -1,3 +1,4 @@
+///@INFO: ANIMATION
 
 //Interpolation methods
 LS.NONE = 0;
@@ -1745,7 +1746,7 @@ Animation.EvaluateHermiteSplineVector = function( p0, p1, pre_p0, post_p1, s, re
 	var h3 =   s3 - 2*s2 + s;         // calculate basis function 3
 	var h4 =   s3 -  s2;              // calculate basis function 4
 
-	for(var i = 0; i < result.length; ++i)
+	for(var i = 0, l = result.length; i < l; ++i)
 	{
 		var t0 = p1[i] - pre_p0[i];
 		var t1 = post_p1[i] - p0[i];

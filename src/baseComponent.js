@@ -1,3 +1,4 @@
+///@INFO: BASE
 /*
 *  Components are elements that attach to Nodes or other objects to add functionality
 *  Some important components are Transform, Light or Camera

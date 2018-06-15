@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**	DebugRender
 * Used to render debug information like skeletons, a grid, etc
 * I moved it from WebGLStudio to LS so it could help when working with scenes coded without the editor

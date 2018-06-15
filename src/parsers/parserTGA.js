@@ -1,3 +1,4 @@
+///@INFO: PARSER
 var parserTGA = { 
 	extension: 'tga',
 	type: 'image',

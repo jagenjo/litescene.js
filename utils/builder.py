@@ -53,7 +53,7 @@ def packJSCode(files):
         if os.path.exists(src_file) == False:
             sys.stderr.write('\033[91m'+"JS File not found"+'\033[0m\n')
             continue
-        data += "//FILE: " + filename + "\n"
+        data += "///@FILE:" + filename + "\n"
         data += open(src_file).read() + "\n"
         if check_files_individually:
               os.system("java -jar %s --js %s --js_output_file %s" % (compiler_path, src_file, "temp.js") )

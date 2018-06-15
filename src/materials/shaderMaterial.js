@@ -1,6 +1,6 @@
 
 /**
-* ShaderMaterial allows to use your own shader from scratch, but you loose some of the benefits of using the dynamic shader system of LS
+* ShaderMaterial allows to use your own shader from scratch
 * @namespace LS
 * @class ShaderMaterial
 * @constructor
@@ -13,6 +13,7 @@ function ShaderMaterial( o )
 	this._shader = "";
 	this._shader_version = -1;
 	this._shader_flags = 0; //?
+	this._shader_code = null;
 
 	this._uniforms = {};
 	this._samplers = [];
@@ -31,6 +32,7 @@ function ShaderMaterial( o )
 		this.configure(o);
 }
 
+//assign a shader from a filename to a shadercode
 Object.defineProperty( ShaderMaterial.prototype, "shader", {
 	enumerable: true,
 	get: function() {
@@ -41,7 +43,21 @@ Object.defineProperty( ShaderMaterial.prototype, "shader", {
 			v = LS.ResourcesManager.cleanFullpath(v);
 		if(this._shader == v)
 			return;
+		this._shader_code = null;
 		this._shader = v;
+		this.processShaderCode();
+	}
+});
+
+//allows to assign a shader code that doesnt come from a resource
+Object.defineProperty( ShaderMaterial.prototype, "shader_code", {
+	enumerable: false,
+	get: function() {
+		return this._shader_code;
+	},
+	set: function(v) {
+		this._shader = null;
+		this._shader_code = v;
 		this.processShaderCode();
 	}
 });
@@ -157,7 +173,7 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 	else if( this._properties_by_name[ name ] )
 	{
 		var prop = this._properties_by_name[ name ];
-		if( !prop.value || !prop.value.length)
+		if( !prop.value || prop.value.constructor === String || !prop.value.length )
 			prop.value = value;
 		else
 			prop.value.set( value );
@@ -170,7 +186,7 @@ ShaderMaterial.prototype.setProperty = function(name, value)
 //check the ShaderCode associated and applies it to this material (keeping the state of the properties)
 ShaderMaterial.prototype.processShaderCode = function()
 {
-	if(!this._shader)
+	if(!this._shader_code && !this._shader)
 	{
 		this._properties.length = 0;
 		this._properties_by_name = {};
@@ -180,8 +196,12 @@ ShaderMaterial.prototype.processShaderCode = function()
 	}
 
 	//get shader code
-	var shader_code = LS.ResourcesManager.getResource( this.shader );
-	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
+	var shader_code = this._shader_code;
+	
+	if( !shader_code && this._shader )
+		shader_code = LS.ResourcesManager.getResource( this.shader );
+
+	if( !shader_code || shader_code.constructor !== LS.ShaderCode )
 		return false;
 
 	var old_properties = this._properties_by_name;
@@ -194,7 +214,7 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//reset material properties
 	this._queue = LS.RenderQueue.GEOMETRY;
-	this.render_state.init();
+	this._render_state.init();
 
 	//clear old functions
 	for(var i in this)
@@ -237,9 +257,6 @@ ShaderMaterial.prototype.processShaderCode = function()
 
 	//restore old values
 	this.assignOldProperties( old_properties );
-
-	//set stuff
-	//TODO
 }
 
 //used after changing the code of the ShaderCode and wanting to reload the material keeping the old properties
@@ -324,10 +341,11 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	block_flags |= LS.Renderer._global_block_flags; //apply global block_flags
 
 	//global stuff
-	this.render_state.enable();
+	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
 	var global_flags = 0;
 
+	//TODO: could this part be precomputed before rendering color pass?
 	if( pass.id == COLOR_PASS ) //allow reflections only in color pass
 	{
 		global_flags |= LS.ShaderMaterial.reflection_block.flag_mask;
@@ -401,7 +419,10 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		//extract shader compiled
 		var shader = shader_code.getShader( null, block_flags );
 		if(!shader)
+		{
+			console.warn("material without pass: " + pass.name );
 			continue;
+		}
 
 		//light texture like shadowmap and cookie
 		LS.Renderer.bindSamplers( light._samplers );
@@ -471,7 +492,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	var block_flags = instance.computeShaderBlockFlags();
 
 	//global stuff
-	this.render_state.enable();
+	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
 
 	//extract shader compiled
@@ -580,7 +601,7 @@ ShaderMaterial.prototype.getPropertyInfoFromPath = function( path )
 //get shader code
 ShaderMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	var shader_code = LS.ResourcesManager.getResource( this.shader );
+	var shader_code = this._shader_code || LS.ResourcesManager.getResource( this._shader );
 	if(!shader_code || shader_code.constructor !== LS.ShaderCode )
 		return null;
 

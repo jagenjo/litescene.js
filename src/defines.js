@@ -1,4 +1,4 @@
-
+///@INFO: BASE
 if(typeof(GL) == "undefined")
 	throw("LiteSCENE requires to have litegl.js included before litescene.js");
 

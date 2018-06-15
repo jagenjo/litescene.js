@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Target rotate a mesh to look at the camera or another object
 * @class Target

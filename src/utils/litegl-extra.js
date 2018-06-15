@@ -1,3 +1,4 @@
+///@INFO: BASE
 //when working with animations sometimes you want the bones to be referenced by node name and no node uid, because otherwise you cannot reuse
 //the same animation with different characters in the same scene.
 GL.Mesh.prototype.convertBoneNames = function( root_node, use_uids )

@@ -1,3 +1,4 @@
+///@INFO: ANIMATION
 /**
 * Reads animation tracks from an LS.Animation resource and applies the properties to the objects referenced
 * @class PlayAnimation

@@ -1,3 +1,4 @@
+///@INFO: BASE
 var Network = {
 
 	default_dataType: "arraybuffer",

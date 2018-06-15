@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * Static class that contains all the resources loaded, parsed and ready to use.
 * It also contains the parsers and methods in charge of processing them
@@ -328,6 +329,10 @@ var ResourcesManager = {
 			this.proxy = location.protocol + "//" + proxy_url.replace("@", window.location.host );
 		else
 			this.proxy = proxy_url;
+
+		if(	typeof(LiteGraph) !== "undefined" )
+			LiteGraph.proxy = this.proxy;
+
 	},
 
 	/**

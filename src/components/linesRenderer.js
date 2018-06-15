@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Helps rendering several lines
 * @class LinesRenderer

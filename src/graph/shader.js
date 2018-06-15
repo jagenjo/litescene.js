@@ -1,3 +1,4 @@
+///@INFO: GRAPHS
 if(typeof(LiteGraph) != "undefined")
 {
 	function LGraphShaderSurface()

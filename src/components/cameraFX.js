@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * This component allow to create basic FX
 * @class CameraFX

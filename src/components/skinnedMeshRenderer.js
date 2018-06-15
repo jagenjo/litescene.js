@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function SkinnedMeshRenderer(o)
 {
 	this.enabled = true;
@@ -227,17 +227,13 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 	{
 		RI.setMesh( mesh, this.primitive );
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		delete RI.samplers["u_bones"];
 	}
 	else if( SkinnedMeshRenderer.gpu_skinning_supported && !this.cpu_skinning ) 
 	{
 		RI.setMesh(mesh, this.primitive);
 
-		//add skinning
-		RI.query.macros["USE_SKINNING"] = "";
-		
+	
 		//retrieve all the bones
 		var bones = this.getBoneMatrices(mesh);
 		var bones_size = bones.length * 12;
@@ -258,8 +254,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		{
 			//upload the bones as uniform (faster but doesnt work in all GPUs)
 			RI.uniforms["u_bones"] = u_bones;
-			if(bones.length > SkinnedMeshRenderer.MAX_BONES)
-				RI.query.macros["MAX_BONES"] = bones.length.toString();
 			delete RI.samplers["u_bones"]; //use uniforms, not samplers
 		}
 		else if( SkinnedMeshRenderer.num_supported_textures > 0 ) //upload the bones as a float texture (slower)
@@ -274,7 +268,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 			texture._data.set( u_bones );
 			texture.uploadData( texture._data, { no_flip: true } );
 			LS.RM.textures[":bones"] = texture; //debug
-			RI.query.macros["USE_SKINNING_TEXTURE"] = "";
 			RI.samplers["u_bones"] = texture;
 			delete RI.uniforms["u_bones"]; //use samplers, not uniforms
 		}
@@ -307,8 +300,6 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		this.applySkin( mesh, this._skinned_mesh );
 		RI.setMesh(this._skinned_mesh, this.primitive);
 		//remove the flags to avoid recomputing shaders
-		delete RI.query.macros["USE_SKINNING"]; 
-		delete RI.query.macros["USE_SKINNING_TEXTURE"];
 		delete RI.samplers["u_bones"];
 	}
 
@@ -335,10 +326,7 @@ SkinnedMeshRenderer.prototype.onCollectInstances = function(e, instances, option
 		RI.use_bounding = false; //no frustum test in skinned meshes, hard to compute the frustrum in CPU
 
 	if(this.primitive == gl.POINTS)
-	{
 		RI.uniforms.u_point_size = this.point_size;
-		RI.query.macros["USE_POINTS"] = "";
-	}
 
 	instances.push(RI);
 	//return RI;

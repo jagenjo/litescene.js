@@ -1,3 +1,4 @@
+///@INFO: BASE
 /**
 * Samples a curve and returns the resulting value 
 *

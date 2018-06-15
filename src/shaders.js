@@ -1,3 +1,4 @@
+///@INFO: BASE
 /* Basic shader manager 
 	- Allows to load all shaders from XML
 	- Allows to use a global shader
@@ -5,26 +6,19 @@
 
 //************************************
 /**
-* ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.
+* Shaders is the static class in charge of loading, compiling and storing shaders for reuse.
 *
-* @class ShadersManager
+* @class Shaders
 * @namespace LS
 * @constructor
 */
 
-var ShadersManager = {
-
-	default_xml_url: "data/shaders.xml",
+var Shaders = {
 
 	snippets: {},//to save source snippets
 	shader_blocks: new Map(),//to save shader block
-	compiled_programs: {}, //shaders already compiled and ready to use
-	compiled_shaders: {}, //every vertex and fragment shader compiled
 
-	global_shaders: {}, //shader codes to be compiled using some macros
-	templates: {}, //WIP
-
-	default_shader: null, //a default shader to rely when a shader is not found
+	global_extra_code: null,
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
@@ -38,14 +32,6 @@ var ShadersManager = {
 	*/
 	init: function(url, ignore_cache)
 	{
-		//set a default shader 
-		this.default_shader = null;
-
-		//storage
-		this.compiled_programs = {};
-		this.compiled_shaders = {};
-		this.global_shaders = {};
-
 		//this.shader_blocks = {};//do not initialize, or we will loose all
 
 		//base intro code for shaders
@@ -54,16 +40,6 @@ var ShadersManager = {
 			this.global_extra_code += "#define STANDARD_DERIVATIVES\n";
 		if( gl.webgl_version == 2 || gl.extensions.WEBGL_draw_buffers )
 			this.global_extra_code += "#define DRAW_BUFFERS\n";
-
-		//compile some shaders
-		this.createDefaultShaders();
-
-		//if a shader is not found, the default shader is returned, in this case a flat shader
-		this.default_shader = this.get("flat");
-
-		url = url || this.default_xml_url;
-		this.last_shaders_url = url;
-		this.loadFromXML(url, false, ignore_cache);
 	},
 
 	/**
@@ -74,132 +50,7 @@ var ShadersManager = {
 	*/
 	reloadShaders: function(on_complete)
 	{
-		this.loadFromXML( this.last_shaders_url, true,true, on_complete);
-	},
-
-	/**
-	* Resolves a shader query, returns the shader
-	*
-	* @method resolve
-	* @param {ShaderQuery} query
-	* @return {GL.Shader} the shader, if not found the default shader is returned
-	*/
-	resolve: function( query )
-	{
-		return this.get( query.name, query.macros );
-	},
-
-	/**
-	* Clears all the compiled shaders
-	*
-	* @method clearCache
-	*/
-	clearCache: function()
-	{
-		this.compiled_programs = {};
-		this.compiled_shaders = {};
-	},
-
-	/**
-	* Returns a compiled shader with this id and this macros
-	*
-	* @method get
-	* @param {string} id
-	* @param {string} macros
-	* @return {GL.Shader} the shader, if not found the default shader is returned
-	*/
-	get: function( id, macros )
-	{
-		if(!id)
-			return this.default_shader;
-
-		//if there is no macros, just get the old one
-		if(!macros)
-		{
-			var shader = this.compiled_programs[id];
-			if (shader)
-				return shader;
-		}
-
-		var global = this.global_shaders[id];
-
-		if (global == null)
-			return this.default_shader;
-
-		var key = id + ":";
-		var extracode = "";
-
-		if(global.num_macros != 0)
-		{
-			//generate unique key
-			for (var macro in macros)
-			{
-				if (global.macros[ macro ])
-				{
-					key += macro + "=" + macros[macro] + ":";
-					extracode += String.fromCharCode(10) + "#define " + macro + " " + macros[macro] + String.fromCharCode(10); //why not "\n"??????
-				}
-			}//for macros
-		}
-
-		//hash key
-		var hashkey = key.hashCode();
-
-		//already compiled
-		if (this.compiled_programs[hashkey] != null)
-			return this.compiled_programs[hashkey];
-
-		var start_time = 0;
-		if (this.debug)
-			start_time = getTime();
-
-		//compile and store it
-		var vs_code = extracode + global.vs_code;
-		var fs_code = extracode + global.fs_code;
-
-		//expand code
-		if(global.imports)
-		{
-			var already_imported = {}; //avoid to import two times the same code to avoid collisions
-
-			var replace_import = function(v)
-			{
-				var token = v.split("\"");
-				var id = token[1];
-				if( already_imported[ id ] )
-					return "//already imported: " + id + "\n";
-				var snippet = ShadersManager.snippets[id];
-				already_imported[id] = true;
-				if(snippet)
-					return snippet.code;
-				return "//snippet not found: " + id + "\n";
-			}
-
-			vs_code = vs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import );
-			already_imported = {}; //clear
-			fs_code	= fs_code.replace(/#import\s+\"(\w+)\"\s*\n/g, replace_import);
-		}
-
-		var shader = this.compileShader( vs_code, fs_code, key );
-		if(shader)
-			shader.global = global;
-
-		if(this.debug)
-			console.log("Time creating shader:", (getTime() - start_time).toFixed(3), "ms");
-
-		return this.registerCompiledShader(shader, hashkey, id);
-	},
-
-	/**
-	* Returns the info of a global shader
-	*
-	* @method getGlobalShaderInfo
-	* @param {string} id
-	* @return {Object} shader info (code, macros supported, flags)
-	*/
-	getGlobalShaderInfo: function(id)
-	{
-		return this.global_shaders[id];
+		//TODO: crawl all materials and clear shaders
 	},
 
 	/**
@@ -211,7 +62,7 @@ var ShadersManager = {
 	* @param {string} name an unique name that should be associated with this shader
 	* @return {GL.Shader} shader
 	*/
-	compileShader: function( vs_code, fs_code, name )
+	compile: function( vs_code, fs_code, name )
 	{
 		if(!name)
 			throw("compileShader must have a name specified");
@@ -275,262 +126,6 @@ var ShadersManager = {
 	},
 
 	/**
-	* Stores a compiled shader program, so it can be reused
-	*
-	* @method registerCompiledShader
-	* @param {GL.Shader} shader the compiled shader
-	* @param {string} key unique id 
-	* @param {string} id the shader name
-	* @return {GL.Shader} shader
-	*/
-	registerCompiledShader: function(shader, key, id)
-	{
-		if(shader == null)
-		{
-			this.compiled_programs[key] = this.default_shader;
-			return this.default_shader;
-		}
-
-		shader.id = id;
-		shader.key = key;
-		this.compiled_programs[key] = shader;
-		return shader;
-	},
-
-	/**
-	* Loads shaders code from an XML file
-	*
-	* @method loadFromXML
-	* @param {string} url to the shaders file
-	* @param {boolean} reset_old to reset all the existing shaders once loaded
-	* @param {boolean} ignore_cache force to ignore web cache 
-	* @param {function} on_complete callback once the file has been loaded and processed
-	*/
-	loadFromXML: function (url, reset_old, ignore_cache, on_complete)
-	{
-		var nocache = ignore_cache ? "?nocache=" + getTime() + Math.floor(Math.random() * 1000) : "";
-		LS.Network.request({
-		  url: url + nocache,
-		  dataType: 'xml',
-		  success: function(response){
-				console.log("Shaders XML loaded: " + url);
-				if(reset_old)
-				{
-					LS.ShadersManager.global_shaders = {};
-					LS.ShadersManager.compiled_programs = {};
-					LS.ShadersManager.compiled_shaders = {};
-				}
-				LS.ShadersManager.processShadersXML(response);
-				if(on_complete)
-					on_complete();
-		  },
-		  error: function(err){
-			  console.log("Error parsing Shaders XML: " + err);
-			  throw("Error parsing Shaders XML: " + err);
-		  }
-		});	
-	},
-
-	/**
-	* extracts all the shaders from the XML doc
-	*
-	* @method processShadersXML
-	* @param {XMLDocument} xml
-	*/
-	processShadersXML: function(xml)
-	{
-		//get shaders
-		var shaders = xml.querySelectorAll('shader');
-		
-		for(var i in shaders)
-		{
-			var shader_element = shaders[i];
-			if(!shader_element || !shader_element.attributes) continue;
-
-			var id = shader_element.attributes["id"];
-			if(!id) continue;
-			id = id.value;
-
-			var vs_code = "";
-			var fs_code = "";
-
-			//read all the supported macros
-			var macros_str = "";
-			var macros_attr = shader_element.attributes["macros"];
-			if(macros_attr)
-				macros_str += macros_attr.value;
-
-			var macros_xml = shader_element.querySelector("macros");
-			if(macros_xml)
-				macros_str += macros_xml.textContent;
-
-			var macros_array = macros_str.split(",");
-			var macros = {};
-			for(var i in macros_array)
-				macros[ macros_array[i].trim() ] = true;
-
-			//read the shaders code
-			vs_code = shader_element.querySelector("code[type='vertex_shader']").textContent;
-			fs_code = shader_element.querySelector("code[type='pixel_shader']").textContent;
-
-			if(!vs_code || !fs_code)
-			{
-				console.log("no code in shader: " + id);
-				continue;
-			}
-
-			var options = {};
-
-			var multipass = shader_element.getAttribute("multipass");
-			if(multipass)
-				options.multipass = (multipass == "1" || multipass == "true");
-			var imports = shader_element.getAttribute("imports");
-			if(imports)
-				options.imports = (imports == "1" || imports == "true");
-			var events = shader_element.getAttribute("events");
-			if(events)
-				options.events = (events == "1" || events == "true");
-
-			LS.ShadersManager.registerGlobalShader( vs_code, fs_code, id, macros, options );
-		}
-
-		var snippets = xml.querySelectorAll('snippet');
-		for(var i = 0; i < snippets.length; ++i)
-		{
-			var snippet = snippets[i];
-			var id = snippet.getAttribute("id");
-			var code = snippet.textContent;
-			this.registerSnippet( id, code );
-		}
-
-		var templates = xml.querySelectorAll('template');
-		for(var i = 0; i < templates.length; ++i)
-		{
-			var template = templates[i];
-			var id = template.getAttribute("id");
-			var vs_code = template.querySelector("code[type='vertex_shader']").textContent;
-			var fs_code = template.querySelector("code[type='fragment_shader']").textContent;
-
-			var vs_info = this.processTemplateCode( vs_code );
-			var fs_info = this.processTemplateCode( fs_code );
-
-			template[id] = {
-				id: id,
-				vs_info: vs_info,
-				fs_info: fs_info
-			}
-
-			//console.log( template[id] );
-		}
-
-		//we need to notify (LS.Player uses this)
-		this.ready = true;
-		if(this.on_ready)
-			this.on_ready();
-		LEvent.trigger( this, "ready" );
-	},
-	
-	//adds source code of a shader that could be compiled if needed
-	//id: name
-	//macros: supported macros by the shader
-	/**
-	* extracts all the shaders from the XML doc
-	*
-	* @method registerGlobalShader
-	* @param {string} vs_code
-	* @param {string} fs_code
-	*/
-	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
-	{
-		//detect macros
-		var macros_found = {};
-		//TO DO using a regexp
-
-		//count macros
-		var num_macros = 0;
-		for(var i in macros)
-			num_macros += 1;
-
-		//HACK for IE
-		if(gl && !gl.extensions["WEBGL_draw_buffers"])
-			fs_code = fs_code.replace("#extension GL_EXT_draw_buffers : enable", '');
-
-		var global = { 
-			vs_code: vs_code, 
-			fs_code: fs_code,
-			macros: macros,
-			num_macros: num_macros
-		};
-
-		//add options
-		if(options)
-		{
-			for(var i in options)
-				global[i] = options[i];
-
-			//process code
-			if(options.events)
-			{
-				var replace_events = function(v)
-				{
-					var token = v.split("\"");
-					var id = token[1];
-					//console.log("Event: ",id);
-					return "";
-				}
-
-				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
-				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
-			}
-		}
-
-		this.global_shaders[id] = global;
-		LEvent.trigger( LS.ShadersManager, "newShader" );
-		return global;
-	},
-
-	/*
-	registerGlobalShader: function(vs_code, fs_code, id, macros, options )
-	{
-		//detect macros
-		var macros_found = {};
-		//TO DO using a regexp
-
-		//count macros
-		var num_macros = 0;
-		for(var i in macros)
-			num_macros += 1;
-
-		var global = { 
-			vs_code: vs_code, 
-			fs_code: fs_code,
-			macros: macros,
-			num_macros: num_macros
-		};
-
-		//add options
-		if(options)
-		{
-			for(var i in options)
-				global[i] = options[i];
-
-				var vs_areas = vs_code.split("#pragma");
-				var fs_areas = fs_code.split("#pragma");
-				
-
-				global.vs_code = vs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events );
-				global.fs_code = fs_code.replace(/#event\s+\"(\w+)\"\s*\n/g, replace_events);
-			}
-		}
-
-		this.global_shaders[id] = global;
-		LEvent.trigger(ShadersManager,"newShader");
-		return global;
-	},
-	*/
-
-
-	/**
 	* Register a code snippet ready to be used by the #import clause in the shader
 	*
 	* @method registerSnippet
@@ -554,6 +149,13 @@ var ShadersManager = {
 		return this.snippets[ id ];
 	},
 
+	/**
+	* register a shaderblock in the global container so it can be used by shadermaterials
+	*
+	* @method registerShaderBlock
+	* @param {string} id
+	* @param {LS.ShaderBlock} shader_block
+	*/
 	registerShaderBlock: function(id, shader_block)
 	{
 		var block_id = -1;
@@ -574,6 +176,13 @@ var ShadersManager = {
 		this.shader_blocks.set( id, shader_block );
 	},
 
+	/**
+	* register a shaderblock with the given id
+	*
+	* @method getShaderBlock
+	* @param {string} id
+	* @return {LS.ShaderBlock} shader_block
+	*/
 	getShaderBlock: function( id )
 	{
 		return this.shader_blocks.get(id);
@@ -590,183 +199,22 @@ var ShadersManager = {
 	",
 	common_fscode: "\n\
 		precision mediump float;\n\
-	",
+	"
 
-	/**
-	* Create some default shaders useful for generic situations (flat, texture and screenspace quad)
-	*
-	* @method createDefaultShaders
-	* @param {string} id
-	* @return {string} code
-	*/
-	createDefaultShaders: function()
-	{
-		//flat
-		this.registerGlobalShader(this.common_vscode + '\
-			void main() {\
-				mat4 mvp = u_viewprojection * u_model;\
-				gl_Position = mvp * vec4(a_vertex,1.0);\
-			}\
-			', this.common_fscode + '\
-			uniform vec4 u_material_color;\
-			void main() {\
-			  gl_FragColor = vec4(u_material_color);\
-			}\
-		',"flat");
-
-		//flat texture
-		this.registerGlobalShader(this.common_vscode + '\
-			varying vec2 v_uvs;\
-			void main() {\n\
-				v_uvs = a_coord;\n\
-				mat4 mvp = u_viewprojection * u_model;\
-				gl_Position = mvp * vec4(a_vertex,1.0);\
-			}\
-			', this.common_fscode + '\
-			uniform vec4 u_material_color;\
-			varying vec2 v_uvs;\
-			uniform sampler2D texture;\
-			void main() {\
-				gl_FragColor = u_material_color * texture2D(texture,v_uvs);\
-			}\
-		',"texture_flat");
-
-		this.registerGlobalShader(this.common_vscode + '\
-			varying vec2 coord;\
-			void main() {\
-			coord = a_coord;\
-			gl_Position = vec4(coord * 2.0 - 1.0, 0.0, 1.0);\
-		}\
-		', this.common_fscode + '\
-			uniform sampler2D texture;\
-			uniform vec4 color;\
-			varying vec2 coord;\
-			void main() {\
-			gl_FragColor = texture2D(texture, coord) * color;\
-			}\
-		',"screen");
-	},
-
-	processTemplateCode: function( code )
-	{
-		//remove comments
-		code = code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
-
-		var hooks = {};
-		var parts = [];
-		var current_part = [];
-
-		var lines = code.split("\n");
-		for(var i = 0; i < lines.length; i++)
-		{
-			var line = lines[i].trim();
-			if(!line.length)
-				continue;//empty line
-			if(line[0] != "#")
-			{
-				current_part.push(line);
-				continue;
-			}
-
-			var t = line.split(" ");
-			if(t[0] == "#pragma")
-			{
-				switch(t[1])
-				{
-					case "import":
-						if( current_part.length )
-						{
-							parts.push( [ "code", current_part.join("\n") ] );
-							current_part = [];
-						}
-						parts.push( [ "import", t[3] ] );
-						break;
-					case "hook": 
-						if( current_part.length )
-						{
-							parts.push( [ "code", current_part.join("\n") ] );
-							current_part = [];
-						}
-						if( hooks[ t[3] ] !== undefined )
-							console.warn("Hook already found in shader: " + t[3] );
-						hooks[ t[3] ] = parts.length;
-						parts.push( [ "hook", t[3] ] );
-						break;
-					default:
-						current_part.push(line); //unknown pragma, pass it
-				}
-			}
-			else
-				current_part.push(line); //unknown macro, pass it
-		}
-
-		return {
-			code: code,
-			parts: parts,
-			hooks: hooks
-		};
-	}
 };
 
-LS.SM = LS.ShadersManager = ShadersManager;
-
+LS.Shaders = Shaders;
 
 /**
-* ShaderQuery is in charge of specifying info that must be taken into account when compiling a shader
+* A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
+* SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
+* it will be inserted in the material in the line of the pragma
 *
-* @class ShaderQuery
+* @class ShaderBlock
 * @namespace LS
 * @constructor
 */
-function ShaderQuery( name, macros )
-{
-	this.name = name;
-	this.macros = {}; //macros to add
-	this.hooks = {}; //represent points where this shader want to insert code
 
-	if(macros)
-		for(var i in macros)
-			this.macros[i] = macros[i];
-}
-
-ShaderQuery.prototype.clear = function()
-{
-	this.macros = {};
-	this.hooks = {};
-}
-
-ShaderQuery.prototype.add = function( query )
-{
-	if(!query)
-		return;
-
-	//add macros
-	for(var i in query.macros )
-		this.macros[i] = query.macros[i];
-
-	//add hooks
-}
-
-ShaderQuery.prototype.setMacro = function( name, value )
-{
-	this.macros[name] = value || "";
-}
-
-ShaderQuery.prototype.resolve = function()
-{
-	return LS.ShadersManager.resolve(this);
-}
-
-//ShaderQuery.prototype.addHook = function
-
-LS.ShaderQuery = ShaderQuery;
-
-
-
-// WIP
-// A ShaderBlock represents a block of GLSL code that could be requested by a shader in order to obtain a functionality.
-// SBs are registered and given a number, then if a shader wants that functionality it could use #pragma shaderblock "sb_name"
-// it will be inserted in the material in the line of the pragma
 function ShaderBlock( name )
 {
 	this.dependency_blocks = []; //blocks referenced by this block
@@ -786,7 +234,16 @@ ShaderBlock.prototype.defineContextMacros = function( macros )
 	this.context_macros = macros;
 }
 
-//shader_type: vertex or fragment shader
+/**
+* register a shaderblock with the given id
+* shader_type: vertex or fragment shader
+*
+* @method addCode
+* @param {enum} shader_type could be  GL.VERTEX_SHADER or  GL.FRAGMENT_SHADER
+* @param {string} enabled_code the code to insert if the shaderblock is enabled
+* @param {string} disabled_code the code to insert if the shaderblock is disabled
+* @param {Object} macros [optional] a set of macros to use when compiling this shader codes
+*/
 ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_code, macros )
 {
 	enabled_code  = enabled_code || "";
@@ -803,8 +260,16 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 	this.code_map.set( shader_type, info );
 }
 
-//returns the full code of a shaderblock applying all includes, shaderblocks, etc
-//shadertype: GL.VERTEX_SHADER = 35633, GL.FRAGMENT_SHADER = 35632
+/**
+* Returns the full code of a shaderblock resolving all includes, shaderblocks, etc
+* shadertype: GL.VERTEX_SHADER = 35633, GL.FRAGMENT_SHADER = 35632
+*
+* @method getFinalCode
+* @param {enum} shader_type could be GL.VERTEX_SHADER or  GL.FRAGMENT_SHADER
+* @param {number} block_flags a number containing the mask (every bit is a flag for a shaderblock) with all the enabled shader blocks
+* @param {string} context an object with variable that could be fetched by the shaderblocks
+* @return {String} the final code ready to be compiled
+*/
 ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context )
 {
 	block_flags = block_flags || 0;
@@ -824,9 +289,14 @@ ShaderBlock.prototype.getFinalCode = function( shader_type, block_flags, context
 	return finalcode;
 }
 
+/**
+* Registers this shaderblock in the global LS.Shaders container
+*
+* @method register
+**/
 ShaderBlock.prototype.register = function()
 {
-	LS.ShadersManager.registerShaderBlock(this.name, this);
+	LS.Shaders.registerShaderBlock(this.name, this);
 }
 
 ShaderBlock.prototype.checkDependencies = function( code )
@@ -1032,7 +502,7 @@ GLSLCode.pragma_methods["include"] = {
 		}
 		else
 		{
-			var snippet_code = LS.ShadersManager.getSnippet( filename );
+			var snippet_code = LS.Shaders.getSnippet( filename );
 			if( !snippet_code )
 				return null; //snippet not found
 			extra_code = "\n" + snippet_code.code + "\n";
@@ -1104,7 +574,7 @@ GLSLCode.pragma_methods["shaderblock"] = {
 			}
 		}
 		
-		var shader_block = LS.ShadersManager.getShaderBlock( shader_block_name );
+		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
 		if(!shader_block)
 		{
 			//console.error("ShaderCode uses unknown ShaderBlock: ", fragment.shader_block);
@@ -1137,7 +607,7 @@ GLSLCode.pragma_methods["snippet"] = {
 	},
 	getCode: function( shader_type, fragment, block_flags, context )
 	{
-		var snippet = LS.ShadersManager.getSnippet( fragment.snippet );
+		var snippet = LS.Shaders.getSnippet( fragment.snippet );
 		if(!snippet)
 		{
 			console.error("ShaderCode uses unknown Snippet: ", fragment.snippet);
@@ -1174,3 +644,205 @@ GLSLCode.breakLines = function(lines)
 	return clean_lines;
 }
 
+
+// shaders
+
+LS.Shaders.registerSnippet("input","\n\
+			//used to store topology input information\n\
+			struct Input {\n\
+				vec4 color;\n\
+				vec3 vertex;\n\
+				vec3 normal;\n\
+				vec2 uv;\n\
+				vec2 uv1;\n\
+				\n\
+				vec3 camPos;\n\
+				vec3 viewDir;\n\
+				vec3 worldPos;\n\
+				vec3 worldNormal;\n\
+				vec4 screenPos;\n\
+			};\n\
+			\n\
+			Input getInput()\n\
+			{\n\
+				Input IN;\n\
+				IN.color = vec4(1.0);\n\
+				IN.vertex = v_pos;\n\
+				IN.normal = v_normal;\n\
+				IN.uv = v_uvs;\n\
+				IN.uv1 = IN.uv;\n\
+				\n\
+				IN.camPos = u_camera_eye;\n\
+				IN.viewDir = normalize(u_camera_eye - v_pos);\n\
+				IN.worldPos = v_pos;\n\
+				IN.worldNormal = normalize(v_normal);\n\
+				//IN.screenPos = vec4( (v_screenpos.xy / v_screenpos.w) * 0.5 + vec2(0.5), v_screenpos.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				IN.screenPos = vec4( (gl_FragCoord.xy / gl_FragCoord.w) * 0.5 + vec2(0.5), gl_FragCoord.zw );  //sometimes we need also z and w, thats why we pass all\n\
+				return IN;\n\
+			}\n\
+	");
+
+LS.Shaders.registerSnippet("structs","\n\
+			//used to store topology input information\n\
+			struct Input {\n\
+				vec4 color;\n\
+				vec3 vertex;\n\
+				vec3 normal;\n\
+				vec2 uv;\n\
+				vec2 uv1;\n\
+				\n\
+				vec3 camPos;\n\
+				vec3 viewDir;\n\
+				vec3 worldPos;\n\
+				vec3 worldNormal;\n\
+				vec4 screenPos;\n\
+			};\n\
+			\n\
+			//used to store surface shading properties\n\
+			struct SurfaceOutput {\n\
+				vec3 Albedo;\n\
+				vec3 Normal; //separated in case there is a normal map\n\
+				vec3 Emission;\n\
+				vec3 Ambient;\n\
+				float Specular;\n\
+				float Gloss;\n\
+				float Alpha;\n\
+				float Reflectivity;\n\
+				vec4 Extra; //for special purposes\n\
+			};\n\
+			\n\
+			//used to store light contribution\n\
+			//CAREFUL: this one is different than \n\
+			struct FinalLight {\n\
+				vec3 Color;\n\
+				vec3 Ambient;\n\
+				float Diffuse; //NdotL\n\
+				float Specular; //RdotL\n\
+				vec3 Emission;\n\
+				vec3 Reflection;\n\
+				float Attenuation;\n\
+				float Shadow; //1.0 means fully lit\n\
+			};\n\
+	");
+
+LS.Shaders.registerSnippet("spotFalloff","\n\
+			float spotFalloff(vec3 spotDir, vec3 lightDir, float angle_phi, float angle_theta)\n\
+			{\n\
+				float sqlen = dot(lightDir,lightDir);\n\
+				float atten = 1.0;\n\
+				\n\
+				vec4 spotParams = vec4( angle_phi, angle_theta, 1.0, 0.0 );\n\
+				spotParams.w = 1.0 / (spotParams.x-spotParams.y);\n\
+				\n\
+				vec3 dirUnit = lightDir * sqrt(sqlen); //we asume they are normalized\n\
+				float spotDot = dot(spotDir, -dirUnit);\n\
+				if (spotDot <= spotParams.y)// spotDot <= cos phi/2\n\
+					return 0.0;\n\
+				else if (spotDot > spotParams.x) // spotDot > cos theta/2\n\
+					return 1.0;\n\
+				\n\
+				// vertex lies somewhere beyond the two regions\n\
+				float ifallof = pow( (spotDot-spotParams.y)*spotParams.w,spotParams.z );\n\
+				return ifallof;\n\
+			}\n\
+	");
+
+LS.Shaders.registerSnippet("getFlatNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+				vec3 getFlatNormal(vec3 pos)\n\
+				{\n\
+					vec3 A = dFdx( pos );\n\
+					vec3 B = dFdy( pos );\n\
+					return normalize( cross(A,B) );\n\
+				}\n\
+			#else\n\
+				vec3 getFlatNormal(vec3 pos)\n\
+				{\n\
+					return vec3(0.0);\n\
+				}\n\
+			#endif\n\
+	");
+
+LS.Shaders.registerSnippet("perturbNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+			#endif\n\
+			\n\
+				mat3 cotangent_frame(vec3 N, vec3 p, vec2 uv)\n\
+				{\n\
+					// get edge vectors of the pixel triangle\n\
+					#ifdef STANDARD_DERIVATIVES\n\
+					\n\
+					vec3 dp1 = dFdx( p );\n\
+					vec3 dp2 = dFdy( p );\n\
+					vec2 duv1 = dFdx( uv );\n\
+					vec2 duv2 = dFdy( uv );\n\
+					\n\
+					// solve the linear system\n\
+					vec3 dp2perp = cross( dp2, N );\n\
+					vec3 dp1perp = cross( N, dp1 );\n\
+					vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;\n\
+					vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;\n\
+					#else\n\
+					vec3 T = vec3(1.0,0.0,0.0); //this is wrong but its a fake solution\n\
+					vec3 B = cross(N,T);\n\
+					T = cross(B,N);\n\
+					#endif\n\
+					 \n\
+					// construct a scale-invariant frame \n\
+					float invmax = inversesqrt( max( dot(T,T), dot(B,B) ) );\n\
+					return mat3( T * invmax, B * invmax, N );\n\
+				}\n\
+				\n\
+				vec3 perturbNormal( vec3 N, vec3 V, vec2 texcoord, vec3 normal_pixel )\n\
+				{\n\
+					#ifdef USE_POINTS\n\
+						return N;\n\
+					#endif\n\
+					\n\
+					// assume N, the interpolated vertex normal and \n\
+					// V, the view vector (vertex to eye)\n\
+					//vec3 normal_pixel = texture2D(normalmap, texcoord ).xyz;\n\
+					normal_pixel = normal_pixel * 255./127. - 128./127.;\n\
+					mat3 TBN = cotangent_frame(N, V, texcoord);\n\
+					return normalize(TBN * normal_pixel);\n\
+				}\n\
+		");
+
+LS.Shaders.registerSnippet("bumpNormal","\n\
+			#ifdef STANDARD_DERIVATIVES\n\
+				#extension GL_OES_standard_derivatives : enable \n\
+			#endif\n\
+				\n\
+				// Calculate the surface normal using screen-space partial derivatives of the height field\n\
+				vec3 bumpNormal(vec3 position, vec3 normal, sampler2D texture, vec2 uvs, float factor)\n\
+				{\n\
+				#ifdef STANDARD_DERIVATIVES\n\
+			        vec3 dpdx = dFdx(position);\n\
+			        vec3 dpdy = dFdy(position);\n\
+					vec3 r1 = cross(dpdy, normal);\n\
+					vec3 r2 = cross(normal, dpdx);\n\
+					\n\
+					vec2 dtdx = dFdx(uvs) * factor;\n\
+					vec2 dtdy = dFdy(uvs) * factor;\n\
+					\n\
+			        float h = texture2D( texture,  uvs ).r;\n\
+			        float hdx = texture2D( texture,  uvs + dtdx ).r;\n\
+			        float hdy = texture2D( texture,  uvs + dtdy ).r;\n\
+					\n\
+					return normalize(normal + (r1 * (hdx - h) - r2 * (hdy - h)) / dot(dpdx, r1));\n\
+				#else\n\
+					return normal;\n\
+				#endif\n\
+				}\n\
+		");
+
+LS.Shaders.registerSnippet("computePointSize","\n\
+			float computePointSize(float radius, float w)\n\
+			{\n\
+				if(radius < 0.0)\n\
+					return -radius;\n\
+				return u_viewport.w * u_camera_perspective.z * radius / w;\n\
+			}\n\
+	");

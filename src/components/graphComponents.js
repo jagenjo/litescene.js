@@ -1,3 +1,4 @@
+///@INFO: GRAPHS
 /* Requires LiteGraph.js ******************************/
 
 //on include, link to resources manager

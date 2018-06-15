@@ -1,3 +1,4 @@
+///@INFO: PARSER
 //***** STL Parser *****************
 //based on https://github.com/tonylukasavage/jsstl
 var parserSTL = {

@@ -1,3 +1,4 @@
+///@INFO: BASE
 //WORK IN PROGRESS
 
 /** SpatialContainer

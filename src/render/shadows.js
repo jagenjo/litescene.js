@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 //Shadows are complex because there are too many combinations: SPOT/DIRECT,OMNI or DEPTH_COMPONENT,RGBA or HARD,SOFT,VARIANCE
 //It would be nice to have classes that can encapsulate different shadowmap algorithms so they are easy to develop
 

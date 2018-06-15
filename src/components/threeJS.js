@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 // This Component shows the possibility of using another Render Engine within WebGLStudio.
 // The idea here is to create a component that calls the other render engine renderer during my rendering method
 function ThreeJS( o )

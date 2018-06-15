@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 /**
 * Allows to include a secondary scene inside this scene (with some limitations)
 * @class SceneInclude

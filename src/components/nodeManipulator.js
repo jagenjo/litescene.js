@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 /**
 * Node manipulator, allows to rotate it
 * @class NodeManipulator

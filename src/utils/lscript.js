@@ -1,3 +1,4 @@
+///@INFO: SCRIPTS
 // ******* LScript  **************************
 
 /**
@@ -188,8 +189,11 @@ LScript.cleanCode = function(code)
 {
 	if(!code)
 		return "";
-
-	var rx = /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/g;
+	/*  this should be removed 
+		I write this to test this func using LScript.cleanCode( LScript.cleanCode.toString() );
+	*/
+	//var rx = /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/g;
+	var rx = /\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/g;
 	var code = code.replace( rx ,"");
 	var lines = code.split("\n");
 	var result = [];
@@ -197,8 +201,8 @@ LScript.cleanCode = function(code)
 	{
 		var line = lines[i]; 
 		var pos = line.indexOf("//");
-		if(pos != -1)
-			line = lines[i].substr(0,pos);
+		if(pos != -1 && line.substr(0,pos).indexOf("\"") == -1) //avoid removing lines with comments inside strings
+			line = line.substr(0,pos);
 		line = line.trim();
 		if(line.length)
 			result.push(line);

@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function Skydome(o)
 {
 	this.sun_altitude = 0.5;

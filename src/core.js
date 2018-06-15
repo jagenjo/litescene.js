@@ -15,6 +15,7 @@ if( typeof(GL) === "undefined" )
 /**
 * LS is the global scope for the global functions and containers of LiteScene
 *
+///@INFO: BASE
 * @class  LS
 * @module LS
 */
@@ -32,6 +33,7 @@ var LS = {
 	Physics: null,
 	ShadersManager: null,
 	Formats: null,
+	Tween: null,
 
 	//containers
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
@@ -262,22 +264,7 @@ var LS = {
 				j--; 
 				num++;
 			}
-			
-
-			/*
-			//this is a slow way but we dont care, this is used very rarely
-			var info = node.serialize();
-			info = { components: info.components }; //just want the components
-			for(var j = 0; j < info.components.length; ++j)
-			{
-				var compo_info = info.components[j];
-				if(compo_info[0] == old_class_name)
-					compo_info[0] = new_class_name;
-			}
-			//now force the node to be reloaded
-			node.removeAllComponents();
-			node.configure( info );
-			*/
+		
 		}
 
 		return num;

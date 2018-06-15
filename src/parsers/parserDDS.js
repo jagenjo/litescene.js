@@ -1,3 +1,4 @@
+///@INFO: PARSER
 var parserDDS = { 
 	extension: "dds",
 	type: "image",

@@ -1,4 +1,4 @@
-
+///@INFO: PARSER
 var parserDAE = {
 	extension: "dae",
 	type: "scene",

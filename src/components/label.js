@@ -1,4 +1,4 @@
-
+///@INFO: UNCOMMON
 function Label(o)
 {
 	this.text = "";

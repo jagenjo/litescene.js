@@ -1,5 +1,4 @@
-
-
+///@INFO: BASE
 
 //Material class **************************
 /**
@@ -71,7 +70,7 @@ function Material( o )
 	* @property query
 	* @type {LS.ShaderQuery}
 	*/
-	this._query = new LS.ShaderQuery();
+	//this._query = new LS.ShaderQuery();
 
 	/**
 	* flags to control cast_shadows, receive_shadows or ignore_frustum
@@ -128,7 +127,7 @@ function Material( o )
 		set: function(v) { 
 			if(!v)
 				return;
-			for(var i in v)
+			for(var i in v) //copy from JSON object
 				this._render_state[i] = v[i];
 		},
 		enumerable: true
@@ -199,36 +198,6 @@ Material.TEXTURE_COORDINATES = [ Material.COORDS_UV0, Material.COORDS_UV1, Mater
 Material.DEFAULT_UVS = { "normal":Material.COORDS_UV0, "displacement":Material.COORDS_UV0, "environment": Material.COORDS_POLAR_REFLECTED, "irradiance" : Material.COORDS_POLAR };
 
 Material.available_shaders = ["default","global","lowglobal","phong_texture","flat","normal","phong","flat_texture","cell_outline"];
-
-// RENDERING METHODS
-Material.prototype.fillShaderQuery = function(scene)
-{
-	var query = this._query;
-	query.clear();
-
-	//iterate through textures in the material
-	for(var i in this.textures) 
-	{
-		var sampler = this.getTextureSampler(i);
-		if(!sampler)
-			continue;
-		var uvs = sampler.uvs || Material.DEFAULT_UVS[i] || "transformed";
-
-		var texture = Material.getTextureFromSampler( sampler );
-		if(!texture) //loading or non-existant
-			continue;
-
-		query.macros[ "USE_" + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? "_TEXTURE" : "_CUBEMAP") ] = "uvs_" + uvs;
-	}
-
-	//if(this.reflection_factor > 0.0) 
-	//	macros.USE_REFLECTION = "";	
-
-	//extra macros
-	if(this.extra_macros)
-		for(var im in this.extra_macros)
-			query.macros[im] = this.extra_macros[im];
-}
 
 Material.prototype.fillUniforms = function( scene, options )
 {
@@ -766,18 +735,6 @@ Material.prototype.assignToNode = function(node)
 	return true;
 }
 
-//this has been moved to ShaderCode?
-Material.processShaderCode = function(code)
-{
-	var lines = code.split("\n");
-	for(var i in lines)
-		lines[i] = lines[i].split("//")[0]; //remove comments
-	code = lines.join("");
-	if(!code)
-		return null;
-	return code;
-}
-
 /**
 * Creates a new property in this material class. Helps with some special cases
 * like when we have a Float32Array property and we dont want it to be replaced by another array, but setted
@@ -838,8 +795,56 @@ Material.prototype.prepare = function( scene )
 	if(this.onPrepare)
 		this.onPrepare(scene);
 
-	this.fillShaderQuery( scene ); //update shader macros on this material
+	//this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms
+}
+
+Material.prototype.getShader = function( pass_name )
+{
+	var shader = Material._shader_color;
+	if(!shader)
+		shader = Material._shader_color = new GL.Shader( LS.Shaders.common_vscode + "void main(){ vec4 vertex = u_model * a_vertex;\ngl_Position = u_viewprojection * vertex;\n }", LS.Shaders.common_vscode + "uniform vec4 u_color;\n\void main(){ gl_FragColor = u_color;\n }");
+	return shader;
+}
+
+Material.prototype.renderInstance = function( instance, render_settings, pass )
+{
+	//some globals
+	var renderer = LS.Renderer;
+	var camera = LS.Renderer._current_camera;
+	var scene = LS.Renderer._current_scene;
+	var model = instance.matrix;
+
+	//node matrix info
+	var instance_final_query = instance._final_query;
+	var instance_final_samplers = instance._final_samplers;
+	var render_uniforms = LS.Renderer._render_uniforms;
+
+	//maybe this two should be somewhere else
+	render_uniforms.u_model = model; 
+	render_uniforms.u_normal_model = instance.normal_matrix; 
+
+	//global stuff
+	this._render_state.enable();
+	LS.Renderer.bindSamplers( this._samplers );
+	var global_flags = 0;
+
+	if(this.onRenderInstance)
+		this.onRenderInstance( instance );
+
+	//extract shader compiled
+	var shader = shader_code.getShader( pass.name );
+	if(!shader)
+		return false;
+
+	//assign
+	shader.uniformsArray( [ scene._uniforms, camera._uniforms, render_uniforms, this._uniforms, instance.uniforms ] ); 
+
+	//render
+	instance.render( shader, this._primitive != -1 ? this._primitive : undefined );
+	renderer._rendercalls += 1;
+
+	return true;
 }
 
 

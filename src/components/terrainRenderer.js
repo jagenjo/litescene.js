@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 function TerrainRenderer(o)
 {
 	this.height = 2;

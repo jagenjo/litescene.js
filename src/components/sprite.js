@@ -1,3 +1,4 @@
+///@INFO: UNCOMMON
 var temp_vec3 = vec3.create();
 
 function Sprite(o)
