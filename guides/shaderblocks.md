@@ -123,7 +123,8 @@ Here is an example of a ShaderBlock that inject code in the global pipeline (in 
 ```
 //@paraboloid render
 var code = '''
-	// Store the distance
+  gl_Position = u_view * vec4(v_pos,1.0);
+  // Store the distance
   highp float Distance = -gl_Position.z;
   // Calculate and set the X and Y coordinates
   gl_Position.xyz = normalize(gl_Position.xyz);
