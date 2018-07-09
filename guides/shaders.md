@@ -142,11 +142,14 @@ In those cases you can define the ```onRenderInstance``` method on the material 
 
 ```js
 
+var imodel = mat4.create();
+
 this.onRenderInstance = function( instance )
 {
   var camera = LS.Renderer._current_camera;
   var node = instance.node;
   //...
+  instance.uniforms["u_imodel"] = mat4.invert( imodel, instance.matrix );
 }
 ```
 
