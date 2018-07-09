@@ -135,6 +135,21 @@ this.onPrepare = function( scene )
 }
 ```
 
+## onRenderInstance
+
+Sometimes you need to compute and pass something to the shader per render call (like the inverse of the viewmatrix or the inverse of the model).
+In those cases you can define the ```onRenderInstance``` method on the material which gets a reference to the ```LS.RenderInstance``` that is about to be rendered.
+
+```js
+
+this.onRenderInstance = function( instance )
+{
+  var camera = LS.Renderer._current_camera;
+  var node = instance.node;
+  //...
+}
+```
+
 ## Pragmas
 
 You can use some special pragmas designed to allow the user to include external code, this is helpful to reuse GLSL code between different ShaderCodes.
