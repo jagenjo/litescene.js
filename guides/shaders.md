@@ -30,11 +30,18 @@ The subfile to contain this calls should be called ```\js```
 
 this.createUniform("Scale","u_tex_scale","number",1, {min:0, max:1}); //create a uniform for the shader
 this.createSampler("Texture","u_texture", { magFilter: GL.LINEAR, missing: "white"} ); //create a sampler (texture) for the shader
-this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare)
+this.createProperty("Node",null, LS.TYPES.NODE ); //create a property not meant to be send to the shader (to use with onPrepare or onRenderInstance)
 this.render_state.depth_test = false; //the flags to use when rendering
 ```
 
 This function will be called once the shader is assigned to the material.
+
+The valid types for uniforms are:
+- number for float
+- vec2,vec3,vec4 
+- color for vec3
+- texture, cubemap
+
 
 ## RenderState ##
 
