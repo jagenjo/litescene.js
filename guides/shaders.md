@@ -208,6 +208,15 @@ To create a snippet:
 	LS.ShadersManager.registerSnippet("mysnippet", "//code...");
 ```
 
+### pragma event
+
+Another way to include shader code inside this material is by emiting events while compiling the shader, to do that you can define events inside the source, that will be replaced by the code inside enabled shader blocks listening to that event.
+
+```c++
+	#pragma snippet "fs_encode"
+```
+
+
 ## Structs
 
 If you plan to use the default lighting system from your shaders you need to use several structs to map vertex data, surface data and light data. You will have access by including the "light" shaderblock:
