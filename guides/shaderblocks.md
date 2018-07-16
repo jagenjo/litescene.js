@@ -23,11 +23,24 @@ var morphing_block = new LS.ShaderBlock("morphing");
 ```
 The next step is to add the code snippets for the Vertex or Fragment shader. 
 
+### ShaderBlock enabled/disabled codes
+
 When adding a code snippet you have to pass two snippets, one for when the ShaderBlock is enabled and one for when it is disabled. This is because from your shader you will be calling functions contained in this ShaderBlock, and you want the shader to have this functions even if the ShaderBlock is disabled.
 
 ```javascript
 morphing_block.addCode( GL.VERTEX_SHADER, MorphDeformer.morph_enabled_shader_code, MorphDeformer.morph_disabled_shader_code );
 ```
+
+### ShaderBlock events
+
+You can also assign code to certain events triggered inside the shader.
+This is different from the previous code in that this only gets added if it is enabled and the shader has a ```#pragma event "event_name"```
+
+```javascript
+morphing_block.bindEvent( "vs_functions", "float myFunc() { return 1.0; }" );
+```
+
+### Registering the ShaderBlock
 
 Register the ```LS.ShaderBlock``` in the system by calling the register function:
 
@@ -44,6 +57,8 @@ void main() {
   //...
   applyMorphing( vertex4, v_normal ); //this function is defined inside the shader block
 ```
+
+### Enabling the ShaderBlock
 
 To activate the ShaderBlock from your javascript component there are different ways:
 
@@ -99,6 +114,35 @@ Sometimes you want the code to be executed only if a certain shaderblock is enab
   #ifdef BLOCK_MORPHING_TEXTURE
     //...
   #endif
+```
+
+## Example of global ShaderBlock 
+
+Here is an example of a ShaderBlock that inject code in the global pipeline (in this case to render using a paraboloid approach):
+
+```
+//@paraboloid render
+var code = '''
+  gl_Position = u_view * vec4(v_pos,1.0);
+  // Store the distance
+  highp float Distance = -gl_Position.z;
+  // Calculate and set the X and Y coordinates
+  gl_Position.xyz = normalize(gl_Position.xyz);
+  gl_Position.xy /= 1.0 - gl_Position.z;
+  // Calculate and set the Z and W coordinates
+  gl_Position.z = (Distance / u_camera_planes.y) * 2.0 - 1.0;
+  gl_Position.w = 1.0;
+''';
+
+var paraboloid_block = new LS.ShaderBlock("paraboloid");
+paraboloid_block.bindEvent("vs_final", code);
+paraboloid_block.register();
+
+this.onSceneRender = function()
+{
+  LS.Renderer._current_render_settings.frustum_culling = false;
+	LS.Renderer.enableFrameShaderBlock( paraboloid_block );
+}
 ```
 
 ## Conclusion
