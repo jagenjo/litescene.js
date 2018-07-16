@@ -49,6 +49,7 @@ var Renderer = {
 	_visible_materials: [],
 	_near_lights: [],
 	_active_samples: [],
+	_reflection_probes: [],
 
 	//stats
 	_frame_cpu_time: 0,
@@ -71,7 +72,6 @@ var Renderer = {
 	_identity_matrix: mat4.create(),
 	_render_uniforms: {},
 	_instancing_data: [],
-	_reflection_probes: [],
 
 	//safety
 	_is_rendering_frame: false,
@@ -218,7 +218,8 @@ var Renderer = {
 		this._rendercalls = 0;
 		this._rendered_instances = 0;
 		this._rendered_passes = 0;
-		this._global_block_flags = 0;
+		this._global_shader_blocks.length = 0;
+		this._global_shader_blocks_flags = 0;
 		for(var i in this._global_textures)
 			this._global_textures[i] = null;
 
@@ -784,7 +785,6 @@ var Renderer = {
 		//render using default system (slower but it works)
 		if(!renderered)
 			return;
-			//this.renderStandardColorMultiPassLightingInstance( instance, render_settings, pass );
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -798,7 +798,6 @@ var Renderer = {
 		//render using default system (slower but it works)
 		if(!renderered)
 			return;
-			//this.renderStandardShadowPassInstance( instance, render_settings, pass);
 	},
 
 	//this function is in charge of rendering an instance in the shadowmap
@@ -812,220 +811,7 @@ var Renderer = {
 		//render using default system (slower but it works)
 		if(!renderered)
 			return;
-			//this.renderStandardPickingPassInstance( instance, render_settings, pass);
 	},
-
-
-	/**
-	* Renders the RenderInstance taking into account all the lights that affect it and doing a render for every light
-	* This function it is not as fast as I would like but enables lots of interesting features
-	*
-	* @method renderColorMultiPassLightingInstance
-	* @param {RenderInstance} instance
-	* @param {RenderSettings} render_settings
-	* @param {Array} lights array containing al the lights affecting this RI
-	*/
-	/*
-	renderStandardColorMultiPassLightingInstance: function( instance, render_settings )
-	{
-		var camera = this._current_camera;
-		var node = instance.node;
-		var material = instance.material;
-		var scene = this._current_scene;
-		var renderer_uniforms = this._render_uniforms;
-		var instance_final_query = instance._final_query;
-		var lights = this.getNearLights( instance, this._near_lights );
-
-		//compute matrices
-		var model = instance.matrix;
-
-		renderer_uniforms.u_model = model; 
-		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-
-		//just to be sure
-		LS.RenderState.reset();
-
-		//FLAGS: enable GL flags like cull_face, CCW, etc
-		material._render_state.enable();
-		//this.enableInstanceFlags(instance, render_settings);
-
-		//merge all samplers
-		var samplers = [];
-		this.mergeSamplers([ scene._samplers, material._samplers, instance.samplers ], samplers);
-
-		//enable samplers and store where [TODO: maybe they are not used..., improve here]
-		if(samplers.length)
-			this.bindSamplers( samplers );
-
-		//find shader name
-		var shader_name = material.shader_name;
-
-		//multi pass instance rendering
-		var num_lights = lights.length;
-
-		//no lights rendering (flat light)
-		var ignore_lights = material.flags.ignore_lights || render_settings.lights_disabled;
-		if(!num_lights || ignore_lights)
-		{
-			var query = new LS.ShaderQuery( shader_name, { FIRST_PASS:"", LAST_PASS:"", USE_AMBIENT_ONLY:"" });
-			query.add( scene._query );
-			query.add( camera._query );
-			query.add( instance_final_query ); //contains node, material and instance macros
-
-			if( ignore_lights )
-				query.setMacro( "USE_IGNORE_LIGHTS" );
-			if( render_settings.clipping_plane )
-				query.setMacro( "USE_CLIPPING_PLANE" );
-
-			if( material.onModifyQuery )
-				material.onModifyQuery( query );
-
-			//resolve the shader
-			var shader = LS.ShadersManager.resolve( query );
-
-			//assign uniforms
-			shader.uniformsArray( [ scene._uniforms, camera._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ] );
-
-			//render
-			instance.render( shader );
-			this._rendercalls += 1;
-			return;
-		}
-
-		//Regular rendering (multipass)
-		for(var iLight = 0; iLight < num_lights; iLight++)
-		{
-			var light = lights[iLight];
-
-			var query = new LS.ShaderQuery( shader_name );
-			query.add( scene._query );
-
-			var light_query = light.getQuery( instance, render_settings );
-			if(iLight === 0)
-				query.setMacro("FIRST_PASS");
-			if(iLight === (num_lights-1))
-				query.setMacro("LAST_PASS");
-
-			query.add( light_query );
-			query.add( instance_final_query ); //contains node, material and instance macros
-
-			if( render_settings.clipping_plane )
-				query.setMacro("USE_CLIPPING_PLANE");
-
-			if( material.onModifyQuery )
-				material.onModifyQuery( query );
-
-			var shader = LS.ShadersManager.resolve( query );
-
-			//light textures like shadowmap or projective texture
-			if(light._samplers.length)
-				this.bindSamplers( light._samplers );
-
-			//secondary pass flags to make it additive
-			if(iLight > 0)
-			{
-				gl.enable( gl.BLEND );
-				gl.blendFunc( gl.SRC_ALPHA, gl.ONE );
-				gl.depthFunc( gl.EQUAL );
-			}
-			//set depth func
-			if(material.depth_func)
-				gl.depthFunc( gl[material.depth_func] );
-
-			//assign uniforms
-			shader.uniformsArray( [ scene._uniforms, camera._uniforms, light._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ] );
-
-			//render the instance
-			instance.render( shader );
-			this._rendercalls += 1;
-
-			//avoid multipass in simple shaders
-			if(shader.global && !shader.global.multipass)
-				break; 
-		}
-	},
-	*/
-
-	/**
-	* Renders this RenderInstance into the shadowmap
-	*
-	* @method renderShadowPassInstance
-	* @param {RenderInstance} instance
-	* @param {RenderSettings} render_settings
-	*/
-	/*
-	renderStandardShadowPassInstance: function( instance, render_settings )
-	{
-		var scene = this._current_scene;
-		var camera = this._current_camera;
-		var node = instance.node;
-		var material = instance.material;
-		var scene = this._current_scene;
-		var renderer_uniforms = this._render_uniforms;
-
-		//compute matrices
-		var model = instance.matrix;
-
-		renderer_uniforms.u_model = model; 
-		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-
-		var instance_final_query = instance._final_query;
-
-		//FLAGS
-		material._render_state.enable();
-		//this.enableInstanceFlags( instance, render_settings );
-
-		var query = new ShaderQuery("depth");
-		query.add( scene._query );
-		query.add( instance_final_query ); //final = node + material + instance
-
-		var shader = LS.ShadersManager.resolve( query );
-
-		var samplers = [];
-		this.mergeSamplers([ material._samplers, instance.samplers ], samplers);
-		this.bindSamplers( samplers );
-
-		shader.uniformsArray([ scene._uniforms, camera._uniforms, renderer_uniforms, material._uniforms, instance.uniforms ]);
-
-		instance.render(shader);
-		this._rendercalls += 1;
-	},
-	*/
-
-	/**
-	* Render instance into the picking buffer
-	*
-	* @method renderPickingInstance
-	* @param {RenderInstance} instance
-	* @param {RenderSettings} render_settings
-	*/
-	/*
-	renderStandardPickingPassInstance: function( instance, render_settings )
-	{
-		var scene = this._current_scene;
-		var camera = this._current_camera;
-		var node = instance.node;
-		var material = instance.material;
-		var model = instance.matrix;
-		var renderer_uniforms = this._render_uniforms;
-
-		renderer_uniforms.u_model = model; 
-		renderer_uniforms.u_normal_model = instance.normal_matrix; 
-
-		var pick_color = LS.Picking.getNextPickingColor( instance.picking_node || node );
-
-		var query = new LS.ShaderQuery("flat");
-		query.add( scene._query );
-		query.add( material._query ); //?
-		query.add( instance._final_query );
-
-		var shader = ShadersManager.resolve( query );
-		shader.uniformsArray([ scene._uniforms, camera._uniforms, material._uniforms, renderer_uniforms, instance.uniforms ]);
-		shader.uniforms({ u_material_color: pick_color });
-
-		instance.render( shader );
-	},
-	*/
 
 	regenerateShadowmaps: function( scene, render_settings )
 	{
@@ -1185,9 +971,6 @@ var Renderer = {
 			u_viewport: gl.viewport_data
 		};
 
-		if(render_settings.clipping_plane)
-			uniforms.u_clipping_plane = render_settings.clipping_plane;
-
 		if( this._current_pass.id == COLOR_PASS && render_settings.linear_pipeline )
 			uniforms.u_gamma = 2.2;
 
@@ -1223,7 +1006,6 @@ var Renderer = {
 			scene._samplers[ slot ] = texture;
 			scene._uniforms[ i + "_texture" ] = slot; 
 			scene._uniforms[ i + type ] = slot; //LEGACY
-			//scene._query.macros[ "USE_" + (i + type).toUpperCase() ] = "uvs_polar_reflected";
 
 			if( i == "environment" )
 				this._global_textures.environment = texture;
@@ -1689,10 +1471,11 @@ var Renderer = {
 	*/
 	enableFrameShaderBlock: function( shader_block_name, uniforms )
 	{
-		var shader_block = LS.Shaders.getShaderBlock( shader_block_name );
+		var shader_block = shader_block_name.constructor === LS.ShaderBlock ? shader_block_name : LS.Shaders.getShaderBlock( shader_block_name );
 
-		if( !shader_block || this._global_shader_blocks_flags | shader_block.flag_mask )
+		if( !shader_block || this._global_shader_blocks_flags & shader_block.flag_mask )
 			return; //already added
+
 		this._global_shader_blocks.push( shader_block );
 		this._global_shader_blocks_flags |= shader_block.flag_mask;
 

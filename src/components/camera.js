@@ -1065,19 +1065,19 @@ Camera.prototype.rotate = (function() {
 	var tmp_quat = quat.create();
 	var tmp_vec3 = vec3.create();
 	
-	return function(angle_in_deg, axis, in_local_space)
+	return function( angle_in_deg, axis, in_local_space )
 	{
 		if(angle_in_deg == 0)
 			return;
 
 		if(this._root && this._root.transform)
 		{
-			this._root.transform.rotate(angle_in_deg, axis, in_local_space);
+			this._root.transform.rotate( angle_in_deg, axis, !in_local_space );
 			this._must_update_view_matrix = true;
 			return;
 		}
 
-		if(in_local_space)
+		if( in_local_space )
 			this.getLocalVector( axis, tmp_vec3 );
 		else
 			tmp_vec3.set( axis );

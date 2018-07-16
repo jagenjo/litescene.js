@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>../src/materials/newStandardMaterial.js</title>
+    <title>../src/materials/oldStandardMaterial.js</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -154,63 +156,56 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1 class="file-heading">File: ../src/materials/newStandardMaterial.js</h1>
+<h1 class="file-heading">File: ../src/materials/oldStandardMaterial.js</h1>
 
 <div class="file">
     <pre class="code prettyprint linenums">
-//modes
-//- per texture
-//- texture coordinates
-//- vertex color and extras
-//- alpha test
 
-//StandardMaterial class **************************
+
+
+//oldStandardMaterial class **************************
 /* Warning: a material is not a component, because it can be shared by multiple nodes */
 
 /**
-* StandardMaterial class improves the material class
 * @namespace LS
-* @class StandardMaterial
+* @class oldStandardMaterial
 * @constructor
 * @param {Object} object [optional] to configure from
 */
 
-function newStandardMaterial(o)
+function oldStandardMaterial(o)
 {
-	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
+	Material.call(this,null); //do not pass the data object, it is called later
 
 	this.blend_mode = LS.Blend.NORMAL;
 
+	this.shader_name = &quot;global&quot;;
+
 	this.createProperty( &quot;diffuse&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
 	this.createProperty( &quot;ambient&quot;, new Float32Array([1.0,1.0,1.0]), &quot;color&quot; );
-	this.createProperty( &quot;emissive&quot;, new Float32Array([0,0,0,0]), &quot;color&quot; ); //fourth component to control if emissive is affected by albedo
-
-	this._specular_data = vec4.fromValues( 0.1, 10.0, 0.0, 0.0 ); //specular factor, glossiness, specular_on_top
-	this.specular_on_top = false;
-	this.specular_on_alpha = false;
-
+	this.createProperty( &quot;emissive&quot;, new Float32Array([0,0,0,0]), &quot;color&quot; );
+	//this.emissive = new Float32Array([0.0,0.0,0.0]);
 	this.backlight_factor = 0;
 
+	this._specular_data = vec2.fromValues( 0.1, 10.0 );
+	this.specular_on_top = false;
+	this.specular_on_alpha = false;
 	this.reflection_factor = 0.0;
 	this.reflection_fresnel = 1.0;
+	this.reflection_additive = false;
 	this.reflection_specular = false;
-
 	this.createProperty( &quot;velvet&quot;, new Float32Array([0.5,0.5,0.5]), &quot;color&quot; );
 	this.velvet_exp = 0.0;
 	this.velvet_additive = false;
 	this._velvet_info = vec4.create();
-
 	this._detail = new Float32Array([0.0, 10, 10]);
+	this._extra_data = vec4.create();
 
 	this.normalmap_factor = 1.0;
 	this.normalmap_tangent = true;
-	this.bumpmap_factor = 1.0;
-
 	this.displacementmap_factor = 0.1;
-
+	this.bumpmap_factor = 1.0;
 	this.use_scene_ambient = true;
-
-	this.createProperty( &quot;extra&quot;, new Float32Array([1,1,1,1]), &quot;color&quot; ); //used in special situations
 
 	//used to change the render state
 	this.flags = {
@@ -223,53 +218,52 @@ function newStandardMaterial(o)
 		ignore_lights: false,
 		cast_shadows: true,
 		receive_shadows: true,
-//		flat_normals: false,
 		ignore_frustum: false
 	};
 
 	//used for special fx 
-	this._uniforms = {
-		u_material_color: this._color,
-		u_ambient_color: this._ambient,
-		u_emissive_color: this._emissive,
-		u_specular: this._specular_data,
-		u_reflection_info: vec2.create(), //factor and fresnel
-		u_velvet_info: vec4.create(),
-		u_normal_info: vec2.create(),
-		u_detail_info: this._detail,
-		u_texture_matrix: this.uvs_matrix,
-		u_extra_color: this._extra
-	};
+	this.extra_surface_shader_code = &quot;&quot;;
 
+	this._uniforms = {};
 	this._samplers = [];
 
-	this._allows_instancing = true;
-	this.needsUpdate = true;
+	this.extra_uniforms = {};
 
 	if(o) 
 		this.configure(o);
 }
 
-
-Object.defineProperty( newStandardMaterial.prototype, &#x27;detail_factor&#x27;, {
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;detail_factor&#x27;, {
 	get: function() { return this._detail[0]; },
 	set: function(v) { this._detail[0] = v; },
 	enumerable: true
 });
 
-Object.defineProperty( newStandardMaterial.prototype, &#x27;detail_scale&#x27;, {
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;detail_scale&#x27;, {
 	get: function() { return this._detail.subarray(1,3); },
 	set: function(v) { this._detail[1] = v[0]; this._detail[2] = v[1]; },
 	enumerable: true
 });
 
-Object.defineProperty( newStandardMaterial.prototype, &#x27;emissive_extra&#x27;, {
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;emissive_extra&#x27;, {
 	get: function() { return this._emissive[3]; },
 	set: function(v) { this._emissive[3] = v; },
 	enumerable: true
 });
 
-Object.defineProperty( newStandardMaterial.prototype, &#x27;specular_factor&#x27;, {
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;extra_factor&#x27;, {
+	get: function() { return this._extra_data[3]; },
+	set: function(v) { this._extra_data[3] = v; },
+	enumerable: true
+});
+
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;extra_color&#x27;, {
+	get: function() { return this._extra_data.subarray(0,3); },
+	set: function(v) { this._extra_data.set( v ); },
+	enumerable: true
+});
+
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;specular_factor&#x27;, {
 	get: function() { return this._specular_data[0]; },
 	set: function(v) { 
 		if( v != null &amp;&amp; v.constructor === Number)
@@ -278,26 +272,23 @@ Object.defineProperty( newStandardMaterial.prototype, &#x27;specular_factor&#x27
 	enumerable: true
 });
 
-Object.defineProperty( newStandardMaterial.prototype, &#x27;specular_gloss&#x27;, {
+Object.defineProperty( oldStandardMaterial.prototype, &#x27;specular_gloss&#x27;, {
 	get: function() { return this._specular_data[1]; },
 	set: function(v) { this._specular_data[1] = v; },
 	enumerable: true
 });
 
-newStandardMaterial[&quot;@blend_mode&quot;] = { type: &quot;enum&quot;, values: LS.Blend };
-newStandardMaterial.actions = {};
+oldStandardMaterial[&quot;@blend_mode&quot;] = { type: &quot;enum&quot;, values: LS.Blend };
 
-newStandardMaterial.DETAIL_TEXTURE = &quot;detail&quot;;
-newStandardMaterial.NORMAL_TEXTURE = &quot;normal&quot;;
-newStandardMaterial.DISPLACEMENT_TEXTURE = &quot;displacement&quot;;
-newStandardMaterial.BUMP_TEXTURE = &quot;bump&quot;;
-newStandardMaterial.REFLECTIVITY_TEXTURE = &quot;reflectivity&quot;;
-newStandardMaterial.EXTRA_TEXTURE = &quot;extra&quot;;
-newStandardMaterial.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;
+oldStandardMaterial.DETAIL_TEXTURE = &quot;detail&quot;;
+oldStandardMaterial.NORMAL_TEXTURE = &quot;normal&quot;;
+oldStandardMaterial.DISPLACEMENT_TEXTURE = &quot;displacement&quot;;
+oldStandardMaterial.BUMP_TEXTURE = &quot;bump&quot;;
+oldStandardMaterial.REFLECTIVITY_TEXTURE = &quot;reflectivity&quot;;
+oldStandardMaterial.IRRADIANCE_TEXTURE = &quot;irradiance&quot;;
+oldStandardMaterial.EXTRA_TEXTURE = &quot;extra&quot;;
 
-newStandardMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
-
-newStandardMaterial.prototype.prepare = function( scene )
+oldStandardMaterial.prototype.prepare = function( scene )
 {
 	var flags = this.flags;
 
@@ -320,207 +311,142 @@ newStandardMaterial.prototype.prepare = function( scene )
 		}
 	}
 
-	this._light_mode = this.flags.ignore_lights ? Material.NO_LIGHTS : 1;
-
+	this.fillShaderQuery( scene ); //update shader macros on this material
 	this.fillUniforms( scene ); //update uniforms
+
+	//set up macros
+	if( flags.alpha_test )
+		this._query.macros.USE_ALPHA_TEST = &quot;0.5&quot;;
+	else if(this._query.macros[&quot;USE_ALPHA_TEST&quot;])
+		delete this._query.macros[&quot;USE_ALPHA_TEST&quot;];
+
 }
 
-newStandardMaterial.FLAGS = {
-	COLOR_TEXTURE: 1&lt;&lt;1,
-	OPACITY_TEXTURE: 1&lt;&lt;2,
-	SPECULAR_TEXTURE: 1&lt;&lt;3,
-	REFLECTIVITY_TEXTURE: 1&lt;&lt;4,
-	AMBIENT_TEXTURE: 1&lt;&lt;5,
-	EMISSIVE_TEXTURE: 1&lt;&lt;6,
-	DETAIL_TEXTURE: 1&lt;&lt;7,
-	NORMAL_TEXTURE: 1&lt;&lt;8,
-	DISPLACEMENT_TEXTURE: 1&lt;&lt;9,
-	EXTRA_TEXTURE: 1&lt;&lt;10,
-	ENVIRONMENT_TEXTURE: 1&lt;&lt;11,
-	ENVIRONMENT_CUBEMAP: 1&lt;&lt;12,
-	IRRADIANCE_CUBEMAP: 1&lt;&lt;13,
-
-	COLOR_TEXTURE_OPTIONS: 1&lt;&lt;16,
-	OPACITY_TEXTURE_OPTIONS: 1&lt;&lt;17,
-	SPECULAR_TEXTURE_OPTIONS: 1&lt;&lt;18,
-	REFLECTIVITY_TEXTURE_OPTIONS: 1&lt;&lt;19,
-	AMBIENT_TEXTURE_OPTIONS: 1&lt;&lt;20,
-	EMISSIVE_TEXTURE_OPTIONS: 1&lt;&lt;21,
-	NORMAL_TEXTURE_OPTIONS: 1&lt;&lt;22,
-	DISPLACEMENT_TEXTURE_OPTIONS: 1&lt;&lt;23,
-	EXTRA_TEXTURE_OPTIONS: 1&lt;&lt;24,
-
-	DEGAMMA_COLOR: 1&lt;&lt;26,
-	SPEC_ON_ALPHA: 1&lt;&lt;27,
-	SPEC_ON_TOP: 1&lt;&lt;28,
-	ALPHA_TEST: 1&lt;&lt;29
-};	
-
-newStandardMaterial.shader_codes = {};
-
-//returns the LS.ShaderCode required to render
-//here we cannot filter by light pass because this is done before applying shaderblocks
-newStandardMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
+// RENDERING METHODS
+oldStandardMaterial.prototype.fillShaderQuery = function( scene )
 {
-	var FLAGS = newStandardMaterial.FLAGS;
+	var query = this._query;
+	query.clear();
 
-	//lets check which code flags are active according to the configuration of the shader
-	var code_flags = 0;
-	var scene = LS.Renderer._current_scene;
-
-	//TEXTURES
-	if( this.textures.color )
+	//iterate through textures in the material
+	for(var i in this.textures) 
 	{
-		code_flags |= FLAGS.COLOR_TEXTURE;
-		if( this.textures.color.degamma )
-			code_flags |= FLAGS.DEGAMMA_COLOR;
-	}
-	if( this.textures.opacity )
-		code_flags |= FLAGS.OPACITY_TEXTURE;
+		var texture_info = this.getTextureSampler(i);
+		if(!texture_info) continue;
+		var texture_uvs = texture_info.uvs || Material.DEFAULT_UVS[i] || &quot;0&quot;;
 
-	if( this.textures.displacement )
-		code_flags |= FLAGS.DISPLACEMENT_TEXTURE;
+		var texture = Material.getTextureFromSampler( texture_info );
+		if(!texture) //loading or non-existant
+			continue;
 
-	//color textures are not necessary 
-	if( this.textures.normal )
-		code_flags |= FLAGS.NORMAL_TEXTURE;
-	if( this.textures.specular )
-		code_flags |= FLAGS.SPECULAR_TEXTURE;
-	if( this.reflection_factor &gt; 0 )
-	{
-		//code_flags |= FLAGS.REFLECTION;
-		if( this.textures.reflectivity )
-			code_flags |= FLAGS.REFLECTIVITY_TEXTURE;
-	}
-	if( this.textures.emissive )
-		code_flags |= FLAGS.EMISSIVE_TEXTURE;
-	if( this.textures.ambient )
-		code_flags |= FLAGS.AMBIENT_TEXTURE;
-	if( this.textures.detail )
-		code_flags |= FLAGS.DETAIL_TEXTURE;
-	if( this.textures.extra )
-		code_flags |= FLAGS.EXTRA_TEXTURE;
-	if( this.specular_on_alpha )
-		code_flags |= FLAGS.SPEC_ON_ALPHA;
-	if( this.specular_on_top )
-		code_flags |= FLAGS.SPEC_ON_TOP;
+		if(i == &quot;normal&quot;)
+		{
+			if(this.normalmap_factor != 0.0 &amp;&amp; (!this.normalmap_tangent || (this.normalmap_tangent &amp;&amp; gl.derivatives_supported)) )
+			{
+				query.macros.USE_NORMAL_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.normalmap_factor != 0.0)
+					query.macros.USE_NORMALMAP_FACTOR = &quot;&quot;;
+				if(this.normalmap_tangent &amp;&amp; gl.derivatives_supported)
+					query.macros.USE_TANGENT_NORMALMAP = &quot;&quot;;
+			}
+			continue;
+		}
+		else if(i == &quot;displacement&quot;)
+		{
+			if(this.displacementmap_factor != 0.0 &amp;&amp; gl.derivatives_supported )
+			{
+				query.macros.USE_DISPLACEMENT_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.displacementmap_factor != 1.0)
+					query.macros.USE_DISPLACEMENTMAP_FACTOR = &quot;&quot;;
+			}
+			continue;
+		}
+		else if(i == &quot;bump&quot;)
+		{
+			if(this.bump_factor != 0.0 &amp;&amp; gl.derivatives_supported )
+			{
+				query.macros.USE_BUMP_TEXTURE = &quot;uvs_&quot; + texture_uvs;
+				if(this.bumpmap_factor != 1.0)
+					query.macros.USE_BUMP_FACTOR = &quot;&quot;;
+			}
+			continue;
+		}
 
-	//flags
-	if( this.flags.alpha_test )
-		code_flags |= FLAGS.ALPHA_TEST;
-
-	//check if we already have this ShaderCode created
-	var shader_code = LS.newStandardMaterial.shader_codes[ code_flags ];
-
-	//reuse shader codes when possible
-	if(shader_code)
-		return shader_code;
-
-	//generate code
-	var code = {
-		vs: &quot;&quot;,
-		fs: &quot;&quot;,
-		fs_shadows: &quot;&quot;
-	};
-
-	if( code_flags &amp; FLAGS.DISPLACEMENT_TEXTURE )
-		code.vs += &quot;	vertex4.xyz += v_normal * texture2D( displacement_texture, v_uvs ).x * u_displacementmap_factor;\n&quot;;	
-
-	if( code_flags &amp; FLAGS.NORMAL_TEXTURE )
-	{
-		code.fs += &quot;	vec3 normal_pixel = texture2D( normal_texture, IN.uv ).xyz;\n\
-		normal_pixel.xy = vec2(1.0) - normal_pixel.xy;\n\
-		if( u_normal_info.y &gt; 0.0 )\n\
-			normal_pixel = normalize( perturbNormal( IN.worldNormal, IN.viewDir, IN.uv, normal_pixel ));\n\
-		o.Normal = normalize( mix( o.Normal, normal_pixel, u_normal_info.x ) );\n&quot;;
+		query.macros[ &quot;USE_&quot; + i.toUpperCase() + (texture.texture_type == gl.TEXTURE_2D ? &quot;_TEXTURE&quot; : &quot;_CUBEMAP&quot;) ] = &quot;uvs_&quot; + texture_uvs;
 	}
 
-	if( code_flags &amp; FLAGS.COLOR_TEXTURE )
-	{
-		var str = &quot;	vec4 tex_color = texture2D( color_texture, IN.uv );\n&quot;;
-		code.fs += str;
-		code.fs_shadows += str;
+	if(this.velvet &amp;&amp; this.velvet_exp) //first light only
+		query.macros.USE_VELVET = &quot;&quot;;
+	
+	if(this.emissive_material) //dont know whats this
+		query.macros.USE_EMISSIVE_MATERIAL = &quot;&quot;;
+	
+	if(this.specular_on_top)
+		query.macros.USE_SPECULAR_ONTOP = &quot;&quot;;
+	if(this.specular_on_alpha)
+		query.macros.USE_SPECULAR_ON_ALPHA = &quot;&quot;;
+	if(this.reflection_specular)
+		query.macros.USE_SPECULAR_IN_REFLECTION = &quot;&quot;;
+	if(this.backlight_factor &gt; 0.001)
+		query.macros.USE_BACKLIGHT = &quot;&quot;;
 
-		if( code_flags &amp; FLAGS.DEGAMMA_COLOR )
-			code.fs += &quot;	tex_color.xyz = pow( tex_color.xyz, vec3(2.0) );\n&quot;;
-		str = &quot;	o.Albedo *= tex_color.xyz;\n\
-	o.Alpha *= tex_color.w;\n&quot;;
-		code.fs += str;
-		code.fs_shadows += str;
-	}
-	if( code_flags &amp; FLAGS.OPACITY_TEXTURE )
-	{
-		var str =  &quot;	o.Alpha *= texture2D( opacity_texture, IN.uv ).x;\n&quot;;
-		code.fs += str;
-		code.fs_shadows += str;
-	}
-	if( code_flags &amp; FLAGS.SPECULAR_TEXTURE )
-	{
-		code.fs += &quot;	vec4 spec_info = texture2D( specular_texture, IN.uv );\n\
-	o.Specular *= spec_info.x;\n\
-	o.Gloss *= spec_info.y;\n&quot;;
-	}
-	if( code_flags &amp; FLAGS.REFLECTIVITY_TEXTURE )
-		code.fs += &quot;	o.Reflectivity *= texture2D( reflectivity_texture, IN.uv ).x;\n&quot;;
-	if( code_flags &amp; FLAGS.EMISSIVE_TEXTURE )
-		code.fs += &quot;	o.Emission *= texture2D( emissive_texture, IN.uv ).xyz;\n&quot;;
-	if( code_flags &amp; FLAGS.AMBIENT_TEXTURE )
-		code.fs += &quot;	o.Ambient *= texture2D( ambient_texture, IN.uv ).xyz;\n&quot;;
-	if( code_flags &amp; FLAGS.DETAIL_TEXTURE )
-		code.fs += &quot;	o.Albedo += (texture2D( detail_texture, IN.uv * u_detail_info.yz).xyz - vec3(0.5)) * u_detail_info.x;\n&quot;;
-	if( code_flags &amp; FLAGS.EXTRA_TEXTURE )
-		code.fs += &quot;	if(u_light_info.z == 0.0) o.Extra = u_extra_color * texture2D( extra_texture, IN.uv );\n&quot;;
+	if(this.reflection_factor &gt; 0.0) 
+		query.macros.USE_REFLECTION = &quot;&quot;;
 
-	//flags
-	if( code_flags &amp; FLAGS.ALPHA_TEST )
+	//extra code
+	if(this.extra_surface_shader_code)
 	{
-		var str = &quot;	if(o.Alpha &lt; 0.01) discard;\n&quot;;
-		code.fs += str;
-		code.fs_shadows += str;
+		var code = null;
+		if(this._last_extra_surface_shader_code != this.extra_surface_shader_code)
+		{
+			code = Material.processShaderCode( this.extra_surface_shader_code );
+			this._last_processed_extra_surface_shader_code = code;
+		}
+		else
+			code = this._last_processed_extra_surface_shader_code;
+		if(code)
+			query.macros.USE_EXTRA_SURFACE_SHADER_CODE = code;
 	}
 
-	if( code_flags &amp; FLAGS.SPEC_ON_TOP )
-		code.fs += &quot;	#define SPEC_ON_TOP\n&quot;;
-
-	if( code_flags &amp; FLAGS.SPEC_ON_ALPHA )
-		code.fs += &quot;	#define SPEC_ON_ALPHA\n&quot;;
-
-	//if( code_flags &amp; FLAGS.FLAT_NORMALS )
-	//	flat_normals += &quot;&quot;;
-
-	//compile shader and cache
-	shader_code = new LS.ShaderCode();
-	var final_code = newStandardMaterial.code_template;
-
-	if( newStandardMaterial.onShaderCode )
-		newStandardMaterial.onShaderCode( code, this, code_flags );
-
-	shader_code.code = final_code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
-		v = v.replace( /[\{\}]/g, &quot;&quot; );
-		return code[v] || &quot;&quot;;
-	});
-
-	LS.newStandardMaterial.shader_codes[ code_flags ] = shader_code;
-	return shader_code;
+	//extra macros
+	if(this.extra_macros)
+		for(var im in this.extra_macros)
+			query.macros[im] = this.extra_macros[im];
 }
 
-newStandardMaterial.prototype.fillUniforms = function( scene, options )
+oldStandardMaterial.prototype.fillUniforms = function( scene, options )
 {
-	var uniforms = this._uniforms;
+	var uniforms = {};
+	var samplers = []; //array with the samplers in the binding order
 
-	uniforms.u_reflection_info[0] = this.reflection_factor;
-	uniforms.u_reflection_info[1] = this.reflection_fresnel;
+	uniforms.u_material_color = this._color;
+
+	//uniforms.u_ambient_color = node.flags.ignore_lights ? [1,1,1] : [scene.ambient_color[0] * this.ambient[0], scene.ambient_color[1] * this.ambient[1], scene.ambient_color[2] * this.ambient[2]];
+	//if(this.use_scene_ambient &amp;&amp; scene.info &amp;&amp; !this.textures[&quot;ambient&quot;])
+	//	uniforms.u_ambient_color = vec3.fromValues(scene.info.ambient_color[0] * this.ambient[0], scene.info.ambient_color[1] * this.ambient[1], scene.info.ambient_color[2] * this.ambient[2]);
+	//else
+	uniforms.u_ambient_color = this.ambient;
+
+	uniforms.u_emissive_color = this.emissive || vec4.create();
+	uniforms.u_specular = this._specular_data;
+	uniforms.u_reflection_info = vec2.fromValues( (this.reflection_additive ? -this.reflection_factor : this.reflection_factor), this.reflection_fresnel );
 	uniforms.u_backlight_factor = this.backlight_factor;
-	uniforms.u_normal_info[0] = this.normalmap_factor;
-	uniforms.u_normal_info[1] = this.normalmap_tangent ? 1 : 0;
+	uniforms.u_normalmap_factor = this.normalmap_factor;
 	uniforms.u_displacementmap_factor = this.displacementmap_factor;
-	uniforms.u_velvet_info.set( this._velvet );
-	uniforms.u_velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
+	uniforms.u_bumpmap_factor = this.bumpmap_factor;
+
+	this._velvet_info.set( this.velvet );
+	this._velvet_info[3] = this.velvet_additive ? this.velvet_exp : -this.velvet_exp;
+	uniforms.u_velvet_info = this._velvet_info;
+
+	uniforms.u_detail_info = this._detail;
+
+	uniforms.u_extra_data = this._extra_data;
+
+	uniforms.u_texture_matrix = this.uvs_matrix;
 
 	//iterate through textures in the material
 	var last_texture_slot = 0;
-	var samplers = this._samplers;
-	samplers.length = 0; //clear
 	for(var i in this.textures) 
 	{
 		var sampler = this.getTextureSampler(i);
@@ -531,7 +457,7 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 		if(!texture)
 			continue;
 
-		if(texture.constructor === String) //name of texture
+		if(texture.constructor === String)
 			texture = LS.ResourcesManager.textures[texture];
 		else if (texture.constructor != Texture)
 			continue;		
@@ -548,14 +474,21 @@ newStandardMaterial.prototype.fillUniforms = function( scene, options )
 			last_texture_slot++;
 
 		samplers[ slot ] = sampler;
-		//var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? &quot;_texture&quot; : &quot;_cubemap&quot;);
-		uniforms[ i + &quot;_texture&quot; ] = slot;
+		var uniform_name = i + ( (!texture || texture.texture_type == gl.TEXTURE_2D) ? &quot;_texture&quot; : &quot;_cubemap&quot;);
+		uniforms[ uniform_name ] = slot;
 	}
+
+	//add extra uniforms
+	for(var i in this.extra_uniforms)
+		uniforms[i] = this.extra_uniforms[i];
+
+	this._uniforms = uniforms;
+	this._samplers = samplers;
 }
 
-newStandardMaterial.prototype.getTextureChannels = function()
+oldStandardMaterial.prototype.getTextureChannels = function()
 {
-	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, newStandardMaterial.DETAIL_TEXTURE, newStandardMaterial.NORMAL_TEXTURE, newStandardMaterial.DISPLACEMENT_TEXTURE, newStandardMaterial.BUMP_TEXTURE, newStandardMaterial.REFLECTIVITY_TEXTURE, newStandardMaterial.EXTRA_TEXTURE, Material.ENVIRONMENT_TEXTURE, newStandardMaterial.IRRADIANCE_TEXTURE ];
+	return [ Material.COLOR_TEXTURE, Material.OPACITY_TEXTURE, Material.AMBIENT_TEXTURE, Material.SPECULAR_TEXTURE, Material.EMISSIVE_TEXTURE, oldStandardMaterial.DETAIL_TEXTURE, oldStandardMaterial.NORMAL_TEXTURE, oldStandardMaterial.DISPLACEMENT_TEXTURE, oldStandardMaterial.BUMP_TEXTURE, oldStandardMaterial.REFLECTIVITY_TEXTURE, Material.ENVIRONMENT_TEXTURE, oldStandardMaterial.IRRADIANCE_TEXTURE, oldStandardMaterial.EXTRA_TEXTURE ];
 }
 
 /**
@@ -563,7 +496,7 @@ newStandardMaterial.prototype.getTextureChannels = function()
 * @method setProperty
 * @param {Object} object to configure from
 */
-newStandardMaterial.prototype.setProperty = function(name, value)
+oldStandardMaterial.prototype.setProperty = function(name, value)
 {
 	//redirect to base material
 	if( Material.prototype.setProperty.call(this,name,value) )
@@ -584,18 +517,19 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 		case &quot;velvet_additive&quot;:
 		case &quot;normalmap_tangent&quot;:
 		case &quot;normalmap_factor&quot;:
-		case &quot;bumpmap_factor&quot;:
 		case &quot;displacementmap_factor&quot;:
+		case &quot;extra_factor&quot;:
 		case &quot;detail_factor&quot;:
 		case &quot;emissive_extra&quot;:
 		//strings
-		case &quot;shader_name&quot;:
 		//bools
+		case &quot;shader_name&quot;:
 		case &quot;specular_on_top&quot;:
 		case &quot;specular_on_alpha&quot;:
 		case &quot;normalmap_tangent&quot;:
 		case &quot;reflection_specular&quot;:
 		case &quot;use_scene_ambient&quot;:
+		case &quot;extra_surface_shader_code&quot;:
 		case &quot;blend_mode&quot;:
 			if(value !== null)
 				this[name] = value; 
@@ -609,12 +543,16 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 			break;
 		//vectors
 		case &quot;ambient&quot;:	
+		case &quot;diffuse&quot;: 
 		case &quot;emissive&quot;: 
 		case &quot;velvet&quot;:
-		case &quot;extra&quot;:
 		case &quot;detail_scale&quot;:
+		case &quot;extra_color&quot;:
 			if(this[name].length == value.length)
 				this[name].set(value);
+			break;
+		case &quot;extra_uniforms&quot;:
+			this.extra_uniforms = LS.cloneObject(value);
 			break;
 		default:
 			return false;
@@ -627,15 +565,13 @@ newStandardMaterial.prototype.setProperty = function(name, value)
 * @method getPropertiesInfo
 * @return {Object} object with name:type
 */
-newStandardMaterial.prototype.getPropertiesInfo = function()
+oldStandardMaterial.prototype.getPropertiesInfo = function()
 {
 	//get from the regular material
 	var o = Material.prototype.getPropertiesInfo.call(this);
 
 	//add some more
 	o.merge({
-		shader_name:  LS.TYPES.STRING,
-
 		blend_mode: LS.TYPES.NUMBER,
 		specular_factor: LS.TYPES.NUMBER,
 		specular_gloss: LS.TYPES.NUMBER,
@@ -645,14 +581,15 @@ newStandardMaterial.prototype.getPropertiesInfo = function()
 		velvet_exp: LS.TYPES.NUMBER,
 
 		normalmap_factor: LS.TYPES.NUMBER,
-		bumpmap_factor: LS.TYPES.NUMBER,
 		displacementmap_factor: LS.TYPES.NUMBER,
 		emissive_extra: LS.TYPES.NUMBER,
+		extra_factor: LS.TYPES.NUMBER,
+		extra_surface_shader_code: LS.TYPES.STRING,
 
 		ambient: LS.TYPES.VEC3,
 		emissive: LS.TYPES.VEC3,
 		velvet: LS.TYPES.VEC3,
-		extra: LS.TYPES.VEC4,
+		extra_color: LS.TYPES.VEC3,
 		detail_factor: LS.TYPES.NUMBER,
 		detail_scale: LS.TYPES.VEC2,
 
@@ -666,7 +603,7 @@ newStandardMaterial.prototype.getPropertiesInfo = function()
 	return o;
 }
 
-newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
+oldStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 {
 	if( path.length &lt; 1)
 		return;
@@ -686,16 +623,17 @@ newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 		case &quot;reflection_fresnel&quot;:
 		case &quot;velvet_exp&quot;:
 		case &quot;normalmap_factor&quot;:
-		case &quot;bumpmap_factor&quot;:
 		case &quot;displacementmap_factor&quot;:
 		case &quot;emissive_extra&quot;:
+		case &quot;extra_factor&quot;:
 		case &quot;detail_factor&quot;:
 			type = LS.TYPES.NUMBER; break;
-		case &quot;extra&quot;:
-			type = LS.TYPES.VEC4; break;
+		case &quot;extra_surface_shader_code&quot;:
+			type = LS.TYPES.STRING; break;
 		case &quot;ambient&quot;:
 		case &quot;emissive&quot;:
 		case &quot;velvet&quot;:
+		case &quot;extra_color&quot;:
 			type = LS.TYPES.VEC3; break;
 		case &quot;detail_scale&quot;:
 			type = LS.TYPES.VEC2; break;
@@ -719,325 +657,8 @@ newStandardMaterial.prototype.getPropertyInfoFromPath = function( path )
 	};
 }
 
-newStandardMaterial.clearShadersCache = function()
-{
-	LS.log(&quot;newStandardMaterial ShaderCode cache cleared&quot;);
-	newStandardMaterial.shader_codes = {};
-}
-
-LS.registerMaterialClass( newStandardMaterial );
-LS.newStandardMaterial = newStandardMaterial;
-
-newStandardMaterial.code_template = &quot;\n\
-\n\
-\n\
-\\color.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
-#endif\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \&quot;light\&quot;\n\
-#pragma shaderblock \&quot;morphing\&quot;\n\
-#pragma shaderblock \&quot;skinning\&quot;\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-\n\
-//special cases\n\
-{{vs_out}}\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-	\n\
-	{{vs}}\n\
-	//local deforms\n\
-	applyMorphing( vertex4, v_normal );\n\
-	applySkinning( vertex4, v_normal );\n\
-	{{vs_local_deform}}\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-	\n\
-	applyLight(v_pos);\n\
-	\n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-	//world deform\n\
-	{{vs_deform}}\n\
-	\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-	gl_PointSize = u_point_size;\n\
-	#pragma shaderblock \&quot;modifyFinalVertexPosition\&quot;\n\
-}\n\
-\n\
-\\color.fs\n\
-\n\
-#ifdef DRAW_BUFFERS\n\
-	#extension GL_EXT_draw_buffers : require \n\
-#endif\n\
-\n\
-precision mediump float;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//globals\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec4 u_clipping_plane;\n\
-uniform vec4 u_background_color;\n\
-uniform vec4 u_material_color;\n\
-\n\
-uniform vec3 u_ambient_color;\n\
-uniform vec4 u_emissive_color;\n\
-uniform vec4 u_specular;\n\
-uniform vec2 u_reflection_info;\n\
-uniform vec4 u_velvet_info;\n\
-uniform vec2 u_normal_info;\n\
-uniform vec3 u_detail_info;\n\
-uniform mat3 u_texture_matrix;\n\
-uniform vec4 u_extra_color;\n\
-uniform float u_backlight_factor;\n\
-\n\
-uniform sampler2D color_texture;\n\
-uniform sampler2D opacity_texture;\n\
-uniform sampler2D specular_texture;\n\
-uniform sampler2D ambient_texture;\n\
-uniform sampler2D emissive_texture;\n\
-uniform sampler2D reflectivity_texture;\n\
-uniform sampler2D detail_texture;\n\
-uniform sampler2D normal_texture;\n\
-uniform sampler2D extra_texture;\n\
-\n\
-uniform vec4 u_color_texture_settings;\n\
-uniform vec4 u_opacity_texture_settings;\n\
-uniform vec4 u_specular_texture_settings;\n\
-uniform vec4 u_ambient_texture_settings;\n\
-uniform vec4 u_emissive_texture_settings;\n\
-uniform vec4 u_reflectivity_texture_settings;\n\
-uniform vec4 u_normal_texture_settings;\n\
-\n\
-\n\
-#pragma shaderblock \&quot;light\&quot;\n\
-#pragma shaderblock \&quot;light_texture\&quot;\n\
-#pragma shaderblock \&quot;applyReflection\&quot;\n\
-\n\
-#pragma snippet \&quot;perturbNormal\&quot;\n\
-\n\
-#pragma shaderblock \&quot;extraBuffers\&quot;\n\
-\n\
-void surf(in Input IN, out SurfaceOutput o)\n\
-{\n\
-	o.Albedo = u_material_color.xyz;\n\
-	o.Alpha = u_material_color.a;\n\
-	o.Normal = normalize( v_normal );\n\
-	o.Specular = u_specular.x;\n\
-	o.Gloss = u_specular.y;\n\
-	o.Ambient = u_ambient_color;\n\
-	o.Emission = u_emissive_color.xyz;\n\
-	o.Reflectivity = u_reflection_info.x;\n\
-	o.Extra = u_extra_color;\n\
-	\n\
-	{{fs}}\n\
-	\n\
-	if(u_velvet_info.w &gt; 0.0)\n\
-		o.Albedo += u_velvet_info.xyz * ( 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), u_velvet_info.w ));\n\
-	else if(u_velvet_info.w &lt; 0.0)\n\
-		o.Albedo = mix( o.Albedo, u_velvet_info.xyz, 1.0 - pow( max(0.0, dot( IN.viewDir, o.Normal )), abs(u_velvet_info.w) ) );\n\
-	if(u_emissive_color.w &gt; 0.0)\n\
-		o.Emission *= o.Albedo;\n\
-	o.Reflectivity *= max(0.0, pow( 1.0 - clamp(0.0, dot(IN.viewDir,o.Normal),1.0), u_reflection_info.y ));\n\
-}\n\
-\n\
-{{fs_out}}\n\
-\n\
-void main() {\n\
-	Input IN = getInput();\n\
-	SurfaceOutput o = getSurfaceOutput();\n\
-	surf(IN,o);\n\
-	Light LIGHT = getLight();\n\
-	applyLightTexture( IN, LIGHT );\n\
-	FinalLight FINALLIGHT = computeLight( o, IN, LIGHT );\n\
-	FINALLIGHT.Diffuse += u_backlight_factor * max(0.0, dot(FINALLIGHT.Vector, -o.Normal));\n\
-	vec4 final_color = vec4( 0.0,0.0,0.0, o.Alpha );\n\
-	#ifdef SPEC_ON_ALPHA\n\
-		final_color.a += FINALLIGHT.Specular;\n\
-	#endif\n\
-	#ifdef SPEC_ON_TOP\n\
-		float specular = FINALLIGHT.Specular;\n\
-		FINALLIGHT.Specular = 0.0;\n\
-	#endif\n\
-	final_color.xyz = applyLight( o, FINALLIGHT );\n\
-	#ifdef SPEC_ON_TOP\n\
-		final_color.xyz += specular * LIGHT.Color;\n\
-	#endif\n\
-	final_color = applyReflection( IN, o, final_color );\n\
-	{{fs_encode}}\n\
-	#ifdef DRAW_BUFFERS\n\
-	  gl_FragData[0] = final_color;\n\
-	  if(u_light_info.z == 0.0)\n\
-		  gl_FragData[1] = o.Extra;\n\
-	#else\n\
-	  gl_FragColor = final_color;\n\
-	#endif\n\
-}\n\
-\\shadow.vs\n\
-\n\
-precision mediump float;\n\
-attribute vec3 a_vertex;\n\
-attribute vec3 a_normal;\n\
-attribute vec2 a_coord;\n\
-#ifdef USE_COLORS\n\
-attribute vec4 a_color;\n\
-#endif\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//matrices\n\
-#ifdef BLOCK_INSTANCING\n\
-	attribute mat4 u_model;\n\
-#else\n\
-	uniform mat4 u_model;\n\
-#endif\n\
-uniform mat4 u_normal_model;\n\
-uniform mat4 u_view;\n\
-uniform mat4 u_viewprojection;\n\
-//material\n\
-uniform float u_displacementmap_factor;\n\
-uniform sampler2D displacement_texture;\n\
-\n\
-//globals\n\
-uniform float u_time;\n\
-uniform vec4 u_viewport;\n\
-uniform float u_point_size;\n\
-\n\
-#pragma shaderblock \&quot;light\&quot;\n\
-#pragma shaderblock \&quot;morphing\&quot;\n\
-#pragma shaderblock \&quot;skinning\&quot;\n\
-\n\
-//camera\n\
-uniform vec3 u_camera_eye;\n\
-\n\
-{{vs_out}}\n\
-\n\
-void main() {\n\
-	\n\
-	vec4 vertex4 = vec4(a_vertex,1.0);\n\
-	v_normal = a_normal;\n\
-	v_uvs = a_coord;\n\
-  \n\
-	{{vs}}\n\
-  //deforms\n\
-  applyMorphing( vertex4, v_normal );\n\
-  applySkinning( vertex4, v_normal );\n\
-  {{vs_local_deform}}\n\
-	\n\
-	//vertex\n\
-	v_pos = (u_model * vertex4).xyz;\n\
-  \n\
-  applyLight(v_pos);\n\
-  \n\
-	//normal\n\
-	#ifdef SHADERBLOCK_INSTANCING\n\
-		v_normal = (u_model * vec4(v_normal,0.0)).xyz;\n\
-	#else\n\
-		v_normal = (u_normal_model * vec4(v_normal,0.0)).xyz;\n\
-	#endif\n\
-  {{vs_deform}}\n\
-	gl_Position = u_viewprojection * vec4(v_pos,1.0);\n\
-}\n\
-\\shadow.fs\n\
-\n\
-precision mediump float;\n\
-\n\
-//varyings\n\
-varying vec3 v_pos;\n\
-varying vec3 v_normal;\n\
-varying vec2 v_uvs;\n\
-\n\
-//globals\n\
-uniform vec3 u_camera_eye;\n\
-uniform vec4 u_clipping_plane;\n\
-uniform vec4 u_material_color;\n\
-\n\
-uniform mat3 u_texture_matrix;\n\
-\n\
-uniform sampler2D color_texture;\n\
-uniform sampler2D opacity_texture;\n\
-\n\
-#pragma snippet \&quot;input\&quot;\n\
-#pragma snippet \&quot;surface\&quot;\n\
-\n\
-void surf(in Input IN, out SurfaceOutput o)\n\
-{\n\
-	o.Albedo = u_material_color.xyz;\n\
-	o.Alpha = u_material_color.a;\n\
-	\n\
-	{{fs_shadows}}\n\
-}\n\
-\n\
-{{fs_shadow_out}}\n\
-\n\
-void main() {\n\
-  Input IN = getInput();\n\
-  SurfaceOutput o = getSurfaceOutput();\n\
-  surf(IN,o);\n\
-  {{fs_shadow_encode}}\n\
-  gl_FragColor = vec4(o.Albedo,o.Alpha);\n\
-}\n\
-&quot;;
-
-
-/* example to inject code in the standardMaterial without having to edit it
-//hooks are vs_out (out of main), vs_local_deformer (vertex4 to deform vertices localy), vs_deformer (v_pos to deform final position), fs_out (out of main), fs_encode (final_color before being written)
-this.onStart = function()
-{
-  LS.newStandardMaterial.onShaderCode = function(code,mat)
-  {
-  	code.fs_encode = &quot;final_color.x = final_color.y;&quot;;
-  }
-	LS.newStandardMaterial.clearShadersCache();
-}
-*/
+LS.registerMaterialClass( oldStandardMaterial );
+LS.oldStandardMaterial = oldStandardMaterial;
     </pre>
 </div>
                     </div>

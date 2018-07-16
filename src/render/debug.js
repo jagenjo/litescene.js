@@ -30,7 +30,7 @@ function DebugRender()
 		selected: vec4.fromValues(1,1,1,1),
 		node: vec4.fromValues(1,0.5,0,1),
 		bone: vec4.fromValues(1,0,0.5,1)
-	}
+	};
 
 	this.settings = {
 		render_grid: true,
@@ -293,7 +293,7 @@ DebugRender.prototype.renderGrid = function()
 	if(!this.grid_shader)
 	{
 		//this.grid_shader = LS.Draw.createSurfaceShader("float PI2 = 6.283185307179586; return vec4( vec3( max(0.0, cos(pos.x * PI2 * 0.1) - 0.95) * 10.0 + max(0.0, cos(pos.z * PI2 * 0.1) - 0.95) * 10.0 ),1.0);");
-		this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));vec4 color = u_color * vec4(vec3(1.0),brightness); if( abs(pos.x) < 0.025 ) color *= vec4(0.4,0.4,1.0,1.0); if( abs(pos.z) < 0.025 ) color *= vec4(1.0,0.4,0.4,1.0); return color;");
+		this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));vec4 color = u_color * vec4(vec3(1.0),brightness); if( abs(pos.x) < 0.1 ) color = mix(vec4(0.4,0.4,1.0,0.5),color,abs(pos.x/0.1)); if( abs(pos.z) < 0.1 ) color = mix(vec4(1.0,0.4,0.4,0.5),color,abs(pos.z/0.1)); return color;");
 		//this.grid_shader = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xz + f).x * 0.6 + texture2D(u_texture, pos.xz * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xz * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xz - pos.xz));vec4 color = u_color * vec4(vec3(1.0),brightness); return color;");
 		this.grid_shader_xy = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xy + f).x * 0.6 + texture2D(u_texture, pos.xy * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xy * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xy - pos.xy));vec4 color = u_color * vec4(vec3(1.0),brightness);  if( abs(pos.x) < 0.025 ) color *= vec4(0.4,1.0,0.4,1.0); if( abs(pos.y) < 0.025 ) color *= vec4(1.0,0.4,0.4,1.0); return color;");
 		//this.grid_shader_xy = LS.Draw.createSurfaceShader("vec2 f = vec2(1.0/64.0,-1.0/64.0); float brightness = texture2D(u_texture, pos.xy + f).x * 0.6 + texture2D(u_texture, pos.xy * 0.1 + f ).x * 0.3 + texture2D(u_texture, pos.xy * 0.01 + f ).x * 0.2; brightness /= max(1.0,0.001 * length(u_camera_position.xy - pos.xy));return u_color * vec4(vec3(1.0),brightness);");

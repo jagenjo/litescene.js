@@ -164,6 +164,24 @@ var ResourcesManager = {
 	},
 
 	/**
+	* Replaces the extension of a filename
+	*
+	* @method replaceExtension
+	* @param {String} fullpath url or filename
+	* @param {String} extension
+	* @return {String} url with the new extension
+	*/
+	replaceExtension: function( fullpath, extension )
+	{
+		if(!fullpath)
+			return "";
+		extension = extension || "";
+		var folder = this.getFolder( fullpath );
+		var filename = this.getFilename( fullpath );
+		return this.cleanFullpath( (folder ? ( folder + "/" ) : "") + filename + "." + extension );
+	},
+
+	/**
 	* Returns the filename from a full path
 	*
 	* @method getFilename
@@ -175,8 +193,7 @@ var ResourcesManager = {
 		if(!fullpath)
 			return "";
 		var pos = fullpath.lastIndexOf("/");
-		//if(pos == -1) return fullpath;
-		var question = fullpath.lastIndexOf("?");
+		var question = fullpath.lastIndexOf("?"); //to avoid problems with URLs line scene.json?nocache=...
 		question = (question == -1 ? fullpath.length : (question - 1) ) - pos;
 		return fullpath.substr(pos+1,question);
 	},	
@@ -1286,6 +1303,14 @@ LS.ResourcesManager.registerResourcePreProcessor("json", function(filename, data
 	var class_name = data.object_class || data.object_type; //object_type for LEGACY
 	if(!class_name && data.material_class)
 		class_name = data.material_class; //HACK to fix one error
+
+	if(!class_name)
+	{
+		var complex = LS.ResourcesManager.getExtension( filename, true );
+		var ctor = LS.ResourceClasses_by_extension[ complex ];
+		if(ctor)
+			class_name = LS.getClassName( ctor );
+	}
 
 	if( class_name && !data.is_data )
 	{

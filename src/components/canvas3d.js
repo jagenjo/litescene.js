@@ -198,7 +198,7 @@ Canvas3D.prototype.onCollectInstances = function(e,instances)
 	if(!material)
 		material = this._standard_material;
 	if(!material)
-		material = this._standard_material = new LS.newStandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: LS.Blend.ALPHA });
+		material = this._standard_material = new LS.MaterialClasses.StandardMaterial({ flags: { ignore_lights: true, cast_shadows: false }, blend_mode: LS.Blend.ALPHA });
 
 	material.setTexture("color", this.texture_name || ":canvas3D" );
 	var sampler = material.textures["color"];

@@ -34,8 +34,6 @@ function RenderSettings( o )
 	this.z_pass = false; //enable when the shaders are too complex (normalmaps, etc) to reduce work of the GPU (still some features missing)
 	this.frustum_culling = true; //test bounding box by frustum to determine visibility
 
-	this.clipping_plane = null; //global clipping plane
-
 	//info
 	this.in_player = true; //is in the player (not in the editor)
 

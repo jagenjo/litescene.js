@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -301,7 +303,6 @@ function Light(o)
 	this._top = vec3.clone( LS.TOP );
 
 	//for StandardMaterial
-	this._query = new LS.ShaderQuery();
 	this._samplers = [];
 
 	//light uniforms
@@ -648,9 +649,6 @@ Light.prototype.prepare = function( render_settings )
 	var uniforms = this._uniforms;
 	var samplers = this._samplers;
 
-	var query = this._query;
-	query.clear(); //delete all properties (I dont like to generate garbage)
-
 	//projective texture needs the light matrix to compute projection
 	if(this.projective_texture || this.cast_shadows || this.force_light_matrix)
 		this.updateLightCamera();
@@ -667,47 +665,6 @@ Light.prototype.prepare = function( render_settings )
 	{
 		this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.shadow_type ];
 		//this._shadow_shaderblock_info = Light.shadow_shaderblocks_by_name[ this.hard_shadows ? &quot;hard&quot; : &quot;soft&quot; ];
-	}
-
-	//PREPARE SHADER QUERY
-	if(this.type == Light.DIRECTIONAL)
-		query.macros.USE_DIRECTIONAL_LIGHT = &quot;&quot;;
-	else if(this.type == Light.SPOT)
-		query.macros.USE_SPOT_LIGHT = &quot;&quot;;
-	else //omni
-		query.macros.USE_OMNI_LIGHT = &quot;&quot;;
-
-	if(this._spot_cone)
-		query.macros.USE_SPOT_CONE = &quot;&quot;;
-	if(this.attenuation_type == Light.LINEAR_ATTENUATION)
-		query.macros.USE_LINEAR_ATTENUATION = &quot;&quot;;
-	if(this.attenuation_type == Light.RANGE_ATTENUATION)
-		query.macros.USE_RANGE_ATTENUATION = &quot;&quot;;
-	if(this.offset &gt; 0.001)
-		query.macros.USE_LIGHT_OFFSET = &quot;&quot;;
-
-	if(this.projective_texture)
-	{
-		var light_projective_texture = this.projective_texture.constructor === String ? LS.ResourcesManager.textures[this.projective_texture] : this.projective_texture;
-		if(light_projective_texture)
-		{
-			if(light_projective_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_LIGHT_CUBEMAP = &quot;&quot;;
-			else
-				query.macros.USE_LIGHT_TEXTURE = &quot;&quot;;
-		}
-	}
-
-	if(this.extra_texture)
-	{
-		var extra_texture = this.extra_texture.constructor === String ? LS.ResourcesManager.textures[this.extra_texture] : this.extra_texture;
-		if(extra_texture)
-		{
-			if(extra_texture.texture_type == gl.TEXTURE_CUBE_MAP)
-				query.macros.USE_EXTRA_LIGHT_CUBEMAP = &quot;&quot;;
-			else
-				query.macros.USE_EXTRA_LIGHT_TEXTURE = &quot;&quot;;
-		}
 	}
 
 	//PREPARE UNIFORMS
@@ -824,6 +781,7 @@ Light.prototype.prepare = function( render_settings )
 * @param {Object} render_settings info about how the scene will be rendered
 * @return {ShaderQuery} the macros
 */
+/*
 Light.prototype.getQuery = function(instance, render_settings)
 {
 	var query = this._query;
@@ -856,6 +814,7 @@ Light.prototype.getQuery = function(instance, render_settings)
 
 	return query;
 }
+*/
 
 /**
 * Optimization: instead of using the far plane, we take into account the attenuation to avoid rendering objects where the light will never reach

@@ -29,29 +29,86 @@ if( typeof(LGAudio) != "undefined" )
 function GraphComponent(o)
 {
 	this.enabled = true;
+	this.from_file = false;
 	this.force_redraw = false;
+	this._filename = null;
+	this._graphcode = null;
+	this._graph_properties = null;
+	//this._properties_by_id = {};
 
 	this.on_event = "update";
 
-	if(typeof(LGraphTexture) == "undefined")
+	if(typeof(LiteGraph) == "undefined")
 		return console.error("Cannot use GraphComponent if LiteGraph is not installed");
 
+	this._graph_version = -1;
 	this._graph = new LGraph();
 	this._graph.getScene = function() { return this._scene || LS.GlobalScene; } //this OR is ugly
+	this._graph._scenenode = null;
+	this._loading = false;
 
 	if(o)
 		this.configure(o);
-	else //default
+	else if(!this.from_file)//default
 	{
 		var graphnode = this._default_node = LiteGraph.createNode("scene/node");
 		this._graph.add( graphnode );
-		//graphnode.properties.node_id = //cannot be set yet, not attached to node
 	}
 	
-	LEvent.bind(this,"trigger", this.trigger, this );	
+	LEvent.bind( this,"trigger", this.trigger, this );	
 }
 
 GraphComponent["@on_event"] = { type:"enum", values: ["start","render","beforeRenderScene","update","trigger"] };
+GraphComponent["@filename"] = { type:"resource", data_type: "graph" };
+
+
+Object.defineProperty( GraphComponent.prototype, "graph", {
+	enumerable: false,
+	get: function() {
+		return this._graph;
+	},
+	set: function(v) {
+		console.error("graph cannot be set manually");
+	}
+});
+
+
+Object.defineProperty( GraphComponent.prototype, "filename", {
+	enumerable: false,
+	get: function() {
+		return this._filename;
+	},
+	set: function(v) {
+		if(this._filename == v)
+			return;
+		if(v) //to avoid double slashes
+			v = LS.ResourcesManager.cleanFullpath( v );
+		this.from_file = true;
+		this._filename = v;
+		this._loading = false;
+		this._graphcode = null;
+		this.processGraph();
+	}
+});
+
+Object.defineProperty( GraphComponent.prototype, "graphcode", {
+	enumerable: false,
+	get: function() {
+		return this._graphcode;
+	},
+	set: function(v) {
+		//if(this._graphcode == v) return; //disabled because sometimes we want to force reload
+		this._loading = false;
+		this._graphcode = v;
+		this.from_file = true; //if assigning a graphcode, then its a from_file, even if it is null
+		if( this._graphcode )
+			this._filename = this._graphcode.fullpath || this._graphcode.filename;
+		else 
+			this._filename = null;
+		this._graph_properties = this.serializeProperties();
+		this.processGraph();
+	}
+});
 
 /*
 GraphComponent.events_translator = {
@@ -69,15 +126,32 @@ GraphComponent.icon = "mini-icon-graph.png";
 */
 GraphComponent.prototype.configure = function(o)
 {
-	this.uid = o.uid;
-	this.enabled = !!o.enabled;
-	if(o.graph_data)
+	this._graph_version = -1;
+
+	if(o.uid)
+		this.uid = o.uid;
+	if(o.enabled != null)
+		this.enabled = !!o.enabled;
+	if(o.from_file)
 	{
+		this.from_file = true;
+		this.filename = o.filename;
+		if( o.graph_properties )
+		{
+			if(this._loading)
+				this._graph_properties = o.graph_properties; //should be cloned?
+			else
+				this.configureProperties( o.graph_properties );
+		}
+	}
+	else if(o.graph_data)
+	{
+		this.from_file = false;
 		if(LS.catch_exceptions)
 		{
 			try
 			{
-				var obj = JSON.parse(o.graph_data);
+				var obj = JSON.parse( o.graph_data );
 				this._graph.configure( obj );
 			}
 			catch (err)
@@ -87,14 +161,14 @@ GraphComponent.prototype.configure = function(o)
 		}
 		else
 		{
-			var obj = JSON.parse(o.graph_data);
+			var obj = JSON.parse( o.graph_data );
 			this._graph.configure( obj );
 		}
 	}
 
 	if(o.on_event)
 		this.on_event = o.on_event;
-	if(o.force_redraw)
+	if(o.force_redraw != null)
 		this.force_redraw = o.force_redraw;
 }
 
@@ -104,14 +178,19 @@ GraphComponent.prototype.serialize = function()
 		object_class: "GraphComponent",
 		uid: this.uid,
 		enabled: this.enabled, 
+		from_file: this.from_file,
 		force_redraw: this.force_redraw , 
-		graph_data: JSON.stringify( this._graph.serialize() ),
+		filename: this._filename,
+		graph_properties: this.from_file ? this.serializeProperties() : null,
+		graph_data: this.from_file ? null : JSON.stringify( this._graph.serialize() ),
 		on_event: this.on_event
 	};
 }
 
 GraphComponent.prototype.getResources = function(res)
 {
+	if(this._filename)
+		res[this._filename] = true;
 	this._graph.sendEventToAllNodes("getResources",res);
 	return res;
 }
@@ -159,7 +238,9 @@ GraphComponent.prototype.onRemovedFromScene = function( scene )
 
 GraphComponent.prototype.onResourceRenamed = function( old_name, new_name, resource )
 {
-	this._graph.sendEventToAllNodes("onResourceRenamed",[old_name, new_name, resource]);
+	if( old_name == this._filename)
+		this._filename = new_name;
+	this._graph.sendEventToAllNodes("onResourceRenamed",[ old_name, new_name, resource ]);
 }
 
 GraphComponent.prototype.onSceneEvent = function( event_type, event_data )
@@ -206,57 +287,127 @@ GraphComponent.prototype.runGraph = function()
 {
 	if(!this._root._in_tree || !this.enabled)
 		return;
-	if(this._graph)
-		this._graph.runStep( 1, LS.catch_exceptions );
+
+	//if(!this._graphcode || this._graphcode._version != this._graph_version )
+	//	this.processGraph();
+
+	if(!this._graphcode)
+		return;
+
+	this._graph.runStep( 1, LS.catch_exceptions );
 	if(this.force_redraw)
 		this._root.scene.requestFrame();
 }
 
-GraphComponent.prototype.getGraph = function()
+GraphComponent.prototype.processGraph = function( skip_events, on_complete )
 {
-	return this._graph;
+	//use inner graph
+	if(!this.from_file)
+		return;
+
+	var that = this;
+	this._graphcode = LS.ResourcesManager.getResource( this._filename );
+	if(!this._graphcode && !this._loading) //must be loaded
+	{
+		this._loading = true;
+		LS.ResourcesManager.load( this._filename, null, function( res, url ){
+			this._loading = false;
+			if( url != that.filename )
+				return;
+			that.processGraph( skip_events );
+			if(on_complete)
+				on_complete(that);
+		});
+		return;
+	}
+
+	this._graph.configure( this._graphcode.data );
+	if( this._graph_properties )
+	{
+		this.configureProperties( this._graph_properties );
+		this._graph_properties = null;
+	}
+	this._graph_version = this._graphcode._version;
+}
+
+GraphComponent.prototype.getResources = function(res)
+{
+	res[ this._filename ] = true;
+	this._graph.sendEventToAllNodes("getResources",res);
+	return res;
+}
+
+GraphComponent.prototype.serializeProperties = function()
+{
+	var properties = {};
+
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(!nodes.length)
+		return properties;
+
+	for(var i = 0; i < nodes.length; ++i)
+	{
+		var n = nodes[i];
+		properties[ n.id ] = n.properties.value;
+	}
+
+	return properties;
+}
+
+GraphComponent.prototype.configureProperties = function( properties )
+{
+	var nodes = this._graph.findNodesByType("scene/global");
+	if(!nodes.length)
+		return properties;
+
+	for(var i = 0; i < nodes.length; ++i)
+	{
+		var n = nodes[i];
+		if( properties[ n.id ] === undefined )
+			continue;
+		n.properties.value = properties[ n.id ];
+	}
 }
 
 GraphComponent.prototype.getPropertyValue = function( property )
 {
 	var nodes = this._graph.findNodesByType("scene/global");
-	if(nodes.length)
+	if(!nodes.length)
+		return null;
+	for(var i = 0; i < nodes.length; ++i)
 	{
-		for(var i = 0; i < nodes.length; ++i)
-		{
-			var n = nodes[i];
-			var type = n.properties.type;
-			if(n.properties.name != property)
-				continue;
+		var n = nodes[i];
+		var type = n.properties.type;
+		if(n.properties.name != property)
+			continue;
 
-			return n.properties.value;
-		}
+		return n.properties.value;
 	}
 }
 
-
+//TODO: optimize this precaching nodes of type scene/global
 GraphComponent.prototype.setPropertyValue = function( property, value )
 {
 	var nodes = this._graph.findNodesByType("scene/global");
-	if(nodes.length)
+	if(!nodes.length)
+		return;
+	for(var i = 0; i < nodes.length; ++i)
 	{
-		for(var i = 0; i < nodes.length; ++i)
-		{
-			var n = nodes[i];
-			var type = n.properties.type;
-			if(n.properties.name != property)
-				continue;
+		var n = nodes[i];
+		var type = n.properties.type;
+		if(n.properties.name != property)
+			continue;
 
-			if(n.properties.value && n.properties.value.set)
-				n.properties.value.set(value);
-			else
-				n.properties.value = value;
-			return true;
-		}
+		if(n.properties.value && n.properties.value.set)
+			n.properties.value.set(value);
+		else
+			n.properties.value = value;
+		return true;
 	}
 }
 
 LS.registerComponent( GraphComponent );
+
 
 
 
@@ -310,6 +461,17 @@ function FXGraphComponent(o)
 
 FXGraphComponent.icon = "mini-icon-graph.png";
 FXGraphComponent.buffer_size = [1024,512];
+
+
+Object.defineProperty( FXGraphComponent.prototype, "graph", {
+	enumerable: false,
+	get: function() {
+		return this._graph;
+	},
+	set: function(v) {
+		console.error("graph cannot be set manually");
+	}
+});
 
 /**
 * Returns the first component of this container that is of the same class
@@ -424,11 +586,6 @@ FXGraphComponent.prototype.setPropertyValue = function( property, value )
 	}
 }
 
-
-FXGraphComponent.prototype.getGraph = function()
-{
-	return this._graph;
-}
 
 FXGraphComponent.prototype.onResourceRenamed = function(old_name, new_name, res)
 {

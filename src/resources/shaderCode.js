@@ -1,4 +1,3 @@
-
 /**
 * ShaderCode is a resource containing all the code associated to a shader
 * It is used to define special ways to render scene objects, having full control of the rendering algorithm
@@ -230,11 +229,11 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 	var context = {}; //used to store metaprogramming defined vars in the shader
 
 	//compute context defines
-	for(var i = 0; i < LS.Shaders.num_shaderblocks; ++i)
+	for(var i = 0, l = LS.Shaders.shader_blocks.length; i < l; ++i)
 	{
 		if( !(block_flags & 1<<i) ) //is flag enabled
 			continue;
-		var shader_block = LS.Shaders.shader_blocks.get(i);
+		var shader_block = LS.Shaders.shader_blocks[i];
 		if(!shader_block)
 			continue; //???
 		if(shader_block.context_macros)
@@ -289,7 +288,7 @@ ShaderCode.prototype.getShader = function( render_mode, block_flags )
 		{
 			if( !(block_flags & 1<<i) ) //is flag enabled
 				continue;
-			var shader_block = LS.Shaders.shader_blocks.get(i);
+			var shader_block = LS.Shaders.shader_blocks[i];
 			if(!shader_block)
 				continue; //???
 			blocks.push( shader_block );
@@ -356,6 +355,11 @@ ShaderCode.prototype.compileShader = function( vs_code, fs_code )
 	return null;
 }
 
+ShaderCode.prototype.clearCache =  function()
+{
+	this._compiled_shaders = {};
+}
+
 ShaderCode.prototype.validatePublicUniforms = function( shader )
 {
 	if(!shader)
@@ -415,7 +419,15 @@ ShaderCode.removeComments = function( code )
 	return code.replace(/(\/\*([\s\S]*?)\*\/)|(\/\/(.*)$)/gm, '');
 }
 
-//parses ShaderLab (unity) syntax
+ShaderCode.replaceCode = function( code, context )
+{
+	return code.replace(/\{\{[a-zA-Z0-9_]*\}\}/g, function(v){
+		v = v.replace( /[\{\}]/g, "" );
+		return context[v] || "";
+	});
+}
+
+//WIP: parses ShaderLab (unity) syntax
 ShaderCode.parseShaderLab = function( code )
 {
 	var root = {};

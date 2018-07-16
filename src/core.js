@@ -38,6 +38,7 @@ var LS = {
 	//containers
 	Classes: {}, //maps classes name like "Prefab" or "Animation" to its namespace "LS.Prefab". Used in Formats and ResourceManager when reading classnames from JSONs or WBin.
 	ResourceClasses: {}, //classes that can contain a resource of the system
+	ResourceClasses_by_extension: {},
 	Globals: {}, //global scope to share info among scripts
 
 	/**
@@ -282,6 +283,8 @@ var LS = {
 		this.ResourceClasses[ class_name ] = resourceClass;
 		this.Classes[ class_name ] = resourceClass;
 		resourceClass.is_resource = true;
+		if( resourceClass.EXTENSION ) //used in GRAPH.json
+			this.ResourceClasses_by_extension[ resourceClass.EXTENSION.toLowerCase() ] = resourceClass;
 
 		//some validation here? maybe...
 	},
@@ -905,7 +908,7 @@ var LS = {
 
 	log: function()
 	{
-		console.log.call( console, arguments );
+		console.log.apply( console, arguments );
 	},
 
 	stringToValue: function( v )

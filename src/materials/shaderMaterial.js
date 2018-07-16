@@ -343,7 +343,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	//global stuff
 	this._render_state.enable();
 	LS.Renderer.bindSamplers( this._samplers );
-	var global_flags = 0;
+	var global_flags = LS.Renderer._global_shader_blocks_flags;
 
 	//TODO: could this part be precomputed before rendering color pass?
 	if( pass.id == COLOR_PASS ) //allow reflections only in color pass
@@ -362,6 +362,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 		}
 	}
 
+	//for those cases
 	if(this.onRenderInstance)
 		this.onRenderInstance( instance );
 
@@ -374,6 +375,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 	if( !ignore_lights )
 		lights = LS.Renderer.getNearLights( instance );
 
+	//if no lights are set or the render mode is flat
 	if( !lights || lights.length == 0 || ignore_lights )
 	{
 		//global flags for environment and irradiance
@@ -407,6 +409,7 @@ ShaderMaterial.prototype.renderInstance = function( instance, render_settings, p
 
 	var uniforms_array = [ scene._uniforms, camera._uniforms, render_uniforms, null, this._uniforms, instance.uniforms ];
 
+	//render multipass with several lights
 	var prev_shader = null;
 	for(var i = 0; i < lights.length; ++i)
 	{
@@ -524,6 +527,7 @@ ShaderMaterial.prototype.renderPickingInstance = function( instance, render_sett
 	return true;
 }
 
+//used by the editor to know which possible texture channels are available
 ShaderMaterial.prototype.getTextureChannels = function()
 {
 	var channels = [];

@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -338,8 +340,6 @@ var Draw = {
 			}\
 		&#x27;);
 
-
-
 		this.shader_points_color_texture_size = new Shader(&#x27;\
 			precision mediump float;\n\
 			attribute vec3 a_vertex;\n\
@@ -363,6 +363,29 @@ var Draw = {
 			  if(tex.a &lt; 0.1)\n\
 				discard;\n\
 			  vec4 color = u_color * v_color * tex;\n\
+			  gl_FragColor = color;\n\
+			}\
+		&#x27;);
+
+		this.shader_text2D = new Shader(&#x27;\
+			precision mediump float;\n\
+			attribute vec3 a_vertex;\n\
+			attribute vec4 a_extra4;\n\
+			uniform mat4 u_mvp;\n\
+			uniform float u_point_size;\n\
+			void main() {\n\
+				gl_PointSize = u_point_size;\n\
+				gl_Position = u_mvp * vec4(a_vertex,1.0);\n\
+			}\
+			&#x27;,&#x27;\
+			precision mediump float;\n\
+			uniform vec4 u_color;\n\
+			uniform sampler2D u_texture;\n\
+			void main() {\n\
+			  vec4 tex = texture2D(u_texture, vec2(gl_PointCoord.x,1.0 - gl_PointCoord.y) );\n\
+			  if(tex.a &lt; 0.1)\n\
+				discard;\n\
+			  vec4 color = u_color * tex;\n\
 			  gl_FragColor = color;\n\
 			}\
 		&#x27;);
@@ -1306,12 +1329,15 @@ var Draw = {
 	},
 
 	/**
-	* Renders a text in the current matrix position
+	* Renders a text in 3D, in the XY plane, using the current matrix position
 	* @method renderText
 	* @param {string} text
+	* @param {vec3} position [optional] 3D coordinate in relation to matrix
 	*/
-	renderText: function( text )
+	renderText: function( text, position )
 	{
+		position = position || LS.ZEROS;
+
 		if(!Draw.font_atlas)
 			this.createFontAtlas();
 		var atlas = this.font_atlas;
@@ -1345,12 +1371,12 @@ var Draw = {
 				continue;
 			}
 
-			vertices.set( [x, y, 0], pos*6*3);
-			vertices.set( [x, y + char_size, 0], pos*6*3+3);
-			vertices.set( [x + char_size, y + char_size, 0], pos*6*3+6);
-			vertices.set( [x + char_size, y, 0], pos*6*3+9);
-			vertices.set( [x, y, 0], pos*6*3+12);
-			vertices.set( [x + char_size, y + char_size, 0], pos*6*3+15);
+			vertices.set( [x + position[0], y + position[1], position[2]], pos*6*3);
+			vertices.set( [x + position[0], y + position[1] + char_size, position[2]], pos*6*3+3);
+			vertices.set( [x + position[0] + char_size, y + position[1] + char_size, position[2]], pos*6*3+6);
+			vertices.set( [x + position[0] + char_size, y + position[1], position[2]], pos*6*3+9);
+			vertices.set( [x + position[0], y + position[1], position[2]], pos*6*3+12);
+			vertices.set( [x + position[0] + char_size, y + position[1] + char_size, position[2]], pos*6*3+15);
 
 			coords.set( [c[0], c[1]], pos*6*2);
 			coords.set( [c[0], c[3]], pos*6*2+2);
@@ -1367,6 +1393,56 @@ var Draw = {
 		return this.renderMesh( mesh, gl.TRIANGLES, this.shader_texture, undefined, 0, vertices.length / 3 );
 	},
 
+	/*
+	renderText2D: function( text, position )
+	{
+		position = position || LS.ZEROS;
+		if(!Draw.font_atlas)
+			this.createFontAtlas();
+		var atlas = this.font_atlas;
+		var l = text.length;
+		var char_size = atlas.atlas.char_size;
+		var i_char_size = 1 / atlas.atlas.char_size;
+		var spacing = atlas.atlas.spacing;
+
+		var num_valid_chars = 0;
+		for(var i = 0; i &lt; l; ++i)
+			if(atlas.atlas[ text.charCodeAt(i) ] != null)
+				num_valid_chars++;
+
+		var vertices = new Float32Array( num_valid_chars * 3 );
+		var extra4 = new Float32Array( num_valid_chars * 4 );
+
+		var pos = 0;
+		var x = 0, y = 0;
+		for(var i = 0; i &lt; l; ++i)
+		{
+			var c = atlas.atlas[ text.charCodeAt(i) ];
+			if(!c)
+			{
+				if(text.charCodeAt(i) == 10) //breakline
+				{
+					x = 0;
+					y += char_size;
+				}
+				else
+					x += char_size;
+				continue;
+			}
+
+			vertices.set( position, i*3 );
+			extra4.set([ c[0], c[1], x,y );
+
+			x+= spacing;
+			++pos;
+		}
+		var mesh = this.toGlobalMesh({ vertices: vertices, extra4: extra4 });
+		this.setPointSize(20);
+		atlas.bind(0);
+		this.shader_text2D.uniforms({ u_char_offset: atlas.offset });
+		return this.renderMesh( mesh, gl.POINTS, this.shader_text2D, undefined, 0, vertices.length / 3 );
+	},
+	*/
 
 	createFontAtlas: function()
 	{
@@ -1383,7 +1459,7 @@ var Draw = {
 		var x = 0;
 		var y = 0;
 		var xoffset = 0.5, yoffset = fontsize * -0.3;
-		var atlas = {char_size: char_size, spacing: char_size * 0.6};
+		var atlas = { char_size: char_size, offset: char_size / canvas.width , spacing: char_size * 0.6 };
 
 		for(var i = 6; i &lt; 100; i++)//valid characters
 		{

@@ -16,13 +16,14 @@
 var Shaders = {
 
 	snippets: {},//to save source snippets
-	shader_blocks: new Map(),//to save shader block
+	shader_blocks_by_id: new Map(),//to save shader block
+	shader_blocks: [],
+	num_shaderblocks: 0, //used to know the index
 
 	global_extra_code: null,
 	dump_compile_errors: true, //dump errors in console
 	on_compile_error: null, //callback 
 
-	num_shaderblocks: 0, //used to know the index
 
 	/**
 	* Initializes the shader manager
@@ -106,6 +107,28 @@ var Shaders = {
 		return shader;
 	},
 
+	clearShaderCodeCache: function()
+	{
+		var scs = [];
+
+		//get all shadercodes...
+		var shadercodes = LS.StandardMaterial.shader_codes;
+		for(var i in shadercodes)
+			scs.push( shadercodes[i] );
+
+		var res = LS.ResourcesManager.resources;
+		for(var i in res)
+			if( res[i].constructor === LS.ShaderCode )
+				scs.push( res[i] );
+
+		//clear caches
+		for(var i in scs)
+		{
+			var sb = scs[i];
+			sb.clearCache();
+		}
+	},
+
 	dumpShaderError: function( name, err, vs_code, fs_code )
 	{
 		console.error("Error compiling shader: " + name);
@@ -156,14 +179,15 @@ var Shaders = {
 	* @param {string} id
 	* @param {LS.ShaderBlock} shader_block
 	*/
-	registerShaderBlock: function(id, shader_block)
+	registerShaderBlock: function( id, shader_block )
 	{
 		var block_id = -1;
 
-		if( this.shader_blocks.get(id) )
+		if( this.shader_blocks_by_id.get( id ) )
 		{
 			console.warn("There is already a ShaderBlock with that name, replacing it: ", id);
-			block_id = this.shader_blocks.get(id).flag_id;
+			block_id = this.shader_blocks_by_id.get(id).flag_id;
+			this.clearShaderCodeCache();
 		}
 		else
 			block_id = this.num_shaderblocks++;
@@ -172,20 +196,22 @@ var Shaders = {
 
 		shader_block.flag_id = block_id;
 		shader_block.flag_mask = 1<<block_id;
-		this.shader_blocks.set( block_id, shader_block );
-		this.shader_blocks.set( id, shader_block );
+		this.shader_blocks_by_id.set( id, shader_block );
+		this.shader_blocks[ block_id ] = shader_block;
 	},
 
 	/**
 	* register a shaderblock with the given id
 	*
 	* @method getShaderBlock
-	* @param {string} id
+	* @param {string|Number} id
 	* @return {LS.ShaderBlock} shader_block
 	*/
 	getShaderBlock: function( id )
 	{
-		return this.shader_blocks.get(id);
+		if(id.constructor === String)
+			return this.shader_blocks_by_id.get( id );
+		return this.shader_blocks[id];
 	},
 
 	//this is global code for default shaders
@@ -214,12 +240,12 @@ LS.Shaders = Shaders;
 * @namespace LS
 * @constructor
 */
-
 function ShaderBlock( name )
 {
 	this.dependency_blocks = []; //blocks referenced by this block
 	this.flag_id = -1;
 	this.flag_mask = 0;
+	this.events = null; //{};
 	if(!name)
 		throw("ShaderBlock must have a name");
 	if(name.indexOf(" ") != -1)
@@ -258,6 +284,13 @@ ShaderBlock.prototype.addCode = function( shader_type, enabled_code, disabled_co
 		macros: macros
 	};
 	this.code_map.set( shader_type, info );
+}
+
+ShaderBlock.prototype.bindEvent = function( event, code )  //priority?
+{
+	if(!this.events)
+		this.events = {};
+	this.events[ event ] = code;
 }
 
 /**
@@ -343,6 +376,7 @@ GLSLCode.PRAGMA = 2;
 GLSLCode.INCLUDE = 1;
 GLSLCode.SHADERBLOCK = 2;
 GLSLCode.SNIPPET = 3;
+GLSLCode.EVENT = 4;
 
 //given a code with some pragmas, it separates them
 GLSLCode.prototype.parse = function()
@@ -615,6 +649,41 @@ GLSLCode.pragma_methods["snippet"] = {
 		}
 
 		return "\n" + snippet.code + "\n";
+	}
+};
+
+GLSLCode.pragma_methods["event"] = { 
+	parse: function( pragma_info, t )
+	{
+		if(!t[2])
+		{
+			console.error("#pragma event without name");
+			return false;
+		}
+		pragma_info.action_type = GLSLCode.EVENT;
+		var name = t[2].substr(1, t[2].length - 2); //safer than JSON.parse
+		pragma_info.event = name;
+	},
+	getCode: function( shader_type, fragment, block_flags, context )
+	{
+		//dispatch event
+		var code = "\n";
+		var mask = 1;
+		for(var i = 0, l = LS.Shaders.shader_blocks.length; i < l; ++i)
+		{
+			var block = LS.Shaders.shader_blocks[i];
+			if(block_flags & block.flag_mask)
+			{
+				if(!block.events)
+					continue;
+				var block_code = block.events[ fragment.event ];
+				if(!block_code)
+					continue;
+				code += block_code + "\n";
+			}
+		}
+		//catch results
+		return code;
 	}
 };
 

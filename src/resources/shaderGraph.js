@@ -7,6 +7,8 @@
 * @constructor
 */
 
+//WORK IN PROGRESS
+/*
 function ShaderGraph( o )
 {
 	this._graph = new LiteGraph.Graph();
@@ -190,4 +192,5 @@ ShaderGraph.prototype.applyToMaterials = function( scene )
 
 LS.ShaderGraph = ShaderGraph;
 LS.registerResourceClass( ShaderGraph );
+*/
 

@@ -50,6 +50,7 @@ CameraController.PAN_XZ = 11; //pans only in the XZ plane
 CameraController.CHANGE_DISTANCE = 15; //scales the center from eye to center
 CameraController.WALK = 16; //moves forward or backward
 CameraController.ELEVATE = 17; //moves forward or backward
+CameraController.FOV = 18; //changes zoom (FOV)
 
 
 CameraController.icon = "mini-icon-cameracontroller.png";
@@ -68,7 +69,9 @@ CameraController.mode_values = {
 	};
 
 CameraController.wheel_values = { 
+		"None": CameraController.NONE,
 		"Change Distance": CameraController.CHANGE_DISTANCE,
+		"FOV": CameraController.FOV,
 		"Walk": CameraController.WALK,
 		"Elevate": CameraController.ELEVATE
 };
@@ -249,7 +252,7 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 	else if(mode == CameraController.ROTATE || mode == CameraController.ROTATE_HORIZONTAL )
 	{
 		var top = LS.TOP; //cam.getLocalVector(LS.TOP);
-		cam.rotate(-mouse_event.deltax * this.rot_speed * 0.2,top);
+		cam.rotate( -mouse_event.deltax * this.rot_speed * 0.2, top );
 		cam.updateMatrices();
 
 		if( mode == CameraController.ROTATE )
@@ -262,7 +265,7 @@ CameraController.prototype.processMouseButtonMoveEvent = function( mode, mouse_e
 			}
 			else
 			{
-				node.transform.rotate(-mouse_event.deltay * this.rot_speed,LS.RIGHT);
+				node.transform.rotate( -mouse_event.deltay * this.rot_speed * 0.2, LS.RIGHT );
 				cam.updateMatrices();
 			}
 		}
@@ -348,8 +351,19 @@ CameraController.prototype.onMouse = function(e, mouse_event)
 	if(mouse_event.eventType == "mousewheel")
 	{
 		var wheel = mouse_event.wheel > 0 ? 1 : -1;
-		cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
-		cam.updateMatrices();
+
+		switch( this.mouse_wheel_action )
+		{
+			case CameraController.CHANGE_DISTANCE: 
+				cam.orbitDistanceFactor(1 + wheel * -0.05 * this.wheel_speed );
+				cam.updateMatrices();
+				break;
+			case CameraController.FOV: 
+				cam.fov = cam.fov - wheel;
+				cam.updateMatrices();
+				break;
+		}
+
 		node.scene.requestFrame();
 		return;
 	}

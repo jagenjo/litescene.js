@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>LS.ShadersManager</title>
+    <title>LS.Shaders</title>
     <link rel="stylesheet" href="http://yui.yahooapis.com/3.9.1/build/cssgrids/cssgrids-min.css">
     <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
     <link rel="stylesheet" href="../assets/css/main.css" id="site_styles">
@@ -80,6 +80,7 @@
                                 <li><a href="../classes/LS.Draw.html">LS.Draw</a></li>
                                 <li><a href="../classes/LS.Formats.html">LS.Formats</a></li>
                                 <li><a href="../classes/LS.GLSLCode.html">LS.GLSLCode</a></li>
+                                <li><a href="../classes/LS.GraphCode.html">LS.GraphCode</a></li>
                                 <li><a href="../classes/LS.GUI.html">LS.GUI</a></li>
                                 <li><a href="../classes/LS.Input.html">LS.Input</a></li>
                                 <li><a href="../classes/LS.InteractiveController.html">LS.InteractiveController</a></li>
@@ -87,6 +88,7 @@
                                 <li><a href="../classes/LS.LS.html">LS.LS</a></li>
                                 <li><a href="../classes/LS.LScript.html">LS.LScript</a></li>
                                 <li><a href="../classes/LS.Material.html">LS.Material</a></li>
+                                <li><a href="../classes/LS.oldStandardMaterial.html">LS.oldStandardMaterial</a></li>
                                 <li><a href="../classes/LS.Pack.html">LS.Pack</a></li>
                                 <li><a href="../classes/LS.Particle.html">LS.Particle</a></li>
                                 <li><a href="../classes/LS.Physics.html">LS.Physics</a></li>
@@ -105,11 +107,11 @@
                                 <li><a href="../classes/LS.ResourcesManager.html">LS.ResourcesManager</a></li>
                                 <li><a href="../classes/LS.Scene.html">LS.Scene</a></li>
                                 <li><a href="../classes/LS.SceneNode.html">LS.SceneNode</a></li>
+                                <li><a href="../classes/LS.ShaderBlock.html">LS.ShaderBlock</a></li>
                                 <li><a href="../classes/LS.ShaderCode.html">LS.ShaderCode</a></li>
                                 <li><a href="../classes/LS.ShaderGraph.html">LS.ShaderGraph</a></li>
                                 <li><a href="../classes/LS.ShaderMaterial.html">LS.ShaderMaterial</a></li>
-                                <li><a href="../classes/LS.ShaderQuery.html">LS.ShaderQuery</a></li>
-                                <li><a href="../classes/LS.ShadersManager.html">LS.ShadersManager</a></li>
+                                <li><a href="../classes/LS.Shaders.html">LS.Shaders</a></li>
                                 <li><a href="../classes/LS.SpatialContainer.html">LS.SpatialContainer</a></li>
                                 <li><a href="../classes/LS.StandardMaterial.html">LS.StandardMaterial</a></li>
                                 <li><a href="../classes/LS.Tween.html">LS.Tween</a></li>
@@ -154,12 +156,12 @@
             <div class="apidocs">
                 <div id="docs-main">
                     <div class="content">
-<h1>LS.ShadersManager Class</h1>
+<h1>LS.Shaders Class</h1>
 <div class="box meta">
 
 
         <div class="foundat">
-            Defined in: <a href="../files/.._src_shadersManager.js.html#l7"><code>..&#x2F;src&#x2F;shadersManager.js:7</code></a>
+            Defined in: <a href="../files/.._src_shaders.js.html#l8"><code>..&#x2F;src&#x2F;shaders.js:8</code></a>
         </div>
 
             Module: <a href="../modules/LS.html">LS</a>
@@ -168,14 +170,14 @@
 
 
 <div class="box intro">
-    <p>ShadersManager is the static class in charge of loading, compiling and storing shaders for reuse.</p>
+    <p>Shaders is the static class in charge of loading, compiling and storing shaders for reuse.</p>
 
 </div>
 
     <div class="constructor">
         <h2>Constructor</h2>
-<div id="method_LS.ShadersManager" class="method item">
-    <h3 class="name"><code>LS.ShadersManager</code></h3>
+<div id="method_LS.Shaders" class="method item">
+    <h3 class="name"><code>LS.Shaders</code></h3>
 
         <span class="paren">()</span>
 
@@ -189,7 +191,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l7"><code>..&#x2F;src&#x2F;shadersManager.js:7</code></a>
+        <a href="../files/.._src_shaders.js.html#l8"><code>..&#x2F;src&#x2F;shaders.js:8</code></a>
         </p>
 
 
@@ -222,23 +224,11 @@
 
                     <ul class="index-list methods">
                             <li class="index-item method">
-                                <a href="#method_clearCache">clearCache</a>
-
-                            </li>
-                            <li class="index-item method">
                                 <a href="#method_compileShader">compileShader</a>
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_createDefaultShaders">createDefaultShaders</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_get">get</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_getGlobalShaderInfo">getGlobalShaderInfo</a>
+                                <a href="#method_getShaderBlock">getShaderBlock</a>
 
                             </li>
                             <li class="index-item method">
@@ -250,19 +240,7 @@
 
                             </li>
                             <li class="index-item method">
-                                <a href="#method_loadFromXML">loadFromXML</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_processShadersXML">processShadersXML</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_registerCompiledShader">registerCompiledShader</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_registerGlobalShader">registerGlobalShader</a>
+                                <a href="#method_registerShaderBlock">registerShaderBlock</a>
 
                             </li>
                             <li class="index-item method">
@@ -271,10 +249,6 @@
                             </li>
                             <li class="index-item method">
                                 <a href="#method_reloadShaders">reloadShaders</a>
-
-                            </li>
-                            <li class="index-item method">
-                                <a href="#method_resolve">resolve</a>
 
                             </li>
                     </ul>
@@ -287,37 +261,6 @@
             <div id="methods" class="api-class-tabpanel">
                 <h2 class="off-left">Methods</h2>
 
-<div id="method_clearCache" class="method item">
-    <h3 class="name"><code>clearCache</code></h3>
-
-        <span class="paren">()</span>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l92"><code>..&#x2F;src&#x2F;shadersManager.js:92</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Clears all the compiled shaders</p>
-
-    </div>
-
-
-
-
-</div>
 <div id="method_compileShader" class="method item">
     <h3 class="name"><code>compileShader</code></h3>
 
@@ -348,7 +291,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l205"><code>..&#x2F;src&#x2F;shadersManager.js:205</code></a>
+        <a href="../files/.._src_shaders.js.html#l57"><code>..&#x2F;src&#x2F;shaders.js:57</code></a>
         </p>
 
 
@@ -412,8 +355,8 @@
 
 
 </div>
-<div id="method_createDefaultShaders" class="method item">
-    <h3 class="name"><code>createDefaultShaders</code></h3>
+<div id="method_getShaderBlock" class="method item">
+    <h3 class="name"><code>getShaderBlock</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
@@ -424,7 +367,7 @@
         </div>
 
         <span class="returns-inline">
-            <span class="type">String</span>
+            <span class="type"><a href="../classes/LS.ShaderBlock.html" class="crosslink">LS.ShaderBlock</a></span>
         </span>
 
 
@@ -436,7 +379,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l595"><code>..&#x2F;src&#x2F;shadersManager.js:595</code></a>
+        <a href="../files/.._src_shaders.js.html#l203"><code>..&#x2F;src&#x2F;shaders.js:203</code></a>
         </p>
 
 
@@ -444,7 +387,7 @@
     </div>
 
     <div class="description">
-        <p>Create some default shaders useful for generic situations (flat, texture and screenspace quad)</p>
+        <p>register a shaderblock with the given id</p>
 
     </div>
 
@@ -454,7 +397,7 @@
             <ul class="params-list">
                 <li class="param">
                         <code class="param-name">id</code>
-                        <span class="type">String</span>
+                        <span class="type">String | Number</span>
 
 
                     <div class="param-description">
@@ -469,151 +412,8 @@
             <h4>Returns:</h4>
 
             <div class="returns-description">
-                        <span class="type">String</span>:
-                    <p>code</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_get" class="method item">
-    <h3 class="name"><code>get</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>id</code>
-                </li>
-                <li class="arg">
-                        <code>macros</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">GL.Shader</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l103"><code>..&#x2F;src&#x2F;shadersManager.js:103</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Returns a compiled shader with this id and this macros</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">id</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">macros</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">GL.Shader</span>:
-                    <p>the shader, if not found the default shader is returned</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_getGlobalShaderInfo" class="method item">
-    <h3 class="name"><code>getGlobalShaderInfo</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>id</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">Object</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l193"><code>..&#x2F;src&#x2F;shadersManager.js:193</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Returns the info of a global shader</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">id</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">Object</span>:
-                    <p>shader info (code, macros supported, flags)</p>
+                        <span class="type"><a href="../classes/LS.ShaderBlock.html" class="crosslink">LS.ShaderBlock</a></span>:
+                    <p>shader_block</p>
 
             </div>
         </div>
@@ -644,7 +444,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l545"><code>..&#x2F;src&#x2F;shadersManager.js:545</code></a>
+        <a href="../files/.._src_shaders.js.html#l163"><code>..&#x2F;src&#x2F;shaders.js:163</code></a>
         </p>
 
 
@@ -706,7 +506,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l33"><code>..&#x2F;src&#x2F;shadersManager.js:33</code></a>
+        <a href="../files/.._src_shaders.js.html#l28"><code>..&#x2F;src&#x2F;shaders.js:28</code></a>
         </p>
 
 
@@ -739,175 +539,20 @@
 
 
 </div>
-<div id="method_loadFromXML" class="method item">
-    <h3 class="name"><code>loadFromXML</code></h3>
+<div id="method_registerShaderBlock" class="method item">
+    <h3 class="name"><code>registerShaderBlock</code></h3>
 
         <div class="args">
             <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>url</code>
-                </li>
-                <li class="arg">
-                        <code>reset_old</code>
-                </li>
-                <li class="arg">
-                        <code>ignore_cache</code>
-                </li>
-                <li class="arg">
-                        <code>on_complete</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l300"><code>..&#x2F;src&#x2F;shadersManager.js:300</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Loads shaders code from an XML file</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">url</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                        <p>to the shaders file</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">reset_old</code>
-                        <span class="type">Boolean</span>
-
-
-                    <div class="param-description">
-                        <p>to reset all the existing shaders once loaded</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">ignore_cache</code>
-                        <span class="type">Boolean</span>
-
-
-                    <div class="param-description">
-                        <p>force to ignore web cache</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">on_complete</code>
-                        <span class="type">Function</span>
-
-
-                    <div class="param-description">
-                        <p>callback once the file has been loaded and processed</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-<div id="method_processShadersXML" class="method item">
-    <h3 class="name"><code>processShadersXML</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>xml</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l334"><code>..&#x2F;src&#x2F;shadersManager.js:334</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>extracts all the shaders from the XML doc</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">xml</code>
-                        <span class="type">XMLDocument</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-
-
-</div>
-<div id="method_registerCompiledShader" class="method item">
-    <h3 class="name"><code>registerCompiledShader</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>shader</code>
-                </li>
-                <li class="arg">
-                        <code>key</code>
-                </li>
                 <li class="arg">
                         <code>id</code>
                 </li>
+                <li class="arg">
+                        <code>shader_block</code>
+                </li>
             </ul><span class="paren">)</span>
         </div>
 
-        <span class="returns-inline">
-            <span class="type">GL.Shader</span>
-        </span>
 
 
 
@@ -918,7 +563,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l277"><code>..&#x2F;src&#x2F;shadersManager.js:277</code></a>
+        <a href="../files/.._src_shaders.js.html#l175"><code>..&#x2F;src&#x2F;shaders.js:175</code></a>
         </p>
 
 
@@ -926,7 +571,7 @@
     </div>
 
     <div class="description">
-        <p>Stores a compiled shader program, so it can be reused</p>
+        <p>register a shaderblock in the global container so it can be used by shadermaterials</p>
 
     </div>
 
@@ -934,107 +579,19 @@
             <h4>Parameters:</h4>
 
             <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">shader</code>
-                        <span class="type">GL.Shader</span>
-
-
-                    <div class="param-description">
-                        <p>the compiled shader</p>
-
-                    </div>
-
-                </li>
-                <li class="param">
-                        <code class="param-name">key</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
-                        <p>unique id</p>
-
-                    </div>
-
-                </li>
                 <li class="param">
                         <code class="param-name">id</code>
                         <span class="type">String</span>
 
 
                     <div class="param-description">
-                        <p>the shader name</p>
-
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">GL.Shader</span>:
-                    <p>shader</p>
-
-            </div>
-        </div>
-
-
-</div>
-<div id="method_registerGlobalShader" class="method item">
-    <h3 class="name"><code>registerGlobalShader</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>vs_code</code>
-                </li>
-                <li class="arg">
-                        <code>fs_code</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l436"><code>..&#x2F;src&#x2F;shadersManager.js:436</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>extracts all the shaders from the XML doc</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">vs_code</code>
-                        <span class="type">String</span>
-
-
-                    <div class="param-description">
                          
                     </div>
 
                 </li>
                 <li class="param">
-                        <code class="param-name">fs_code</code>
-                        <span class="type">String</span>
+                        <code class="param-name">shader_block</code>
+                        <span class="type"><a href="../classes/LS.ShaderBlock.html" class="crosslink">LS.ShaderBlock</a></span>
 
 
                     <div class="param-description">
@@ -1072,7 +629,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l533"><code>..&#x2F;src&#x2F;shadersManager.js:533</code></a>
+        <a href="../files/.._src_shaders.js.html#l151"><code>..&#x2F;src&#x2F;shaders.js:151</code></a>
         </p>
 
 
@@ -1135,7 +692,7 @@
     <div class="meta">
                 <p>
                 Defined in
-        <a href="../files/.._src_shadersManager.js.html#l69"><code>..&#x2F;src&#x2F;shadersManager.js:69</code></a>
+        <a href="../files/.._src_shaders.js.html#l46"><code>..&#x2F;src&#x2F;shaders.js:46</code></a>
         </p>
 
 
@@ -1165,71 +722,6 @@
             </ul>
         </div>
 
-
-
-</div>
-<div id="method_resolve" class="method item">
-    <h3 class="name"><code>resolve</code></h3>
-
-        <div class="args">
-            <span class="paren">(</span><ul class="args-list inline commas">
-                <li class="arg">
-                        <code>query</code>
-                </li>
-            </ul><span class="paren">)</span>
-        </div>
-
-        <span class="returns-inline">
-            <span class="type">GL.Shader</span>
-        </span>
-
-
-
-
-
-
-
-    <div class="meta">
-                <p>
-                Defined in
-        <a href="../files/.._src_shadersManager.js.html#l80"><code>..&#x2F;src&#x2F;shadersManager.js:80</code></a>
-        </p>
-
-
-
-    </div>
-
-    <div class="description">
-        <p>Resolves a shader query, returns the shader</p>
-
-    </div>
-
-        <div class="params">
-            <h4>Parameters:</h4>
-
-            <ul class="params-list">
-                <li class="param">
-                        <code class="param-name">query</code>
-                        <span class="type">ShaderQuery</span>
-
-
-                    <div class="param-description">
-                         
-                    </div>
-
-                </li>
-            </ul>
-        </div>
-
-        <div class="returns">
-            <h4>Returns:</h4>
-
-            <div class="returns-description">
-                        <span class="type">GL.Shader</span>:
-                    <p>the shader, if not found the default shader is returned</p>
-
-            </div>
-        </div>
 
 
 </div>

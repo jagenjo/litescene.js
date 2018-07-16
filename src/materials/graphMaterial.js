@@ -1,144 +1,162 @@
 function GraphMaterial(o)
 {
-	this.uid = LS.generateUId("MAT-");
-	this._dirty = true;
+	ShaderMaterial.call(this,null); //do not pass the data object, it is called later
 
-	this.shader_name = "surface";
+	this.blend_mode = LS.Blend.NORMAL;
 
-	this.graph = new LGraph();
+	this._filename = "";
 
-	//this.shader_name = null; //default shader
-	this.color = new Float32Array([1.0,1.0,1.0]);
-	this.opacity = 1.0;
-	this.blend_mode = Blend.NORMAL;
-
-	this.vs_code = "";
-	this.code = "void surf(in Input IN, inout SurfaceOutput o) {\n\
-	o.Albedo = vec3(1.0) * IN.color.xyz;\n\
-	o.Normal = IN.worldNormal;\n\
-	o.Emission = vec3(0.0);\n\
-	o.Specular = 1.0;\n\
-	o.Gloss = 40.0;\n\
-	o.Reflectivity = 0.0;\n\
-	o.Alpha = IN.color.a;\n}\n";
+	this._shader = "";
+	this._shader_version = -1;
+	this._shader_flags = 0; //?
 
 	this._uniforms = {};
-	this._macros = {};
+	this._samplers = [];
+	this._properties = [];
+	this._properties_by_name = {};
 
-	this.properties = []; //array of configurable properties
-	this.textures = {};
-	if(o) 
+	this._passes = {};
+	this._light_mode = Material.ONE_LIGHT;
+	this._primitive = -1;
+	this._allows_instancing = false;
+
+	this._version = -1;
+	this._shader_version = -1;
+
+	this._loading = false;
+
+	if(o)
 		this.configure(o);
-
-	this.flags = 0;
-
-	this.computeCode();
 }
 
-GraphMaterial.icon = "mini-icon-material.png";
+GraphMaterial.icon = "mini-icon-graph.png";
 
-GraphMaterial.prototype.onCodeChange = function()
-{
-	this.computeCode();
-}
+GraphMaterial["@filename"] = { type:"resource", data_type: "graph" };
 
-GraphMaterial.prototype.getCode = function()
-{
-	return this.code;
-}
+GraphMaterial.prototype.renderInstance = ShaderMaterial.prototype.renderInstance;
+GraphMaterial.prototype.renderShadowInstance = ShaderMaterial.prototype.renderShadowInstance;
+GraphMaterial.prototype.renderPickingInstance = ShaderMaterial.prototype.renderPickingInstance;
 
-GraphMaterial.prototype.computeCode = function()
-{
-	var uniforms_code = "";
-	for(var i in this.properties)
-	{
-		var code = "uniform ";
-		var prop = this.properties[i];
-		switch(prop.type)
-		{
-			case 'number': code += "float "; break;
-			case 'vec2': code += "vec2 "; break;
-			case 'vec3': code += "vec3 "; break;
-			case 'vec4':
-			case 'color':
-			 	code += "vec4 "; break;
-			case 'texture': code += "sampler2D "; break;
-			case 'cubemap': code += "samplerCube "; break;
-			default: continue;
-		}
-		code += prop.name + ";";
-		uniforms_code += code;
+Object.defineProperty( GraphMaterial.prototype, "filename", {
+	enumerable: false,
+	get: function() {
+		return this._filename;
+	},
+	set: function(v) {
+		if(this._filename == v)
+			return;
+		if(v) //to avoid double slashes
+			v = LS.ResourcesManager.cleanFullpath( v );
+		this._filename = v;
+		this._loading = false;
+		this.processGraph();
 	}
+});
 
-	var lines = this.code.split("\n");
-	for(var i in lines)
-		lines[i] = lines[i].split("//")[0]; //remove comments
+Object.defineProperty( GraphMaterial.prototype, "graphcode", {
+	enumerable: false,
+	get: function() {
+		return this._graphcode;
+	},
+	set: function(v) {
+		//if(this._graphcode == v) return; //disabled because sometimes we want to force reload
+		this._loading = false;
+		this._graphcode = v;
+		if( this._graphcode )
+			this._filename = this._graphcode.fullpath || this._graphcode.filename;
+		else 
+			this._filename = null;
+		//this._graph_properties = this.serializeProperties();
+		this.processGraph();
+	}
+});
 
-	this.surf_code = uniforms_code + lines.join("");
-}
+Object.defineProperty( GraphMaterial.prototype, "graph", {
+	enumerable: false,
+	get: function() {
+		return this._graphcode ? this._graphcode.graph : null;
+	},
+	set: function(v) {
+		throw("graph cannot be set to a material, you must assign a graphcode instead");
+	}
+});
 
-// RENDERING METHODS
-GraphMaterial.prototype.onModifyMacros = function(macros)
+GraphMaterial.shader_codes = {};
+
+//returns the LS.ShaderCode required to render
+//here we cannot filter by light pass because this is done before applying shaderblocks
+//in the StandardMaterial we cache versions of the ShaderCode according to the settings
+GraphMaterial.prototype.getShaderCode = function( instance, render_settings, pass )
 {
-	if(this._ps_uniforms_code)
-	{
-		if(macros.USE_PIXEL_SHADER_UNIFORMS)
-			macros.USE_PIXEL_SHADER_UNIFORMS += this._ps_uniforms_code;
-		else
-			macros.USE_PIXEL_SHADER_UNIFORMS = this._ps_uniforms_code;
-	}
-
-	if(this._ps_functions_code)
-	{
-		if(macros.USE_PIXEL_SHADER_FUNCTIONS)
-			macros.USE_PIXEL_SHADER_FUNCTIONS += this._ps_functions_code;
-		else
-			macros.USE_PIXEL_SHADER_FUNCTIONS = this._ps_functions_code;
-	}
-
-	if(this._ps_code)
-	{
-		if(macros.USE_PIXEL_SHADER_CODE)
-			macros.USE_PIXEL_SHADER_CODE += this._ps_code;
-		else
-			macros.USE_PIXEL_SHADER_CODE = this._ps_code;	
-	}
-
-	macros.USE_SURFACE_SHADER = this.surf_code;
+	if(!this._graphcode)
+		return null;
+	return this._graphcode.getShaderCode();
 }
 
-GraphMaterial.prototype.fillSurfaceShaderMacros = function(scene)
+
+/**
+* Collects all the resources needed by this material (textures)
+* @method getResources
+* @param {Object} resources object where all the resources are stored
+* @return {Texture}
+*/
+GraphMaterial.prototype.getResources = function (res)
 {
-	var macros = {};
-	this._macros = macros;
+	if(!this._graphcode)
+		return res;
+
+	res[ this.filename ] = true;
+	if(this._graphcode)
+		this._graphcode.graph.sendEventToAllNodes("getResources",res);
+	
+	return res;
 }
 
-
-GraphMaterial.prototype.fillSurfaceUniforms = function( scene, options )
-{
-	var samplers = [];
-
-	for(var i in this.properties)
-	{
-		var prop = this.properties[i];
-		if(prop.type == "texture" || prop.type == "cubemap")
-		{
-			var texture = LS.getTexture( prop.value );
-			if(!texture) continue;
-			samplers[prop.name] = texture;
-		}
-		else
-			this._uniforms[ prop.name ] = prop.value;
+GraphMaterial.prototype.serialize = function() { 
+	//var o = LS.Material.prototype.serialize.apply(this);
+	return {
+		uid: this.uid,
+		material_class: LS.getObjectClassName(this),
+		filename: this.filename,
+		properties: null //TO DO
 	}
-
-	this._uniforms.u_material_color = new Float32Array([this.color[0], this.color[1], this.color[2], this.opacity]);
-	this._samplers = samplers;
+	return o;
 }
+
 
 GraphMaterial.prototype.configure = function(o) { 
 	LS.cloneObject(o, this);
-	this.computeCode();
+	this.processGraph();
 }
+
+GraphMaterial.prototype.processGraph = function( skip_events, on_complete )
+{
+	if(!this._filename)
+	{
+		this._graphcode = null;
+		return;
+	}
+
+	var that = this;
+	this._graphcode = LS.ResourcesManager.getResource( this._filename );
+	if(!this._graphcode && !this._loading) //must be loaded
+	{
+		this._loading = true;
+		LS.ResourcesManager.load( this._filename, null, function( res, url ){
+			this._loading = false;
+			if( url != that.filename )
+				return;
+			if( res && res.type == GraphCode.SHADER_GRAPH )
+				that._graphcode = res;
+			else
+				console.error("Shader Graph not found or now a Shader Graph");
+			if(on_complete)
+				on_complete(that);
+		});
+		return;
+	}
+}
+
 
 /**
 * gets all the properties and its types
@@ -276,37 +294,6 @@ GraphMaterial.prototype.setTexture = function(texture, channel, uvs) {
 		ResourcesManager.load(texture);
 }
 
-
-
-LS.registerMaterialClass(GraphMaterial);
+LS.registerMaterialClass( GraphMaterial );
 LS.GraphMaterial = GraphMaterial;
 
-
-/*
-
-			struct Input {
-				vec4 color;
-				vec3 vertex;
-				vec3 normal;
-				vec2 uv;
-				vec2 uv1;
-
-				vec3 camPos;
-				vec3 viewDir;
-				vec3 worldPos;
-				vec3 worldNormal;
-				vec4 screenPos;
-			};
-
-			struct SurfaceOutput {
-				vec3 Albedo;
-				vec3 Normal;
-				vec3 Emission;
-				float Specular;
-				float Gloss;
-				float Alpha;
-				float Reflectivity;
-			};
-
-
-*/

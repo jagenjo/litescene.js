@@ -66,10 +66,7 @@ function Player(options)
 	this.scene = LS.GlobalScene;
 	this._file_drop_enabled = false; //use enableFileDrop
 
-	LS.ShadersManager.init( options.shaders || "data/shaders.xml" );
-	if(!options.shaders)
-		console.warn("LS: no shaders folder specified, using default file.");
-
+	LS.Shaders.init();
 	LS.Renderer.init();
 
 	//this will repaint every frame and send events when the mouse clicks objects
@@ -281,10 +278,10 @@ Player.prototype.setScene = function( scene_info, on_complete, on_before_play )
 
 	function inner_all_resources_loaded()
 	{
-		if( LS.ShadersManager.ready )
-			inner_all_loaded();
-		else
-			LS.ShadersManager.on_ready = inner_all_loaded;
+		//add here any extra step...
+
+		//on ready
+		inner_all_loaded();
 	}
 
 	function inner_all_loaded()
